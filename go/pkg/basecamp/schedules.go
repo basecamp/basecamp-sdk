@@ -222,7 +222,11 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 	var params *generated.ListScheduleEntriesParams
 	if opts != nil && (opts.Status != "" || opts.Page > 0) {
 		params = &generated.ListScheduleEntriesParams{
-			Status: &opts.Status,
+			// omitzero, not &opts.Status: the guard above now also fires for a
+			// page-only call, and a non-nil pointer to "" is sent as an empty
+			// status= rather than omitted — which would displace the server's
+			// active-entries default. Same shape as every other wrapper here.
+			Status: omitzero(opts.Status),
 		}
 		if opts.Page > 0 {
 			var page *int32

@@ -165,6 +165,39 @@ func TestPageParamOmittedWhenUnset(t *testing.T) {
 	}
 }
 
+// TestPageParamDoesNotForceSiblingFilters asserts that selecting a page does
+// not drag an unset sibling filter onto the wire.
+//
+// Widening a wrapper's params guard from "status is set" to "status is set OR a
+// page is selected" means the params struct is now built for a page-only call
+// too — and under the pointer policy an unset string taken by address is a
+// non-nil pointer to "", which the encoder sends as an empty `status=` rather
+// than omitting it. That silently replaces the server's documented
+// active-entries default.
+func TestPageParamDoesNotForceSiblingFilters(t *testing.T) {
+	var rawQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ac := client.ForAccount("12345")
+
+	if _, err := ac.Schedules().ListEntries(t.Context(), 1, &ScheduleEntryListOptions{Page: 3}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(rawQuery, "page=3") {
+		t.Errorf("expected page=3 on the wire, got %q", rawQuery)
+	}
+	if strings.Contains(rawQuery, "status") {
+		t.Errorf("expected no status parameter when only Page is set, got %q", rawQuery)
+	}
+}
+
 // TestPageParamAcceptsMaxInt32 pins the inclusive upper bound of the narrowing:
 // the largest page the generated int32 params can carry still reaches the wire.
 // math.MaxInt32 is representable as int on every platform Go supports, so this
