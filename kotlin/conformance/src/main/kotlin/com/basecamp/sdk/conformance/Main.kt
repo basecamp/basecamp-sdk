@@ -18,10 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
 private const val TEST_ACCOUNT_ID = "999"
 
 /** Tests where the Kotlin runner's operation dispatcher has no implementation yet. */
-private val KOTLIN_SKIPS: Map<String, String> = mapOf(
-    "DownloadURL retries on 503 at the auth'd first hop" to "Kotlin download hop 1 does not retry yet (B4)",
-    "DownloadURL honors Retry-After on 429 at the auth'd first hop" to "Kotlin download hop 1 does not retry yet (B4)",
-)
+private val KOTLIN_SKIPS: Map<String, String> = emptyMap()
 
 fun main() {
     val testsDir = File("../conformance/tests")

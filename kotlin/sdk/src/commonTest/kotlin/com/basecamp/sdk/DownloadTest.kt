@@ -12,6 +12,7 @@ class DownloadTest {
         handler: MockRequestHandler,
         hooks: BasecampHooks = NoopHooks,
         enableRetry: Boolean = false,
+        maxRetries: Int? = null,
     ): BasecampClient {
         val mockEngine = MockEngine(handler)
         return testBasecampClient {
@@ -20,6 +21,9 @@ class DownloadTest {
             engine = mockEngine
             this.enableRetry = enableRetry
             this.hooks = hooks
+            if (maxRetries != null) {
+                this.maxRetries = maxRetries
+            }
         }
     }
 
@@ -464,30 +468,325 @@ class DownloadTest {
         client.close()
     }
 
-    // -- No retry on 429 --
+    // -- Hop-1 retry policy (SPEC §14) --
+
+    private val hop1URL = "http://localhost:3000/12345/attachments/abc/download/file.txt"
+
+    // The COMPLETE declared retry set, pinned status by status (the shared
+    // conformance fixtures cover 429/503): hop 1 retries {429, 502, 503, 504}
+    // under the public maxRetries total-attempt cap coerced to at least one.
+    @Test
+    fun downloadURL_retriesDeclaredStatusesThenFollowsRedirect() = runTest {
+        for (status in listOf(429, 502, 503, 504)) {
+            var hop1Attempts = 0
+            var hop2Requests = 0
+            val client = mockClient(
+                handler = { request ->
+                    if (request.url.encodedPath.startsWith("/signed/")) {
+                        hop2Requests++
+                        respond(
+                            content = ByteReadChannel("data"),
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType to listOf("application/octet-stream")),
+                        )
+                    } else {
+                        hop1Attempts++
+                        if (hop1Attempts == 1) {
+                            respond(
+                                content = ByteReadChannel("{}"),
+                                status = HttpStatusCode.fromValue(status),
+                                headers = headersOf(HttpHeaders.ContentType to listOf("application/json")),
+                            )
+                        } else {
+                            respond(
+                                content = ByteReadChannel(""),
+                                status = HttpStatusCode.Found,
+                                headers = headersOf(HttpHeaders.Location to listOf("http://localhost:3000/signed/file")),
+                            )
+                        }
+                    }
+                },
+                enableRetry = true,
+            )
+            val account = client.forAccount("12345")
+
+            val result = account.downloadURL(hop1URL)
+
+            assertEquals("data", result.body.decodeToString(), "status $status")
+            assertEquals(2, hop1Attempts, "status $status")
+            assertEquals(1, hop2Requests, "status $status")
+            client.close()
+        }
+    }
 
     @Test
-    fun downloadURL_noRetryOn429() = runTest {
+    fun downloadURL_neverRetries500() = runTest {
         var requestCount = 0
         val client = mockClient(
             handler = { _ ->
                 requestCount++
                 respond(
-                    content = ByteReadChannel("""{"error":"Rate limited"}"""),
-                    status = HttpStatusCode.TooManyRequests,
-                    headers = headersOf(
-                        HttpHeaders.ContentType to listOf("application/json"),
-                        "Retry-After" to listOf("30"),
-                    )
+                    content = ByteReadChannel("""{"error":"Server error"}"""),
+                    status = HttpStatusCode.InternalServerError,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("application/json")),
                 )
             },
-            enableRetry = true,  // Retry is on but downloadURL shouldn't use it
+            enableRetry = true,
         )
         val account = client.forAccount("12345")
-        assertFailsWith<BasecampException.RateLimit> {
-            account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt")
+
+        assertFailsWith<BasecampException.Api> { account.downloadURL(hop1URL) }
+
+        // 500 is deliberately outside the declared set {429, 502, 503, 504}.
+        assertEquals(1, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_retriesNetworkErrorThenSucceeds() = runTest {
+        var requestCount = 0
+        val client = mockClient(
+            handler = { _ ->
+                requestCount++
+                if (requestCount == 1) {
+                    throw java.io.IOException("Connection refused")
+                }
+                respond(
+                    content = ByteReadChannel("content"),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("text/plain")),
+                )
+            },
+            enableRetry = true,
+        )
+        val account = client.forAccount("12345")
+
+        val result = account.downloadURL(hop1URL)
+
+        assertEquals("content", result.body.decodeToString())
+        assertEquals(2, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_exhaustsCapThenSurfacesError() = runTest {
+        var requestCount = 0
+        val client = mockClient(
+            handler = { _ ->
+                requestCount++
+                respond(
+                    content = ByteReadChannel("{}"),
+                    status = HttpStatusCode.ServiceUnavailable,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("application/json")),
+                )
+            },
+            enableRetry = true,
+            maxRetries = 3,
+        )
+        val account = client.forAccount("12345")
+
+        assertFailsWith<BasecampException> { account.downloadURL(hop1URL) }
+
+        assertEquals(3, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_zeroMaxRetriesStillSendsOneAttempt() = runTest {
+        var requestCount = 0
+        val client = mockClient(
+            handler = { _ ->
+                requestCount++
+                respond(
+                    content = ByteReadChannel("{}"),
+                    status = HttpStatusCode.ServiceUnavailable,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("application/json")),
+                )
+            },
+            enableRetry = true,
+            maxRetries = 0,
+        )
+        val account = client.forAccount("12345")
+
+        // The download attempt budget is the public cap coerced to at least
+        // one: an accepted maxRetries = 0 still sends exactly one attempt.
+        assertFailsWith<BasecampException> { account.downloadURL(hop1URL) }
+
+        assertEquals(1, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_enableRetryFalseSendsExactlyOneAttempt() = runTest {
+        var requestCount = 0
+        val client = mockClient(
+            handler = { _ ->
+                requestCount++
+                respond(
+                    content = ByteReadChannel("{}"),
+                    status = HttpStatusCode.ServiceUnavailable,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("application/json")),
+                )
+            },
+            enableRetry = false,
+        )
+        val account = client.forAccount("12345")
+
+        assertFailsWith<BasecampException> { account.downloadURL(hop1URL) }
+
+        assertEquals(1, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_authOnEveryHop1AttemptNeverOnHop2() = runTest {
+        val hop1AuthHeaders = mutableListOf<String?>()
+        var hop2AuthHeader: String? = "unset"
+        var hop1Attempts = 0
+        val client = mockClient(
+            handler = { request ->
+                if (request.url.encodedPath.startsWith("/signed/")) {
+                    hop2AuthHeader = request.headers[HttpHeaders.Authorization]
+                    respond(
+                        content = ByteReadChannel("data"),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType to listOf("application/octet-stream")),
+                    )
+                } else {
+                    hop1Attempts++
+                    hop1AuthHeaders.add(request.headers[HttpHeaders.Authorization])
+                    if (hop1Attempts == 1) {
+                        respond(
+                            content = ByteReadChannel("{}"),
+                            status = HttpStatusCode.ServiceUnavailable,
+                            headers = headersOf(HttpHeaders.ContentType to listOf("application/json")),
+                        )
+                    } else {
+                        respond(
+                            content = ByteReadChannel(""),
+                            status = HttpStatusCode.Found,
+                            headers = headersOf(HttpHeaders.Location to listOf("http://localhost:3000/signed/file")),
+                        )
+                    }
+                }
+            },
+            enableRetry = true,
+        )
+        val account = client.forAccount("12345")
+
+        account.downloadURL(hop1URL)
+
+        assertEquals(listOf<String?>("Bearer test-token", "Bearer test-token"), hop1AuthHeaders)
+        assertNull(hop2AuthHeader)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_balancedHooksAcrossRetries() = runTest {
+        val starts = mutableListOf<Int>()
+        val ends = mutableListOf<Int>()
+        val retries = mutableListOf<Int>()
+        val hooks = object : BasecampHooks {
+            override fun onRequestStart(info: RequestInfo) {
+                starts.add(info.attempt)
+            }
+
+            override fun onRequestEnd(info: RequestInfo, result: RequestResult) {
+                ends.add(info.attempt)
+            }
+
+            override fun onRetry(info: RequestInfo, attempt: Int, error: Throwable, delayMs: Long) {
+                retries.add(attempt)
+            }
         }
-        // Only one request — no retry
+        var requestCount = 0
+        val client = mockClient(
+            handler = { _ ->
+                requestCount++
+                if (requestCount < 3) {
+                    respond(
+                        content = ByteReadChannel("{}"),
+                        status = HttpStatusCode.ServiceUnavailable,
+                        headers = headersOf(HttpHeaders.ContentType to listOf("application/json")),
+                    )
+                } else {
+                    respond(
+                        content = ByteReadChannel("content"),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType to listOf("text/plain")),
+                    )
+                }
+            },
+            hooks = hooks,
+            enableRetry = true,
+        )
+        val account = client.forAccount("12345")
+
+        account.downloadURL(hop1URL)
+
+        assertEquals(listOf(1, 2, 3), starts)
+        assertEquals(listOf(1, 2, 3), ends)
+        // onRetry receives the UPCOMING attempt (SPEC §7 attempt semantics).
+        assertEquals(listOf(2, 3), retries)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_honorsRetryAfterOn429() = runTest {
+        var requestCount = 0
+        val requestTimestamps = mutableListOf<Long>()
+        val client = mockClient(
+            handler = { _ ->
+                requestCount++
+                requestTimestamps.add(testScheduler.currentTime)
+                if (requestCount == 1) {
+                    respond(
+                        content = ByteReadChannel("{}"),
+                        status = HttpStatusCode.TooManyRequests,
+                        headers = headersOf(
+                            HttpHeaders.ContentType to listOf("application/json"),
+                            "Retry-After" to listOf("7"),
+                        ),
+                    )
+                } else {
+                    respond(
+                        content = ByteReadChannel("content"),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType to listOf("text/plain")),
+                    )
+                }
+            },
+            enableRetry = true,
+        )
+        val account = client.forAccount("12345")
+
+        account.downloadURL(hop1URL)
+
+        assertEquals(2, requestCount)
+        val elapsed = requestTimestamps[1] - requestTimestamps[0]
+        assertTrue(elapsed >= 7000, "Expected delay >= 7000ms from Retry-After: 7, got $elapsed")
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_cancellationIsTerminal() = runTest {
+        var requestCount = 0
+        val client = mockClient(
+            handler = { _ ->
+                requestCount++
+                throw kotlin.coroutines.cancellation.CancellationException("cancelled")
+            },
+            enableRetry = true,
+        )
+        val account = client.forAccount("12345")
+
+        // Cancellation is not a transport failure: it must propagate raw with
+        // NO further attempts, even though a network error would have been
+        // retried under the same budget.
+        assertFailsWith<kotlin.coroutines.cancellation.CancellationException> {
+            account.downloadURL(hop1URL)
+        }
+
         assertEquals(1, requestCount)
         client.close()
     }

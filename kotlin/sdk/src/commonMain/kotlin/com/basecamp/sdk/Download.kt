@@ -1,13 +1,23 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.http.BasecampHttpClient
 import com.basecamp.sdk.http.currentTimeMillis
 import com.basecamp.sdk.http.millisToDuration
 import io.ktor.client.*
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.delay
+
+/**
+ * SPEC §14's declared hop-1 retry set for downloads — never 500, which stays
+ * aligned with the main GET loop's declared-set discipline rather than the
+ * error taxonomy's broader "all 5xx retryable" flag.
+ */
+private val DOWNLOAD_RETRY_ON = setOf(429, 502, 503, 504)
 
 /**
  * Result of downloading file content from a URL.
@@ -71,6 +81,12 @@ fun filenameFromURL(rawURL: String): String {
  * authenticated first hop (which typically 302s to a signed download URL),
  * and unauthenticated second hop to fetch the actual file content.
  *
+ * The first hop retries under the SPEC §14 policy — network errors plus
+ * {429, 502, 503, 504}, never 500 — with exponential backoff (Retry-After
+ * honored on 429) under the public maxRetries total-attempt cap coerced to at
+ * least one; `enableRetry = false` collapses it to exactly one attempt. The
+ * second hop is exempt: no retry, no auth.
+ *
  * @param rawURL Absolute download URL (e.g., from bc-attachment elements).
  * @return [DownloadResult] with body, contentType, contentLength, and filename.
  * @throws BasecampException.Usage if rawURL is blank or not absolute.
@@ -120,38 +136,14 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
         }
 
         noRedirectClient.use { client ->
-            // Hop 1: Authenticated API request (capture redirect)
-            val requestInfo = RequestInfo(method = "GET", url = rewrittenURL, attempt = 1)
-            parent.hooks.safeOnRequestStart(requestInfo)
-
-            val reqStart = currentTimeMillis()
-            val response: HttpResponse
-            try {
-                response = client.request(rewrittenURL) {
-                    method = HttpMethod.Get
-                    parent.authStrategy.authenticate(this)
-                    header(HttpHeaders.UserAgent, parent.config.userAgent)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                val duration = currentTimeMillis() - reqStart
-                parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
-                    statusCode = 0,
-                    duration = duration.millisToDuration(),
-                    error = e,
-                ))
-                throw BasecampException.Network(
-                    message = "Network error: ${e.message}",
-                    cause = e,
-                )
-            }
-
-            val duration = currentTimeMillis() - reqStart
-            parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
-                statusCode = response.status.value,
-                duration = duration.millisToDuration(),
-            ))
+            // Hop 1: Authenticated API request (capture redirect) under the
+            // SPEC §14 hop-1 retry policy. The budget is the public maxRetries
+            // total-attempt cap coerced to at least one (an accepted
+            // maxRetries = 0 still sends one attempt), collapsed to exactly
+            // one attempt when enableRetry is false.
+            val maxAttempts = if (parent.config.enableRetry) parent.config.maxRetries.coerceAtLeast(1) else 1
+            val baseDelayMs = parent.config.baseRetryDelay.inWholeMilliseconds
+            val response = downloadHop1(client, rewrittenURL, maxAttempts, baseDelayMs)
 
             val status = response.status.value
 
@@ -246,6 +238,121 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
 }
 
 /**
+ * Runs the download's authenticated hop 1 under the SPEC §14 retry policy:
+ * network errors plus [DOWNLOAD_RETRY_ON] — never 500 — retried with
+ * exponential backoff (Retry-After honored on 429) while attempts remain.
+ * DownloadURL is deliberately absent from the behavior model, so the policy
+ * lives here rather than being looked up by operation.
+ *
+ * Mirror of [BasecampHttpClient.requestWithRetry]'s directive shape (#517):
+ * the catch clauses only classify the attempt's outcome; retry side effects
+ * (on_retry, the backoff sleep, the next attempt) run outside any catch, so a
+ * CancellationException from the sleep propagates raw and no phantom request
+ * events fire for an attempt that already ended.
+ *
+ * Every attempt re-runs the auth strategy so a rotated token is picked up. A
+ * throwing strategy is a configuration or credential-provider fault, not a
+ * transport fault: it surfaces raw, spends no retry budget, and matches
+ * BasecampHttpClient's auth-phase classification.
+ */
+private suspend fun AccountClient.downloadHop1(
+    client: HttpClient,
+    url: String,
+    maxAttempts: Int,
+    baseDelayMs: Long,
+): HttpResponse {
+    var attempt = 1
+    while (true) {
+        val requestInfo = RequestInfo(method = "GET", url = url, attempt = attempt)
+        parent.hooks.safeOnRequestStart(requestInfo)
+        val reqStart = currentTimeMillis()
+
+        var failure: Exception? = null
+        var attemptResponse: HttpResponse? = null
+        try {
+            attemptResponse = client.request(url) {
+                method = HttpMethod.Get
+                try {
+                    parent.authStrategy.authenticate(this)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw DownloadAuthFailure(e)
+                }
+                header(HttpHeaders.UserAgent, parent.config.userAgent)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: DownloadAuthFailure) {
+            val duration = currentTimeMillis() - reqStart
+            parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = e.original,
+            ))
+            throw e.original
+        } catch (e: Exception) {
+            failure = e
+        }
+
+        if (failure != null) {
+            val duration = currentTimeMillis() - reqStart
+            parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = failure,
+            ))
+            val wrapped = BasecampException.Network(
+                message = "Network error: ${failure.message}",
+                cause = failure,
+            )
+            // Same total-budget carve-out as the client loop: an attempt that
+            // consumed its entire per-attempt time budget is a slowness shape
+            // a retry tends to repeat, not a transient blip.
+            val retryableFailure = failure !is HttpRequestTimeoutException
+            if (!retryableFailure || attempt >= maxAttempts) {
+                throw wrapped
+            }
+            val delayMs = BasecampHttpClient.calculateBackoffDelay(baseDelayMs, attempt)
+            parent.hooks.safeOnRetry(requestInfo, attempt + 1, wrapped, delayMs)
+            delay(delayMs)
+            attempt += 1
+            continue
+        }
+
+        val response = attemptResponse!!
+        val duration = currentTimeMillis() - reqStart
+        parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
+            statusCode = response.status.value,
+            duration = duration.millisToDuration(),
+        ))
+
+        val status = response.status.value
+        if (status !in DOWNLOAD_RETRY_ON || attempt >= maxAttempts) {
+            return response
+        }
+
+        val retryAfter = parseRetryAfter(response.headers["Retry-After"])
+        val delayMs = if (status == 429 && retryAfter != null) {
+            retryAfter.toLong() * 1000
+        } else {
+            BasecampHttpClient.calculateBackoffDelay(baseDelayMs, attempt)
+        }
+        parent.hooks.safeOnRetry(requestInfo, attempt + 1, BasecampException.Api("HTTP $status", status), delayMs)
+        delay(delayMs)
+        attempt += 1
+    }
+}
+
+/**
+ * Internal tag for an exception thrown by the auth strategy while building a
+ * hop-1 attempt. Never escapes [downloadHop1]: the loop unwraps it and
+ * rethrows the original raw, so auth-phase faults are never classified as
+ * transport failures and never consume retry budget.
+ */
+private class DownloadAuthFailure(val original: Exception) : Exception(original)
+
+/**
  * Rewrites a URL's origin (scheme + host + port) to match the base URL,
  * preserving the path, query, and fragment.
  */
@@ -302,4 +409,9 @@ private fun BasecampHooks.safeOnRequestStart(info: RequestInfo) {
 /** Safely call onRequestEnd, catching hook exceptions. */
 private fun BasecampHooks.safeOnRequestEnd(info: RequestInfo, result: RequestResult) {
     runCatching { onRequestEnd(info, result) }
+}
+
+/** Safely call onRetry, catching hook exceptions. */
+private fun BasecampHooks.safeOnRetry(info: RequestInfo, attempt: Int, error: Throwable, delayMs: Long) {
+    runCatching { onRetry(info, attempt, error, delayMs) }
 }
