@@ -6,14 +6,37 @@
     "method": "GET",
     "path": "/projects.json",
     "mockResponses": [
-      {"status": 401, "headers": {"X-Request-Id": "req-abc-123"}, "body": {"error": "Unauthorized"}}
+      {
+        "status": 401,
+        "headers": {
+          "X-Request-Id": "req-abc-123"
+        },
+        "body": {
+          "error": "Unauthorized"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "auth_required"},
-      {"type": "errorField", "path": "httpStatus", "expected": 401},
-      {"type": "errorField", "path": "retryable", "expected": false}
+      {
+        "type": "errorCode",
+        "expected": "auth_required"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 401
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": false
+      }
     ],
-    "tags": ["error-mapping", "auth", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "auth",
+      "structured-error"
+    ]
   },
   {
     "name": "403 maps to forbidden error code",
@@ -21,16 +44,41 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
-    "pathParams": {"projectId": 12345},
+    "pathParams": {
+      "projectId": 12345
+    },
     "mockResponses": [
-      {"status": 403, "headers": {"X-Request-Id": "req-def-456"}, "body": {"error": "Forbidden"}}
+      {
+        "status": 403,
+        "headers": {
+          "X-Request-Id": "req-def-456"
+        },
+        "body": {
+          "error": "Forbidden"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "forbidden"},
-      {"type": "errorField", "path": "httpStatus", "expected": 403},
-      {"type": "errorField", "path": "retryable", "expected": false}
+      {
+        "type": "errorCode",
+        "expected": "forbidden"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 403
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": false
+      }
     ],
-    "tags": ["error-mapping", "forbidden", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "forbidden",
+      "structured-error"
+    ]
   },
   {
     "name": "404 maps to not_found error code",
@@ -38,16 +86,38 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
-    "pathParams": {"projectId": 99999},
+    "pathParams": {
+      "projectId": 99999
+    },
     "mockResponses": [
-      {"status": 404, "body": {"error": "Not found"}}
+      {
+        "status": 404,
+        "body": {
+          "error": "Not found"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "not_found"},
-      {"type": "errorField", "path": "httpStatus", "expected": 404},
-      {"type": "errorField", "path": "retryable", "expected": false}
+      {
+        "type": "errorCode",
+        "expected": "not_found"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 404
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": false
+      }
     ],
-    "tags": ["error-mapping", "not-found", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "not-found",
+      "structured-error"
+    ]
   },
   {
     "name": "400 maps to validation error code",
@@ -55,16 +125,41 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
-    "pathParams": {"projectId": 12345},
+    "pathParams": {
+      "projectId": 12345
+    },
     "mockResponses": [
-      {"status": 400, "headers": {"X-Request-Id": "req-bad-400"}, "body": {"error": "Bad request"}}
+      {
+        "status": 400,
+        "headers": {
+          "X-Request-Id": "req-bad-400"
+        },
+        "body": {
+          "error": "Bad request"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorField", "path": "httpStatus", "expected": 400},
-      {"type": "errorField", "path": "retryable", "expected": false}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 400
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": false
+      }
     ],
-    "tags": ["error-mapping", "validation", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "structured-error"
+    ]
   },
   {
     "name": "422 maps to validation error code",
@@ -72,34 +167,86 @@
     "operation": "CreateProject",
     "method": "POST",
     "path": "/projects.json",
-    "requestBody": {"name": ""},
+    "requestBody": {
+      "name": ""
+    },
     "mockResponses": [
-      {"status": 422, "body": {"error": "Name can't be blank"}}
+      {
+        "status": 422,
+        "body": {
+          "error": "Name can't be blank"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorField", "path": "httpStatus", "expected": 422},
-      {"type": "errorField", "path": "retryable", "expected": false}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": false
+      }
     ],
-    "tags": ["error-mapping", "validation", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "structured-error"
+    ]
   },
   {
     "name": "422 field-keyed errors flatten into the validation message",
-    "description": "Verifies that a field-keyed 422 body ({\"errors\": {field: [messages]}} — the Rails RecordInvalid rendering, e.g. UpdateCalendar rejecting an unknown color) is flattened into the error message",
+    "description": "Verifies that a field-keyed 422 body ({\"errors\": {field: [messages]}} \u2014 the Rails RecordInvalid rendering, e.g. UpdateCalendar rejecting an unknown color) is flattened into the error message",
     "operation": "UpdateCalendar",
     "method": "PUT",
     "path": "/calendars/{calendarId}",
-    "pathParams": {"calendarId": 2085958497},
-    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "chartreuse"
+      }
+    },
     "mockResponses": [
-      {"status": 422, "body": {"errors": {"color": ["is not a valid color"]}}}
+      {
+        "status": 422,
+        "body": {
+          "errors": {
+            "color": [
+              "is not a valid color"
+            ]
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorField", "path": "httpStatus", "expected": 422},
-      {"type": "errorMessage", "expected": "color: is not a valid color"}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "errorMessage",
+        "expected": "color: is not a valid color"
+      }
     ],
-    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
   },
   {
     "name": "422 field-keyed errors flatten sorted with multi-message fields",
@@ -107,16 +254,46 @@
     "operation": "UpdateCalendar",
     "method": "PUT",
     "path": "/calendars/{calendarId}",
-    "pathParams": {"calendarId": 2085958497},
-    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "chartreuse"
+      }
+    },
     "mockResponses": [
-      {"status": 422, "body": {"errors": {"name": ["can't be blank", "is too short"], "color": ["is not a valid color"]}}}
+      {
+        "status": 422,
+        "body": {
+          "errors": {
+            "name": [
+              "can't be blank",
+              "is too short"
+            ],
+            "color": [
+              "is not a valid color"
+            ]
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorMessage", "expected": "color: is not a valid color, name: can't be blank; is too short"}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorMessage",
+        "expected": "color: is not a valid color, name: can't be blank; is too short"
+      }
     ],
-    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
   },
   {
     "name": "422 field-keyed errors append to a top-level error message",
@@ -124,16 +301,43 @@
     "operation": "UpdateCalendar",
     "method": "PUT",
     "path": "/calendars/{calendarId}",
-    "pathParams": {"calendarId": 2085958497},
-    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "chartreuse"
+      }
+    },
     "mockResponses": [
-      {"status": 422, "body": {"error": "Validation failed", "errors": {"color": ["is not a valid color"]}}}
+      {
+        "status": 422,
+        "body": {
+          "error": "Validation failed",
+          "errors": {
+            "color": [
+              "is not a valid color"
+            ]
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorMessage", "expected": "Validation failed (color: is not a valid color)"}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorMessage",
+        "expected": "Validation failed (color: is not a valid color)"
+      }
     ],
-    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
   },
   {
     "name": "422 field-keyed errors survive a non-string top-level error",
@@ -141,16 +345,43 @@
     "operation": "UpdateCalendar",
     "method": "PUT",
     "path": "/calendars/{calendarId}",
-    "pathParams": {"calendarId": 2085958497},
-    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "chartreuse"
+      }
+    },
     "mockResponses": [
-      {"status": 422, "body": {"error": {}, "errors": {"color": ["is not a valid color"]}}}
+      {
+        "status": 422,
+        "body": {
+          "error": {},
+          "errors": {
+            "color": [
+              "is not a valid color"
+            ]
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorMessage", "expected": "color: is not a valid color"}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorMessage",
+        "expected": "color: is not a valid color"
+      }
     ],
-    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
   },
   {
     "name": "422 field-keyed errors append after a message-key fallback",
@@ -158,50 +389,329 @@
     "operation": "UpdateCalendar",
     "method": "PUT",
     "path": "/calendars/{calendarId}",
-    "pathParams": {"calendarId": 2085958497},
-    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "chartreuse"
+      }
+    },
     "mockResponses": [
-      {"status": 422, "body": {"message": "Validation failed", "errors": {"color": ["is not a valid color"]}}}
+      {
+        "status": 422,
+        "body": {
+          "message": "Validation failed",
+          "errors": {
+            "color": [
+              "is not a valid color"
+            ]
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorMessage", "expected": "Validation failed (color: is not a valid color)"}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorMessage",
+        "expected": "Validation failed (color: is not a valid color)"
+      }
     ],
-    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
   },
   {
     "name": "422 field-keyed errors treat __proto__ as an ordinary field name",
-    "description": "Verifies an untrusted field name that collides with JavaScript's legacy prototype setter is kept as an ordinary map key in every SDK — present in the flattened message and never mutating the map",
+    "description": "Verifies an untrusted field name that collides with JavaScript's legacy prototype setter is kept as an ordinary map key in every SDK \u2014 present in the flattened message and never mutating the map",
     "operation": "UpdateCalendar",
     "method": "PUT",
     "path": "/calendars/{calendarId}",
-    "pathParams": {"calendarId": 2085958497},
-    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "chartreuse"
+      }
+    },
     "mockResponses": [
-      {"status": 422, "body": {"errors": {"__proto__": ["is reserved"], "color": ["is not a valid color"]}}}
+      {
+        "status": 422,
+        "body": {
+          "errors": {
+            "__proto__": [
+              "is reserved"
+            ],
+            "color": [
+              "is not a valid color"
+            ]
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorMessage", "expected": "__proto__: is reserved, color: is not a valid color"}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorMessage",
+        "expected": "__proto__: is reserved, color: is not a valid color"
+      }
     ],
-    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
   },
   {
     "name": "422 field-keyed errors keep valid entries beside malformed ones",
-    "description": "Verifies a mixed-validity errors map ({\"color\": [...], \"base\": \"invalid\"}) reaches the tolerant parser in every SDK — the valid entry is flattened and the malformed sibling skipped, rather than a typed-decode failure surfacing to the caller",
+    "description": "Verifies a mixed-validity errors map ({\"color\": [...], \"base\": \"invalid\"}) reaches the tolerant parser in every SDK \u2014 the valid entry is flattened and the malformed sibling skipped, rather than a typed-decode failure surfacing to the caller",
     "operation": "UpdateCalendar",
     "method": "PUT",
     "path": "/calendars/{calendarId}",
-    "pathParams": {"calendarId": 2085958497},
-    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "chartreuse"
+      }
+    },
     "mockResponses": [
-      {"status": 422, "body": {"errors": {"color": ["is not a valid color"], "base": "invalid"}}}
+      {
+        "status": 422,
+        "body": {
+          "errors": {
+            "color": [
+              "is not a valid color"
+            ],
+            "base": "invalid"
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "validation"},
-      {"type": "errorMessage", "expected": "color: is not a valid color"}
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorMessage",
+        "expected": "color: is not a valid color"
+      }
     ],
-    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
+  },
+  {
+    "name": "400 bare field-map body flattens into the validation message",
+    "description": "Verifies that an unwrapped ActiveModel::Errors body ({field: [messages]} with no \"errors\" wrapper \u2014 what webhooks_controller renders at 400) is flattened into the error message",
+    "operation": "CreateWebhook",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/webhooks.json",
+    "pathParams": {
+      "bucketId": 456
+    },
+    "requestBody": {
+      "payload_url": "https://example.com/hook",
+      "types": [
+        "Todo"
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 400,
+        "body": {
+          "payload_url": [
+            "is not a valid URL"
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 400
+      },
+      {
+        "type": "errorMessage",
+        "expected": "payload_url: is not a valid URL"
+      }
+    ],
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
+  },
+  {
+    "name": "400 bare field-map body sorts fields and joins multi-message fields",
+    "description": "Verifies the shared flattening shape on the unwrapped body: fields sorted lexicographically, a field's messages joined with \"; \", fields joined with \", \"",
+    "operation": "CreateWebhook",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/webhooks.json",
+    "pathParams": {
+      "bucketId": 456
+    },
+    "requestBody": {
+      "payload_url": "https://example.com/hook",
+      "types": [
+        "Todo"
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 400,
+        "body": {
+          "types": [
+            "is invalid"
+          ],
+          "payload_url": [
+            "is not a valid URL",
+            "is too long"
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 400
+      },
+      {
+        "type": "errorMessage",
+        "expected": "payload_url: is not a valid URL; is too long, types: is invalid"
+      }
+    ],
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
+  },
+  {
+    "name": "400 bare field-map body treats __proto__ as an ordinary field name",
+    "description": "Verifies that the unwrapped field map builds its structured slot with an own-property accumulator: a field literally named __proto__ flattens into the message like any other field and does not mutate the map's prototype. Mirrors the wrapped-map case one wire shape over, where field_errors is the body itself",
+    "operation": "CreateWebhook",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/webhooks.json",
+    "pathParams": {
+      "bucketId": 456
+    },
+    "requestBody": {
+      "payload_url": "https://example.com/hook",
+      "types": [
+        "Todo"
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 400,
+        "body": {
+          "__proto__": [
+            "is reserved"
+          ],
+          "payload_url": [
+            "is invalid"
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 400
+      },
+      {
+        "type": "errorMessage",
+        "expected": "__proto__: is reserved, payload_url: is invalid"
+      }
+    ],
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
+  },
+  {
+    "name": "400 body with a string error key keeps the flat message",
+    "description": "Verifies that a body whose \"error\" is a string still reports the flat message even when its other members are string arrays. Only \"errors\" is reserved by name (SPEC \u00a76 step 2); this body stays flat because a string-valued member fails the shape gate. Runners assert errorMessage by substring, so this pins the positive half; each SDK's strict-gate matrix pins the negative half exactly",
+    "operation": "CreateWebhook",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/webhooks.json",
+    "pathParams": {
+      "bucketId": 456
+    },
+    "requestBody": {
+      "payload_url": "https://example.com/hook",
+      "types": [
+        "Todo"
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 400,
+        "body": {
+          "error": "Webhook is invalid",
+          "payload_url": [
+            "is not a valid URL"
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 400
+      },
+      {
+        "type": "errorMessage",
+        "expected": "Webhook is invalid"
+      }
+    ],
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
   },
   {
     "name": "429 maps to rate_limit error code",
@@ -210,16 +720,60 @@
     "method": "GET",
     "path": "/projects.json",
     "mockResponses": [
-      {"status": 429, "headers": {"Retry-After": "0", "X-Request-Id": "req-rate-789"}, "body": {"error": "Rate limit exceeded"}},
-      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}},
-      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}},
-      {"status": 429, "headers": {"Retry-After": "0"}, "body": {"error": "Rate limit exceeded"}}
+      {
+        "status": 429,
+        "headers": {
+          "Retry-After": "0",
+          "X-Request-Id": "req-rate-789"
+        },
+        "body": {
+          "error": "Rate limit exceeded"
+        }
+      },
+      {
+        "status": 429,
+        "headers": {
+          "Retry-After": "0"
+        },
+        "body": {
+          "error": "Rate limit exceeded"
+        }
+      },
+      {
+        "status": 429,
+        "headers": {
+          "Retry-After": "0"
+        },
+        "body": {
+          "error": "Rate limit exceeded"
+        }
+      },
+      {
+        "status": 429,
+        "headers": {
+          "Retry-After": "0"
+        },
+        "body": {
+          "error": "Rate limit exceeded"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "rate_limit"},
-      {"type": "errorField", "path": "retryable", "expected": true}
+      {
+        "type": "errorCode",
+        "expected": "rate_limit"
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": true
+      }
     ],
-    "tags": ["error-mapping", "rate-limit", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "rate-limit",
+      "structured-error"
+    ]
   },
   {
     "name": "500 maps to api_error error code",
@@ -227,16 +781,38 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
-    "pathParams": {"projectId": 12345},
+    "pathParams": {
+      "projectId": 12345
+    },
     "mockResponses": [
-      {"status": 500, "body": {"error": "Internal server error"}}
+      {
+        "status": 500,
+        "body": {
+          "error": "Internal server error"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "api_error"},
-      {"type": "errorField", "path": "httpStatus", "expected": 500},
-      {"type": "errorField", "path": "retryable", "expected": true}
+      {
+        "type": "errorCode",
+        "expected": "api_error"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 500
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": true
+      }
     ],
-    "tags": ["error-mapping", "server-error", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "server-error",
+      "structured-error"
+    ]
   },
   {
     "name": "X-Request-Id header extracted into error",
@@ -244,14 +820,32 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
-    "pathParams": {"projectId": 99999},
+    "pathParams": {
+      "projectId": 99999
+    },
     "mockResponses": [
-      {"status": 404, "headers": {"X-Request-Id": "req-unique-abc"}, "body": {"error": "Not found"}}
+      {
+        "status": 404,
+        "headers": {
+          "X-Request-Id": "req-unique-abc"
+        },
+        "body": {
+          "error": "Not found"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorField", "path": "requestId", "expected": "req-unique-abc"}
+      {
+        "type": "errorField",
+        "path": "requestId",
+        "expected": "req-unique-abc"
+      }
     ],
-    "tags": ["error-mapping", "request-id", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "request-id",
+      "structured-error"
+    ]
   },
   {
     "name": "502 Bad Gateway maps to api_error with retryable",
@@ -259,19 +853,56 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
-    "pathParams": {"projectId": 12345},
+    "pathParams": {
+      "projectId": 12345
+    },
     "mockResponses": [
-      {"status": 502, "body": {"error": "Bad Gateway"}},
-      {"status": 502, "body": {"error": "Bad Gateway"}},
-      {"status": 502, "body": {"error": "Bad Gateway"}},
-      {"status": 502, "body": {"error": "Bad Gateway"}}
+      {
+        "status": 502,
+        "body": {
+          "error": "Bad Gateway"
+        }
+      },
+      {
+        "status": 502,
+        "body": {
+          "error": "Bad Gateway"
+        }
+      },
+      {
+        "status": 502,
+        "body": {
+          "error": "Bad Gateway"
+        }
+      },
+      {
+        "status": 502,
+        "body": {
+          "error": "Bad Gateway"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "api_error"},
-      {"type": "errorField", "path": "httpStatus", "expected": 502},
-      {"type": "errorField", "path": "retryable", "expected": true}
+      {
+        "type": "errorCode",
+        "expected": "api_error"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 502
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": true
+      }
     ],
-    "tags": ["error-mapping", "5xx", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "5xx",
+      "structured-error"
+    ]
   },
   {
     "name": "503 Service Unavailable maps to api_error with retryable",
@@ -279,19 +910,56 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
-    "pathParams": {"projectId": 12345},
+    "pathParams": {
+      "projectId": 12345
+    },
     "mockResponses": [
-      {"status": 503, "body": {"error": "Service Unavailable"}},
-      {"status": 503, "body": {"error": "Service Unavailable"}},
-      {"status": 503, "body": {"error": "Service Unavailable"}},
-      {"status": 503, "body": {"error": "Service Unavailable"}}
+      {
+        "status": 503,
+        "body": {
+          "error": "Service Unavailable"
+        }
+      },
+      {
+        "status": 503,
+        "body": {
+          "error": "Service Unavailable"
+        }
+      },
+      {
+        "status": 503,
+        "body": {
+          "error": "Service Unavailable"
+        }
+      },
+      {
+        "status": 503,
+        "body": {
+          "error": "Service Unavailable"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "api_error"},
-      {"type": "errorField", "path": "httpStatus", "expected": 503},
-      {"type": "errorField", "path": "retryable", "expected": true}
+      {
+        "type": "errorCode",
+        "expected": "api_error"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 503
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": true
+      }
     ],
-    "tags": ["error-mapping", "5xx", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "5xx",
+      "structured-error"
+    ]
   },
   {
     "name": "504 Gateway Timeout maps to api_error with retryable",
@@ -299,18 +967,55 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
-    "pathParams": {"projectId": 12345},
+    "pathParams": {
+      "projectId": 12345
+    },
     "mockResponses": [
-      {"status": 504, "body": {"error": "Gateway Timeout"}},
-      {"status": 504, "body": {"error": "Gateway Timeout"}},
-      {"status": 504, "body": {"error": "Gateway Timeout"}},
-      {"status": 504, "body": {"error": "Gateway Timeout"}}
+      {
+        "status": 504,
+        "body": {
+          "error": "Gateway Timeout"
+        }
+      },
+      {
+        "status": 504,
+        "body": {
+          "error": "Gateway Timeout"
+        }
+      },
+      {
+        "status": 504,
+        "body": {
+          "error": "Gateway Timeout"
+        }
+      },
+      {
+        "status": 504,
+        "body": {
+          "error": "Gateway Timeout"
+        }
+      }
     ],
     "assertions": [
-      {"type": "errorCode", "expected": "api_error"},
-      {"type": "errorField", "path": "httpStatus", "expected": 504},
-      {"type": "errorField", "path": "retryable", "expected": true}
+      {
+        "type": "errorCode",
+        "expected": "api_error"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 504
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": true
+      }
     ],
-    "tags": ["error-mapping", "5xx", "structured-error"]
+    "tags": [
+      "error-mapping",
+      "5xx",
+      "structured-error"
+    ]
   }
 ]

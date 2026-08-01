@@ -59,7 +59,7 @@ export class MyNotesService extends BaseService {
   }
 
   /**
-   * Replace the note's content, recording a new revision server-side. The first
+   * Replace the note's content, recording a new revision server-side.
    * @param req - My_note update parameters
    * @returns The MyNote
    * @throws {BasecampError} If the resource is not found or fields are invalid

@@ -24,7 +24,7 @@ module Basecamp
         end
       end
 
-      # Update the current user's preferences
+      # Update the current user's preferences.
       # @param person [Hash] person
       # @return [Hash] response data
       def update_my_preferences(person:)

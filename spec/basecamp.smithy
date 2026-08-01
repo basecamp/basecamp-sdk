@@ -357,9 +357,6 @@ structure ValidationError {
   message: String
 }
 
-/// 422 whose body is keyed by field ({"errors": {"color": ["is not a valid
-/// color"]}}) — the Rails RecordInvalid rendering. Used by operations whose
-/// controllers emit the field-keyed shape instead of the flat {error} body.
 /// 404 with no response body — the bare `head :not_found` rendering. Used by
 /// operations whose controllers emit no JSON payload on 404, so the generated
 /// OpenAPI does not advertise a decodable body that the server never sends.
@@ -367,6 +364,9 @@ structure ValidationError {
 @httpError(404)
 structure BareNotFoundError {}
 
+/// 422 whose body is keyed by field ({"errors": {"color": ["is not a valid
+/// color"]}}) — the Rails RecordInvalid rendering. Used by operations whose
+/// controllers emit the field-keyed shape instead of the flat {error} body.
 @error("client")
 @httpError(422)
 structure FieldValidationError {
@@ -9789,9 +9789,11 @@ structure GetMyNoteInput {
   accountId: AccountId
 }
 
-/// Replace the note's content, recording a new revision server-side. The first
-/// update also creates the underlying notebook if the user did not have one
-/// yet. Returns the updated note.
+/// Replace the note's content, recording a new revision server-side.
+/// The first update also creates the underlying notebook if the user did not
+/// have one yet. Returns the updated note. Rejections arrive as a field-keyed
+/// 422 ({"errors": {"content": ["can't be blank"]}}), not the flat {error}
+/// body.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -9799,7 +9801,7 @@ structure GetMyNoteInput {
 operation UpdateMyNote {
   input: UpdateMyNoteInput
   output: MyNoteOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [FieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure UpdateMyNoteInput {
@@ -10277,7 +10279,10 @@ structure GetMyPreferencesOutput {
   preferences: Preferences
 }
 
-/// Update the current user's preferences
+/// Update the current user's preferences.
+/// Rejections arrive as a field-keyed 422
+/// ({"errors": {"time_zone_name": ["is not included in the list"]}}), not the
+/// flat {error} body.
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -10285,7 +10290,7 @@ structure GetMyPreferencesOutput {
 operation UpdateMyPreferences {
   input: UpdateMyPreferencesInput
   output: UpdateMyPreferencesOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [FieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure UpdateMyPreferencesInput {

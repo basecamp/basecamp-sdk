@@ -236,3 +236,107 @@ class TestParseRetryAfter:
         past = datetime.now(UTC) - timedelta(seconds=30)
         value = format_datetime(past)
         assert _parse_retry_after(value) is None
+
+
+class TestBareFieldMap:
+    """SPEC section 6 step 2.
+
+    webhooks_controller and chats/integrations_controller render
+    ``json: @webhook.errors`` at 400, lineup markers at 422 -- the field map
+    arrives as the whole body, with no ``errors`` wrapper.
+    """
+
+    @pytest.mark.parametrize(
+        ("status", "body", "message", "field_errors"),
+        [
+            (
+                400,
+                b'{"payload_url": ["is not a valid URL"]}',
+                "payload_url: is not a valid URL",
+                {"payload_url": ["is not a valid URL"]},
+            ),
+            (
+                400,
+                b'{"types": ["is invalid"], "payload_url": ["is not a valid URL", "is too long"]}',
+                "payload_url: is not a valid URL; is too long, types: is invalid",
+                {
+                    "payload_url": ["is not a valid URL", "is too long"],
+                    "types": ["is invalid"],
+                },
+            ),
+            (
+                422,
+                b'{"name": ["can\'t be blank"]}',
+                "name: can't be blank",
+                {"name": ["can't be blank"]},
+            ),
+        ],
+    )
+    def test_flattens_bare_field_map(self, status, body, message, field_errors):
+        err = error_from_response(status, body)
+        assert isinstance(err, ValidationError)
+        assert str(err) == message
+        assert err.field_errors == field_errors
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            b'{"id": 1}',
+            b'{"color": ["is invalid"], "count": 3}',
+            b'{"color": []}',
+            b'{"color": ["", "is invalid"]}',
+            b'{"color": ["is invalid", 42]}',
+            b'{"color": [null]}',
+            b"{}",
+            b"[1, 2]",
+            b'"nope"',
+        ],
+    )
+    def test_strict_gate_rejects_non_field_maps(self, body):
+        err = error_from_response(400, body)
+        assert err.field_errors is None
+        assert str(err) == "Validation failed"
+
+    @pytest.mark.parametrize(
+        ("body", "message"),
+        [
+            (b'{"error": "Webhook is invalid", "payload_url": ["is bad"]}', "Webhook is invalid"),
+            (b'{"message": "Webhook is invalid", "payload_url": ["is bad"]}', "Webhook is invalid"),
+            (b'{"errors": {}, "payload_url": ["is bad"]}', "Validation failed"),
+        ],
+    )
+    def test_stays_flat_for_flat_bodies(self, body, message):
+        # Only "errors" is excluded by name; a flat body's "error"/"message" is
+        # a str, and the shape gate rejects a str-valued member — so these
+        # bodies stay flat on shape, not on the key's name. The test above
+        # covers the other half: list-valued keys ARE recognized as fields.
+        err = error_from_response(400, body)
+        assert err.field_errors is None
+        assert str(err) == message
+
+    # Only "errors" is reserved by name. A record whose validated attribute is
+    # called "message" or "error" still gets its field map recognized: the flat
+    # shape carries those keys as strings, which the gate rejects on shape alone.
+    @pytest.mark.parametrize(
+        ("body", "message", "field_errors"),
+        [
+            (
+                b'{"message": ["can\'t be blank"]}',
+                "message: can't be blank",
+                {"message": ["can't be blank"]},
+            ),
+            (
+                b'{"error": ["is invalid"], "name": ["can\'t be blank"]}',
+                "error: is invalid, name: can't be blank",
+                {"error": ["is invalid"], "name": ["can't be blank"]},
+            ),
+        ],
+    )
+    def test_allows_reserved_field_names(self, body, message, field_errors):
+        err = error_from_response(400, body)
+        assert str(err) == message
+        assert err.field_errors == field_errors
+
+    def test_not_extracted_outside_validation_statuses(self):
+        err = error_from_response(500, b'{"payload_url": ["is not a valid URL"]}')
+        assert not hasattr(err, "field_errors")

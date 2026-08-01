@@ -66,8 +66,7 @@ func checkResponse(resp *http.Response, body []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:
-		msg := msgOrDefault(composeValidationMessage(serverMsg, fieldErrors), "validation error")
-		return &Error{Code: CodeValidation, Message: msg, Hint: serverHint, FieldErrors: fieldErrors, HTTPStatus: resp.StatusCode, RequestID: requestID}
+		return validationError(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID)
 	case http.StatusUnauthorized:
 		return &Error{Code: CodeAuth, Message: msgOrDefault(serverMsg, "authentication required"), Hint: serverHint, HTTPStatus: 401, RequestID: requestID}
 	case http.StatusForbidden:
@@ -86,8 +85,10 @@ func checkResponse(resp *http.Response, body []byte) error {
 const maxErrorMessageLen = 500
 
 // parseErrorBody tries to extract "error" (falling back to "message"),
-// "error_description", and the field-keyed "errors" map from a JSON response
-// body. Returns empty values if the body is not JSON or missing those keys.
+// "error_description", and the field-keyed errors map from a JSON response
+// body — either wrapped in an "errors" key or, for the controllers that render
+// ActiveModel::Errors with no wrapper, as the body itself. Returns empty values
+// if the body is not JSON or missing those keys.
 func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][]string) {
 	if len(body) == 0 {
 		return "", "", nil
@@ -111,7 +112,15 @@ func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][
 		message = truncate(stringFromRaw(parsed.Message))
 	}
 	hint = truncate(stringFromRaw(parsed.Description))
-	return message, hint, parseFieldErrors(parsed.Errors)
+
+	fieldErrors = parseFieldErrors(parsed.Errors)
+	if fieldErrors == nil && len(parsed.Errors) == 0 {
+		// SPEC §6 step 2: no "errors" wrapper — the body may be the field map
+		// itself. A flat {"error": "..."} body needs no exclusion here: its
+		// member is a string, which the all-members gate rejects on shape.
+		fieldErrors = parseBareFieldErrors(body)
+	}
+	return message, hint, fieldErrors
 }
 
 // stringFromRaw decodes a JSON value as a string, returning "" for absent or
@@ -131,6 +140,9 @@ func stringFromRaw(raw json.RawMessage) string {
 // RecordInvalid rendering {"errors": {"field": ["msg", ...]}}. Entries whose
 // value is not an array are skipped, non-string elements are dropped, and a map
 // with no usable entries is treated as absent (nil).
+//
+// Callers reach the unwrapped rendering through parseErrorBody, which falls
+// through to parseBareFieldErrors when there is no "errors" key.
 func parseFieldErrors(raw json.RawMessage) map[string][]string {
 	if len(raw) == 0 {
 		return nil
@@ -157,6 +169,44 @@ func parseFieldErrors(raw json.RawMessage) map[string][]string {
 	}
 	if len(fieldErrors) == 0 {
 		return nil
+	}
+	return fieldErrors
+}
+
+// parseBareFieldErrors decodes an unwrapped field map — the
+// `render json: @webhook.errors` rendering, where the whole body is
+// {"field": ["msg", ...]}. The gate is all-or-nothing by design (SPEC §6 step
+// 2): with no "errors" key to declare intent, only shape distinguishes a field
+// map from any other JSON object, so a single non-conforming member means this
+// is not one. Returns nil unless every member is a non-empty array of non-empty
+// strings.
+//
+// Only "errors" is structurally reserved (it belongs to step 1). "error" and
+// "message" are not excluded by name: a flat body carries them as strings,
+// which the shape gate already rejects, so a validated field genuinely named
+// "message" is still recognized.
+func parseBareFieldErrors(body []byte) map[string][]string {
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal(body, &members); err != nil || len(members) == 0 {
+		return nil
+	}
+	fieldErrors := make(map[string][]string, len(members))
+	for field, raw := range members {
+		var elems []any
+		// A JSON null decodes into a slice without error, leaving it nil — the
+		// length check below is what rejects it.
+		if err := json.Unmarshal(raw, &elems); err != nil || len(elems) == 0 {
+			return nil
+		}
+		messages := make([]string, 0, len(elems))
+		for _, elem := range elems {
+			s, ok := elem.(string)
+			if !ok || s == "" {
+				return nil
+			}
+			messages = append(messages, s)
+		}
+		fieldErrors[field] = messages
 	}
 	return fieldErrors
 }
@@ -194,6 +244,21 @@ func composeValidationMessage(serverMsg string, fieldErrors map[string][]string)
 		return truncate(flat)
 	default:
 		return truncate(serverMsg + " (" + flat + ")")
+	}
+}
+
+// validationError builds the 400/422 error: the composed message, the raw
+// field map, and the hint. Both the generated service layer (checkResponse) and
+// the raw Client escape hatch (doRequest) construct it here, so the composition
+// rules cannot drift between the two paths.
+func validationError(serverMsg, serverHint string, fieldErrors map[string][]string, status int, requestID string) *Error {
+	return &Error{
+		Code:        CodeValidation,
+		Message:     msgOrDefault(composeValidationMessage(serverMsg, fieldErrors), "validation error"),
+		Hint:        serverHint,
+		FieldErrors: fieldErrors,
+		HTTPStatus:  status,
+		RequestID:   requestID,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -468,5 +469,100 @@ func TestSingleRequest_ErrorIncludesRequestID(t *testing.T) {
 				t.Fatalf("Retryable = %v, want %v", apiErr.Retryable, tt.wantRetryable)
 			}
 		})
+	}
+}
+
+// TestDoRequest_ValidationStatusesCarryFieldErrors covers the raw Client
+// escape hatch, which mapped 400 and 422 through the default arm — code
+// api_error, no hint, no field errors — while every generated service method
+// went through checkResponse and got the structured SPEC §6 treatment.
+func TestDoRequest_ValidationStatusesCarryFieldErrors(t *testing.T) {
+	tests := []struct {
+		name        string
+		status      int
+		body        string
+		wantMessage string
+		wantFields  map[string][]string
+	}{
+		{
+			name:        "422 wrapped field map composes after the top-level error",
+			status:      422,
+			body:        `{"error":"Validation failed","errors":{"color":["is not a valid color"]}}`,
+			wantMessage: "Validation failed (color: is not a valid color)",
+			wantFields:  map[string][]string{"color": {"is not a valid color"}},
+		},
+		{
+			name:        "400 bare field map stands alone",
+			status:      400,
+			body:        `{"payload_url":["is not a valid URL"]}`,
+			wantMessage: "payload_url: is not a valid URL",
+			wantFields:  map[string][]string{"payload_url": {"is not a valid URL"}},
+		},
+		{
+			name:        "422 with no parseable body falls back to the generic message",
+			status:      422,
+			body:        `not json`,
+			wantMessage: "validation error",
+			wantFields:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer server.Close()
+
+			cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+			client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+			_, err := client.Post(context.Background(), "/test.json", map[string]any{})
+			var e *Error
+			if !errors.As(err, &e) {
+				t.Fatalf("expected *Error, got %T (%v)", err, err)
+			}
+			if e.Code != CodeValidation {
+				t.Errorf("Code = %q, want %q", e.Code, CodeValidation)
+			}
+			if e.HTTPStatus != tt.status {
+				t.Errorf("HTTPStatus = %d, want %d", e.HTTPStatus, tt.status)
+			}
+			if e.Message != tt.wantMessage {
+				t.Errorf("Message = %q, want %q", e.Message, tt.wantMessage)
+			}
+			if !reflect.DeepEqual(e.FieldErrors, tt.wantFields) {
+				t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, tt.wantFields)
+			}
+		})
+	}
+}
+
+// TestDoRequest_UnmappedStatusParsesMembersIndependently pins the default arm
+// on the shared SPEC §6 parser: the struct decode it used before failed whole
+// when any member had an unexpected type, discarding usable siblings.
+func TestDoRequest_UnmappedStatusParsesMembersIndependently(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusPaymentRequired)
+		_, _ = w.Write([]byte(`{"error":{},"message":"Payment required","error_description":"Add a card"}`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	_, err := client.Get(context.Background(), "/test.json")
+	var e *Error
+	if !errors.As(err, &e) {
+		t.Fatalf("expected *Error, got %T (%v)", err, err)
+	}
+	if e.Message != "Payment required" {
+		t.Errorf("Message = %q, want the message-key fallback to survive the malformed error sibling", e.Message)
+	}
+	if e.Hint != "Add a card" {
+		t.Errorf("Hint = %q, want %q", e.Hint, "Add a card")
 	}
 }

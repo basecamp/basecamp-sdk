@@ -123,9 +123,11 @@ class ValidationError(BasecampError):
         **kwargs: Any,
     ):
         super().__init__(message, code=ErrorCode.VALIDATION, **kwargs)
-        #: Field-keyed validation messages from a 422 body of the form
-        #: ``{"errors": {"field": ["msg", ...]}}`` — the Rails RecordInvalid
-        #: rendering. ``None`` for every other error shape. The flattened form
+        #: Field-keyed validation messages from a 400/422 body — either
+        #: ``{"errors": {"field": ["msg", ...]}}``, the Rails RecordInvalid
+        #: rendering, or the same map with no wrapper at all
+        #: (``{"field": ["msg", ...]}``), which some controllers emit. ``None``
+        #: for every other error shape. The flattened form
         #: is also folded into the message; this slot preserves the raw,
         #: untruncated per-field messages.
         self.field_errors = field_errors
@@ -166,8 +168,10 @@ def parse_field_errors(body: str | bytes | None) -> dict[str, list[str]] | None:
         data = json.loads(body)
     except (json.JSONDecodeError, TypeError):
         return None
-    if not isinstance(data, dict) or not isinstance(data.get("errors"), dict):
+    if not isinstance(data, dict):
         return None
+    if not isinstance(data.get("errors"), dict):
+        return _parse_bare_field_errors(data)
     field_errors: dict[str, list[str]] = {}
     for field, values in data["errors"].items():
         if not isinstance(values, list):
@@ -176,6 +180,29 @@ def parse_field_errors(body: str | bytes | None) -> dict[str, list[str]] | None:
         if messages:
             field_errors[str(field)] = messages
     return field_errors or None
+
+
+def _parse_bare_field_errors(data: dict[str, object]) -> dict[str, list[str]] | None:
+    """Extract an unwrapped field map -- the whole body is ``{"field": ["msg"]}``.
+
+    This is the ``render json: @webhook.errors`` rendering. The gate is
+    all-or-nothing by design (SPEC section 6 step 2): with no ``errors`` key to
+    declare intent, only shape distinguishes a field map from any other JSON
+    object, so a single non-conforming member means this is not one.
+    """
+    # Only "errors" is structurally reserved (it belongs to the wrapped path).
+    # "error" and "message" are not excluded by name: a flat body carries them
+    # as strings, which the shape gate below already rejects.
+    if not data or "errors" in data:
+        return None
+    field_errors: dict[str, list[str]] = {}
+    for field, values in data.items():
+        if not isinstance(values, list) or not values:
+            return None
+        if not all(isinstance(m, str) and m for m in values):
+            return None
+        field_errors[str(field)] = list(values)  # type: ignore[arg-type]
+    return field_errors
 
 
 def _flatten_field_errors(field_errors: dict[str, list[str]]) -> str:

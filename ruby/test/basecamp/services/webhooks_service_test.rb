@@ -64,6 +64,22 @@ class WebhooksServiceTest < Minitest::Test
     assert_equal [ "Todo" ], result["types"]
   end
 
+  # webhooks_controller.rb:31 renders `json: @webhook.errors` at 400 — the field
+  # map with no "errors" wrapper (SPEC section 6 step 2).
+  def test_create_surfaces_bare_field_map_400
+    body = { "payload_url" => [ "is not a valid URL" ], "types" => [ "is invalid" ] }
+
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks\.json})
+      .to_return(status: 400, body: body.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.webhooks.create(bucket_id: 1, payload_url: "https://example.com/hook", types: [ "Todo" ])
+    end
+
+    assert_equal "payload_url: is not a valid URL, types: is invalid", error.message
+    assert_equal body, error.field_errors
+  end
+
   def test_update
     response = { "id" => 1, "active" => false }
 

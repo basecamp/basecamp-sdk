@@ -352,8 +352,12 @@ func runTest(tc TestCase) TestResult {
 			// If body is an object with a single array property (e.g.,
 			// {"projects": [...]}), unwrap to just the array. The Go SDK's
 			// generated client expects raw arrays for list endpoints.
+			//
+			// Success bodies only: an error body with one array-valued key is
+			// the unwrapped field map ({"payload_url": ["is invalid"]}), and
+			// unwrapping it would rewrite the fixture on the wire.
 			bodyToWrite := resp.Body
-			if obj, ok := bodyToWrite.(map[string]interface{}); ok && len(obj) == 1 {
+			if obj, ok := bodyToWrite.(map[string]interface{}); ok && len(obj) == 1 && resp.Status < 400 {
 				for _, v := range obj {
 					if _, isArr := v.([]interface{}); isArr {
 						bodyToWrite = v

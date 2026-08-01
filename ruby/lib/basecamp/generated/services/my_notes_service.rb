@@ -15,7 +15,7 @@ module Basecamp
         end
       end
 
-      # Replace the note's content, recording a new revision server-side. The first
+      # Replace the note's content, recording a new revision server-side.
       # @param note [Hash] note
       # @return [Hash] response data
       def update_my_note(note:)

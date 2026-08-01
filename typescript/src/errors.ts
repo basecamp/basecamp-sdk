@@ -69,7 +69,7 @@ export interface BasecampErrorOptions {
   retryAfter?: number;
   /** Request ID from the server for debugging */
   requestId?: string;
-  /** Field-keyed validation messages from a 422 body ({"errors": {field: [messages]}}) */
+  /** Field-keyed validation messages from a 400/422 body, wrapped ({"errors": {field: [messages]}}) or bare ({field: [messages]}) */
   fieldErrors?: Record<string, string[]>;
 }
 
@@ -116,9 +116,11 @@ export class BasecampError extends Error {
 
   /**
    * Field-keyed validation messages from a 422 body of the form
-   * `{"errors": {"field": ["msg", ...]}}` — the Rails RecordInvalid rendering.
-   * Undefined for every other error shape. The flattened form is also folded
-   * into `message`; this slot preserves the raw, untruncated per-field messages.
+   * `{"errors": {"field": ["msg", ...]}}` — the Rails RecordInvalid rendering —
+   * or the same map with no wrapper at all (`{"field": ["msg", ...]}`), which
+   * some controllers emit. Undefined for every other error shape. The flattened
+   * form is also folded into `message`; this slot preserves the raw, untruncated
+   * per-field messages.
    */
   readonly fieldErrors?: Record<string, string[]>;
 
@@ -378,11 +380,14 @@ export function errorFromParsedBody(
  * the Rails RecordInvalid rendering `{"errors": {"field": ["msg", ...]}}`.
  * Entries whose value is not an array are skipped, non-string elements are
  * dropped, and a map with no usable entries is treated as absent (undefined).
+ *
+ * A body with no `errors` key falls through to `parseBareFieldErrors` for the
+ * unwrapped rendering.
  */
 function parseFieldErrors(body: object): Record<string, string[]> | undefined {
   const errors = (body as { errors?: unknown }).errors;
   if (typeof errors !== "object" || errors === null || Array.isArray(errors)) {
-    return undefined;
+    return parseBareFieldErrors(body);
   }
   // Null prototype so an untrusted field name like "__proto__" becomes an
   // ordinary own property instead of invoking the legacy prototype setter
@@ -397,6 +402,35 @@ function parseFieldErrors(body: object): Record<string, string[]> | undefined {
     found = true;
   }
   return found ? fieldErrors : undefined;
+}
+
+/**
+ * Extracts an unwrapped field map — the `render json: @webhook.errors`
+ * rendering, where the whole body is `{"field": ["msg", ...]}`. The gate is
+ * all-or-nothing by design (SPEC §6 step 2): with no `errors` key to declare
+ * intent, only shape distinguishes a field map from any other JSON object, so
+ * a single non-conforming member means this is not one. Returns undefined
+ * unless every member is a non-empty array of non-empty strings.
+ */
+function parseBareFieldErrors(body: object): Record<string, string[]> | undefined {
+  if (Array.isArray(body)) return undefined;
+  // Only "errors" is structurally reserved (it belongs to step 1). "error" and
+  // "message" are not excluded by name: a flat body carries them as strings,
+  // which the shape gate below already rejects.
+  if ("errors" in body) return undefined;
+
+  const entries = Object.entries(body);
+  if (entries.length === 0) return undefined;
+
+  // Null prototype, for the same reason as the wrapped map: field names are
+  // data, and "__proto__" must land as an ordinary own property.
+  const fieldErrors: Record<string, string[]> = Object.create(null);
+  for (const [field, value] of entries) {
+    if (!Array.isArray(value) || value.length === 0) return undefined;
+    if (!value.every((m) => typeof m === "string" && m.length > 0)) return undefined;
+    fieldErrors[field] = value as string[];
+  }
+  return fieldErrors;
 }
 
 /**

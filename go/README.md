@@ -543,6 +543,29 @@ if err != nil {
 | `ambiguous` | Multiple matches found | 8 |
 | `validation` | Validation error (400, 422) | 9 |
 
+### Validation Errors
+
+Basecamp rejects invalid writes with a body keyed by field. The SDK folds those
+messages into `Message` and keeps the raw map in `FieldErrors`, so you can drive
+a form without re-parsing the message:
+
+```go
+_, err := account.Calendars().Update(ctx, calendarID, "chartreuse")
+if apiErr, ok := err.(*basecamp.Error); ok && apiErr.Code == basecamp.CodeValidation {
+    // Message: "color: is not a valid color"
+    fmt.Println(apiErr.Message)
+
+    for field, messages := range apiErr.FieldErrors {
+        for _, message := range messages {
+            fmt.Printf("  %s %s\n", field, message)
+        }
+    }
+}
+```
+
+`FieldErrors` is `nil` for every other error shape, and its messages are the raw
+ones — `Message` is capped at 500 bytes, the map is not.
+
 ## Caching
 
 The SDK supports ETag-based caching for GET responses. **Caching is disabled by default** to avoid writing private data to disk unexpectedly.
