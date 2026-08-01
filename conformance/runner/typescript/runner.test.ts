@@ -638,7 +638,12 @@ function installMockHandlers(tc: TestCase): {
     if (bodyToSerialize !== undefined && bodyToSerialize !== null) {
       // If body is an object with a single array property (e.g. {"projects": [...]}),
       // unwrap it for the TS SDK which expects raw arrays from list endpoints.
+      //
+      // Success bodies only: an error body with one array-valued key is the
+      // unwrapped field map ({"payload_url": ["is invalid"]}), and unwrapping
+      // it would rewrite the fixture on the wire.
       if (
+        mock.status < 400 &&
         typeof bodyToSerialize === "object" &&
         !Array.isArray(bodyToSerialize)
       ) {

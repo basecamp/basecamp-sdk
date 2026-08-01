@@ -239,7 +239,7 @@ private fun runTest(tc: TestCase): TestResult {
             }
 
             val bodyContent = if (mockResp.body != null) {
-                Json.encodeToString(JsonElement.serializer(), normalizeBody(mockResp.body))
+                Json.encodeToString(JsonElement.serializer(), normalizeBody(mockResp.body, mockResp.status))
             } else {
                 ""
             }
@@ -1061,9 +1061,13 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
  * Conformance test fixtures may wrap arrays in objects (e.g., `{"projects": [...]}`),
  * but the Kotlin SDK's list operations expect a raw JSON array. When the body is
  * a JSON object with a single key whose value is an array, unwrap it.
+ *
+ * Success bodies only: an error body with one array-valued key is the unwrapped
+ * field map (`{"payload_url": ["is invalid"]}`), and unwrapping it would rewrite
+ * the fixture on the wire.
  */
-private fun normalizeBody(body: JsonElement): JsonElement {
-    if (body is JsonObject && body.size == 1) {
+private fun normalizeBody(body: JsonElement, status: Int?): JsonElement {
+    if ((status ?: 200) < 400 && body is JsonObject && body.size == 1) {
         val value = body.values.first()
         if (value is JsonArray) return value
     }
