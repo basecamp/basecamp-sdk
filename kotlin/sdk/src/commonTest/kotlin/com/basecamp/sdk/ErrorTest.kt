@@ -121,6 +121,38 @@ class ErrorTest {
     }
 
     @Test
+    fun validationFieldErrorsDefaultsToNull() {
+        val e = BasecampException.Validation("Name is required")
+        assertNull(e.fieldErrors)
+    }
+
+    @Test
+    fun validationCarriesFieldErrors() {
+        val fieldErrors = mapOf("color" to listOf("is not a valid color"))
+        val e = BasecampException.Validation("color: is not a valid color", fieldErrors = fieldErrors)
+        assertEquals(fieldErrors, e.fieldErrors)
+    }
+
+    @Test
+    fun fromHttpStatusPassesFieldErrorsToValidation() {
+        val fieldErrors = mapOf("color" to listOf("is not a valid color"))
+        val e = BasecampException.fromHttpStatus(422, "color: is not a valid color", fieldErrors = fieldErrors)
+        assertIs<BasecampException.Validation>(e)
+        assertEquals(fieldErrors, e.fieldErrors)
+    }
+
+    @Test
+    fun flattenFieldErrorsSortsFieldsAndJoinsMessages() {
+        val flat = BasecampException.flattenFieldErrors(
+            mapOf(
+                "name" to listOf("can't be blank", "is too short"),
+                "color" to listOf("is not a valid color"),
+            )
+        )
+        assertEquals("color: is not a valid color, name: can't be blank; is too short", flat)
+    }
+
+    @Test
     fun fromHttpStatusMaps500ToApi() {
         val e = BasecampException.fromHttpStatus(500, "Internal Server Error")
         assertIs<BasecampException.Api>(e)

@@ -84,6 +84,126 @@
     "tags": ["error-mapping", "validation", "structured-error"]
   },
   {
+    "name": "422 field-keyed errors flatten into the validation message",
+    "description": "Verifies that a field-keyed 422 body ({\"errors\": {field: [messages]}} — the Rails RecordInvalid rendering, e.g. UpdateCalendar rejecting an unknown color) is flattened into the error message",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"errors": {"color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorField", "path": "httpStatus", "expected": 422},
+      {"type": "errorMessage", "expected": "color: is not a valid color"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
+    "name": "422 field-keyed errors flatten sorted with multi-message fields",
+    "description": "Verifies the shared flattening shape: fields sorted lexicographically, a field's messages joined with '; ', fields joined with ', '",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"errors": {"name": ["can't be blank", "is too short"], "color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "color: is not a valid color, name: can't be blank; is too short"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
+    "name": "422 field-keyed errors append to a top-level error message",
+    "description": "Verifies that when both error and errors are present, the flattened field errors are appended in parentheses after the top-level message",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"error": "Validation failed", "errors": {"color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "Validation failed (color: is not a valid color)"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
+    "name": "422 field-keyed errors survive a non-string top-level error",
+    "description": "Verifies that a non-string error sibling ({\"error\": {}}) is ignored per the string-value rule without discarding the usable field-keyed errors map",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"error": {}, "errors": {"color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "color: is not a valid color"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
+    "name": "422 field-keyed errors append after a message-key fallback",
+    "description": "Verifies the top-level message honors the SPEC section 6 message-key fallback ({\"message\": ...} with no \"error\") and the flattened field errors are appended in parentheses after it",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"message": "Validation failed", "errors": {"color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "Validation failed (color: is not a valid color)"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
+    "name": "422 field-keyed errors treat __proto__ as an ordinary field name",
+    "description": "Verifies an untrusted field name that collides with JavaScript's legacy prototype setter is kept as an ordinary map key in every SDK — present in the flattened message and never mutating the map",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"errors": {"__proto__": ["is reserved"], "color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "__proto__: is reserved, color: is not a valid color"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
+    "name": "422 field-keyed errors keep valid entries beside malformed ones",
+    "description": "Verifies a mixed-validity errors map ({\"color\": [...], \"base\": \"invalid\"}) reaches the tolerant parser in every SDK — the valid entry is flattened and the malformed sibling skipped, rather than a typed-decode failure surfacing to the caller",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"errors": {"color": ["is not a valid color"], "base": "invalid"}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "color: is not a valid color"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
     "name": "429 maps to rate_limit error code",
     "description": "Verifies that 429 Too Many Requests maps to structured error with code 'rate_limit' and retryable=true",
     "operation": "ListProjects",

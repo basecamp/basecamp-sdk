@@ -99,6 +99,14 @@ sealed class BasecampException(
         hint: String? = null,
         httpStatus: Int = 422,
         requestId: String? = null,
+        /**
+         * Field-keyed validation messages from a 422 body of the form
+         * `{"errors": {"field": ["msg", ...]}}` — the Rails RecordInvalid
+         * rendering. Null for every other error shape. The flattened form is
+         * also folded into the message; this slot preserves the raw,
+         * untruncated per-field messages.
+         */
+        val fieldErrors: Map<String, List<String>>? = null,
     ) : BasecampException(message, CODE_VALIDATION, hint, httpStatus, false, requestId)
 
     /** Ambiguous match error (multiple resources match a name/identifier). */
@@ -247,6 +255,16 @@ sealed class BasecampException(
             if (s.length <= MAX_ERROR_MESSAGE_LENGTH) s
             else s.take(MAX_ERROR_MESSAGE_LENGTH - 3) + "..."
 
+        /**
+         * Flattens a field-keyed errors map as "field: msg1; msg2, other: msg"
+         * — fields sorted lexicographically, a field's messages joined with
+         * "; ", fields joined with ", ". This shape is shared by all six SDKs;
+         * change it everywhere or nowhere.
+         */
+        internal fun flattenFieldErrors(fieldErrors: Map<String, List<String>>): String =
+            fieldErrors.keys.sorted()
+                .joinToString(", ") { field -> "$field: ${fieldErrors.getValue(field).joinToString("; ")}" }
+
         /** Creates a [BasecampException] from an HTTP status code and response body. */
         fun fromHttpStatus(
             httpStatus: Int,
@@ -254,6 +272,7 @@ sealed class BasecampException(
             hint: String? = null,
             requestId: String? = null,
             retryAfterSeconds: Int? = null,
+            fieldErrors: Map<String, List<String>>? = null,
         ): BasecampException {
             val msg = truncateMessage(message ?: "Request failed (HTTP $httpStatus)")
             return when (httpStatus) {
@@ -261,7 +280,7 @@ sealed class BasecampException(
                 403 -> Forbidden(msg, hint, requestId)
                 404 -> NotFound(msg, hint, requestId)
                 429 -> RateLimit(retryAfterSeconds, msg, hint, requestId)
-                400, 422 -> Validation(msg, hint, httpStatus, requestId)
+                400, 422 -> Validation(msg, hint, httpStatus, requestId, fieldErrors)
                 else -> Api(msg, httpStatus, hint, httpStatus in 500..599, requestId)
             }
         }

@@ -7,8 +7,6 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -212,34 +210,24 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                 }
 
                 else -> {
-                    // Error response — parse JSON error/hint and Retry-After,
-                    // matching BaseService.errorFromResponse
-                    val requestId = response.headers["X-Request-Id"]
-                    val retryAfter = parseRetryAfter(response.headers["Retry-After"])
-
-                    var message: String = response.status.description.ifEmpty { "Request failed" }
-                    var hint: String? = null
-
-                    try {
-                        val bodyText = response.bodyAsText()
-                        if (bodyText.isNotBlank()) {
-                            val jsonBody = parent.json.parseToJsonElement(bodyText)
-                            if (jsonBody is JsonObject) {
-                                jsonBody["error"]?.jsonPrimitive?.content?.let {
-                                    message = BasecampException.truncateMessage(it)
-                                }
-                                jsonBody["error_description"]?.jsonPrimitive?.content?.let {
-                                    hint = BasecampException.truncateMessage(it)
-                                }
-                            }
-                        }
+                    // Error response — the shared SPEC §6 parser used by the
+                    // service layer, so download failures carry the same
+                    // message fallback and field-keyed validation data.
+                    val bodyText = try {
+                        response.bodyAsText()
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
-                        // Body is not JSON or empty — use status text
+                        null
                     }
-
-                    throw BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter)
+                    throw exceptionFromErrorBody(
+                        status = status,
+                        statusDescription = response.status.description,
+                        bodyText = bodyText,
+                        requestId = response.headers["X-Request-Id"],
+                        retryAfter = parseRetryAfter(response.headers["Retry-After"]),
+                        json = parent.json,
+                    )
                 }
             }
         }

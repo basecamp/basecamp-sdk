@@ -527,8 +527,11 @@ module Basecamp
       when 429
         Basecamp::RateLimitError.new(retry_after: retry_after)
       when 400, 422
-        message = Security.truncate(Basecamp.parse_error_message(body) || "Validation failed")
-        Basecamp::ValidationError.new(message, http_status: status)
+        field_errors = Basecamp.parse_field_errors(body)
+        message = Security.truncate(
+          Basecamp.compose_validation_message(Basecamp.parse_error_message(body), field_errors) || "Validation failed"
+        )
+        Basecamp::ValidationError.new(message, http_status: status, field_errors: field_errors)
       when 500
         Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true)
       when 502, 503, 504

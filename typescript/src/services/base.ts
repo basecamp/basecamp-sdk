@@ -23,7 +23,7 @@
  */
 
 import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js";
-import { BasecampError, errorFromResponse } from "../errors.js";
+import { BasecampError, errorFromParsedBody, errorFromResponse } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "../pagination-utils.js";
@@ -595,6 +595,13 @@ export abstract class BaseService {
 
     // Extract request ID from response headers if available
     const requestId = response.headers.get("X-Request-Id") ?? undefined;
+
+    // openapi-fetch has already consumed and parsed the error body into
+    // `error`; re-reading the response would throw and lose the server's
+    // message (and any field-keyed 422 errors map).
+    if (error !== undefined) {
+      return errorFromParsedBody(response, error, requestId);
+    }
 
     // Use the errorFromResponse helper to create the appropriate error
     return errorFromResponse(response, requestId);

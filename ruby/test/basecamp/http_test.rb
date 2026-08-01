@@ -203,6 +203,35 @@ class HTTPTest < Minitest::Test
     assert_equal "Name is required", error.message
   end
 
+  def test_422_field_keyed_errors_flatten_into_message
+    stub_request(:put, "https://3.basecampapi.com/test.json")
+      .to_return(status: 422, body: '{"errors": {"color": ["is not a valid color"]}}')
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @http.put("/test.json", body: { calendar: { color: "chartreuse" } })
+    end
+
+    assert_equal 422, error.http_status
+    assert_equal "color: is not a valid color", error.message
+    assert_equal({ "color" => [ "is not a valid color" ] }, error.field_errors)
+  end
+
+  def test_422_field_keyed_errors_append_to_top_level_error
+    body = '{"error": "Validation failed", "errors": {"name": ["can\'t be blank", "is too short"], "color": ["is not a valid color"]}}'
+    stub_request(:put, "https://3.basecampapi.com/test.json")
+      .to_return(status: 422, body: body)
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @http.put("/test.json", body: { calendar: { color: "chartreuse" } })
+    end
+
+    assert_equal "Validation failed (color: is not a valid color, name: can't be blank; is too short)", error.message
+    assert_equal(
+      { "color" => [ "is not a valid color" ], "name" => [ "can't be blank", "is too short" ] },
+      error.field_errors
+    )
+  end
+
   def test_404_raises_not_found_error
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 404, body: '{"error": "Not found"}')

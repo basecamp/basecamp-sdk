@@ -4,4 +4,5 @@
 //
 //go:generate go tool oapi-codegen -config oapi-codegen.yaml ../openapi.json
 //go:generate ../scripts/normalize-go-deprecation-godoc.sh pkg/generated/client.gen.go
+//go:generate ../scripts/normalize-go-error-response-parsing.sh pkg/generated/client.gen.go
 package generate
