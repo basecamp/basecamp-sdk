@@ -1,0 +1,57 @@
+swift/Tests/BasecampTests/DownloadTests.swift
+  s_555508c40a7b3b::t_6d3cfbe9458d66 852-855,857
+conformance/runner/python/runner.py
+  s_555508c40a7b3b::t_a61f5aa1d4a2ed 36-70
+  s_555508c40a7b3b::t_a655d03aa25727 467-470,473-477
+conformance/runner/ruby/delay_gaps_test.rb
+  s_555508c40a7b3b::t_9279f48f520e25 1-61
+conformance/runner/typescript/runner.test.ts
+  s_555508c40a7b3b::t_930eef0fe1cbde 18
+  s_555508c40a7b3b::t_e6b65dee8f87ed 802-812
+conformance/runner/go/main.go
+  s_555508c40a7b3b::t_84312c59ec3895 946-947
+conformance/runner/python/test_delay_gaps.py
+  s_555508c40a7b3b::t_1f866a55d9fbe2 1-65
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/DelayGaps.kt
+  s_555508c40a7b3b::t_ee41ad362d0c56 1-50
+conformance/runner/go/delay_gaps.go
+  s_555508c40a7b3b::t_0efec99dccd93b 1-57
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_555508c40a7b3b::t_cd94509f68dfe7 413-418
+conformance/runner/ruby/runner.rb
+  s_555508c40a7b3b::t_18b9b98c744810 571-574,577-578
+  s_555508c40a7b3b::t_c8e97c28fae76b 18-59
+conformance/runner/go/delay_gaps_test.go
+  s_555508c40a7b3b::t_6da65a811ca99c 1-130
+conformance/runner/python/pyproject.toml
+  s_555508c40a7b3b::t_7944607ca0f019 10-16
+conformance/runner/typescript/delay-gaps.test.ts
+  s_555508c40a7b3b::t_41c1959449a591 1-76
+kotlin/conformance/build.gradle.kts
+  s_555508c40a7b3b::t_be9e64dbaf7d03 37-45
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/DelayGapsTest.kt
+  s_555508c40a7b3b::t_9fec3babd2575c 1-89
+Makefile
+  s_555508c40a7b3b::t_0f312897a823ec 445-458
+  s_555508c40a7b3b::t_13e804fde0ec4e 411,533
+conformance/runner/typescript/delay-gaps.ts
+  s_555508c40a7b3b::t_1238a86b4925b0 1-67
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_555508c40a7b3b::t_4a38e795a21591 46-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "0c945c2cbba03acee1fbef986215086de976a44f",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
