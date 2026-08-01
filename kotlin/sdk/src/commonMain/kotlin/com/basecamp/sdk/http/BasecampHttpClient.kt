@@ -39,7 +39,7 @@ internal class BasecampHttpClient(
         return try {
             httpClient.request(url) {
                 this.method = method
-                authStrategy.authenticate(this)
+                authenticateClassified(this)
                 header(HttpHeaders.UserAgent, config.userAgent)
                 header(HttpHeaders.Accept, "application/json")
                 if (body != null) {
@@ -51,6 +51,30 @@ internal class BasecampHttpClient(
             // External HttpClient with expectSuccess=true throws on non-2xx.
             // Return the response so the SDK's error classification runs.
             e.response
+        }
+    }
+
+    /**
+     * Applies the auth strategy, classifying its failures at the source: an
+     * auth-phase throw is a configuration or credential-provider fault, not a
+     * transport fault, so it is tagged as [AuthPhaseFailure] here and the
+     * retry loops unwrap it — the strategy's own exception surfaces raw, on
+     * the first attempt, and the strategy is never re-driven by the retry
+     * budget. Raw propagation matches the sibling SDKs: Swift authenticates
+     * outside the attempt's catch, Go returns the strategy's error before
+     * the attempt, and TypeScript rethrows the original value so its
+     * identity survives. A [BasecampException] from the strategy (e.g. a
+     * token provider's already-classified failure) propagates as-is.
+     */
+    private suspend fun authenticateClassified(builder: HttpRequestBuilder) {
+        try {
+            authStrategy.authenticate(builder)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: BasecampException) {
+            throw e
+        } catch (e: Exception) {
+            throw AuthPhaseFailure(e)
         }
     }
 
@@ -108,6 +132,16 @@ internal class BasecampHttpClient(
             AttemptOutcome.Completed(request(method, url, body))
         } catch (e: CancellationException) {
             throw e
+        } catch (e: AuthPhaseFailure) {
+            // The auth strategy itself failed — not a transport fault. Surface
+            // the strategy's own exception raw and spend no retry budget on it.
+            val duration = currentTimeMillis() - startTime
+            hooks.safeOnRequestEnd(info, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = e.original,
+            ))
+            throw e.original
         } catch (e: BasecampException) {
             // A deliberate SDK error (e.g. the same-origin credential guard) is
             // already classified — surface it as-is rather than masking it as a
@@ -203,7 +237,7 @@ internal class BasecampHttpClient(
         return try {
             httpClient.request(url) {
                 this.method = method
-                authStrategy.authenticate(this)
+                authenticateClassified(this)
                 header(HttpHeaders.UserAgent, config.userAgent)
                 header(HttpHeaders.Accept, "application/json")
                 header(HttpHeaders.ContentType, contentType)
@@ -233,6 +267,16 @@ internal class BasecampHttpClient(
             response = requestBinary(method, url, data, contentType)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: AuthPhaseFailure) {
+            // The auth strategy itself failed — not a transport fault. Surface
+            // the strategy's own exception raw.
+            val duration = currentTimeMillis() - startTime
+            hooks.safeOnRequestEnd(info, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = e.original,
+            ))
+            throw e.original
         } catch (e: BasecampException) {
             // A deliberate SDK error (e.g. the same-origin credential guard) is
             // already classified — surface it as-is rather than masking it as a
@@ -308,6 +352,14 @@ private sealed interface AttemptOutcome {
     class Completed(val response: HttpResponse) : AttemptOutcome
     class NetworkFailure(val cause: Exception) : AttemptOutcome
 }
+
+/**
+ * Internal tag for an exception thrown by the auth strategy while building an
+ * attempt. Never escapes [BasecampHttpClient]: the retry entry points unwrap
+ * it and rethrow [original] raw, so auth-phase faults are never classified as
+ * transport failures and never consume retry budget.
+ */
+private class AuthPhaseFailure(val original: Exception) : Exception(original)
 
 /** Safely call onRequestStart, catching hook exceptions. */
 private fun BasecampHooks.safeOnRequestStart(info: RequestInfo) {

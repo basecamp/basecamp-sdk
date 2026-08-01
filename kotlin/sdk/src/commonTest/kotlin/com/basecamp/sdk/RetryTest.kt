@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -631,6 +632,42 @@ class RetryTest {
             // expected
         }
         assertEquals(1, requestCount, "Should not retry network errors when enableRetry=false")
+        client.close()
+    }
+
+    @Test
+    fun authStrategyFailureIsNotRetried() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            respondOk("""{"id": 1}""")
+        }
+
+        var authCalls = 0
+        val failingAuth = AuthStrategy {
+            authCalls++
+            throw IllegalStateException("credential provider broke")
+        }
+
+        val client = testBasecampClient {
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+            authStrategy = failingAuth
+        }
+
+        // An auth-phase failure is not a transport fault: it must surface on
+        // the first attempt, raw, without entering the network retry path —
+        // the strategy runs exactly once, the wire is never reached, and the
+        // caller sees their own exception (matching Swift/TS/Go), not a
+        // fabricated network error.
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects.json"
+        val thrown = assertFailsWith<IllegalStateException> {
+            account.httpClient.requestWithRetry(HttpMethod.Get, url)
+        }
+        assertEquals("credential provider broke", thrown.message)
+        assertEquals(1, authCalls, "auth strategy must not be re-driven by retries")
+        assertEquals(0, requestCount, "the wire must not be reached when auth fails")
         client.close()
     }
 
