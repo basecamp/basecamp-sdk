@@ -93,8 +93,7 @@ func evaluateAssertions(
     transport: ScriptedTransport,
     caughtError: BasecampError?,
     httpStatus: Int?,
-    dispatch: DispatchResult,
-    autoPaginates: Bool
+    dispatch: DispatchResult
 ) -> TestResult {
     let captured = transport.captured
     let requestCount = captured.count
@@ -116,11 +115,15 @@ func evaluateAssertions(
             guard let expected = assertion.expected?.intValue.map(Int.init) else {
                 return .fail("requestCount assertion missing expected value")
             }
-            if autoPaginates {
-                if requestCount < expected {
-                    return .fail("Expected >= \(expected) requests (SDK auto-paginates), got \(requestCount)")
-                }
-            } else if requestCount != expected {
+            // Exact, including the auto-paginating fixtures. A lower bound
+            // makes the cap assertions vacuous in the direction that matters:
+            // "Pagination stops at maxPages safety cap" and "maxItems caps
+            // results across pages" both queue THREE pages and expect TWO
+            // requests, so `>=` passes an SDK that ignored the cap and walked
+            // every page. The first-page-only fixture, the one case where the
+            // count genuinely does not apply to an auto-paginating SDK, is
+            // excluded by its own `link-header` tag before it reaches here.
+            if requestCount != expected {
                 return .fail("Expected \(expected) requests, got \(requestCount)")
             }
 

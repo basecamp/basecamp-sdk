@@ -168,6 +168,10 @@ struct Runner {
         }
 
         // Detect if the fixture uses Link next headers (SDK will auto-paginate).
+        // This only relaxes the TRANSPORT, which answers an over-walk with a
+        // terminal empty page instead of a 500. The count assertion stays exact,
+        // so an SDK that fetches too many pages reports a clean
+        // "Expected N requests, got N+1" rather than a decode error.
         let autoPaginates = tc.responses.contains { mock in
             mock.allHeaders.contains { key, value in
                 key.lowercased() == "link" && value.contains("rel=\"next\"")
@@ -236,8 +240,7 @@ struct Runner {
             transport: transport,
             caughtError: caughtError,
             httpStatus: httpStatus,
-            dispatch: dispatch,
-            autoPaginates: autoPaginates
+            dispatch: dispatch
         )
     }
 }
