@@ -453,7 +453,7 @@ conformance-runner-tests:
 	@echo "==> Running conformance runner unit tests..."
 	cd conformance/runner/go && go test ./...
 	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py
-	cd conformance/runner/ruby && bundle exec ruby delay_gaps_test.rb
+	cd conformance/runner/ruby && bundle install --quiet && bundle exec ruby delay_gaps_test.rb
 	cd kotlin && ./gradlew --quiet :conformance:test
 
 # Build conformance test runner

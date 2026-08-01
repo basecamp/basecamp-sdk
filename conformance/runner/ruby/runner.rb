@@ -40,24 +40,28 @@ module DelayGaps
   # is applied HERE rather than at the call site so gating on the value's
   # presence cannot quietly reduce the assertion to nothing — the false-green
   # class this exists to kill.
-  def self.check(delays, min_delay, index)
+  #
+  # +request_count+ is passed rather than inferred as +delays.length + 1+: that
+  # inference assumes at least one request, so a run that failed before
+  # dispatching anything would report "only 1 request(s) were made".
+  def self.check(delays, min_delay, index, request_count)
     min_delay ||= 0
 
     if index
-      named_gap_failure(delays, min_delay, index)
+      named_gap_failure(delays, min_delay, index, request_count)
     elsif delays.empty?
-      "Expected a delay between requests, but only 1 request(s) were made"
+      "Expected a delay between requests, but only #{request_count} request(s) were made"
     else
       short = delays.each_with_index.find { |delay, _| delay < min_delay }
       short && "Expected minimum delay of #{min_delay}ms at gap #{short.last}, got #{short.first}ms"
     end
   end
 
-  def self.named_gap_failure(delays, min_delay, index)
+  def self.named_gap_failure(delays, min_delay, index, request_count)
     if index.negative?
       "delayBetweenRequests gap index must be non-negative, got #{index}"
     elsif index >= delays.length
-      "Expected a delay at gap #{index}, but only #{delays.length + 1} request(s) were made"
+      "Expected a delay at gap #{index}, but only #{request_count} request(s) were made"
     elsif delays[index] < min_delay
       "Expected minimum delay of #{min_delay}ms at gap #{index}, got #{delays[index]}ms"
     end
@@ -583,7 +587,8 @@ class TestRunner
         # An absent `min` still asserts that the gap EXISTS, so it defaults to
         # zero rather than skipping the assertion: gating on presence degrades
         # the check to nothing, the very false-green class this exists to kill.
-        failure = DelayGaps.check(@tracker.delays_between_requests, assertion["min"], assertion["index"])
+        failure = DelayGaps.check(@tracker.delays_between_requests, assertion["min"], assertion["index"],
+          @tracker.request_count)
         failures << failure if failure
 
       when "noError"

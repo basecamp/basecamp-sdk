@@ -33,7 +33,9 @@ _CARD_WRITE_FIELDS = ("title", "content", "due_on", "assignee_ids")
 _MISSING = object()
 
 
-def check_delay_gaps(delays: list[float], min_delay: float | None, index: int | None) -> str | None:
+def check_delay_gaps(
+    delays: list[float], min_delay: float | None, index: int | None, request_count: int
+) -> str | None:
     """Validate one ``delayBetweenRequests`` assertion; None when it holds.
 
     ``delays`` is the list of inter-request gaps, so N requests yield N-1
@@ -55,6 +57,10 @@ def check_delay_gaps(delays: list[float], min_delay: float | None, index: int | 
     default is applied HERE rather than at the call site so a truthiness gate
     (``if min_delay:``, which discards a legitimate ``min: 0``) cannot quietly
     reduce the assertion to nothing — the false-green class this exists to kill.
+
+    ``request_count`` is passed rather than inferred as ``len(delays) + 1``:
+    that inference assumes at least one request, so a run that failed before
+    dispatching anything would report "only 1 request(s) were made".
     """
     min_delay = 0 if min_delay is None else min_delay
 
@@ -62,13 +68,13 @@ def check_delay_gaps(delays: list[float], min_delay: float | None, index: int | 
         if index < 0:
             return f"delayBetweenRequests gap index must be non-negative, got {index}"
         if index >= len(delays):
-            return f"Expected a delay at gap {index}, but only {len(delays) + 1} request(s) were made"
+            return f"Expected a delay at gap {index}, but only {request_count} request(s) were made"
         if delays[index] < min_delay:
             return f"Expected minimum delay of {min_delay}ms at gap {index}, got {delays[index]}ms"
         return None
 
     if not delays:
-        return "Expected a delay between requests, but only 1 request(s) were made"
+        return f"Expected a delay between requests, but only {request_count} request(s) were made"
     for i, delay in enumerate(delays):
         if delay < min_delay:
             return f"Expected minimum delay of {min_delay}ms at gap {i}, got {delay}ms"
@@ -484,6 +490,7 @@ class TestRunner:
                         self._tracker.delays_between_requests,
                         assertion.get("min"),
                         assertion.get("index"),
+                        self._tracker.request_count,
                     )
                     if failure:
                         failures.append(failure)
