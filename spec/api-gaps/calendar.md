@@ -65,5 +65,10 @@ required non-nullable. The update body is the nested `{calendar: {color}}`
 envelope; the pinned controller's 422 contract (`{"errors": {"color": ["is not
 a valid color"]}}`, rejected up front for unknown enum values) is documented on
 the operation and pinned in per-SDK 422 tests. `UpdateCalendar` is a flagged
-idempotent PUT with an idempotency conformance case. Live-canary fixture for
-`GetCalendar` remains a follow-up (needs a stable dock-walk fixture-id path).
+idempotent PUT with an idempotency conformance case. The `GetCalendar`
+live-canary case ships in `live-my-surface.json` with an **env-var-only**
+fixture (`BASECAMP_BC5_CALENDAR_ID` → `BASECAMP_CALENDAR_ID` → skip): no
+modeled endpoint returns a calendar bucket id (the dock has no calendar tool;
+bucket `type` never says "Calendar"), so SDK discovery is impossible until
+upstream exposes one — revisit the fixture ladder's discovery branch if that
+surface ever ships.

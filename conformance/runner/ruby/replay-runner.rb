@@ -51,6 +51,7 @@ class ReplayRunner
     "GetTodoset"                => SDK_DECODE,
     "ListTodolists"             => SDK_DECODE,
     "ListTodos"                 => SDK_DECODE,
+    "GetCalendar"               => SDK_DECODE,
   }.freeze
 
   def initialize(replay_dir, backend, fixture_path, openapi_path)
@@ -74,7 +75,16 @@ class ReplayRunner
     failures = 0
     @fixture.each do |test|
       snapshot = read_snapshot(test["name"])
-      result = decode_snapshot(snapshot)
+      result = \
+        if snapshot["skipped"] == true
+          # Nothing to decode; record the skip explicitly so downstream
+          # consumers see a marker rather than a missing decode result.
+          puts "skip #{snapshot["operation"]}: #{snapshot["skip_reason"]}"
+          { schema_version: SCHEMA_VERSION, operation: snapshot["operation"], pages: [],
+            skipped: true, skip_reason: snapshot["skip_reason"].to_s }
+        else
+          decode_snapshot(snapshot)
+        end
       File.write(File.join(out_dir, "#{safe_name(test["name"])}.json"), JSON.pretty_generate(result))
       failures += 1 if result[:pages].any? { |p| !p[:decoded] || p[:missing_required].any? }
     end
@@ -101,8 +111,9 @@ class ReplayRunner
       f = File.join(wire_dir, "#{safe_name(t["name"])}.json")
       next if File.exist?(f)
 
-      # Per-test skipReason files are not part of the PR2 contract today;
-      # treat missing snapshots as runner failure with a clear pointer.
+      # A deliberately skipped test still leaves a skip-marker snapshot
+      # (see live-runner.test.ts persistSkipMarker), so a genuinely missing
+      # file always means the capture didn't run.
       msgs << "Snapshot missing for operation #{t["operation"]} (test #{t["name"]}); " \
               "expected at #{f}. Re-run TS live capture or check skip status."
     end
@@ -130,6 +141,18 @@ class ReplayRunner
         unless fixture_ops.include?(op)
           msgs << "Unknown operation #{op.inspect} in snapshot #{File.basename(f)}; " \
                   "TS dispatch table appears to have drifted from live-my-surface.json."
+        end
+
+        # Skip markers (written by the TS runner when a live test skips
+        # before wire capture) legitimately carry zero pages — but ONLY
+        # zero pages.
+        if snap["skipped"] == true
+          pages_ok = snap["pages"].nil? || (snap["pages"].is_a?(Array) && snap["pages"].empty?)
+          unless pages_ok && snap["pages_count"] == 0
+            msgs << "Snapshot #{File.basename(f)} is marked skipped but carries pages; " \
+                    "a skip marker must be empty."
+          end
+          next
         end
 
         # A snapshot like `{"operation": "GetProject"}` would pass the gates

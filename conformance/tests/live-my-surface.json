@@ -99,6 +99,46 @@
   },
   {
     "mode": "live",
+    "name": "GetCalendar decodes the spec-required fields",
+    "description": "Live canary for the BC5-only Calendar resource (C8 follow-up). CALENDAR_ID is env-var-only (BASECAMP_BC5_CALENDAR_ID → BASECAMP_CALENDAR_ID): no modeled endpoint returns a calendar bucket id, so unconfigured runs skip via the fixture ladder.",
+    "operation": "GetCalendar",
+    "method": "GET",
+    "path": "/calendars/${CALENDAR_ID}.json",
+    "fixtureIds": {
+      "CALENDAR_ID": "CALENDAR_ID"
+    },
+    "pathParams": {
+      "calendarId": "${CALENDAR_ID}"
+    },
+    "tags": [
+      "live",
+      "read-only"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      },
+      {
+        "type": "liveResponseFieldsRequired",
+        "fields": [
+          "id",
+          "type",
+          "name",
+          "color",
+          "created_at",
+          "updated_at",
+          "url",
+          "app_url",
+          "schedule_url"
+        ]
+      }
+    ]
+  },
+  {
+    "mode": "live",
     "name": "GetMyAssignments decodes priorities + non_priorities",
     "description": "Verifies MyAssignment.bucket JSON-key compat \u2014 the field is preserved despite route renames.",
     "operation": "GetMyAssignments",

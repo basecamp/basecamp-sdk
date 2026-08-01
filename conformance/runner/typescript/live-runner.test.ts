@@ -116,6 +116,28 @@ function persistSnapshot(testName: string, operation: string, snapshot: WireSnap
   fs.writeFileSync(file, JSON.stringify(payload, null, 2));
 }
 
+/**
+ * Persist a skip-marker snapshot for a test that skipped before wire capture
+ * (fixture-ID not resolvable). Downstream replay runners require a snapshot
+ * file for every live fixture entry; the marker satisfies that completeness
+ * gate while recording — machine-readably — that there is nothing to decode.
+ */
+function persistSkipMarker(testName: string, operation: string, reason: string): void {
+  if (!RECORD_DIR) return;
+  const wireDir = path.join(RECORD_DIR, BACKEND, "wire");
+  fs.mkdirSync(wireDir, { recursive: true });
+  const safeName = testName.replace(/[^a-z0-9_-]+/gi, "_");
+  const file = path.join(wireDir, `${safeName}.json`);
+  const payload: PersistedWireSnapshot = {
+    operation,
+    skipped: true,
+    skip_reason: reason,
+    pages: [],
+    pages_count: 0,
+  };
+  fs.writeFileSync(file, JSON.stringify(payload, null, 2));
+}
+
 function checkRequiredFields(page: WirePage, fields: string[]): string[] {
   const errors: string[] = [];
   const body = page.body;
@@ -206,7 +228,12 @@ LIVE_DESCRIBE("conformance live runner", () => {
           for (const fixture of spec.fixtures) {
             const value = await resolveFixtureId(ctx, fixture);
             if (!value) {
-              testCtx.skip(`Fixture ID for \${${fixture}} not available`);
+              const reason = `Fixture ID for \${${fixture}} not available`;
+              // Replay runners require a snapshot file per live fixture
+              // entry; leave a skip marker so a fixture-level skip doesn't
+              // read as a capture failure downstream.
+              persistSkipMarker(tc.name, tc.operation, reason);
+              testCtx.skip(reason);
               return;
             }
             resolvedIds[fixture] = value;

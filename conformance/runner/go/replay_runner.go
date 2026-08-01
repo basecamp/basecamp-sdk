@@ -75,6 +75,10 @@ var decoders = map[string]func(bodyText string) error{
 		var v generated.ListTodosResponseContent
 		return json.Unmarshal([]byte(bt), &v)
 	},
+	"GetCalendar": func(bt string) error {
+		var v generated.GetCalendarResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
 }
 
 var safeNameRE = regexp.MustCompile(`(?i)[^a-z0-9_-]+`)
@@ -98,6 +102,11 @@ type ReplayResult struct {
 	SchemaVersion int          `json:"schema_version"`
 	Operation     string       `json:"operation"`
 	Pages         []ReplayPage `json:"pages"`
+	// Skipped mirrors a skip-marker snapshot (a live test that skipped
+	// before wire capture, e.g. an unset env-var-only fixture ID). Omitted
+	// on decoded results so existing outputs stay byte-identical.
+	Skipped    bool   `json:"skipped,omitempty"`
+	SkipReason string `json:"skip_reason,omitempty"`
 }
 
 type fixtureTest struct {
@@ -135,6 +144,12 @@ type wireSnapshot struct {
 	Operation  string     `json:"operation"`
 	Pages      []wirePage `json:"pages"`
 	PagesCount int        `json:"pages_count"`
+	// Skip marker: the TS live runner writes {skipped: true, skip_reason,
+	// pages: [], pages_count: 0} when a test skips before wire capture, so
+	// the snapshot-completeness gate can distinguish a deliberate skip from
+	// a missing capture.
+	Skipped    bool   `json:"skipped"`
+	SkipReason string `json:"skip_reason"`
 }
 
 type ReplayRunner struct {
@@ -274,7 +289,21 @@ func (r *ReplayRunner) Run() int {
 			failures++
 			continue
 		}
-		result := r.decodeSnapshot(snap)
+		var result ReplayResult
+		if snap.Skipped {
+			// Nothing to decode; record the skip so downstream consumers
+			// see an explicit marker rather than a missing decode result.
+			result = ReplayResult{
+				SchemaVersion: ReplaySchemaVersion,
+				Operation:     snap.Operation,
+				Pages:         []ReplayPage{},
+				Skipped:       true,
+				SkipReason:    snap.SkipReason,
+			}
+			fmt.Printf("skip %s: %s\n", snap.Operation, snap.SkipReason)
+		} else {
+			result = r.decodeSnapshot(snap)
+		}
 		out, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -310,6 +339,15 @@ func (r *ReplayRunner) readSnapshot(testName string) (*wireSnapshot, error) {
 	var snap wireSnapshot
 	if err := json.Unmarshal(raw, &snap); err != nil {
 		return nil, err
+	}
+	// A skip-marker snapshot legitimately has zero pages — but ONLY zero
+	// pages; a skipped marker carrying pages would mean the TS runner's
+	// contract drifted.
+	if snap.Skipped {
+		if len(snap.Pages) != 0 || snap.PagesCount != 0 {
+			return nil, fmt.Errorf("snapshot %s is marked skipped but carries %d pages (pages_count %d); a skip marker must be empty", path, len(snap.Pages), snap.PagesCount)
+		}
+		return &snap, nil
 	}
 	// A snapshot like `{"operation":"GetProject"}` unmarshals cleanly with
 	// Pages == nil; decodeSnapshot would then loop zero times and Run()

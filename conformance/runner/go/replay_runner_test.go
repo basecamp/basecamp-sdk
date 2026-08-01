@@ -127,3 +127,28 @@ func TestReadSnapshot_AcceptsMatchingPagesCount(t *testing.T) {
 		t.Fatalf("readSnapshot should accept matching pages_count; got %v", err)
 	}
 }
+
+func TestReadSnapshot_AcceptsEmptySkipMarker(t *testing.T) {
+	// A skip marker (live test skipped before wire capture — e.g. an unset
+	// env-var-only fixture ID) legitimately has zero pages. Without the
+	// skipped branch this would be rejected by the empty-pages guard.
+	r := readSnapshotFixture(t, "Test",
+		`{"operation":"GetCalendar","skipped":true,"skip_reason":"Fixture ID for ${CALENDAR_ID} not available","pages":[],"pages_count":0}`)
+	snap, err := r.readSnapshot("Test")
+	if err != nil {
+		t.Fatalf("readSnapshot should accept an empty skip marker; got %v", err)
+	}
+	if !snap.Skipped || snap.SkipReason == "" {
+		t.Fatalf("skip marker fields should round-trip; got skipped=%v reason=%q", snap.Skipped, snap.SkipReason)
+	}
+}
+
+func TestReadSnapshot_RejectsSkipMarkerWithPages(t *testing.T) {
+	// A skipped marker carrying pages means the TS runner's contract
+	// drifted — refuse it rather than silently ignoring captured data.
+	r := readSnapshotFixture(t, "Test",
+		`{"operation":"GetCalendar","skipped":true,"pages":[{"status":200,"bodyText":"{}"}],"pages_count":1}`)
+	if _, err := r.readSnapshot("Test"); err == nil {
+		t.Fatal("readSnapshot should reject a skip marker that carries pages; got nil")
+	}
+}

@@ -190,6 +190,17 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingNotNowCards({ maxItems: 5 }) }),
   },
 
+  GetCalendar: {
+    // CALENDAR_ID resolves via env vars only (BASECAMP_BC5_CALENDAR_ID →
+    // BASECAMP_CALENDAR_ID); unconfigured runs skip through the fixture
+    // ladder. See fixtures.ts — no discovery path exists for calendar ids.
+    fixtures: ["CALENDAR_ID"],
+    call: async (ctx, ids) => {
+      const result = await ctx.client.calendars.getCalendar(Number(ids.CALENDAR_ID));
+      return { resolvedIds: ids, result };
+    },
+  },
+
   GetMyProfile: {
     fixtures: [],
     call: async (ctx) => {
