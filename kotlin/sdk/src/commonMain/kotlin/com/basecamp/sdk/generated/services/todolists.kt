@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class TodolistsService(client: AccountClient) : BaseService(client) {
+open class TodolistsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single todolist or todolist group by id

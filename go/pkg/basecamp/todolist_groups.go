@@ -57,10 +57,22 @@ type CreateTodolistGroupRequest struct {
 	Name string `json:"name"`
 }
 
-// UpdateTodolistGroupRequest specifies the parameters for updating a todolist group.
-type UpdateTodolistGroupRequest struct {
-	// Name is the group name.
-	Name string `json:"name,omitempty"`
+// ReplaceTodolistGroupRequest specifies the new complete representation of a
+// todolist group for TodolistGroupsService.Replace. Omitted fields are
+// cleared server-side.
+//
+// A group is written through the polymorphic todolists endpoint, so BC3
+// answers it with TodolistsController#update, which rebuilds the recordable
+// from only the permitted params ({name, description}) — a group is just a
+// Todolist whose parent is a Todolist, and it carries a description like any
+// other. Omitting the description therefore erases it.
+type ReplaceTodolistGroupRequest struct {
+	// Name is the group name (required). It is always sent — the server
+	// presence-validates it, so omitting it is a 422, not a preserve.
+	Name string `json:"name"`
+	// Description is an optional description (can include HTML). Omitting it
+	// clears the group's description.
+	Description string `json:"description,omitempty"`
 }
 
 // TodolistGroupListResult contains the results from listing todolist groups.
@@ -252,45 +264,71 @@ func (s *TodolistGroupsService) Create(ctx context.Context, todolistID int64, re
 	return &group, nil
 }
 
-// Update updates an existing todolist group.
+// Replace sends the request verbatim as the group's new complete
+// representation — the server's native PUT semantics. No GET is issued, and
+// any field omitted from the request is cleared server-side.
+//
+// Groups are written through the todolists endpoint (polymorphic endpoint),
+// so BC3 answers with TodolistsController#update, which rebuilds the
+// recordable from only the permitted params. A missing description therefore
+// clears the group's description. Name is required.
+//
+// There is deliberately no merge-safe Update or Edit on this service. The
+// TodolistGroup projection does not model description (nor
+// description_attachments, boosts_*, or groups_url), so a composite built on
+// TodolistGroupsService.Get would read a group with no description and then
+// PUT the zero value — erasing the description on every call, which is the
+// data loss this triad exists to remove. Callers who want a merge-safe group
+// write should use Todolists().Update or Todolists().Edit: they address the
+// same PUT /{accountId}/todolists/{id} route through the full Todolist
+// projection, which is variant-agnostic and preserves a group's
+// {name, description} correctly. Tracked by #544, the flat-shape
+// consolidation that would model description on groups and unblock a
+// composite here.
+//
+// Description is still offered on the request because the wire body is shared
+// with todolists and accepts it: without it a group replace would be
+// unconditionally destructive with no caller recourse. It does not round-trip
+// — the returned TodolistGroup will not carry it back — for the same #544
+// reason.
 // Returns the updated group.
-func (s *TodolistGroupsService) Update(ctx context.Context, groupID int64, req *UpdateTodolistGroupRequest) (result *TodolistGroup, err error) {
+func (s *TodolistGroupsService) Replace(ctx context.Context, groupID int64, req *ReplaceTodolistGroupRequest) (*TodolistGroup, error) {
+	return s.replaceGroup(ctx, groupID, func() (map[string]any, error) {
+		if req == nil {
+			return nil, ErrUsage("replace request is required")
+		}
+		if req.Name == "" {
+			return nil, ErrUsage("group name is required")
+		}
+		body := map[string]any{"name": req.Name}
+		if req.Description != "" {
+			body["description"] = req.Description
+		}
+		return body, nil
+	})
+}
+
+// replaceGroup is the single transport for the UpdateTodolistOrGroup wire
+// operation as TodolistGroupsService issues it. It pins the
+// TodolistGroups.Replace hook identity and decodes the group shape; the
+// envelope and the one generated-client call site live in
+// replaceTodolistOrGroup, shared with TodolistsService.
+func (s *TodolistGroupsService) replaceGroup(ctx context.Context, groupID int64, buildBody func() (map[string]any, error)) (*TodolistGroup, error) {
 	op := OperationInfo{
-		Service: "TodolistGroups", Operation: "Update",
+		Service: "TodolistGroups", Operation: "Replace",
 		ResourceType: "todolist_group", IsMutation: true,
 		ResourceID: groupID,
 	}
-	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
-		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return
-		}
-	}
-	start := time.Now()
-	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Groups are updated via the todolists endpoint (polymorphic endpoint)
-	body := generated.UpdateTodolistOrGroupJSONRequestBody{}
-	if req.Name != "" {
-		body.Name = &req.Name
-	}
-
-	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, groupID, body)
+	raw, err := replaceTodolistOrGroup(ctx, s.client, op, groupID, buildBody)
 	if err != nil {
-		return nil, err
-	}
-	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
 		return nil, err
 	}
 
 	// The API returns flat JSON, not the envelope that AsTodolistOrGroup1 expects.
-	// Decode resp.Body directly into the generated TodolistGroup type.
+	// Decode the body directly into the generated TodolistGroup type.
 	var gg generated.TodolistGroup
-	if err := json.Unmarshal(resp.Body, &gg); err != nil {
+	if err := json.Unmarshal(raw, &gg); err != nil {
 		return nil, fmt.Errorf("failed to parse todolist group: %w", err)
 	}
 

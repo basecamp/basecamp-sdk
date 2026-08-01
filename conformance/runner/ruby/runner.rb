@@ -263,6 +263,22 @@ class OperationMapper
         todo_id: path_params["todoId"],
         **todo_write_kwargs(body)
       )
+    # UpdateTodolist / EditTodolist / ReplaceTodolist are SYNTHETIC scenario
+    # keys, not spec operationIds: all three ride the one real operation,
+    # UpdateTodolistOrGroup (PUT /todolists/{id}). They name the three SDK
+    # surfaces over it so the fixture can pin each one's request shape.
+    when "UpdateTodolist"
+      # Merge-safe composite: GET then PUT, resending the fetched description.
+      # Variant-agnostic — a todolist group answers the same route and takes
+      # the same path with no branching.
+      @account.todolists.update(id: path_params["id"], **todolist_write_kwargs(body))
+    when "EditTodolist"
+      @account.todolists.edit(id: path_params["id"]) do |list|
+        (body || {}).each { |key, value| list.public_send("#{key}=", value) }
+      end
+    when "ReplaceTodolist"
+      # Raw single PUT, no read-before-write: omitted fields stay omitted.
+      @account.todolists.replace(id: path_params["id"], **todolist_write_kwargs(body))
     when "GetEverythingMessages"
       @account.everything.get_everything_messages.to_a
     when "GetEverythingComments"
@@ -323,6 +339,17 @@ class OperationMapper
 
   def todo_write_kwargs(body)
     TODO_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
+      .to_h { |key| [key.to_sym, body[key]] }
+  end
+
+  # BC3 permits exactly {name, description} on PUT /todolists/{id}. Only the
+  # keys the fixture carries are passed: nil is the composite's "keep it"
+  # signal and compact_params strips it on the raw path, so an absent key must
+  # stay absent rather than arriving as an explicit nil.
+  TODOLIST_WRITE_KEYS = %w[name description].freeze
+
+  def todolist_write_kwargs(body)
+    TODOLIST_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
       .to_h { |key| [key.to_sym, body[key]] }
   end
 end

@@ -15,6 +15,42 @@ class TodolistsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
+  # The canonical fixture with a non-empty description, so "preserved" and
+  # "cleared" are distinguishable in the PUT body.
+  def full_todolist
+    load_fixture("todolists/get.json").merge(
+      "id" => 2,
+      "name" => "Hardware",
+      "description" => "<p>Ship the hardware</p>"
+    )
+  end
+
+  # A todolist GROUP as BC3 renders it on the same route: parented by a
+  # Todolist rather than a Todoset, with group_position_url in place of
+  # groups_url. Same writable fields, different projection.
+  def group_shaped_todolist
+    full_todolist.except("groups_url").merge(
+      "name" => "Peripherals",
+      "parent" => { "id" => 2, "title" => "Hardware", "type" => "Todolist" },
+      "group_position_url" => "https://3.basecampapi.com/12345/buckets/1/todolists/groups/2/position.json"
+    )
+  end
+
+  # Captures every PUT body so a test can assert the exact request count and
+  # the exact bytes, not just "a PUT happened".
+  def capture_put(response)
+    captured = { bodies: [] }
+    stub_request(:put, "#{BASE_URL}/12345/todolists/2")
+      .with { |req| captured[:bodies] << JSON.parse(req.body) }
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+    captured
+  end
+
+  def stub_todolist_get_and_put(todolist: full_todolist)
+    stub_get("/12345/todolists/2", response_body: todolist)
+    capture_put(todolist)
+  end
+
   def test_list
     response = [ { "id" => 1, "name" => "Sprint Tasks", "completed_ratio" => "3/10", "description_attachments" => [] } ]
 
@@ -65,15 +101,193 @@ class TodolistsServiceTest < Minitest::Test
     assert_equal "New List", result["name"]
   end
 
-  def test_update
-    response = { "id" => 2, "name" => "Updated List", "description_attachments" => [] }
+  # ---------------------------------------------------------------------
+  # replace: the server-native verbatim PUT.
+  #
+  # BC3's TodolistsController#update rebuilds the recordable from only the
+  # permitted params, so this PUT is a FULL REPLACE and every omitted field is
+  # cleared. That destructiveness is the whole reason `update` below is a
+  # composite; `replace` keeps the raw operation reachable.
+  # ---------------------------------------------------------------------
 
-    # Generated service uses /todolists/{id} without .json
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+  def test_replace_sends_exactly_one_verbatim_put
+    response = { "id" => 2, "name" => "Updated List", "description" => "", "description_attachments" => [] }
+    captured = capture_put(response)
 
-    result = @account.todolists.update(id: 2, name: "Updated List")
+    result = @account.todolists.replace(id: 2, name: "Updated List")
+
     assert_equal "Updated List", result["name"]
+    # One request, no read-before-write.
+    assert_requested :put, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_not_requested :get, "#{BASE_URL}/12345/todolists/2"
+    assert_equal 1, captured[:bodies].length
+    # Omitted stays omitted: replace never invents a description, and the
+    # server clears what the body leaves out.
+    assert_equal({ "name" => "Updated List" }, captured[:bodies].first)
+  end
+
+  def test_replace_sends_an_explicit_empty_description
+    response = { "id" => 2, "name" => "Updated List", "description" => "", "description_attachments" => [] }
+    captured = capture_put(response)
+
+    @account.todolists.replace(id: 2, name: "Updated List", description: "")
+
+    # "" survives compact_params (which strips only nil), so a caller who
+    # states the clear gets a present-and-empty key, never JSON null.
+    assert_equal({ "name" => "Updated List", "description" => "" }, captured[:bodies].first)
+  end
+
+  # ---------------------------------------------------------------------
+  # update / edit: the merge-safe composites (GET then PUT).
+  # ---------------------------------------------------------------------
+
+  def test_update_name_only_preserves_the_description
+    captured = stub_todolist_get_and_put
+
+    todolist = @account.todolists.update(id: 2, name: "Renamed list")
+
+    assert_equal 2, todolist["id"]
+    assert_requested :get, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_requested :put, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_equal({ "name" => "Renamed list", "description" => "<p>Ship the hardware</p>" }, \
+                 captured[:bodies].first)
+  end
+
+  def test_update_description_only_preserves_the_name
+    captured = stub_todolist_get_and_put
+
+    @account.todolists.update(id: 2, description: "<p>Revised</p>")
+
+    assert_equal({ "name" => "Hardware", "description" => "<p>Revised</p>" }, captured[:bodies].first)
+  end
+
+  def test_update_explicit_empty_description_clears_it
+    captured = stub_todolist_get_and_put
+
+    @account.todolists.update(id: 2, description: "")
+
+    # Present-and-empty, never absent and never null: nil is the "keep it"
+    # signal, so a clear has to travel as "" (SPEC section 18).
+    assert_equal({ "name" => "Hardware", "description" => "" }, captured[:bodies].first)
+  end
+
+  # The composite is deliberately variant-agnostic: a todolist GROUP answers
+  # the same route with a group-shaped body (parent is a Todolist,
+  # group_position_url instead of groups_url) and must round-trip through the
+  # exact same {name, description} overlay, with no type sniffing.
+  def test_update_preserves_a_group_description_without_type_sniffing
+    captured = stub_todolist_get_and_put(todolist: group_shaped_todolist)
+
+    @account.todolists.update(id: 2, name: "Renamed group")
+
+    assert_equal({ "name" => "Renamed group", "description" => "<p>Ship the hardware</p>" }, \
+                 captured[:bodies].first)
+  end
+
+  # The Smithy model wraps the response in a `todolist`/`group` envelope, but
+  # BC3 answers flat. Both shapes must read the same fields.
+  def test_update_tolerates_the_modelled_envelope
+    captured = stub_todolist_get_and_put(todolist: { "todolist" => full_todolist })
+
+    @account.todolists.update(id: 2, name: "Renamed list")
+
+    assert_equal({ "name" => "Renamed list", "description" => "<p>Ship the hardware</p>" }, \
+                 captured[:bodies].first)
+  end
+
+  def test_update_hooks_observe_get_then_replace
+    events = []
+    account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
+    stub_todolist_get_and_put
+
+    account.todolists.update(id: 2, name: "observed")
+
+    starts = events.select { |e| e[:event] == :on_operation_start }
+    assert_equal [ %w[todolists get], %w[todolists replace] ], \
+                 starts.map { |e| [ e[:info].service, e[:info].operation ] }
+  end
+
+  def test_edit_puts_the_full_state_back
+    captured = stub_todolist_get_and_put
+
+    todolist = @account.todolists.edit(id: 2) do |list|
+      assert_equal "Hardware", list.name
+      assert_equal "<p>Ship the hardware</p>", list.description
+      list.name = "🚨 #{list.name}"
+    end
+
+    assert_equal 2, todolist["id"]
+    assert_equal({ "name" => "🚨 Hardware", "description" => "<p>Ship the hardware</p>" }, \
+                 captured[:bodies].first)
+  end
+
+  def test_edit_clears_the_description_and_keeps_the_name
+    captured = stub_todolist_get_and_put
+
+    @account.todolists.edit(id: 2) { |list| list.description = "" }
+
+    assert_equal({ "name" => "Hardware", "description" => "" }, captured[:bodies].first)
+  end
+
+  # A field set to nil in the block has no meaning in a full write; it is the
+  # same statement as "", not a preserve.
+  def test_edit_nil_description_clears_present_and_empty
+    captured = stub_todolist_get_and_put
+
+    @account.todolists.edit(id: 2) { |list| list.description = nil }
+
+    assert_equal({ "name" => "Hardware", "description" => "" }, captured[:bodies].first)
+  end
+
+  def test_edit_block_error_aborts_without_put
+    captured = stub_todolist_get_and_put
+
+    error = assert_raises(RuntimeError) do
+      @account.todolists.edit(id: 2) do |list|
+        list.name = "never written"
+        raise "abort"
+      end
+    end
+
+    assert_equal "abort", error.message
+    assert_requested :get, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    assert_empty captured[:bodies]
+  end
+
+  def test_edit_requires_a_block
+    error = assert_raises(ArgumentError) { @account.todolists.edit(id: 2) }
+
+    assert_equal "edit requires a block", error.message
+    assert_not_requested :get, "#{BASE_URL}/12345/todolists/2"
+  end
+
+  # name is presence-validated server-side, so blanking it is a 422 rather
+  # than a preserve. The SDK refuses before spending the write.
+  def test_edit_blank_name_raises_usage_error_without_put
+    captured = stub_todolist_get_and_put
+
+    error = assert_raises(Basecamp::UsageError) do
+      @account.todolists.edit(id: 2) { |list| list.name = "" }
+    end
+
+    assert_equal "name must be present; a full write has no nil state and BC3 rejects a blank name with 422", \
+                 error.message
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    assert_empty captured[:bodies]
+  end
+
+  def test_update_of_a_nameless_todolist_raises_usage_error_without_put
+    captured = stub_todolist_get_and_put(todolist: full_todolist.merge("name" => nil))
+
+    error = assert_raises(Basecamp::UsageError) do
+      @account.todolists.update(id: 2, description: "<p>Revised</p>")
+    end
+
+    assert_equal "name must be present; a full write has no nil state and BC3 rejects a blank name with 422", \
+                 error.message
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    assert_empty captured[:bodies]
   end
 
   def test_reposition
@@ -116,7 +330,9 @@ class TodolistsServiceTest < Minitest::Test
     assert_equal 2, info.resource_id
   end
 
-  def test_update_operation_metadata
+  # The wire operation is `replace`, not `update`: `update` is the composite
+  # in TodolistsExtensions and emits no operation of its own.
+  def test_replace_operation_metadata
     events = []
     account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
 
@@ -124,13 +340,13 @@ class TodolistsServiceTest < Minitest::Test
     stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    account.todolists.update(id: 2, name: "Updated List")
+    account.todolists.replace(id: 2, name: "Updated List")
 
     event = events.find { |e| e[:event] == :on_operation_start }
     assert event, "Expected on_operation_start to fire"
     info = event[:info]
     assert_equal "todolists", info.service
-    assert_equal "update", info.operation
+    assert_equal "replace", info.operation
     assert_equal 2, info.resource_id
   end
 

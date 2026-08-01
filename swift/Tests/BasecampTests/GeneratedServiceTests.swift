@@ -352,11 +352,51 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertNil(info.resourceId, "collection op has no deeper resource id")
     }
 
+    /// A full todolist body as BC3 renders it — FLAT, no `todolist` envelope
+    /// (see spec/fixtures/todolists/get.json). An empty `[:]` would no longer
+    /// do: the TodolistOrGroup union decoder now rejects a body that matches
+    /// neither arm instead of quietly producing an all-nil value.
+    private func todolistWireJSON(id: Int = 42) -> [String: Any] {
+        [
+            "id": id,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+            "title": "Hardware",
+            "inherits_status": true,
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999999999/buckets/1/todolists/\(id).json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/1/todolists/\(id)",
+            "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/abc123.json",
+            "subscription_url": "https://3.basecampapi.com/999999999/buckets/1/recordings/\(id)/subscription.json",
+            "bubble_up_url": "https://3.basecampapi.com/999999999/buckets/1/recordings/\(id)/bubble_up.json",
+            "comments_count": 0,
+            "comments_url": "https://3.basecampapi.com/999999999/buckets/1/recordings/\(id)/comments.json",
+            "position": 1,
+            "parent": [
+                "id": 3, "title": "To-dos", "type": "Todoset",
+                "url": "https://3.basecampapi.com/999999999/buckets/1/todosets/3.json",
+                "app_url": "https://3.basecamp.com/999999999/buckets/1/todosets/3",
+            ] as [String: Any],
+            "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
+            "creator": ["id": 1, "name": "Test User"] as [String: Any],
+            "description": "<p>Ship the hardware</p>",
+            "description_attachments": [],
+            "completed": false,
+            "completed_ratio": "0/3",
+            "name": "Hardware",
+            "todos_url": "https://3.basecampapi.com/999999999/buckets/1/todolists/\(id)/todos.json",
+            "groups_url": "https://3.basecampapi.com/999999999/buckets/1/todolists/\(id)/groups.json",
+            "app_todos_url": "https://3.basecamp.com/999999999/buckets/1/todolists/\(id)/todos",
+        ]
+    }
+
     // GetTodolistOrGroup's path label is the unsuffixed `{id}`; the resource
     // selector must still pick it up (endsWith("Id") OR == "id").
     func testGetTodolistOrGroupEmitsTodolistIdAsResourceId() async throws {
         let spy = SpyHooks()
-        let data = try JSONSerialization.data(withJSONObject: [:] as [String: Any])
+        let data = try JSONSerialization.data(withJSONObject: todolistWireJSON())
         let transport = MockTransport(statusCode: 200, data: data)
         let account = makeTestAccountClient(transport: transport, hooks: spy)
 
@@ -370,11 +410,11 @@ final class GeneratedServiceTests: XCTestCase {
 
     func testUpdateTodolistOrGroupEmitsTodolistIdAsResourceId() async throws {
         let spy = SpyHooks()
-        let data = try JSONSerialization.data(withJSONObject: [:] as [String: Any])
+        let data = try JSONSerialization.data(withJSONObject: todolistWireJSON())
         let transport = MockTransport(statusCode: 200, data: data)
         let account = makeTestAccountClient(transport: transport, hooks: spy)
 
-        _ = try await account.todolists.update(id: 42, req: UpdateTodolistOrGroupRequest(name: "Updated list"))
+        _ = try await account.todolists.replace(id: 42, req: UpdateTodolistOrGroupRequest(name: "Updated list"))
 
         XCTAssertEqual(spy.operationStarts.count, 1)
         let info = spy.operationStarts.first!

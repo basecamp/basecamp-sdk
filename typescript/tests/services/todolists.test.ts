@@ -133,22 +133,309 @@ describe("TodolistsService", () => {
     });
   });
 
+  // PUT /{accountId}/todolists/{id} is a full replace: BC3's
+  // TodolistsController#update rebuilds the recordable from only the permitted
+  // params, so an omitted description is erased and an omitted name is a 422.
+  // `update` and `edit` are the merge-safe composites over that endpoint;
+  // `replace` is the raw verbatim PUT.
+  const describedTodolist = (id = 42, overrides: Record<string, unknown> = {}) => ({
+    ...sampleTodolist(id),
+    name: "Hardware",
+    description: "<p>Ship the hardware</p>",
+    ...overrides,
+  });
+
   describe("update", () => {
-    it("should update a todolist", async () => {
+    it("preserves the description when only the name is set", async () => {
       const id = 42;
+      const requests: string[] = [];
+      let putBody: Record<string, unknown> = {};
 
       server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id));
+        }),
         http.put(`${BASE_URL}/todolists/${id}`, async ({ request }) => {
-          const body = (await request.json()) as Record<string, unknown>;
-          expect(body.name).toBe("Updated list");
-          return HttpResponse.json(sampleTodolist(id));
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(id, { name: "Renamed list" }));
         })
       );
 
-      const todolist = await client.todolists.update(id, {
-        name: "Updated list",
+      const todolist = await client.todolists.update(id, { name: "Renamed list" });
+
+      expect(requests).toEqual(["GET", "PUT"]);
+      expect(putBody).toEqual({
+        name: "Renamed list",
+        description: "<p>Ship the hardware</p>",
       });
       expect(todolist.id).toBe(id);
+      expect(todolist.name).toBe("Renamed list");
+    });
+
+    it("preserves the name when only the description is set", async () => {
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      await client.todolists.update(42, { description: "<p>Rewritten</p>" });
+
+      expect(putBody).toEqual({ name: "Hardware", description: "<p>Rewritten</p>" });
+    });
+
+    it("clears the description with an explicit empty string — present, never null", async () => {
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(42, { description: "" }));
+        })
+      );
+
+      await client.todolists.update(42, { description: "" });
+
+      expect(putBody).toHaveProperty("description");
+      expect(putBody.description).toBe("");
+      expect(putBody.description).not.toBeNull();
+      expect(putBody.name).toBe("Hardware");
+    });
+
+    it("carries the writable fields over for a group without sniffing the variant", async () => {
+      // The route serves todolist groups too, and BC3 answers with the group's
+      // flat JSON (no groups_url, a group_position_url instead). The composite
+      // reads {name, description} and must not branch on the variant.
+      const { groups_url: _groupsUrl, ...groupShaped } = describedTodolist(42, {
+        name: "Peripherals",
+      });
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () =>
+          HttpResponse.json({
+            ...groupShaped,
+            group_position_url: "https://3.basecampapi.com/12345/buckets/1/todolists/42/position.json",
+          })
+        ),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(groupShaped);
+        })
+      );
+
+      await client.todolists.update(42, { name: "Renamed group" });
+
+      expect(putBody).toEqual({
+        name: "Renamed group",
+        description: "<p>Ship the hardware</p>",
+      });
+    });
+
+    it("hooks observe the wire operations GetTodolistOrGroup then UpdateTodolistOrGroup", async () => {
+      const operations: OperationInfo[] = [];
+      const hookedClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: {
+          onOperationStart: (info) => {
+            operations.push(info);
+          },
+        },
+      });
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist()))
+      );
+
+      await hookedClient.todolists.update(42, { name: "observed" });
+
+      expect(operations.map((o) => o.operation)).toEqual([
+        "GetTodolistOrGroup",
+        "UpdateTodolistOrGroup",
+      ]);
+      // Scoped to the todolist id (unsuffixed {id} path param) on both legs.
+      expect(operations.map((o) => o.resourceId)).toEqual([42, 42]);
+    });
+  });
+
+  describe("edit", () => {
+    it("hands the callback current state and PUTs everything back", async () => {
+      let putBody: Record<string, unknown> = {};
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist());
+        }),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(42, { name: "🚨 Hardware" }));
+        })
+      );
+
+      const todolist = await client.todolists.edit(42, (t) => {
+        expect(t.name).toBe("Hardware");
+        expect(t.description).toBe("<p>Ship the hardware</p>");
+        t.name = `🚨 ${t.name}`;
+      });
+
+      expect(requests).toEqual(["GET", "PUT"]);
+      expect(putBody).toEqual({
+        name: "🚨 Hardware",
+        description: "<p>Ship the hardware</p>",
+      });
+      expect(todolist.name).toBe("🚨 Hardware");
+    });
+
+    it("clears the description by setting it empty — present-and-empty in the PUT body", async () => {
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(42, { description: "" }));
+        })
+      );
+
+      await client.todolists.edit(42, (t) => {
+        t.description = "";
+      });
+
+      expect(putBody).toEqual({ name: "Hardware", description: "" });
+      expect(putBody.description).not.toBeNull();
+    });
+
+    it("supports async callbacks", async () => {
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      await client.todolists.edit(42, async (t) => {
+        await Promise.resolve();
+        t.name = "Async rename";
+      });
+
+      expect(putBody.name).toBe("Async rename");
+    });
+
+    it("aborts without a PUT when the callback throws", async () => {
+      let putCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, () => {
+          putCount++;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      await expect(
+        client.todolists.edit(42, () => {
+          throw new Error("abort before the write");
+        })
+      ).rejects.toThrow("abort before the write");
+      expect(putCount).toBe(0);
+    });
+
+    it("aborts without a PUT when the callback rejects", async () => {
+      let putCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, () => {
+          putCount++;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      await expect(
+        client.todolists.edit(42, async () => {
+          await Promise.resolve();
+          throw new Error("async abort");
+        })
+      ).rejects.toThrow("async abort");
+      expect(putCount).toBe(0);
+    });
+
+    it("rejects an emptied name before the PUT — the server presence-validates it", async () => {
+      let putCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, () => {
+          putCount++;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      const error = await client.todolists
+        .edit(42, (t) => {
+          t.name = "";
+        })
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("validation");
+      expect((error as BasecampError).message).toBe("Name is required");
+      expect(putCount).toBe(0);
+    });
+  });
+
+  describe("replace", () => {
+    it("sends the request verbatim in a single PUT — no GET, omissions kept", async () => {
+      const requests: string[] = [];
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist());
+        }),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(42, { name: "The whole new list", description: "" }));
+        })
+      );
+
+      await client.todolists.replace(42, { name: "The whole new list" });
+
+      expect(requests).toEqual(["PUT"]);
+      expect(putBody).toEqual({ name: "The whole new list" });
+      expect(putBody).not.toHaveProperty("description");
+    });
+
+    it("rejects a missing name without a request", async () => {
+      let putCount = 0;
+      server.use(
+        http.put(`${BASE_URL}/todolists/42`, () => {
+          putCount++;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      const error = await client.todolists.replace(42, { name: "" }).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("validation");
+      expect((error as BasecampError).message).toBe("Name is required");
+      expect(putCount).toBe(0);
     });
 
     it("scopes the resource to the todolist id (unsuffixed {id} path param)", async () => {
@@ -170,7 +457,7 @@ describe("TodolistsService", () => {
         http.put(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(sampleTodolist(id)))
       );
 
-      await hookedClient.todolists.update(id, { name: "Updated list" });
+      await hookedClient.todolists.replace(id, { name: "Updated list" });
 
       expect(captured?.operation).toBe("UpdateTodolistOrGroup");
       expect(captured?.resourceId).toBe(id);

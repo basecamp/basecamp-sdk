@@ -121,10 +121,14 @@ export {
 
 export {
   TodolistsService,
+  type UpdateTodolistRequest,
+  type TodolistFields,
+} from "./services/todolists-extensions.js";
+export {
   type Todolist,
   type ListTodolistOptions,
   type CreateTodolistRequest,
-  type UpdateTodolistRequest,
+  type ReplaceTodolistRequest,
   type RepositionTodolistRequest,
 } from "./generated/services/todolists.js";
 

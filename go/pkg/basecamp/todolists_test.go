@@ -227,27 +227,79 @@ func TestTodolistsService_Get(t *testing.T) {
 	}
 }
 
-func TestTodolistsService_Update(t *testing.T) {
-	fixture := loadTodolistsFixture(t, "get.json")
-	var receivedBody map[string]string
-	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" {
-			t.Errorf("expected PUT, got %s", r.Method)
-		}
-		if r.URL.Path != "/99999/todolists/1069479519" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &receivedBody)
+// --- Update / Edit / Replace triad ---
 
+// patchTodolistFixture returns the fixture with the given top-level keys
+// overwritten, so a test can state the current server state it needs.
+func patchTodolistFixture(t *testing.T, base []byte, patch map[string]any) []byte {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal(base, &m); err != nil {
+		t.Fatalf("failed to unmarshal fixture: %v", err)
+	}
+	for k, v := range patch {
+		m[k] = v
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("failed to marshal patched fixture: %v", err)
+	}
+	return b
+}
+
+// capturedTodolistRequest records one request seen by testTodolistsCaptureServer.
+type capturedTodolistRequest struct {
+	method string
+	path   string
+	body   map[string]any
+}
+
+// testTodolistsCaptureServer serves getBody for GETs and putBody for PUTs
+// while recording every request's method, path, and (for PUTs) decoded body.
+// The extra hooks, when non-nil, are installed on the client.
+func testTodolistsCaptureServer(t *testing.T, getBody, putBody []byte, hooks Hooks) (*TodolistsService, *[]capturedTodolistRequest) {
+	t.Helper()
+	reqs := &[]capturedTodolistRequest{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cr := capturedTodolistRequest{method: r.Method, path: r.URL.Path}
+		if r.Method == "PUT" {
+			cr.body = decodeRequestBody(t, r)
+		}
+		*reqs = append(*reqs, cr)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write(fixture)
+		if r.Method == "GET" {
+			w.Write(getBody)
+		} else {
+			w.Write(putBody)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	var opts []ClientOption
+	if hooks != nil {
+		opts = append(opts, WithHooks(hooks))
+	}
+	client := NewClient(cfg, token, opts...)
+	return client.ForAccount("99999").Todolists(), reqs
+}
+
+// A name-only update must not erase the description. BC3's
+// TodolistsController#update rebuilds the recordable from only the permitted
+// params, so a sparse PUT that omits description clears it server-side; the
+// merge-safe composite carries the fetched value over.
+func TestTodolistsService_UpdateMergesUnsetFields(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	getBody := patchTodolistFixture(t, fixture, map[string]any{
+		"description": "<p>Ship the hardware</p>",
 	})
+	svc, reqs := testTodolistsCaptureServer(t, getBody, fixture, nil)
 
 	todolist, err := svc.Update(context.Background(), 1069479519, &UpdateTodolistRequest{
-		Name:        "Updated Name",
-		Description: "Updated description",
+		Name: "Renamed list",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -255,23 +307,390 @@ func TestTodolistsService_Update(t *testing.T) {
 	if todolist.ID != 1069479519 {
 		t.Errorf("expected ID 1069479519, got %d", todolist.ID)
 	}
-	if todolist.Name != "Hardware" {
-		t.Errorf("expected name 'Hardware', got %q", todolist.Name)
+
+	if len(*reqs) != 2 {
+		t.Fatalf("expected 2 requests (GET then PUT), got %d: %+v", len(*reqs), *reqs)
 	}
-	if todolist.Parent == nil {
-		t.Fatal("expected Parent to be non-nil")
+	if (*reqs)[0].method != "GET" || (*reqs)[1].method != "PUT" {
+		t.Fatalf("expected GET then PUT, got %s then %s", (*reqs)[0].method, (*reqs)[1].method)
 	}
-	if todolist.Bucket == nil {
-		t.Fatal("expected Bucket to be non-nil")
+	if (*reqs)[0].path != "/99999/todolists/1069479519" {
+		t.Errorf("unexpected GET path: %s", (*reqs)[0].path)
 	}
-	if todolist.Creator == nil {
-		t.Fatal("expected Creator to be non-nil")
+	if (*reqs)[1].path != "/99999/todolists/1069479519" {
+		t.Errorf("unexpected PUT path: %s", (*reqs)[1].path)
 	}
-	if receivedBody["name"] != "Updated Name" {
-		t.Errorf("expected request body name 'Updated Name', got %q", receivedBody["name"])
+
+	body := (*reqs)[1].body
+	if body["name"] != "Renamed list" {
+		t.Errorf("expected name 'Renamed list', got %v", body["name"])
 	}
-	if receivedBody["description"] != "Updated description" {
-		t.Errorf("expected request body description 'Updated description', got %q", receivedBody["description"])
+	desc, ok := body["description"]
+	if !ok {
+		t.Fatalf("description missing from the PUT body — BC3 would clear it; body=%v", body)
+	}
+	if desc != "<p>Ship the hardware</p>" {
+		t.Errorf("expected preserved description '<p>Ship the hardware</p>', got %v", desc)
+	}
+}
+
+// A description-only update carries the fetched name over. name is
+// presence-validated server-side, so dropping it would be a 422.
+func TestTodolistsService_UpdateDescriptionOnlyKeepsName(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479519, &UpdateTodolistRequest{
+		Description: "<p>new description</p>",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	if body["name"] != "Hardware" {
+		t.Errorf("expected preserved name 'Hardware', got %v", body["name"])
+	}
+	if body["description"] != "<p>new description</p>" {
+		t.Errorf("expected description '<p>new description</p>', got %v", body["description"])
+	}
+}
+
+// Both fields set: both overlay the fetched state.
+func TestTodolistsService_UpdateOverlaysBothFields(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479519, &UpdateTodolistRequest{
+		Name:        "Updated Name",
+		Description: "Updated description",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	if body["name"] != "Updated Name" {
+		t.Errorf("expected name 'Updated Name', got %v", body["name"])
+	}
+	if body["description"] != "Updated description" {
+		t.Errorf("expected description 'Updated description', got %v", body["description"])
+	}
+}
+
+func TestTodolistsService_UpdateNilRequestIsUsageError(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479519, nil)
+	if err == nil {
+		t.Fatal("expected a usage error for a nil request")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage || apiErr.Message != "update request is required" {
+		t.Errorf("expected usage error %q, got %v", "update request is required", err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+func TestTodolistsService_UpdateHooksObserveGetAndReplace(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, _ := testTodolistsCaptureServer(t, fixture, fixture, recorder)
+
+	_, err := svc.Update(context.Background(), 1069479519, &UpdateTodolistRequest{Name: "x"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ops := make([]string, 0, len(recorder.opStartCalls))
+	for _, op := range recorder.opStartCalls {
+		ops = append(ops, op.Service+"."+op.Operation)
+	}
+	if len(ops) != 2 || ops[0] != "Todolists.Get" || ops[1] != "Todolists.Replace" {
+		t.Errorf("expected operations [Todolists.Get Todolists.Replace], got %v", ops)
+	}
+	if len(recorder.opEndCalls) != 2 {
+		t.Errorf("expected 2 OnOperationEnd calls, got %d", len(recorder.opEndCalls))
+	}
+}
+
+func TestTodolistsService_Edit(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	getBody := patchTodolistFixture(t, fixture, map[string]any{
+		"description": "<div>keep me</div>",
+	})
+	svc, reqs := testTodolistsCaptureServer(t, getBody, fixture, nil)
+
+	todolist, err := svc.Edit(context.Background(), 1069479519, func(f *TodolistFields) error {
+		if f.Name != "Hardware" {
+			t.Errorf("expected Name from the GET, got %q", f.Name)
+		}
+		if f.Description != "<div>keep me</div>" {
+			t.Errorf("expected Description from the GET, got %q", f.Description)
+		}
+		f.Name = "🚨 " + f.Name
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if todolist.ID != 1069479519 {
+		t.Errorf("expected ID 1069479519, got %d", todolist.ID)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	if body["name"] != "🚨 Hardware" {
+		t.Errorf("expected prefixed name '🚨 Hardware', got %v", body["name"])
+	}
+	if body["description"] != "<div>keep me</div>" {
+		t.Errorf("expected preserved description '<div>keep me</div>', got %v", body["description"])
+	}
+}
+
+// Clearing the description means present-and-empty on the wire, never JSON
+// null (SPEC §18 body compaction) and never omitted.
+func TestTodolistsService_EditClearsDescriptionExplicitly(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	getBody := patchTodolistFixture(t, fixture, map[string]any{
+		"description": "<div>old</div>",
+	})
+	svc, reqs := testTodolistsCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479519, func(f *TodolistFields) error {
+		f.Description = ""
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	desc, ok := body["description"]
+	if !ok {
+		t.Fatalf("expected description present-and-empty in the PUT body, got it omitted; body=%v", body)
+	}
+	if desc != "" {
+		t.Errorf("expected an empty description, got %v (%T)", desc, desc)
+	}
+	if desc == nil {
+		t.Error("expected \"\", not JSON null")
+	}
+	if body["name"] != "Hardware" {
+		t.Errorf("expected the untouched name 'Hardware' carried over, got %v", body["name"])
+	}
+}
+
+func TestTodolistsService_EditClosureErrorAbortsWithoutPUT(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	wantErr := errors.New("nope")
+	_, err := svc.Edit(context.Background(), 1069479519, func(f *TodolistFields) error {
+		f.Name = "should never be written"
+		return wantErr
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected the closure error, got %v", err)
+	}
+
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatal("expected no PUT after a closure error")
+		}
+	}
+}
+
+// name is required: clearing it in the closure is a usage error, not a PUT
+// the server would answer with a 422.
+func TestTodolistsService_EditEmptyNameIsUsageError(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479519, func(f *TodolistFields) error {
+		f.Name = ""
+		return nil
+	})
+	if err == nil {
+		t.Fatal("expected a usage error for an empty name")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage || apiErr.Message != "todolist name is required" {
+		t.Errorf("expected usage error %q, got %v", "todolist name is required", err)
+	}
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatal("expected no PUT when the name is empty")
+		}
+	}
+}
+
+func TestTodolistsService_EditNilFuncIsUsageError(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479519, nil)
+	if err == nil {
+		t.Fatal("expected a usage error for a nil edit function")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage || apiErr.Message != "edit function is required" {
+		t.Errorf("expected usage error %q, got %v", "edit function is required", err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+func TestTodolistsService_EditHooksObserveGetAndReplace(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, _ := testTodolistsCaptureServer(t, fixture, fixture, recorder)
+
+	_, err := svc.Edit(context.Background(), 1069479519, func(f *TodolistFields) error { return nil })
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ops := make([]string, 0, len(recorder.opStartCalls))
+	for _, op := range recorder.opStartCalls {
+		ops = append(ops, op.Service+"."+op.Operation)
+	}
+	if len(ops) != 2 || ops[0] != "Todolists.Get" || ops[1] != "Todolists.Replace" {
+		t.Errorf("expected operations [Todolists.Get Todolists.Replace], got %v", ops)
+	}
+}
+
+// Replace is the server-native verbatim PUT: one request, no read-before-write,
+// and an omitted description stays omitted (the server clears it).
+func TestTodolistsService_ReplaceSendsSparseVerbatim(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, recorder)
+
+	todolist, err := svc.Replace(context.Background(), 1069479519, &ReplaceTodolistRequest{
+		Name: "The whole new list",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if todolist.ID != 1069479519 {
+		t.Errorf("expected ID 1069479519, got %d", todolist.ID)
+	}
+
+	if len(*reqs) != 1 || (*reqs)[0].method != "PUT" {
+		t.Fatalf("expected exactly one PUT, got %+v", *reqs)
+	}
+	if (*reqs)[0].path != "/99999/todolists/1069479519" {
+		t.Errorf("unexpected PUT path: %s", (*reqs)[0].path)
+	}
+	body := (*reqs)[0].body
+	if body["name"] != "The whole new list" {
+		t.Errorf("expected name 'The whole new list', got %v", body["name"])
+	}
+	if _, ok := body["description"]; ok {
+		t.Errorf("expected description omitted from a sparse replace, got %v", body["description"])
+	}
+
+	if len(recorder.opStartCalls) != 1 ||
+		recorder.opStartCalls[0].Service != "Todolists" || recorder.opStartCalls[0].Operation != "Replace" {
+		t.Errorf("expected a single Todolists.Replace operation, got %+v", recorder.opStartCalls)
+	}
+}
+
+func TestTodolistsService_ReplaceSendsDescriptionWhenSet(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Replace(context.Background(), 1069479519, &ReplaceTodolistRequest{
+		Name:        "The whole new list",
+		Description: "<p>and its description</p>",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[0].body
+	if body["description"] != "<p>and its description</p>" {
+		t.Errorf("expected description '<p>and its description</p>', got %v", body["description"])
+	}
+}
+
+func TestTodolistsService_ReplaceRequiresName(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Replace(context.Background(), 1069479519, &ReplaceTodolistRequest{
+		Description: "<p>orphaned</p>",
+	})
+	if err == nil {
+		t.Fatal("expected a usage error for a missing name")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage || apiErr.Message != "todolist name is required" {
+		t.Errorf("expected usage error %q, got %v", "todolist name is required", err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+func TestTodolistsService_ReplaceNilRequestIsUsageError(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc, reqs := testTodolistsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Replace(context.Background(), 1069479519, nil)
+	if err == nil {
+		t.Fatal("expected a usage error for a nil request")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage || apiErr.Message != "replace request is required" {
+		t.Errorf("expected usage error %q, got %v", "replace request is required", err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+// ReplaceTodolistRequest.Name carries no omitempty: an empty name must still
+// serialize as a present key, because the wire contract makes name required
+// and a dropped key would read as a preserve rather than the 422 it is.
+func TestReplaceTodolistRequest_NameAlwaysMarshals(t *testing.T) {
+	out, err := json.Marshal(ReplaceTodolistRequest{})
+	if err != nil {
+		t.Fatalf("failed to marshal ReplaceTodolistRequest: %v", err)
+	}
+	if string(out) != `{"name":""}` {
+		t.Errorf("expected {\"name\":\"\"}, got %s", out)
+	}
+}
+
+// fieldsFromTodolist lifts exactly the writable set — {name, description} —
+// off a fetched todolist.
+func TestFieldsFromTodolist(t *testing.T) {
+	f := fieldsFromTodolist(&Todolist{
+		Name:        "Hardware",
+		Description: "<p>Ship it</p>",
+		Title:       "Hardware",
+	})
+	if f.Name != "Hardware" {
+		t.Errorf("expected Name 'Hardware', got %q", f.Name)
+	}
+	if f.Description != "<p>Ship it</p>" {
+		t.Errorf("expected Description '<p>Ship it</p>', got %q", f.Description)
+	}
+
+	body, err := f.fullBody()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(body) != 2 {
+		t.Errorf("expected exactly {name, description} in the body, got %v", body)
+	}
+	if body["name"] != "Hardware" || body["description"] != "<p>Ship it</p>" {
+		t.Errorf("unexpected body: %v", body)
 	}
 }
 

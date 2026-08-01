@@ -701,6 +701,46 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todos().Replace(ctx, todoID, req)
 		return operationResult{err: err}
 
+	case "UpdateTodolist":
+		// Synthetic scenario key (not a wire operation): drives the SDK's
+		// merge-safe composite, which GETs the current todolist, overlays only
+		// the explicitly-set fields, and PUTs the full representation back.
+		// Variant-agnostic — a todolist group decodes into the same shape, so
+		// the group fixture runs through this very case with no branching.
+		todolistID := getInt64Param(tc.PathParams, "id")
+		req := &basecamp.UpdateTodolistRequest{
+			Name:        getStringParam(tc.RequestBody, "name"),
+			Description: getStringParam(tc.RequestBody, "description"),
+		}
+		_, err := account.Todolists().Update(ctx, todolistID, req)
+		return operationResult{err: err}
+
+	case "EditTodolist":
+		// Synthetic scenario key (not a wire operation): drives the SDK's
+		// edit closure, assigning each fixture requestBody key onto the
+		// corresponding TodolistFields member (data-driven mutation). Absence
+		// stays absence, so an untouched field keeps its fetched value.
+		todolistID := getInt64Param(tc.PathParams, "id")
+		_, err := account.Todolists().Edit(ctx, todolistID, func(f *basecamp.TodolistFields) error {
+			if _, ok := tc.RequestBody["name"]; ok {
+				f.Name = getStringParam(tc.RequestBody, "name")
+			}
+			if _, ok := tc.RequestBody["description"]; ok {
+				f.Description = getStringParam(tc.RequestBody, "description")
+			}
+			return nil
+		})
+		return operationResult{err: err}
+
+	case "ReplaceTodolist":
+		todolistID := getInt64Param(tc.PathParams, "id")
+		req := &basecamp.ReplaceTodolistRequest{
+			Name:        getStringParam(tc.RequestBody, "name"),
+			Description: getStringParam(tc.RequestBody, "description"),
+		}
+		_, err := account.Todolists().Replace(ctx, todolistID, req)
+		return operationResult{err: err}
+
 	case "GetTimesheetEntry":
 		entryID := getInt64Param(tc.PathParams, "entryId")
 		_, err := account.Timesheet().Get(ctx, entryID)

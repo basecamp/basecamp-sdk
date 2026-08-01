@@ -144,6 +144,45 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
                 startsOn: rb.optString("starts_on")))
         return DispatchResult()
 
+    // Synthetic scenario key (not a wire operation): the merge-safe composite
+    // over `PUT /todolists/{id}`, which is a full replace — BC3's
+    // TodolistsController#update rebuilds the recordable from the permitted
+    // params, so an omitted description is erased. GET then PUT, resending
+    // whatever the caller did not mention. Deliberately variant-agnostic: a
+    // group is rendered by the same partial as a list, so nothing here sniffs
+    // which one came back.
+    case "UpdateTodolist":
+        _ = try await account.todolists.update(
+            id: pathParams.longParam("id"),
+            req: UpdateTodolistRequest(
+                description: rb.optString("description"),
+                name: rb.optString("name")))
+        return DispatchResult()
+
+    // Synthetic scenario key (not a wire operation): exercises the
+    // read-modify-write edit closure by assigning each fixture key onto the
+    // corresponding TodolistFields member.
+    case "EditTodolist":
+        // Read every fixture key before the call: the edit closure is
+        // non-throwing, and validating up front means a malformed parameter
+        // fails the test instead of reaching the wire half-applied.
+        let editTodolistName = try rb.optString("name")
+        let editTodolistDescription = try rb.optString("description")
+        _ = try await account.todolists.edit(id: pathParams.longParam("id")) { fields in
+            if let editTodolistName { fields.name = editTodolistName }
+            if let editTodolistDescription { fields.description = editTodolistDescription }
+        }
+        return DispatchResult()
+
+    // Raw single PUT, no read-before-write. `name` is required by the schema.
+    case "ReplaceTodolist":
+        _ = try await account.todolists.replace(
+            id: pathParams.longParam("id"),
+            req: UpdateTodolistOrGroupRequest(
+                description: rb.optString("description"),
+                name: rb.stringParam("name")))
+        return DispatchResult()
+
     // Participants are presence-bearing: an absent key must not become an
     // empty list on the wire, or BC3 clears the participants.
     case "UpdateScheduleEntry":

@@ -180,8 +180,8 @@ val AccountClient.todolistGroups: TodolistGroupsService
     get() = service("TodolistGroups") { TodolistGroupsService(this) }
 
 /** Todolists operations. */
-val AccountClient.todolists: TodolistsService
-    get() = service("Todolists") { TodolistsService(this) }
+val AccountClient.todolists: com.basecamp.sdk.services.TodolistsService
+    get() = service("Todolists") { com.basecamp.sdk.services.TodolistsService(this) }
 
 /** Todos operations. */
 val AccountClient.todos: com.basecamp.sdk.services.TodosService

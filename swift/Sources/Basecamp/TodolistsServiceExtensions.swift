@@ -1,0 +1,156 @@
+// Hand-written merge-safe update / edit surface for TodolistsService.
+import Foundation
+
+/// Request parameters for the merge-safe ``TodolistsService/update(id:req:)``.
+/// Every field is optional: a `nil` field is left untouched on the todolist,
+/// guaranteed. An explicitly-passed empty string is a set (clears the field).
+public struct UpdateTodolistRequest: Codable, Sendable {
+    public var description: String?
+    public var name: String?
+
+    public init(
+        description: String? = nil,
+        name: String? = nil
+    ) {
+        self.description = description
+        self.name = name
+    }
+}
+
+/// A todolist's full writable state, handed to the
+/// ``TodolistsService/edit(id:_:)`` closure. The whole value is PUT back to the
+/// server, so clearing a field means setting it empty (`""`) — there is no
+/// third state. BC3's writable set on this endpoint is exactly
+/// `{name, description}`; everything else on a todolist is server-owned or has
+/// its own endpoint (position, status, subscriptions).
+public struct TodolistFields: Sendable {
+    /// The list's name (required; the server presence-validates it, so an
+    /// empty one is a 422 rather than a clear).
+    public var name: String
+    /// Rich text description (HTML). Set `""` to clear.
+    public var description: String
+
+    init(from todolist: Todolist) {
+        name = todolist.name
+        description = todolist.description ?? ""
+    }
+}
+
+// Merge-safe `update` and read-modify-write `edit`, composed from the public
+// `get` and `replace` methods — hooks observe the two wire operations
+// (`GetTodolistOrGroup` then `UpdateTodolistOrGroup`), not a synthetic
+// composite.
+//
+// `PUT /{accountId}/todolists/{id}` is a full replace: BC3's
+// `TodolistsController#update` rebuilds the recordable from only the permitted
+// params, so a PUT that omits `description` ERASES it. That makes the natural
+// sparse write destructive on the raw endpoint, which stays available as
+// `replace`.
+//
+// Neither composite is atomic: there is no conditional-update signal on this
+// endpoint, so a concurrent write between the GET and PUT is overwritten — last
+// write wins for the whole representation. The window is one round-trip. Use
+// `replace` to overwrite deliberately.
+extension TodolistsService {
+    /// Sets the given fields on a todolist and preserves everything else: GETs
+    /// the current todolist, overlays the explicitly-set (non-`nil`) request
+    /// fields, and PUTs the full representation back. A `nil` field is
+    /// untouched, guaranteed; an explicitly-passed `""` clears.
+    ///
+    /// Not atomic — see the extension docs for the GET→PUT race.
+    public func update(id: Int, req: UpdateTodolistRequest) async throws -> Todolist {
+        var fields = TodolistFields(from: try await fetchTodolist(id: id))
+        if let name = req.name { fields.name = name }
+        if let description = req.description { fields.description = description }
+        return try await putFields(id: id, fields: fields)
+    }
+
+    /// Applies a read-modify-write closure to a todolist: GETs the current
+    /// todolist, hands the closure the full writable representation
+    /// (``TodolistFields``), and PUTs the whole thing back. Clearing a field
+    /// means setting it empty (`""`) — an untouched field keeps its current
+    /// value. If the closure throws, the edit aborts and nothing is written.
+    ///
+    /// ```swift
+    /// try await account.todolists.edit(id: 123) {
+    ///     $0.name = "🚨 " + $0.name
+    ///     $0.description = "" // clearing = setting empty on a full object
+    /// }
+    /// ```
+    ///
+    /// Not atomic — see the extension docs for the GET→PUT race.
+    public func edit(id: Int, _ mutate: (inout TodolistFields) throws -> Void) async throws -> Todolist {
+        var fields = TodolistFields(from: try await fetchTodolist(id: id))
+        try mutate(&fields)
+        return try await putFields(id: id, fields: fields)
+    }
+
+    /// PUTs the full writable state via `replace`. Both fields are ALWAYS sent,
+    /// the description included when empty: `""` is how a clear is expressed on
+    /// a full-replace endpoint, and an explicit JSON null is never sent (SPEC
+    /// §18 body compaction). `name` is presence-validated server-side, so an
+    /// empty one is caught here rather than spent on a 422 round-trip.
+    private func putFields(id: Int, fields: TodolistFields) async throws -> Todolist {
+        guard !fields.name.isEmpty else {
+            throw BasecampError.usage(
+                message: "Todolist name cannot be empty",
+                hint: "The server presence-validates a todolist's name; set a non-empty name."
+            )
+        }
+        let written = try await replace(
+            id: id,
+            req: UpdateTodolistOrGroupRequest(
+                description: fields.description,
+                name: fields.name
+            )
+        )
+        return try Self.todolist(from: written, operation: "UpdateTodolistOrGroup")
+    }
+
+    /// GETs the todolist and unwraps the union arm the composites read from.
+    private func fetchTodolist(id: Int) async throws -> Todolist {
+        let fetched = try await get(id: id)
+        return try Self.todolist(from: fetched, operation: "GetTodolistOrGroup")
+    }
+
+    /// Unwraps the ``TodolistOrGroup`` union the generated `get` and `replace`
+    /// return.
+    ///
+    /// The union's `todolist`/`group` envelope is a spec-modelling convention,
+    /// not the wire shape — see AGENTS.md, "Smithy Spec vs Actual API
+    /// Responses". BC3 renders a list and a group through the same
+    /// `todolists/_todolist.json.jbuilder` partial, so the body arrives FLAT
+    /// and the decoder matches it against the arms in order; a group body
+    /// carries `description` too and so lands in the `todolist` arm. That is
+    /// expected, and it is why this composite is variant-agnostic: it neither
+    /// sniffs the type nor branches on which arm matched.
+    ///
+    /// The `group` arm is not a fallback. Its projection has no `description`
+    /// field at all, so converting from it would have to invent an empty one —
+    /// and PUTting that back is exactly the erasure this file exists to
+    /// prevent. A group-only match is an error with its reason stated.
+    private static func todolist(
+        from value: TodolistOrGroup, operation: String
+    ) throws -> Todolist {
+        switch (value.todolist, value.group) {
+        case (let todolist?, _):
+            return todolist
+        case (nil, .some):
+            throw BasecampError.api(
+                message: "\(operation) returned a todolist group projection, which carries no "
+                    + "description; writing it back would erase the description",
+                httpStatus: nil,
+                hint: "Use replace(id:req:) to overwrite this recording deliberately.",
+                requestId: nil
+            )
+        case (nil, nil):
+            throw BasecampError.api(
+                message: "\(operation) returned a body matching neither the todolist nor the "
+                    + "group shape",
+                httpStatus: nil,
+                hint: "Check the todolist id; the server did not return a todolist.",
+                requestId: nil
+            )
+        }
+    }
+}
