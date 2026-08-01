@@ -219,6 +219,40 @@ class HttpPaginationMetaTest < Minitest::Test
     assert_not_requested :get, "#{base_url}/items.json?page=2"
   end
 
+  def test_first_on_capped_enumerator_records_truncation
+    # Consumers like first/take cancel the producer at the capping yield, so
+    # truncation must be recorded before that yield — once the capped item
+    # has been delivered, meta.truncated is accurate.
+    stub_get("/items.json", response_body: [ { "id" => 1 }, { "id" => 2 } ])
+
+    enum = @http.paginate("/items.json", max_items: 1)
+
+    assert_equal [ 1 ], enum.first(1).map { |i| i["id"] }
+    assert enum.meta.truncated
+  end
+
+  def test_block_form_returns_nil
+    # Pin: the block form returns nil, exactly as the pre-ListEnumerator loop
+    # did — Enumerator#each returns the generator block's value, and the
+    # generator ends in a bare loop. Callers using the return value for
+    # control flow must never see a truthy enumerator appear.
+    stub_get("/items.json", response_body: [ { "id" => 1 } ])
+
+    stub_get("/events.json", response_body: { "events" => [ { "id" => 2 } ] })
+
+    seen = []
+    result = @http.paginate("/items.json") { |item| seen << item["id"] }
+
+    assert_equal [ 1 ], seen
+    assert_nil result
+
+    seen = []
+    result = @http.paginate_key("/events.json", key: "events") { |item| seen << item["id"] }
+
+    assert_equal [ 2 ], seen
+    assert_nil result
+  end
+
   def test_non_positive_max_items_means_no_cap
     [ 0, -5 ].each do |cap|
       WebMock.reset!

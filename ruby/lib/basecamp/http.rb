@@ -269,13 +269,14 @@ module Basecamp
 
           capped = false
           items.each_with_index do |item, index|
-            yielder << item
             yielded += 1
-            next unless max_items && yielded >= max_items
-
-            meta.mark_truncated! if index < items.size - 1 || next_link
-            capped = true
-            break
+            capped = max_items && yielded >= max_items
+            # Truncation is recorded before the capping yield: consumers like
+            # first/take cancel the producer at that yield, and the metadata
+            # must already be accurate once the capped item is delivered.
+            meta.mark_truncated! if capped && (index < items.size - 1 || next_link)
+            yielder << item
+            break if capped
           end
           break if capped
           break if next_link.nil?

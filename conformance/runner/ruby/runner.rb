@@ -84,9 +84,9 @@ class OperationMapper
     when "CreateProject"
       @account.projects.create(name: body["name"])
     when "ListTodos"
-      @account.todos.list(
-        todolist_id: path_params["todolistId"]
-      )
+      max_items ? \
+        @account.todos.list(todolist_id: path_params["todolistId"], max_items: max_items) : \
+        @account.todos.list(todolist_id: path_params["todolistId"])
     when "GetTodo"
       @account.todos.get(
         todo_id: path_params["todoId"]
