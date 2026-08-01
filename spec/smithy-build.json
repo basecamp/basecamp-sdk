@@ -34,24 +34,24 @@
               "url": "https://github.com/basecamp/basecamp-sdk"
             },
             "/components/schemas/SearchType/properties/key/type": ["string", "null"],
-            "/components/schemas/SearchType/properties/key/x-go-type": "*string",
+            "/components/schemas/SearchType/properties/key/x-go-type": "string",
             "/components/schemas/SearchResult/properties/content/type": ["string", "null"],
-            "/components/schemas/SearchResult/properties/content/x-go-type": "*string",
+            "/components/schemas/SearchResult/properties/content/x-go-type": "string",
             "/components/schemas/SearchResult/properties/description/type": ["string", "null"],
-            "/components/schemas/SearchResult/properties/description/x-go-type": "*string",
+            "/components/schemas/SearchResult/properties/description/x-go-type": "string",
             "/components/schemas/MyNote/properties/id/type": ["integer", "null"],
-            "/components/schemas/MyNote/properties/id/x-go-type": "*int64",
+            "/components/schemas/MyNote/properties/id/x-go-type": "int64",
             "/components/schemas/MyNote/properties/created_at/type": ["string", "null"],
-            "/components/schemas/MyNote/properties/created_at/x-go-type": "*time.Time",
+            "/components/schemas/MyNote/properties/created_at/x-go-type": "time.Time",
             "/components/schemas/MyNote/properties/updated_at/type": ["string", "null"],
-            "/components/schemas/MyNote/properties/updated_at/x-go-type": "*time.Time",
-            "/components/schemas/Draft/properties/parent": {"anyOf": [{"$ref": "#/components/schemas/DraftParent"}, {"type": "null"}], "x-go-type": "*DraftParent"},
+            "/components/schemas/MyNote/properties/updated_at/x-go-type": "time.Time",
+            "/components/schemas/Draft/properties/parent": {"anyOf": [{"$ref": "#/components/schemas/DraftParent"}, {"type": "null"}], "x-go-type": "DraftParent"},
             "/components/schemas/Draft/properties/scheduled_posting_at/type": ["string", "null"],
-            "/components/schemas/Draft/properties/scheduled_posting_at/x-go-type": "*time.Time",
+            "/components/schemas/Draft/properties/scheduled_posting_at/x-go-type": "time.Time",
             "/components/schemas/Wormhole/properties/destination_url/type": ["string", "null"],
-            "/components/schemas/Wormhole/properties/destination_url/x-go-type": "*string",
+            "/components/schemas/Wormhole/properties/destination_url/x-go-type": "string",
             "/components/schemas/Wormhole/properties/color/type": ["string", "null"],
-            "/components/schemas/Wormhole/properties/color/x-go-type": "*string"
+            "/components/schemas/Wormhole/properties/color/x-go-type": "string"
           }
         }
       }

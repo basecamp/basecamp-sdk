@@ -3883,8 +3883,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -3995,8 +3994,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -4107,8 +4105,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -4219,8 +4216,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -4331,8 +4327,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -4428,8 +4423,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -7281,8 +7275,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to files created by the given people (repeatable).",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to files created by the given people (repeatable)."
             },
             "explode": true
           },
@@ -17327,8 +17320,7 @@
               "items": {
                 "type": "string"
               },
-              "description": "Recording types to include. Use `key` values from the metadata\nendpoint's `recording_search_types`. Available since Basecamp 5.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Recording types to include. Use `key` values from the metadata\nendpoint's `recording_search_types`. Available since Basecamp 5."
             },
             "explode": true
           },
@@ -17343,8 +17335,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Project IDs to filter by. Available since Basecamp 5.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Project IDs to filter by. Available since Basecamp 5."
             },
             "explode": true
           },
@@ -17359,8 +17350,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Creator person IDs to filter by. Available since Basecamp 5.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Creator person IDs to filter by. Available since Basecamp 5."
             },
             "explode": true
           },
@@ -19162,8 +19152,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -19274,8 +19263,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -19386,8 +19374,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -19498,8 +19485,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -19595,8 +19581,7 @@
                 "type": "integer",
                 "format": "int64"
               },
-              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
-              "x-go-type-skip-optional-pointer": false
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered."
             },
             "explode": true
           },
@@ -22045,8 +22030,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
@@ -22062,16 +22046,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "trial": {
             "type": "boolean"
@@ -22081,8 +22063,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "frozen": {
             "type": "boolean"
@@ -22184,8 +22165,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "title": {
             "type": "string"
@@ -22210,22 +22190,21 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "starts_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "assignees": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -22249,24 +22228,21 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "created_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "recording": {
             "$ref": "#/components/schemas/Recording"
@@ -22296,8 +22272,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "content": {
             "type": "string"
@@ -22307,8 +22282,7 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "booster": {
             "$ref": "#/components/schemas/Person"
@@ -22366,8 +22340,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "type": {
             "type": "string"
@@ -22384,16 +22357,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "url": {
             "type": "string"
@@ -22436,8 +22407,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -22450,16 +22420,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -22522,8 +22490,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -22536,16 +22503,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -22572,7 +22537,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CampfireLineAttachment"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -22637,8 +22603,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -22651,16 +22616,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -22705,7 +22668,6 @@
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true,
             "nullable": true
           },
           "completed": {
@@ -22716,8 +22678,7 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "comments_count": {
             "type": "integer",
@@ -22745,19 +22706,22 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "completion_subscribers": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "steps": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CardStep"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "boosts_count": {
             "type": "integer",
@@ -22789,8 +22753,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -22803,16 +22766,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -22866,7 +22827,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "on_hold": {
             "$ref": "#/components/schemas/CardColumnOnHold"
@@ -22893,8 +22855,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -22910,16 +22871,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "cards_count": {
             "type": "integer",
@@ -22945,8 +22904,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -22959,16 +22917,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -22997,8 +22953,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "completed": {
             "type": "boolean"
@@ -23008,8 +22963,7 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -23027,7 +22981,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "completion_url": {
             "type": "string"
@@ -23054,8 +23009,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -23068,16 +23022,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -23110,19 +23062,22 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "lists": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CardColumn"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "wormholes": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Wormhole"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -23145,24 +23100,21 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "created_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "service_name": {
             "type": "string"
@@ -23192,8 +23144,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -23206,16 +23157,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -23264,8 +23213,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "replies_count": {
             "type": "integer",
@@ -23284,7 +23232,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ClientApprovalResponse"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -23309,8 +23258,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -23323,16 +23271,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -23371,8 +23317,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
@@ -23388,8 +23333,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -23402,16 +23346,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -23486,8 +23428,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -23500,16 +23441,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -23585,8 +23524,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -23599,16 +23537,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -23746,12 +23682,10 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "notify": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -23772,8 +23706,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "assignee_ids": {
             "type": "array",
@@ -23839,12 +23772,10 @@
             "items": {
               "type": "integer",
               "format": "int64"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "visible_to_clients": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -23899,8 +23830,7 @@
               "type": "integer",
               "format": "int64"
             },
-            "description": "Array of people IDs to notify (only used when notify is \"custom\")",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Array of people IDs to notify (only used when notify is \"custom\")"
           }
         },
         "required": [
@@ -23940,20 +23870,17 @@
           },
           "category_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "subscriptions": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "visible_to_clients": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -24047,8 +23974,7 @@
             "$ref": "#/components/schemas/QuestionSchedule"
           },
           "visible_to_clients": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -24085,16 +24011,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "ends_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "description": {
             "type": "string"
@@ -24107,24 +24031,20 @@
             }
           },
           "all_day": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           },
           "notify": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           },
           "subscriptions": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "visible_to_clients": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -24167,8 +24087,7 @@
           },
           "person_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           }
         },
         "required": [
@@ -24203,24 +24122,21 @@
             }
           },
           "notify": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           },
           "due_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "starts_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
         },
         "required": [
@@ -24254,8 +24170,7 @@
             "type": "string"
           },
           "visible_to_clients": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -24289,24 +24204,21 @@
             }
           },
           "notify": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           },
           "due_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "starts_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
         },
         "required": [
@@ -24329,8 +24241,7 @@
           },
           "visible_to_clients": {
             "type": "boolean",
-            "description": "Create the tool already visible to clients. Honored only for tool types that manage their own client visibility (Chat::Transcript, Kanban::Board), which otherwise start hidden; every other tool type ignores it and inherits the project default.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Create the tool already visible to clients. Honored only for tool types that manage their own client visibility (Chat::Transcript, Kanban::Board), which otherwise start hidden; every other tool type ignores it and inherits the project default."
           }
         },
         "required": [
@@ -24357,12 +24268,10 @@
             "items": {
               "type": "integer",
               "format": "int64"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "visible_to_clients": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -24399,8 +24308,7 @@
             }
           },
           "active": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -24417,8 +24325,7 @@
           "destination_recording_id": {
             "type": "integer",
             "description": "Id of the destination column (on another accessible card table) to link to.",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           }
         },
         "required": [
@@ -24436,8 +24343,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "title": {
             "type": "string"
@@ -24473,8 +24379,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -24487,16 +24392,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -24590,7 +24493,8 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "supporting_text": {
             "type": "string"
@@ -24603,8 +24507,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "app_url": {
             "type": "string"
@@ -24639,16 +24542,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "scheduled_posting_at": {
             "type": [
@@ -24678,8 +24579,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
@@ -24700,8 +24600,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "title": {
             "type": "string"
@@ -24738,13 +24637,11 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "recording_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "action": {
             "type": "string"
@@ -24757,8 +24654,7 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "creator": {
             "$ref": "#/components/schemas/Person"
@@ -24787,21 +24683,24 @@
             "items": {
               "type": "integer",
               "format": "int64"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "removed_person_ids": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "notified_recipient_ids": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -24812,84 +24711,67 @@
           "id": {
             "type": "integer",
             "description": "Recording (Upload/Document) or attachment id.",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "visible_to_clients": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           },
           "created_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "title": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "inherits_status": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           },
           "type": {
             "type": "string",
-            "description": "\"Upload\", \"Document\", or \"Attachment\".",
-            "x-go-type-skip-optional-pointer": false
+            "description": "\"Upload\", \"Document\", or \"Attachment\"."
           },
           "url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "app_url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "bookmark_url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "subscription_url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "comments_count": {
             "type": "integer",
-            "format": "int32",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int32"
           },
           "comments_url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "boosts_count": {
             "type": "integer",
-            "format": "int32",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int32"
           },
           "boosts_url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "position": {
             "type": "integer",
-            "format": "int32",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int32"
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -24902,30 +24784,24 @@
           },
           "attachable_sgid": {
             "type": "string",
-            "description": "Present on the rich-text attachment variant: signed global id of the\nattachment (uploads/documents omit it).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Present on the rich-text attachment variant: signed global id of the\nattachment (uploads/documents omit it)."
           },
           "content_type": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "byte_size": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "filename": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "download_url": {
             "type": "string",
-            "x-basecamp-auth-routable-url": {},
-            "x-go-type-skip-optional-pointer": false
+            "x-basecamp-auth-routable-url": {}
           },
           "app_download_url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "width": {
             "type": "integer",
@@ -24935,8 +24811,7 @@
             "x-go-type": "types.FlexInt",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "height": {
             "type": "integer",
@@ -24946,30 +24821,29 @@
             "x-go-type": "types.FlexInt",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "description": {
             "type": "string",
-            "description": "Rich-text description (upload/document variants).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Rich-text description (upload/document variants)."
           },
           "description_attachments": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "content": {
             "type": "string",
-            "description": "Rich-text body of the Document variant (uploads/attachments omit it).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Rich-text body of the Document variant (uploads/attachments omit it)."
           },
           "content_attachments": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -25031,8 +24905,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -25045,16 +24918,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -25132,8 +25003,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -25146,16 +25016,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -25224,8 +25092,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -25238,16 +25105,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -25281,7 +25146,8 @@
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
             },
-            "description": "Optional (no `@required`): the type-specific partial renders the\ncompanion array only when the gauge has needles (bc3 `if\ngauge.any_needles?`), so a needle-less gauge omits the key entirely.\nNon-nullable — never served as JSON `null`."
+            "description": "Optional (no `@required`): the type-specific partial renders the\ncompanion array only when the gauge has needles (bc3 `if\ngauge.any_needles?`), so a needle-less gauge omits the key entirely.\nNon-nullable — never served as JSON `null`.",
+            "x-go-type-skip-optional-pointer": true
           },
           "enabled": {
             "type": "boolean"
@@ -25309,8 +25175,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -25323,16 +25188,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -25468,7 +25331,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Todo"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -25650,13 +25514,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MyAssignment"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "non_priorities": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MyAssignment"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -25682,13 +25548,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Notification"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "reads": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Notification"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "bubble_ups_count": {
             "type": "integer",
@@ -25705,21 +25573,24 @@
             "items": {
               "$ref": "#/components/schemas/Notification"
             },
-            "description": "Legacy \"save forever\" collection. Permanently `[]` on BC5 by documented\ncontract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):\nan always-empty placeholder superseded by `bubble_ups`. BC4 (the `four`\nbranch) still populates it — an accepted BC4→BC5 subtractive delta\nrecorded in `spec/api-gaps/memories-emptied-regression.md`. New\nintegrations should use `bubble_ups` / `scheduled_bubble_ups` and must\nnot rely on `memories` on BC5."
+            "description": "Legacy \"save forever\" collection. Permanently `[]` on BC5 by documented\ncontract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):\nan always-empty placeholder superseded by `bubble_ups`. BC4 (the `four`\nbranch) still populates it — an accepted BC4→BC5 subtractive delta\nrecorded in `spec/api-gaps/memories-emptied-regression.md`. New\nintegrations should use `bubble_ups` / `scheduled_bubble_ups` and must\nnot rely on `memories` on BC5.",
+            "x-go-type-skip-optional-pointer": true
           },
           "bubble_ups": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Notification"
             },
-            "description": "Items the user has saved with Bubble Up (BC5 addition). Roughly the\nsuccessor to `memories` but with optional scheduling — see\n`scheduled_bubble_ups` for the time-deferred subset."
+            "description": "Items the user has saved with Bubble Up (BC5 addition). Roughly the\nsuccessor to `memories` but with optional scheduling — see\n`scheduled_bubble_ups` for the time-deferred subset.",
+            "x-go-type-skip-optional-pointer": true
           },
           "scheduled_bubble_ups": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Notification"
             },
-            "description": "Bubble Ups scheduled to resurface in the future (BC5 addition)."
+            "description": "Bubble Ups scheduled to resurface in the future (BC5 addition).",
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -25743,25 +25614,29 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Todo"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "over_a_week_late": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Todo"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "over_a_month_late": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Todo"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "over_three_months_late": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Todo"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -25775,7 +25650,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TimelineEvent"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -25873,19 +25749,22 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ScheduleEntry"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "recurring_schedule_entry_occurrences": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ScheduleEntry"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "assignables": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Assignable"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -25912,8 +25791,7 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "app_update_url": {
             "type": "string"
@@ -25925,7 +25803,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HillChartDot"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -25938,8 +25817,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "label": {
             "type": "string"
@@ -25970,8 +25848,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -25984,16 +25861,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -26065,8 +25940,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
@@ -26079,16 +25953,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
         },
         "required": [
@@ -26359,8 +26231,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -26373,16 +26244,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -26468,8 +26337,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -26482,16 +26350,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -26552,8 +26418,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
@@ -26566,16 +26431,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
         },
         "required": [
@@ -26591,13 +26454,11 @@
         "properties": {
           "source_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "target_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "position": {
             "type": "integer",
@@ -26614,8 +26475,7 @@
         "properties": {
           "column_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "position": {
             "type": "integer",
@@ -26632,8 +26492,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "app_url": {
             "type": "string"
@@ -26646,16 +26505,14 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "due_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "bucket": {
             "$ref": "#/components/schemas/MyAssignmentBucket"
@@ -26670,7 +26527,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MyAssignmentAssignee"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "comments_count": {
             "type": "integer",
@@ -26682,8 +26540,7 @@
           "priority_recording_id": {
             "type": "integer",
             "description": "Present on priority items",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "parent": {
             "$ref": "#/components/schemas/MyAssignmentParent"
@@ -26692,7 +26549,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MyAssignment"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -26704,8 +26562,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string",
@@ -26725,8 +26582,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
@@ -26744,8 +26600,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "title": {
             "type": "string"
@@ -26849,24 +26704,21 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "created_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "section": {
             "type": "string",
@@ -26881,16 +26733,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "read_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "readable_sgid": {
             "type": "string"
@@ -26935,8 +26785,7 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "subscription_url": {
             "type": "string"
@@ -26948,14 +26797,16 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PreviewableAttachment"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "participants": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
             },
-            "description": "Present on ping notifications"
+            "description": "Present on ping notifications",
+            "x-go-type-skip-optional-pointer": true
           },
           "named": {
             "type": "boolean",
@@ -27019,8 +26870,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string",
@@ -27049,7 +26899,6 @@
           "id": {
             "type": "integer",
             "format": "int64",
-            "x-go-type-skip-optional-pointer": true,
             "x-go-type": "types.FlexibleInt64",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
@@ -27115,16 +26964,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "admin": {
             "type": "boolean"
@@ -27178,8 +27025,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string",
@@ -27234,8 +27080,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "url": {
             "type": "string"
@@ -27269,8 +27114,7 @@
           "id": {
             "type": "integer",
             "description": "The recording id to prioritize.",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           }
         },
         "required": [
@@ -27282,8 +27126,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string",
@@ -27294,16 +27137,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "name": {
             "type": "string"
@@ -27336,7 +27177,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DockItem"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "bookmarked": {
             "type": "boolean"
@@ -27367,13 +27209,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "revoked": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -27382,8 +27226,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -27419,8 +27262,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -27433,16 +27275,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -27509,8 +27349,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -27523,16 +27362,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -27576,8 +27413,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -27625,8 +27461,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
         },
         "required": [
@@ -27644,8 +27479,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
         },
         "required": [
@@ -27657,24 +27491,21 @@
         "properties": {
           "reminder_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "remind_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "group_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "question": {
             "$ref": "#/components/schemas/Question"
@@ -27692,7 +27523,8 @@
             "items": {
               "type": "integer",
               "format": "int32"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "hour": {
             "type": "integer",
@@ -27727,8 +27559,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -27741,16 +27572,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -27826,8 +27655,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -27840,16 +27668,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -27882,14 +27708,16 @@
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
             },
-            "description": "Rich-text companion arrays carried through the generic recording\nprojection (`to_recordable_partial_path` renders the full type-specific\npartial). A given recording is one type, so it carries only the array\nmatching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo/Card); a\nwebhook-sourced recording (base partial) carries neither. Optional (no\n`@required`), non-nullable."
+            "description": "Rich-text companion arrays carried through the generic recording\nprojection (`to_recordable_partial_path` renders the full type-specific\npartial). A given recording is one type, so it carries only the array\nmatching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo/Card); a\nwebhook-sourced recording (base partial) carries neither. Optional (no\n`@required`), non-nullable.",
+            "x-go-type-skip-optional-pointer": true
           },
           "description_attachments": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
             },
-            "description": "See `content_attachments` — the description-attribute companion array."
+            "description": "See `content_attachments` — the description-attribute companion array.",
+            "x-go-type-skip-optional-pointer": true
           },
           "comments_count": {
             "type": "integer",
@@ -27904,17 +27732,14 @@
           "boosts_count": {
             "type": "integer",
             "description": "Boost count/URL. Carried on boostable recordings — notably the account-wide\naggregate feeds (`/messages.json`, `/comments.json`), whose type-specific\npartials render with `boostable: true`. Optional (absent on non-boostable\nrecordings and on the base/webhook partial).",
-            "format": "int32",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int32"
           },
           "boosts_url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "subject": {
             "type": "string",
-            "description": "Message subject. Present on `Message` recordings — notably the account-wide\n`/messages.json` aggregate feed, whose message partial renders `subject`.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Message subject. Present on `Message` recordings — notably the account-wide\n`/messages.json` aggregate feed, whose message partial renders `subject`."
           },
           "category": {
             "$ref": "#/components/schemas/RecordingCategory"
@@ -27925,23 +27750,19 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "from": {
             "type": "string",
-            "description": "Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably\nthe `/forwards.json` aggregate feed, whose forward partial renders `from`.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably\nthe `/forwards.json` aggregate feed, whose forward partial renders `from`."
           },
           "replies_count": {
             "type": "integer",
             "description": "Reply count/URL for an inbox forward. Present on `Inbox::Forward`\nrecordings — notably the `/forwards.json` aggregate feed.",
-            "format": "int32",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int32"
           },
           "replies_url": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           },
           "position": {
             "type": "integer",
@@ -27985,8 +27806,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
@@ -28007,15 +27827,13 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
           },
           "icon": {
-            "type": "string",
-            "x-go-type-skip-optional-pointer": false
+            "type": "string"
           }
         },
         "required": [
@@ -28028,8 +27846,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "title": {
             "type": "string"
@@ -28061,8 +27878,7 @@
           "source_id": {
             "type": "integer",
             "description": "The recording id to move, chosen the same way as when prioritizing.",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "position": {
             "type": "integer",
@@ -28099,24 +27915,21 @@
             }
           },
           "notify": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           },
           "due_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "starts_on": {
             "type": "string",
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
         },
         "required": [
@@ -28131,8 +27944,7 @@
         "properties": {
           "source_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "position": {
             "type": "integer",
@@ -28155,8 +27967,7 @@
           "parent_id": {
             "type": "integer",
             "description": "Optional todolist ID to move the todo to a different parent",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           }
         },
         "required": [
@@ -28213,8 +28024,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "sgid": {
             "type": "string"
@@ -28241,8 +28051,7 @@
             "x-go-type": "types.FlexInt",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "height": {
             "type": "integer",
@@ -28252,8 +28061,7 @@
             "x-go-type": "types.FlexInt",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "previewable": {
             "type": "boolean"
@@ -28282,8 +28090,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -28296,16 +28103,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -28377,8 +28182,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -28391,16 +28195,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -28459,22 +28261,21 @@
             "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "ends_at": {
             "type": "string",
             "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "participants": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "boosts_count": {
             "type": "integer",
@@ -28554,8 +28355,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -28568,16 +28368,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -28639,14 +28437,16 @@
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
             },
-            "description": "Rich-text companion arrays carried through the polymorphic search\nprojection. A given result is one recording type, so it carries only\nthe array matching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo); a webhook-sourced\nresult carries neither. Optional (no `@required`), non-nullable.\n\nSearch results additionally repeat this same array under a generic\n`attachments` key. It is a redundant projection, not a distinct\naggregate: `searches/show.json.jbuilder` emits\n`recording.downloadable_attachments`, which delegates to the recordable's\nsole `rich_text_content`, through the same `attachments/_attachment`\npartial that `recordings/_rich_text.json.jbuilder` uses to build the\ncompanion array. `RichText.rich_text_attribute` permits exactly one\nrich-text attribute per model, so the two keys always carry identical\nelements. Modeling `attachments` would duplicate the field, so it is\ndeliberately not modeled."
+            "description": "Rich-text companion arrays carried through the polymorphic search\nprojection. A given result is one recording type, so it carries only\nthe array matching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo); a webhook-sourced\nresult carries neither. Optional (no `@required`), non-nullable.\n\nSearch results additionally repeat this same array under a generic\n`attachments` key. It is a redundant projection, not a distinct\naggregate: `searches/show.json.jbuilder` emits\n`recording.downloadable_attachments`, which delegates to the recordable's\nsole `rich_text_content`, through the same `attachments/_attachment`\npartial that `recordings/_rich_text.json.jbuilder` uses to build the\ncompanion array. `RichText.rich_text_attribute` permits exactly one\nrich-text attribute per model, so the two keys always carry identical\nelements. Modeling `attachments` would duplicate the field, so it is\ndeliberately not modeled.",
+            "x-go-type-skip-optional-pointer": true
           },
           "description_attachments": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
             },
-            "description": "See `content_attachments` — the description-attribute companion array."
+            "description": "See `content_attachments` — the description-attribute companion array.",
+            "x-go-type-skip-optional-pointer": true
           },
           "subject": {
             "type": "string"
@@ -28747,7 +28547,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -28761,8 +28562,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -28772,16 +28572,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "name": {
             "type": "string"
@@ -28799,7 +28597,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DockItem"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -28816,30 +28615,25 @@
           "id": {
             "type": "integer",
             "description": "Attachment or upload-recording id.",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "content_type": {
             "type": "string",
-            "description": "MIME type of the file.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "MIME type of the file."
           },
           "byte_size": {
             "type": "integer",
             "description": "Size of the file in bytes.",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "filename": {
             "type": "string",
-            "description": "Original filename.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Original filename."
           },
           "download_url": {
             "type": "string",
             "description": "Authenticated download URL for the file.",
-            "x-basecamp-auth-routable-url": {},
-            "x-go-type-skip-optional-pointer": false
+            "x-basecamp-auth-routable-url": {}
           },
           "width": {
             "type": "integer",
@@ -28849,8 +28643,7 @@
             "x-go-type": "types.FlexInt",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "height": {
             "type": "integer",
@@ -28860,28 +28653,23 @@
             "x-go-type": "types.FlexInt",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "type": {
             "type": "string",
-            "description": "Recording type, e.g. \"Upload\" (upload-recording variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Recording type, e.g. \"Upload\" (upload-recording variant)."
           },
           "title": {
             "type": "string",
-            "description": "Title of the upload recording.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Title of the upload recording."
           },
           "status": {
             "type": "string",
-            "description": "Publication status of the upload recording (e.g. \"active\").",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Publication status of the upload recording (e.g. \"active\")."
           },
           "inherits_status": {
             "type": "boolean",
-            "description": "Whether the recording inherits its status from its parent.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Whether the recording inherits its status from its parent."
           },
           "created_at": {
             "type": "string",
@@ -28889,8 +28677,7 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "updated_at": {
             "type": "string",
@@ -28898,130 +28685,107 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": false
+            }
           },
           "url": {
             "type": "string",
-            "description": "API URL of the upload recording.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "API URL of the upload recording."
           },
           "app_url": {
             "type": "string",
-            "description": "Web URL of the upload recording.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Web URL of the upload recording."
           },
           "bookmark_url": {
             "type": "string",
-            "description": "Personal bookmark toggle URL for the current user.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Personal bookmark toggle URL for the current user."
           },
           "subscription_url": {
             "type": "string",
-            "description": "Subscription URL; present only when the recording is subscribable.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Subscription URL; present only when the recording is subscribable."
           },
           "comments_count": {
             "type": "integer",
             "description": "Number of comments on the recording.",
-            "format": "int32",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int32"
           },
           "comments_url": {
             "type": "string",
-            "description": "API URL for the recording's comments.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "API URL for the recording's comments."
           },
           "boosts_count": {
             "type": "integer",
             "description": "Number of boosts on the recording.",
-            "format": "int32",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int32"
           },
           "boosts_url": {
             "type": "string",
-            "description": "API URL for the recording's boosts.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "API URL for the recording's boosts."
           },
           "position": {
             "type": "integer",
             "description": "Position within its parent; present only when the recording is positioned.",
-            "format": "int32",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int32"
           },
           "parent": {
-            "$ref": "#/components/schemas/RecordingParent",
-            "x-go-type-skip-optional-pointer": false
+            "$ref": "#/components/schemas/RecordingParent"
           },
           "bucket": {
-            "$ref": "#/components/schemas/TodoBucket",
-            "x-go-type-skip-optional-pointer": false
+            "$ref": "#/components/schemas/TodoBucket"
           },
           "creator": {
-            "$ref": "#/components/schemas/Person",
-            "x-go-type-skip-optional-pointer": false
+            "$ref": "#/components/schemas/Person"
           },
           "description": {
             "type": "string",
-            "description": "Rich-text description of the upload (HTML), when present.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Rich-text description of the upload (HTML), when present."
           },
           "description_attachments": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
             },
-            "description": "Rich-text attachments referenced by the description."
+            "description": "Rich-text attachments referenced by the description.",
+            "x-go-type-skip-optional-pointer": true
           },
           "app_download_url": {
             "type": "string",
-            "description": "Web download URL (upload-recording variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Web download URL (upload-recording variant)."
           },
           "visible_to_clients": {
             "type": "boolean",
-            "description": "Whether the upload recording is visible to clients.",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Whether the upload recording is visible to clients."
           },
           "attachable_sgid": {
             "type": "string",
-            "description": "Signed global id of the attachable (attachment variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Signed global id of the attachable (attachment variant)."
           },
           "sgid": {
             "type": "string",
-            "description": "Signed global id of the attachment (attachment variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Signed global id of the attachment (attachment variant)."
           },
           "status_url": {
             "type": "string",
-            "description": "URL to poll attachment processing status (attachment variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "URL to poll attachment processing status (attachment variant)."
           },
           "caption": {
             "type": "string",
-            "description": "Caption text, if any (attachment variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Caption text, if any (attachment variant)."
           },
           "key": {
             "type": "string",
-            "description": "Storage key of the underlying blob (attachment variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Storage key of the underlying blob (attachment variant)."
           },
           "previewable": {
             "type": "boolean",
-            "description": "Whether the blob can be previewed (attachment variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Whether the blob can be previewed (attachment variant)."
           },
           "preview_url": {
             "type": "string",
-            "description": "Full-size preview URL (attachment variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Full-size preview URL (attachment variant)."
           },
           "thumbnail_url": {
             "type": "string",
-            "description": "Thumbnail preview URL (attachment variant).",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Thumbnail preview URL (attachment variant)."
           }
         }
       },
@@ -29030,16 +28794,14 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "created_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "kind": {
             "type": "string",
@@ -29047,8 +28809,7 @@
           },
           "parent_recording_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "url": {
             "type": "string"
@@ -29076,7 +28837,8 @@
             "items": {
               "type": "string"
             },
-            "description": "Avatar URLs of participants — populated for chat_transcript_rollup events\n(the people summarized in the rollup); an empty array otherwise."
+            "description": "Avatar URLs of participants — populated for chat_transcript_rollup events\n(the people summarized in the rollup); an empty array otherwise.",
+            "x-go-type-skip-optional-pointer": true
           },
           "bucket": {
             "$ref": "#/components/schemas/TodoBucket"
@@ -29089,7 +28851,8 @@
             "items": {
               "$ref": "#/components/schemas/TimelineAttachment"
             },
-            "description": "Files attached to the event's recording, when it has any. Heterogeneous:\nan upload-kind recording contributes its full Upload shape, while other\nrecordings contribute rich-text attachment/blob partials. Modeled as an\noptional-field superset so a single element type decodes either variant;\nconsumers should treat the per-variant fields as present-or-absent."
+            "description": "Files attached to the event's recording, when it has any. Heterogeneous:\nan upload-kind recording contributes its full Upload shape, while other\nrecordings contribute rich-text attachment/blob partials. Modeled as an\noptional-field superset so a single element type decodes either variant;\nconsumers should treat the per-variant fields as present-or-absent.",
+            "x-go-type-skip-optional-pointer": true
           }
         }
       },
@@ -29109,8 +28872,7 @@
             "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "ends_at": {
             "type": [
@@ -29120,8 +28882,7 @@
             "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
         },
         "required": [
@@ -29135,8 +28896,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -29149,16 +28909,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -29221,8 +28979,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string",
@@ -29236,16 +28993,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -29309,7 +29064,6 @@
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true,
             "nullable": true
           },
           "due_on": {
@@ -29318,20 +29072,21 @@
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true,
             "nullable": true
           },
           "assignees": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "completion_subscribers": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Person"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "completion_url": {
             "type": "string"
@@ -29348,7 +29103,8 @@
             "items": {
               "$ref": "#/components/schemas/CardStep"
             },
-            "description": "Steps embedded in the Todo response (BC5 addition). The shared\n`steps/step` jbuilder partial emits the same shape as `CardStep`,\nso the existing `CardStepList` is reused."
+            "description": "Steps embedded in the Todo response (BC5 addition). The shared\n`steps/step` jbuilder partial emits the same shape as `CardStep`,\nso the existing `CardStepList` is reused.",
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -29374,8 +29130,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "name": {
             "type": "string"
@@ -29395,8 +29150,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "title": {
             "type": "string"
@@ -29424,8 +29178,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string",
@@ -29439,16 +29192,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -29554,8 +29305,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -29568,16 +29318,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -29692,8 +29440,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -29706,16 +29453,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -29815,8 +29560,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -29826,16 +29570,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -29955,8 +29697,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "assignee_ids": {
             "type": "array",
@@ -29981,8 +29722,7 @@
             "x-go-type": "types.Date",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "assignee_ids": {
             "type": "array",
@@ -30100,8 +29840,7 @@
           },
           "category_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           }
         }
       },
@@ -30241,13 +29980,11 @@
         "properties": {
           "notify_on_answer": {
             "type": "boolean",
-            "description": "Notify when someone answers",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Notify when someone answers"
           },
           "digest_include_unanswered": {
             "type": "boolean",
-            "description": "Include unanswered in digest",
-            "x-go-type-skip-optional-pointer": false
+            "description": "Include unanswered in digest"
           }
         }
       },
@@ -30272,8 +30009,7 @@
             "$ref": "#/components/schemas/QuestionSchedule"
           },
           "paused": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         }
       },
@@ -30291,16 +30027,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "ends_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "description": {
             "type": "string"
@@ -30314,12 +30048,10 @@
             "description": "Replaces the entry's participants.\n\nOmitting this member preserves the current participants; sending an empty\narray clears them. That guarantee is BC3-side and recent: until\nbasecamp/bc3#12425, `Schedules::EntriesController#update` called\n`replace_participants` unconditionally, so any update omitting the key —\nincluding the shape in BC3's own \"Update a schedule entry\" doc example —\nsilently removed every participant and notified each one. The controller\nnow guards on the request actually addressing participants."
           },
           "all_day": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           },
           "notify": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         }
       },
@@ -30390,8 +30122,7 @@
           },
           "person_id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           }
         }
       },
@@ -30466,8 +30197,7 @@
             }
           },
           "active": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
+            "type": "boolean"
           }
         }
       },
@@ -30480,8 +30210,7 @@
           "destination_recording_id": {
             "type": "integer",
             "description": "Id of the new destination column (on another accessible card table).",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           }
         },
         "required": [
@@ -30496,8 +30225,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -30510,16 +30238,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -30584,8 +30310,7 @@
             "x-go-type": "types.FlexInt",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "height": {
             "type": "integer",
@@ -30593,8 +30318,7 @@
             "x-go-type": "types.FlexInt",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "download_url": {
             "type": "string",
@@ -30647,8 +30371,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -30661,16 +30384,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
@@ -30745,8 +30466,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "active": {
             "type": "boolean"
@@ -30756,16 +30476,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "payload_url": {
             "type": "string"
@@ -30774,7 +30492,8 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "x-go-type-skip-optional-pointer": true
           },
           "url": {
             "type": "string"
@@ -30787,7 +30506,8 @@
             "items": {
               "$ref": "#/components/schemas/WebhookDelivery"
             },
-            "description": "Up to the 25 most recent delivery exchanges, most recent first.\nEmpty when the webhook hasn't delivered anything yet."
+            "description": "Up to the 25 most recent delivery exchanges, most recent first.\nEmpty when the webhook hasn't delivered anything yet.",
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [
@@ -30805,8 +30525,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "url": {
             "type": "string"
@@ -30824,8 +30543,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           }
         }
       },
@@ -30834,16 +30552,14 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "created_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "request": {
             "$ref": "#/components/schemas/WebhookDeliveryRequest"
@@ -30885,8 +30601,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "kind": {
             "type": "string"
@@ -30897,8 +30612,7 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "recording": {
             "$ref": "#/components/schemas/Recording"
@@ -30940,8 +30654,7 @@
         "properties": {
           "id": {
             "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "format": "int64"
           },
           "status": {
             "type": "string"
@@ -30954,16 +30667,14 @@
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "updated_at": {
             "type": "string",
             "x-go-type": "time.Time",
             "x-go-type-import": {
               "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "title": {
             "type": "string"
