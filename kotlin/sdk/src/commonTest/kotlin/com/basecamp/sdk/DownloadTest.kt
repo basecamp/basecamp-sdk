@@ -216,6 +216,43 @@ class DownloadTest {
     }
 
     @Test
+    fun downloadURL_fieldKeyed422MatchesServiceLayerParsing() = runTest {
+        val client = mockClient({ _ ->
+            respond(
+                content = ByteReadChannel(
+                    """{"error": "Validation failed", "errors": {"color": ["is not a valid color"]}}"""
+                ),
+                status = HttpStatusCode.UnprocessableEntity,
+                headers = headersOf(HttpHeaders.ContentType to listOf("application/json"))
+            )
+        })
+        val account = client.forAccount("12345")
+        val e = assertFailsWith<BasecampException.Validation> {
+            account.downloadURL("http://localhost:3000/12345/attachments/1/download/file.txt")
+        }
+        assertEquals("Validation failed (color: is not a valid color)", e.message)
+        assertEquals(mapOf("color" to listOf("is not a valid color")), e.fieldErrors)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_messageKeyFallback() = runTest {
+        val client = mockClient({ _ ->
+            respond(
+                content = ByteReadChannel("""{"message": "Try again later"}"""),
+                status = HttpStatusCode.NotFound,
+                headers = headersOf(HttpHeaders.ContentType to listOf("application/json"))
+            )
+        })
+        val account = client.forAccount("12345")
+        val e = assertFailsWith<BasecampException.NotFound> {
+            account.downloadURL("http://localhost:3000/12345/attachments/missing/download/file.txt")
+        }
+        assertEquals("Try again later", e.message)
+        client.close()
+    }
+
+    @Test
     fun downloadURL_api403() = runTest {
         val client = mockClient({ _ ->
             respond(

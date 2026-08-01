@@ -611,8 +611,11 @@ class ServiceGenerator
   def generate_method(op, service_name:)
     lines = []
 
-    # Method signature
-    params = build_params(op)
+    is_paginated = (op[:returns_array] || op[:has_pagination]) && !op[:pagination_key]
+    is_wrapped_paginated = op[:has_pagination] && op[:pagination_key]
+
+    # Method signature (paginated operations gain a trailing max_items: kwarg)
+    params = build_params(op, paginated: is_paginated || is_wrapped_paginated)
 
     # YARD documentation
     lines << "      # #{op[:description]}"
@@ -659,16 +662,18 @@ class ServiceGenerator
       lines << "      # @param #{ruby_name} [#{type}] #{desc}"
     end
 
-    # Add @return tag
-    is_paginated = (op[:returns_array] || op[:has_pagination]) && !op[:pagination_key]
-    is_wrapped_paginated = op[:has_pagination] && op[:pagination_key]
+    # Add @param tag for the pagination cap on paginated operations
+    if is_paginated || is_wrapped_paginated
+      lines << '      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap'
+    end
 
+    # Add @return tag
     if op[:returns_void]
       lines << '      # @return [void]'
     elsif is_wrapped_paginated
-      lines << '      # @return [Hash] response data'
+      lines << '      # @return [Hash] wrapper fields merged with a ListEnumerator of the paginated items'
     elsif is_paginated
-      lines << '      # @return [Enumerator<Hash>] paginated results'
+      lines << '      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)'
     elsif op[:returns_bare_array]
       # Unpaginated bare array (single request, no Link-following) — e.g. the
       # overdue todo/card feeds. Returns the parsed JSON array, not a Hash.
@@ -691,7 +696,8 @@ class ServiceGenerator
       body_lines.each { |l| lines << "  #{l}" }
       lines << '        end'
     elsif is_paginated
-      # wrap_paginated defers hooks to actual iteration time (lazy-safe)
+      # wrap_paginated fires the start hook eagerly (page 1 is fetched inside
+      # the block) and the end hook when iteration completes
       lines << "        wrap_paginated(#{hook_kwargs}) do"
       body_lines = generate_list_method_body(op, path_expr)
       body_lines.each { |l| lines << "  #{l}" }
@@ -729,7 +735,7 @@ class ServiceGenerator
     kwargs.join(', ')
   end
 
-  def build_params(op)
+  def build_params(op, paginated: false)
     params = []
 
     # Path parameters as keyword args
@@ -771,6 +777,9 @@ class ServiceGenerator
     optional_query_params.each do |q|
       params << "#{to_snake_case(q[:name])}: nil"
     end
+
+    # Client-side pagination cap, threaded into the base paginators
+    params << 'max_items: nil' if paginated
 
     params.join(', ')
   end
@@ -818,9 +827,9 @@ class ServiceGenerator
     if op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
       lines << "        params = compact_query_params(#{param_names.join(', ')})"
-      lines << "        paginate(#{path_expr}, params: params, operation: \"#{op[:operation_id]}\")"
+      lines << "        paginate(#{path_expr}, params: params, operation: \"#{op[:operation_id]}\", max_items: max_items)"
     else
-      lines << "        paginate(#{path_expr}, operation: \"#{op[:operation_id]}\")"
+      lines << "        paginate(#{path_expr}, operation: \"#{op[:operation_id]}\", max_items: max_items)"
     end
 
     lines
@@ -832,9 +841,11 @@ class ServiceGenerator
     if op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
       lines << "        params = compact_query_params(#{param_names.join(', ')})"
-      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", params: params, operation: \"#{op[:operation_id]}\")"
+      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", params: params, " \
+               "operation: \"#{op[:operation_id]}\", max_items: max_items)"
     else
-      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", operation: \"#{op[:operation_id]}\")"
+      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", " \
+               "operation: \"#{op[:operation_id]}\", max_items: max_items)"
     end
 
     lines

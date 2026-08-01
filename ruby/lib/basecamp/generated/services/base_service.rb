@@ -57,37 +57,52 @@ module Basecamp
         raise
       end
 
-      # Wraps a lazy Enumerator so operation hooks fire around actual iteration,
-      # not at enumerator creation time. Hooks fire when the consumer begins
-      # iterating (.each, .to_a, .first, etc.) and end fires via ensure when
-      # iteration completes, errors, or is cut short by break/take.
+      # Wraps a paginated operation with hooks, preserving the pagination
+      # metadata carried by the inner ListEnumerator.
+      # Fires on_operation_start eagerly (paginate fetches page 1 inside the
+      # yield, so the start hook must precede it); on_operation_end fires via
+      # ensure when the first traversal completes, errors, or is cut short by
+      # break/take — exactly once, so re-enumerating never emits an
+      # on_operation_end without a matching start.
       def wrap_paginated(service:, operation:, is_mutation: false, project_id: nil, resource_id: nil)
         info = OperationInfo.new(
           service: service, operation: operation,
           is_mutation: is_mutation, project_id: project_id, resource_id: resource_id
         )
-        enum = yield
-
         hooks = @hooks
-        Enumerator.new do |yielder|
-          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        safe_hook { hooks.on_operation_start(info) }
+
+        begin
+          enum = yield  # paginate fetches page 1 here
+        rescue => e
+          duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+          safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: e)) }
+          raise
+        end
+
+        ended = false
+        ListEnumerator.new(enum.meta) do |yielder|
           error = nil
           begin
-            safe_hook { hooks.on_operation_start(info) }
             enum.each { |item| yielder.yield(item) }
           rescue => e
             error = e
             raise
           ensure
-            duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
-            safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+            unless ended
+              ended = true
+              duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+              safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+            end
           end
         end
       end
 
       # Wraps a wrapped-paginated operation with hooks.
-      # Fires on_operation_start eagerly (before page 1 fetch),
-      # on_operation_end when the events Enumerator completes/errors/breaks.
+      # Fires on_operation_start eagerly (before page 1 fetch), and
+      # on_operation_end exactly once, when the first traversal of the events
+      # Enumerator completes/errors/breaks.
       def wrap_paginated_wrapped(key:, service:, operation:, is_mutation: false, project_id: nil, resource_id: nil)
         info = OperationInfo.new(
           service: service, operation: operation,
@@ -106,7 +121,8 @@ module Basecamp
         end
 
         inner_enum = result[key]
-        wrapped_enum = Enumerator.new do |yielder|
+        ended = false
+        wrapped_enum = ListEnumerator.new(inner_enum.meta) do |yielder|
           error = nil
           begin
             inner_enum.each { |item| yielder.yield(item) }
@@ -114,8 +130,13 @@ module Basecamp
             error = e
             raise
           ensure
-            duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
-            safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+            # Exactly once: on_operation_start fired once at call time, so
+            # re-enumerating must not emit unmatched on_operation_end events.
+            unless ended
+              ended = true
+              duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+              safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+            end
           end
         end
 

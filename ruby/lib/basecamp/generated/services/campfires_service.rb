@@ -10,10 +10,11 @@ module Basecamp
     class CampfiresService < BaseService
 
       # List all campfires across the account
-      # @return [Enumerator<Hash>] paginated results
-      def list()
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(max_items: nil)
         wrap_paginated(service: "campfires", operation: "list", is_mutation: false) do
-          paginate("/chats.json", operation: "ListCampfires")
+          paginate("/chats.json", operation: "ListCampfires", max_items: max_items)
         end
       end
 
@@ -28,10 +29,11 @@ module Basecamp
 
       # List all chatbots for a campfire
       # @param campfire_id [Integer] campfire id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list_chatbots(campfire_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_chatbots(campfire_id:, max_items: nil)
         wrap_paginated(service: "campfires", operation: "list_chatbots", is_mutation: false, resource_id: campfire_id) do
-          paginate("/chats/#{campfire_id}/integrations.json", operation: "ListChatbots")
+          paginate("/chats/#{campfire_id}/integrations.json", operation: "ListChatbots", max_items: max_items)
         end
       end
 
@@ -83,11 +85,12 @@ module Basecamp
       # @param campfire_id [Integer] campfire id ID
       # @param sort [String, nil] created_at|updated_at
       # @param direction [String, nil] asc|desc
-      # @return [Enumerator<Hash>] paginated results
-      def list_lines(campfire_id:, sort: nil, direction: nil)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_lines(campfire_id:, sort: nil, direction: nil, max_items: nil)
         wrap_paginated(service: "campfires", operation: "list_lines", is_mutation: false, resource_id: campfire_id) do
           params = compact_query_params(sort: sort, direction: direction)
-          paginate("/chats/#{campfire_id}/lines.json", params: params, operation: "ListCampfireLines")
+          paginate("/chats/#{campfire_id}/lines.json", params: params, operation: "ListCampfireLines", max_items: max_items)
         end
       end
 
@@ -139,11 +142,12 @@ module Basecamp
       # @param campfire_id [Integer] campfire id ID
       # @param sort [String, nil] created_at|updated_at
       # @param direction [String, nil] asc|desc
-      # @return [Enumerator<Hash>] paginated results
-      def list_uploads(campfire_id:, sort: nil, direction: nil)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_uploads(campfire_id:, sort: nil, direction: nil, max_items: nil)
         wrap_paginated(service: "campfires", operation: "list_uploads", is_mutation: false, resource_id: campfire_id) do
           params = compact_query_params(sort: sort, direction: direction)
-          paginate("/chats/#{campfire_id}/uploads.json", params: params, operation: "ListCampfireUploads")
+          paginate("/chats/#{campfire_id}/uploads.json", params: params, operation: "ListCampfireUploads", max_items: max_items)
         end
       end
 

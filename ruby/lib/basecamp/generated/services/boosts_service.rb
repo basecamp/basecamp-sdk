@@ -28,10 +28,11 @@ module Basecamp
 
       # List boosts on a recording
       # @param recording_id [Integer] recording id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list_recording_boosts(recording_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_recording_boosts(recording_id:, max_items: nil)
         wrap_paginated(service: "boosts", operation: "list_recording_boosts", is_mutation: false, resource_id: recording_id) do
-          paginate("/recordings/#{recording_id}/boosts.json", operation: "ListRecordingBoosts")
+          paginate("/recordings/#{recording_id}/boosts.json", operation: "ListRecordingBoosts", max_items: max_items)
         end
       end
 
@@ -48,10 +49,11 @@ module Basecamp
       # List boosts on a specific event within a recording
       # @param recording_id [Integer] recording id ID
       # @param event_id [Integer] event id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list_event_boosts(recording_id:, event_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_event_boosts(recording_id:, event_id:, max_items: nil)
         wrap_paginated(service: "boosts", operation: "list_event_boosts", is_mutation: false, resource_id: event_id) do
-          paginate("/recordings/#{recording_id}/events/#{event_id}/boosts.json", operation: "ListEventBoosts")
+          paginate("/recordings/#{recording_id}/events/#{event_id}/boosts.json", operation: "ListEventBoosts", max_items: max_items)
         end
       end
 

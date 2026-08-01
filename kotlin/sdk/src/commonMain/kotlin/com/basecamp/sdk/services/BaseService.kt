@@ -10,8 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import com.basecamp.sdk.serialization.normalizePersonIds
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Abstract base class for all Basecamp API services.
@@ -483,33 +482,26 @@ abstract class BaseService(
         }
     }
 
-    /** Converts an HTTP error response to a [BasecampException]. */
+    /**
+     * Converts an HTTP error response to a [BasecampException] via the shared
+     * SPEC §6 parser ([exceptionFromErrorBody]) used by every SDK surface.
+     */
     private suspend fun errorFromResponse(response: HttpResponse): BasecampException {
-        val status = response.status.value
-        val requestId = response.headers["X-Request-Id"]
-        val retryAfter = parseRetryAfter(response.headers["Retry-After"])
-
-        var message: String = response.status.description.ifEmpty { "Request failed" }
-        var hint: String? = null
-
-        try {
-            val bodyText = normalizePersonIds(response.bodyAsText(), json)
-            if (bodyText.isNotBlank()) {
-                val jsonBody = json.parseToJsonElement(bodyText)
-                if (jsonBody is JsonObject) {
-                    jsonBody["error"]?.jsonPrimitive?.content?.let {
-                        message = BasecampException.truncateMessage(it)
-                    }
-                    jsonBody["error_description"]?.jsonPrimitive?.content?.let {
-                        hint = BasecampException.truncateMessage(it)
-                    }
-                }
-            }
+        val bodyText = try {
+            normalizePersonIds(response.bodyAsText(), json)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
-            // Body is not JSON or empty — use status text
+            null
         }
-
-        return BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter)
+        return exceptionFromErrorBody(
+            status = response.status.value,
+            statusDescription = response.status.description,
+            bodyText = bodyText,
+            requestId = response.headers["X-Request-Id"],
+            retryAfter = parseRetryAfter(response.headers["Retry-After"]),
+            json = json,
+        )
     }
 
     companion object {

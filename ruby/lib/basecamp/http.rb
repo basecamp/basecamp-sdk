@@ -170,97 +170,33 @@ module Basecamp
     end
 
     # Fetches all pages of a paginated resource.
+    # The first page is fetched eagerly, so pagination metadata (and any
+    # page-1 error) surfaces at call time; later pages are fetched lazily
+    # as enumeration demands them.
     # @param path [String] initial URL path
     # @param params [Hash] query parameters
+    # @param max_items [Integer, nil] cap on items yielded across pages;
+    #   nil or non-positive means no cap
     # @yield [Hash] each item from the response
-    # @return [Enumerator] if no block given
-    def paginate(path, params: {}, operation: nil, &block)
-      return to_enum(:paginate, path, params: params, operation: operation) unless block
-
-      base_url = build_url(path)
-      url = base_url
-      page = 0
-
-      loop do
-        page += 1
-        break if page > @config.max_pages
-
-        @hooks.on_paginate(url, page)
-        response = get(url, params: page == 1 ? params : {}, operation: operation)
-
-        Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
-
-        begin
-          items = JSON.parse(response.body)
-          Http.normalize_person_ids(items)
-        rescue JSON::ParserError => e
-          raise Basecamp::ApiError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
-        end
-        items.each(&block)
-
-        next_url = parse_next_link(response.headers["Link"])
-        break if next_url.nil?
-
-        next_url = Security.resolve_url(url, next_url)
-
-        unless Security.same_origin?(next_url, base_url)
-          raise Basecamp::ApiError.new(
-            "Pagination Link header points to different origin: #{Security.truncate(next_url)}"
-          )
-        end
-
-        url = next_url
-      end
+    # @return [ListEnumerator] metadata-carrying lazy enumerator
+    def paginate(path, params: {}, operation: nil, max_items: nil, &block)
+      enum = paginated_enumerator(path, params: params, operation: operation, max_items: max_items)
+      block ? enum.each(&block) : enum
     end
 
     # Fetches all pages of a paginated resource, extracting items from a key.
     # Use this for endpoints that return objects like { "events": [...] }.
+    # The first page is fetched eagerly; later pages are fetched lazily.
     # @param path [String] initial URL path
     # @param key [String] the key containing the array of items
     # @param params [Hash] query parameters
+    # @param max_items [Integer, nil] cap on items yielded across pages;
+    #   nil or non-positive means no cap
     # @yield [Hash] each item from the response
-    # @return [Enumerator] if no block given
-    def paginate_key(path, key:, params: {}, operation: nil, &block)
-      return to_enum(:paginate_key, path, key: key, params: params, operation: operation) unless block
-
-      base_url = build_url(path)
-      url = base_url
-      page = 0
-
-      loop do
-        page += 1
-        break if page > @config.max_pages
-
-        @hooks.on_paginate(url, page)
-        response = get(url, params: page == 1 ? params : {}, operation: operation)
-
-        Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
-
-        begin
-          data = JSON.parse(response.body)
-          Http.normalize_person_ids(data)
-        rescue JSON::ParserError => e
-          raise Basecamp::ApiError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
-        end
-        unless data.key?(key)
-          warn "[Basecamp SDK] paginate_key: expected key '#{key}' not found in response (page #{page})"
-        end
-        items = data[key] || []
-        items.each(&block)
-
-        next_url = parse_next_link(response.headers["Link"])
-        break if next_url.nil?
-
-        next_url = Security.resolve_url(url, next_url)
-
-        unless Security.same_origin?(next_url, base_url)
-          raise Basecamp::ApiError.new(
-            "Pagination Link header points to different origin: #{Security.truncate(next_url)}"
-          )
-        end
-
-        url = next_url
-      end
+    # @return [ListEnumerator] metadata-carrying lazy enumerator
+    def paginate_key(path, key:, params: {}, operation: nil, max_items: nil, &block)
+      enum = paginated_enumerator(path, key: key, params: params, operation: operation, max_items: max_items)
+      block ? enum.each(&block) : enum
     end
 
     # Fetches a wrapped paginated resource, returning wrapper fields + lazy paginated items.
@@ -268,70 +204,134 @@ module Basecamp
     # @param path [String] initial URL path
     # @param key [String] the key containing the array of paginated items
     # @param params [Hash] query parameters
-    # @return [Hash] wrapper fields merged with key => Enumerator of all items
-    def paginate_wrapped(path, key:, params: {}, operation: nil)
-      base_url = build_url(path)
-
-      @hooks.on_paginate(base_url, 1)
-      first_response = get(base_url, params: params, operation: operation)
-      Security.check_body_size!(first_response.body, Security::MAX_RESPONSE_BODY_BYTES)
-
-      begin
-        first_data = JSON.parse(first_response.body)
-        Http.normalize_person_ids(first_data)
-      rescue JSON::ParserError => e
-        raise Basecamp::ApiError.new(
-          "Failed to parse paginated response (page 1): #{Security.truncate(e.message)}"
-        )
+    # @param max_items [Integer, nil] cap on items yielded across pages;
+    #   nil or non-positive means no cap
+    # @return [Hash] wrapper fields merged with key => ListEnumerator of all items
+    def paginate_wrapped(path, key:, params: {}, operation: nil, max_items: nil)
+      wrapper = nil
+      events = paginated_enumerator(path, key: key, params: params, operation: operation, \
+        max_items: max_items) do |first_data|
+        wrapper = first_data.reject { |k, _| k == key }
       end
-
-      wrapper = first_data.reject { |k, _| k == key }
-      first_items = first_data[key] || []
-
-      events = Enumerator.new do |yielder|
-        first_items.each { |item| yielder << item }
-
-        next_link = parse_next_link(first_response.headers["Link"])
-        url = base_url
-        page = 1
-
-        while next_link && page < @config.max_pages
-          page += 1
-          next_url = Security.resolve_url(url, next_link)
-
-          unless Security.same_origin?(next_url, base_url)
-            raise Basecamp::ApiError.new(
-              "Pagination Link header points to different origin: " \
-              "#{Security.truncate(next_url)}"
-            )
-          end
-
-          @hooks.on_paginate(next_url, page)
-          response = get(next_url, operation: operation)
-          Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
-
-          begin
-            data = JSON.parse(response.body)
-            Http.normalize_person_ids(data)
-          rescue JSON::ParserError => e
-            raise Basecamp::ApiError.new(
-              "Failed to parse paginated response (page #{page}): " \
-              "#{Security.truncate(e.message)}"
-            )
-          end
-
-          items = data[key] || []
-          items.each { |item| yielder << item }
-
-          next_link = parse_next_link(response.headers["Link"])
-          url = next_url
-        end
-      end
-
       wrapper.merge(key => events)
     end
 
     private
+
+    # Shared paginator core behind paginate/paginate_key/paginate_wrapped.
+    # Eagerly fetches page 1 (so ListMeta#total_count is available
+    # immediately), then returns a ListEnumerator that yields the captured
+    # first page and follows Link headers lazily. When key is nil each page
+    # body is a bare item array; otherwise items live under key. Yields the
+    # parsed first-page body when a block is given (paginate_wrapped uses it
+    # to capture the wrapper fields).
+    #
+    # meta.truncated is finalized during enumeration: set when max_items
+    # drops items or leaves a next Link unfetched, or when the max_pages
+    # safety cap stops with a next Link still present. A cap landing exactly
+    # on the final item of the last page is not truncation.
+    #
+    # Re-enumerating restarts pagination from the base URL: the eagerly
+    # fetched first page is served from memory on the first pass only, and
+    # later passes refetch every page, so each pass is a consistent
+    # snapshot rather than a hybrid of captured and current data.
+    def paginated_enumerator(path, params:, operation:, max_items:, key: nil)
+      max_items = nil if max_items && max_items <= 0
+      base_url = build_url(path)
+
+      @hooks.on_paginate(base_url, 1)
+      first_response = get(base_url, params: params, operation: operation)
+      first_data = parse_page(first_response, page: 1)
+      yield first_data if block_given?
+      first_items = extract_page_items(first_data, key: key, page: 1)
+
+      meta = ListMeta.new(total_count: parse_total_count(first_response.headers))
+      first_pass = true
+
+      ListEnumerator.new(meta) do |yielder|
+        if first_pass
+          first_pass = false
+          response = first_response
+          items = first_items
+        else
+          @hooks.on_paginate(base_url, 1)
+          response = get(base_url, params: params, operation: operation)
+          items = extract_page_items(parse_page(response, page: 1), key: key, page: 1)
+          meta.restart!(total_count: parse_total_count(response.headers))
+        end
+
+        yielded = 0
+        page = 1
+        url = base_url
+
+        loop do
+          next_link = parse_next_link(response.headers["Link"])
+
+          capped = false
+          items.each_with_index do |item, index|
+            yielded += 1
+            capped = max_items && yielded >= max_items
+            # Truncation is recorded before the capping yield: consumers like
+            # first/take cancel the producer at that yield, and the metadata
+            # must already be accurate once the capped item is delivered.
+            meta.mark_truncated! if capped && (index < items.size - 1 || next_link)
+            yielder << item
+            break if capped
+          end
+          break if capped
+          break if next_link.nil?
+
+          next_url = Security.resolve_url(url, next_link)
+          unless Security.same_origin?(next_url, base_url)
+            raise Basecamp::ApiError.new(
+              "Pagination Link header points to different origin: #{Security.truncate(next_url)}"
+            )
+          end
+
+          if page >= @config.max_pages
+            meta.mark_truncated!
+            break
+          end
+
+          page += 1
+          @hooks.on_paginate(next_url, page)
+          response = get(next_url, operation: operation)
+          items = extract_page_items(parse_page(response, page: page), key: key, page: page)
+          url = next_url
+        end
+      end
+    end
+
+    # Parses a pagination page body: size check, JSON parse, and person-ID
+    # normalization, with page-numbered error context.
+    def parse_page(response, page:)
+      Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
+      data = JSON.parse(response.body)
+      Http.normalize_person_ids(data)
+      data
+    rescue JSON::ParserError => e
+      raise Basecamp::ApiError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
+    end
+
+    # Extracts the item array from a parsed page body: the body itself for
+    # bare-array pagination, or the named key's array otherwise.
+    def extract_page_items(data, key:, page:)
+      if key.nil?
+        data
+      else
+        unless data.key?(key)
+          warn "[Basecamp SDK] paginate: expected key '#{key}' not found in response (page #{page})"
+        end
+        data[key] || []
+      end
+    end
+
+    # Parses the X-Total-Count header, returning 0 when absent or malformed.
+    def parse_total_count(headers)
+      Integer(headers["X-Total-Count"] || headers["x-total-count"], 10)
+    rescue ArgumentError, TypeError
+      0
+    end
 
     def build_faraday_client
       Faraday.new(url: @config.base_url) do |f|
@@ -527,8 +527,11 @@ module Basecamp
       when 429
         Basecamp::RateLimitError.new(retry_after: retry_after)
       when 400, 422
-        message = Security.truncate(Basecamp.parse_error_message(body) || "Validation failed")
-        Basecamp::ValidationError.new(message, http_status: status)
+        field_errors = Basecamp.parse_field_errors(body)
+        message = Security.truncate(
+          Basecamp.compose_validation_message(Basecamp.parse_error_message(body), field_errors) || "Validation failed"
+        )
+        Basecamp::ValidationError.new(message, http_status: status, field_errors: field_errors)
       when 500
         Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true)
       when 502, 503, 504

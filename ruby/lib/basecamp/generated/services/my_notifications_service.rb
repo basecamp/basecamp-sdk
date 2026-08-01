@@ -22,11 +22,12 @@ module Basecamp
 
       # Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
       # @param page [Integer, nil] Page number. Defaults to 1.
-      # @return [Enumerator<Hash>] paginated results
-      def get_bubble_ups(page: nil)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def get_bubble_ups(page: nil, max_items: nil)
         wrap_paginated(service: "mynotifications", operation: "get_bubble_ups", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/my/readings/bubble_ups.json", params: params, operation: "GetBubbleUps")
+          paginate("/my/readings/bubble_ups.json", params: params, operation: "GetBubbleUps", max_items: max_items)
         end
       end
 

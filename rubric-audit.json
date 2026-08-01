@@ -84,9 +84,7 @@
     },
     "2C.2": {
       "pass": true,
-      "waiver": true,
-      "note": "Ruby paginate returns Enumerator yielding items; X-Total-Count not exposed as metadata",
-      "language": "ruby"
+      "note": "All six SDKs expose the X-Total-Count header as pagination metadata. A prior Ruby waiver ('paginate returns Enumerator yielding items; X-Total-Count not exposed') is obsolete: Ruby's paginators now return a ListEnumerator carrying ListMeta, with the first page fetched eagerly so meta.total_count (0 when the header is absent) is available at call time, and the Ruby runner passes the totalCount conformance cases un-skipped."
     },
     "1B.6": {
       "pass": true,
@@ -96,15 +94,11 @@
     },
     "2C.4": {
       "pass": true,
-      "waiver": true,
-      "note": "Ruby paginate returns lazy Enumerator; maxItems cap requires ListResult refactor (separate PR)",
-      "language": "ruby"
+      "note": "All six SDKs support a client-side item cap on auto-pagination. A prior Ruby waiver ('lazy Enumerator; maxItems cap requires ListResult refactor') is obsolete: every generated Ruby list method now accepts max_items (non-positive values disable the cap, matching the other SDKs), enumeration stops at the cap without fetching further pages, and the Ruby runner passes both maxItems conformance cases un-skipped."
     },
     "2C.6": {
       "pass": true,
-      "waiver": true,
-      "note": "Ruby paginate Enumerator does not expose truncation metadata; requires ListResult refactor (separate PR)",
-      "language": "ruby"
+      "note": "All six SDKs expose truncation metadata with the shared contract (truncated only when items were dropped or a next Link was left unfetched; an exact-boundary cap is not truncation). A prior Ruby waiver ('Enumerator does not expose truncation metadata') is obsolete: Ruby's ListEnumerator carries meta.truncated, finalized once the lazy enumeration completes, and the Ruby runner consumes-then-asserts the truncated conformance cases un-skipped."
     }
   }
 }

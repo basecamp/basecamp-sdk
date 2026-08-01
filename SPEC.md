@@ -327,7 +327,7 @@ Conformance: `conformance/tests/todos_write.json` (`update-merge`, `edit-clear`,
 
 - Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`
 - TypeScript flattens both tiers onto a single client object (no separate AccountClient exposed to consumers) — a valid language adaptation
-- Ruby returns lazy `Enumerator` for pagination rather than `ListResult`
+- Ruby returns a lazy `ListEnumerator` (an `Enumerator` subclass carrying `ListMeta`) for pagination rather than an eager `ListResult`; the first page is fetched eagerly so `meta.total_count` is available at call time, while `meta.truncated` is final only once enumeration completes
 
 ---
 
@@ -400,6 +400,23 @@ In all cases, extract `request_id` from `X-Request-Id` response header if presen
 6. Truncate `message` to `MAX_ERROR_MESSAGE_LENGTH` (see §9).
 
 Note: `"error"` takes precedence over `"message"` — step 4 is a fallback for APIs that use `"message"` instead of `"error"`.
+
+### Field-Keyed Validation Bodies (400/422) `[conformance]`
+
+BC5 controllers that render Rails `RecordInvalid` emit a field-keyed 422 body instead of the flat `{"error": ...}` shape (e.g. `UpdateCalendar` rejecting an unknown color):
+
+```json
+{"errors": {"color": ["is not a valid color"]}}
+```
+
+For `status == 400` or `status == 422` only:
+
+1. If the parsed JSON body has an `"errors"` key whose value is an object, build `field_errors`: for each entry whose value is an array, keep its string elements; skip entries whose value is not an array and entries with no usable messages. If no entries remain, treat the map as absent. The map is parsed independently of the scalar members: a non-string `"error"` or `"error_description"` value (ignored per the Error Body Parsing Algorithm's string-value requirement) must not prevent field-error extraction — `{"error": {}, "errors": {...}}` still yields the flattened message and the structured slot.
+2. Flatten `field_errors` into a single string: fields sorted lexicographically, each rendered as `{field}: {msg1}; {msg2}` (a field's messages joined with `"; "`), fields joined with `", "`. This shape is shared by all six SDKs — change it everywhere or nowhere.
+3. Compose the error message: appended in parentheses after the top-level message when both are present (`{message} ({flattened})`), standing alone when only `errors` is present. The top-level message comes from the Error Body Parsing Algorithm above — including its `"message"`-key fallback, so `{"message": "Validation failed", "errors": {...}}` composes just like the `"error"`-keyed shape. Truncation to `MAX_ERROR_MESSAGE_LENGTH` (§9) applies to the composed result — after flattening — so the appended tail is capped too.
+4. Expose the raw map as a structured slot on the validation error (idiomatic spelling per language: `FieldErrors` / `fieldErrors` / `field_errors`), preserving the raw, untruncated per-field messages. The slot is `nil`/`null`/`None`/`undefined` for every other error shape, including non-validation statuses whose bodies happen to carry an `errors` key.
+
+Swift deviation `[static]`: Swift flattens into `message` only. Extending the `.validation` associated values is source-breaking for every `case .validation` match, so the structured slot awaits a deliberate break.
 
 ### Retry-After Parsing Algorithm
 
@@ -1657,11 +1674,6 @@ logic is covered by `TestIsSameOrigin` unit tests:
 - "PrioritizeAssignment POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "DeprioritizeAssignment DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "Network error on an idempotent POST is retried then succeeds" — GET-only network retry (waiver 2B.3).
-- "Total count header is accessible" — Enumerator exposes no totalCount metadata (waiver 2C.2).
-- "Missing X-Total-Count returns zero" — Enumerator exposes no totalCount metadata (waiver 2C.2).
-- "Pagination stops at maxPages safety cap" — cap is enforced, but truncation metadata is inexpressible (waiver 2C.6).
-- "maxItems caps results across pages" — no `max_items` support (waiver 2C.4).
-- "maxItems landing exactly on the final item is not truncated" — no `max_items` support (waiver 2C.4).
 - "DownloadURL retries on 503 at the auth'd first hop" — download path uses `get_no_retry`; hop-1 retry not implemented (unwaivered).
 - "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
 
@@ -1981,7 +1993,7 @@ See the Gate 3 consumption table in §7 above.
 | Swift | `ListResult<T>` | yes | yes |
 | Go | Typed `*XxxListResult` with `Meta ListMeta` | yes | yes |
 | Python | `ListResult(list)` with `meta ListMeta` | yes | yes |
-| Ruby | Lazy `Enumerator` yielding items | no (waiver 2C.2) | no (waiver 2C.6) |
+| Ruby | Lazy `ListEnumerator` (Enumerator subclass) with `meta ListMeta` | yes | yes (final after enumeration completes) |
 
 ### Error Message Truncation Unit (§9)
 

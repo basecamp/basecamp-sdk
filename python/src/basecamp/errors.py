@@ -115,21 +115,77 @@ class AmbiguousError(BasecampError):
 
 
 class ValidationError(BasecampError):
-    def __init__(self, message: str = "Validation failed", **kwargs: Any):
+    def __init__(
+        self,
+        message: str = "Validation failed",
+        *,
+        field_errors: dict[str, list[str]] | None = None,
+        **kwargs: Any,
+    ):
         super().__init__(message, code=ErrorCode.VALIDATION, **kwargs)
+        #: Field-keyed validation messages from a 422 body of the form
+        #: ``{"errors": {"field": ["msg", ...]}}`` — the Rails RecordInvalid
+        #: rendering. ``None`` for every other error shape. The flattened form
+        #: is also folded into the message; this slot preserves the raw,
+        #: untruncated per-field messages.
+        self.field_errors = field_errors
 
 
 def parse_error_message(body: str | bytes | None) -> str | None:
-    """Extract error message from response body."""
+    """Extract error message from response body.
+
+    A key is used only when its value is a string (SPEC section 6), so a
+    malformed scalar member cannot leak a non-string into the message or
+    prevent field-keyed extraction.
+    """
     if not body:
         return None
     try:
         data = json.loads(body)
-        if isinstance(data, dict):
-            return data.get("error") or data.get("message")
     except (json.JSONDecodeError, TypeError):
-        pass
+        return None
+    if not isinstance(data, dict):
+        return None
+    for key in ("error", "message"):
+        if isinstance(data.get(key), str) and data[key]:
+            return data[key]
     return None
+
+
+def parse_field_errors(body: str | bytes | None) -> dict[str, list[str]] | None:
+    """Extract the field-keyed validation errors map from a response body.
+
+    Recognizes the Rails RecordInvalid rendering
+    ``{"errors": {"field": ["msg", ...]}}``. Entries whose value is not a list
+    are skipped, non-string elements are dropped, and a map with no usable
+    entries is treated as absent (``None``).
+    """
+    if not body:
+        return None
+    try:
+        data = json.loads(body)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(data, dict) or not isinstance(data.get("errors"), dict):
+        return None
+    field_errors: dict[str, list[str]] = {}
+    for field, values in data["errors"].items():
+        if not isinstance(values, list):
+            continue
+        messages = [m for m in values if isinstance(m, str)]
+        if messages:
+            field_errors[str(field)] = messages
+    return field_errors or None
+
+
+def _flatten_field_errors(field_errors: dict[str, list[str]]) -> str:
+    """Render a field-keyed errors map as "field: msg1; msg2, other: msg".
+
+    Fields sorted lexicographically, a field's messages joined with "; ",
+    fields joined with ", ". This shape is shared by all six SDKs; change it
+    everywhere or nowhere.
+    """
+    return ", ".join(f"{field}: {'; '.join(field_errors[field])}" for field in sorted(field_errors))
 
 
 def error_from_response(status: int, body: str | bytes | None, headers: dict[str, str] | None = None) -> BasecampError:
@@ -149,7 +205,13 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
     elif status == 429:
         err = RateLimitError(_truncate(message or "Rate limited"), retry_after=retry_after, http_status=429)
     elif status in (400, 422):
-        err = ValidationError(_truncate(message or "Validation failed"), http_status=status)
+        field_errors = parse_field_errors(body)
+        if field_errors:
+            flat = _flatten_field_errors(field_errors)
+            # Appended in parentheses after a top-level message, standing alone
+            # otherwise; truncated after flattening so the tail is capped too.
+            message = f"{message} ({flat})" if message else flat
+        err = ValidationError(_truncate(message or "Validation failed"), http_status=status, field_errors=field_errors)
     elif status == 500:
         err = ApiError("Server error (500)", retryable=True, http_status=500)
     elif status in (502, 503, 504):

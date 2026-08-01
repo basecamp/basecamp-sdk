@@ -28,10 +28,11 @@ module Basecamp
 
       # List comments on a recording
       # @param recording_id [Integer] recording id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list(recording_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(recording_id:, max_items: nil)
         wrap_paginated(service: "comments", operation: "list", is_mutation: false, resource_id: recording_id) do
-          paginate("/recordings/#{recording_id}/comments.json", operation: "ListComments")
+          paginate("/recordings/#{recording_id}/comments.json", operation: "ListComments", max_items: max_items)
         end
       end
 

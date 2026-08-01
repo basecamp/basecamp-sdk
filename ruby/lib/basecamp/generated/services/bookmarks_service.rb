@@ -9,11 +9,12 @@ module Basecamp
 
       # List the current user's bookmarks, most recently bookmarked first (paginated).
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
-      # @return [Enumerator<Hash>] paginated results
-      def list_my_bookmarks(page: nil)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_my_bookmarks(page: nil, max_items: nil)
         wrap_paginated(service: "bookmarks", operation: "list_my_bookmarks", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/my/bookmarks.json", params: params, operation: "ListMyBookmarks")
+          paginate("/my/bookmarks.json", params: params, operation: "ListMyBookmarks", max_items: max_items)
         end
       end
 
