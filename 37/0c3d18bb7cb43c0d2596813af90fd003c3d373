@@ -1,0 +1,37 @@
+SPEC.md
+  s_555508c40a7b3b::t_06587f66dcb431 681-686
+spec/basecamp.smithy
+  s_555508c40a7b3b::t_db81a5d95da24a 9740-9742
+go/pkg/generated/client.gen.go
+  s_555508c40a7b3b::t_5cd1b43a5a228a 3701-3703
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_555508c40a7b3b::t_ee7f2b4eb417ed 701
+openapi.json
+  s_555508c40a7b3b::t_42778d650347d7 11718,11721
+ruby/lib/basecamp/generated/services/my_notifications_service.rb
+  s_555508c40a7b3b::t_5383f972d81c60 11-13
+swift/Sources/Basecamp/Generated/Services/MyNotificationsService.swift
+  s_555508c40a7b3b::t_1c35906f94ef88 16
+typescript/src/generated/openapi-stripped.json
+  s_555508c40a7b3b::t_2bc0965420336e 10447,10450
+typescript/src/generated/schema.d.ts
+  s_555508c40a7b3b::t_2d2e0ae11f6a14 13224-13228
+typescript/src/generated/services/my-notifications.ts
+  s_555508c40a7b3b::t_3c6cbe87a6b11d 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "370c3d18bb7cb43c0d2596813af90fd003c3d373",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
