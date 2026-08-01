@@ -1,6 +1,7 @@
 import { TodolistsService as GeneratedTodolistsService } from "../generated/services/todolists.js";
 import type { Todolist } from "../generated/services/todolists.js";
 import type { components } from "../generated/schema.js";
+import { Errors } from "../errors.js";
 
 /**
  * The response shape the generated `get` and `replace` are typed with — both
@@ -26,6 +27,37 @@ function unwrapTodolist(response: TodolistOrGroup): Todolist {
   // (`name`); anything else is the flat recordable the API really sends.
   const flat: unknown = "group" in response ? response.group : response;
   return flat as Todolist;
+}
+
+/**
+ * Reads a writable string field off a fetched todolist, refusing to pass a
+ * malformed one through.
+ *
+ * An absent field or an explicit `null`/`undefined` is genuinely empty — there
+ * is nothing to preserve, and `""` is what the server already holds. Anything
+ * else that is not a string is a malformed response and must not be forwarded:
+ * `?? ""` only coalesces null and undefined, so a number, boolean, array or
+ * object would ride through **verbatim** into the full-replace PUT and
+ * overwrite the real value with a corrupted one.
+ *
+ * The type annotation on the GET result is a compile-time claim about runtime
+ * data that nothing validates — `schema.d.ts` is erased at build time, so
+ * TypeScript has no decoder that rejects a wrong-typed field the way Go's
+ * `json.Unmarshal`, Swift's `Codable`, or kotlinx.serialization do. That puts
+ * this composite in the same position as the Python and Ruby ones: the check
+ * has to be explicit here. The shipped Todos and Cards analogues are #576.
+ */
+function writableString(todolist: Todolist, key: "name" | "description"): string {
+  const value: unknown = todolist[key];
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") {
+    throw Errors.usage(
+      `todolist ${key} is not a string: ${JSON.stringify(value)}`,
+      "The merge-safe update/edit resend this field verbatim, so a malformed value would " +
+        "overwrite the current one. Use replace() to write the record deliberately."
+    );
+  }
+  return value;
 }
 
 /**
@@ -132,8 +164,8 @@ export class TodolistsService extends GeneratedTodolistsService {
   private async currentFields(id: number): Promise<TodolistFields> {
     const current = unwrapTodolist(await this.get(id));
     return {
-      name: current.name ?? "",
-      description: current.description ?? "",
+      name: writableString(current, "name"),
+      description: writableString(current, "description"),
     };
   }
 

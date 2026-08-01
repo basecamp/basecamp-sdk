@@ -145,6 +145,95 @@ describe("TodolistsService", () => {
     ...overrides,
   });
 
+  // A malformed writable field must abort before the PUT, never be forwarded.
+  //
+  // `?? ""` coalesces only null and undefined, so it rules out *erasure* while
+  // leaving *corruption* wide open: a number, boolean, array or object rides
+  // through verbatim into the full-replace PUT and overwrites the real value.
+  // TypeScript has no runtime decoder to catch this — `schema.d.ts` is erased
+  // at build time, so the GET's type is a compile-time claim nothing checks.
+  // That places this composite with Python and Ruby, not with Go and Swift.
+  // Shipped Todos/Cards analogues: #576.
+  describe("malformed writable fields", () => {
+    const malformed: [string, unknown][] = [
+      ["false", false],
+      ["zero", 0],
+      ["empty array", []],
+      ["empty object", {}],
+      ["number", 42],
+      ["true", true],
+      ["array", ["x"]],
+      ["object", { a: 1 }],
+    ];
+
+    it.each(malformed)("update refuses a %s description before writing", async (_label, value) => {
+      const id = 42;
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id, { description: value }));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      await expect(client.todolists.update(id, { name: "Renamed list" })).rejects.toThrow(
+        /todolist description is not a string/
+      );
+      expect(requests).toEqual(["GET"]);
+    });
+
+    it.each(malformed)("edit refuses a %s name before writing", async (_label, value) => {
+      const id = 42;
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id, { name: value }));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      await expect(
+        client.todolists.edit(id, (t) => {
+          t.description = "<p>New</p>";
+        })
+      ).rejects.toThrow(/todolist name is not a string/);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    it.each([
+      ["absent", undefined],
+      ["null", null],
+    ])("treats an %s description as genuinely empty", async (_label, value) => {
+      const id = 42;
+      let putBody: Record<string, unknown> = {};
+      const body = describedTodolist(id);
+      if (value === undefined) delete (body as Record<string, unknown>).description;
+      else (body as Record<string, unknown>).description = value;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(body)),
+        http.put(`${BASE_URL}/todolists/${id}`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      await client.todolists.update(id, { name: "Renamed list" });
+
+      expect(putBody).toEqual({ name: "Renamed list", description: "" });
+    });
+  });
+
   describe("update", () => {
     it("preserves the description when only the name is set", async () => {
       const id = 42;
