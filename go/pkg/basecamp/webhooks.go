@@ -424,7 +424,7 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 		if !rec.UpdatedAt.IsZero() {
 			event.Recording.UpdatedAt = rec.UpdatedAt.Format(time.RFC3339Nano)
 		}
-		if rec.Parent != nil && rec.Parent.Id != 0 {
+		if rec.Parent != nil {
 			event.Recording.Parent = &WebhookEventParent{
 				Title:  rec.Parent.Title,
 				Type:   rec.Parent.Type,
@@ -447,7 +447,7 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	}
 
 	// Map top-level creator
-	if ge.Creator != nil && ge.Creator.Id != 0 {
+	if ge.Creator != nil {
 		event.Creator = webhookPersonFromGenerated(*ge.Creator)
 	}
 
@@ -508,7 +508,7 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 	if gp.UpdatedAt != nil && !gp.UpdatedAt.IsZero() {
 		p.UpdatedAt = gp.UpdatedAt.Format(time.RFC3339Nano)
 	}
-	if gp.Company != nil && gp.Company.Id != 0 {
+	if gp.Company != nil {
 		p.Company = &WebhookEventCompany{
 			Name: gp.Company.Name,
 		}

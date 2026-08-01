@@ -182,12 +182,14 @@ class GeneratedTypesTest < Minitest::Test
       "updated_at" => "2024-01-15T12:30:00Z"
     )
 
-    assert_instance_of Time, note.created_at
-    assert_instance_of Time, note.updated_at
+    # Assert the VALUE, not just the class: a field-source swap or a timezone
+    # shift would still produce a Time and pass an instance-only check.
+    assert_equal Time.parse("2024-01-01T00:00:00Z"), note.created_at
+    assert_equal Time.parse("2024-01-15T12:30:00Z"), note.updated_at
 
     draft = Basecamp::Types::Draft.new("scheduled_posting_at" => "2024-02-01T09:00:00Z")
 
-    assert_instance_of Time, draft.scheduled_posting_at
+    assert_equal Time.parse("2024-02-01T09:00:00Z"), draft.scheduled_posting_at
   end
 
   def test_nullable_timestamps_tolerate_null

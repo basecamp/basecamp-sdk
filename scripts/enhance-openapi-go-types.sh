@@ -41,17 +41,6 @@ if [[ ! -f "$INPUT_FILE" ]]; then
     exit 1
 fi
 
-# Pre-flight: the seed below walks paths[].requestBody for schema $refs. This
-# spec has never used components.requestBodies indirection (the only components
-# namespace smithy emits is `schemas`), and rather than speculatively implement
-# a resolution path that cannot be tested, fail loudly if that ever changes —
-# an under-seeded closure would silently mark request-shaped arrays native.
-if jq -e '.components.requestBodies // empty | length > 0' "$INPUT_FILE" > /dev/null 2>&1; then
-    echo "Error: $INPUT_FILE uses components.requestBodies, which the request-body seed does not resolve." >&2
-    echo "Teach the \$seeds expression to follow that indirection before proceeding." >&2
-    exit 1
-fi
-
 # Compute the request-body reachability closure ONCE, here, and hand it to both
 # consumers via --argjson: the enhancement pass below and its self-check further
 # down. The two used to inline their own copies, which had already drifted apart
@@ -59,9 +48,22 @@ fi
 # it validates is worse than no self-check.
 REQUEST_REACHABLE=$(jq -c '
   ( .components.schemas ) as $all
+  # Every $ref reachable from an operation requestBody. Two forms are handled:
+  # a direct schema ref, and the reusable-component indirection
+  # (#/components/requestBodies/X), whose component is resolved and its own
+  # schema refs collected. An unused component contributes nothing, which is
+  # the correct outcome rather than an error.
+  | ( .components.requestBodies // {} ) as $bodies
   | ( [ .paths[]?[]? | objects | .requestBody? | objects
-        | [.. | objects | select(has("$ref")) | .["$ref"]]
-        | .[] | select(type == "string" and startswith("#/components/schemas/"))
+        | [.. | objects | select(has("$ref")) | .["$ref"]] | .[]
+        | select(type == "string") ] | unique ) as $body_refs
+  | ( [ $body_refs[]
+        | if startswith("#/components/requestBodies/")
+          then ( sub("^#/components/requestBodies/"; "") as $n
+                 | ($bodies[$n] // {})
+                 | [.. | objects | select(has("$ref")) | .["$ref"]] | .[] )
+          else . end
+        | select(type == "string" and startswith("#/components/schemas/"))
         | sub("^#/components/schemas/"; "") ] | unique ) as $seeds
   | ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
       | until(.frontier | length == 0;
