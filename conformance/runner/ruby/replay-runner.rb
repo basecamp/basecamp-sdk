@@ -147,7 +147,8 @@ class ReplayRunner
         # before wire capture) legitimately carry zero pages — but ONLY
         # zero pages.
         if snap["skipped"] == true
-          unless (snap["pages"] || []).empty? && snap["pages_count"] == 0
+          pages_ok = snap["pages"].nil? || (snap["pages"].is_a?(Array) && snap["pages"].empty?)
+          unless pages_ok && snap["pages_count"] == 0
             msgs << "Snapshot #{File.basename(f)} is marked skipped but carries pages; " \
                     "a skip marker must be empty."
           end

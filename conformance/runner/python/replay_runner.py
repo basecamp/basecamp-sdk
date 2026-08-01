@@ -161,8 +161,10 @@ class ReplayRunner:
                 if snap.get("skipped") is True:
                     # Skip markers (written by the TS runner when a live test
                     # skips before wire capture) legitimately carry zero
-                    # pages — but ONLY zero pages.
-                    if pages or snap.get("pages_count") != 0:
+                    # pages — but ONLY zero pages, as an actual (or absent)
+                    # array. A wrong-typed `pages` means contract drift.
+                    pages_ok = pages is None or (isinstance(pages, list) and not pages)
+                    if not pages_ok or snap.get("pages_count") != 0:
                         msgs.append(
                             f"Snapshot {f.name} is marked skipped but carries pages; "
                             "a skip marker must be empty."

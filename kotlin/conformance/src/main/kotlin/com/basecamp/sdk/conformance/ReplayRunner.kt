@@ -194,11 +194,11 @@ class ReplayRunner(
                 // Skip markers (written by the TS runner when a live test
                 // skips before wire capture) legitimately carry zero pages —
                 // but ONLY zero pages.
-                val skipped = (snap["skipped"] as? JsonPrimitive)?.contentOrNull == "true"
-                if (skipped) {
-                    val markerPages = snap["pages"] as? JsonArray
+                if (isSkipMarker(snap)) {
+                    val pagesEl = snap["pages"]
+                    val pagesOk = pagesEl == null || (pagesEl is JsonArray && pagesEl.isEmpty())
                     val markerCount = (snap["pages_count"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
-                    if (!(markerPages == null || markerPages.isEmpty()) || markerCount != 0) {
+                    if (!pagesOk || markerCount != 0) {
                         msgs += "Snapshot ${f.name} is marked skipped but carries pages; " +
                             "a skip marker must be empty."
                     }
@@ -234,7 +234,7 @@ class ReplayRunner(
         for (t in fixture) {
             val name = t["name"]!!.jsonPrimitive.content
             val snap = readSnapshot(name)
-            val result = if ((snap["skipped"] as? JsonPrimitive)?.contentOrNull == "true") {
+            val result = if (isSkipMarker(snap)) {
                 // Nothing to decode; record the skip explicitly so downstream
                 // consumers see a marker rather than a missing decode result.
                 val reason = (snap["skip_reason"] as? JsonPrimitive)?.contentOrNull ?: ""
@@ -255,6 +255,17 @@ class ReplayRunner(
             if (result.pages.any { !it.decoded || it.missing_required.isNotEmpty() }) failures++
         }
         return if (failures == 0) 0 else 1
+    }
+
+    /**
+     * True only for a JSON boolean `"skipped": true`. A string `"true"`
+     * (or any other type) is NOT a skip marker — the marker is written by
+     * our own TS runner, so a wrong-typed field means contract drift and
+     * must fall through to the strict non-skipped checks.
+     */
+    private fun isSkipMarker(snap: JsonObject): Boolean {
+        val prim = snap["skipped"] as? JsonPrimitive ?: return false
+        return !prim.isString && prim.contentOrNull == "true"
     }
 
     private fun readSnapshot(testName: String): JsonObject {
