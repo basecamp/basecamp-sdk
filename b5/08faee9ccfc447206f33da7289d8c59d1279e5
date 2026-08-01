@@ -1,0 +1,28 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_34dec3eb0265b2::t_aff23eb202dd3d 242,1064-1067
+  s_34dec3eb0265b2::t_2d892cdbfcdb5d 1069-1070
+conformance/runner/typescript/runner.test.ts
+  s_34dec3eb0265b2::t_e7948b9fffd7a7 641-644,646
+conformance/runner/go/main.go
+  s_34dec3eb0265b2::t_e7948b9fffd7a7 355-358,360
+conformance/tests/error-mapping.json
+  s_34dec3eb0265b2::t_bc71551b5cdfa2 619-620
+  s_34dec3eb0265b2::t_75cc8a7b49e843 637,640,653-656
+  s_34dec3eb0265b2::t_1512204fbd5b10 9-17,20-39,47-49,51-59,62-81,89-91,93-98,101-120,128-130,132-140,143-162,170-172,174-179,182-201,205,209-216,218-227,230-249,257-264,266-279,282-296,304-311,313-323,326-340,348-355,357-367,370-384,392-399,401-411,414-428,432,436-443,445-457,460-474,478,482-534,536-543,546-594,596-618,621-636,638-639,641-652,657-664,673-709,712-726,734-736,738-743,746-765,773-775,777-785,788-798,806-808,810-833,836-855,863-865,867-890,893-912,920-922,924-947,950-969
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "b508faee9ccfc447206f33da7289d8c59d1279e5",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
