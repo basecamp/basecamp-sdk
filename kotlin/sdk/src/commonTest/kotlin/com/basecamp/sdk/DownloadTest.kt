@@ -585,7 +585,7 @@ class DownloadTest {
         )
         val account = client.forAccount("12345")
 
-        assertFailsWith<BasecampException> { account.downloadURL(hop1URL) }
+        assertFailsWith<BasecampException.Api> { account.downloadURL(hop1URL) }
 
         assertEquals(3, requestCount)
         client.close()
@@ -610,7 +610,7 @@ class DownloadTest {
 
         // The download attempt budget is the public cap coerced to at least
         // one: an accepted maxRetries = 0 still sends exactly one attempt.
-        assertFailsWith<BasecampException> { account.downloadURL(hop1URL) }
+        assertFailsWith<BasecampException.Api> { account.downloadURL(hop1URL) }
 
         assertEquals(1, requestCount)
         client.close()
@@ -632,7 +632,7 @@ class DownloadTest {
         )
         val account = client.forAccount("12345")
 
-        assertFailsWith<BasecampException> { account.downloadURL(hop1URL) }
+        assertFailsWith<BasecampException.Api> { account.downloadURL(hop1URL) }
 
         assertEquals(1, requestCount)
         client.close()

@@ -380,6 +380,7 @@ module Basecamp
         @config.max_retries
       end
       attempt = 0
+      refreshed_once = false
       last_error = nil
 
       loop do
@@ -388,7 +389,17 @@ module Basecamp
 
         begin
           return single_request(method, url, params: params, body: nil, attempt: attempt,
-            allow_cross_origin: allow_cross_origin, accept: accept)
+            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: false)
+        rescue Basecamp::AuthError => e
+          # A refreshable 401 is replayed by this loop rather than inside
+          # single_request, so the replay costs an attempt like any other.
+          # max_retries is a TOTAL attempt count: a cap of one means one
+          # request on the wire, refresh or no refresh.
+          raise e unless e.http_status == 401 && @token_refreshed && !refreshed_once && attempt < max_attempts
+
+          @token_refreshed = false
+          refreshed_once = true
+          next
         rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
           raise e unless retry_eligible?(e, op_retry, retry_on)
 
@@ -434,7 +445,7 @@ module Basecamp
     end
 
     def single_request(method, url, params:, body:, attempt:, retry_count: 0, allow_cross_origin: false,
-      accept: "application/json")
+      accept: "application/json", refresh_replay: true)
       assert_credential_origin!(url, allow_cross_origin)
       info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
       @hooks.on_request_start(info)
@@ -467,10 +478,10 @@ module Basecamp
         @hooks.on_request_end(info, result)
 
         # After a successful token refresh on 401, retry the request once
-        if error.is_a?(Basecamp::AuthError) && error.http_status == 401 && retry_count < 1 && @token_refreshed
+        if refresh_replay && error.is_a?(Basecamp::AuthError) && error.http_status == 401 && retry_count < 1 && @token_refreshed
           @token_refreshed = false
           return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1,
-            allow_cross_origin: allow_cross_origin, accept: accept)
+            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: refresh_replay)
         end
 
         raise error

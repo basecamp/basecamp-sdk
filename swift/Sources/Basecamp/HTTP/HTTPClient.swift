@@ -32,6 +32,19 @@ package final class HTTPClient: Sendable {
     private static let downloadMaxAttempts = 3
     private static let downloadRetryOn: Set<Int> = [429, 502, 503, 504]
 
+    /// Converts a backoff interval to nanoseconds without trapping.
+    ///
+    /// `UInt64(_:)` on an out-of-range `Double` is a runtime trap, not an
+    /// error, and a hostile or simply buggy `Retry-After` can name a delay
+    /// whose nanosecond product overflows `UInt64` — `Retry-After: 99999999999`
+    /// is 9.9e19 ns against a 1.8e19 ceiling. Clamp to a day instead: no SDK
+    /// retry is worth sleeping longer, and a crash is never the right answer
+    /// to a response header.
+    private static func sleepNanoseconds(_ seconds: TimeInterval) -> UInt64 {
+        guard seconds.isFinite, seconds > 0 else { return 0 }
+        return UInt64(min(seconds, 86_400) * 1_000_000_000)
+    }
+
     package init(
         transport: any Transport,
         authStrategy: any AuthStrategy,
@@ -185,7 +198,14 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if attempt < maxAttempts {
+                if error is CancellationError {
+                    // Cooperative cancellation is terminal, not a transport
+                    // blip: retrying would announce and start an attempt the
+                    // caller has already abandoned. It propagates raw rather
+                    // than wrapped, and the attempt is finalized above so
+                    // start/end stay paired.
+                    directive = .fail(error)
+                } else if attempt < maxAttempts {
                     let delaySeconds = calculateDelay(
                         attempt: attempt,
                         baseDelayMs: effectiveConfig.baseDelayMs,
@@ -212,7 +232,7 @@ package final class HTTPClient: Sendable {
             case .retry(let error, let delaySeconds):
                 safeInvokeHooks { $0.onRetry(info, attempt: attempt + 1, error: error, delaySeconds: delaySeconds) }
 
-                try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+                try await Task.sleep(nanoseconds: Self.sleepNanoseconds(delaySeconds))
 
                 // Re-authenticate for retry (e.g. refresh expired token)
                 try await authStrategy.authenticate(&request)
@@ -326,7 +346,14 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if attempt < maxAttempts {
+                if error is CancellationError {
+                    // Cooperative cancellation is terminal, not a transport
+                    // blip: retrying would announce and start an attempt the
+                    // caller has already abandoned. It propagates raw rather
+                    // than wrapped, and the attempt is finalized above so
+                    // start/end stay paired.
+                    directive = .fail(error)
+                } else if attempt < maxAttempts {
                     let delaySeconds = calculateDelay(
                         attempt: attempt,
                         baseDelayMs: Self.defaultBaseDelayMs,
@@ -351,7 +378,7 @@ package final class HTTPClient: Sendable {
             case .retry(let error, let delaySeconds):
                 safeInvokeHooks { $0.onRetry(info, attempt: attempt + 1, error: error, delaySeconds: delaySeconds) }
 
-                try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+                try await Task.sleep(nanoseconds: Self.sleepNanoseconds(delaySeconds))
 
                 // Re-authenticate every attempt so a rotated token is picked up.
                 try await authStrategy.authenticate(&request)

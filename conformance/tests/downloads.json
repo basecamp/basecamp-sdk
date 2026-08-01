@@ -47,7 +47,8 @@
     ],
     "assertions": [
       {"type": "requestCount", "expected": 4},
-      {"type": "delayBetweenRequests", "min": 1000},
+      {"type": "delayBetweenRequests", "min": 1000, "index": 0},
+      {"type": "delayBetweenRequests", "min": 1000, "index": 1},
       {"type": "noError"},
       {"type": "headerPresent", "path": "Authorization", "index": 0},
       {"type": "headerPresent", "path": "Authorization", "index": 1},
@@ -69,7 +70,7 @@
     ],
     "assertions": [
       {"type": "requestCount", "expected": 3},
-      {"type": "delayBetweenRequests", "min": 1000},
+      {"type": "delayBetweenRequests", "min": 1000, "index": 0},
       {"type": "noError"},
       {"type": "headerPresent", "path": "Authorization", "index": 0},
       {"type": "headerPresent", "path": "Authorization", "index": 1},
@@ -106,7 +107,7 @@
     ],
     "assertions": [
       {"type": "requestCount", "expected": 3},
-      {"type": "delayBetweenRequests", "min": 1000},
+      {"type": "delayBetweenRequests", "min": 1000, "index": 0},
       {"type": "noError"},
       {"type": "headerPresent", "path": "Authorization", "index": 0},
       {"type": "headerAbsent", "path": "Authorization", "index": -1}

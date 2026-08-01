@@ -526,13 +526,22 @@ class TestRunner
         end
 
       when "delayBetweenRequests"
-        # First gap only, matching the Go/TypeScript/Kotlin runners. Later
-        # gaps are not all retry gaps: the download flow's final gap is the
-        # redirect hop to the signed URL, which is deliberately un-delayed.
+        # Every inter-request gap must clear the minimum, unless the fixture
+        # names one: not all gaps are retry gaps — the download flow's final
+        # gap is the redirect hop to the signed URL, which is deliberately
+        # un-delayed — so those fixtures assert per-gap with an index.
         delays = @tracker.delays_between_requests
         min_delay = assertion["min"]
-        if min_delay && delays.any? && delays.first < min_delay
-          failures << "Expected minimum delay of #{min_delay}ms, got #{delays.first}ms"
+        index = assertion["index"]
+        if min_delay && delays.any?
+          if index
+            gap = delays[index]
+            if gap && gap < min_delay
+              failures << "Expected minimum delay of #{min_delay}ms at gap #{index}, got #{gap}ms"
+            end
+          elsif delays.any? { |d| d < min_delay }
+            failures << "Expected minimum delay of #{min_delay}ms, got #{delays.min}ms"
+          end
         end
 
       when "noError"

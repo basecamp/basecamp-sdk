@@ -12,7 +12,7 @@ from basecamp.async_auth import AsyncBearerAuth, AsyncStaticTokenProvider
 from basecamp.auth import BearerAuth, StaticTokenProvider
 from basecamp.config import Config
 from basecamp.download import _rewrite_url, download_async, download_sync, filename_from_url
-from basecamp.errors import ApiError, UsageError
+from basecamp.errors import ApiError, BasecampError, UsageError
 from basecamp.hooks import BasecampHooks
 
 
@@ -234,6 +234,48 @@ class TestHop1Retry:
         for call in hop1.calls:
             assert call.request.headers.get("Authorization") == "Bearer test-token"
         assert "Authorization" not in hop2.calls[0].request.headers
+
+    @respx.mock
+    def test_refreshable_401_replay_costs_an_attempt(self):
+        """max_retries is a TOTAL attempt count — a refresh replay is an attempt.
+
+        The 401 token-refresh replay used to live inside ``_single_request``
+        with its own counter, so a cap of one still put two requests on the
+        wire. It is now the retry loop's business and draws from the same
+        budget.
+        """
+
+        class RefreshableProvider(StaticTokenProvider):
+            refreshable = True
+
+            def __init__(self):
+                super().__init__("test-token")
+                self.refreshes = 0
+
+            def refresh(self):
+                self.refreshes += 1
+                return True
+
+        hop1 = respx.get(self.HOP1).mock(return_value=httpx.Response(401))
+
+        provider = RefreshableProvider()
+        config = make_fast_config(max_retries=0)
+        http = HttpClient(config, BearerAuth(provider))
+        with pytest.raises(BasecampError):
+            download_sync(self.RAW, http_client=http, config=config)
+
+        # Cap of one means one request, refresh or no refresh.
+        assert hop1.call_count == 1
+
+        # With budget to spend, the replay happens and is counted: two
+        # attempts total, not two-plus-a-free-replay.
+        hop1.reset()
+        config = make_fast_config(max_retries=2)
+        http = HttpClient(config, BearerAuth(RefreshableProvider()))
+        with pytest.raises(BasecampError):
+            download_sync(self.RAW, http_client=http, config=config)
+
+        assert hop1.call_count == 2
 
     @respx.mock
     def test_hop1_sends_no_accept_header_on_any_attempt(self):

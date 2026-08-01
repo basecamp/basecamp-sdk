@@ -803,6 +803,86 @@ final class DownloadTests: XCTestCase {
         XCTAssertEqual(spy.ends, [1], "A cancelled backoff must not emit a phantom onRequestEnd")
         XCTAssertEqual(spy.retries, [2], "A cancelled backoff must not emit a second onRetry")
     }
+
+    /// Cancellation raised by the transport itself — mid-flight, before any
+    /// response — is terminal too. Classifying it as a transport failure would
+    /// announce a retry for an attempt that can never start.
+    func testDownloadURL_cancellationInFlightIsTerminalAndSilent() async throws {
+        let spy = RetryHookSpy()
+        let counter = Counter()
+        let transport = MockTransport { _ in
+            counter.increment()
+            throw CancellationError()
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true, hooks: spy)
+
+        do {
+            _ = try await account.downloadURL(Self.hop1URL)
+            XCTFail("Expected CancellationError")
+        } catch is CancellationError {
+            // Expected.
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+
+        XCTAssertEqual(counter.value, 1, "Cancellation must not spend another attempt")
+        XCTAssertEqual(spy.retries, [], "Cancellation must not announce a retry")
+        // Hook balance is the actual contract, not merely "no crash": the
+        // cancelled attempt is finalized exactly once, so an observer pairing
+        // start/end spans never leaks one.
+        XCTAssertEqual(spy.starts, [1])
+        XCTAssertEqual(spy.ends, [1])
+    }
+
+    /// A `Retry-After` large enough to overflow the nanosecond conversion must
+    /// not trap the process. `UInt64(_:)` on an out-of-range `Double` is a
+    /// runtime trap, so an unclamped conversion crashes here rather than
+    /// failing.
+    func testDownloadURL_absurdRetryAfterDoesNotTrap() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            if counter.increment() == 1 {
+                return (
+                    Data("{}".utf8),
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString,
+                        statusCode: 429,
+                        headers: ["Retry-After": "99999999999"]
+                    )
+                )
+            }
+            return (
+                Data("content".utf8),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 200,
+                    headers: ["Content-Type": "text/plain"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true)
+
+        let url = Self.hop1URL
+        let task = Task { _ = try await account.downloadURL(url) }
+
+        // The clamped sleep is a day, so the call cannot finish here. Reaching
+        // this line at all is the assertion: an unclamped UInt64 conversion
+        // would have trapped inside the first backoff.
+        var waited = 0
+        while counter.value < 1 {
+            guard waited < 5_000 else {
+                task.cancel()
+                XCTFail("First hop-1 attempt never reached the transport")
+                return
+            }
+            try await Task.sleep(nanoseconds: 1_000_000)
+            waited += 1
+        }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        task.cancel()
+
+        XCTAssertEqual(counter.value, 1, "The retry must still be waiting out the clamped delay")
+    }
 }
 
 /// Thread-safe recorder for per-attempt Authorization header values.

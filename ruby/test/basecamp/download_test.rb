@@ -438,6 +438,31 @@ class DownloadTest < Minitest::Test
     assert_requested(s3_stub)
   end
 
+  # max_retries is a TOTAL attempt count, so a refreshable-401 replay draws
+  # from the same budget: a cap of one means one request on the wire. The
+  # replay used to live inside single_request with its own counter.
+  def test_download_url_refreshable_401_replay_costs_an_attempt
+    provider = Class.new do
+      attr_reader :refreshes
+
+      def initialize = @refreshes = 0
+      def access_token = "test-token"
+      def refreshable? = true
+
+      def refresh
+        @refreshes += 1
+        true
+      end
+    end.new
+
+    stub_request(:get, "#{base_url}#{HOP1_PATH}").to_return(status: 401)
+
+    account = create_account_client(config: fast_download_config(max_retries: 0), token_provider: provider)
+    assert_raises(Basecamp::Error) { account.download_url(HOP1_URL) }
+
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 1)
+  end
+
   # SPEC §14: hop 1 carries Authorization and User-Agent only. A binary
   # download is not a JSON API call, so the generic request path's
   # "Accept: application/json" must not ride along — on the first attempt or
