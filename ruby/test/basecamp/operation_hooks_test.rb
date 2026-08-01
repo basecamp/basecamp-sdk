@@ -186,6 +186,23 @@ class OperationHooksTest < Minitest::Test
     assert_nil end_event[:error]
   end
 
+  def test_paginated_hooks_fire_one_lifecycle_across_reenumeration
+    # on_operation_start fires once at call time, so on_operation_end must
+    # also fire exactly once — re-enumerating must not emit unmatched ends.
+    events = []
+    hooks = TrackingHooks.new(events)
+    account = create_account_client(hooks: hooks)
+
+    stub_get("/12345/projects.json", response_body: [ { "id" => 1 } ])
+
+    enum = account.projects.list
+    enum.to_a
+    enum.to_a
+
+    op_events = events.select { |e| e[:event].to_s.start_with?("on_operation") }
+    assert_equal [ :on_operation_start, :on_operation_end ], op_events.map { |e| e[:event] }
+  end
+
   def test_paginated_duration_spans_call_to_consumption
     # Matches wrap_paginated_wrapped: with the first page fetched eagerly at
     # call time, duration measures from the call through the end of iteration.

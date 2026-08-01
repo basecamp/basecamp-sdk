@@ -61,7 +61,9 @@ module Basecamp
       # metadata carried by the inner ListEnumerator.
       # Fires on_operation_start eagerly (paginate fetches page 1 inside the
       # yield, so the start hook must precede it); on_operation_end fires via
-      # ensure when iteration completes, errors, or is cut short by break/take.
+      # ensure when the first traversal completes, errors, or is cut short by
+      # break/take — exactly once, so re-enumerating never emits an
+      # on_operation_end without a matching start.
       def wrap_paginated(service:, operation:, is_mutation: false, project_id: nil, resource_id: nil)
         info = OperationInfo.new(
           service: service, operation: operation,
@@ -79,6 +81,7 @@ module Basecamp
           raise
         end
 
+        ended = false
         ListEnumerator.new(enum.meta) do |yielder|
           error = nil
           begin
@@ -87,15 +90,19 @@ module Basecamp
             error = e
             raise
           ensure
-            duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
-            safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+            unless ended
+              ended = true
+              duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+              safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+            end
           end
         end
       end
 
       # Wraps a wrapped-paginated operation with hooks.
-      # Fires on_operation_start eagerly (before page 1 fetch),
-      # on_operation_end when the events Enumerator completes/errors/breaks.
+      # Fires on_operation_start eagerly (before page 1 fetch), and
+      # on_operation_end exactly once, when the first traversal of the events
+      # Enumerator completes/errors/breaks.
       def wrap_paginated_wrapped(key:, service:, operation:, is_mutation: false, project_id: nil, resource_id: nil)
         info = OperationInfo.new(
           service: service, operation: operation,
@@ -114,6 +121,7 @@ module Basecamp
         end
 
         inner_enum = result[key]
+        ended = false
         wrapped_enum = ListEnumerator.new(inner_enum.meta) do |yielder|
           error = nil
           begin
@@ -122,8 +130,13 @@ module Basecamp
             error = e
             raise
           ensure
-            duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
-            safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+            # Exactly once: on_operation_start fired once at call time, so
+            # re-enumerating must not emit unmatched on_operation_end events.
+            unless ended
+              ended = true
+              duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+              safe_hook { hooks.on_operation_end(info, OperationResult.new(duration_ms: duration, error: error)) }
+            end
           end
         end
 

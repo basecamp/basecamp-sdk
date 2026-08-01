@@ -230,6 +230,11 @@ module Basecamp
     # drops items or leaves a next Link unfetched, or when the max_pages
     # safety cap stops with a next Link still present. A cap landing exactly
     # on the final item of the last page is not truncation.
+    #
+    # Re-enumerating restarts pagination from the base URL: the eagerly
+    # fetched first page is served from memory on the first pass only, and
+    # later passes refetch every page, so each pass is a consistent
+    # snapshot rather than a hybrid of captured and current data.
     def paginated_enumerator(path, params:, operation:, max_items:, key: nil)
       max_items = nil if max_items && max_items <= 0
       base_url = build_url(path)
@@ -241,13 +246,22 @@ module Basecamp
       first_items = extract_page_items(first_data, key: key, page: 1)
 
       meta = ListMeta.new(total_count: parse_total_count(first_response.headers))
+      first_pass = true
 
       ListEnumerator.new(meta) do |yielder|
+        if first_pass
+          first_pass = false
+          response = first_response
+          items = first_items
+        else
+          @hooks.on_paginate(base_url, 1)
+          response = get(base_url, params: params, operation: operation)
+          items = extract_page_items(parse_page(response, page: 1), key: key, page: 1)
+        end
+
         yielded = 0
         page = 1
         url = base_url
-        response = first_response
-        items = first_items
 
         loop do
           next_link = parse_next_link(response.headers["Link"])

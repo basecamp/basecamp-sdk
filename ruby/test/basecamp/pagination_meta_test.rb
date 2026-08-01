@@ -296,6 +296,29 @@ class HttpPaginationMetaTest < Minitest::Test
     assert_not result["events"].meta.truncated
   end
 
+  def test_reenumeration_refetches_page_one
+    # Re-enumerating restarts pagination from the base URL so a second pass
+    # is a consistent fresh snapshot, never a hybrid of the eagerly captured
+    # first page and refetched later pages.
+    stub_get("/items.json", response_body: [ { "id" => 1 } ])
+
+    enum = @http.paginate("/items.json")
+
+    assert_equal 1, enum.to_a.length
+    assert_equal 1, enum.to_a.length
+    assert_requested :get, "#{base_url}/items.json", times: 2
+  end
+
+  def test_wrapped_reenumeration_refetches_page_one
+    stub_get("/progress.json", response_body: { "person" => { "id" => 7 }, "events" => [ { "id" => 1 } ] })
+
+    result = @http.paginate_wrapped("/progress.json", key: "events")
+
+    assert_equal 1, result["events"].to_a.length
+    assert_equal 1, result["events"].to_a.length
+    assert_requested :get, "#{base_url}/progress.json", times: 2
+  end
+
   # PIN: block form still yields every item across pages.
   def test_paginate_block_form_still_yields_items
     stub_get(

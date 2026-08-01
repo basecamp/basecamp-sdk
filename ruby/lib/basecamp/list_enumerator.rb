@@ -10,6 +10,12 @@ module Basecamp
   # The metadata object is shared with the paginator: meta.total_count is
   # populated from the eagerly fetched first page, and meta.truncated is
   # finalized by consuming the enumeration (see {ListMeta}).
+  #
+  # Re-enumerating restarts pagination: the eagerly fetched first page is
+  # served from memory on the first pass only, and later passes refetch
+  # every page for a consistent snapshot. Metadata reflects the first page
+  # fetched at call time plus whatever truncation enumeration has
+  # discovered so far.
   class ListEnumerator < Enumerator
     # @return [ListMeta] pagination metadata
     attr_reader :meta
