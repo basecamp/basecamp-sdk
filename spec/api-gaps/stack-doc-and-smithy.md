@@ -16,6 +16,14 @@ bc3_refs:
 
 # Stack — withdrawn from API scope at launch (web-only)
 
+> **Superseded by [`folders-api`](folders-api.md) (2026-07-31).** BC3 **#12384**
+> ("Add public API for personal project folders", `dc6cd10714`) shipped full
+> CRUD JSON for folders to `master` — live in production, public docs live at
+> `basecamp/bc-api` #420 (`401c8ebcc9`). **Read `folders-api.md` for the
+> contract.** Everything below is the record of the launch decision, kept
+> intact and deliberately not rewritten: it was accurate when written, and the
+> classification stands as history.
+
 > **Classification: not an API resource.** Retained as the durable record of
 > why no `StacksService` is modeled. Registry rule: briefs trump the allowlist,
 > so this stays a brief rather than moving to `allowlist.yml`.
