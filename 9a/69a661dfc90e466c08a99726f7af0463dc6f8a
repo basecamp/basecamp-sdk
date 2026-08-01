@@ -1,0 +1,26 @@
+conformance/runner/typescript/fixtures.ts
+  s_b1b74299ef0baf::t_f40d6d51732481 48-52
+conformance/tests/live-my-surface.json
+  s_b1b74299ef0baf::t_2e77716ec7fe53 102-140
+  s_b1b74299ef0baf::t_81e5f8fd78692c 101
+conformance/runner/typescript/live-dispatch.ts
+  s_b1b74299ef0baf::t_67d97a9c9d20de 193-203
+spec/api-gaps/calendar.md
+  s_b1b74299ef0baf::t_9cb8c90d6cf69b 68-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "9a69a661dfc90e466c08a99726f7af0463dc6f8a",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
