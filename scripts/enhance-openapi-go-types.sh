@@ -101,7 +101,7 @@ walk(
 #     different representation (a wrapper type with an explicit presence flag),
 #     not this pass.
 ( .components.schemas ) as $all
-# Seeds are the schemas actually referenced by an operation's requestBody —
+# Seeds are the schemas actually referenced by an operation requestBody —
 # NOT the ones whose name ends in RequestContent. Four request-body roots
 # (CreateAttachmentInputPayload, CreateCampfireUploadInputPayload,
 # QuestionAnswerPayload, QuestionAnswerUpdatePayload) carry no such suffix and
