@@ -1,0 +1,35 @@
+typescript/src/retry.ts
+  s_555508c40a7b3b::t_8bc96309c68fb7 1-222
+typescript/src/download.ts
+  s_555508c40a7b3b::t_e20728f8baa4e9 5-22
+  s_555508c40a7b3b::t_ce7545ea77183e 127-130,136-143,146-171,174-188,192,201-205,207-215,217,221-222
+  s_555508c40a7b3b::t_c7fe7aaa046087 74-80
+  s_555508c40a7b3b::t_6057f37e3c9993 93
+typescript/tests/download.test.ts
+  s_555508c40a7b3b::t_a2e3282fc1d280 336-390,396-472,474-547,553-556,558-562
+  s_555508c40a7b3b::t_1ba7c009d87ce4 715,736-739
+  s_555508c40a7b3b::t_5a8f6c13a46157 5,13,19-44
+typescript/src/client.ts
+  s_555508c40a7b3b::t_c08d8c78f49833 1008-1011,1021,1029,1044-1049,1053-1056,1058-1063,1065-1070
+  s_555508c40a7b3b::t_72c8dc86f17e1a 822-824
+  s_555508c40a7b3b::t_17d660cee0a542 19-26
+  s_555508c40a7b3b::t_91683d904d4a9e 426
+conformance/runner/typescript/runner.test.ts
+  s_555508c40a7b3b::t_c20fcfd0643911 1204-1205,1210-1213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "05162d77df2f35a24f9c35db99efcd6abe9a383a",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
