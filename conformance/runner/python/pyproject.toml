@@ -7,5 +7,12 @@ dependencies = [
     "basecamp-sdk",
 ]
 
+[dependency-groups]
+# The runner's own assertion helpers are unit-tested (test_delay_gaps.py):
+# a bounds branch that only ever runs against passing fixtures is not a guard.
+dev = [
+    "pytest>=8",
+]
+
 [tool.uv.sources]
 basecamp-sdk = { path = "../../../python", editable = true }

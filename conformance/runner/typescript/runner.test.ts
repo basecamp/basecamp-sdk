@@ -15,6 +15,7 @@ import type { BasecampClient } from "@37signals/basecamp";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkDelayGaps } from "./delay-gaps.js";
 
 // =============================================================================
 // Types mirroring conformance/schema.json
@@ -803,33 +804,17 @@ function checkAssertions(
       }
 
       case "delayBetweenRequests": {
-        const times = tracker.requestTimes();
-        if (times.length >= 2) {
-          // index selects a single inter-request GAP (gap i is between request
-          // i and i+1), defaulting to the first. A named gap that does not
-          // exist fails rather than passing silently.
-          const gap = assertion.index ?? 0;
-          expect(
-            times.length,
-            `[${tc.name}] expected a delay at gap ${gap}, but only ${times.length} request(s) were made`,
-          ).toBeGreaterThan(gap + 1);
-          const delay = times[gap + 1]! - times[gap]!;
-          const minDelay = assertion.min ?? 0;
-          // Node's timers may fire marginally BEFORE the requested delay —
-          // libuv rounds the deadline down internally, so a 2000ms sleep can
-          // legitimately elapse in 1999.87ms. That is a runtime property, not
-          // an SDK behaviour: the SDK asked for the full interval. The Go
-          // runner never sees it because Go's timers do not fire early.
-          //
-          // A sub-millisecond allowance cannot mask a real regression, which
-          // would miss by hundreds of milliseconds (a dropped Retry-After
-          // means ~1000ms of backoff instead of 2000ms) or by the whole
-          // interval (no delay at all).
-          expect(
-            delay,
-            `[${tc.name}] expected delay >= ${minDelay}ms at gap ${gap} (allowing ${TIMER_SLACK_MS}ms timer slack), got ${delay}ms`,
-          ).toBeGreaterThanOrEqual(minDelay - TIMER_SLACK_MS);
-        }
+        // Not all gaps are retry gaps — the download flow's final gap is the
+        // redirect hop to the signed URL, which is deliberately un-delayed —
+        // so those fixtures name a gap with an index. See checkDelayGaps for
+        // the contract and for why timer slack exists.
+        const failure = checkDelayGaps(
+          tracker.requestTimes(),
+          assertion.min,
+          assertion.index,
+          TIMER_SLACK_MS,
+        );
+        expect(failure, `[${tc.name}] ${failure}`).toBeUndefined();
         break;
       }
 

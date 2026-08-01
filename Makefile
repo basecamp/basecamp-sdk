@@ -408,7 +408,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check
+.PHONY: conformance conformance-runner-tests conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check
 
 # Pinned validator for the data-only OAuth discovery fixtures. Run via uvx so the
 # version is reproducible without a global install; the schema is separate from
@@ -441,6 +441,20 @@ conformance-fixtures-check:
 	@echo "==> Validating conformance fixtures against schema.json..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/tests.schema.json conformance/tests/*.json
+
+# Unit-test the runners' own assertion helpers.
+#
+# The runners are test harnesses, but their assertion logic is code like any
+# other, and its bounds branches never execute against a fixture that passes.
+# #563 shipped a delayBetweenRequests check that vacuously passed when the gap
+# it named did not exist; nothing caught it because every committed fixture
+# supplied the gap. These pin the branches the fixtures cannot reach.
+conformance-runner-tests:
+	@echo "==> Running conformance runner unit tests..."
+	cd conformance/runner/go && go test ./...
+	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py
+	cd conformance/runner/ruby && bundle install --quiet && bundle exec ruby delay_gaps_test.rb
+	cd kotlin && ./gradlew --quiet :conformance:test
 
 # Build conformance test runner
 conformance-build:
@@ -516,7 +530,7 @@ conformance-python-replay:
 	cd conformance/runner/python && uv sync && uv run python replay_runner.py
 
 # Run all conformance tests
-conformance: oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
+conformance: oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check conformance-runner-tests conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
 	@echo "==> Conformance tests passed"
 
 # Orchestrate one canary pass against a single backend:

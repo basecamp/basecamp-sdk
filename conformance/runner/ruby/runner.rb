@@ -15,6 +15,59 @@ require "set"
 WebMock.enable!
 WebMock.disable_net_connect!
 
+# The delayBetweenRequests assertion contract, kept apart from the runner so
+# its bounds branches are unit-testable (delay_gaps_test.rb).
+module DelayGaps
+  # Validates one assertion against the recorded inter-request gaps, returning
+  # nil when it holds and a failure message otherwise.
+  #
+  # +delays+ holds the inter-request gaps, so N requests yield N-1 entries and
+  # gap i is the interval between request i and request i+1. The contract in
+  # conformance/schema.json:
+  #
+  # * A NAMED index selects exactly that gap, bounds-checked unconditionally.
+  #   A gap the run never produced is a failure, not a silent pass — the whole
+  #   point of a timing pin is to catch a dropped backoff, and a dropped
+  #   backoff is precisely what removes the gap.
+  # * An OMITTED index requires the minimum on EVERY gap. Zero gaps means
+  #   nothing was measured, so that fails too: an "every gap" rule with no gaps
+  #   left would otherwise wave through a run that dropped every retry.
+  # * Negative indexes are rejected rather than wrapping to the end like the
+  #   per-request assertions. There is no sensible "last gap" when the point of
+  #   naming one is to pin a specific backoff.
+  #
+  # An absent or zero +min_delay+ still asserts that the gap EXISTS. The default
+  # is applied HERE rather than at the call site so gating on the value's
+  # presence cannot quietly reduce the assertion to nothing — the false-green
+  # class this exists to kill.
+  #
+  # +request_count+ is passed rather than inferred as +delays.length + 1+: that
+  # inference assumes at least one request, so a run that failed before
+  # dispatching anything would report "only 1 request(s) were made".
+  def self.check(delays, min_delay, index, request_count)
+    min_delay ||= 0
+
+    if index
+      named_gap_failure(delays, min_delay, index, request_count)
+    elsif delays.empty?
+      "Expected a delay between requests, but only #{request_count} request(s) were made"
+    else
+      short = delays.each_with_index.find { |delay, _| delay < min_delay }
+      short && "Expected minimum delay of #{min_delay}ms at gap #{short.last}, got #{short.first}ms"
+    end
+  end
+
+  def self.named_gap_failure(delays, min_delay, index, request_count)
+    if index.negative?
+      "delayBetweenRequests gap index must be non-negative, got #{index}"
+    elsif index >= delays.length
+      "Expected a delay at gap #{index}, but only #{request_count} request(s) were made"
+    elsif delays[index] < min_delay
+      "Expected minimum delay of #{min_delay}ms at gap #{index}, got #{delays[index]}ms"
+    end
+  end
+end
+
 # Test execution tracking
 class TestTracker
   attr_reader :requests
@@ -526,23 +579,17 @@ class TestRunner
         end
 
       when "delayBetweenRequests"
-        # Every inter-request gap must clear the minimum, unless the fixture
-        # names one: not all gaps are retry gaps — the download flow's final
-        # gap is the redirect hop to the signed URL, which is deliberately
-        # un-delayed — so those fixtures assert per-gap with an index.
-        delays = @tracker.delays_between_requests
-        min_delay = assertion["min"]
-        index = assertion["index"]
-        if min_delay && delays.any?
-          if index
-            gap = delays[index]
-            if gap && gap < min_delay
-              failures << "Expected minimum delay of #{min_delay}ms at gap #{index}, got #{gap}ms"
-            end
-          elsif delays.any? { |d| d < min_delay }
-            failures << "Expected minimum delay of #{min_delay}ms, got #{delays.min}ms"
-          end
-        end
+        # Not all gaps are retry gaps — the download flow's final gap is the
+        # redirect hop to the signed URL, which is deliberately un-delayed —
+        # so those fixtures name a gap with an index. See DelayGaps.check for
+        # the contract.
+        #
+        # An absent `min` still asserts that the gap EXISTS, so it defaults to
+        # zero rather than skipping the assertion: gating on presence degrades
+        # the check to nothing, the very false-green class this exists to kill.
+        failure = DelayGaps.check(@tracker.delays_between_requests, assertion["min"], assertion["index"],
+          @tracker.request_count)
+        failures << failure if failure
 
       when "noError"
         if error

@@ -834,6 +834,35 @@ final class DownloadTests: XCTestCase {
         XCTAssertEqual(spy.ends, [1])
     }
 
+    /// `URLSession` reports a cancelled task as `URLError(.cancelled)`, not
+    /// `CancellationError` — so the real-world cancellation shape must be
+    /// terminal too, not just the Swift-concurrency one.
+    func testDownloadURL_urlErrorCancelledIsTerminal() async throws {
+        let spy = RetryHookSpy()
+        let counter = Counter()
+        let transport = MockTransport { _ in
+            counter.increment()
+            throw URLError(.cancelled)
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true, hooks: spy)
+
+        do {
+            _ = try await account.downloadURL(Self.hop1URL)
+            XCTFail("Expected the cancellation to surface")
+        } catch let error as URLError {
+            // Terminal errors propagate raw, so the cancellation shape itself
+            // must arrive — not a BasecampError.network wrapping it.
+            XCTAssertEqual(error.code, .cancelled)
+        } catch {
+            XCTFail("Expected URLError(.cancelled) raw, got \(error)")
+        }
+
+        XCTAssertEqual(counter.value, 1, "A cancelled URLSession task must not spend another attempt")
+        XCTAssertEqual(spy.retries, [], "A cancelled URLSession task must not announce a retry")
+        XCTAssertEqual(spy.starts, [1])
+        XCTAssertEqual(spy.ends, [1])
+    }
+
     /// A `Retry-After` large enough to overflow the nanosecond conversion must
     /// not trap the process. `UInt64(_:)` on an out-of-range `Double` is a
     /// runtime trap, so an unclamped conversion crashes here rather than

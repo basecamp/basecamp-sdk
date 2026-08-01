@@ -143,6 +143,13 @@ jobs:
             exit 1
           fi
 
+      - name: Run Go conformance runner unit tests
+        # Unit-tests the runner's own assertion helpers. Their bounds
+        # branches never execute against a fixture that passes, so a
+        # vacuous assertion (#563) survives a fully green conformance run.
+        working-directory: conformance/runner/go
+        run: go test ./...
+
       - name: Run Go conformance tests
         working-directory: conformance/runner/go
         run: |
@@ -261,6 +268,14 @@ jobs:
           bundle install
           ruby runner.rb
 
+      - name: Run Ruby conformance runner unit tests
+        # Unit-tests the runner's own assertion helpers. Their bounds
+        # branches never execute against a fixture that passes, so a
+        # vacuous assertion (#563) survives a fully green conformance run.
+        if: matrix.ruby == '3.3'
+        working-directory: conformance/runner/ruby
+        run: bundle exec ruby delay_gaps_test.rb
+
   test-python:
     name: Python ${{ matrix.python }}
     runs-on: ubuntu-latest
@@ -332,6 +347,14 @@ jobs:
           uv sync --python ${{ matrix.python }}
           uv run --python ${{ matrix.python }} python runner.py
 
+      - name: Run Python conformance runner unit tests
+        # Unit-tests the runner's own assertion helpers. Their bounds
+        # branches never execute against a fixture that passes, so a
+        # vacuous assertion (#563) survives a fully green conformance run.
+        if: matrix.python == '3.13'
+        working-directory: conformance/runner/python
+        run: uv run --python ${{ matrix.python }} python -m pytest -q test_delay_gaps.py
+
   test-swift:
     name: Swift Tests
     runs-on: macos-15
@@ -398,6 +421,12 @@ jobs:
 
       - name: Check optional array/scalar invariant
         run: ruby ../scripts/check-kotlin-optional-arrays-and-scalars.rb
+
+      - name: Run Kotlin conformance runner unit tests
+        # Unit-tests the runner's own assertion helpers. Their bounds
+        # branches never execute against a fixture that passes, so a
+        # vacuous assertion (#563) survives a fully green conformance run.
+        run: ./gradlew :conformance:test
 
       - name: Run Kotlin conformance tests
         run: ./gradlew :conformance:run

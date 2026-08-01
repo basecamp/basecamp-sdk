@@ -34,4 +34,13 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.ktor.client.mock)
     implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(kotlin("test"))
+    testImplementation(libs.junit.jupiter)
+}
+
+// The runner's assertion helpers are unit-tested (DelayGapsTest): a bounds
+// branch that only ever runs against passing fixtures is not a guard.
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

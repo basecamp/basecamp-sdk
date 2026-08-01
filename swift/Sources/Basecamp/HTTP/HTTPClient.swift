@@ -32,6 +32,17 @@ package final class HTTPClient: Sendable {
     private static let downloadMaxAttempts = 3
     private static let downloadRetryOn: Set<Int> = [429, 502, 503, 504]
 
+    /// Whether an error represents cooperative cancellation.
+    ///
+    /// Swift concurrency raises `CancellationError`, but `URLSession` reports a
+    /// cancelled task as `URLError(.cancelled)` — so checking only the former
+    /// would treat a real cancelled download as a retryable network blip and
+    /// spend the whole budget on a request the caller already abandoned.
+    private static func isCancellation(_ error: any Error) -> Bool {
+        if error is CancellationError { return true }
+        return (error as? URLError)?.code == .cancelled
+    }
+
     /// Converts a backoff interval to nanoseconds without trapping.
     ///
     /// `UInt64(_:)` on an out-of-range `Double` is a runtime trap, not an
@@ -198,7 +209,7 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if error is CancellationError {
+                if Self.isCancellation(error) {
                     // Cooperative cancellation is terminal, not a transport
                     // blip: retrying would announce and start an attempt the
                     // caller has already abandoned. It propagates raw rather
@@ -346,7 +357,7 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if error is CancellationError {
+                if Self.isCancellation(error) {
                     // Cooperative cancellation is terminal, not a transport
                     // blip: retrying would announce and start an attempt the
                     // caller has already abandoned. It propagates raw rather
