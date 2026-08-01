@@ -166,6 +166,20 @@ class ErrorsTest < Minitest::Test
     assert_equal({ "color" => [ long ] }, error.field_errors)
   end
 
+  def test_error_from_response_422_survives_non_string_error_sibling
+    body = '{"error": {"base": 1}, "errors": {"color": ["is not a valid color"]}}'
+    error = Basecamp.error_from_response(422, body)
+
+    assert_equal "color: is not a valid color", error.message
+    assert_equal({ "color" => [ "is not a valid color" ] }, error.field_errors)
+  end
+
+  def test_error_from_response_non_string_error_does_not_raise_on_other_statuses
+    error = Basecamp.error_from_response(404, '{"error": {"base": 1}}')
+
+    assert_instance_of Basecamp::NotFoundError, error
+  end
+
   def test_error_from_response_422_plain_error_body_unchanged
     error = Basecamp.error_from_response(422, '{"error": "Name can\'t be blank"}')
 

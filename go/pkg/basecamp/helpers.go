@@ -92,17 +92,33 @@ func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][
 	if len(body) == 0 {
 		return "", "", nil
 	}
+	// Members decode independently (SPEC §6: a key is used only when its
+	// value is a string) so a malformed scalar sibling — e.g.
+	// {"error": {}, "errors": {...}} — cannot discard a usable field map.
 	var parsed struct {
-		Error       string          `json:"error"`
-		Description string          `json:"error_description"`
+		Error       json.RawMessage `json:"error"`
+		Description json.RawMessage `json:"error_description"`
 		Errors      json.RawMessage `json:"errors"`
 	}
 	if err := json.Unmarshal(body, &parsed); err != nil {
 		return "", "", nil
 	}
-	message = truncate(parsed.Error)
-	hint = truncate(parsed.Description)
+	message = truncate(stringFromRaw(parsed.Error))
+	hint = truncate(stringFromRaw(parsed.Description))
 	return message, hint, parseFieldErrors(parsed.Errors)
+}
+
+// stringFromRaw decodes a JSON value as a string, returning "" for absent or
+// non-string values.
+func stringFromRaw(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return ""
+	}
+	return s
 }
 
 // parseFieldErrors decodes the field-keyed validation errors map — the Rails

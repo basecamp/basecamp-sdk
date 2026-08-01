@@ -286,6 +286,26 @@ func TestCheckResponse_FieldKeyed422TruncatesAfterFlattening(t *testing.T) {
 	}
 }
 
+func TestCheckResponse_FieldKeyed422SurvivesNonStringErrorSibling(t *testing.T) {
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	body := []byte(`{"error":{},"error_description":42,"errors":{"color":["is not a valid color"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "color: is not a valid color" {
+		t.Errorf("Message = %q, want flattened field errors despite malformed siblings", e.Message)
+	}
+	want := map[string][]string{"color": {"is not a valid color"}}
+	if !reflect.DeepEqual(e.FieldErrors, want) {
+		t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, want)
+	}
+	if e.Hint != "" {
+		t.Errorf("Hint = %q, want empty for non-string error_description", e.Hint)
+	}
+}
+
 func TestCheckResponse_Plain422UnchangedByFieldErrorSupport(t *testing.T) {
 	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
 	body := []byte(`{"error":"Name can't be blank"}`)

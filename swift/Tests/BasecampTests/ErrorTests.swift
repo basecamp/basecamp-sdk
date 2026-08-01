@@ -215,6 +215,19 @@ final class ErrorTests: XCTestCase {
         }
     }
 
+    func testFromHTTPResponse422SurvivesNonStringErrorSibling() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: [
+                "error": ["base": 1],
+                "error_description": 42,
+                "errors": ["color": ["is not a valid color"]],
+            ] as [String: Any]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        XCTAssertEqual(error.message, "color: is not a valid color")
+        XCTAssertNil(error.hint)
+    }
+
     func testFromHTTPResponse422FieldKeyedTruncatesAfterFlattening() {
         let longMessage = String(repeating: "x", count: 600)
         let body = try! JSONSerialization.data(

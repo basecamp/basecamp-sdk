@@ -132,15 +132,23 @@ class ValidationError(BasecampError):
 
 
 def parse_error_message(body: str | bytes | None) -> str | None:
-    """Extract error message from response body."""
+    """Extract error message from response body.
+
+    A key is used only when its value is a string (SPEC section 6), so a
+    malformed scalar member cannot leak a non-string into the message or
+    prevent field-keyed extraction.
+    """
     if not body:
         return None
     try:
         data = json.loads(body)
-        if isinstance(data, dict):
-            return data.get("error") or data.get("message")
     except (json.JSONDecodeError, TypeError):
-        pass
+        return None
+    if not isinstance(data, dict):
+        return None
+    for key in ("error", "message"):
+        if isinstance(data.get(key), str) and data[key]:
+            return data[key]
     return None
 
 

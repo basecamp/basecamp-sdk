@@ -136,6 +136,23 @@
     "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
   },
   {
+    "name": "422 field-keyed errors survive a non-string top-level error",
+    "description": "Verifies that a non-string error sibling ({\"error\": {}}) is ignored per the string-value rule without discarding the usable field-keyed errors map",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"error": {}, "errors": {"color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "color: is not a valid color"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
     "name": "429 maps to rate_limit error code",
     "description": "Verifies that 429 Too Many Requests maps to structured error with code 'rate_limit' and retryable=true",
     "operation": "ListProjects",

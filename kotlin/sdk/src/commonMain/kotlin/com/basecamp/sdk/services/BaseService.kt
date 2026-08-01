@@ -13,7 +13,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Abstract base class for all Basecamp API services.
@@ -501,12 +500,16 @@ abstract class BaseService(
             if (bodyText.isNotBlank()) {
                 val jsonBody = json.parseToJsonElement(bodyText)
                 if (jsonBody is JsonObject) {
-                    jsonBody["error"]?.jsonPrimitive?.content?.let {
+                    // Safe casts, not .jsonPrimitive: SPEC §6 uses a key only
+                    // when its value is a string, and a throwing access here
+                    // would abandon the field-error extraction below for
+                    // bodies like {"error": {}, "errors": {...}}.
+                    stringMember(jsonBody, "error")?.let {
                         val truncated = BasecampException.truncateMessage(it)
                         serverMessage = truncated
                         message = truncated
                     }
-                    jsonBody["error_description"]?.jsonPrimitive?.content?.let {
+                    stringMember(jsonBody, "error_description")?.let {
                         hint = BasecampException.truncateMessage(it)
                     }
                     if (status == 400 || status == 422) {
@@ -527,6 +530,10 @@ abstract class BaseService(
 
         return BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter, fieldErrors)
     }
+
+    /** Returns a member's string value, or null when absent or not a string. */
+    private fun stringMember(body: JsonObject, key: String): String? =
+        (body[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 
     /**
      * Extracts the field-keyed validation errors map from a parsed error body —

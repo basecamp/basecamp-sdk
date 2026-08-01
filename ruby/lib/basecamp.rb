@@ -143,7 +143,9 @@ module Basecamp
     "download"
   end
 
-  # Parses error message from response body.
+  # Parses error message from response body. A key is used only when its
+  # value is a String (SPEC section 6), so a malformed scalar member such as
+  # {"error": {}} cannot raise or leak a non-string into the message.
   # @param body [String, nil]
   # @return [String, nil]
   def self.parse_error_message(body)
@@ -152,7 +154,7 @@ module Basecamp
     Security.check_body_size!(body, Security::MAX_ERROR_BODY_BYTES, "Error")
 
     data = JSON.parse(body)
-    msg = data["error"] || data["message"]
+    msg = data.is_a?(Hash) ? [ data["error"], data["message"] ].find { |value| value.is_a?(String) } : nil
     msg ? Security.truncate(msg) : nil
   rescue JSON::ParserError, ApiError
     nil

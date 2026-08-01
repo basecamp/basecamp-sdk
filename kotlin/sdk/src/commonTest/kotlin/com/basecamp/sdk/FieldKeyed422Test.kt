@@ -109,6 +109,16 @@ class FieldKeyed422Test {
     }
 
     @Test
+    fun survivesNonStringErrorSibling() = runTest {
+        val e = raise422(
+            """{"error": {"base": 1}, "error_description": 42, "errors": {"color": ["is not a valid color"]}}"""
+        )
+        assertEquals("color: is not a valid color", e.message)
+        assertEquals(mapOf("color" to listOf("is not a valid color")), e.fieldErrors)
+        assertNull(e.hint)
+    }
+
+    @Test
     fun plainErrorBodyUnchanged() = runTest {
         val e = raise422("""{"error": "Name can't be blank"}""")
         assertEquals("Name can't be blank", e.message)

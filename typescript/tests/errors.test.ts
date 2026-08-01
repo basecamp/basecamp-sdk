@@ -461,6 +461,23 @@ describe("errorFromResponse", () => {
       expect(error.fieldErrors).toEqual({ color: [long] });
     });
 
+    it("survives a non-string error sibling alongside a usable errors map", async () => {
+      const response = new Response(
+        JSON.stringify({
+          error: {},
+          error_description: 42,
+          errors: { color: ["is not a valid color"] },
+        }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message).toBe("color: is not a valid color");
+      expect(error.fieldErrors).toEqual({ color: ["is not a valid color"] });
+      expect(error.hint).toBeUndefined();
+    });
+
     it("leaves plain 422 error bodies unchanged", async () => {
       const response = new Response(
         JSON.stringify({ error: "Name can't be blank" }),

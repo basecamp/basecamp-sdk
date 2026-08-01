@@ -174,6 +174,16 @@ class TestFieldKeyed422:
         assert str(err).endswith("...")
         assert err.field_errors == {"color": [long]}
 
+    def test_survives_non_string_error_sibling(self):
+        body = b'{"error": {"base": 1}, "errors": {"color": ["is not a valid color"]}}'
+        err = error_from_response(422, body)
+        assert str(err) == "color: is not a valid color"
+        assert err.field_errors == {"color": ["is not a valid color"]}
+
+    def test_non_string_error_does_not_crash_other_statuses(self):
+        err = error_from_response(404, b'{"error": {"base": 1}}')
+        assert str(err) == "Not found"
+
     def test_plain_422_unchanged(self):
         err = error_from_response(422, b'{"error": "Name can\'t be blank"}')
         assert str(err) == "Name can't be blank"
