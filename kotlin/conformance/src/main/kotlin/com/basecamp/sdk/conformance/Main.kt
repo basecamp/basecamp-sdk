@@ -26,7 +26,6 @@ private val KOTLIN_SKIPS: Map<String, String> = mapOf(
     "DownloadURL surfaces redirect with no Location" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
     "UploadsDownload delegates through DownloadURL primitive" to "Kotlin SDK does not yet expose uploads.download(id) (parity tracked as follow-up)",
     "UploadsDownload errors when upload has no download_url" to "Kotlin SDK does not yet expose uploads.download(id) (parity tracked as follow-up)",
-    "Network error on an idempotent POST is retried then succeeds" to "Kotlin SDK does not retry network errors on mutations; it throws immediately (RetryTest network test asserts requestCount == 1)",
 )
 
 fun main() {

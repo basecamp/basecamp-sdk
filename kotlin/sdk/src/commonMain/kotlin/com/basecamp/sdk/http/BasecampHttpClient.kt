@@ -6,6 +6,7 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.ResponseException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.Json
@@ -38,7 +39,7 @@ internal class BasecampHttpClient(
         return try {
             httpClient.request(url) {
                 this.method = method
-                authStrategy.authenticate(this)
+                authenticateClassified(this)
                 header(HttpHeaders.UserAgent, config.userAgent)
                 header(HttpHeaders.Accept, "application/json")
                 if (body != null) {
@@ -54,10 +55,45 @@ internal class BasecampHttpClient(
     }
 
     /**
+     * Applies the auth strategy, classifying its failures at the source: an
+     * auth-phase throw is a configuration or credential-provider fault, not a
+     * transport fault, so it is tagged as [AuthPhaseFailure] here and the
+     * retry loops unwrap it — the strategy's own exception surfaces raw, on
+     * the first attempt, and the strategy is never re-driven by the retry
+     * budget. Raw propagation matches the sibling SDKs: Swift authenticates
+     * outside the attempt's catch, Go returns the strategy's error before
+     * the attempt, and TypeScript rethrows the original value so its
+     * identity survives. A [BasecampException] from the strategy (e.g. a
+     * token provider's already-classified failure) propagates as-is.
+     */
+    private suspend fun authenticateClassified(builder: HttpRequestBuilder) {
+        try {
+            authStrategy.authenticate(builder)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: BasecampException) {
+            throw e
+        } catch (e: Exception) {
+            throw AuthPhaseFailure(e)
+        }
+    }
+
+    /**
      * Executes an HTTP request, applying retry logic for retryable errors.
      * Safe HTTP methods (GET, PUT, DELETE, HEAD) are always retried.
      * Non-safe methods (POST, PATCH) are retried only when per-operation
      * metadata marks them as idempotent.
+     *
+     * One eligibility gate covers both failure shapes (SPEC §7 Gate 3):
+     * retryable HTTP statuses AND transport-level network errors, so an
+     * idempotent operation survives a connection blip while a non-idempotent
+     * POST is still attempted exactly once. The deliberate carve-out is
+     * Ktor's [HttpRequestTimeoutException]: an attempt that consumed the
+     * caller's entire request-time budget is a slowness shape a retry tends
+     * to repeat — and the timeout is installed per attempt, so each retry
+     * would burn another full budget, multiplying worst-case wall-clock time
+     * by the attempt count. Auth headers are attached per attempt inside
+     * [request], so every retry re-authenticates naturally.
      */
     suspend fun requestWithRetry(
         method: HttpMethod,
@@ -69,12 +105,43 @@ internal class BasecampHttpClient(
         val info = RequestInfo(method = method.value, url = url, attempt = attempt)
         hooks.safeOnRequestStart(info)
 
+        // Retry eligibility (SPEC §7 Gates 1+2), hoisted ahead of the attempt so
+        // the HTTP-status and network-error paths share a single gate: safe HTTP
+        // methods (GET, PUT, DELETE, HEAD) are always retryable, and the
+        // per-operation `idempotent` flag can upgrade others.
+        val opConfig = operationName?.let { Metadata.operations[it] }
+        val opRetry = opConfig?.retry
+        val isRetryable = method in IDEMPOTENT_METHODS || opConfig?.idempotent == true
+        // The operation's declared max is a ceiling on the caller's configured
+        // attempt count, never a replacement for it (SPEC.md §2): a caller who
+        // lowered maxRetries is honored, and a raised cap is still clamped to
+        // the operation's declared max.
+        val maxAttempts = minOf(
+            config.maxRetries.coerceAtLeast(1),
+            opRetry?.maxRetries ?: config.maxRetries,
+        )
+        val baseDelayMs = opRetry?.baseDelayMs ?: config.baseRetryDelay.inWholeMilliseconds
+
         val startTime = currentTimeMillis()
-        val response: HttpResponse
-        try {
-            response = request(method, url, body)
+        // Mirror of the Swift directive loop (#517): the catch clauses only
+        // classify the attempt's outcome; retry side effects (on_retry, backoff
+        // sleep, the next attempt) run outside any catch, so a
+        // CancellationException from the sleep propagates raw and no phantom
+        // request events fire for an attempt that already ended.
+        val outcome: AttemptOutcome = try {
+            AttemptOutcome.Completed(request(method, url, body))
         } catch (e: CancellationException) {
             throw e
+        } catch (e: AuthPhaseFailure) {
+            // The auth strategy itself failed — not a transport fault. Surface
+            // the strategy's own exception raw and spend no retry budget on it.
+            val duration = currentTimeMillis() - startTime
+            hooks.safeOnRequestEnd(info, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = e.original,
+            ))
+            throw e.original
         } catch (e: BasecampException) {
             // A deliberate SDK error (e.g. the same-origin credential guard) is
             // already classified — surface it as-is rather than masking it as a
@@ -93,10 +160,34 @@ internal class BasecampHttpClient(
                 duration = duration.millisToDuration(),
                 error = e,
             ))
-            throw BasecampException.Network(
-                message = "Network error: ${e.message}",
-                cause = e,
-            )
+            AttemptOutcome.NetworkFailure(e)
+        }
+
+        val response: HttpResponse = when (outcome) {
+            is AttemptOutcome.Completed -> outcome.response
+            is AttemptOutcome.NetworkFailure -> {
+                val wrapped = BasecampException.Network(
+                    message = "Network error: ${outcome.cause.message}",
+                    cause = outcome.cause,
+                )
+                // Total-budget carve-out: HttpRequestTimeoutException means an
+                // attempt consumed the caller's entire configured request-time
+                // budget (HttpTimeout requestTimeoutMillis) — not a transient
+                // blip but a slowness shape a retry tends to repeat, and the
+                // timeout is per attempt, so each retry burns another full
+                // budget. Everything else the transport throws — connect/socket
+                // timeouts, connection resets, DNS failures (including CIO's
+                // UnresolvedAddressException, which is not an IOException) —
+                // stays retryable, matching Swift's broad classification.
+                val retryableFailure = outcome.cause !is HttpRequestTimeoutException
+                if (config.enableRetry && isRetryable && retryableFailure && attempt < maxAttempts) {
+                    val delayMs = calculateBackoffDelay(baseDelayMs, attempt)
+                    hooks.safeOnRetry(info, attempt + 1, wrapped, delayMs)
+                    kotlinx.coroutines.delay(delayMs)
+                    return requestWithRetry(method, url, body, attempt + 1, operationName)
+                }
+                throw wrapped
+            }
         }
 
         val duration = currentTimeMillis() - startTime
@@ -106,26 +197,11 @@ internal class BasecampHttpClient(
         ))
 
         val status = response.status.value
-
-        // Determine retry eligibility: safe HTTP methods (GET, PUT, DELETE, HEAD) are
-        // always retryable, and the per-operation `idempotent` flag can upgrade others.
-        val opConfig = operationName?.let { Metadata.operations[it] }
-        val opRetry = opConfig?.retry
-        val isRetryable = method in IDEMPOTENT_METHODS || opConfig?.idempotent == true
         val shouldRetry = config.enableRetry && isRetryable && if (opRetry != null) {
             status in opRetry.retryOn
         } else {
             status in RETRYABLE_STATUS_CODES
         }
-        // The operation's declared max is a ceiling on the caller's configured
-        // attempt count, never a replacement for it (SPEC.md §2): a caller who
-        // lowered maxRetries is honored, and a raised cap is still clamped to
-        // the operation's declared max.
-        val maxAttempts = minOf(
-            config.maxRetries.coerceAtLeast(1),
-            opRetry?.maxRetries ?: config.maxRetries,
-        )
-        val baseDelayMs = opRetry?.baseDelayMs ?: config.baseRetryDelay.inWholeMilliseconds
 
         if (shouldRetry && attempt < maxAttempts) {
             val retryAfter = parseRetryAfter(response.headers["Retry-After"])
@@ -161,7 +237,7 @@ internal class BasecampHttpClient(
         return try {
             httpClient.request(url) {
                 this.method = method
-                authStrategy.authenticate(this)
+                authenticateClassified(this)
                 header(HttpHeaders.UserAgent, config.userAgent)
                 header(HttpHeaders.Accept, "application/json")
                 header(HttpHeaders.ContentType, contentType)
@@ -191,6 +267,16 @@ internal class BasecampHttpClient(
             response = requestBinary(method, url, data, contentType)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: AuthPhaseFailure) {
+            // The auth strategy itself failed — not a transport fault. Surface
+            // the strategy's own exception raw.
+            val duration = currentTimeMillis() - startTime
+            hooks.safeOnRequestEnd(info, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = e.original,
+            ))
+            throw e.original
         } catch (e: BasecampException) {
             // A deliberate SDK error (e.g. the same-origin credential guard) is
             // already classified — surface it as-is rather than masking it as a
@@ -256,6 +342,24 @@ internal class BasecampHttpClient(
         }
     }
 }
+
+/**
+ * Outcome of a single transport attempt: a response (any status), or a
+ * transport-level failure the loop tail may retry. The catch clause only
+ * classifies into this type; acting on it happens outside the catch.
+ */
+private sealed interface AttemptOutcome {
+    class Completed(val response: HttpResponse) : AttemptOutcome
+    class NetworkFailure(val cause: Exception) : AttemptOutcome
+}
+
+/**
+ * Internal tag for an exception thrown by the auth strategy while building an
+ * attempt. Never escapes [BasecampHttpClient]: the retry entry points unwrap
+ * it and rethrow [original] raw, so auth-phase faults are never classified as
+ * transport failures and never consume retry budget.
+ */
+private class AuthPhaseFailure(val original: Exception) : Exception(original)
 
 /** Safely call onRequestStart, catching hook exceptions. */
 private fun BasecampHooks.safeOnRequestStart(info: RequestInfo) {
