@@ -458,7 +458,7 @@ class DownloadTest < Minitest::Test
 
     assert_equal 2, hop1_accepts.length
     hop1_accepts.each do |accept|
-      refute_equal "application/json", accept,
+      assert_not_equal "application/json", accept,
         "hop 1 must not send the JSON Accept header (SPEC §14)"
     end
   end
