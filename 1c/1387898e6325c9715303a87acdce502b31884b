@@ -1,0 +1,23 @@
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_555508c40a7b3b::t_3369707882245f 96
+  s_555508c40a7b3b::t_446abcf6cb3ffd 118-126
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_555508c40a7b3b::t_0f80c838df4364 171-174
+  s_555508c40a7b3b::t_cec847d49d232e 243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "1c1387898e6325c9715303a87acdce502b31884b",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
