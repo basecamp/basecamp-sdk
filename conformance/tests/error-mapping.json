@@ -187,6 +187,23 @@
     "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
   },
   {
+    "name": "422 field-keyed errors keep valid entries beside malformed ones",
+    "description": "Verifies a mixed-validity errors map ({\"color\": [...], \"base\": \"invalid\"}) reaches the tolerant parser in every SDK — the valid entry is flattened and the malformed sibling skipped, rather than a typed-decode failure surfacing to the caller",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"errors": {"color": ["is not a valid color"], "base": "invalid"}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "color: is not a valid color"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
     "name": "429 maps to rate_limit error code",
     "description": "Verifies that 429 Too Many Requests maps to structured error with code 'rate_limit' and retryable=true",
     "operation": "ListProjects",

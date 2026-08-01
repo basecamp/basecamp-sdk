@@ -4,7 +4,8 @@
 # Verifies that the committed generated Go client is current by regenerating
 # and diffing against the committed file:
 #   go/pkg/generated/client.gen.go  (oapi-codegen output, AFTER the
-#                                    normalize-go-deprecation-godoc.sh pass)
+#                                    normalize-go-deprecation-godoc.sh and
+#                                    normalize-go-error-response-parsing.sh passes)
 #
 # This is a freshness gate: it re-runs the generation pipeline (oapi-codegen +
 # normalization) and asserts the committed output matches. It is distinct from
@@ -71,8 +72,13 @@ if [ ! -f "$REGEN" ]; then
   exit 1
 fi
 
-# Apply the same normalization the committed file receives (see generate.go).
+# Apply the same normalizations the committed file receives (see generate.go).
 if ! "$SCRIPT_DIR/normalize-go-deprecation-godoc.sh" "$REGEN" > "$NORM_LOG" 2>&1; then
+  echo "ERROR: normalization failed:" >&2
+  cat "$NORM_LOG" >&2
+  exit 1
+fi
+if ! "$SCRIPT_DIR/normalize-go-error-response-parsing.sh" "$REGEN" >> "$NORM_LOG" 2>&1; then
   echo "ERROR: normalization failed:" >&2
   cat "$NORM_LOG" >&2
   exit 1
