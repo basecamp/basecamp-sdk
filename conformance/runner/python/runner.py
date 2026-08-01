@@ -437,13 +437,21 @@ class TestRunner:
                     delays = self._tracker.delays_between_requests
                     min_delay = assertion.get("min")
                     index = assertion.get("index")
-                    if min_delay and delays:
+                    if min_delay:
                         if index is not None:
-                            if index < len(delays) and delays[index] < min_delay:
+                            # A named gap that does not exist fails: a dropped
+                            # retry must fire the assertion, not make it
+                            # vanish. Negative indexes are rejected rather than
+                            # wrapping like the per-request assertions do.
+                            if index < 0 or index >= len(delays):
+                                failures.append(
+                                    f"Expected a delay at gap {index}, but only {len(delays) + 1} request(s) were made"
+                                )
+                            elif delays[index] < min_delay:
                                 failures.append(
                                     f"Expected minimum delay of {min_delay}ms at gap {index}, got {delays[index]}ms"
                                 )
-                        elif any(d < min_delay for d in delays):
+                        elif delays and any(d < min_delay for d in delays):
                             failures.append(f"Expected minimum delay of {min_delay}ms, got {min(delays)}ms")
 
                 case "noError":
