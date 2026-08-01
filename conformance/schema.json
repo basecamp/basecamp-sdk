@@ -159,7 +159,7 @@
           },
           "index": {
             "type": "integer",
-            "description": "Request index for per-request assertions: headerPresent / headerAbsent / headerInjected / requestPath / requestMethod / requestBody / requestBodyAbsent (0-based; negative values index from the end, e.g. -1 = last request). Default 0. For delayBetweenRequests it selects a single inter-request GAP (gap i is between request i and i+1); omit it to require the minimum on every gap."
+            "description": "Request index for per-request assertions: headerPresent / headerAbsent / headerInjected / requestPath / requestMethod / requestBody / requestBodyAbsent (0-based; negative values index from the end, e.g. -1 = last request). Default 0. For delayBetweenRequests it selects a single inter-request GAP (gap i is between request i and i+1); omit it to require the minimum on every gap. A delayBetweenRequests assertion never passes vacuously: a named gap the run did not produce FAILS, an omitted index on a run with no gaps FAILS, and a negative gap index is rejected rather than wrapping to the end — a timing pin exists to catch a dropped backoff, and a dropped backoff is exactly what removes the gap."
           }
         }
       }

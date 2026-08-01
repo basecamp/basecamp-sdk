@@ -1621,7 +1621,7 @@ Enumerated from `conformance/schema.json`:
 | Type | Description |
 |------|-------------|
 | `requestCount` | Number of HTTP requests made (verifies retry behavior) |
-| `delayBetweenRequests` | Minimum delay between requests in ms (verifies backoff) |
+| `delayBetweenRequests` | Minimum delay between requests in ms (verifies backoff). `index` names one inter-request gap; omitted, every gap must clear the minimum. Never passes vacuously: a named gap the run did not produce fails, an omitted index with no gaps fails, and a negative index is rejected. |
 | `statusCode` | HTTP status code of the response |
 | `responseStatus` | Response status category |
 | `responseBody` | Specific value in response body (by path) |

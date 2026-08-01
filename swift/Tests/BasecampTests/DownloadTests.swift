@@ -849,8 +849,12 @@ final class DownloadTests: XCTestCase {
         do {
             _ = try await account.downloadURL(Self.hop1URL)
             XCTFail("Expected the cancellation to surface")
+        } catch let error as URLError {
+            // Terminal errors propagate raw, so the cancellation shape itself
+            // must arrive — not a BasecampError.network wrapping it.
+            XCTAssertEqual(error.code, .cancelled)
         } catch {
-            // Expected — terminal, whatever wrapper it arrives in.
+            XCTFail("Expected URLError(.cancelled) raw, got \(error)")
         }
 
         XCTAssertEqual(counter.value, 1, "A cancelled URLSession task must not spend another attempt")
