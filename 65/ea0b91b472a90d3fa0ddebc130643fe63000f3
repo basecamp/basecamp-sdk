@@ -1,0 +1,21 @@
+typescript/src/generated/openapi-stripped.json
+  s_b1b74299ef0baf::t_d2a8d3a472b03a 24534,24560,26627,26638,26646,28417,28425,28475,30712,30724
+ruby/lib/basecamp/generated/types.rb
+  s_b1b74299ef0baf::t_d2a8d3a472b03a 4,1493,2544,2547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "65ea0b91b472a90d3fa0ddebc130643fe63000f3",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
