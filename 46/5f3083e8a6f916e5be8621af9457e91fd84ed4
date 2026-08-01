@@ -1,0 +1,31 @@
+spec/basecamp.smithy
+  s_555508c40a7b3b::t_6026a90d863ece 1238
+go/pkg/generated/client.gen.go
+  s_555508c40a7b3b::t_cfb8575c412bc9 3191
+openapi.json
+  s_555508c40a7b3b::t_b57aef0eee406d 33235
+ruby/lib/basecamp/generated/services/todolists_service.rb
+  s_555508c40a7b3b::t_5489ea2e94f5d6 22
+typescript/src/generated/openapi-stripped.json
+  s_555508c40a7b3b::t_465a9c35e7bde9 30529
+typescript/src/generated/schema.d.ts
+  s_555508c40a7b3b::t_ffa408a4cc5b2c 5787
+typescript/src/generated/services/todolists.ts
+  s_555508c40a7b3b::t_29cdbfd57cb13b 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "465f3083e8a6f916e5be8621af9457e91fd84ed4",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
