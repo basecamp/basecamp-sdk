@@ -1,0 +1,68 @@
+swift/Tests/BasecampTests/DownloadTests.swift
+  s_555508c40a7b3b::t_6d3cfbe9458d66 852-855,857
+conformance/runner/ruby/runner.rb
+  s_555508c40a7b3b::t_4d8589f823eb4e 578-580
+  s_555508c40a7b3b::t_c8e97c28fae76b 18-59
+  s_555508c40a7b3b::t_ddf3ef0c296960 60-66,581-587
+conformance/runner/typescript/delay-gaps.ts
+  s_555508c40a7b3b::t_1238a86b4925b0 1-71
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/DelayGaps.kt
+  s_555508c40a7b3b::t_ee41ad362d0c56 1-50
+conformance/runner/ruby/delay_gaps_test.rb
+  s_555508c40a7b3b::t_9279f48f520e25 1-74
+conformance/runner/python/runner.py
+  s_555508c40a7b3b::t_a61f5aa1d4a2ed 36-70
+  s_555508c40a7b3b::t_f5c370740bfe09 474-482
+  s_555508c40a7b3b::t_d13054075dc079 71-77,483-489
+conformance/runner/python/test_delay_gaps.py
+  s_555508c40a7b3b::t_1f866a55d9fbe2 1-65
+  s_555508c40a7b3b::t_053a34f0e30a0a 66-79
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/DelayGapsTest.kt
+  s_555508c40a7b3b::t_9fec3babd2575c 1-103
+Makefile
+  s_555508c40a7b3b::t_0f312897a823ec 445-458
+  s_555508c40a7b3b::t_13e804fde0ec4e 411,533
+conformance/runner/python/pyproject.toml
+  s_555508c40a7b3b::t_7944607ca0f019 10-16
+SPEC.md
+  s_555508c40a7b3b::t_760dc3c621c34f 1624
+conformance/runner/go/main.go
+  s_555508c40a7b3b::t_84312c59ec3895 946-947
+conformance/runner/typescript/runner.test.ts
+  s_555508c40a7b3b::t_930eef0fe1cbde 18
+  s_555508c40a7b3b::t_e6b65dee8f87ed 802-812
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_555508c40a7b3b::t_cd94509f68dfe7 417-422
+  s_555508c40a7b3b::t_a24ba8f256d08a 374-375,377,382,385-386,388,393,395-396,398,400-401,406,408,538-539,547,549
+  s_555508c40a7b3b::t_f90c70e25cc8d2 371,409,412,536,550
+conformance/runner/typescript/delay-gaps.test.ts
+  s_555508c40a7b3b::t_41c1959449a591 1-89
+conformance/runner/go/delay_gaps_test.go
+  s_555508c40a7b3b::t_6da65a811ca99c 1-147
+conformance/runner/go/delay_gaps.go
+  s_555508c40a7b3b::t_0efec99dccd93b 1-57
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_555508c40a7b3b::t_4a38e795a21591 46-53
+kotlin/conformance/build.gradle.kts
+  s_555508c40a7b3b::t_be9e64dbaf7d03 37-45
+conformance/schema.json
+  s_555508c40a7b3b::t_5a6f848a70990a 162
+.github/workflows/test.yml
+  s_555508c40a7b3b::t_e44693e7ce1fdb 146-152,271-278,350-357,425-430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "4af8bdec5f19f1aa7f15509a643c1b599ea7b39b",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
