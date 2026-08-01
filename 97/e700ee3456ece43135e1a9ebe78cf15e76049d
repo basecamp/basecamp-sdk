@@ -1,0 +1,71 @@
+conformance/runner/swift/Sources/ConformanceSupport/DelayGaps.swift
+  s_555508c40a7b3b::t_576bedc9650247 1-75
+conformance/runner/swift/Tests/ConformanceSupportTests/DelayGapsTests.swift
+  s_555508c40a7b3b::t_388e660c1cd85f 1-119
+conformance/runner/swift/Package.swift
+  s_555508c40a7b3b::t_32cfb0de79a563 22-34,38-39,45-54
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_555508c40a7b3b::t_dd3414cd08786a 53
+  s_555508c40a7b3b::t_832abf6c067640 286-290,292
+  s_555508c40a7b3b::t_fa033ffcebb675 63,65-69
+  s_555508c40a7b3b::t_6ae9e7ac722df1 42-44,47
+  s_555508c40a7b3b::t_efd8dcb26b05fd 2
+  s_555508c40a7b3b::t_9ae16b51145e08 300
+  s_555508c40a7b3b::t_f6a123e652e140 202-212
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_555508c40a7b3b::t_a10af4dbdc7699 216-221
+  s_555508c40a7b3b::t_091ae816b27a56 12-25,27,30
+  s_555508c40a7b3b::t_27680503e0f900 28-29
+  s_555508c40a7b3b::t_bcc7db55e07018 258-263,265-271
+  s_555508c40a7b3b::t_ac3902c693d90c 7-11
+  s_555508c40a7b3b::t_96c9c5345ec699 125-145,147-154,160-168
+  s_555508c40a7b3b::t_1e40337c009982 169
+conformance/runner/swift/Sources/ConformanceRunner/ScriptedTransport.swift
+  s_555508c40a7b3b::t_9b82b6d305fa0e 120
+  s_555508c40a7b3b::t_c5430def7d50b0 136-143
+Makefile
+  s_555508c40a7b3b::t_481ef8e125d9a5 462
+  s_555508c40a7b3b::t_265c2dc83de90e 749-761
+  s_555508c40a7b3b::t_4a43bdca3acc64 1032
+conformance/runner/swift/Sources/ConformanceSupport/RequestIndex.swift
+  s_555508c40a7b3b::t_1d548d6db81890 1-15,22-25
+  s_555508c40a7b3b::t_44637b6798c895 16-21
+conformance/runner/swift/Sources/ConformanceRunner/Fixtures.swift
+  s_555508c40a7b3b::t_a78facc1fc5bbc 141-145
+  s_555508c40a7b3b::t_c7dcf5df34d03e 159-163,168,175-178,186-201,205-212
+conformance/runner/swift/Tests/ConformanceSupportTests/RequestIndexTests.swift
+  s_555508c40a7b3b::t_f290a62654789a 39-42
+  s_555508c40a7b3b::t_61923a0aed9b63 1-6,12-38,43-46
+  s_555508c40a7b3b::t_ebac6f43fd968b 7-11
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_555508c40a7b3b::t_2a28a50fa54d73 37-45
+  s_555508c40a7b3b::t_030f6da7e3b362 163
+  s_555508c40a7b3b::t_ecb9db1311de44 191-200,202-208
+  s_555508c40a7b3b::t_99d4fdac18edf8 6-7,12,19-24,26-34,48-56,59-65,68-89
+  s_555508c40a7b3b::t_3924d8a7f2a62e 304-305
+  s_555508c40a7b3b::t_fae322dde6cda0 319
+.github/workflows/test.yml
+  s_555508c40a7b3b::t_04f77968f1fb72 385-391
+SPEC.md
+  s_555508c40a7b3b::t_c2d2e85c4bea19 1810
+  s_555508c40a7b3b::t_e6e8f425b6804d 1638
+  s_555508c40a7b3b::t_a56e7929977ded 1756-1764
+conformance/tests/network-retry.json
+  s_555508c40a7b3b::t_a892bade1f950a 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "97e700ee3456ece43135e1a9ebe78cf15e76049d",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
