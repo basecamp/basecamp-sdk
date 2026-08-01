@@ -90,8 +90,11 @@ type CreateGaugeNeedleRequest struct {
 
 // UpdateGaugeNeedleRequest specifies parameters for updating a gauge needle.
 type UpdateGaugeNeedleRequest struct {
-	// Description is rich text (HTML) description.
-	Description string `json:"description,omitempty"`
+	// Description is rich text (HTML) description. Tri-state: nil leaves the
+	// existing description untouched, a pointer to "" clears it, and any other
+	// value replaces it. A plain string could not express "clear" — the empty
+	// value was indistinguishable from "not provided".
+	Description *string `json:"description,omitempty"`
 }
 
 // GaugesService handles gauge operations.
@@ -268,7 +271,9 @@ func (s *GaugesService) CreateNeedle(ctx context.Context, projectID int64, req *
 		},
 		Notify: omitzero(req.Notify),
 	}
-	if len(req.Subscriptions) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty subscriber list and must reach the wire.
+	if req.Subscriptions != nil {
 		body.Subscriptions = &req.Subscriptions
 	}
 
@@ -311,7 +316,7 @@ func (s *GaugesService) UpdateNeedle(ctx context.Context, needleID int64, req *U
 
 	body := generated.UpdateGaugeNeedleJSONRequestBody{
 		GaugeNeedle: &generated.GaugeNeedleUpdatePayload{
-			Description: omitzero(req.Description),
+			Description: req.Description,
 		},
 	}
 

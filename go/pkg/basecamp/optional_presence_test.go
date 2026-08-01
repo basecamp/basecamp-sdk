@@ -136,3 +136,42 @@ func TestUpdateHillChartSettings_NilOmitsAndEmptyTransmits(t *testing.T) {
 		}
 	}
 }
+
+// UpdateNeedle's Description is tri-state: nil leaves it alone, a pointer to
+// "" clears it. A plain string could not express the clear.
+func TestUpdateGaugeNeedle_DescriptionIsTriState(t *testing.T) {
+	capture := func(desc *string) (map[string]any, bool) {
+		t.Helper()
+		var got map[string]any
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&got)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":1,"type":"Gauge::Needle"}`))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfg := DefaultConfig()
+		cfg.BaseURL = srv.URL
+		svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Gauges()
+		if _, err := svc.UpdateNeedle(context.Background(), 1, &UpdateGaugeNeedleRequest{Description: desc}); err != nil {
+			t.Fatalf("UpdateNeedle: %v", err)
+		}
+		needle, _ := got["gauge_needle"].(map[string]any)
+		v, present := needle["description"]
+		if !present {
+			return nil, false
+		}
+		return map[string]any{"description": v}, true
+	}
+
+	if _, present := capture(nil); present {
+		t.Error("nil Description must be omitted (no change)")
+	}
+	body, present := capture(ptr(""))
+	if !present {
+		t.Fatal(`Description: ptr("") must reach the wire to clear the description`)
+	}
+	if body["description"] != "" {
+		t.Errorf(`expected an explicit empty string, got %#v`, body["description"])
+	}
+}

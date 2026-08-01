@@ -30,7 +30,9 @@ stats = Hash.new(0)
 # only a leading `json:` silently exempted every query param, which is exactly
 # where an unsendable zero value hurts most.
 FIELD = /\A\t(\w+)\s+(\S+)\s+`([^`]*)`/
-OMITEMPTY = /\b(?:json|form):"[^"]*,omitempty[^"]*"/
+# Any tag key, not just json/form: a future generator emitting e.g.
+# `query:"x,omitempty"` must still be classified, not silently exempted.
+OMITEMPTY = /\w+:"[^"]*,omitempty[^"]*"/
 
 # Read with an explicit UTF-8 external encoding: client.gen.go carries
 # multibyte characters in doc comments (e.g. →), and under a non-UTF-8 locale
