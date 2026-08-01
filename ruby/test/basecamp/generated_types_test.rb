@@ -170,4 +170,32 @@ class GeneratedTypesTest < Minitest::Test
     assert_equal "#f5d76e", linked.to_h["color"]
     assert_equal "https://example.com/col.json", linked.to_h["destination_url"]
   end
+
+  # Regression for #537: these three carried a pointer-spelled x-go-type
+  # (`*time.Time`) so the generator's exact-string match skipped Time coercion
+  # and they decoded as raw Strings. The generator now normalizes the pointer
+  # spelling, so they coerce like every other timestamp.
+  def test_nullable_timestamps_coerce_to_time
+    note = Basecamp::Types::MyNote.new(
+      "id" => 1,
+      "created_at" => "2024-01-01T00:00:00Z",
+      "updated_at" => "2024-01-15T12:30:00Z"
+    )
+
+    # Assert the VALUE, not just the class: a field-source swap or a timezone
+    # shift would still produce a Time and pass an instance-only check.
+    assert_equal Time.parse("2024-01-01T00:00:00Z"), note.created_at
+    assert_equal Time.parse("2024-01-15T12:30:00Z"), note.updated_at
+
+    draft = Basecamp::Types::Draft.new("scheduled_posting_at" => "2024-02-01T09:00:00Z")
+
+    assert_equal Time.parse("2024-02-01T09:00:00Z"), draft.scheduled_posting_at
+  end
+
+  def test_nullable_timestamps_tolerate_null
+    note = Basecamp::Types::MyNote.new("id" => nil, "created_at" => nil, "updated_at" => nil)
+
+    assert_nil note.created_at
+    assert_nil note.updated_at
+  end
 end

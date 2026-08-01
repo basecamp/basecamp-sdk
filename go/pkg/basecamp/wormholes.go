@@ -203,7 +203,7 @@ func wormholeFromGenerated(gw generated.Wormhole) Wormhole {
 		Type:             gw.Type,
 		URL:              gw.Url,
 		AppURL:           gw.AppUrl,
-		BookmarkURL:      gw.BookmarkUrl,
+		BookmarkURL:      deref(gw.BookmarkUrl),
 		Linked:           gw.Linked,
 		CreatedAt:        gw.CreatedAt,
 		UpdatedAt:        gw.UpdatedAt,
@@ -213,15 +213,14 @@ func wormholeFromGenerated(gw generated.Wormhole) Wormhole {
 		w.ID = gw.Id
 	}
 
-	// color and destination_url are modeled as nullable strings (x-go-type
-	// "*string"), so the generated fields are already *string — nil when unset,
-	// set otherwise. Copy the value so the clean type doesn't alias gw.
-	if gw.Color != nil {
-		s := *gw.Color
+	// color and destination_url are nullable strings — nil when unset, set
+	// otherwise. Copy the value so the clean type doesn't alias gw.
+	if c := gw.Color; c != nil {
+		s := *c
 		w.Color = &s
 	}
-	if gw.DestinationUrl != nil {
-		s := *gw.DestinationUrl
+	if d := gw.DestinationUrl; d != nil {
+		s := *d
 		w.DestinationURL = &s
 	}
 

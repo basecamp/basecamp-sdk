@@ -263,7 +263,7 @@ func (s *TodolistGroupsService) Update(ctx context.Context, groupID int64, req *
 	// Groups are updated via the todolists endpoint (polymorphic endpoint)
 	body := generated.UpdateTodolistOrGroupJSONRequestBody{}
 	if req.Name != "" {
-		body.Name = req.Name
+		body.Name = &req.Name
 	}
 
 	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, groupID, body)
@@ -356,17 +356,17 @@ func todolistGroupFromGenerated(gg generated.TodolistGroup) TodolistGroup {
 		Type:             gg.Type,
 		URL:              gg.Url,
 		AppURL:           gg.AppUrl,
-		BookmarkURL:      gg.BookmarkUrl,
-		SubscriptionURL:  gg.SubscriptionUrl,
+		BookmarkURL:      deref(gg.BookmarkUrl),
+		SubscriptionURL:  deref(gg.SubscriptionUrl),
 		BubbleUpURL:      gg.BubbleUpUrl,
-		CommentsCount:    int(gg.CommentsCount),
-		CommentsURL:      gg.CommentsUrl,
-		Position:         int(gg.Position),
+		CommentsCount:    int(deref(gg.CommentsCount)),
+		CommentsURL:      deref(gg.CommentsUrl),
+		Position:         int(deref(gg.Position)),
 		Name:             gg.Name,
-		Completed:        gg.Completed,
-		CompletedRatio:   gg.CompletedRatio,
-		TodosURL:         gg.TodosUrl,
-		AppTodosURL:      gg.AppTodosUrl,
+		Completed:        deref(gg.Completed),
+		CompletedRatio:   deref(gg.CompletedRatio),
+		TodosURL:         deref(gg.TodosUrl),
+		AppTodosURL:      deref(gg.AppTodosUrl),
 		CreatedAt:        gg.CreatedAt,
 		UpdatedAt:        gg.UpdatedAt,
 	}

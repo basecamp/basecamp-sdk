@@ -5968,7 +5968,8 @@ export interface components {
              * @description Wormhole color; always emitted on the wire (`json.color recording.color`),
              *     `null` when unset. Like destination_url, `@required` models the presence and
              *     the nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->
-             *     type: ["string","null"] + x-go-type "*string").
+             *     type: ["string","null"]). Go types it *string because the value is nullable,
+             *     not because it is optional — the field is @required and carries no omitempty.
              */
             color: string | null;
             /**
@@ -5980,7 +5981,7 @@ export interface components {
              * @description URL of the destination column; always present on the wire, `null` for an
              *     unlinked wormhole. `@required` models the presence; the nullability of the
              *     value is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:
-             *     ["string","null"] + x-go-type "*string") since Smithy has no native
+             *     ["string","null"]) since Smithy has no native
              *     required-and-nullable — exactly the SearchType.key treatment. SDKs model it
              *     as required-but-nullable (`string | null`, not `string | null | undefined`).
              */

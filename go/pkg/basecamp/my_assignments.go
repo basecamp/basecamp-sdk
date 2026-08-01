@@ -145,7 +145,7 @@ func (s *MyAssignmentsService) Due(ctx context.Context, scope string) (result []
 	var params *generated.GetMyDueAssignmentsParams
 	if scope != "" {
 		params = &generated.GetMyDueAssignmentsParams{
-			Scope: scope,
+			Scope: &scope,
 		}
 	}
 

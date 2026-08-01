@@ -7,12 +7,34 @@
 #   - ScheduleEntry starts_at/ends_at → types.FlexibleTime (handles date-only for all-day events)
 #   - _on fields (due_on, starts_on, etc.) → types.Date (date-only)
 #   - width/height fields → types.FlexInt (accepts float-encoded integers from API)
-#   - id fields → keep as pointers to distinguish nil from zero
+#
+# Optional-pointer policy (SPEC.md §10): optional fields are pointers — the
+# oapi-codegen default, no prefer-skip-optional-pointer — because a value type
+# cannot represent absence. The single x-go-type-skip-optional-pointer pass
+# below keeps optional NON-NULLABLE ARRAYS on response-shaped schemas as native
+# []T (nil already represents absence; *[]T would be churn with no semantic
+# gain). Request-shaped arrays stay pointers so an explicit empty array is
+# sendable (omitempty drops a len-0 slice), and nullable arrays stay pointers
+# to distinguish present-null. make go-check-optional-pointers guards the
+# generated output.
 #
 # Usage: ./enhance-openapi-go-types.sh [input.json] [output.json]
 #        ./enhance-openapi-go-types.sh               # defaults to openapi.json in-place
 
 set -euo pipefail
+
+# EDITING NOTE: the jq programs below are single-quoted shell strings. An
+# apostrophe anywhere inside them — including in a comment, e.g. "the pass's
+# condition" — terminates the string and produces a confusing shell syntax
+# error (or, worse, a jq compile error that leaves the output unenhanced).
+# Write comments without apostrophes. `bash -n` catches it; so does running
+# this script and checking its exit status, which is the only reliable signal.
+#
+# SECOND EDITING NOTE: in jq, `index(.)` and friends evaluate their argument
+# against the value being indexed, NOT against the surrounding element. Inside
+# `map(...)` or after `to_entries[]`, always bind first — `. as $x | select($arr
+# | index($x))`. This has silently broken membership tests in this file more
+# than once; the symptom is a filter that quietly matches nothing.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -25,7 +47,71 @@ if [[ ! -f "$INPUT_FILE" ]]; then
     exit 1
 fi
 
-jq '
+# Compute the request-body reachability closure ONCE, here, and hand it to both
+# consumers via --argjson: the enhancement pass below and its self-check further
+# down. The two used to inline their own copies, which had already drifted apart
+# in formatting — and a self-check computing a different closure than the pass
+# it validates is worse than no self-check.
+REQUEST_REACHABLE=$(jq -c '
+  ( .components.schemas ) as $all
+  # Every $ref reachable from an operation requestBody. Two forms are handled:
+  # a direct schema ref, and the reusable-component indirection
+  # (#/components/requestBodies/X), whose component is resolved and its own
+  # schema refs collected. An unused component contributes nothing, which is
+  # the correct outcome rather than an error.
+  | ( .components.requestBodies // {} ) as $bodies
+  | ( [ .paths[]?[]? | objects | .requestBody? | objects
+        | [.. | objects | select(has("$ref")) | .["$ref"]] | .[]
+        | select(type == "string") ] | unique ) as $initial_refs
+  # Follow requestBodies refs TRANSITIVELY: a component may alias another
+  # component, and stopping after one hop silently drops the schemas behind the
+  # chain, marking their arrays response-only.
+  | ( { seen: [], frontier: $initial_refs }
+      | until(.frontier | length == 0;
+          . as $s
+          | ( $s.seen + $s.frontier | unique ) as $seen_next
+          | ( [ $s.frontier[] | select(startswith("#/components/requestBodies/"))
+                | sub("^#/components/requestBodies/"; "") as $n
+                | ($bodies[$n] // {})
+                | [.. | objects | select(has("$ref")) | .["$ref"]] | .[]
+                | select(type == "string") ] | unique ) as $discovered
+          # Bind the element: index(.) inside map would evaluate . against the
+          # ARRAY being indexed, not against the element under test.
+          | { seen: $seen_next,
+              frontier: ( $discovered | map(. as $r | select($seen_next | index($r) | not)) ) }
+        )
+      | .seen ) as $all_body_refs
+  | ( [ $all_body_refs[] | select(startswith("#/components/schemas/"))
+        | sub("^#/components/schemas/"; "") ] | unique ) as $seeds
+  | ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
+      | until(.frontier | length == 0;
+          . as $s
+          | ( [ $s.frontier[] | ($all[.] // {}) | [.. | objects | select(has("$ref")) | .["$ref"]] ]
+              | flatten
+              | map(select(type == "string" and startswith("#/components/schemas/"))
+                    | sub("^#/components/schemas/"; ""))
+              | unique ) as $next
+          | ( $next | map(select($s.seen[.] | not)) ) as $new
+          | { seen: ($s.seen + ($new | map({key: ., value: true}) | from_entries)), frontier: $new }
+        )
+      | .seen ) | keys
+' "$INPUT_FILE")
+
+# An empty closure is only suspicious when some request body actually REFERENCES
+# a component. Three shapes legitimately reach nothing and must not abort:
+# a spec with no request bodies, one whose requestBodies components are all
+# unreferenced, and one whose bodies carry INLINE schemas (no $ref at all).
+BODY_COMPONENT_REFS=$(jq -r '
+  [ .paths[]?[]? | objects | .requestBody? | objects
+    | [.. | objects | select(has("$ref")) | .["$ref"]] | .[]
+    | select(type == "string" and startswith("#/components/")) ] | length' "$INPUT_FILE")
+
+if [[ "$BODY_COMPONENT_REFS" -gt 0 && ( -z "$REQUEST_REACHABLE" || "$REQUEST_REACHABLE" == "[]" ) ]]; then
+    echo "Error: request bodies carry $BODY_COMPONENT_REFS component reference(s) but the reachability closure is empty — the walker is broken." >&2
+    exit 1
+fi
+
+jq --argjson request_reachable "$REQUEST_REACHABLE" '
 # normalize_deprecation_reason strips exactly one leading "Deprecated:"
 # (case-insensitive) plus following whitespace and trims, so oapi-codegen can
 # prepend its own "// Deprecated: " once instead of producing a doubled
@@ -45,7 +131,10 @@ def mark_deprecated_query_param:
     | .["x-deprecated-reason"] = ((.description // .schema.description // "deprecated") | normalize_deprecation_reason)
   else . end;
 
-# First pass: add x-go-type extensions for timestamps, dates, and ids
+# First pass: add x-go-type extensions for timestamps and dates. No
+# skip-optional-pointer: optional temporal fields are *time.Time/*types.Date
+# like every other optional value type (IsZero() is a zero-value sentinel,
+# not a representation of absence).
 walk(
   if type == "object" then
     to_entries | map(
@@ -53,21 +142,13 @@ walk(
       if (.key | test("_at$")) and (.value | type == "object") and (.value.type == "string") then
         .value += {
           "x-go-type": "time.Time",
-          "x-go-type-import": {"path": "time"},
-          "x-go-type-skip-optional-pointer": true
+          "x-go-type-import": {"path": "time"}
         }
       # Date-only fields (_on): use types.Date
       elif (.key | test("_on$")) and (.value | type == "object") and (.value.type == "string") then
         .value += {
           "x-go-type": "types.Date",
-          "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-          "x-go-type-skip-optional-pointer": true
-        }
-      # Id fields: keep as pointers (to distinguish nil from zero)
-      # Matches "id", "*_id" (e.g., recording_id, category_id, todolist_id)
-      elif (.key | test("^id$|_id$")) and (.value | type == "object") and (.value.type == "integer") then
-        .value += {
-          "x-go-type-skip-optional-pointer": false
+          "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
         }
       else
         .
@@ -78,40 +159,45 @@ walk(
   end
 )
 |
-# Second pass: mark optional booleans in REQUEST schemas with x-go-type-skip-optional-pointer: false
-# This forces oapi-codegen to generate *bool instead of bool, allowing
-# Go clients to distinguish "not set" (nil) from "false" in request bodies
-# Only applies to schemas ending in "RequestContent" (request body schemas)
+# Second pass: optional non-nullable ARRAYS on response-shaped schemas keep
+# native []T (skip the optional pointer). A nil slice already represents
+# absence; *[]T adds a deref layer with no semantic gain. Excluded on purpose:
+#   * REQUEST-REACHABLE schemas — *[]T is required to SEND an explicit empty
+#     array (omitempty drops a len-0 slice), e.g. Create* subscriptions where
+#     nil (server default) and [] (subscribe nobody) differ. Reachability is
+#     the transitive $ref closure from every *RequestContent schema, NOT a name
+#     match: nested shapes like QuestionSchedule (referenced by
+#     Create/UpdateQuestion bodies) are request-reachable without carrying the
+#     suffix, and a name-only test silently made their arrays unsendable-empty.
+#   * nullable arrays — kept pointer-shaped so an explicit JSON null can be
+#     MARSHALLED (a non-nil pointer to a nil slice emits `null`). Note the
+#     honest limit: on DECODE, encoding/json maps both an omitted key and an
+#     explicit null to a nil pointer, so *[]T cannot tell them apart. No schema
+#     currently pairs optional with nullable on an array — verified empty — so
+#     nothing depends on that distinction today; a future one would need a
+#     different representation (a wrapper type with an explicit presence flag),
+#     not this pass.
+# $request_reachable is computed once in the shell above (see the preamble for
+# why the seed comes from the operations rather than a name convention) and
+# injected with --argjson.
+( $request_reachable ) as $reachable_names
+|
 .components.schemas |= with_entries(
-  if .key | test("RequestContent$") then
+  # NOTE: bind the key before the membership test — `index(.key)` would
+  # evaluate `.key` against the ARRAY being indexed, not against this entry.
+  .key as $schema_name
+  | if ($reachable_names | index($schema_name) | not) then
     .value |= (
       if type == "object" and .type == "object" and .properties then
         (.required // []) as $required |
         .properties |= with_entries(
           .key as $propName |
-          if .value.type == "boolean" and ($required | index($propName) | not) then
-            .value += { "x-go-type-skip-optional-pointer": false }
+          if .value.type == "array" and (.value.nullable != true) and ($required | index($propName) | not) then
+            .value += { "x-go-type-skip-optional-pointer": true }
           else
             .
           end
         )
-      else
-        .
-      end
-    )
-  else
-    .
-  end
-)
-|
-# Third pass: mark subscriptions arrays in Create* request schemas as pointer
-# Distinguishes nil (omit → server default) from [] (subscribe nobody)
-.components.schemas |= with_entries(
-  if .key | test("^Create.*RequestContent$") then
-    .value |= (
-      if type == "object" and .type == "object" and .properties
-         and .properties.subscriptions then
-        .properties.subscriptions += { "x-go-type-skip-optional-pointer": false }
       else
         .
       end
@@ -128,35 +214,30 @@ walk(
 .components.schemas.Upload.properties |= (
   (.width // empty) += {
     "x-go-type": "types.FlexInt",
-    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-    "x-go-type-skip-optional-pointer": true
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
   } |
   (.height // empty) += {
     "x-go-type": "types.FlexInt",
-    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-    "x-go-type-skip-optional-pointer": true
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
   }
 )
 |
 # Fourth-b pass: RichTextAttachment width/height → nullable *types.FlexInt
 # Same float-encoded-integer wire format as Upload (1024.0), but here the
 # dimensions are nullable (the key is always emitted but the value is null for
-# non-image blobs). Keep the optional pointer (skip-optional-pointer: false)
-# and mark the schema nullable so the static types across SDKs capture the
-# present-null value: Go *types.FlexInt, TypeScript `number | null`, Python
-# `Optional[int]`. Scoped to the RichTextAttachment schema.
+# non-image blobs). The optional pointer (now the default) plus nullable lets
+# the static types across SDKs capture the present-null value: Go
+# *types.FlexInt, TypeScript `number | null`, Python `Optional[int]`.
 .components.schemas.RichTextAttachment.properties |= (
   (.width // empty) += {
     "nullable": true,
     "x-go-type": "types.FlexInt",
-    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-    "x-go-type-skip-optional-pointer": false
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
   } |
   (.height // empty) += {
     "nullable": true,
     "x-go-type": "types.FlexInt",
-    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-    "x-go-type-skip-optional-pointer": false
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
   }
 )
 |
@@ -166,14 +247,12 @@ walk(
 # Only the response schema needs this; request schemas keep time.Time since we always send RFC3339.
 .components.schemas.ScheduleEntry.properties.starts_at += {
   "x-go-type": "types.FlexibleTime",
-  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-  "x-go-type-skip-optional-pointer": true
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
 }
 |
 .components.schemas.ScheduleEntry.properties.ends_at += {
   "x-go-type": "types.FlexibleTime",
-  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-  "x-go-type-skip-optional-pointer": true
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
 }
 |
 # Fifth-b pass: override starts_at/ends_at on TimelineEventData to use
@@ -187,21 +266,19 @@ walk(
 # (a required field stays non-null `String`, and a null bound fails decode). Encode
 # the value nullability as a `type: ["string","null"]` union — the required-and-
 # nullable treatment used for Wormhole.destination_url / SearchType.key — so every
-# static SDK models them required-but-nullable (`string | null`). Go keeps its
-# FlexibleTime value type (via x-go-type), which already decodes null to the zero
-# time.
+# static SDK models them required-but-nullable (`string | null`). In Go these
+# generate as *types.FlexibleTime (required-and-nullable takes a pointer), and
+# FlexibleTime itself decodes a JSON null to the zero time.
 .components.schemas.TimelineEventData.properties.starts_at += {
   "type": ["string", "null"],
   "x-go-type": "types.FlexibleTime",
-  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-  "x-go-type-skip-optional-pointer": true
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
 }
 |
 .components.schemas.TimelineEventData.properties.ends_at += {
   "type": ["string", "null"],
   "x-go-type": "types.FlexibleTime",
-  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-  "x-go-type-skip-optional-pointer": true
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
 }
 |
 # Fifth-c pass: TimelineAttachment width/height → nullable *types.FlexInt
@@ -212,64 +289,13 @@ walk(
   (.width // empty) += {
     "nullable": true,
     "x-go-type": "types.FlexInt",
-    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-    "x-go-type-skip-optional-pointer": false
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
   } |
   (.height // empty) += {
     "nullable": true,
     "x-go-type": "types.FlexInt",
-    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-    "x-go-type-skip-optional-pointer": false
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
   }
-)
-|
-# Fifth-e pass: TimelineAttachment presence-faithful optional fields.
-# The optional-field superset populates only one variant per instance, so ALL of
-# its optional fields must round-trip presence: a plain time.Time re-marshals an
-# absent field as the zero time, a plain bool with omitempty drops an explicit
-# false, a plain int drops an explicit zero, and a plain string cannot tell an
-# absent field from an explicit empty (SPEC.md §10 forbids empty-string as an
-# absence sentinel). Make them all pointers so nil (absent) omits and an explicit
-# value is preserved. width/height are handled by the Fifth-c FlexInt pass.
-.components.schemas.TimelineAttachment.properties |= (
-  (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.visible_to_clients // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.previewable // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.id // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.byte_size // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.content_type // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.filename // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.type // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.title // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.status // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.app_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.app_download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.attachable_sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.status_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.caption // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.key // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.preview_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.thumbnail_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  # Upload-recording projection fields (mirroring uploads/_upload). Optional in
-  # the superset, so each must be pointer-backed for the same presence reason:
-  # a plain string/int/bool/struct-with-omitempty cannot distinguish absent from
-  # an explicit empty/zero/default value.
-  (.inherits_status // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.bookmark_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.subscription_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.comments_count // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.comments_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.position // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.parent // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.bucket // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.creator // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.description // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
 # Fifth-d pass: EverythingFile width/height → nullable *types.FlexInt
@@ -281,77 +307,14 @@ walk(
   (.width // empty) += {
     "nullable": true,
     "x-go-type": "types.FlexInt",
-    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-    "x-go-type-skip-optional-pointer": false
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
   } |
   (.height // empty) += {
     "nullable": true,
     "x-go-type": "types.FlexInt",
-    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-    "x-go-type-skip-optional-pointer": false
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
   }
 )
-|
-# Fifth-f pass: EverythingFile presence-faithful optional fields (same rationale
-# as TimelineAttachment). The /files.json superset populates only one variant per
-# instance, so ALL of its optional fields must round-trip presence: an absent
-# field on the variant this instance is not must stay nil and re-marshal as
-# omitted rather than a fabricated sentinel. That covers timestamps
-# (created_at/updated_at *time.Time), booleans (visible_to_clients/inherits_status
-# *bool), numeric scalars (counts/position/byte_size), AND the optional strings
-# (SPEC.md section 10 forbids empty-string as an absence sentinel: a Document with
-# no filename and an upload with an explicit empty filename must not collapse to
-# the same value). id is already an optional pointer via the oapi default.
-.components.schemas.EverythingFile.properties |= (
-  (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.visible_to_clients // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.inherits_status // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.comments_count // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.position // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.byte_size // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.status // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.title // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.type // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.app_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.bookmark_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.subscription_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.comments_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.attachable_sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.content_type // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.filename // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.app_download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.description // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.content // empty) += { "x-go-type-skip-optional-pointer": false }
-)
-|
-# Fifth-h pass: the Recording aggregate-feed type-specific scalars are presence-
-# faithful. BC3 renders boosts_count/subject/group_on/from/replies_count/
-# replies_url conditionally (only on the matching recording type — boosts_count
-# via boostable, subject on Message, group_on on Question::Answer, from/replies_*
-# on Inbox::Forward). Per SPEC.md §10 an optional scalar must round-trip absence,
-# so a plain int/string with omitempty (which cannot distinguish absent from an
-# explicit 0/"") is not acceptable. Make them pointer-backed (*int32 / *string /
-# *types.Date) so nil (absent) omits and an explicit value is preserved. Scoped
-# to the new fields only — the pre-existing comments_count/comments_url debt is
-# out of scope here.
-.components.schemas.Recording.properties |= (
-  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.subject // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.group_on // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.from // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.replies_count // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.replies_url // empty) += { "x-go-type-skip-optional-pointer": false }
-)
-|
-# RecordingCategory.icon is optional (a category may omit its icon), so make it
-# pointer-backed too — an empty string must not stand in for absence (SPEC.md §10).
-.components.schemas.RecordingCategory.properties.icon += { "x-go-type-skip-optional-pointer": false }
 |
 # Fifth-g pass: Todo/Card date fields are nullable-when-present.
 # BC3 renders due_on (and, for to-dos, starts_on) through the shared todos/_todo
@@ -361,9 +324,9 @@ walk(
 # schema (AJV) and typed as such by the static SDKs, instead of the types lying
 # that the value is always a non-null string. These stay OPTIONAL in the schema
 # (not @required): the static SDKs type them `string | null | undefined`, which
-# also tolerates a partial payload that omits the key. Go keeps its types.Date
-# value type (the _on pass already sets skip-optional-pointer: true), and
-# types.Date decodes JSON null to the zero Date, so no Go change is needed.
+# also tolerates a partial payload that omits the key. Go types them
+# *types.Date (optional-pointer default), and types.Date decodes JSON null to
+# the zero Date.
 .components.schemas.Todo.properties.due_on += { "nullable": true }
 |
 .components.schemas.Todo.properties.starts_on += { "nullable": true }
@@ -375,8 +338,7 @@ walk(
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.
 .components.schemas.Person.properties.id += {
   "x-go-type": "types.FlexibleInt64",
-  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
-  "x-go-type-skip-optional-pointer": true
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
 }
 |
 # Seventh pass: append .json to path keys where Smithy cannot express it
@@ -386,25 +348,6 @@ walk(
     .key = "/{accountId}/reports/users/progress/{personId}.json"
   else . end
 ) | from_entries)
-|
-# Eighth pass: array-typed query params → pointer slices (*[]T).
-# oapi-codegen serializes a non-pointer optional slice UNCONDITIONALLY, so a
-# nil/empty slice still emits an empty `foo[]=` entry. Rails parses that as an
-# array containing "" (and e.g. bucket_ids[]= normalizes to [0]), turning an
-# unfiltered request into a bogus filtered one. Forcing a pointer makes
-# oapi-codegen guard the param with `if params.X != nil`, so the hand-written
-# wrapper omits it entirely when the slice is empty.
-.paths |= map_values(
-  map_values(
-    if (type == "object") and (.parameters | type == "array") then
-      .parameters |= map(
-        if (.in == "query") and (.schema.type == "array") then
-          .schema += { "x-go-type-skip-optional-pointer": false }
-        else . end
-      )
-    else . end
-  )
-)
 |
 # Ninth pass: hoist normalized x-deprecated-reason so oapi-codegen (v2.8.0) emits
 # a precise "// Deprecated: <reason>" godoc instead of its generic fallback. Data-
@@ -451,6 +394,68 @@ walk(
 )
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 
+# Self-verify the array policy. The Go guard (check-go-optional-pointers)
+# enforces nil-CAPABILITY, which a native []T satisfies — so it cannot catch a
+# request-reachable array regressing to native and becoming unsendable-empty.
+# That invariant is only checkable here, against the spec, so assert it where
+# the data is: no schema reachable from an operation requestBody may carry
+# x-go-type-skip-optional-pointer on an optional array.
+leaked=$(jq -r --argjson request_reachable "$REQUEST_REACHABLE" '
+  ( .components.schemas ) as $all
+  | ( $request_reachable ) as $reachable
+  | [ $all | to_entries[]
+      | .key as $schema
+      | select($reachable | index($schema)) | select(.value | type == "object")
+      | ((.value.required // []) | select(type == "array")) as $req
+      | ((.value.properties // {}) | select(type == "object")) | to_entries[]
+      | select(.value | type == "object")
+      | .key as $prop
+      | select(.value.type == "array" and .value["x-go-type-skip-optional-pointer"] == true)
+      | select($req | index($prop) | not)
+      | "\($schema).\($prop)" ] | .[]
+' "${OUTPUT_FILE}.tmp")
+
+if [[ -n "$leaked" ]]; then
+    echo "Error: request-reachable optional array(s) kept native []T — an explicit empty array would be unsendable:" >&2
+    echo "$leaked" | sed 's/^/  /' >&2
+    rm -f "${OUTPUT_FILE}.tmp"
+    exit 1
+fi
+
+# ...and the other direction. Checking only the first half would let the pass
+# silently stop marking anything: every optional array would become *[]T, which
+# is not wrong but is exactly the churn the policy avoids — and a self-check
+# that still passes when the pass does nothing is not a self-check.
+unmarked=$(jq -r --argjson request_reachable "$REQUEST_REACHABLE" '
+  ( $request_reachable ) as $reachable
+  | [ .components.schemas | to_entries[]
+      | .key as $schema
+      | select($reachable | index($schema) | not) | select(.value | type == "object")
+      # Mirror the entry condition of the marking pass exactly. That pass only
+      # descends into schemas that declare `"type": "object"` AND carry
+      # properties; a checker with a looser guard would flag a schema the pass
+      # deliberately skipped, turning a legitimate spec into a spurious
+      # generation failure.
+      | select(.value.type == "object") | select(.value.properties)
+      | ((.value.required // []) | select(type == "array")) as $req
+      | ((.value.properties // {}) | select(type == "object")) | to_entries[]
+      | select(.value | type == "object")
+      | .key as $prop
+      | select(.value.type == "array" and (.value.nullable != true)
+               and (.value["x-go-type-skip-optional-pointer"] != true))
+      | select($req | index($prop) | not)
+      | "\($schema).\($prop)" ] | .[]
+' "${OUTPUT_FILE}.tmp")
+
+if [[ -n "$unmarked" ]]; then
+    echo "Error: response-only optional array(s) NOT kept native []T — the skip-optional-pointer pass did not reach them:" >&2
+    echo "$unmarked" | sed 's/^/  /' >&2
+    rm -f "${OUTPUT_FILE}.tmp"
+    exit 1
+fi
+
+# Only now is the output known-good. Publishing before validating would leave a
+# spec that violates the policy in place for the next generator to consume.
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 
 # Count enhancements
@@ -458,9 +463,7 @@ timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | l
 date_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.Date")] | length' "$OUTPUT_FILE")
 flexint_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.FlexInt")] | length' "$OUTPUT_FILE")
 flexibleint64_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.FlexibleInt64")] | length' "$OUTPUT_FILE")
-id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false and (.type == "integer" or .type == "number"))] | length' "$OUTPUT_FILE")
-nullable_bool_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("RequestContent$")) | .value.properties // {} | to_entries[] | select(.value.type == "boolean" and .value["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
-subscription_ptr_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("^Create.*RequestContent$")) | .value.properties // {} | .subscriptions // empty | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
+native_array_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == true and .type == "array")] | length' "$OUTPUT_FILE")
 
 flexible_time_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.FlexibleTime")] | length' "$OUTPUT_FILE")
 
@@ -470,6 +473,4 @@ echo "  FlexibleTime fields (types.FlexibleTime): $flexible_time_count"
 echo "  Date fields (types.Date): $date_count"
 echo "  Dimension fields (types.FlexInt): $flexint_count"
 echo "  Flexible ID fields (types.FlexibleInt64): $flexibleint64_count"
-echo "  Id fields (keeping pointers): $id_count"
-echo "  Nullable booleans (*bool): $nullable_bool_count"
-echo "  Subscription pointers (*[]int64): $subscription_ptr_count"
+echo "  Native optional arrays ([]T, skip-optional-pointer): $native_array_count"

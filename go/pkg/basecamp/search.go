@@ -193,7 +193,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	}
 	if opts != nil {
 		if opts.Sort != "" {
-			params.Sort = opts.Sort
+			params.Sort = &opts.Sort
 		}
 		// Array filters map onto the generated params, which own the wire
 		// encoding (form:"bucket_ids[]" tags → repeated bucket_ids%5B%5D=…
@@ -211,21 +211,21 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 			params.CreatorIds = &opts.CreatorIds
 		}
 		if opts.FileType != "" {
-			params.FileType = opts.FileType
+			params.FileType = &opts.FileType
 		}
-		params.ExcludeChat = opts.ExcludeChat
+		params.ExcludeChat = omitzero(opts.ExcludeChat)
 		if opts.Since != "" {
-			params.Since = opts.Since
+			params.Since = &opts.Since
 		}
 		// Deprecated singular filters (prefer the plural array forms above).
 		if opts.Type != "" {
-			params.Type = opts.Type
+			params.Type = &opts.Type
 		}
 		if opts.BucketID != 0 {
-			params.BucketId = opts.BucketID
+			params.BucketId = &opts.BucketID
 		}
 		if opts.CreatorID != 0 {
-			params.CreatorId = opts.CreatorID
+			params.CreatorId = &opts.CreatorID
 		}
 	}
 
@@ -337,22 +337,22 @@ func searchTypesFromGenerated(gts []generated.SearchType) []SearchType {
 // searchResultFromGenerated converts a generated SearchResult to our clean SearchResult type.
 func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 	sr := SearchResult{
-		Status:               gsr.Status,
-		VisibleToClients:     gsr.VisibleToClients,
-		CreatedAt:            gsr.CreatedAt,
-		UpdatedAt:            gsr.UpdatedAt,
+		Status:               deref(gsr.Status),
+		VisibleToClients:     deref(gsr.VisibleToClients),
+		CreatedAt:            deref(gsr.CreatedAt),
+		UpdatedAt:            deref(gsr.UpdatedAt),
 		Title:                gsr.Title,
-		InheritsStatus:       gsr.InheritsStatus,
+		InheritsStatus:       deref(gsr.InheritsStatus),
 		Type:                 gsr.Type,
 		URL:                  gsr.Url,
 		AppURL:               gsr.AppUrl,
-		BookmarkURL:          gsr.BookmarkUrl,
-		BubbleUpURL:          gsr.BubbleUpUrl,
+		BookmarkURL:          deref(gsr.BookmarkUrl),
+		BubbleUpURL:          deref(gsr.BubbleUpUrl),
 		Content:              gsr.Content,
 		Description:          gsr.Description,
-		PlainTextContent:     gsr.PlainTextContent,
-		PlainTextDescription: gsr.PlainTextDescription,
-		Subject:              gsr.Subject,
+		PlainTextContent:     deref(gsr.PlainTextContent),
+		PlainTextDescription: deref(gsr.PlainTextDescription),
+		Subject:              deref(gsr.Subject),
 	}
 
 	if gsr.Id != 0 {
@@ -360,7 +360,7 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 	}
 
 	// Convert nested types
-	if gsr.Parent.Id != 0 || gsr.Parent.Title != "" {
+	if gsr.Parent != nil {
 		sr.Parent = &Parent{
 			ID:     gsr.Parent.Id,
 			Title:  gsr.Parent.Title,
@@ -370,7 +370,7 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		}
 	}
 
-	if gsr.Bucket.Id != 0 || gsr.Bucket.Name != "" {
+	if gsr.Bucket != nil {
 		sr.Bucket = &Bucket{
 			ID:   gsr.Bucket.Id,
 			Name: gsr.Bucket.Name,
@@ -378,8 +378,8 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		}
 	}
 
-	if gsr.Creator.Id != 0 || gsr.Creator.Name != "" {
-		creator := personFromGenerated(gsr.Creator)
+	if gsr.Creator != nil {
+		creator := personFromGenerated(*gsr.Creator)
 		sr.Creator = &creator
 	}
 

@@ -188,7 +188,7 @@ func clientReplyFromGenerated(gr generated.ClientReply) ClientReply {
 		Type:             gr.Type,
 		URL:              gr.Url,
 		AppURL:           gr.AppUrl,
-		BookmarkURL:      gr.BookmarkUrl,
+		BookmarkURL:      deref(gr.BookmarkUrl),
 		Content:          gr.Content,
 	}
 

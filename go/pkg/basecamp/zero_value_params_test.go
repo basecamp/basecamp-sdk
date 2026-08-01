@@ -92,7 +92,7 @@ func TestNonZeroOptionalQueryParams_Included(t *testing.T) {
 	t.Run("search: all params present", func(t *testing.T) {
 		req, err := generated.NewSearchRequest("https://3.basecampapi.com", "12345", &generated.SearchParams{
 			Q:    "omacon",
-			Sort: "created_at",
+			Sort: ptr("created_at"),
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -110,8 +110,8 @@ func TestNonZeroOptionalQueryParams_Included(t *testing.T) {
 
 	t.Run("todos: bool true included", func(t *testing.T) {
 		req, err := generated.NewListTodosRequest("https://3.basecampapi.com", "12345", 999, &generated.ListTodosParams{
-			Status:    "active",
-			Completed: true,
+			Status:    ptr("active"),
+			Completed: ptr(true),
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -129,8 +129,8 @@ func TestNonZeroOptionalQueryParams_Included(t *testing.T) {
 
 	t.Run("messages: sort and direction included when set", func(t *testing.T) {
 		req, err := generated.NewListMessagesRequest("https://3.basecampapi.com", "12345", 999, &generated.ListMessagesParams{
-			Sort:      "created_at",
-			Direction: "desc",
+			Sort:      ptr("created_at"),
+			Direction: ptr("desc"),
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -149,9 +149,9 @@ func TestNonZeroOptionalQueryParams_Included(t *testing.T) {
 	t.Run("recordings: optional strings included when set", func(t *testing.T) {
 		req, err := generated.NewListRecordingsRequest("https://3.basecampapi.com", "12345", &generated.ListRecordingsParams{
 			Type:      "Todo",
-			Status:    "archived",
-			Sort:      "updated_at",
-			Direction: "desc",
+			Status:    ptr("archived"),
+			Sort:      ptr("updated_at"),
+			Direction: ptr("desc"),
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

@@ -419,13 +419,16 @@ func TestMarshalBody_ReturnsReplayableReader(t *testing.T) {
 	}
 }
 
-func TestDerefInt64(t *testing.T) {
+func TestDeref(t *testing.T) {
 	var v int64 = 42
-	if got := derefInt64(&v); got != 42 {
-		t.Errorf("derefInt64(&42) = %d, want 42", got)
+	if got := deref(&v); got != 42 {
+		t.Errorf("deref(&42) = %d, want 42", got)
 	}
-	if got := derefInt64(nil); got != 0 {
-		t.Errorf("derefInt64(nil) = %d, want 0", got)
+	if got := deref[int64](nil); got != 0 {
+		t.Errorf("deref[int64](nil) = %d, want 0", got)
+	}
+	if got := deref[string](nil); got != "" {
+		t.Errorf("deref[string](nil) = %q, want \"\"", got)
 	}
 }
 

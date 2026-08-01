@@ -42,27 +42,27 @@ func TestPerson_NewFields_NestedPropagation(t *testing.T) {
 	fullCreator := generated.Person{
 		Id:                  42,
 		Name:                "Edited Person",
-		EmailAddress:        "p@example.com",
-		AvatarUrl:           "https://example.com/avatar.png",
-		Admin:               true,
-		Owner:               true,
-		AttachableSgid:      "sgid://bc3/Person/42",
-		PersonableType:      "User",
-		Title:               "Lead",
-		Bio:                 "Bio text",
-		Tagline:             "Tagline text",
-		Location:            "Chicago",
-		Client:              false,
-		Employee:            true,
-		TimeZone:            "America/Chicago",
-		CanPing:             true,
-		CanAccessHillCharts: true,
-		CanAccessTimesheet:  true,
-		CanManageProjects:   true,
-		CanManagePeople:     true,
-		CreatedAt:           time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
-		UpdatedAt:           time.Date(2024, 1, 5, 12, 0, 0, 0, time.UTC),
-		Company:             generated.PersonCompany{Id: 7, Name: "Acme Inc."},
+		EmailAddress:        ptr("p@example.com"),
+		AvatarUrl:           ptr("https://example.com/avatar.png"),
+		Admin:               ptr(true),
+		Owner:               ptr(true),
+		AttachableSgid:      ptr("sgid://bc3/Person/42"),
+		PersonableType:      ptr("User"),
+		Title:               ptr("Lead"),
+		Bio:                 ptr("Bio text"),
+		Tagline:             ptr("Tagline text"),
+		Location:            ptr("Chicago"),
+		Client:              ptr(false),
+		Employee:            ptr(true),
+		TimeZone:            ptr("America/Chicago"),
+		CanPing:             ptr(true),
+		CanAccessHillCharts: ptr(true),
+		CanAccessTimesheet:  ptr(true),
+		CanManageProjects:   ptr(true),
+		CanManagePeople:     ptr(true),
+		CreatedAt:           ptr(time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)),
+		UpdatedAt:           ptr(time.Date(2024, 1, 5, 12, 0, 0, 0, time.UTC)),
+		Company:             &generated.PersonCompany{Id: 7, Name: "Acme Inc."},
 	}
 
 	// Exercise nested Person propagation through several wrappers that
@@ -111,7 +111,7 @@ func TestPerson_NewFields_NestedPropagation(t *testing.T) {
 			Id:        1,
 			Status:    "active",
 			Creator:   fullCreator,
-			Completer: fullCreator,
+			Completer: &fullCreator,
 			Assignees: []generated.Person{fullCreator},
 		}
 		w := cardFromGenerated(gc)
@@ -149,64 +149,72 @@ func assertCreatorFullyPropagated(t *testing.T, p *Person, gp generated.Person) 
 	if p.Name != gp.Name {
 		t.Errorf("Name: got %q, want %q", p.Name, gp.Name)
 	}
-	if p.EmailAddress != gp.EmailAddress {
-		t.Errorf("EmailAddress: got %q, want %q", p.EmailAddress, gp.EmailAddress)
+	if p.EmailAddress != deref(gp.EmailAddress) {
+		t.Errorf("EmailAddress: got %q, want %q", p.EmailAddress, deref(gp.EmailAddress))
 	}
-	if p.AvatarURL != gp.AvatarUrl {
-		t.Errorf("AvatarURL: got %q, want %q", p.AvatarURL, gp.AvatarUrl)
+	if p.AvatarURL != deref(gp.AvatarUrl) {
+		t.Errorf("AvatarURL: got %q, want %q", p.AvatarURL, deref(gp.AvatarUrl))
 	}
-	if p.Admin != gp.Admin {
-		t.Errorf("Admin: got %v, want %v", p.Admin, gp.Admin)
+	if p.Admin != deref(gp.Admin) {
+		t.Errorf("Admin: got %v, want %v", p.Admin, deref(gp.Admin))
 	}
-	if p.Owner != gp.Owner {
-		t.Errorf("Owner: got %v, want %v", p.Owner, gp.Owner)
+	if p.Owner != deref(gp.Owner) {
+		t.Errorf("Owner: got %v, want %v", p.Owner, deref(gp.Owner))
 	}
 	// Fields that the old shallow copy silently dropped.
-	if p.AttachableSGID != gp.AttachableSgid {
-		t.Errorf("AttachableSGID: got %q, want %q", p.AttachableSGID, gp.AttachableSgid)
+	if p.AttachableSGID != deref(gp.AttachableSgid) {
+		t.Errorf("AttachableSGID: got %q, want %q", p.AttachableSGID, deref(gp.AttachableSgid))
 	}
-	if p.PersonableType != gp.PersonableType {
-		t.Errorf("PersonableType: got %q, want %q", p.PersonableType, gp.PersonableType)
+	if p.PersonableType != deref(gp.PersonableType) {
+		t.Errorf("PersonableType: got %q, want %q", p.PersonableType, deref(gp.PersonableType))
 	}
-	if p.Title != gp.Title {
-		t.Errorf("Title: got %q, want %q", p.Title, gp.Title)
+	if p.Title != deref(gp.Title) {
+		t.Errorf("Title: got %q, want %q", p.Title, deref(gp.Title))
 	}
-	if p.Bio != gp.Bio {
-		t.Errorf("Bio: got %q, want %q", p.Bio, gp.Bio)
+	if p.Bio != deref(gp.Bio) {
+		t.Errorf("Bio: got %q, want %q", p.Bio, deref(gp.Bio))
 	}
-	if p.Tagline != gp.Tagline {
-		t.Errorf("Tagline (BC5): got %q, want %q", p.Tagline, gp.Tagline)
+	if p.Tagline != deref(gp.Tagline) {
+		t.Errorf("Tagline (BC5): got %q, want %q", p.Tagline, deref(gp.Tagline))
 	}
-	if p.Location != gp.Location {
-		t.Errorf("Location: got %q, want %q", p.Location, gp.Location)
+	if p.Location != deref(gp.Location) {
+		t.Errorf("Location: got %q, want %q", p.Location, deref(gp.Location))
 	}
-	if p.Client != gp.Client {
-		t.Errorf("Client: got %v, want %v", p.Client, gp.Client)
+	if p.Client != deref(gp.Client) {
+		t.Errorf("Client: got %v, want %v", p.Client, deref(gp.Client))
 	}
-	if p.Employee != gp.Employee {
-		t.Errorf("Employee: got %v, want %v", p.Employee, gp.Employee)
+	if p.Employee != deref(gp.Employee) {
+		t.Errorf("Employee: got %v, want %v", p.Employee, deref(gp.Employee))
 	}
-	if p.TimeZone != gp.TimeZone {
-		t.Errorf("TimeZone: got %q, want %q", p.TimeZone, gp.TimeZone)
+	if p.TimeZone != deref(gp.TimeZone) {
+		t.Errorf("TimeZone: got %q, want %q", p.TimeZone, deref(gp.TimeZone))
 	}
-	if p.CanPing != gp.CanPing {
-		t.Errorf("CanPing: got %v, want %v", p.CanPing, gp.CanPing)
+	if p.CanPing != deref(gp.CanPing) {
+		t.Errorf("CanPing: got %v, want %v", p.CanPing, deref(gp.CanPing))
 	}
-	if p.CanAccessHillCharts != gp.CanAccessHillCharts {
-		t.Errorf("CanAccessHillCharts: got %v, want %v", p.CanAccessHillCharts, gp.CanAccessHillCharts)
+	if p.CanAccessHillCharts != deref(gp.CanAccessHillCharts) {
+		t.Errorf("CanAccessHillCharts: got %v, want %v", p.CanAccessHillCharts, deref(gp.CanAccessHillCharts))
 	}
-	if p.CanAccessTimesheet != gp.CanAccessTimesheet {
-		t.Errorf("CanAccessTimesheet: got %v, want %v", p.CanAccessTimesheet, gp.CanAccessTimesheet)
+	if p.CanAccessTimesheet != deref(gp.CanAccessTimesheet) {
+		t.Errorf("CanAccessTimesheet: got %v, want %v", p.CanAccessTimesheet, deref(gp.CanAccessTimesheet))
 	}
-	if p.CanManageProjects != gp.CanManageProjects {
-		t.Errorf("CanManageProjects: got %v, want %v", p.CanManageProjects, gp.CanManageProjects)
+	if p.CanManageProjects != deref(gp.CanManageProjects) {
+		t.Errorf("CanManageProjects: got %v, want %v", p.CanManageProjects, deref(gp.CanManageProjects))
 	}
-	if p.CanManagePeople != gp.CanManagePeople {
-		t.Errorf("CanManagePeople: got %v, want %v", p.CanManagePeople, gp.CanManagePeople)
+	if p.CanManagePeople != deref(gp.CanManagePeople) {
+		t.Errorf("CanManagePeople: got %v, want %v", p.CanManagePeople, deref(gp.CanManagePeople))
 	}
-	if p.Company == nil {
+	// Keyed on the GENERATED pointer, which is the source of truth: guarding on
+	// the wrapper and then dereferencing gp.Company would report a spurious
+	// failure for a fixture that legitimately has no company.
+	switch {
+	case gp.Company == nil:
+		if p.Company != nil {
+			t.Errorf("Company: expected nil for an absent company, got %+v", p.Company)
+		}
+	case p.Company == nil:
 		t.Error("Company: expected non-nil")
-	} else {
+	default:
 		if p.Company.ID != gp.Company.Id {
 			t.Errorf("Company.ID: got %d, want %d", p.Company.ID, gp.Company.Id)
 		}
@@ -217,12 +225,10 @@ func assertCreatorFullyPropagated(t *testing.T, p *Person, gp generated.Person) 
 	// Exact timestamp comparison against the same RFC3339 format
 	// personFromGenerated applies — a wrong field mapping (e.g. CreatedAt
 	// sourced from UpdatedAt) would pass a mere non-empty check.
-	if want := gp.CreatedAt.Format("2006-01-02T15:04:05Z07:00"); p.CreatedAt != want {
-		t.Errorf("CreatedAt: got %q, want %q", p.CreatedAt, want)
-	}
-	if want := gp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"); p.UpdatedAt != want {
-		t.Errorf("UpdatedAt: got %q, want %q", p.UpdatedAt, want)
-	}
+	// Nil-guarded: these are pointers now, so a fixture that omits either field
+	// would panic here instead of reporting a failure.
+	assertTimestampPropagated(t, "CreatedAt", gp.CreatedAt, p.CreatedAt)
+	assertTimestampPropagated(t, "UpdatedAt", gp.UpdatedAt, p.UpdatedAt)
 }
 
 // -----------------------------------------------------------------------------
@@ -235,12 +241,12 @@ func TestTodoFromGenerated_PropagatesNewFields(t *testing.T) {
 		Status:           "active",
 		Title:            "T",
 		VisibleToClients: true,
-		BoostsCount:      3,
-		BoostsUrl:        "https://example.com/boosts",
-		CommentsCount:    5,
-		CommentsUrl:      "https://example.com/comments",
-		CompletionUrl:    "https://example.com/completion",
-		SubscriptionUrl:  "https://example.com/subscription",
+		BoostsCount:      ptr(int32(3)),
+		BoostsUrl:        ptr("https://example.com/boosts"),
+		CommentsCount:    ptr(int32(5)),
+		CommentsUrl:      ptr("https://example.com/comments"),
+		CompletionUrl:    ptr("https://example.com/completion"),
+		SubscriptionUrl:  ptr("https://example.com/subscription"),
 		CompletionSubscribers: []generated.Person{
 			{Id: 7, Name: "Subscriber"},
 		},
@@ -288,10 +294,10 @@ func TestTodosetFromGenerated_PropagatesNewFields(t *testing.T) {
 		Id:                       42,
 		Status:                   "active",
 		Title:                    "T",
-		TodosCount:               17,
-		CompletedLooseTodosCount: 3,
-		TodosUrl:                 "https://example.com/todos",
-		AppTodosUrl:              "https://example.com/app/todos",
+		TodosCount:               ptr(int32(17)),
+		CompletedLooseTodosCount: ptr(int32(3)),
+		TodosUrl:                 ptr("https://example.com/todos"),
+		AppTodosUrl:              ptr("https://example.com/app/todos"),
 	}
 	w := todosetFromGenerated(gts)
 	if w.TodosCount != 17 {
@@ -317,10 +323,10 @@ func TestRecordingFromGenerated_PropagatesNewFields(t *testing.T) {
 		Id:              42,
 		Status:          "active",
 		Title:           "R",
-		Content:         "the content",
-		CommentsCount:   9,
-		CommentsUrl:     "https://example.com/comments",
-		SubscriptionUrl: "https://example.com/sub",
+		Content:         ptr("the content"),
+		CommentsCount:   ptr(int32(9)),
+		CommentsUrl:     ptr("https://example.com/comments"),
+		SubscriptionUrl: ptr("https://example.com/sub"),
 	}
 	w := recordingFromGenerated(gr)
 	if w.Content != "the content" {
@@ -344,9 +350,9 @@ func TestCommentFromGenerated_PropagatesNewFields(t *testing.T) {
 		Title:            "C",
 		VisibleToClients: true,
 		InheritsStatus:   true,
-		BookmarkUrl:      "https://example.com/bm",
-		BoostsCount:      3,
-		BoostsUrl:        "https://example.com/boosts",
+		BookmarkUrl:      ptr("https://example.com/bm"),
+		BoostsCount:      ptr(int32(3)),
+		BoostsUrl:        ptr("https://example.com/boosts"),
 	}
 	w := commentFromGenerated(gc)
 	if !w.VisibleToClients {
@@ -376,11 +382,11 @@ func TestMessageFromGenerated_PropagatesNewFields(t *testing.T) {
 		Title:            "M",
 		VisibleToClients: true,
 		InheritsStatus:   true,
-		BookmarkUrl:      "https://example.com/bm",
-		BoostsUrl:        "https://example.com/boosts",
-		CommentsCount:    7,
-		CommentsUrl:      "https://example.com/comments",
-		SubscriptionUrl:  "https://example.com/sub",
+		BookmarkUrl:      ptr("https://example.com/bm"),
+		BoostsUrl:        ptr("https://example.com/boosts"),
+		CommentsCount:    ptr(int32(7)),
+		CommentsUrl:      ptr("https://example.com/comments"),
+		SubscriptionUrl:  ptr("https://example.com/sub"),
 	}
 	w := messageFromGenerated(gm)
 	if !w.VisibleToClients || w.Title != "M" || !w.InheritsStatus {
@@ -412,9 +418,9 @@ func TestMessageBoardFromGenerated_PropagatesNewFields(t *testing.T) {
 		Title:            "MB",
 		VisibleToClients: true,
 		InheritsStatus:   true,
-		BookmarkUrl:      "https://example.com/bm",
-		AppMessagesUrl:   "https://example.com/app/messages",
-		Position:         3,
+		BookmarkUrl:      ptr("https://example.com/bm"),
+		AppMessagesUrl:   ptr("https://example.com/app/messages"),
+		Position:         ptr(int32(3)),
 	}
 	w := messageBoardFromGenerated(gb)
 	if !w.VisibleToClients || !w.InheritsStatus {
@@ -439,10 +445,10 @@ func TestForwardFromGenerated_PropagatesNewFields(t *testing.T) {
 		Subject:          "subj",
 		VisibleToClients: true,
 		InheritsStatus:   true,
-		BookmarkUrl:      "https://example.com/bm",
-		SubscriptionUrl:  "https://example.com/sub",
-		RepliesCount:     5,
-		RepliesUrl:       "https://example.com/replies",
+		BookmarkUrl:      ptr("https://example.com/bm"),
+		SubscriptionUrl:  ptr("https://example.com/sub"),
+		RepliesCount:     ptr(int32(5)),
+		RepliesUrl:       ptr("https://example.com/replies"),
 	}
 	w := forwardFromGenerated(gf)
 	if !w.VisibleToClients || !w.InheritsStatus || w.Title != "F" {
@@ -464,9 +470,9 @@ func TestForwardReplyFromGenerated_PropagatesNewFields(t *testing.T) {
 		Content:          "x",
 		VisibleToClients: true,
 		InheritsStatus:   true,
-		BookmarkUrl:      "https://example.com/bm",
-		BoostsCount:      3,
-		BoostsUrl:        "https://example.com/boosts",
+		BookmarkUrl:      ptr("https://example.com/bm"),
+		BoostsCount:      ptr(int32(3)),
+		BoostsUrl:        ptr("https://example.com/boosts"),
 	}
 	w := forwardReplyFromGenerated(gr)
 	if !w.VisibleToClients || !w.InheritsStatus || w.Title != "FR" {
@@ -485,9 +491,9 @@ func TestCampfireLineFromGenerated_PropagatesNewFields(t *testing.T) {
 		Id:          42,
 		Status:      "active",
 		Title:       "L",
-		BookmarkUrl: "https://example.com/bm",
-		BoostsCount: 3,
-		BoostsUrl:   "https://example.com/boosts",
+		BookmarkUrl: ptr("https://example.com/bm"),
+		BoostsCount: ptr(int32(3)),
+		BoostsUrl:   ptr("https://example.com/boosts"),
 	}
 	w := campfireLineFromGenerated(gl)
 	if w.BookmarkURL == "" || w.BoostsURL == "" {
@@ -503,8 +509,8 @@ func TestScheduleEntryFromGenerated_PropagatesNewFields(t *testing.T) {
 		Id:          42,
 		Status:      "active",
 		Summary:     "s",
-		BoostsCount: 3,
-		BoostsUrl:   "https://example.com/boosts",
+		BoostsCount: ptr(int32(3)),
+		BoostsUrl:   ptr("https://example.com/boosts"),
 	}
 	w := scheduleEntryFromGenerated(ge)
 	if w.BoostsCount != 3 || w.BoostsURL == "" {
@@ -518,8 +524,8 @@ func TestQuestionAnswerFromGenerated_PropagatesNewFields(t *testing.T) {
 		Status:      "active",
 		Title:       "A",
 		Content:     "x",
-		BoostsCount: 3,
-		BoostsUrl:   "https://example.com/boosts",
+		BoostsCount: ptr(int32(3)),
+		BoostsUrl:   ptr("https://example.com/boosts"),
 	}
 	w := questionAnswerFromGenerated(ga)
 	if w.BoostsCount != 3 || w.BoostsURL == "" {
@@ -532,8 +538,8 @@ func TestTodolistFromGenerated_PropagatesNewFields(t *testing.T) {
 		Id:          42,
 		Status:      "active",
 		Title:       "TL",
-		BoostsCount: 3,
-		BoostsUrl:   "https://example.com/boosts",
+		BoostsCount: ptr(int32(3)),
+		BoostsUrl:   ptr("https://example.com/boosts"),
 	}
 	w := todolistFromGenerated(gtl)
 	if w.BoostsCount != 3 || w.BoostsURL == "" {
@@ -544,14 +550,14 @@ func TestTodolistFromGenerated_PropagatesNewFields(t *testing.T) {
 func TestTimesheetEntryFromGenerated_PropagatesNewFields(t *testing.T) {
 	ge := generated.TimesheetEntry{
 		Id:               42,
-		Date:             "2024-01-15",
-		Hours:            "1.5",
+		Date:             ptr("2024-01-15"),
+		Hours:            ptr("1.5"),
 		Status:           "active",
 		Title:            "TE",
 		Type:             "Timesheets::Entry",
 		Url:              "https://example.com/u",
 		AppUrl:           "https://example.com/au",
-		BookmarkUrl:      "https://example.com/bm",
+		BookmarkUrl:      ptr("https://example.com/bm"),
 		VisibleToClients: true,
 		InheritsStatus:   true,
 	}
@@ -569,12 +575,12 @@ func TestInboxFromGenerated_PropagatesNewFields(t *testing.T) {
 		Id:               42,
 		Status:           "active",
 		Title:            "IB",
-		Position:         5,
+		Position:         ptr(int32(5)),
 		VisibleToClients: true,
 		InheritsStatus:   true,
-		BookmarkUrl:      "https://example.com/bm",
-		ForwardsCount:    12,
-		ForwardsUrl:      "https://example.com/forwards",
+		BookmarkUrl:      ptr("https://example.com/bm"),
+		ForwardsCount:    ptr(int32(12)),
+		ForwardsUrl:      ptr("https://example.com/forwards"),
 	}
 	w := inboxFromGenerated(gi)
 	if !w.VisibleToClients || !w.InheritsStatus {
@@ -594,10 +600,10 @@ func TestCampfireFromGenerated_PropagatesNewFields(t *testing.T) {
 		Id:              42,
 		Status:          "active",
 		Title:           "C",
-		Topic:           "fellowship of the campfire",
-		Position:        3,
-		BookmarkUrl:     "https://example.com/bm",
-		SubscriptionUrl: "https://example.com/sub",
+		Topic:           ptr("fellowship of the campfire"),
+		Position:        ptr(int32(3)),
+		BookmarkUrl:     ptr("https://example.com/bm"),
+		SubscriptionUrl: ptr("https://example.com/sub"),
 	}
 	w := campfireFromGenerated(gc)
 	if w.Topic != "fellowship of the campfire" {
@@ -615,11 +621,11 @@ func TestTemplateFromGenerated_PropagatesNewFields(t *testing.T) {
 	gt := generated.Template{
 		Id:     42,
 		Name:   "T",
-		Url:    "https://example.com/u",
-		AppUrl: "https://example.com/au",
+		Url:    ptr("https://example.com/u"),
+		AppUrl: ptr("https://example.com/au"),
 		Dock: []generated.DockItem{
-			{Id: 1, Title: "Chat", Name: "campfire", Enabled: true, Url: "u1", AppUrl: "au1", Position: 0},
-			{Id: 2, Title: "Docs", Name: "vault", Enabled: false, Url: "u2", AppUrl: "au2", Position: 1},
+			{Id: 1, Title: "Chat", Name: "campfire", Enabled: true, Url: "u1", AppUrl: "au1", Position: ptr(int32(0))},
+			{Id: 2, Title: "Docs", Name: "vault", Enabled: false, Url: "u2", AppUrl: "au2", Position: ptr(int32(1))},
 		},
 	}
 	w := templateFromGenerated(gt)
@@ -883,4 +889,20 @@ func TestRequiredBools_FalseMarshalsExplicitly(t *testing.T) {
 	hasKey(t, Forward{}, "visible_to_clients", "inherits_status")
 	hasKey(t, ForwardReply{}, "visible_to_clients", "inherits_status")
 	hasKey(t, TimesheetEntry{}, "visible_to_clients", "inherits_status")
+}
+
+// assertTimestampPropagated compares a wrapper timestamp string against the
+// generated pointer it came from, treating nil as "must be empty" rather than
+// dereferencing it.
+func assertTimestampPropagated(t *testing.T, name string, generated *time.Time, got string) {
+	t.Helper()
+	if generated == nil {
+		if got != "" {
+			t.Errorf("%s: got %q, want empty for an absent value", name, got)
+		}
+		return
+	}
+	if want := generated.Format("2006-01-02T15:04:05Z07:00"); got != want {
+		t.Errorf("%s: got %q, want %q", name, got, want)
+	}
 }

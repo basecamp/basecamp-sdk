@@ -9,6 +9,7 @@
 require 'json'
 require 'set'
 require 'time'
+require_relative 'go_type_spellings'
 
 # Schemas to skip (internal/generated response wrappers)
 SKIP_PATTERNS = [
@@ -207,7 +208,7 @@ if __FILE__ == $PROGRAM_NAME
                     "parse_float(data[\"#{prop_name}\"])"
       elsif prop_schema['type'] == 'boolean'
                     "parse_boolean(data[\"#{prop_name}\"])"
-      elsif prop_schema['x-go-type'] == 'time.Time'
+      elsif GoTypeSpellings.timestamp_go_type?(prop_schema['x-go-type'])
                     "parse_datetime(data[\"#{prop_name}\"])"
       else
                     "data[\"#{prop_name}\"]"

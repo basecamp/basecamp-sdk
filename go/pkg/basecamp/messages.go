@@ -143,10 +143,10 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 	params := &generated.ListMessagesParams{}
 	if opts != nil {
 		if opts.Sort != "" {
-			params.Sort = opts.Sort
+			params.Sort = &opts.Sort
 		}
 		if opts.Direction != "" {
-			params.Direction = opts.Direction
+			params.Direction = &opts.Direction
 		}
 	}
 
@@ -264,8 +264,8 @@ func (s *MessagesService) Create(ctx context.Context, boardID int64, req *Create
 
 	body := generated.CreateMessageJSONRequestBody{
 		Subject:          req.Subject,
-		Content:          req.Content,
-		Status:           req.Status,
+		Content:          omitzero(req.Content),
+		Status:           omitzero(req.Status),
 		Subscriptions:    req.Subscriptions,
 		VisibleToClients: req.VisibleToClients,
 	}
@@ -314,13 +314,13 @@ func (s *MessagesService) Update(ctx context.Context, messageID int64, req *Upda
 
 	body := generated.UpdateMessageJSONRequestBody{}
 	if req.Subject != "" {
-		body.Subject = req.Subject
+		body.Subject = &req.Subject
 	}
 	if req.Content != "" {
-		body.Content = req.Content
+		body.Content = &req.Content
 	}
 	if req.Status != "" {
-		body.Status = req.Status
+		body.Status = &req.Status
 	}
 	if req.CategoryID != 0 {
 		body.CategoryId = &req.CategoryID
@@ -471,12 +471,12 @@ func messageFromGenerated(gm generated.Message) Message {
 		Type:             gm.Type,
 		URL:              gm.Url,
 		AppURL:           gm.AppUrl,
-		BookmarkURL:      gm.BookmarkUrl,
-		BoostsCount:      int(gm.BoostsCount),
-		BoostsURL:        gm.BoostsUrl,
-		CommentsCount:    int(gm.CommentsCount),
-		CommentsURL:      gm.CommentsUrl,
-		SubscriptionURL:  gm.SubscriptionUrl,
+		BookmarkURL:      deref(gm.BookmarkUrl),
+		BoostsCount:      int(deref(gm.BoostsCount)),
+		BoostsURL:        deref(gm.BoostsUrl),
+		CommentsCount:    int(deref(gm.CommentsCount)),
+		CommentsURL:      deref(gm.CommentsUrl),
+		SubscriptionURL:  deref(gm.SubscriptionUrl),
 		CreatedAt:        gm.CreatedAt,
 		UpdatedAt:        gm.UpdatedAt,
 	}
@@ -509,7 +509,7 @@ func messageFromGenerated(gm generated.Message) Message {
 		m.Creator = &creator
 	}
 
-	if gm.Category.Id != 0 || gm.Category.Name != "" {
+	if gm.Category != nil {
 		m.Category = &MessageType{
 			ID:        gm.Category.Id,
 			Name:      gm.Category.Name,

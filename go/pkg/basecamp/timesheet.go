@@ -96,9 +96,9 @@ func (s *TimesheetService) buildTimesheetParams(opts *TimesheetReportOptions) *g
 	}
 
 	return &generated.GetTimesheetReportParams{
-		From:     opts.From,
-		To:       opts.To,
-		PersonId: opts.PersonID,
+		From:     omitzero(opts.From),
+		To:       omitzero(opts.To),
+		PersonId: omitzero(opts.PersonID),
 	}
 }
 
@@ -166,9 +166,9 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 	var params *generated.GetProjectTimesheetParams
 	if opts != nil {
 		params = &generated.GetProjectTimesheetParams{
-			From:     opts.From,
-			To:       opts.To,
-			PersonId: opts.PersonID,
+			From:     omitzero(opts.From),
+			To:       omitzero(opts.To),
+			PersonId: omitzero(opts.PersonID),
 		}
 	}
 
@@ -252,9 +252,9 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int6
 	var params *generated.GetRecordingTimesheetParams
 	if opts != nil {
 		params = &generated.GetRecordingTimesheetParams{
-			From:     opts.From,
-			To:       opts.To,
-			PersonId: opts.PersonID,
+			From:     omitzero(opts.From),
+			To:       omitzero(opts.To),
+			PersonId: omitzero(opts.PersonID),
 		}
 	}
 
@@ -370,7 +370,7 @@ func (s *TimesheetService) Create(ctx context.Context, recordingID int64, req *C
 	body := generated.CreateTimesheetEntryJSONRequestBody{
 		Date:        req.Date,
 		Hours:       req.Hours,
-		Description: req.Description,
+		Description: omitzero(req.Description),
 	}
 	if req.PersonID != 0 {
 		body.PersonId = &req.PersonID
@@ -410,13 +410,13 @@ func (s *TimesheetService) Update(ctx context.Context, entryID int64, req *Updat
 
 	body := generated.UpdateTimesheetEntryJSONRequestBody{}
 	if req.Date != "" {
-		body.Date = req.Date
+		body.Date = &req.Date
 	}
 	if req.Hours != "" {
-		body.Hours = req.Hours
+		body.Hours = &req.Hours
 	}
 	if req.Description != "" {
-		body.Description = req.Description
+		body.Description = &req.Description
 	}
 	if req.PersonID != 0 {
 		body.PersonId = &req.PersonID
@@ -471,10 +471,10 @@ func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 		Type:             ge.Type,
 		URL:              ge.Url,
 		AppURL:           ge.AppUrl,
-		BookmarkURL:      ge.BookmarkUrl,
-		Date:             ge.Date,
-		Hours:            ge.Hours,
-		Description:      ge.Description,
+		BookmarkURL:      deref(ge.BookmarkUrl),
+		Date:             deref(ge.Date),
+		Hours:            deref(ge.Hours),
+		Description:      deref(ge.Description),
 		CreatedAt:        ge.CreatedAt,
 		UpdatedAt:        ge.UpdatedAt,
 	}
@@ -488,8 +488,8 @@ func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 		e.Creator = &creator
 	}
 
-	if ge.Person.Id != 0 || ge.Person.Name != "" {
-		person := personFromGenerated(ge.Person)
+	if ge.Person != nil {
+		person := personFromGenerated(*ge.Person)
 		e.Person = &person
 	}
 

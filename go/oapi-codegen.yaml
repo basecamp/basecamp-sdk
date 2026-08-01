@@ -20,7 +20,9 @@ output-options:
   skip-fmt: false
   # Skip pruning unused types
   skip-prune: false
-  # Generate value types instead of pointers for optional fields
-  # This makes the API more ergonomic (e.g., project.Id instead of *project.Id)
-  # Fields that need to distinguish nil from zero value can use x-go-type-skip-optional-pointer: false
-  prefer-skip-optional-pointer: true
+  # Optional fields are pointers (oapi-codegen's default): a value type cannot
+  # represent absence, so absent-vs-zero must be nil-vs-value (SPEC.md §10
+  # Optional Fields — no zero-value sentinels). Nil-capable types (slices) keep
+  # their native nil via a generic x-go-type-skip-optional-pointer pass in
+  # scripts/enhance-openapi-go-types.sh; make go-check-optional-pointers guards
+  # the generated output.

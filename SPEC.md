@@ -814,27 +814,19 @@ Fields declared with `format: date-time` in the OpenAPI spec use ISO 8601 format
 
 Fields not listed in the `required` array of the OpenAPI schema must be nullable or optional in the language's type system. Sentinel values (empty string, 0, etc.) are not acceptable substitutes for absence.
 
-**Scope.** This rule constrains the **static type** of a member on a **generated type**. It says an optional member must be *representable* as absent — it does not, on its own, mandate that every SDK's runtime decode and re-encode round-trip absence. Where a language's decoding collapses absence into the zero value, or its encoder drops an explicit null, that is a separate concern, documented per language in the Nullable Numeric Dimensions table above and tracked in #436.
+**Scope.** This rule constrains the **static type** of a member on a **generated type**. It says an optional member must be *representable* as absent — it does not, on its own, mandate that every SDK's runtime decode and re-encode round-trip absence. Where a language's encoder drops an explicit null (Ruby `compact`, Swift's synthesized encoder), that is a separate concern, documented per language in the Nullable Numeric Dimensions table above.
 
 **A third wire state.** A member may be *required and nullable* (`type: [T, "null"]` on a required member — e.g. `SearchType.key`, `TimelineEventData.starts_at`/`ends_at`, `Wormhole.color`/`destination_url`). This is distinct from optional: the key must be **present**, and its value may be null. It must not be encoded as though it were optional, because that would silently accept a response that omits the key. Kotlin therefore emits `T?` **with no default** for this case, versus `T? = null` for a genuinely optional member.
 
-Enforced for Kotlin arrays and primitive scalars by `make kt-check-optional-arrays-and-scalars`. Object/`$ref`/enum-typed members are out of that checker's scope — they are reference types with no zero-value sentinel to guard against.
+Enforced for Kotlin arrays and primitive scalars by `make kt-check-optional-arrays-and-scalars` (object/`$ref`/enum-typed members are out of that checker's scope — reference types with no zero-value sentinel to guard against), and for Go by `make go-check-optional-pointers`.
 
-**No blanket `omitempty` waiver.** The `width`/`height` carve-out described under Nullable Numeric Dimensions is **response-only**: it concerns faithfully re-encoding a decoded response. It must not be generalized into a blanket permission for Go request structs to use non-pointer scalars with `omitempty`.
+**Go: absence-capability by type, no waivers.** Every optional (`omitempty`) field in the generated Go client must have a type that can represent absence:
 
-For a **writable** optional scalar, an explicit `false` / `0` / `""` is a different instruction to the server than absence, and `omitempty` destroys exactly that distinction — the field becomes unsendable at its zero value. A meaningful fraction of the affected generated Go fields are request-shaped (`*RequestContent`), so this is not a hypothetical.
+- **Pointers** (`*T`) — the default: `go/oapi-codegen.yaml` does **not** set `prefer-skip-optional-pointer`, so optional value types (strings, booleans, numerics, `time.Time`, `types.Date`, nested structs) generate as pointers. `IsZero()` on a value-typed temporal field is a zero-value sentinel, not a representation of absence — there is no date/time carve-out.
+- **Slices** (`[]T`) — optional non-nullable arrays on response-shaped schemas keep native `[]T` via a generic pass in `scripts/enhance-openapi-go-types.sh` (`x-go-type-skip-optional-pointer: true`): a nil slice already represents absence. Request-shaped arrays stay pointers so an explicit empty array is sendable (`omitempty` drops a len-0 slice — e.g. `Create*` `subscriptions`, where nil means server default and `[]` means subscribe nobody), and nullable arrays stay pointers to capture present-null.
+- **Maps and interfaces** — nil-capable as-is (oapi-codegen never emits `*interface{}`; `WebhookEvent.Details` is the one such field today).
 
-Any waiver of the pointer requirement for Go must therefore be **response-only or field-specific, and must say which** — never a change to the global generator flag.
-
-The relevant knobs, so the direction is unambiguous:
-
-| Setting | Effect |
-|---|---|
-| `prefer-skip-optional-pointer: true` (`go/oapi-codegen.yaml`, global) | Optional fields are **value-typed** by default — this is the current baseline, and the source of the decode collapse |
-| `x-go-type-skip-optional-pointer: false` (per field) | **Forces a pointer**, restoring the nil-vs-zero distinction. Already applied to `id`/`*_id` fields and to optional booleans in `*RequestContent` schemas by `scripts/enhance-openapi-go-types.sh` |
-| `x-go-type-skip-optional-pointer: true` (per field) | **Waives** the pointer for that field. Already applied to `time.Time` and `types.Date` fields |
-
-So the per-field mechanism for *fixing* a collapsed field is `false`, and a deliberate waiver is `true`. Either way it is decided per schema.
+`make go-check-optional-pointers` enforces exactly this classification over `client.gen.go` with **no waiver list** — the type classifier is the policy. For a writable optional scalar this is what makes an explicit `false` / `0` / `""` sendable at all: with a value type plus `omitempty`, the zero value was unsendable and absence was unrepresentable on decode.
 
 ### 204 No Content
 

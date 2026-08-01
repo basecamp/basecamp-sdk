@@ -393,7 +393,7 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 	// Completed=true narrows to completed todos, and they may be combined.
 	var params *generated.ListTodosParams
 	if opts != nil && (opts.Status != "" || opts.Completed) {
-		params = &generated.ListTodosParams{Status: opts.Status, Completed: opts.Completed}
+		params = &generated.ListTodosParams{Status: omitzero(opts.Status), Completed: omitzero(opts.Completed)}
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
@@ -508,11 +508,19 @@ func (s *TodosService) Create(ctx context.Context, todolistID int64, req *Create
 	}
 
 	body := generated.CreateTodoJSONRequestBody{
-		Content:                 req.Content,
-		Description:             req.Description,
-		AssigneeIds:             req.AssigneeIDs,
-		CompletionSubscriberIds: req.CompletionSubscriberIDs,
-		Notify:                  &req.Notify,
+		Content:     req.Content,
+		Description: omitzero(req.Description),
+		Notify:      &req.Notify,
+	}
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and must reach the wire.
+	if req.AssigneeIDs != nil {
+		body.AssigneeIds = &req.AssigneeIDs
+	}
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and must reach the wire.
+	if req.CompletionSubscriberIDs != nil {
+		body.CompletionSubscriberIds = &req.CompletionSubscriberIDs
 	}
 	// Parse date strings to types.Date for the generated client
 	if req.DueOn != "" {
@@ -521,7 +529,7 @@ func (s *TodosService) Create(ctx context.Context, todolistID int64, req *Create
 			err = ErrUsage("todo due_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body.DueOn = d
+		body.DueOn = &d
 	}
 	if req.StartsOn != "" {
 		d, parseErr := types.ParseDate(req.StartsOn)
@@ -529,7 +537,7 @@ func (s *TodosService) Create(ctx context.Context, todolistID int64, req *Create
 			err = ErrUsage("todo starts_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body.StartsOn = d
+		body.StartsOn = &d
 	}
 
 	resp, err := s.client.parent.gen.CreateTodoWithResponse(ctx, s.client.accountID, todolistID, body)
@@ -573,11 +581,19 @@ func (s *TodosService) CreateInTodoset(ctx context.Context, projectID, todosetID
 	}
 
 	body := generated.CreateTodosetTodoJSONRequestBody{
-		Content:                 req.Content,
-		Description:             req.Description,
-		AssigneeIds:             req.AssigneeIDs,
-		CompletionSubscriberIds: req.CompletionSubscriberIDs,
-		Notify:                  &req.Notify,
+		Content:     req.Content,
+		Description: omitzero(req.Description),
+		Notify:      &req.Notify,
+	}
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and must reach the wire.
+	if req.AssigneeIDs != nil {
+		body.AssigneeIds = &req.AssigneeIDs
+	}
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and must reach the wire.
+	if req.CompletionSubscriberIDs != nil {
+		body.CompletionSubscriberIds = &req.CompletionSubscriberIDs
 	}
 	if req.DueOn != "" {
 		d, parseErr := types.ParseDate(req.DueOn)
@@ -585,7 +601,7 @@ func (s *TodosService) CreateInTodoset(ctx context.Context, projectID, todosetID
 			err = ErrUsage("todo due_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body.DueOn = d
+		body.DueOn = &d
 	}
 	if req.StartsOn != "" {
 		d, parseErr := types.ParseDate(req.StartsOn)
@@ -593,7 +609,7 @@ func (s *TodosService) CreateInTodoset(ctx context.Context, projectID, todosetID
 			err = ErrUsage("todo starts_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body.StartsOn = d
+		body.StartsOn = &d
 	}
 
 	resp, err := s.client.parent.gen.CreateTodosetTodoWithResponse(ctx, s.client.accountID, projectID, todosetID, body)
@@ -897,20 +913,20 @@ func todoFromGenerated(gt generated.Todo) Todo {
 		Type:             gt.Type,
 		URL:              gt.Url,
 		AppURL:           gt.AppUrl,
-		BookmarkURL:      gt.BookmarkUrl,
-		SubscriptionURL:  gt.SubscriptionUrl,
+		BookmarkURL:      deref(gt.BookmarkUrl),
+		SubscriptionURL:  deref(gt.SubscriptionUrl),
 		Content:          gt.Content,
-		Description:      gt.Description,
-		Completed:        gt.Completed,
-		Position:         int(gt.Position),
+		Description:      deref(gt.Description),
+		Completed:        deref(gt.Completed),
+		Position:         int(deref(gt.Position)),
 		CreatedAt:        gt.CreatedAt,
 		UpdatedAt:        gt.UpdatedAt,
 		InheritsVis:      gt.InheritsStatus,
-		BoostsCount:      int(gt.BoostsCount),
-		BoostsURL:        gt.BoostsUrl,
-		CommentsCount:    int(gt.CommentsCount),
-		CommentsURL:      gt.CommentsUrl,
-		CompletionURL:    gt.CompletionUrl,
+		BoostsCount:      int(deref(gt.BoostsCount)),
+		BoostsURL:        deref(gt.BoostsUrl),
+		CommentsCount:    int(deref(gt.CommentsCount)),
+		CommentsURL:      deref(gt.CommentsUrl),
+		CompletionURL:    deref(gt.CompletionUrl),
 	}
 
 	if gt.Id != 0 {
@@ -918,10 +934,10 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	}
 
 	// Convert date fields to strings
-	if !gt.StartsOn.IsZero() {
+	if gt.StartsOn != nil && !gt.StartsOn.IsZero() {
 		t.StartsOn = gt.StartsOn.String()
 	}
-	if !gt.DueOn.IsZero() {
+	if gt.DueOn != nil && !gt.DueOn.IsZero() {
 		t.DueOn = gt.DueOn.String()
 	}
 

@@ -109,7 +109,7 @@ type MyNotificationsGetOption func(*generated.GetMyNotificationsParams)
 // omits the scheduled_bubble_ups array from the response (the counts are still
 // returned). Use the BubbleUps method to page through all bubble-ups.
 func WithLimitBubbleUps() MyNotificationsGetOption {
-	return func(p *generated.GetMyNotificationsParams) { p.LimitBubbleUps = true }
+	return func(p *generated.GetMyNotificationsParams) { p.LimitBubbleUps = ptr(true) }
 }
 
 // Get returns notifications for the current user.
@@ -148,7 +148,7 @@ func (s *MyNotificationsService) get(ctx context.Context, page int32, opts ...My
 
 	params := &generated.GetMyNotificationsParams{}
 	if page > 0 {
-		params.Page = page
+		params.Page = &page
 	}
 	for _, opt := range opts {
 		opt(params)
@@ -227,7 +227,7 @@ func (s *MyNotificationsService) BubbleUps(ctx context.Context, page int32) (res
 
 	var params *generated.GetBubbleUpsParams
 	if page > 0 {
-		params = &generated.GetBubbleUpsParams{Page: page}
+		params = &generated.GetBubbleUpsParams{Page: &page}
 	}
 
 	resp, err := s.client.parent.gen.GetBubbleUpsWithResponse(ctx, s.client.accountID, params)

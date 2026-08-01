@@ -99,8 +99,8 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, opts *ClientCor
 	var params *generated.ListClientCorrespondencesParams
 	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
 		params = &generated.ListClientCorrespondencesParams{
-			Sort:      opts.Sort,
-			Direction: opts.Direction,
+			Sort:      omitzero(opts.Sort),
+			Direction: omitzero(opts.Direction),
 		}
 	}
 	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, params)
@@ -204,12 +204,12 @@ func clientCorrespondenceFromGenerated(gc generated.ClientCorrespondence) Client
 		Type:             gc.Type,
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
-		BookmarkURL:      gc.BookmarkUrl,
-		SubscriptionURL:  gc.SubscriptionUrl,
-		Content:          gc.Content,
+		BookmarkURL:      deref(gc.BookmarkUrl),
+		SubscriptionURL:  deref(gc.SubscriptionUrl),
+		Content:          deref(gc.Content),
 		Subject:          gc.Subject,
-		RepliesCount:     int(gc.RepliesCount),
-		RepliesURL:       gc.RepliesUrl,
+		RepliesCount:     int(deref(gc.RepliesCount)),
+		RepliesURL:       deref(gc.RepliesUrl),
 	}
 
 	if gc.Id != 0 {

@@ -152,14 +152,14 @@ func everythingFileFromGenerated(gf generated.EverythingFile) EverythingFile {
 		h := int32(*gf.Height)
 		f.Height = &h
 	}
-	if gf.Parent.Id != 0 || gf.Parent.Title != "" {
+	if gf.Parent != nil {
 		f.Parent = &Parent{ID: gf.Parent.Id, Title: gf.Parent.Title, Type: gf.Parent.Type, URL: gf.Parent.Url, AppURL: gf.Parent.AppUrl}
 	}
-	if gf.Bucket.Id != 0 || gf.Bucket.Name != "" {
+	if gf.Bucket != nil {
 		f.Bucket = &Bucket{ID: gf.Bucket.Id, Name: gf.Bucket.Name, Type: gf.Bucket.Type}
 	}
-	if gf.Creator.Id != 0 || gf.Creator.Name != "" {
-		creator := personFromGenerated(gf.Creator)
+	if gf.Creator != nil {
+		creator := personFromGenerated(*gf.Creator)
 		f.Creator = &creator
 	}
 	f.DescriptionAttachments = richTextAttachmentsPtrFromGenerated(gf.DescriptionAttachments)
@@ -179,7 +179,7 @@ func (s *EverythingService) Messages(ctx context.Context, page int32) (result *R
 	defer done(&err)
 	var params *generated.GetEverythingMessagesParams
 	if page > 0 {
-		params = &generated.GetEverythingMessagesParams{Page: page}
+		params = &generated.GetEverythingMessagesParams{Page: &page}
 	}
 	resp, err := s.client.parent.gen.GetEverythingMessagesWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -198,7 +198,7 @@ func (s *EverythingService) Comments(ctx context.Context, page int32) (result *R
 	defer done(&err)
 	var params *generated.GetEverythingCommentsParams
 	if page > 0 {
-		params = &generated.GetEverythingCommentsParams{Page: page}
+		params = &generated.GetEverythingCommentsParams{Page: &page}
 	}
 	resp, err := s.client.parent.gen.GetEverythingCommentsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -218,7 +218,7 @@ func (s *EverythingService) Checkins(ctx context.Context, page int32) (result *R
 	defer done(&err)
 	var params *generated.GetEverythingCheckinsParams
 	if page > 0 {
-		params = &generated.GetEverythingCheckinsParams{Page: page}
+		params = &generated.GetEverythingCheckinsParams{Page: &page}
 	}
 	resp, err := s.client.parent.gen.GetEverythingCheckinsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -238,7 +238,7 @@ func (s *EverythingService) Forwards(ctx context.Context, page int32) (result *R
 	defer done(&err)
 	var params *generated.GetEverythingForwardsParams
 	if page > 0 {
-		params = &generated.GetEverythingForwardsParams{Page: page}
+		params = &generated.GetEverythingForwardsParams{Page: &page}
 	}
 	resp, err := s.client.parent.gen.GetEverythingForwardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -293,11 +293,11 @@ func (s *EverythingService) Files(ctx context.Context, page int32, opts *Everyth
 	if opts != nil || page > 0 {
 		params = &generated.GetEverythingFilesParams{}
 		if page > 0 {
-			params.Page = page
+			params.Page = &page
 		}
 		if opts != nil {
 			if opts.Kind != "" {
-				params.Kind = opts.Kind
+				params.Kind = &opts.Kind
 			}
 			if len(opts.PeopleIDs) > 0 {
 				ids := append([]int64(nil), opts.PeopleIDs...)
@@ -359,7 +359,7 @@ func (s *EverythingService) OverdueTodos(ctx context.Context, filters *Everythin
 
 	params := (*generated.GetEverythingOverdueTodosParams)(nil)
 	if !filters.empty() {
-		params = &generated.GetEverythingOverdueTodosParams{Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingOverdueTodosParams{Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	resp, err := s.client.parent.gen.GetEverythingOverdueTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -389,7 +389,7 @@ func (s *EverythingService) OverdueCards(ctx context.Context, filters *Everythin
 
 	params := (*generated.GetEverythingOverdueCardsParams)(nil)
 	if !filters.empty() {
-		params = &generated.GetEverythingOverdueCardsParams{Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingOverdueCardsParams{Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	resp, err := s.client.parent.gen.GetEverythingOverdueCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -496,7 +496,7 @@ func (s *EverythingService) OpenTodos(ctx context.Context, page int32, filters *
 	defer done(&err)
 	var params *generated.GetEverythingOpenTodosParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingOpenTodosParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingOpenTodosParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingOpenTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -514,7 +514,7 @@ func (s *EverythingService) CompletedTodos(ctx context.Context, page int32, filt
 	defer done(&err)
 	var params *generated.GetEverythingCompletedTodosParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingCompletedTodosParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingCompletedTodosParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingCompletedTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -532,7 +532,7 @@ func (s *EverythingService) UnassignedTodos(ctx context.Context, page int32, fil
 	defer done(&err)
 	var params *generated.GetEverythingUnassignedTodosParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingUnassignedTodosParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingUnassignedTodosParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingUnassignedTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -550,7 +550,7 @@ func (s *EverythingService) NoDueDateTodos(ctx context.Context, page int32, filt
 	defer done(&err)
 	var params *generated.GetEverythingNoDueDateTodosParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingNoDueDateTodosParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingNoDueDateTodosParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingNoDueDateTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -568,7 +568,7 @@ func (s *EverythingService) OpenCards(ctx context.Context, page int32, filters *
 	defer done(&err)
 	var params *generated.GetEverythingOpenCardsParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingOpenCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingOpenCardsParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingOpenCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -586,7 +586,7 @@ func (s *EverythingService) CompletedCards(ctx context.Context, page int32, filt
 	defer done(&err)
 	var params *generated.GetEverythingCompletedCardsParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingCompletedCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingCompletedCardsParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingCompletedCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -604,7 +604,7 @@ func (s *EverythingService) UnassignedCards(ctx context.Context, page int32, fil
 	defer done(&err)
 	var params *generated.GetEverythingUnassignedCardsParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingUnassignedCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingUnassignedCardsParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingUnassignedCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -622,7 +622,7 @@ func (s *EverythingService) NoDueDateCards(ctx context.Context, page int32, filt
 	defer done(&err)
 	var params *generated.GetEverythingNoDueDateCardsParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingNoDueDateCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingNoDueDateCardsParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingNoDueDateCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -641,7 +641,7 @@ func (s *EverythingService) NotNowCards(ctx context.Context, page int32, filters
 	defer done(&err)
 	var params *generated.GetEverythingNotNowCardsParams
 	if page > 0 || !filters.empty() {
-		params = &generated.GetEverythingNotNowCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+		params = &generated.GetEverythingNotNowCardsParams{Page: omitzero(page), Due: omitzero(filters.due()), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingNotNowCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {

@@ -60,72 +60,72 @@ func (e FirstWeekDay) Valid() bool {
 
 // Account defines model for Account.
 type Account struct {
-	Active       bool                `json:"active,omitempty"`
-	CreatedAt    time.Time           `json:"created_at"`
-	Frozen       bool                `json:"frozen,omitempty"`
-	Id           int64               `json:"id"`
-	Limits       AccountLimits       `json:"limits,omitempty"`
-	Logo         AccountLogo         `json:"logo,omitempty"`
-	Name         string              `json:"name"`
-	OwnerName    string              `json:"owner_name,omitempty"`
-	Paused       bool                `json:"paused,omitempty"`
-	Settings     AccountSettings     `json:"settings,omitempty"`
-	Subscription AccountSubscription `json:"subscription,omitempty"`
-	Trial        bool                `json:"trial,omitempty"`
-	TrialEndsOn  types.Date          `json:"trial_ends_on,omitempty"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	Active       *bool                `json:"active,omitempty"`
+	CreatedAt    time.Time            `json:"created_at"`
+	Frozen       *bool                `json:"frozen,omitempty"`
+	Id           int64                `json:"id"`
+	Limits       *AccountLimits       `json:"limits,omitempty"`
+	Logo         *AccountLogo         `json:"logo,omitempty"`
+	Name         string               `json:"name"`
+	OwnerName    *string              `json:"owner_name,omitempty"`
+	Paused       *bool                `json:"paused,omitempty"`
+	Settings     *AccountSettings     `json:"settings,omitempty"`
+	Subscription *AccountSubscription `json:"subscription,omitempty"`
+	Trial        *bool                `json:"trial,omitempty"`
+	TrialEndsOn  *types.Date          `json:"trial_ends_on,omitempty"`
+	UpdatedAt    time.Time            `json:"updated_at"`
 }
 
 // AccountLimits defines model for AccountLimits.
 type AccountLimits struct {
-	CanCreateProjects bool `json:"can_create_projects,omitempty"`
-	CanCreateUsers    bool `json:"can_create_users,omitempty"`
-	CanPinProjects    bool `json:"can_pin_projects,omitempty"`
-	CanUploadFiles    bool `json:"can_upload_files,omitempty"`
+	CanCreateProjects *bool `json:"can_create_projects,omitempty"`
+	CanCreateUsers    *bool `json:"can_create_users,omitempty"`
+	CanPinProjects    *bool `json:"can_pin_projects,omitempty"`
+	CanUploadFiles    *bool `json:"can_upload_files,omitempty"`
 }
 
 // AccountLogo defines model for AccountLogo.
 type AccountLogo struct {
-	Url string `json:"url,omitempty"`
+	Url *string `json:"url,omitempty"`
 }
 
 // AccountSettings defines model for AccountSettings.
 type AccountSettings struct {
-	CompanyHqEnabled bool `json:"company_hq_enabled,omitempty"`
-	ProjectsEnabled  bool `json:"projects_enabled,omitempty"`
-	TeamsEnabled     bool `json:"teams_enabled,omitempty"`
+	CompanyHqEnabled *bool `json:"company_hq_enabled,omitempty"`
+	ProjectsEnabled  *bool `json:"projects_enabled,omitempty"`
+	TeamsEnabled     *bool `json:"teams_enabled,omitempty"`
 }
 
 // AccountSubscription defines model for AccountSubscription.
 type AccountSubscription struct {
-	Clients      bool   `json:"clients,omitempty"`
-	Logo         bool   `json:"logo,omitempty"`
-	ProjectLimit int32  `json:"project_limit,omitempty"`
-	ProperName   string `json:"proper_name,omitempty"`
-	ShortName    string `json:"short_name,omitempty"`
-	Teams        bool   `json:"teams,omitempty"`
-	Templates    bool   `json:"templates,omitempty"`
-	Timesheet    bool   `json:"timesheet,omitempty"`
+	Clients      *bool   `json:"clients,omitempty"`
+	Logo         *bool   `json:"logo,omitempty"`
+	ProjectLimit *int32  `json:"project_limit,omitempty"`
+	ProperName   *string `json:"proper_name,omitempty"`
+	ShortName    *string `json:"short_name,omitempty"`
+	Teams        *bool   `json:"teams,omitempty"`
+	Templates    *bool   `json:"templates,omitempty"`
+	Timesheet    *bool   `json:"timesheet,omitempty"`
 }
 
 // Assignable defines model for Assignable.
 type Assignable struct {
-	AppUrl    string     `json:"app_url,omitempty"`
-	Assignees []Person   `json:"assignees,omitempty"`
-	Bucket    TodoBucket `json:"bucket,omitempty"`
-	DueOn     types.Date `json:"due_on,omitempty"`
-	Id        *int64     `json:"id,omitempty"`
-	Parent    TodoParent `json:"parent,omitempty"`
-	StartsOn  types.Date `json:"starts_on,omitempty"`
-	Title     string     `json:"title,omitempty"`
-	Type      string     `json:"type,omitempty"`
-	Url       string     `json:"url,omitempty"`
+	AppUrl    *string     `json:"app_url,omitempty"`
+	Assignees []Person    `json:"assignees,omitempty"`
+	Bucket    *TodoBucket `json:"bucket,omitempty"`
+	DueOn     *types.Date `json:"due_on,omitempty"`
+	Id        *int64      `json:"id,omitempty"`
+	Parent    *TodoParent `json:"parent,omitempty"`
+	StartsOn  *types.Date `json:"starts_on,omitempty"`
+	Title     *string     `json:"title,omitempty"`
+	Type      *string     `json:"type,omitempty"`
+	Url       *string     `json:"url,omitempty"`
 }
 
 // BadRequestErrorResponseContent defines model for BadRequestErrorResponseContent.
 type BadRequestErrorResponseContent struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
 }
 
 // Bookmark A personal bookmark: the current user's link to a single recording.
@@ -145,11 +145,11 @@ type BookmarkStatus struct {
 
 // Boost defines model for Boost.
 type Boost struct {
-	Booster   Person          `json:"booster,omitempty"`
-	Content   string          `json:"content,omitempty"`
-	CreatedAt time.Time       `json:"created_at"`
-	Id        int64           `json:"id"`
-	Recording RecordingParent `json:"recording,omitempty"`
+	Booster   *Person          `json:"booster,omitempty"`
+	Content   *string          `json:"content,omitempty"`
+	CreatedAt time.Time        `json:"created_at"`
+	Id        int64            `json:"id"`
+	Recording *RecordingParent `json:"recording,omitempty"`
 }
 
 // BucketCardsGroup One project's slice of a filtered card listing: the parent project and the
@@ -195,19 +195,19 @@ type CalendarAttributes struct {
 // Campfire defines model for Campfire.
 type Campfire struct {
 	AppUrl           string     `json:"app_url"`
-	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
+	BookmarkUrl      *string    `json:"bookmark_url,omitempty"`
 	Bucket           TodoBucket `json:"bucket"`
 	CreatedAt        time.Time  `json:"created_at"`
 	Creator          Person     `json:"creator"`
-	FilesUrl         string     `json:"files_url,omitempty"`
+	FilesUrl         *string    `json:"files_url,omitempty"`
 	Id               int64      `json:"id"`
 	InheritsStatus   bool       `json:"inherits_status"`
-	LinesUrl         string     `json:"lines_url,omitempty"`
-	Position         int32      `json:"position,omitempty"`
+	LinesUrl         *string    `json:"lines_url,omitempty"`
+	Position         *int32     `json:"position,omitempty"`
 	Status           string     `json:"status"`
-	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
+	SubscriptionUrl  *string    `json:"subscription_url,omitempty"`
 	Title            string     `json:"title"`
-	Topic            string     `json:"topic,omitempty"`
+	Topic            *string    `json:"topic,omitempty"`
 	Type             string     `json:"type"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 	Url              string     `json:"url"`
@@ -218,11 +218,11 @@ type Campfire struct {
 type CampfireLine struct {
 	AppUrl           string                   `json:"app_url"`
 	Attachments      []CampfireLineAttachment `json:"attachments,omitempty"`
-	BookmarkUrl      string                   `json:"bookmark_url,omitempty"`
-	BoostsCount      int32                    `json:"boosts_count,omitempty"`
-	BoostsUrl        string                   `json:"boosts_url,omitempty"`
+	BookmarkUrl      *string                  `json:"bookmark_url,omitempty"`
+	BoostsCount      *int32                   `json:"boosts_count,omitempty"`
+	BoostsUrl        *string                  `json:"boosts_url,omitempty"`
 	Bucket           TodoBucket               `json:"bucket"`
-	Content          string                   `json:"content,omitempty"`
+	Content          *string                  `json:"content,omitempty"`
 	CreatedAt        time.Time                `json:"created_at"`
 	Creator          Person                   `json:"creator"`
 	Id               int64                    `json:"id"`
@@ -238,42 +238,42 @@ type CampfireLine struct {
 
 // CampfireLineAttachment defines model for CampfireLineAttachment.
 type CampfireLineAttachment struct {
-	ByteSize    int64  `json:"byte_size,omitempty"`
-	ContentType string `json:"content_type,omitempty"`
-	DownloadUrl string `json:"download_url,omitempty"`
-	Filename    string `json:"filename,omitempty"`
-	Title       string `json:"title,omitempty"`
-	Url         string `json:"url,omitempty"`
+	ByteSize    *int64  `json:"byte_size,omitempty"`
+	ContentType *string `json:"content_type,omitempty"`
+	DownloadUrl *string `json:"download_url,omitempty"`
+	Filename    *string `json:"filename,omitempty"`
+	Title       *string `json:"title,omitempty"`
+	Url         *string `json:"url,omitempty"`
 }
 
 // Card defines model for Card.
 type Card struct {
 	AppUrl                 string               `json:"app_url"`
 	Assignees              []Person             `json:"assignees,omitempty"`
-	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
-	BoostsCount            int32                `json:"boosts_count,omitempty"`
-	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
+	BoostsCount            *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl              *string              `json:"boosts_url,omitempty"`
 	Bucket                 TodoBucket           `json:"bucket"`
-	CommentsCount          int32                `json:"comments_count,omitempty"`
-	CommentsUrl            string               `json:"comments_url,omitempty"`
-	Completed              bool                 `json:"completed,omitempty"`
-	CompletedAt            time.Time            `json:"completed_at,omitempty"`
-	Completer              Person               `json:"completer,omitempty"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsUrl            *string              `json:"comments_url,omitempty"`
+	Completed              *bool                `json:"completed,omitempty"`
+	CompletedAt            *time.Time           `json:"completed_at,omitempty"`
+	Completer              *Person              `json:"completer,omitempty"`
 	CompletionSubscribers  []Person             `json:"completion_subscribers,omitempty"`
-	CompletionUrl          string               `json:"completion_url,omitempty"`
-	Content                string               `json:"content,omitempty"`
+	CompletionUrl          *string              `json:"completion_url,omitempty"`
+	Content                *string              `json:"content,omitempty"`
 	CreatedAt              time.Time            `json:"created_at"`
 	Creator                Person               `json:"creator"`
-	Description            string               `json:"description,omitempty"`
+	Description            *string              `json:"description,omitempty"`
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
-	DueOn                  types.Date           `json:"due_on,omitempty"`
+	DueOn                  *types.Date          `json:"due_on,omitempty"`
 	Id                     int64                `json:"id"`
 	InheritsStatus         bool                 `json:"inherits_status"`
 	Parent                 RecordingParent      `json:"parent"`
-	Position               int32                `json:"position,omitempty"`
+	Position               *int32               `json:"position,omitempty"`
 	Status                 string               `json:"status"`
 	Steps                  []CardStep           `json:"steps,omitempty"`
-	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
+	SubscriptionUrl        *string              `json:"subscription_url,omitempty"`
 	Title                  string               `json:"title"`
 	Type                   string               `json:"type"`
 	UpdatedAt              time.Time            `json:"updated_at"`
@@ -283,28 +283,28 @@ type Card struct {
 
 // CardColumn defines model for CardColumn.
 type CardColumn struct {
-	AppUrl           string           `json:"app_url"`
-	BookmarkUrl      string           `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket       `json:"bucket"`
-	CardsCount       int32            `json:"cards_count,omitempty"`
-	CardsUrl         string           `json:"cards_url,omitempty"`
-	Color            string           `json:"color,omitempty"`
-	CommentsCount    int32            `json:"comments_count,omitempty"`
-	CreatedAt        time.Time        `json:"created_at"`
-	Creator          Person           `json:"creator"`
-	Description      string           `json:"description,omitempty"`
-	Id               int64            `json:"id"`
-	InheritsStatus   bool             `json:"inherits_status"`
-	OnHold           CardColumnOnHold `json:"on_hold,omitempty"`
-	Parent           RecordingParent  `json:"parent"`
-	Position         int32            `json:"position,omitempty"`
-	Status           string           `json:"status"`
-	Subscribers      []Person         `json:"subscribers,omitempty"`
-	Title            string           `json:"title"`
-	Type             string           `json:"type"`
-	UpdatedAt        time.Time        `json:"updated_at"`
-	Url              string           `json:"url"`
-	VisibleToClients bool             `json:"visible_to_clients"`
+	AppUrl           string            `json:"app_url"`
+	BookmarkUrl      *string           `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket        `json:"bucket"`
+	CardsCount       *int32            `json:"cards_count,omitempty"`
+	CardsUrl         *string           `json:"cards_url,omitempty"`
+	Color            *string           `json:"color,omitempty"`
+	CommentsCount    *int32            `json:"comments_count,omitempty"`
+	CreatedAt        time.Time         `json:"created_at"`
+	Creator          Person            `json:"creator"`
+	Description      *string           `json:"description,omitempty"`
+	Id               int64             `json:"id"`
+	InheritsStatus   bool              `json:"inherits_status"`
+	OnHold           *CardColumnOnHold `json:"on_hold,omitempty"`
+	Parent           RecordingParent   `json:"parent"`
+	Position         *int32            `json:"position,omitempty"`
+	Status           string            `json:"status"`
+	Subscribers      []Person          `json:"subscribers,omitempty"`
+	Title            string            `json:"title"`
+	Type             string            `json:"type"`
+	UpdatedAt        time.Time         `json:"updated_at"`
+	Url              string            `json:"url"`
+	VisibleToClients bool              `json:"visible_to_clients"`
 }
 
 // CardColumnOnHold defines model for CardColumnOnHold.
@@ -323,19 +323,19 @@ type CardColumnOnHold struct {
 type CardStep struct {
 	AppUrl           string          `json:"app_url"`
 	Assignees        []Person        `json:"assignees,omitempty"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BookmarkUrl      *string         `json:"bookmark_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket"`
-	Completed        bool            `json:"completed,omitempty"`
-	CompletedAt      time.Time       `json:"completed_at,omitempty"`
-	Completer        Person          `json:"completer,omitempty"`
-	CompletionUrl    string          `json:"completion_url,omitempty"`
+	Completed        *bool           `json:"completed,omitempty"`
+	CompletedAt      *time.Time      `json:"completed_at,omitempty"`
+	Completer        *Person         `json:"completer,omitempty"`
+	CompletionUrl    *string         `json:"completion_url,omitempty"`
 	CreatedAt        time.Time       `json:"created_at"`
 	Creator          Person          `json:"creator"`
-	DueOn            types.Date      `json:"due_on,omitempty"`
+	DueOn            *types.Date     `json:"due_on,omitempty"`
 	Id               int64           `json:"id"`
 	InheritsStatus   bool            `json:"inherits_status"`
 	Parent           RecordingParent `json:"parent"`
-	Position         int32           `json:"position,omitempty"`
+	Position         *int32          `json:"position,omitempty"`
 	Status           string          `json:"status"`
 	Title            string          `json:"title"`
 	Type             string          `json:"type"`
@@ -347,7 +347,7 @@ type CardStep struct {
 // CardTable defines model for CardTable.
 type CardTable struct {
 	AppUrl           string       `json:"app_url"`
-	BookmarkUrl      string       `json:"bookmark_url,omitempty"`
+	BookmarkUrl      *string      `json:"bookmark_url,omitempty"`
 	Bucket           TodoBucket   `json:"bucket"`
 	CreatedAt        time.Time    `json:"created_at"`
 	Creator          Person       `json:"creator"`
@@ -356,7 +356,7 @@ type CardTable struct {
 	Lists            []CardColumn `json:"lists,omitempty"`
 	Status           string       `json:"status"`
 	Subscribers      []Person     `json:"subscribers,omitempty"`
-	SubscriptionUrl  string       `json:"subscription_url,omitempty"`
+	SubscriptionUrl  *string      `json:"subscription_url,omitempty"`
 	Title            string       `json:"title"`
 	Type             string       `json:"type"`
 	UpdatedAt        time.Time    `json:"updated_at"`
@@ -367,37 +367,37 @@ type CardTable struct {
 
 // Chatbot defines model for Chatbot.
 type Chatbot struct {
-	AppUrl      string    `json:"app_url,omitempty"`
-	CommandUrl  string    `json:"command_url,omitempty"`
+	AppUrl      *string   `json:"app_url,omitempty"`
+	CommandUrl  *string   `json:"command_url,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	Id          int64     `json:"id"`
-	LinesUrl    string    `json:"lines_url,omitempty"`
+	LinesUrl    *string   `json:"lines_url,omitempty"`
 	ServiceName string    `json:"service_name"`
 	UpdatedAt   time.Time `json:"updated_at"`
-	Url         string    `json:"url,omitempty"`
+	Url         *string   `json:"url,omitempty"`
 }
 
 // ClientApproval defines model for ClientApproval.
 type ClientApproval struct {
 	AppUrl             string                   `json:"app_url"`
-	ApprovalStatus     string                   `json:"approval_status,omitempty"`
-	Approver           Person                   `json:"approver,omitempty"`
-	BookmarkUrl        string                   `json:"bookmark_url,omitempty"`
+	ApprovalStatus     *string                  `json:"approval_status,omitempty"`
+	Approver           *Person                  `json:"approver,omitempty"`
+	BookmarkUrl        *string                  `json:"bookmark_url,omitempty"`
 	Bucket             RecordingBucket          `json:"bucket"`
-	Content            string                   `json:"content,omitempty"`
+	Content            *string                  `json:"content,omitempty"`
 	ContentAttachments []RichTextAttachment     `json:"content_attachments"`
 	CreatedAt          time.Time                `json:"created_at"`
 	Creator            Person                   `json:"creator"`
-	DueOn              types.Date               `json:"due_on,omitempty"`
+	DueOn              *types.Date              `json:"due_on,omitempty"`
 	Id                 int64                    `json:"id"`
 	InheritsStatus     bool                     `json:"inherits_status"`
 	Parent             RecordingParent          `json:"parent"`
-	RepliesCount       int32                    `json:"replies_count,omitempty"`
-	RepliesUrl         string                   `json:"replies_url,omitempty"`
+	RepliesCount       *int32                   `json:"replies_count,omitempty"`
+	RepliesUrl         *string                  `json:"replies_url,omitempty"`
 	Responses          []ClientApprovalResponse `json:"responses,omitempty"`
 	Status             string                   `json:"status"`
-	Subject            string                   `json:"subject,omitempty"`
-	SubscriptionUrl    string                   `json:"subscription_url,omitempty"`
+	Subject            *string                  `json:"subject,omitempty"`
+	SubscriptionUrl    *string                  `json:"subscription_url,omitempty"`
 	Title              string                   `json:"title"`
 	Type               string                   `json:"type"`
 	UpdatedAt          time.Time                `json:"updated_at"`
@@ -407,21 +407,21 @@ type ClientApproval struct {
 
 // ClientApprovalResponse defines model for ClientApprovalResponse.
 type ClientApprovalResponse struct {
-	AppUrl           string          `json:"app_url,omitempty"`
-	Approved         bool            `json:"approved,omitempty"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Id               *int64          `json:"id,omitempty"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	AppUrl           *string          `json:"app_url,omitempty"`
+	Approved         *bool            `json:"approved,omitempty"`
+	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
+	Bucket           *RecordingBucket `json:"bucket,omitempty"`
+	Content          *string          `json:"content,omitempty"`
+	CreatedAt        *time.Time       `json:"created_at,omitempty"`
+	Creator          *Person          `json:"creator,omitempty"`
+	Id               *int64           `json:"id,omitempty"`
+	InheritsStatus   *bool            `json:"inherits_status,omitempty"`
+	Parent           *RecordingParent `json:"parent,omitempty"`
+	Status           *string          `json:"status,omitempty"`
+	Title            *string          `json:"title,omitempty"`
+	Type             *string          `json:"type,omitempty"`
+	UpdatedAt        *time.Time       `json:"updated_at,omitempty"`
+	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
 }
 
 // ClientCompany defines model for ClientCompany.
@@ -433,20 +433,20 @@ type ClientCompany struct {
 // ClientCorrespondence defines model for ClientCorrespondence.
 type ClientCorrespondence struct {
 	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
 	Bucket             RecordingBucket      `json:"bucket"`
-	Content            string               `json:"content,omitempty"`
+	Content            *string              `json:"content,omitempty"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 	CreatedAt          time.Time            `json:"created_at"`
 	Creator            Person               `json:"creator"`
 	Id                 int64                `json:"id"`
 	InheritsStatus     bool                 `json:"inherits_status"`
 	Parent             RecordingParent      `json:"parent"`
-	RepliesCount       int32                `json:"replies_count,omitempty"`
-	RepliesUrl         string               `json:"replies_url,omitempty"`
+	RepliesCount       *int32               `json:"replies_count,omitempty"`
+	RepliesUrl         *string              `json:"replies_url,omitempty"`
 	Status             string               `json:"status"`
 	Subject            string               `json:"subject"`
-	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	SubscriptionUrl    *string              `json:"subscription_url,omitempty"`
 	Title              string               `json:"title"`
 	Type               string               `json:"type"`
 	UpdatedAt          time.Time            `json:"updated_at"`
@@ -457,7 +457,7 @@ type ClientCorrespondence struct {
 // ClientReply defines model for ClientReply.
 type ClientReply struct {
 	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
 	Bucket             RecordingBucket      `json:"bucket"`
 	Content            string               `json:"content"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
@@ -478,16 +478,16 @@ type ClientReply struct {
 //
 // Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead
 type ClientSide struct {
-	AppUrl string `json:"app_url,omitempty"`
-	Url    string `json:"url,omitempty"`
+	AppUrl *string `json:"app_url,omitempty"`
+	Url    *string `json:"url,omitempty"`
 }
 
 // Comment defines model for Comment.
 type Comment struct {
 	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
-	BoostsCount        int32                `json:"boosts_count,omitempty"`
-	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
+	BoostsCount        *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl          *string              `json:"boosts_url,omitempty"`
 	Bucket             TodoBucket           `json:"bucket"`
 	Content            string               `json:"content"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
@@ -512,7 +512,7 @@ type CreateAttachmentInputPayload = string
 
 // CreateAttachmentResponseContent defines model for CreateAttachmentResponseContent.
 type CreateAttachmentResponseContent struct {
-	AttachableSgid string `json:"attachable_sgid,omitempty"`
+	AttachableSgid *string `json:"attachable_sgid,omitempty"`
 }
 
 // CreateBookmarkResponseContent A personal bookmark: the current user's link to a single recording.
@@ -522,8 +522,8 @@ type CreateBookmarkResponseContent = Bookmark
 
 // CreateCampfireLineRequestContent defines model for CreateCampfireLineRequestContent.
 type CreateCampfireLineRequestContent struct {
-	Content     string `json:"content"`
-	ContentType string `json:"content_type,omitempty"`
+	Content     string  `json:"content"`
+	ContentType *string `json:"content_type,omitempty"`
 }
 
 // CreateCampfireLineResponseContent defines model for CreateCampfireLineResponseContent.
@@ -538,8 +538,8 @@ type CreateCampfireUploadResponseContent = CampfireLine
 
 // CreateCardColumnRequestContent defines model for CreateCardColumnRequestContent.
 type CreateCardColumnRequestContent struct {
-	Description string `json:"description,omitempty"`
-	Title       string `json:"title"`
+	Description *string `json:"description,omitempty"`
+	Title       string  `json:"title"`
 }
 
 // CreateCardColumnResponseContent defines model for CreateCardColumnResponseContent.
@@ -547,10 +547,10 @@ type CreateCardColumnResponseContent = CardColumn
 
 // CreateCardRequestContent defines model for CreateCardRequestContent.
 type CreateCardRequestContent struct {
-	Content string     `json:"content,omitempty"`
-	DueOn   types.Date `json:"due_on,omitempty"`
-	Notify  *bool      `json:"notify,omitempty"`
-	Title   string     `json:"title"`
+	Content *string     `json:"content,omitempty"`
+	DueOn   *types.Date `json:"due_on,omitempty"`
+	Notify  *bool       `json:"notify,omitempty"`
+	Title   string      `json:"title"`
 }
 
 // CreateCardResponseContent defines model for CreateCardResponseContent.
@@ -558,9 +558,9 @@ type CreateCardResponseContent = Card
 
 // CreateCardStepRequestContent defines model for CreateCardStepRequestContent.
 type CreateCardStepRequestContent struct {
-	AssigneeIds []int64    `json:"assignee_ids,omitempty"`
-	DueOn       types.Date `json:"due_on,omitempty"`
-	Title       string     `json:"title"`
+	AssigneeIds *[]int64    `json:"assignee_ids,omitempty"`
+	DueOn       *types.Date `json:"due_on,omitempty"`
+	Title       string      `json:"title"`
 }
 
 // CreateCardStepResponseContent defines model for CreateCardStepResponseContent.
@@ -568,8 +568,8 @@ type CreateCardStepResponseContent = CardStep
 
 // CreateChatbotRequestContent defines model for CreateChatbotRequestContent.
 type CreateChatbotRequestContent struct {
-	CommandUrl  string `json:"command_url,omitempty"`
-	ServiceName string `json:"service_name"`
+	CommandUrl  *string `json:"command_url,omitempty"`
+	ServiceName string  `json:"service_name"`
 }
 
 // CreateChatbotResponseContent defines model for CreateChatbotResponseContent.
@@ -585,10 +585,10 @@ type CreateCommentResponseContent = Comment
 
 // CreateDocumentRequestContent defines model for CreateDocumentRequestContent.
 type CreateDocumentRequestContent struct {
-	Content string `json:"content,omitempty"`
+	Content *string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status           string   `json:"status,omitempty"`
+	Status           *string  `json:"status,omitempty"`
 	Subscriptions    *[]int64 `json:"subscriptions,omitempty"`
 	Title            string   `json:"title"`
 	VisibleToClients *bool    `json:"visible_to_clients,omitempty"`
@@ -618,7 +618,7 @@ type CreateGaugeNeedleRequestContent struct {
 	GaugeNeedle GaugeNeedlePayload `json:"gauge_needle"`
 
 	// Notify Who to notify: "everyone", "working_on", "custom", or omit for nobody
-	Notify string `json:"notify,omitempty"`
+	Notify *string `json:"notify,omitempty"`
 
 	// Subscriptions Array of people IDs to notify (only used when notify is "custom")
 	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
@@ -635,11 +635,11 @@ type CreateLineupMarkerRequestContent struct {
 
 // CreateMessageRequestContent defines model for CreateMessageRequestContent.
 type CreateMessageRequestContent struct {
-	CategoryId *int64 `json:"category_id,omitempty"`
-	Content    string `json:"content,omitempty"`
+	CategoryId *int64  `json:"category_id,omitempty"`
+	Content    *string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status           string   `json:"status,omitempty"`
+	Status           *string  `json:"status,omitempty"`
 	Subject          string   `json:"subject"`
 	Subscriptions    *[]int64 `json:"subscriptions,omitempty"`
 	VisibleToClients *bool    `json:"visible_to_clients,omitempty"`
@@ -659,10 +659,10 @@ type CreateMessageTypeResponseContent = MessageType
 
 // CreatePersonRequest defines model for CreatePersonRequest.
 type CreatePersonRequest struct {
-	CompanyName  string `json:"company_name,omitempty"`
-	EmailAddress string `json:"email_address"`
-	Name         string `json:"name"`
-	Title        string `json:"title,omitempty"`
+	CompanyName  *string `json:"company_name,omitempty"`
+	EmailAddress string  `json:"email_address"`
+	Name         string  `json:"name"`
+	Title        *string `json:"title,omitempty"`
 }
 
 // CreateProjectFromTemplateRequestContent defines model for CreateProjectFromTemplateRequestContent.
@@ -675,8 +675,8 @@ type CreateProjectFromTemplateResponseContent = ProjectConstruction
 
 // CreateProjectRequestContent defines model for CreateProjectRequestContent.
 type CreateProjectRequestContent struct {
-	Description string `json:"description,omitempty"`
-	Name        string `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Name        string  `json:"name"`
 }
 
 // CreateProjectResponseContent defines model for CreateProjectResponseContent.
@@ -703,10 +703,10 @@ type CreateRecordingBoostResponseContent = Boost
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
 	AllDay           *bool     `json:"all_day,omitempty"`
-	Description      string    `json:"description,omitempty"`
+	Description      *string   `json:"description,omitempty"`
 	EndsAt           time.Time `json:"ends_at"`
 	Notify           *bool     `json:"notify,omitempty"`
-	ParticipantIds   []int64   `json:"participant_ids,omitempty"`
+	ParticipantIds   *[]int64  `json:"participant_ids,omitempty"`
 	StartsAt         time.Time `json:"starts_at"`
 	Subscriptions    *[]int64  `json:"subscriptions,omitempty"`
 	Summary          string    `json:"summary"`
@@ -718,8 +718,8 @@ type CreateScheduleEntryResponseContent = ScheduleEntry
 
 // CreateTemplateRequestContent defines model for CreateTemplateRequestContent.
 type CreateTemplateRequestContent struct {
-	Description string `json:"description,omitempty"`
-	Name        string `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Name        string  `json:"name"`
 }
 
 // CreateTemplateResponseContent defines model for CreateTemplateResponseContent.
@@ -727,10 +727,10 @@ type CreateTemplateResponseContent = Template
 
 // CreateTimesheetEntryRequestContent defines model for CreateTimesheetEntryRequestContent.
 type CreateTimesheetEntryRequestContent struct {
-	Date        string `json:"date"`
-	Description string `json:"description,omitempty"`
-	Hours       string `json:"hours"`
-	PersonId    *int64 `json:"person_id,omitempty"`
+	Date        string  `json:"date"`
+	Description *string `json:"description,omitempty"`
+	Hours       string  `json:"hours"`
+	PersonId    *int64  `json:"person_id,omitempty"`
 }
 
 // CreateTimesheetEntryResponseContent defines model for CreateTimesheetEntryResponseContent.
@@ -738,13 +738,13 @@ type CreateTimesheetEntryResponseContent = TimesheetEntry
 
 // CreateTodoRequestContent defines model for CreateTodoRequestContent.
 type CreateTodoRequestContent struct {
-	AssigneeIds             []int64    `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds []int64    `json:"completion_subscriber_ids,omitempty"`
-	Content                 string     `json:"content"`
-	Description             string     `json:"description,omitempty"`
-	DueOn                   types.Date `json:"due_on,omitempty"`
-	Notify                  *bool      `json:"notify,omitempty"`
-	StartsOn                types.Date `json:"starts_on,omitempty"`
+	AssigneeIds             *[]int64    `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds *[]int64    `json:"completion_subscriber_ids,omitempty"`
+	Content                 string      `json:"content"`
+	Description             *string     `json:"description,omitempty"`
+	DueOn                   *types.Date `json:"due_on,omitempty"`
+	Notify                  *bool       `json:"notify,omitempty"`
+	StartsOn                *types.Date `json:"starts_on,omitempty"`
 }
 
 // CreateTodoResponseContent defines model for CreateTodoResponseContent.
@@ -760,9 +760,9 @@ type CreateTodolistGroupResponseContent = TodolistGroup
 
 // CreateTodolistRequestContent defines model for CreateTodolistRequestContent.
 type CreateTodolistRequestContent struct {
-	Description      string `json:"description,omitempty"`
-	Name             string `json:"name"`
-	VisibleToClients *bool  `json:"visible_to_clients,omitempty"`
+	Description      *string `json:"description,omitempty"`
+	Name             string  `json:"name"`
+	VisibleToClients *bool   `json:"visible_to_clients,omitempty"`
 }
 
 // CreateTodolistResponseContent defines model for CreateTodolistResponseContent.
@@ -770,13 +770,13 @@ type CreateTodolistResponseContent = Todolist
 
 // CreateTodosetTodoRequestContent defines model for CreateTodosetTodoRequestContent.
 type CreateTodosetTodoRequestContent struct {
-	AssigneeIds             []int64    `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds []int64    `json:"completion_subscriber_ids,omitempty"`
-	Content                 string     `json:"content"`
-	Description             string     `json:"description,omitempty"`
-	DueOn                   types.Date `json:"due_on,omitempty"`
-	Notify                  *bool      `json:"notify,omitempty"`
-	StartsOn                types.Date `json:"starts_on,omitempty"`
+	AssigneeIds             *[]int64    `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds *[]int64    `json:"completion_subscriber_ids,omitempty"`
+	Content                 string      `json:"content"`
+	Description             *string     `json:"description,omitempty"`
+	DueOn                   *types.Date `json:"due_on,omitempty"`
+	Notify                  *bool       `json:"notify,omitempty"`
+	StartsOn                *types.Date `json:"starts_on,omitempty"`
 }
 
 // CreateTodosetTodoResponseContent defines model for CreateTodosetTodoResponseContent.
@@ -785,7 +785,7 @@ type CreateTodosetTodoResponseContent = Todo
 // CreateToolRequestContent defines model for CreateToolRequestContent.
 type CreateToolRequestContent struct {
 	// Title Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
-	Title string `json:"title,omitempty"`
+	Title *string `json:"title,omitempty"`
 
 	// ToolType Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
 	ToolType string `json:"tool_type"`
@@ -800,8 +800,8 @@ type CreateToolResponseContent = Tool
 // CreateUploadRequestContent defines model for CreateUploadRequestContent.
 type CreateUploadRequestContent struct {
 	AttachableSgid   string   `json:"attachable_sgid"`
-	BaseName         string   `json:"base_name,omitempty"`
-	Description      string   `json:"description,omitempty"`
+	BaseName         *string  `json:"base_name,omitempty"`
+	Description      *string  `json:"description,omitempty"`
 	Subscriptions    *[]int64 `json:"subscriptions,omitempty"`
 	VisibleToClients *bool    `json:"visible_to_clients,omitempty"`
 }
@@ -849,7 +849,7 @@ type DockItem struct {
 	Enabled  bool   `json:"enabled"`
 	Id       int64  `json:"id"`
 	Name     string `json:"name"`
-	Position int32  `json:"position,omitempty"`
+	Position *int32 `json:"position,omitempty"`
 	Title    string `json:"title"`
 	Url      string `json:"url"`
 }
@@ -857,22 +857,22 @@ type DockItem struct {
 // Document defines model for Document.
 type Document struct {
 	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
-	BoostsCount        int32                `json:"boosts_count,omitempty"`
-	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
+	BoostsCount        *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl          *string              `json:"boosts_url,omitempty"`
 	Bucket             TodoBucket           `json:"bucket"`
-	CommentsCount      int32                `json:"comments_count,omitempty"`
-	CommentsUrl        string               `json:"comments_url,omitempty"`
-	Content            string               `json:"content,omitempty"`
+	CommentsCount      *int32               `json:"comments_count,omitempty"`
+	CommentsUrl        *string              `json:"comments_url,omitempty"`
+	Content            *string              `json:"content,omitempty"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 	CreatedAt          time.Time            `json:"created_at"`
 	Creator            Person               `json:"creator"`
 	Id                 int64                `json:"id"`
 	InheritsStatus     bool                 `json:"inherits_status"`
 	Parent             RecordingParent      `json:"parent"`
-	Position           int32                `json:"position,omitempty"`
+	Position           *int32               `json:"position,omitempty"`
 	Status             string               `json:"status"`
-	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	SubscriptionUrl    *string              `json:"subscription_url,omitempty"`
 	Title              string               `json:"title"`
 	Type               string               `json:"type"`
 	UpdatedAt          time.Time            `json:"updated_at"`
@@ -885,10 +885,10 @@ type Document struct {
 // the URL patterns Basecamp recognizes for it, and human supporting text. `code`
 // is `other` for a generic link.
 type DoorService struct {
-	Code           string   `json:"code,omitempty"`
-	ExampleUrl     string   `json:"example_url,omitempty"`
-	Name           string   `json:"name,omitempty"`
-	SupportingText string   `json:"supporting_text,omitempty"`
+	Code           *string  `json:"code,omitempty"`
+	ExampleUrl     *string  `json:"example_url,omitempty"`
+	Name           *string  `json:"name,omitempty"`
+	SupportingText *string  `json:"supporting_text,omitempty"`
 	ValidPatterns  []string `json:"valid_patterns,omitempty"`
 }
 
@@ -946,14 +946,14 @@ type EnableOutOfOfficeResponseContent = OutOfOffice
 
 // Event defines model for Event.
 type Event struct {
-	Action      string       `json:"action"`
-	BoostsCount int32        `json:"boosts_count,omitempty"`
-	BoostsUrl   string       `json:"boosts_url,omitempty"`
-	CreatedAt   time.Time    `json:"created_at"`
-	Creator     Person       `json:"creator"`
-	Details     EventDetails `json:"details,omitempty"`
-	Id          int64        `json:"id"`
-	RecordingId int64        `json:"recording_id"`
+	Action      string        `json:"action"`
+	BoostsCount *int32        `json:"boosts_count,omitempty"`
+	BoostsUrl   *string       `json:"boosts_url,omitempty"`
+	CreatedAt   time.Time     `json:"created_at"`
+	Creator     Person        `json:"creator"`
+	Details     *EventDetails `json:"details,omitempty"`
+	Id          int64         `json:"id"`
+	RecordingId int64         `json:"recording_id"`
 }
 
 // EventDetails defines model for EventDetails.
@@ -976,21 +976,21 @@ type EverythingFile struct {
 
 	// AttachableSgid Present on the rich-text attachment variant: signed global id of the
 	// attachment (uploads/documents omit it).
-	AttachableSgid *string         `json:"attachable_sgid,omitempty"`
-	BookmarkUrl    *string         `json:"bookmark_url,omitempty"`
-	BoostsCount    *int32          `json:"boosts_count,omitempty"`
-	BoostsUrl      *string         `json:"boosts_url,omitempty"`
-	Bucket         RecordingBucket `json:"bucket,omitempty"`
-	ByteSize       *int64          `json:"byte_size,omitempty"`
-	CommentsCount  *int32          `json:"comments_count,omitempty"`
-	CommentsUrl    *string         `json:"comments_url,omitempty"`
+	AttachableSgid *string          `json:"attachable_sgid,omitempty"`
+	BookmarkUrl    *string          `json:"bookmark_url,omitempty"`
+	BoostsCount    *int32           `json:"boosts_count,omitempty"`
+	BoostsUrl      *string          `json:"boosts_url,omitempty"`
+	Bucket         *RecordingBucket `json:"bucket,omitempty"`
+	ByteSize       *int64           `json:"byte_size,omitempty"`
+	CommentsCount  *int32           `json:"comments_count,omitempty"`
+	CommentsUrl    *string          `json:"comments_url,omitempty"`
 
 	// Content Rich-text body of the Document variant (uploads/attachments omit it).
 	Content            *string              `json:"content,omitempty"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
 	ContentType        *string              `json:"content_type,omitempty"`
 	CreatedAt          *time.Time           `json:"created_at,omitempty"`
-	Creator            Person               `json:"creator,omitempty"`
+	Creator            *Person              `json:"creator,omitempty"`
 
 	// Description Rich-text description (upload/document variants).
 	Description            *string              `json:"description,omitempty"`
@@ -1002,13 +1002,13 @@ type EverythingFile struct {
 	Height *types.FlexInt `json:"height,omitempty"`
 
 	// Id Recording (Upload/Document) or attachment id.
-	Id              *int64          `json:"id,omitempty"`
-	InheritsStatus  *bool           `json:"inherits_status,omitempty"`
-	Parent          RecordingParent `json:"parent,omitempty"`
-	Position        *int32          `json:"position,omitempty"`
-	Status          *string         `json:"status,omitempty"`
-	SubscriptionUrl *string         `json:"subscription_url,omitempty"`
-	Title           *string         `json:"title,omitempty"`
+	Id              *int64           `json:"id,omitempty"`
+	InheritsStatus  *bool            `json:"inherits_status,omitempty"`
+	Parent          *RecordingParent `json:"parent,omitempty"`
+	Position        *int32           `json:"position,omitempty"`
+	Status          *string          `json:"status,omitempty"`
+	SubscriptionUrl *string          `json:"subscription_url,omitempty"`
+	Title           *string          `json:"title,omitempty"`
 
 	// Type "Upload", "Document", or "Attachment".
 	Type             *string    `json:"type,omitempty"`
@@ -1036,28 +1036,28 @@ type FirstWeekDay string
 
 // ForbiddenErrorResponseContent defines model for ForbiddenErrorResponseContent.
 type ForbiddenErrorResponseContent struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
 }
 
 // Forward defines model for Forward.
 type Forward struct {
 	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
 	Bucket             TodoBucket           `json:"bucket"`
-	Content            string               `json:"content,omitempty"`
+	Content            *string              `json:"content,omitempty"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 	CreatedAt          time.Time            `json:"created_at"`
 	Creator            Person               `json:"creator"`
-	From               string               `json:"from,omitempty"`
+	From               *string              `json:"from,omitempty"`
 	Id                 int64                `json:"id"`
 	InheritsStatus     bool                 `json:"inherits_status"`
 	Parent             RecordingParent      `json:"parent"`
-	RepliesCount       int32                `json:"replies_count,omitempty"`
-	RepliesUrl         string               `json:"replies_url,omitempty"`
+	RepliesCount       *int32               `json:"replies_count,omitempty"`
+	RepliesUrl         *string              `json:"replies_url,omitempty"`
 	Status             string               `json:"status"`
 	Subject            string               `json:"subject"`
-	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	SubscriptionUrl    *string              `json:"subscription_url,omitempty"`
 	Title              string               `json:"title"`
 	Type               string               `json:"type"`
 	UpdatedAt          time.Time            `json:"updated_at"`
@@ -1068,9 +1068,9 @@ type Forward struct {
 // ForwardReply defines model for ForwardReply.
 type ForwardReply struct {
 	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
-	BoostsCount        int32                `json:"boosts_count,omitempty"`
-	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
+	BoostsCount        *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl          *string              `json:"boosts_url,omitempty"`
 	Bucket             TodoBucket           `json:"bucket"`
 	Content            string               `json:"content"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
@@ -1089,66 +1089,66 @@ type ForwardReply struct {
 
 // Gauge defines model for Gauge.
 type Gauge struct {
-	AppUrl      string          `json:"app_url,omitempty"`
-	BookmarkUrl string          `json:"bookmark_url,omitempty"`
-	Bucket      RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt   time.Time       `json:"created_at"`
-	Creator     Person          `json:"creator,omitempty"`
-	Description string          `json:"description,omitempty"`
+	AppUrl      *string          `json:"app_url,omitempty"`
+	BookmarkUrl *string          `json:"bookmark_url,omitempty"`
+	Bucket      *RecordingBucket `json:"bucket,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	Creator     *Person          `json:"creator,omitempty"`
+	Description *string          `json:"description,omitempty"`
 
 	// DescriptionAttachments Optional (no `@required`): the type-specific partial renders the
 	// companion array only when the gauge has needles (bc3 `if
 	// gauge.any_needles?`), so a needle-less gauge omits the key entirely.
 	// Non-nullable — never served as JSON `null`.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
-	Enabled                bool                 `json:"enabled,omitempty"`
+	Enabled                *bool                `json:"enabled,omitempty"`
 	Id                     int64                `json:"id"`
-	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
-	LastNeedleColor        string               `json:"last_needle_color,omitempty"`
-	LastNeedlePosition     int32                `json:"last_needle_position,omitempty"`
-	PreviousNeedlePosition int32                `json:"previous_needle_position,omitempty"`
-	Status                 string               `json:"status,omitempty"`
-	Title                  string               `json:"title,omitempty"`
-	Type                   string               `json:"type,omitempty"`
+	InheritsStatus         *bool                `json:"inherits_status,omitempty"`
+	LastNeedleColor        *string              `json:"last_needle_color,omitempty"`
+	LastNeedlePosition     *int32               `json:"last_needle_position,omitempty"`
+	PreviousNeedlePosition *int32               `json:"previous_needle_position,omitempty"`
+	Status                 *string              `json:"status,omitempty"`
+	Title                  *string              `json:"title,omitempty"`
+	Type                   *string              `json:"type,omitempty"`
 	UpdatedAt              time.Time            `json:"updated_at"`
-	Url                    string               `json:"url,omitempty"`
-	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
+	Url                    *string              `json:"url,omitempty"`
+	VisibleToClients       *bool                `json:"visible_to_clients,omitempty"`
 }
 
 // GaugeNeedle defines model for GaugeNeedle.
 type GaugeNeedle struct {
-	AppUrl                 string               `json:"app_url,omitempty"`
-	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
-	BoostsCount            int32                `json:"boosts_count,omitempty"`
-	BoostsUrl              string               `json:"boosts_url,omitempty"`
-	Bucket                 RecordingBucket      `json:"bucket,omitempty"`
-	Color                  string               `json:"color,omitempty"`
-	CommentsCount          int32                `json:"comments_count,omitempty"`
-	CommentsUrl            string               `json:"comments_url,omitempty"`
+	AppUrl                 *string              `json:"app_url,omitempty"`
+	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
+	BoostsCount            *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl              *string              `json:"boosts_url,omitempty"`
+	Bucket                 *RecordingBucket     `json:"bucket,omitempty"`
+	Color                  *string              `json:"color,omitempty"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsUrl            *string              `json:"comments_url,omitempty"`
 	CreatedAt              time.Time            `json:"created_at"`
-	Creator                Person               `json:"creator,omitempty"`
-	Description            string               `json:"description,omitempty"`
+	Creator                *Person              `json:"creator,omitempty"`
+	Description            *string              `json:"description,omitempty"`
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
 	Id                     int64                `json:"id"`
-	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
-	Parent                 RecordingParent      `json:"parent,omitempty"`
-	Position               int32                `json:"position,omitempty"`
-	Status                 string               `json:"status,omitempty"`
-	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
-	Title                  string               `json:"title,omitempty"`
-	Type                   string               `json:"type,omitempty"`
+	InheritsStatus         *bool                `json:"inherits_status,omitempty"`
+	Parent                 *RecordingParent     `json:"parent,omitempty"`
+	Position               *int32               `json:"position,omitempty"`
+	Status                 *string              `json:"status,omitempty"`
+	SubscriptionUrl        *string              `json:"subscription_url,omitempty"`
+	Title                  *string              `json:"title,omitempty"`
+	Type                   *string              `json:"type,omitempty"`
 	UpdatedAt              time.Time            `json:"updated_at"`
-	Url                    string               `json:"url,omitempty"`
-	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
+	Url                    *string              `json:"url,omitempty"`
+	VisibleToClients       *bool                `json:"visible_to_clients,omitempty"`
 }
 
 // GaugeNeedlePayload defines model for GaugeNeedlePayload.
 type GaugeNeedlePayload struct {
 	// Color Status color: green (default), yellow, or red
-	Color string `json:"color,omitempty"`
+	Color *string `json:"color,omitempty"`
 
 	// Description Rich text (HTML) description of the progress update
-	Description string `json:"description,omitempty"`
+	Description *string `json:"description,omitempty"`
 
 	// Position Position of the needle (0-100)
 	Position int32 `json:"position"`
@@ -1157,7 +1157,7 @@ type GaugeNeedlePayload struct {
 // GaugeNeedleUpdatePayload defines model for GaugeNeedleUpdatePayload.
 type GaugeNeedleUpdatePayload struct {
 	// Description Rich text (HTML) description
-	Description string `json:"description,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 // GaugeTogglePayload defines model for GaugeTogglePayload.
@@ -1176,9 +1176,9 @@ type GetAnswersByPersonResponseContent = []QuestionAnswer
 
 // GetAssignedTodosResponseContent defines model for GetAssignedTodosResponseContent.
 type GetAssignedTodosResponseContent struct {
-	GroupedBy string `json:"grouped_by,omitempty"`
-	Person    Person `json:"person,omitempty"`
-	Todos     []Todo `json:"todos,omitempty"`
+	GroupedBy *string `json:"grouped_by,omitempty"`
+	Person    *Person `json:"person,omitempty"`
+	Todos     []Todo  `json:"todos,omitempty"`
 }
 
 // GetBookmarkResponseContent The current user's bookmark state for one recording.
@@ -1370,7 +1370,7 @@ type GetOverdueTodosResponseContent struct {
 // GetPersonProgressResponseContent defines model for GetPersonProgressResponseContent.
 type GetPersonProgressResponseContent struct {
 	Events []TimelineEvent `json:"events,omitempty"`
-	Person Person          `json:"person,omitempty"`
+	Person *Person         `json:"person,omitempty"`
 }
 
 // GetPersonResponseContent defines model for GetPersonResponseContent.
@@ -1460,36 +1460,36 @@ type GetWebhookResponseContent = Webhook
 
 // HillChart defines model for HillChart.
 type HillChart struct {
-	AppUpdateUrl   string         `json:"app_update_url,omitempty"`
-	AppVersionsUrl string         `json:"app_versions_url,omitempty"`
+	AppUpdateUrl   *string        `json:"app_update_url,omitempty"`
+	AppVersionsUrl *string        `json:"app_versions_url,omitempty"`
 	Dots           []HillChartDot `json:"dots,omitempty"`
 	Enabled        bool           `json:"enabled"`
 	Stale          bool           `json:"stale"`
-	UpdatedAt      time.Time      `json:"updated_at,omitempty"`
+	UpdatedAt      *time.Time     `json:"updated_at,omitempty"`
 }
 
 // HillChartDot defines model for HillChartDot.
 type HillChartDot struct {
-	AppUrl   string `json:"app_url,omitempty"`
-	Color    string `json:"color"`
-	Id       int64  `json:"id"`
-	Label    string `json:"label"`
-	Position int32  `json:"position"`
-	Url      string `json:"url,omitempty"`
+	AppUrl   *string `json:"app_url,omitempty"`
+	Color    string  `json:"color"`
+	Id       int64   `json:"id"`
+	Label    string  `json:"label"`
+	Position int32   `json:"position"`
+	Url      *string `json:"url,omitempty"`
 }
 
 // Inbox defines model for Inbox.
 type Inbox struct {
 	AppUrl           string     `json:"app_url"`
-	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
+	BookmarkUrl      *string    `json:"bookmark_url,omitempty"`
 	Bucket           TodoBucket `json:"bucket"`
 	CreatedAt        time.Time  `json:"created_at"`
 	Creator          Person     `json:"creator"`
-	ForwardsCount    int32      `json:"forwards_count,omitempty"`
-	ForwardsUrl      string     `json:"forwards_url,omitempty"`
+	ForwardsCount    *int32     `json:"forwards_count,omitempty"`
+	ForwardsUrl      *string    `json:"forwards_url,omitempty"`
 	Id               int64      `json:"id"`
 	InheritsStatus   bool       `json:"inherits_status"`
-	Position         int32      `json:"position,omitempty"`
+	Position         *int32     `json:"position,omitempty"`
 	Status           string     `json:"status"`
 	Title            string     `json:"title"`
 	Type             string     `json:"type"`
@@ -1500,8 +1500,8 @@ type Inbox struct {
 
 // InternalServerErrorResponseContent defines model for InternalServerErrorResponseContent.
 type InternalServerErrorResponseContent struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
 }
 
 // LineupMarker defines model for LineupMarker.
@@ -1642,13 +1642,13 @@ type MarkAsReadRequestContent struct {
 // Message defines model for Message.
 type Message struct {
 	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
-	BoostsCount        int32                `json:"boosts_count,omitempty"`
-	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
+	BoostsCount        *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl          *string              `json:"boosts_url,omitempty"`
 	Bucket             TodoBucket           `json:"bucket"`
-	Category           MessageType          `json:"category,omitempty"`
-	CommentsCount      int32                `json:"comments_count,omitempty"`
-	CommentsUrl        string               `json:"comments_url,omitempty"`
+	Category           *MessageType         `json:"category,omitempty"`
+	CommentsCount      *int32               `json:"comments_count,omitempty"`
+	CommentsUrl        *string              `json:"comments_url,omitempty"`
 	Content            string               `json:"content"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 	CreatedAt          time.Time            `json:"created_at"`
@@ -1658,7 +1658,7 @@ type Message struct {
 	Parent             RecordingParent      `json:"parent"`
 	Status             string               `json:"status"`
 	Subject            string               `json:"subject"`
-	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	SubscriptionUrl    *string              `json:"subscription_url,omitempty"`
 	Title              string               `json:"title"`
 	Type               string               `json:"type"`
 	UpdatedAt          time.Time            `json:"updated_at"`
@@ -1668,17 +1668,17 @@ type Message struct {
 
 // MessageBoard defines model for MessageBoard.
 type MessageBoard struct {
-	AppMessagesUrl   string     `json:"app_messages_url,omitempty"`
+	AppMessagesUrl   *string    `json:"app_messages_url,omitempty"`
 	AppUrl           string     `json:"app_url"`
-	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
+	BookmarkUrl      *string    `json:"bookmark_url,omitempty"`
 	Bucket           TodoBucket `json:"bucket"`
 	CreatedAt        time.Time  `json:"created_at"`
 	Creator          Person     `json:"creator"`
 	Id               int64      `json:"id"`
 	InheritsStatus   bool       `json:"inherits_status"`
-	MessagesCount    int32      `json:"messages_count,omitempty"`
-	MessagesUrl      string     `json:"messages_url,omitempty"`
-	Position         int32      `json:"position,omitempty"`
+	MessagesCount    *int32     `json:"messages_count,omitempty"`
+	MessagesUrl      *string    `json:"messages_url,omitempty"`
+	Position         *int32     `json:"position,omitempty"`
 	Status           string     `json:"status"`
 	Title            string     `json:"title"`
 	Type             string     `json:"type"`
@@ -1698,9 +1698,9 @@ type MessageType struct {
 
 // MoveCardColumnRequestContent defines model for MoveCardColumnRequestContent.
 type MoveCardColumnRequestContent struct {
-	Position int32 `json:"position,omitempty"`
-	SourceId int64 `json:"source_id"`
-	TargetId int64 `json:"target_id"`
+	Position *int32 `json:"position,omitempty"`
+	SourceId int64  `json:"source_id"`
+	TargetId int64  `json:"target_id"`
 }
 
 // MoveCardRequestContent defines model for MoveCardRequestContent.
@@ -1708,48 +1708,48 @@ type MoveCardRequestContent struct {
 	ColumnId int64 `json:"column_id"`
 
 	// Position 1-indexed position within the destination column. Defaults to 1 (top).
-	Position int32 `json:"position,omitempty"`
+	Position *int32 `json:"position,omitempty"`
 }
 
 // MyAssignment defines model for MyAssignment.
 type MyAssignment struct {
-	AppUrl         string                 `json:"app_url,omitempty"`
+	AppUrl         *string                `json:"app_url,omitempty"`
 	Assignees      []MyAssignmentAssignee `json:"assignees,omitempty"`
-	Bucket         MyAssignmentBucket     `json:"bucket,omitempty"`
+	Bucket         *MyAssignmentBucket    `json:"bucket,omitempty"`
 	Children       []MyAssignment         `json:"children,omitempty"`
-	CommentsCount  int32                  `json:"comments_count,omitempty"`
-	Completed      bool                   `json:"completed,omitempty"`
-	Content        string                 `json:"content,omitempty"`
-	DueOn          types.Date             `json:"due_on,omitempty"`
-	HasDescription bool                   `json:"has_description,omitempty"`
+	CommentsCount  *int32                 `json:"comments_count,omitempty"`
+	Completed      *bool                  `json:"completed,omitempty"`
+	Content        *string                `json:"content,omitempty"`
+	DueOn          *types.Date            `json:"due_on,omitempty"`
+	HasDescription *bool                  `json:"has_description,omitempty"`
 	Id             int64                  `json:"id"`
-	Parent         MyAssignmentParent     `json:"parent,omitempty"`
+	Parent         *MyAssignmentParent    `json:"parent,omitempty"`
 
 	// PriorityRecordingId Present on priority items
-	PriorityRecordingId *int64     `json:"priority_recording_id,omitempty"`
-	StartsOn            types.Date `json:"starts_on,omitempty"`
-	Type                string     `json:"type,omitempty"`
+	PriorityRecordingId *int64      `json:"priority_recording_id,omitempty"`
+	StartsOn            *types.Date `json:"starts_on,omitempty"`
+	Type                *string     `json:"type,omitempty"`
 }
 
 // MyAssignmentAssignee defines model for MyAssignmentAssignee.
 type MyAssignmentAssignee struct {
-	AvatarUrl string `json:"avatar_url,omitempty"`
-	Id        int64  `json:"id"`
-	Name      string `json:"name,omitempty"`
+	AvatarUrl *string `json:"avatar_url,omitempty"`
+	Id        int64   `json:"id"`
+	Name      *string `json:"name,omitempty"`
 }
 
 // MyAssignmentBucket defines model for MyAssignmentBucket.
 type MyAssignmentBucket struct {
-	AppUrl string `json:"app_url,omitempty"`
-	Id     int64  `json:"id"`
-	Name   string `json:"name,omitempty"`
+	AppUrl *string `json:"app_url,omitempty"`
+	Id     int64   `json:"id"`
+	Name   *string `json:"name,omitempty"`
 }
 
 // MyAssignmentParent defines model for MyAssignmentParent.
 type MyAssignmentParent struct {
-	AppUrl string `json:"app_url,omitempty"`
-	Id     int64  `json:"id"`
-	Title  string `json:"title,omitempty"`
+	AppUrl *string `json:"app_url,omitempty"`
+	Id     int64   `json:"id"`
+	Title  *string `json:"title,omitempty"`
 }
 
 // MyNote The per-user notebook note (wire type Notebook::Note). Before the first
@@ -1781,53 +1781,53 @@ type MyNoteAttributes struct {
 
 // NotFoundErrorResponseContent defines model for NotFoundErrorResponseContent.
 type NotFoundErrorResponseContent struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
 }
 
 // Notification defines model for Notification.
 type Notification struct {
-	AppUrl      string `json:"app_url,omitempty"`
-	BookmarkUrl string `json:"bookmark_url,omitempty"`
+	AppUrl      *string `json:"app_url,omitempty"`
+	BookmarkUrl *string `json:"bookmark_url,omitempty"`
 
 	// BubbleUpAt Scheduled resurfacing time when this item is queued as a scheduled
 	// Bubble Up (BC5 addition). Absent when there is no scheduled time.
-	BubbleUpAt time.Time `json:"bubble_up_at,omitempty"`
+	BubbleUpAt *time.Time `json:"bubble_up_at,omitempty"`
 
 	// BubbleUpUrl URL for the Bubble Up record covering this notification (BC5 addition).
 	// Eligibility-gated — only present on items the current user can bubble up.
-	BubbleUpUrl    string    `json:"bubble_up_url,omitempty"`
-	BucketName     string    `json:"bucket_name,omitempty"`
-	ContentExcerpt string    `json:"content_excerpt,omitempty"`
+	BubbleUpUrl    *string   `json:"bubble_up_url,omitempty"`
+	BucketName     *string   `json:"bucket_name,omitempty"`
+	ContentExcerpt *string   `json:"content_excerpt,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
-	Creator        Person    `json:"creator,omitempty"`
+	Creator        *Person   `json:"creator,omitempty"`
 	Id             int64     `json:"id"`
 
 	// ImageUrl Custom image URL (pings only)
-	ImageUrl  string `json:"image_url,omitempty"`
-	MemoryUrl string `json:"memory_url,omitempty"`
+	ImageUrl  *string `json:"image_url,omitempty"`
+	MemoryUrl *string `json:"memory_url,omitempty"`
 
 	// Named Whether the ping has a custom name (pings only)
-	Named bool `json:"named,omitempty"`
+	Named *bool `json:"named,omitempty"`
 
 	// Participants Present on ping notifications
 	Participants           []Person                `json:"participants,omitempty"`
 	PreviewableAttachments []PreviewableAttachment `json:"previewable_attachments,omitempty"`
-	ReadAt                 time.Time               `json:"read_at,omitempty"`
-	ReadableIdentifier     string                  `json:"readable_identifier,omitempty"`
-	ReadableSgid           string                  `json:"readable_sgid,omitempty"`
+	ReadAt                 *time.Time              `json:"read_at,omitempty"`
+	ReadableIdentifier     *string                 `json:"readable_identifier,omitempty"`
+	ReadableSgid           *string                 `json:"readable_sgid,omitempty"`
 
 	// Section The notification category: `inbox`, `chats`, `pings`, `bubbles`,
 	// or `mentions`.
-	Section         string    `json:"section,omitempty"`
-	Subscribed      bool      `json:"subscribed,omitempty"`
-	SubscriptionUrl string    `json:"subscription_url,omitempty"`
-	Title           string    `json:"title,omitempty"`
-	Type            string    `json:"type,omitempty"`
-	UnreadAt        time.Time `json:"unread_at,omitempty"`
-	UnreadCount     int32     `json:"unread_count,omitempty"`
-	UnreadUrl       string    `json:"unread_url,omitempty"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	Section         *string    `json:"section,omitempty"`
+	Subscribed      *bool      `json:"subscribed,omitempty"`
+	SubscriptionUrl *string    `json:"subscription_url,omitempty"`
+	Title           *string    `json:"title,omitempty"`
+	Type            *string    `json:"type,omitempty"`
+	UnreadAt        *time.Time `json:"unread_at,omitempty"`
+	UnreadCount     *int32     `json:"unread_count,omitempty"`
+	UnreadUrl       *string    `json:"unread_url,omitempty"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // OutOfOffice When out of office is not enabled, `enabled` is `false` and
@@ -1835,12 +1835,12 @@ type Notification struct {
 type OutOfOffice struct {
 	// BackOnDate First working day after the out-of-office window ends.
 	// Omitted when out of office is not enabled.
-	BackOnDate string            `json:"back_on_date,omitempty"`
-	Enabled    bool              `json:"enabled,omitempty"`
-	EndDate    string            `json:"end_date,omitempty"`
-	Ongoing    bool              `json:"ongoing,omitempty"`
-	Person     OutOfOfficePerson `json:"person,omitempty"`
-	StartDate  string            `json:"start_date,omitempty"`
+	BackOnDate *string            `json:"back_on_date,omitempty"`
+	Enabled    *bool              `json:"enabled,omitempty"`
+	EndDate    *string            `json:"end_date,omitempty"`
+	Ongoing    *bool              `json:"ongoing,omitempty"`
+	Person     *OutOfOfficePerson `json:"person,omitempty"`
+	StartDate  *string            `json:"start_date,omitempty"`
 }
 
 // OutOfOfficePayload defines model for OutOfOfficePayload.
@@ -1854,44 +1854,44 @@ type OutOfOfficePayload struct {
 
 // OutOfOfficePerson defines model for OutOfOfficePerson.
 type OutOfOfficePerson struct {
-	AvatarUrl string `json:"avatar_url,omitempty"`
-	Id        int64  `json:"id"`
-	Name      string `json:"name,omitempty"`
+	AvatarUrl *string `json:"avatar_url,omitempty"`
+	Id        int64   `json:"id"`
+	Name      *string `json:"name,omitempty"`
 }
 
 // PauseQuestionResponseContent defines model for PauseQuestionResponseContent.
 type PauseQuestionResponseContent struct {
-	Paused bool `json:"paused,omitempty"`
+	Paused *bool `json:"paused,omitempty"`
 }
 
 // Person defines model for Person.
 type Person struct {
-	Admin               bool                `json:"admin,omitempty"`
-	AttachableSgid      string              `json:"attachable_sgid,omitempty"`
-	AvatarUrl           string              `json:"avatar_url,omitempty"`
-	Bio                 string              `json:"bio,omitempty"`
-	CanAccessHillCharts bool                `json:"can_access_hill_charts,omitempty"`
-	CanAccessTimesheet  bool                `json:"can_access_timesheet,omitempty"`
-	CanManagePeople     bool                `json:"can_manage_people,omitempty"`
-	CanManageProjects   bool                `json:"can_manage_projects,omitempty"`
-	CanPing             bool                `json:"can_ping,omitempty"`
-	Client              bool                `json:"client,omitempty"`
-	Company             PersonCompany       `json:"company,omitempty"`
-	CreatedAt           time.Time           `json:"created_at,omitempty"`
-	EmailAddress        string              `json:"email_address,omitempty"`
-	Employee            bool                `json:"employee,omitempty"`
+	Admin               *bool               `json:"admin,omitempty"`
+	AttachableSgid      *string             `json:"attachable_sgid,omitempty"`
+	AvatarUrl           *string             `json:"avatar_url,omitempty"`
+	Bio                 *string             `json:"bio,omitempty"`
+	CanAccessHillCharts *bool               `json:"can_access_hill_charts,omitempty"`
+	CanAccessTimesheet  *bool               `json:"can_access_timesheet,omitempty"`
+	CanManagePeople     *bool               `json:"can_manage_people,omitempty"`
+	CanManageProjects   *bool               `json:"can_manage_projects,omitempty"`
+	CanPing             *bool               `json:"can_ping,omitempty"`
+	Client              *bool               `json:"client,omitempty"`
+	Company             *PersonCompany      `json:"company,omitempty"`
+	CreatedAt           *time.Time          `json:"created_at,omitempty"`
+	EmailAddress        *string             `json:"email_address,omitempty"`
+	Employee            *bool               `json:"employee,omitempty"`
 	Id                  types.FlexibleInt64 `json:"id"`
-	Location            string              `json:"location,omitempty"`
+	Location            *string             `json:"location,omitempty"`
 	Name                string              `json:"name"`
-	Owner               bool                `json:"owner,omitempty"`
-	PersonableType      string              `json:"personable_type,omitempty"`
+	Owner               *bool               `json:"owner,omitempty"`
+	PersonableType      *string             `json:"personable_type,omitempty"`
 
 	// Tagline Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;
 	// older BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.
-	Tagline   string    `json:"tagline,omitempty"`
-	TimeZone  string    `json:"time_zone,omitempty"`
-	Title     string    `json:"title,omitempty"`
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	Tagline   *string    `json:"tagline,omitempty"`
+	TimeZone  *string    `json:"time_zone,omitempty"`
+	Title     *string    `json:"title,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 // PersonCompany defines model for PersonCompany.
@@ -1902,40 +1902,40 @@ type PersonCompany struct {
 
 // Preferences defines model for Preferences.
 type Preferences struct {
-	AppUrl       string `json:"app_url,omitempty"`
-	FirstWeekDay string `json:"first_week_day,omitempty"`
-	TimeFormat   string `json:"time_format,omitempty"`
+	AppUrl       *string `json:"app_url,omitempty"`
+	FirstWeekDay *string `json:"first_week_day,omitempty"`
+	TimeFormat   *string `json:"time_format,omitempty"`
 
 	// TimeZoneName Returned as a Rails-style name (e.g. "Central Time (US & Canada)").
-	TimeZoneName string `json:"time_zone_name,omitempty"`
-	Url          string `json:"url,omitempty"`
+	TimeZoneName *string `json:"time_zone_name,omitempty"`
+	Url          *string `json:"url,omitempty"`
 }
 
 // PreferencesPayload defines model for PreferencesPayload.
 type PreferencesPayload struct {
 	// FirstWeekDay First day of the week: Sunday, Monday, Tuesday, etc.
-	FirstWeekDay string `json:"first_week_day,omitempty"`
+	FirstWeekDay *string `json:"first_week_day,omitempty"`
 
 	// TimeFormat Time display format: twelve_hour or twenty_four_hour
-	TimeFormat string `json:"time_format,omitempty"`
+	TimeFormat *string `json:"time_format,omitempty"`
 
 	// TimeZoneName Time zone name. Accepts any valid Rails time zone name (e.g.
 	// "London", "UTC") as well as IANA identifiers (e.g.
 	// "America/Chicago"), which are normalized to the matching
 	// Rails-style name before saving.
-	TimeZoneName string `json:"time_zone_name,omitempty"`
+	TimeZoneName *string `json:"time_zone_name,omitempty"`
 }
 
 // PreviewableAttachment defines model for PreviewableAttachment.
 type PreviewableAttachment struct {
-	AppUrl      string `json:"app_url,omitempty"`
-	ContentType string `json:"content_type,omitempty"`
-	Filename    string `json:"filename,omitempty"`
-	Filesize    int64  `json:"filesize,omitempty"`
-	Height      int32  `json:"height,omitempty"`
-	Id          *int64 `json:"id,omitempty"`
-	Url         string `json:"url,omitempty"`
-	Width       int32  `json:"width,omitempty"`
+	AppUrl      *string `json:"app_url,omitempty"`
+	ContentType *string `json:"content_type,omitempty"`
+	Filename    *string `json:"filename,omitempty"`
+	Filesize    *int64  `json:"filesize,omitempty"`
+	Height      *int32  `json:"height,omitempty"`
+	Id          *int64  `json:"id,omitempty"`
+	Url         *string `json:"url,omitempty"`
+	Width       *int32  `json:"width,omitempty"`
 }
 
 // PrioritizeAssignmentRequestContent defines model for PrioritizeAssignmentRequestContent.
@@ -1946,24 +1946,24 @@ type PrioritizeAssignmentRequestContent struct {
 
 // Project defines model for Project.
 type Project struct {
-	AppUrl         string        `json:"app_url"`
-	BookmarkUrl    string        `json:"bookmark_url,omitempty"`
-	Bookmarked     bool          `json:"bookmarked,omitempty"`
-	ClientCompany  ClientCompany `json:"client_company,omitempty"`
-	ClientsEnabled bool          `json:"clients_enabled,omitempty"`
+	AppUrl         string         `json:"app_url"`
+	BookmarkUrl    *string        `json:"bookmark_url,omitempty"`
+	Bookmarked     *bool          `json:"bookmarked,omitempty"`
+	ClientCompany  *ClientCompany `json:"client_company,omitempty"`
+	ClientsEnabled *bool          `json:"clients_enabled,omitempty"`
 
 	// Clientside This shape is deprecated since 2024-01: Use Client Visibility feature instead
 	//
 	// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead
-	Clientside  ClientSide `json:"clientside,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	Description string     `json:"description,omitempty"`
-	Dock        []DockItem `json:"dock,omitempty"`
-	EndDate     string     `json:"end_date,omitempty"`
-	Id          int64      `json:"id"`
-	Name        string     `json:"name"`
-	Purpose     string     `json:"purpose,omitempty"`
-	StartDate   string     `json:"start_date,omitempty"`
+	Clientside  *ClientSide `json:"clientside,omitempty"`
+	CreatedAt   time.Time   `json:"created_at"`
+	Description *string     `json:"description,omitempty"`
+	Dock        []DockItem  `json:"dock,omitempty"`
+	EndDate     *string     `json:"end_date,omitempty"`
+	Id          int64       `json:"id"`
+	Name        string      `json:"name"`
+	Purpose     *string     `json:"purpose,omitempty"`
+	StartDate   *string     `json:"start_date,omitempty"`
 
 	// Status active|archived|trashed
 	Status    string    `json:"status"`
@@ -1979,60 +1979,60 @@ type ProjectAccessResult struct {
 
 // ProjectConstruction defines model for ProjectConstruction.
 type ProjectConstruction struct {
-	Id      int64   `json:"id"`
-	Project Project `json:"project,omitempty"`
-	Status  string  `json:"status"`
-	Url     string  `json:"url,omitempty"`
+	Id      int64    `json:"id"`
+	Project *Project `json:"project,omitempty"`
+	Status  string   `json:"status"`
+	Url     *string  `json:"url,omitempty"`
 }
 
 // ProjectConstructionAttributes defines model for ProjectConstructionAttributes.
 type ProjectConstructionAttributes struct {
-	Description string `json:"description,omitempty"`
-	Name        string `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Name        string  `json:"name"`
 }
 
 // Question defines model for Question.
 type Question struct {
-	AnswersCount     int32            `json:"answers_count,omitempty"`
-	AnswersUrl       string           `json:"answers_url,omitempty"`
-	AppUrl           string           `json:"app_url"`
-	BookmarkUrl      string           `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket  `json:"bucket"`
-	CreatedAt        time.Time        `json:"created_at"`
-	Creator          Person           `json:"creator"`
-	Id               int64            `json:"id"`
-	InheritsStatus   bool             `json:"inherits_status"`
-	Parent           RecordingParent  `json:"parent"`
-	Paused           bool             `json:"paused,omitempty"`
-	Schedule         QuestionSchedule `json:"schedule,omitempty"`
-	Status           string           `json:"status"`
-	SubscriptionUrl  string           `json:"subscription_url,omitempty"`
-	Title            string           `json:"title"`
-	Type             string           `json:"type"`
-	UpdatedAt        time.Time        `json:"updated_at"`
-	Url              string           `json:"url"`
-	VisibleToClients bool             `json:"visible_to_clients"`
+	AnswersCount     *int32            `json:"answers_count,omitempty"`
+	AnswersUrl       *string           `json:"answers_url,omitempty"`
+	AppUrl           string            `json:"app_url"`
+	BookmarkUrl      *string           `json:"bookmark_url,omitempty"`
+	Bucket           RecordingBucket   `json:"bucket"`
+	CreatedAt        time.Time         `json:"created_at"`
+	Creator          Person            `json:"creator"`
+	Id               int64             `json:"id"`
+	InheritsStatus   bool              `json:"inherits_status"`
+	Parent           RecordingParent   `json:"parent"`
+	Paused           *bool             `json:"paused,omitempty"`
+	Schedule         *QuestionSchedule `json:"schedule,omitempty"`
+	Status           string            `json:"status"`
+	SubscriptionUrl  *string           `json:"subscription_url,omitempty"`
+	Title            string            `json:"title"`
+	Type             string            `json:"type"`
+	UpdatedAt        time.Time         `json:"updated_at"`
+	Url              string            `json:"url"`
+	VisibleToClients bool              `json:"visible_to_clients"`
 }
 
 // QuestionAnswer defines model for QuestionAnswer.
 type QuestionAnswer struct {
 	AppUrl             string               `json:"app_url"`
-	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
-	BoostsCount        int32                `json:"boosts_count,omitempty"`
-	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	BookmarkUrl        *string              `json:"bookmark_url,omitempty"`
+	BoostsCount        *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl          *string              `json:"boosts_url,omitempty"`
 	Bucket             RecordingBucket      `json:"bucket"`
-	CommentsCount      int32                `json:"comments_count,omitempty"`
-	CommentsUrl        string               `json:"comments_url,omitempty"`
+	CommentsCount      *int32               `json:"comments_count,omitempty"`
+	CommentsUrl        *string              `json:"comments_url,omitempty"`
 	Content            string               `json:"content"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 	CreatedAt          time.Time            `json:"created_at"`
 	Creator            Person               `json:"creator"`
-	GroupOn            types.Date           `json:"group_on,omitempty"`
+	GroupOn            *types.Date          `json:"group_on,omitempty"`
 	Id                 int64                `json:"id"`
 	InheritsStatus     bool                 `json:"inherits_status"`
 	Parent             RecordingParent      `json:"parent"`
 	Status             string               `json:"status"`
-	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	SubscriptionUrl    *string              `json:"subscription_url,omitempty"`
 	Title              string               `json:"title"`
 	Type               string               `json:"type"`
 	UpdatedAt          time.Time            `json:"updated_at"`
@@ -2042,49 +2042,49 @@ type QuestionAnswer struct {
 
 // QuestionAnswerPayload defines model for QuestionAnswerPayload.
 type QuestionAnswerPayload struct {
-	Content string     `json:"content"`
-	GroupOn types.Date `json:"group_on,omitempty"`
+	Content string      `json:"content"`
+	GroupOn *types.Date `json:"group_on,omitempty"`
 }
 
 // QuestionAnswerUpdatePayload defines model for QuestionAnswerUpdatePayload.
 type QuestionAnswerUpdatePayload struct {
-	Content string     `json:"content"`
-	GroupOn types.Date `json:"group_on,omitempty"`
+	Content string      `json:"content"`
+	GroupOn *types.Date `json:"group_on,omitempty"`
 }
 
 // QuestionReminder defines model for QuestionReminder.
 type QuestionReminder struct {
-	GroupOn    types.Date `json:"group_on,omitempty"`
-	Question   Question   `json:"question,omitempty"`
-	RemindAt   time.Time  `json:"remind_at,omitempty"`
-	ReminderId *int64     `json:"reminder_id,omitempty"`
+	GroupOn    *types.Date `json:"group_on,omitempty"`
+	Question   *Question   `json:"question,omitempty"`
+	RemindAt   *time.Time  `json:"remind_at,omitempty"`
+	ReminderId *int64      `json:"reminder_id,omitempty"`
 }
 
 // QuestionSchedule defines model for QuestionSchedule.
 type QuestionSchedule struct {
-	Days          []int32 `json:"days,omitempty"`
-	EndDate       string  `json:"end_date,omitempty"`
-	Frequency     string  `json:"frequency,omitempty"`
-	Hour          int32   `json:"hour,omitempty"`
-	Minute        int32   `json:"minute,omitempty"`
-	MonthInterval int32   `json:"month_interval,omitempty"`
-	StartDate     string  `json:"start_date,omitempty"`
-	WeekInstance  int32   `json:"week_instance,omitempty"`
-	WeekInterval  int32   `json:"week_interval,omitempty"`
+	Days          *[]int32 `json:"days,omitempty"`
+	EndDate       *string  `json:"end_date,omitempty"`
+	Frequency     *string  `json:"frequency,omitempty"`
+	Hour          *int32   `json:"hour,omitempty"`
+	Minute        *int32   `json:"minute,omitempty"`
+	MonthInterval *int32   `json:"month_interval,omitempty"`
+	StartDate     *string  `json:"start_date,omitempty"`
+	WeekInstance  *int32   `json:"week_instance,omitempty"`
+	WeekInterval  *int32   `json:"week_interval,omitempty"`
 }
 
 // Questionnaire defines model for Questionnaire.
 type Questionnaire struct {
 	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BookmarkUrl      *string         `json:"bookmark_url,omitempty"`
 	Bucket           RecordingBucket `json:"bucket"`
 	CreatedAt        time.Time       `json:"created_at"`
 	Creator          Person          `json:"creator"`
 	Id               int64           `json:"id"`
 	InheritsStatus   bool            `json:"inherits_status"`
 	Name             string          `json:"name"`
-	QuestionsCount   int32           `json:"questions_count,omitempty"`
-	QuestionsUrl     string          `json:"questions_url,omitempty"`
+	QuestionsCount   *int32          `json:"questions_count,omitempty"`
+	QuestionsUrl     *string         `json:"questions_url,omitempty"`
 	Status           string          `json:"status"`
 	Title            string          `json:"title"`
 	Type             string          `json:"type"`
@@ -2095,15 +2095,15 @@ type Questionnaire struct {
 
 // RateLimitErrorResponseContent defines model for RateLimitErrorResponseContent.
 type RateLimitErrorResponseContent struct {
-	Error      string `json:"error"`
-	Message    string `json:"message,omitempty"`
-	RetryAfter int32  `json:"retry_after,omitempty"`
+	Error      string  `json:"error"`
+	Message    *string `json:"message,omitempty"`
+	RetryAfter *int32  `json:"retry_after,omitempty"`
 }
 
 // Recording defines model for Recording.
 type Recording struct {
-	AppUrl      string `json:"app_url"`
-	BookmarkUrl string `json:"bookmark_url,omitempty"`
+	AppUrl      string  `json:"app_url"`
+	BookmarkUrl *string `json:"bookmark_url,omitempty"`
 
 	// BoostsCount Boost count/URL. Carried on boostable recordings — notably the account-wide
 	// aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
@@ -2118,16 +2118,16 @@ type Recording struct {
 	// passes `local_assigns[:bubbleupable]`, and `todolists/_todolist` is the
 	// only partial that does. So a Todolist-shaped instance carries it and the
 	// other recording types do not.
-	BubbleUpUrl string          `json:"bubble_up_url,omitempty"`
+	BubbleUpUrl *string         `json:"bubble_up_url,omitempty"`
 	Bucket      RecordingBucket `json:"bucket"`
 
 	// Category A message category (type) as rendered by the shared recordings/_category
 	// partial: id, display name, and icon. Present on categorized Message
 	// recordings.
-	Category      RecordingCategory `json:"category,omitempty"`
-	CommentsCount int32             `json:"comments_count,omitempty"`
-	CommentsUrl   string            `json:"comments_url,omitempty"`
-	Content       string            `json:"content,omitempty"`
+	Category      *RecordingCategory `json:"category,omitempty"`
+	CommentsCount *int32             `json:"comments_count,omitempty"`
+	CommentsUrl   *string            `json:"comments_url,omitempty"`
+	Content       *string            `json:"content,omitempty"`
 
 	// ContentAttachments Rich-text companion arrays carried through the generic recording
 	// projection (`to_recordable_partial_path` renders the full type-specific
@@ -2145,7 +2145,7 @@ type Recording struct {
 	// endpoint that returns the full door shape). The external destination
 	// address is `url` (not this field); `app_url` is the Basecamp redirector.
 	// See `spec/api-gaps/external-links-doors.md`.
-	Description string `json:"description,omitempty"`
+	Description *string `json:"description,omitempty"`
 
 	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
@@ -2157,14 +2157,14 @@ type Recording struct {
 	// GroupOn Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
 	// (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
 	// feed, whose answer partial renders `group_on`.
-	GroupOn        *types.Date     `json:"group_on,omitempty"`
-	Id             int64           `json:"id"`
-	InheritsStatus bool            `json:"inherits_status"`
-	Parent         RecordingParent `json:"parent,omitempty"`
+	GroupOn        *types.Date      `json:"group_on,omitempty"`
+	Id             int64            `json:"id"`
+	InheritsStatus bool             `json:"inherits_status"`
+	Parent         *RecordingParent `json:"parent,omitempty"`
 
 	// Position Ordinal position within the project's External links section. Present on
 	// `Door` (external-link) recordings.
-	Position int32 `json:"position,omitempty"`
+	Position *int32 `json:"position,omitempty"`
 
 	// RepliesCount Reply count/URL for an inbox forward. Present on `Inbox::Forward`
 	// recordings — notably the `/forwards.json` aggregate feed.
@@ -2175,13 +2175,13 @@ type Recording struct {
 	// (`Door` recording): its display name, a canonical example URL, a short code,
 	// the URL patterns Basecamp recognizes for it, and human supporting text. `code`
 	// is `other` for a generic link.
-	Service DoorService `json:"service,omitempty"`
-	Status  string      `json:"status"`
+	Service *DoorService `json:"service,omitempty"`
+	Status  string       `json:"status"`
 
 	// Subject Message subject. Present on `Message` recordings — notably the account-wide
 	// `/messages.json` aggregate feed, whose message partial renders `subject`.
 	Subject         *string   `json:"subject,omitempty"`
-	SubscriptionUrl string    `json:"subscription_url,omitempty"`
+	SubscriptionUrl *string   `json:"subscription_url,omitempty"`
 	Title           string    `json:"title"`
 	Type            string    `json:"type"`
 	UpdatedAt       time.Time `json:"updated_at"`
@@ -2212,12 +2212,12 @@ type RecordingCategory struct {
 
 // RecordingParent defines model for RecordingParent.
 type RecordingParent struct {
-	AppUrl string          `json:"app_url"`
-	Bucket RecordingBucket `json:"bucket,omitempty"`
-	Id     int64           `json:"id"`
-	Title  string          `json:"title"`
-	Type   string          `json:"type"`
-	Url    string          `json:"url"`
+	AppUrl string           `json:"app_url"`
+	Bucket *RecordingBucket `json:"bucket,omitempty"`
+	Id     int64            `json:"id"`
+	Title  string           `json:"title"`
+	Type   string           `json:"type"`
+	Url    string           `json:"url"`
 }
 
 // ReorderUpNextRequestContent defines model for ReorderUpNextRequestContent.
@@ -2231,13 +2231,13 @@ type ReorderUpNextRequestContent struct {
 
 // ReplaceTodoRequestContent defines model for ReplaceTodoRequestContent.
 type ReplaceTodoRequestContent struct {
-	AssigneeIds             []int64    `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds []int64    `json:"completion_subscriber_ids,omitempty"`
-	Content                 string     `json:"content"`
-	Description             string     `json:"description,omitempty"`
-	DueOn                   types.Date `json:"due_on,omitempty"`
-	Notify                  *bool      `json:"notify,omitempty"`
-	StartsOn                types.Date `json:"starts_on,omitempty"`
+	AssigneeIds             *[]int64    `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds *[]int64    `json:"completion_subscriber_ids,omitempty"`
+	Content                 string      `json:"content"`
+	Description             *string     `json:"description,omitempty"`
+	DueOn                   *types.Date `json:"due_on,omitempty"`
+	Notify                  *bool       `json:"notify,omitempty"`
+	StartsOn                *types.Date `json:"starts_on,omitempty"`
 }
 
 // ReplaceTodoResponseContent defines model for ReplaceTodoResponseContent.
@@ -2274,7 +2274,7 @@ type RepositionToolRequestContent struct {
 
 // ResumeQuestionResponseContent defines model for ResumeQuestionResponseContent.
 type ResumeQuestionResponseContent struct {
-	Paused bool `json:"paused,omitempty"`
+	Paused *bool `json:"paused,omitempty"`
 }
 
 // RichTextAttachment Structured metadata for a downloadable file attachment embedded in a
@@ -2311,16 +2311,16 @@ type RichTextAttachment struct {
 // Schedule defines model for Schedule.
 type Schedule struct {
 	AppUrl                string     `json:"app_url"`
-	BookmarkUrl           string     `json:"bookmark_url,omitempty"`
+	BookmarkUrl           *string    `json:"bookmark_url,omitempty"`
 	Bucket                TodoBucket `json:"bucket"`
 	CreatedAt             time.Time  `json:"created_at"`
 	Creator               Person     `json:"creator"`
-	EntriesCount          int32      `json:"entries_count,omitempty"`
-	EntriesUrl            string     `json:"entries_url,omitempty"`
+	EntriesCount          *int32     `json:"entries_count,omitempty"`
+	EntriesUrl            *string    `json:"entries_url,omitempty"`
 	Id                    int64      `json:"id"`
-	IncludeDueAssignments bool       `json:"include_due_assignments,omitempty"`
+	IncludeDueAssignments *bool      `json:"include_due_assignments,omitempty"`
 	InheritsStatus        bool       `json:"inherits_status"`
-	Position              int32      `json:"position,omitempty"`
+	Position              *int32     `json:"position,omitempty"`
 	Status                string     `json:"status"`
 	Title                 string     `json:"title"`
 	Type                  string     `json:"type"`
@@ -2331,32 +2331,32 @@ type Schedule struct {
 
 // ScheduleAttributes defines model for ScheduleAttributes.
 type ScheduleAttributes struct {
-	EndDate   string `json:"end_date,omitempty"`
-	StartDate string `json:"start_date,omitempty"`
+	EndDate   *string `json:"end_date,omitempty"`
+	StartDate *string `json:"start_date,omitempty"`
 }
 
 // ScheduleEntry defines model for ScheduleEntry.
 type ScheduleEntry struct {
-	AllDay                 bool                 `json:"all_day,omitempty"`
+	AllDay                 *bool                `json:"all_day,omitempty"`
 	AppUrl                 string               `json:"app_url"`
-	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
-	BoostsCount            int32                `json:"boosts_count,omitempty"`
-	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
+	BoostsCount            *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl              *string              `json:"boosts_url,omitempty"`
 	Bucket                 TodoBucket           `json:"bucket"`
-	CommentsCount          int32                `json:"comments_count,omitempty"`
-	CommentsUrl            string               `json:"comments_url,omitempty"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsUrl            *string              `json:"comments_url,omitempty"`
 	CreatedAt              time.Time            `json:"created_at"`
 	Creator                Person               `json:"creator"`
-	Description            string               `json:"description,omitempty"`
+	Description            *string              `json:"description,omitempty"`
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
-	EndsAt                 types.FlexibleTime   `json:"ends_at,omitempty"`
+	EndsAt                 *types.FlexibleTime  `json:"ends_at,omitempty"`
 	Id                     int64                `json:"id"`
 	InheritsStatus         bool                 `json:"inherits_status"`
 	Parent                 RecordingParent      `json:"parent"`
 	Participants           []Person             `json:"participants,omitempty"`
-	StartsAt               types.FlexibleTime   `json:"starts_at,omitempty"`
+	StartsAt               *types.FlexibleTime  `json:"starts_at,omitempty"`
 	Status                 string               `json:"status"`
-	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
+	SubscriptionUrl        *string              `json:"subscription_url,omitempty"`
 	Summary                string               `json:"summary"`
 	Title                  string               `json:"title"`
 	Type                   string               `json:"type"`
@@ -2381,8 +2381,8 @@ type SearchResponseContent = []SearchResult
 
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
-	AppUrl      string `json:"app_url"`
-	BookmarkUrl string `json:"bookmark_url,omitempty"`
+	AppUrl      string  `json:"app_url"`
+	BookmarkUrl *string `json:"bookmark_url,omitempty"`
 
 	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Optional
 	// here because this is a polymorphic projection:
@@ -2390,8 +2390,8 @@ type SearchResult struct {
 	// passes `local_assigns[:bubbleupable]`, and `todolists/_todolist` is the
 	// only partial that does. So a Todolist-shaped instance carries it and the
 	// other recording types do not.
-	BubbleUpUrl string          `json:"bubble_up_url,omitempty"`
-	Bucket      RecordingBucket `json:"bucket,omitempty"`
+	BubbleUpUrl *string          `json:"bubble_up_url,omitempty"`
+	Bucket      *RecordingBucket `json:"bucket,omitempty"`
 
 	// Content Always present, always null. `api/searches/show.json.jbuilder` renders the
 	// recording's own partial and then unconditionally overwrites `content` with
@@ -2417,8 +2417,8 @@ type SearchResult struct {
 	// elements. Modeling `attachments` would duplicate the field, so it is
 	// deliberately not modeled.
 	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
-	CreatedAt          time.Time            `json:"created_at,omitempty"`
-	Creator            Person               `json:"creator,omitempty"`
+	CreatedAt          *time.Time           `json:"created_at,omitempty"`
+	Creator            *Person              `json:"creator,omitempty"`
 
 	// Description Always present, always null — the description-attribute counterpart to
 	// `content`. Read `plain_text_description` instead.
@@ -2427,8 +2427,8 @@ type SearchResult struct {
 	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
 	Id                     int64                `json:"id"`
-	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
-	Parent                 RecordingParent      `json:"parent,omitempty"`
+	InheritsStatus         *bool                `json:"inherits_status,omitempty"`
+	Parent                 *RecordingParent     `json:"parent,omitempty"`
 
 	// PlainTextContent A highlighted, truncated excerpt of the recording's content — **not** plain
 	// text despite the name. `excerpt_and_highlight_matches` converts the rich
@@ -2439,19 +2439,19 @@ type SearchResult struct {
 	// Optional and non-nullable: emitted only when the underlying recordable
 	// responds to `content`, so a result whose type has no content attribute
 	// omits the key entirely rather than sending null.
-	PlainTextContent string `json:"plain_text_content,omitempty"`
+	PlainTextContent *string `json:"plain_text_content,omitempty"`
 
 	// PlainTextDescription The description-attribute counterpart to `plain_text_content`, with the
 	// same highlighting, escaping, and 300-character truncation. Optional and
 	// non-nullable — omitted when the recordable has no description attribute.
-	PlainTextDescription string    `json:"plain_text_description,omitempty"`
-	Status               string    `json:"status,omitempty"`
-	Subject              string    `json:"subject,omitempty"`
-	Title                string    `json:"title"`
-	Type                 string    `json:"type"`
-	UpdatedAt            time.Time `json:"updated_at,omitempty"`
-	Url                  string    `json:"url"`
-	VisibleToClients     bool      `json:"visible_to_clients,omitempty"`
+	PlainTextDescription *string    `json:"plain_text_description,omitempty"`
+	Status               *string    `json:"status,omitempty"`
+	Subject              *string    `json:"subject,omitempty"`
+	Title                string     `json:"title"`
+	Type                 string     `json:"type"`
+	UpdatedAt            *time.Time `json:"updated_at,omitempty"`
+	Url                  string     `json:"url"`
+	VisibleToClients     *bool      `json:"visible_to_clients,omitempty"`
 }
 
 // SearchType A selectable search filter option. `key` is the value passed back as a
@@ -2505,15 +2505,15 @@ type Subscription struct {
 
 // Template defines model for Template.
 type Template struct {
-	AppUrl      string     `json:"app_url,omitempty"`
+	AppUrl      *string    `json:"app_url,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
-	Description string     `json:"description,omitempty"`
+	Description *string    `json:"description,omitempty"`
 	Dock        []DockItem `json:"dock,omitempty"`
 	Id          int64      `json:"id"`
 	Name        string     `json:"name"`
-	Status      string     `json:"status,omitempty"`
+	Status      *string    `json:"status,omitempty"`
 	UpdatedAt   time.Time  `json:"updated_at"`
-	Url         string     `json:"url,omitempty"`
+	Url         *string    `json:"url,omitempty"`
 }
 
 // TimelineAttachment A single timeline-event attachment. This is an optional-field superset over
@@ -2633,8 +2633,8 @@ type TimelineAttachment struct {
 
 // TimelineEvent defines model for TimelineEvent.
 type TimelineEvent struct {
-	Action string `json:"action,omitempty"`
-	AppUrl string `json:"app_url,omitempty"`
+	Action *string `json:"action,omitempty"`
+	AppUrl *string `json:"app_url,omitempty"`
 
 	// Attachments Files attached to the event's recording, when it has any. Heterogeneous:
 	// an upload-kind recording contributes its full Upload shape, while other
@@ -2645,10 +2645,10 @@ type TimelineEvent struct {
 
 	// AvatarsSample Avatar URLs of participants — populated for chat_transcript_rollup events
 	// (the people summarized in the rollup); an empty array otherwise.
-	AvatarsSample []string   `json:"avatars_sample,omitempty"`
-	Bucket        TodoBucket `json:"bucket,omitempty"`
-	CreatedAt     time.Time  `json:"created_at,omitempty"`
-	Creator       Person     `json:"creator,omitempty"`
+	AvatarsSample []string    `json:"avatars_sample,omitempty"`
+	Bucket        *TodoBucket `json:"bucket,omitempty"`
+	CreatedAt     *time.Time  `json:"created_at,omitempty"`
+	Creator       *Person     `json:"creator,omitempty"`
 
 	// Data Schedule-entry timing carried on schedule_entry_* timeline events. starts_at
 	// and ends_at are date-or-timestamp: a full ISO 8601 timestamp for timed
@@ -2656,8 +2656,8 @@ type TimelineEvent struct {
 	// ISO8601Timestamp (mirroring ScheduleEntry), with the Go enhancement pass
 	// mapping them to types.FlexibleTime so date-only values decode; the other
 	// SDKs type them as plain strings.
-	Data TimelineEventData `json:"data,omitempty"`
-	Id   *int64            `json:"id,omitempty"`
+	Data *TimelineEventData `json:"data,omitempty"`
+	Id   *int64             `json:"id,omitempty"`
 
 	// Kind What kind of activity the event records. Open, non-exhaustive vocabulary —
 	// BC3 documents "common values include" and adds new kinds over time, so
@@ -2668,12 +2668,12 @@ type TimelineEvent struct {
 	// chat_transcript_rollup, kanban_card_created, kanban_card_completed,
 	// inbox_forward_created, client_correspondence_created, dock_created, and
 	// project_access_changed.
-	Kind              string `json:"kind,omitempty"`
-	ParentRecordingId *int64 `json:"parent_recording_id,omitempty"`
-	SummaryExcerpt    string `json:"summary_excerpt,omitempty"`
-	Target            string `json:"target,omitempty"`
-	Title             string `json:"title,omitempty"`
-	Url               string `json:"url,omitempty"`
+	Kind              *string `json:"kind,omitempty"`
+	ParentRecordingId *int64  `json:"parent_recording_id,omitempty"`
+	SummaryExcerpt    *string `json:"summary_excerpt,omitempty"`
+	Target            *string `json:"target,omitempty"`
+	Title             *string `json:"title,omitempty"`
+	Url               *string `json:"url,omitempty"`
 }
 
 // TimelineEventData Schedule-entry timing carried on schedule_entry_* timeline events. starts_at
@@ -2686,25 +2686,25 @@ type TimelineEventData struct {
 	// AllDay Whether the entry is all-day. BC3 emits all three members unconditionally
 	// whenever the data object is present (schedule_entry_* events), so they are
 	// required within this struct.
-	AllDay   bool               `json:"all_day"`
-	EndsAt   types.FlexibleTime `json:"ends_at"`
-	StartsAt types.FlexibleTime `json:"starts_at"`
+	AllDay   bool                `json:"all_day"`
+	EndsAt   *types.FlexibleTime `json:"ends_at"`
+	StartsAt *types.FlexibleTime `json:"starts_at"`
 }
 
 // TimesheetEntry defines model for TimesheetEntry.
 type TimesheetEntry struct {
 	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
+	BookmarkUrl      *string         `json:"bookmark_url,omitempty"`
 	Bucket           TodoBucket      `json:"bucket"`
 	CreatedAt        time.Time       `json:"created_at"`
 	Creator          Person          `json:"creator"`
-	Date             string          `json:"date,omitempty"`
-	Description      string          `json:"description,omitempty"`
-	Hours            string          `json:"hours,omitempty"`
+	Date             *string         `json:"date,omitempty"`
+	Description      *string         `json:"description,omitempty"`
+	Hours            *string         `json:"hours,omitempty"`
 	Id               int64           `json:"id"`
 	InheritsStatus   bool            `json:"inherits_status"`
 	Parent           RecordingParent `json:"parent"`
-	Person           Person          `json:"person,omitempty"`
+	Person           *Person         `json:"person,omitempty"`
 	Status           string          `json:"status"`
 	Title            string          `json:"title"`
 	Type             string          `json:"type"`
@@ -2717,26 +2717,26 @@ type TimesheetEntry struct {
 type Todo struct {
 	AppUrl                 string               `json:"app_url"`
 	Assignees              []Person             `json:"assignees,omitempty"`
-	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
-	BoostsCount            int32                `json:"boosts_count,omitempty"`
-	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
+	BoostsCount            *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl              *string              `json:"boosts_url,omitempty"`
 	Bucket                 TodoBucket           `json:"bucket"`
-	CommentsCount          int32                `json:"comments_count,omitempty"`
-	CommentsUrl            string               `json:"comments_url,omitempty"`
-	Completed              bool                 `json:"completed,omitempty"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsUrl            *string              `json:"comments_url,omitempty"`
+	Completed              *bool                `json:"completed,omitempty"`
 	CompletionSubscribers  []Person             `json:"completion_subscribers,omitempty"`
-	CompletionUrl          string               `json:"completion_url,omitempty"`
+	CompletionUrl          *string              `json:"completion_url,omitempty"`
 	Content                string               `json:"content"`
 	CreatedAt              time.Time            `json:"created_at"`
 	Creator                Person               `json:"creator"`
-	Description            string               `json:"description,omitempty"`
+	Description            *string              `json:"description,omitempty"`
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
-	DueOn                  types.Date           `json:"due_on,omitempty"`
+	DueOn                  *types.Date          `json:"due_on,omitempty"`
 	Id                     int64                `json:"id"`
 	InheritsStatus         bool                 `json:"inherits_status"`
 	Parent                 TodoParent           `json:"parent"`
-	Position               int32                `json:"position,omitempty"`
-	StartsOn               types.Date           `json:"starts_on,omitempty"`
+	Position               *int32               `json:"position,omitempty"`
+	StartsOn               *types.Date          `json:"starts_on,omitempty"`
 
 	// Status active|archived|trashed
 	Status string `json:"status"`
@@ -2745,7 +2745,7 @@ type Todo struct {
 	// `steps/step` jbuilder partial emits the same shape as `CardStep`,
 	// so the existing `CardStepList` is reused.
 	Steps            []CardStep `json:"steps,omitempty"`
-	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
+	SubscriptionUrl  *string    `json:"subscription_url,omitempty"`
 	Title            string     `json:"title"`
 	Type             string     `json:"type"`
 	UpdatedAt        time.Time  `json:"updated_at"`
@@ -2771,11 +2771,11 @@ type TodoParent struct {
 
 // Todolist defines model for Todolist.
 type Todolist struct {
-	AppTodosUrl string `json:"app_todos_url,omitempty"`
-	AppUrl      string `json:"app_url"`
-	BookmarkUrl string `json:"bookmark_url,omitempty"`
-	BoostsCount int32  `json:"boosts_count,omitempty"`
-	BoostsUrl   string `json:"boosts_url,omitempty"`
+	AppTodosUrl *string `json:"app_todos_url,omitempty"`
+	AppUrl      string  `json:"app_url"`
+	BookmarkUrl *string `json:"bookmark_url,omitempty"`
+	BoostsCount *int32  `json:"boosts_count,omitempty"`
+	BoostsUrl   *string `json:"boosts_url,omitempty"`
 
 	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Required:
 	// `todolists/_todolist.json.jbuilder` renders the shared recording partial
@@ -2784,26 +2784,26 @@ type Todolist struct {
 	// this shape.
 	BubbleUpUrl            string               `json:"bubble_up_url"`
 	Bucket                 TodoBucket           `json:"bucket"`
-	CommentsCount          int32                `json:"comments_count,omitempty"`
-	CommentsUrl            string               `json:"comments_url,omitempty"`
-	Completed              bool                 `json:"completed,omitempty"`
-	CompletedRatio         string               `json:"completed_ratio,omitempty"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsUrl            *string              `json:"comments_url,omitempty"`
+	Completed              *bool                `json:"completed,omitempty"`
+	CompletedRatio         *string              `json:"completed_ratio,omitempty"`
 	CreatedAt              time.Time            `json:"created_at"`
 	Creator                Person               `json:"creator"`
-	Description            string               `json:"description,omitempty"`
+	Description            *string              `json:"description,omitempty"`
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
-	GroupsUrl              string               `json:"groups_url,omitempty"`
+	GroupsUrl              *string              `json:"groups_url,omitempty"`
 	Id                     int64                `json:"id"`
 	InheritsStatus         bool                 `json:"inherits_status"`
 	Name                   string               `json:"name"`
 	Parent                 TodoParent           `json:"parent"`
-	Position               int32                `json:"position,omitempty"`
+	Position               *int32               `json:"position,omitempty"`
 
 	// Status active|archived|trashed
 	Status           string    `json:"status"`
-	SubscriptionUrl  string    `json:"subscription_url,omitempty"`
+	SubscriptionUrl  *string   `json:"subscription_url,omitempty"`
 	Title            string    `json:"title"`
-	TodosUrl         string    `json:"todos_url,omitempty"`
+	TodosUrl         *string   `json:"todos_url,omitempty"`
 	Type             string    `json:"type"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Url              string    `json:"url"`
@@ -2812,9 +2812,9 @@ type Todolist struct {
 
 // TodolistGroup defines model for TodolistGroup.
 type TodolistGroup struct {
-	AppTodosUrl string `json:"app_todos_url,omitempty"`
-	AppUrl      string `json:"app_url"`
-	BookmarkUrl string `json:"bookmark_url,omitempty"`
+	AppTodosUrl *string `json:"app_todos_url,omitempty"`
+	AppUrl      string  `json:"app_url"`
+	BookmarkUrl *string `json:"bookmark_url,omitempty"`
 
 	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Required:
 	// `todolists/_todolist.json.jbuilder` renders the shared recording partial
@@ -2823,21 +2823,21 @@ type TodolistGroup struct {
 	// this shape.
 	BubbleUpUrl      string     `json:"bubble_up_url"`
 	Bucket           TodoBucket `json:"bucket"`
-	CommentsCount    int32      `json:"comments_count,omitempty"`
-	CommentsUrl      string     `json:"comments_url,omitempty"`
-	Completed        bool       `json:"completed,omitempty"`
-	CompletedRatio   string     `json:"completed_ratio,omitempty"`
+	CommentsCount    *int32     `json:"comments_count,omitempty"`
+	CommentsUrl      *string    `json:"comments_url,omitempty"`
+	Completed        *bool      `json:"completed,omitempty"`
+	CompletedRatio   *string    `json:"completed_ratio,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
 	Creator          Person     `json:"creator"`
 	Id               int64      `json:"id"`
 	InheritsStatus   bool       `json:"inherits_status"`
 	Name             string     `json:"name"`
 	Parent           TodoParent `json:"parent"`
-	Position         int32      `json:"position,omitempty"`
+	Position         *int32     `json:"position,omitempty"`
 	Status           string     `json:"status"`
-	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
+	SubscriptionUrl  *string    `json:"subscription_url,omitempty"`
 	Title            string     `json:"title"`
-	TodosUrl         string     `json:"todos_url,omitempty"`
+	TodosUrl         *string    `json:"todos_url,omitempty"`
 	Type             string     `json:"type"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 	Url              string     `json:"url"`
@@ -2861,34 +2861,34 @@ type TodolistOrGroup1 struct {
 
 // Todoset defines model for Todoset.
 type Todoset struct {
-	AppTodolistsUrl string `json:"app_todolists_url,omitempty"`
+	AppTodolistsUrl *string `json:"app_todolists_url,omitempty"`
 
 	// AppTodosUrl In-app URL for viewing the todoset's todos (BC5 addition).
-	AppTodosUrl string     `json:"app_todos_url,omitempty"`
+	AppTodosUrl *string    `json:"app_todos_url,omitempty"`
 	AppUrl      string     `json:"app_url"`
-	BookmarkUrl string     `json:"bookmark_url,omitempty"`
+	BookmarkUrl *string    `json:"bookmark_url,omitempty"`
 	Bucket      TodoBucket `json:"bucket"`
-	Completed   bool       `json:"completed,omitempty"`
+	Completed   *bool      `json:"completed,omitempty"`
 
 	// CompletedLooseTodosCount Count of completed loose todos at the todoset level (BC5 addition).
-	CompletedLooseTodosCount int32     `json:"completed_loose_todos_count,omitempty"`
-	CompletedRatio           string    `json:"completed_ratio,omitempty"`
+	CompletedLooseTodosCount *int32    `json:"completed_loose_todos_count,omitempty"`
+	CompletedRatio           *string   `json:"completed_ratio,omitempty"`
 	CreatedAt                time.Time `json:"created_at"`
 	Creator                  Person    `json:"creator"`
 	Id                       int64     `json:"id"`
 	InheritsStatus           bool      `json:"inherits_status"`
 	Name                     string    `json:"name"`
-	Position                 int32     `json:"position,omitempty"`
+	Position                 *int32    `json:"position,omitempty"`
 	Status                   string    `json:"status"`
 	Title                    string    `json:"title"`
-	TodolistsCount           int32     `json:"todolists_count,omitempty"`
-	TodolistsUrl             string    `json:"todolists_url,omitempty"`
+	TodolistsCount           *int32    `json:"todolists_count,omitempty"`
+	TodolistsUrl             *string   `json:"todolists_url,omitempty"`
 
 	// TodosCount Total count of todos across all todolists in this todoset (BC5 addition).
-	TodosCount int32 `json:"todos_count,omitempty"`
+	TodosCount *int32 `json:"todos_count,omitempty"`
 
 	// TodosUrl API URL for listing todos directly under this todoset (BC5 addition).
-	TodosUrl         string    `json:"todos_url,omitempty"`
+	TodosUrl         *string   `json:"todos_url,omitempty"`
 	Type             string    `json:"type"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Url              string    `json:"url"`
@@ -2902,23 +2902,23 @@ type ToggleGaugeRequestContent struct {
 
 // Tool defines model for Tool.
 type Tool struct {
-	AppUrl    string          `json:"app_url,omitempty"`
-	Bucket    RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt time.Time       `json:"created_at"`
-	Enabled   bool            `json:"enabled"`
-	Id        int64           `json:"id"`
-	Name      string          `json:"name"`
-	Position  int32           `json:"position,omitempty"`
-	Status    string          `json:"status,omitempty"`
-	Title     string          `json:"title"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	Url       string          `json:"url,omitempty"`
+	AppUrl    *string          `json:"app_url,omitempty"`
+	Bucket    *RecordingBucket `json:"bucket,omitempty"`
+	CreatedAt time.Time        `json:"created_at"`
+	Enabled   bool             `json:"enabled"`
+	Id        int64            `json:"id"`
+	Name      string           `json:"name"`
+	Position  *int32           `json:"position,omitempty"`
+	Status    *string          `json:"status,omitempty"`
+	Title     string           `json:"title"`
+	UpdatedAt time.Time        `json:"updated_at"`
+	Url       *string          `json:"url,omitempty"`
 }
 
 // UnauthorizedErrorResponseContent defines model for UnauthorizedErrorResponseContent.
 type UnauthorizedErrorResponseContent struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
 }
 
 // UpdateAccountNameRequestContent defines model for UpdateAccountNameRequestContent.
@@ -2947,8 +2947,8 @@ type UpdateCampfireLineRequestContent struct {
 
 // UpdateCardColumnRequestContent defines model for UpdateCardColumnRequestContent.
 type UpdateCardColumnRequestContent struct {
-	Description string `json:"description,omitempty"`
-	Title       string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Title       *string `json:"title,omitempty"`
 }
 
 // UpdateCardColumnResponseContent defines model for UpdateCardColumnResponseContent.
@@ -2956,10 +2956,10 @@ type UpdateCardColumnResponseContent = CardColumn
 
 // UpdateCardRequestContent defines model for UpdateCardRequestContent.
 type UpdateCardRequestContent struct {
-	AssigneeIds []int64    `json:"assignee_ids,omitempty"`
-	Content     string     `json:"content,omitempty"`
-	DueOn       types.Date `json:"due_on,omitempty"`
-	Title       string     `json:"title,omitempty"`
+	AssigneeIds *[]int64    `json:"assignee_ids,omitempty"`
+	Content     *string     `json:"content,omitempty"`
+	DueOn       *types.Date `json:"due_on,omitempty"`
+	Title       *string     `json:"title,omitempty"`
 }
 
 // UpdateCardResponseContent defines model for UpdateCardResponseContent.
@@ -2967,9 +2967,9 @@ type UpdateCardResponseContent = Card
 
 // UpdateCardStepRequestContent defines model for UpdateCardStepRequestContent.
 type UpdateCardStepRequestContent struct {
-	AssigneeIds []int64    `json:"assignee_ids,omitempty"`
-	DueOn       types.Date `json:"due_on,omitempty"`
-	Title       string     `json:"title,omitempty"`
+	AssigneeIds *[]int64    `json:"assignee_ids,omitempty"`
+	DueOn       *types.Date `json:"due_on,omitempty"`
+	Title       *string     `json:"title,omitempty"`
 }
 
 // UpdateCardStepResponseContent defines model for UpdateCardStepResponseContent.
@@ -2977,8 +2977,8 @@ type UpdateCardStepResponseContent = CardStep
 
 // UpdateChatbotRequestContent defines model for UpdateChatbotRequestContent.
 type UpdateChatbotRequestContent struct {
-	CommandUrl  string `json:"command_url,omitempty"`
-	ServiceName string `json:"service_name"`
+	CommandUrl  *string `json:"command_url,omitempty"`
+	ServiceName string  `json:"service_name"`
 }
 
 // UpdateChatbotResponseContent defines model for UpdateChatbotResponseContent.
@@ -2994,8 +2994,8 @@ type UpdateCommentResponseContent = Comment
 
 // UpdateDocumentRequestContent defines model for UpdateDocumentRequestContent.
 type UpdateDocumentRequestContent struct {
-	Content string `json:"content,omitempty"`
-	Title   string `json:"title,omitempty"`
+	Content *string `json:"content,omitempty"`
+	Title   *string `json:"title,omitempty"`
 }
 
 // UpdateDocumentResponseContent defines model for UpdateDocumentResponseContent.
@@ -3003,7 +3003,7 @@ type UpdateDocumentResponseContent = Document
 
 // UpdateGaugeNeedleRequestContent defines model for UpdateGaugeNeedleRequestContent.
 type UpdateGaugeNeedleRequestContent struct {
-	GaugeNeedle GaugeNeedleUpdatePayload `json:"gauge_needle,omitempty"`
+	GaugeNeedle *GaugeNeedleUpdatePayload `json:"gauge_needle,omitempty"`
 }
 
 // UpdateGaugeNeedleResponseContent defines model for UpdateGaugeNeedleResponseContent.
@@ -3011,8 +3011,8 @@ type UpdateGaugeNeedleResponseContent = GaugeNeedle
 
 // UpdateHillChartSettingsRequestContent defines model for UpdateHillChartSettingsRequestContent.
 type UpdateHillChartSettingsRequestContent struct {
-	Tracked   []int64 `json:"tracked,omitempty"`
-	Untracked []int64 `json:"untracked,omitempty"`
+	Tracked   *[]int64 `json:"tracked,omitempty"`
+	Untracked *[]int64 `json:"untracked,omitempty"`
 }
 
 // UpdateHillChartSettingsResponseContent defines model for UpdateHillChartSettingsResponseContent.
@@ -3020,18 +3020,18 @@ type UpdateHillChartSettingsResponseContent = HillChart
 
 // UpdateLineupMarkerRequestContent defines model for UpdateLineupMarkerRequestContent.
 type UpdateLineupMarkerRequestContent struct {
-	Date string `json:"date,omitempty"`
-	Name string `json:"name,omitempty"`
+	Date *string `json:"date,omitempty"`
+	Name *string `json:"name,omitempty"`
 }
 
 // UpdateMessageRequestContent defines model for UpdateMessageRequestContent.
 type UpdateMessageRequestContent struct {
-	CategoryId *int64 `json:"category_id,omitempty"`
-	Content    string `json:"content,omitempty"`
+	CategoryId *int64  `json:"category_id,omitempty"`
+	Content    *string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status  string `json:"status,omitempty"`
-	Subject string `json:"subject,omitempty"`
+	Status  *string `json:"status,omitempty"`
+	Subject *string `json:"subject,omitempty"`
 }
 
 // UpdateMessageResponseContent defines model for UpdateMessageResponseContent.
@@ -3039,8 +3039,8 @@ type UpdateMessageResponseContent = Message
 
 // UpdateMessageTypeRequestContent defines model for UpdateMessageTypeRequestContent.
 type UpdateMessageTypeRequestContent struct {
-	Icon string `json:"icon,omitempty"`
-	Name string `json:"name,omitempty"`
+	Icon *string `json:"icon,omitempty"`
+	Name *string `json:"name,omitempty"`
 }
 
 // UpdateMessageTypeResponseContent defines model for UpdateMessageTypeResponseContent.
@@ -3068,21 +3068,21 @@ type UpdateMyPreferencesResponseContent = Preferences
 
 // UpdateMyProfileRequestContent defines model for UpdateMyProfileRequestContent.
 type UpdateMyProfileRequestContent struct {
-	Bio          string       `json:"bio,omitempty"`
-	EmailAddress string       `json:"email_address,omitempty"`
-	FirstWeekDay FirstWeekDay `json:"first_week_day,omitempty"`
-	Location     string       `json:"location,omitempty"`
-	Name         string       `json:"name,omitempty"`
-	TimeFormat   string       `json:"time_format,omitempty"`
-	TimeZoneName string       `json:"time_zone_name,omitempty"`
-	Title        string       `json:"title,omitempty"`
+	Bio          *string       `json:"bio,omitempty"`
+	EmailAddress *string       `json:"email_address,omitempty"`
+	FirstWeekDay *FirstWeekDay `json:"first_week_day,omitempty"`
+	Location     *string       `json:"location,omitempty"`
+	Name         *string       `json:"name,omitempty"`
+	TimeFormat   *string       `json:"time_format,omitempty"`
+	TimeZoneName *string       `json:"time_zone_name,omitempty"`
+	Title        *string       `json:"title,omitempty"`
 }
 
 // UpdateProjectAccessRequestContent defines model for UpdateProjectAccessRequestContent.
 type UpdateProjectAccessRequestContent struct {
-	Create []CreatePersonRequest `json:"create,omitempty"`
-	Grant  []int64               `json:"grant,omitempty"`
-	Revoke []int64               `json:"revoke,omitempty"`
+	Create *[]CreatePersonRequest `json:"create,omitempty"`
+	Grant  *[]int64               `json:"grant,omitempty"`
+	Revoke *[]int64               `json:"revoke,omitempty"`
 }
 
 // UpdateProjectAccessResponseContent defines model for UpdateProjectAccessResponseContent.
@@ -3091,10 +3091,10 @@ type UpdateProjectAccessResponseContent = ProjectAccessResult
 // UpdateProjectRequestContent defines model for UpdateProjectRequestContent.
 type UpdateProjectRequestContent struct {
 	// Admissions invite|employee|team
-	Admissions         string             `json:"admissions,omitempty"`
-	Description        string             `json:"description,omitempty"`
-	Name               string             `json:"name"`
-	ScheduleAttributes ScheduleAttributes `json:"schedule_attributes,omitempty"`
+	Admissions         *string             `json:"admissions,omitempty"`
+	Description        *string             `json:"description,omitempty"`
+	Name               string              `json:"name"`
+	ScheduleAttributes *ScheduleAttributes `json:"schedule_attributes,omitempty"`
 }
 
 // UpdateProjectResponseContent defines model for UpdateProjectResponseContent.
@@ -3111,15 +3111,15 @@ type UpdateQuestionNotificationSettingsRequestContent struct {
 
 // UpdateQuestionNotificationSettingsResponseContent defines model for UpdateQuestionNotificationSettingsResponseContent.
 type UpdateQuestionNotificationSettingsResponseContent struct {
-	Responding bool `json:"responding,omitempty"`
-	Subscribed bool `json:"subscribed,omitempty"`
+	Responding *bool `json:"responding,omitempty"`
+	Subscribed *bool `json:"subscribed,omitempty"`
 }
 
 // UpdateQuestionRequestContent defines model for UpdateQuestionRequestContent.
 type UpdateQuestionRequestContent struct {
-	Paused   *bool            `json:"paused,omitempty"`
-	Schedule QuestionSchedule `json:"schedule,omitempty"`
-	Title    string           `json:"title,omitempty"`
+	Paused   *bool             `json:"paused,omitempty"`
+	Schedule *QuestionSchedule `json:"schedule,omitempty"`
+	Title    *string           `json:"title,omitempty"`
 }
 
 // UpdateQuestionResponseContent defines model for UpdateQuestionResponseContent.
@@ -3127,10 +3127,10 @@ type UpdateQuestionResponseContent = Question
 
 // UpdateScheduleEntryRequestContent defines model for UpdateScheduleEntryRequestContent.
 type UpdateScheduleEntryRequestContent struct {
-	AllDay      *bool     `json:"all_day,omitempty"`
-	Description string    `json:"description,omitempty"`
-	EndsAt      time.Time `json:"ends_at,omitempty"`
-	Notify      *bool     `json:"notify,omitempty"`
+	AllDay      *bool      `json:"all_day,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	EndsAt      *time.Time `json:"ends_at,omitempty"`
+	Notify      *bool      `json:"notify,omitempty"`
 
 	// ParticipantIds Replaces the entry's participants.
 	//
@@ -3141,9 +3141,9 @@ type UpdateScheduleEntryRequestContent struct {
 	// including the shape in BC3's own "Update a schedule entry" doc example —
 	// silently removed every participant and notified each one. The controller
 	// now guards on the request actually addressing participants.
-	ParticipantIds []int64   `json:"participant_ids,omitempty"`
-	StartsAt       time.Time `json:"starts_at,omitempty"`
-	Summary        string    `json:"summary,omitempty"`
+	ParticipantIds *[]int64   `json:"participant_ids,omitempty"`
+	StartsAt       *time.Time `json:"starts_at,omitempty"`
+	Summary        *string    `json:"summary,omitempty"`
 }
 
 // UpdateScheduleEntryResponseContent defines model for UpdateScheduleEntryResponseContent.
@@ -3159,8 +3159,8 @@ type UpdateScheduleSettingsResponseContent = Schedule
 
 // UpdateSubscriptionRequestContent defines model for UpdateSubscriptionRequestContent.
 type UpdateSubscriptionRequestContent struct {
-	Subscriptions   []int64 `json:"subscriptions,omitempty"`
-	Unsubscriptions []int64 `json:"unsubscriptions,omitempty"`
+	Subscriptions   *[]int64 `json:"subscriptions,omitempty"`
+	Unsubscriptions *[]int64 `json:"unsubscriptions,omitempty"`
 }
 
 // UpdateSubscriptionResponseContent defines model for UpdateSubscriptionResponseContent.
@@ -3168,8 +3168,8 @@ type UpdateSubscriptionResponseContent = Subscription
 
 // UpdateTemplateRequestContent defines model for UpdateTemplateRequestContent.
 type UpdateTemplateRequestContent struct {
-	Description string `json:"description,omitempty"`
-	Name        string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Name        *string `json:"name,omitempty"`
 }
 
 // UpdateTemplateResponseContent defines model for UpdateTemplateResponseContent.
@@ -3177,10 +3177,10 @@ type UpdateTemplateResponseContent = Template
 
 // UpdateTimesheetEntryRequestContent defines model for UpdateTimesheetEntryRequestContent.
 type UpdateTimesheetEntryRequestContent struct {
-	Date        string `json:"date,omitempty"`
-	Description string `json:"description,omitempty"`
-	Hours       string `json:"hours,omitempty"`
-	PersonId    *int64 `json:"person_id,omitempty"`
+	Date        *string `json:"date,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Hours       *string `json:"hours,omitempty"`
+	PersonId    *int64  `json:"person_id,omitempty"`
 }
 
 // UpdateTimesheetEntryResponseContent defines model for UpdateTimesheetEntryResponseContent.
@@ -3189,10 +3189,10 @@ type UpdateTimesheetEntryResponseContent = TimesheetEntry
 // UpdateTodolistOrGroupRequestContent defines model for UpdateTodolistOrGroupRequestContent.
 type UpdateTodolistOrGroupRequestContent struct {
 	// Description Description (Todolist only, ignored for groups)
-	Description string `json:"description,omitempty"`
+	Description *string `json:"description,omitempty"`
 
 	// Name Name (required for both Todolist and TodolistGroup)
-	Name string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
 }
 
 // UpdateTodolistOrGroupResponseContent Union type for polymorphic todolist endpoint
@@ -3208,8 +3208,8 @@ type UpdateToolResponseContent = Tool
 
 // UpdateUploadRequestContent defines model for UpdateUploadRequestContent.
 type UpdateUploadRequestContent struct {
-	BaseName    string `json:"base_name,omitempty"`
-	Description string `json:"description,omitempty"`
+	BaseName    *string `json:"base_name,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 // UpdateUploadResponseContent defines model for UpdateUploadResponseContent.
@@ -3217,7 +3217,7 @@ type UpdateUploadResponseContent = Upload
 
 // UpdateVaultRequestContent defines model for UpdateVaultRequestContent.
 type UpdateVaultRequestContent struct {
-	Title string `json:"title,omitempty"`
+	Title *string `json:"title,omitempty"`
 }
 
 // UpdateVaultResponseContent defines model for UpdateVaultResponseContent.
@@ -3225,9 +3225,9 @@ type UpdateVaultResponseContent = Vault
 
 // UpdateWebhookRequestContent defines model for UpdateWebhookRequestContent.
 type UpdateWebhookRequestContent struct {
-	Active     *bool    `json:"active,omitempty"`
-	PayloadUrl string   `json:"payload_url,omitempty"`
-	Types      []string `json:"types,omitempty"`
+	Active     *bool     `json:"active,omitempty"`
+	PayloadUrl *string   `json:"payload_url,omitempty"`
+	Types      *[]string `json:"types,omitempty"`
 }
 
 // UpdateWebhookResponseContent defines model for UpdateWebhookResponseContent.
@@ -3249,69 +3249,69 @@ type UpdateWormholeResponseContent = Wormhole
 // Upload defines model for Upload.
 type Upload struct {
 	AppUrl                 string               `json:"app_url"`
-	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
-	BoostsCount            int32                `json:"boosts_count,omitempty"`
-	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
+	BoostsCount            *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl              *string              `json:"boosts_url,omitempty"`
 	Bucket                 TodoBucket           `json:"bucket"`
-	ByteSize               int64                `json:"byte_size,omitempty"`
-	CommentsCount          int32                `json:"comments_count,omitempty"`
-	CommentsUrl            string               `json:"comments_url,omitempty"`
-	ContentType            string               `json:"content_type,omitempty"`
+	ByteSize               *int64               `json:"byte_size,omitempty"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsUrl            *string              `json:"comments_url,omitempty"`
+	ContentType            *string              `json:"content_type,omitempty"`
 	CreatedAt              time.Time            `json:"created_at"`
 	Creator                Person               `json:"creator"`
-	Description            string               `json:"description,omitempty"`
+	Description            *string              `json:"description,omitempty"`
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
-	DownloadUrl            string               `json:"download_url,omitempty"`
-	Filename               string               `json:"filename,omitempty"`
-	Height                 types.FlexInt        `json:"height,omitempty"`
+	DownloadUrl            *string              `json:"download_url,omitempty"`
+	Filename               *string              `json:"filename,omitempty"`
+	Height                 *types.FlexInt       `json:"height,omitempty"`
 	Id                     int64                `json:"id"`
 	InheritsStatus         bool                 `json:"inherits_status"`
 	Parent                 RecordingParent      `json:"parent"`
-	Position               int32                `json:"position,omitempty"`
+	Position               *int32               `json:"position,omitempty"`
 	Status                 string               `json:"status"`
-	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
+	SubscriptionUrl        *string              `json:"subscription_url,omitempty"`
 	Title                  string               `json:"title"`
 	Type                   string               `json:"type"`
 	UpdatedAt              time.Time            `json:"updated_at"`
 	Url                    string               `json:"url"`
 	VisibleToClients       bool                 `json:"visible_to_clients"`
-	Width                  types.FlexInt        `json:"width,omitempty"`
+	Width                  *types.FlexInt       `json:"width,omitempty"`
 }
 
 // ValidationErrorResponseContent defines model for ValidationErrorResponseContent.
 type ValidationErrorResponseContent struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
 }
 
 // Vault defines model for Vault.
 type Vault struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	DocumentsCount   int32           `json:"documents_count,omitempty"`
-	DocumentsUrl     string          `json:"documents_url,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	UploadsCount     int32           `json:"uploads_count,omitempty"`
-	UploadsUrl       string          `json:"uploads_url,omitempty"`
-	Url              string          `json:"url"`
-	VaultsCount      int32           `json:"vaults_count,omitempty"`
-	VaultsUrl        string          `json:"vaults_url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl           string           `json:"app_url"`
+	BookmarkUrl      *string          `json:"bookmark_url,omitempty"`
+	Bucket           TodoBucket       `json:"bucket"`
+	CreatedAt        time.Time        `json:"created_at"`
+	Creator          Person           `json:"creator"`
+	DocumentsCount   *int32           `json:"documents_count,omitempty"`
+	DocumentsUrl     *string          `json:"documents_url,omitempty"`
+	Id               int64            `json:"id"`
+	InheritsStatus   bool             `json:"inherits_status"`
+	Parent           *RecordingParent `json:"parent,omitempty"`
+	Position         *int32           `json:"position,omitempty"`
+	Status           string           `json:"status"`
+	Title            string           `json:"title"`
+	Type             string           `json:"type"`
+	UpdatedAt        time.Time        `json:"updated_at"`
+	UploadsCount     *int32           `json:"uploads_count,omitempty"`
+	UploadsUrl       *string          `json:"uploads_url,omitempty"`
+	Url              string           `json:"url"`
+	VaultsCount      *int32           `json:"vaults_count,omitempty"`
+	VaultsUrl        *string          `json:"vaults_url,omitempty"`
+	VisibleToClients bool             `json:"visible_to_clients"`
 }
 
 // Webhook defines model for Webhook.
 type Webhook struct {
-	Active     bool      `json:"active,omitempty"`
+	Active     *bool     `json:"active,omitempty"`
 	AppUrl     string    `json:"app_url"`
 	CreatedAt  time.Time `json:"created_at"`
 	Id         int64     `json:"id"`
@@ -3327,10 +3327,10 @@ type Webhook struct {
 
 // WebhookCopy Reference to a copied/moved recording in copy events.
 type WebhookCopy struct {
-	AppUrl string            `json:"app_url,omitempty"`
-	Bucket WebhookCopyBucket `json:"bucket,omitempty"`
-	Id     *int64            `json:"id,omitempty"`
-	Url    string            `json:"url,omitempty"`
+	AppUrl *string            `json:"app_url,omitempty"`
+	Bucket *WebhookCopyBucket `json:"bucket,omitempty"`
+	Id     *int64             `json:"id,omitempty"`
+	Url    *string            `json:"url,omitempty"`
 }
 
 // WebhookCopyBucket defines model for WebhookCopyBucket.
@@ -3340,10 +3340,10 @@ type WebhookCopyBucket struct {
 
 // WebhookDelivery defines model for WebhookDelivery.
 type WebhookDelivery struct {
-	CreatedAt time.Time               `json:"created_at,omitempty"`
-	Id        *int64                  `json:"id,omitempty"`
-	Request   WebhookDeliveryRequest  `json:"request,omitempty"`
-	Response  WebhookDeliveryResponse `json:"response,omitempty"`
+	CreatedAt *time.Time               `json:"created_at,omitempty"`
+	Id        *int64                   `json:"id,omitempty"`
+	Request   *WebhookDeliveryRequest  `json:"request,omitempty"`
+	Response  *WebhookDeliveryResponse `json:"response,omitempty"`
 }
 
 // WebhookDeliveryRequest defines model for WebhookDeliveryRequest.
@@ -3351,15 +3351,15 @@ type WebhookDeliveryRequest struct {
 	// Body The event payload delivered to webhook URLs.
 	// This is the body of an outbound webhook HTTP request.
 	// Also appears as the body field in WebhookDelivery.request.
-	Body    WebhookEvent      `json:"body,omitempty"`
-	Headers WebhookHeadersMap `json:"headers,omitempty"`
+	Body    *WebhookEvent      `json:"body,omitempty"`
+	Headers *WebhookHeadersMap `json:"headers,omitempty"`
 }
 
 // WebhookDeliveryResponse defines model for WebhookDeliveryResponse.
 type WebhookDeliveryResponse struct {
-	Code    int32             `json:"code,omitempty"`
-	Headers WebhookHeadersMap `json:"headers,omitempty"`
-	Message string            `json:"message,omitempty"`
+	Code    *int32             `json:"code,omitempty"`
+	Headers *WebhookHeadersMap `json:"headers,omitempty"`
+	Message *string            `json:"message,omitempty"`
 }
 
 // WebhookEvent The event payload delivered to webhook URLs.
@@ -3367,13 +3367,13 @@ type WebhookDeliveryResponse struct {
 // Also appears as the body field in WebhookDelivery.request.
 type WebhookEvent struct {
 	// Copy Reference to a copied/moved recording in copy events.
-	Copy      WebhookCopy `json:"copy,omitempty"`
-	CreatedAt time.Time   `json:"created_at,omitempty"`
-	Creator   Person      `json:"creator,omitempty"`
-	Details   interface{} `json:"details,omitempty"`
-	Id        *int64      `json:"id,omitempty"`
-	Kind      string      `json:"kind,omitempty"`
-	Recording Recording   `json:"recording,omitempty"`
+	Copy      *WebhookCopy `json:"copy,omitempty"`
+	CreatedAt *time.Time   `json:"created_at,omitempty"`
+	Creator   *Person      `json:"creator,omitempty"`
+	Details   interface{}  `json:"details,omitempty"`
+	Id        *int64       `json:"id,omitempty"`
+	Kind      *string      `json:"kind,omitempty"`
+	Recording *Recording   `json:"recording,omitempty"`
 }
 
 // WebhookHeadersMap defines model for WebhookHeadersMap.
@@ -3381,8 +3381,8 @@ type WebhookHeadersMap map[string]string
 
 // WebhookLimitErrorResponseContent defines model for WebhookLimitErrorResponseContent.
 type WebhookLimitErrorResponseContent struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
 }
 
 // Wormhole A wormhole links this card table to a column on another card table, enabling
@@ -3392,13 +3392,14 @@ type WebhookLimitErrorResponseContent struct {
 // the destination column.
 type Wormhole struct {
 	AppUrl      string     `json:"app_url"`
-	BookmarkUrl string     `json:"bookmark_url,omitempty"`
+	BookmarkUrl *string    `json:"bookmark_url,omitempty"`
 	Bucket      TodoBucket `json:"bucket"`
 
 	// Color Wormhole color; always emitted on the wire (`json.color recording.color`),
 	// `null` when unset. Like destination_url, `@required` models the presence and
 	// the nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->
-	// type: ["string","null"] + x-go-type "*string").
+	// type: ["string","null"]). Go types it *string because the value is nullable,
+	// not because it is optional — the field is @required and carries no omitempty.
 	Color     *string   `json:"color"`
 	CreatedAt time.Time `json:"created_at"`
 	Creator   Person    `json:"creator"`
@@ -3406,7 +3407,7 @@ type Wormhole struct {
 	// DestinationUrl URL of the destination column; always present on the wire, `null` for an
 	// unlinked wormhole. `@required` models the presence; the nullability of the
 	// value is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:
-	// ["string","null"] + x-go-type "*string") since Smithy has no native
+	// ["string","null"]) since Smithy has no native
 	// required-and-nullable — exactly the SearchType.key treatment. SDKs model it
 	// as required-but-nullable (`string | null`, not `string | null | undefined`).
 	DestinationUrl *string `json:"destination_url"`
@@ -3464,10 +3465,10 @@ type GetEverythingCompletedCardsParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingNoDueDateCardsParams defines parameters for GetEverythingNoDueDateCards.
@@ -3477,10 +3478,10 @@ type GetEverythingNoDueDateCardsParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingNotNowCardsParams defines parameters for GetEverythingNotNowCards.
@@ -3490,10 +3491,10 @@ type GetEverythingNotNowCardsParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingOpenCardsParams defines parameters for GetEverythingOpenCards.
@@ -3503,10 +3504,10 @@ type GetEverythingOpenCardsParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingOverdueCardsParams defines parameters for GetEverythingOverdueCards.
@@ -3516,7 +3517,7 @@ type GetEverythingOverdueCardsParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 }
 
 // GetEverythingUnassignedCardsParams defines parameters for GetEverythingUnassignedCards.
@@ -3526,28 +3527,28 @@ type GetEverythingUnassignedCardsParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListCampfireLinesParams defines parameters for ListCampfireLines.
 type ListCampfireLinesParams struct {
 	// Sort created_at|updated_at
-	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Direction asc|desc
-	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
 // ListCampfireUploadsParams defines parameters for ListCampfireUploads.
 type ListCampfireUploadsParams struct {
 	// Sort created_at|updated_at
-	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Direction asc|desc
-	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
 // CreateCampfireUploadParams defines parameters for CreateCampfireUpload.
@@ -3559,178 +3560,178 @@ type CreateCampfireUploadParams struct {
 // GetEverythingCheckinsParams defines parameters for GetEverythingCheckins.
 type GetEverythingCheckinsParams struct {
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListClientApprovalsParams defines parameters for ListClientApprovals.
 type ListClientApprovalsParams struct {
 	// Sort created_at|updated_at
-	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Direction asc|desc
-	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
 // ListClientCorrespondencesParams defines parameters for ListClientCorrespondences.
 type ListClientCorrespondencesParams struct {
 	// Sort created_at|updated_at
-	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Direction asc|desc
-	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
 // GetEverythingCommentsParams defines parameters for GetEverythingComments.
 type GetEverythingCommentsParams struct {
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingFilesParams defines parameters for GetEverythingFiles.
 type GetEverythingFilesParams struct {
 	// Kind Filter by file kind: all (default), images, pdfs, documents, or videos.
-	Kind string `form:"kind,omitempty" json:"kind,omitempty"`
+	Kind *string `form:"kind,omitempty" json:"kind,omitempty"`
 
 	// PeopleIds Restrict to files created by the given people (repeatable).
 	PeopleIds *[]int64 `form:"people_ids[],omitempty" json:"people_ids[],omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingForwardsParams defines parameters for GetEverythingForwards.
 type GetEverythingForwardsParams struct {
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListForwardsParams defines parameters for ListForwards.
 type ListForwardsParams struct {
 	// Sort created_at|updated_at
-	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Direction asc|desc
-	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
 // ListMessagesParams defines parameters for ListMessages.
 type ListMessagesParams struct {
 	// Sort created_at|updated_at
-	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Direction asc|desc
-	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
 // GetEverythingMessagesParams defines parameters for GetEverythingMessages.
 type GetEverythingMessagesParams struct {
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetMyDueAssignmentsParams defines parameters for GetMyDueAssignments.
 type GetMyDueAssignmentsParams struct {
 	// Scope Filter by due date range: overdue, due_today, due_tomorrow,
 	// due_later_this_week, due_next_week, due_later
-	Scope string `form:"scope,omitempty" json:"scope,omitempty"`
+	Scope *string `form:"scope,omitempty" json:"scope,omitempty"`
 }
 
 // ListMyBookmarksParams defines parameters for ListMyBookmarks.
 type ListMyBookmarksParams struct {
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListMyDraftsParams defines parameters for ListMyDrafts.
 type ListMyDraftsParams struct {
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetMyNotificationsParams defines parameters for GetMyNotifications.
 type GetMyNotificationsParams struct {
 	// Page Page number for paginating through read items. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 
 	// LimitBubbleUps Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
 	// `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated
 	// bubble-ups endpoint (GetBubbleUps) to page through all current and
 	// scheduled bubble-ups.
-	LimitBubbleUps bool `form:"limit_bubble_ups,omitempty" json:"limit_bubble_ups,omitempty"`
+	LimitBubbleUps *bool `form:"limit_bubble_ups,omitempty" json:"limit_bubble_ups,omitempty"`
 }
 
 // GetBubbleUpsParams defines parameters for GetBubbleUps.
 type GetBubbleUpsParams struct {
 	// Page Page number. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
 	// Status active|archived|trashed
-	Status string `form:"status,omitempty" json:"status,omitempty"`
+	Status *string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // ListRecordingsParams defines parameters for ListRecordings.
 type ListRecordingsParams struct {
 	// Type Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
-	Type   string `form:"type" json:"type"`
-	Bucket string `form:"bucket,omitempty" json:"bucket,omitempty"`
+	Type   string  `form:"type" json:"type"`
+	Bucket *string `form:"bucket,omitempty" json:"bucket,omitempty"`
 
 	// Status active|archived|trashed
-	Status string `form:"status,omitempty" json:"status,omitempty"`
+	Status *string `form:"status,omitempty" json:"status,omitempty"`
 
 	// Sort created_at|updated_at
-	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Direction asc|desc
-	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
 // GetProjectTimesheetParams defines parameters for GetProjectTimesheet.
 type GetProjectTimesheetParams struct {
-	From     string `form:"from,omitempty" json:"from,omitempty"`
-	To       string `form:"to,omitempty" json:"to,omitempty"`
-	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     *string `form:"from,omitempty" json:"from,omitempty"`
+	To       *string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // GetRecordingTimesheetParams defines parameters for GetRecordingTimesheet.
 type GetRecordingTimesheetParams struct {
-	From     string `form:"from,omitempty" json:"from,omitempty"`
-	To       string `form:"to,omitempty" json:"to,omitempty"`
-	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     *string `form:"from,omitempty" json:"from,omitempty"`
+	To       *string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // ListGaugesParams defines parameters for ListGauges.
 type ListGaugesParams struct {
 	// BucketIds Comma-separated list of project IDs. When provided, results are returned
 	// in the order specified instead of by risk level.
-	BucketIds string `form:"bucket_ids,omitempty" json:"bucket_ids,omitempty"`
+	BucketIds *string `form:"bucket_ids,omitempty" json:"bucket_ids,omitempty"`
 }
 
 // GetUpcomingScheduleParams defines parameters for GetUpcomingSchedule.
 type GetUpcomingScheduleParams struct {
-	WindowStartsOn string `form:"window_starts_on,omitempty" json:"window_starts_on,omitempty"`
-	WindowEndsOn   string `form:"window_ends_on,omitempty" json:"window_ends_on,omitempty"`
+	WindowStartsOn *string `form:"window_starts_on,omitempty" json:"window_starts_on,omitempty"`
+	WindowEndsOn   *string `form:"window_ends_on,omitempty" json:"window_ends_on,omitempty"`
 }
 
 // GetTimesheetReportParams defines parameters for GetTimesheetReport.
 type GetTimesheetReportParams struct {
-	From     string `form:"from,omitempty" json:"from,omitempty"`
-	To       string `form:"to,omitempty" json:"to,omitempty"`
-	PersonId int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+	From     *string `form:"from,omitempty" json:"from,omitempty"`
+	To       *string `form:"to,omitempty" json:"to,omitempty"`
+	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 }
 
 // GetAssignedTodosParams defines parameters for GetAssignedTodos.
 type GetAssignedTodosParams struct {
 	// GroupBy Group by "bucket" or "date"
-	GroupBy string `form:"group_by,omitempty" json:"group_by,omitempty"`
+	GroupBy *string `form:"group_by,omitempty" json:"group_by,omitempty"`
 }
 
 // ListScheduleEntriesParams defines parameters for ListScheduleEntries.
 type ListScheduleEntriesParams struct {
 	// Status active|archived|trashed
-	Status string `form:"status,omitempty" json:"status,omitempty"`
+	Status *string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // SearchParams defines parameters for Search.
@@ -3749,44 +3750,44 @@ type SearchParams struct {
 
 	// FileType Filter attachments by type. Use `key` values from the metadata
 	// endpoint's `file_search_types`.
-	FileType string `form:"file_type,omitempty" json:"file_type,omitempty"`
+	FileType *string `form:"file_type,omitempty" json:"file_type,omitempty"`
 
 	// ExcludeChat Set to true to exclude chat results.
-	ExcludeChat bool `form:"exclude_chat,omitempty" json:"exclude_chat,omitempty"`
+	ExcludeChat *bool `form:"exclude_chat,omitempty" json:"exclude_chat,omitempty"`
 
 	// Since last_7_days|last_30_days|last_90_days|last_12_months|forever
-	Since string `form:"since,omitempty" json:"since,omitempty"`
+	Since *string `form:"since,omitempty" json:"since,omitempty"`
 
 	// Sort best_match|recency
-	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Type Deprecated: prefer type_names[].
 	//
 	// Deprecated: prefer type_names[].
-	Type string `form:"type,omitempty" json:"type,omitempty"`
+	Type *string `form:"type,omitempty" json:"type,omitempty"`
 
 	// BucketId Deprecated: prefer bucket_ids[].
 	//
 	// Deprecated: prefer bucket_ids[].
-	BucketId int64 `form:"bucket_id,omitempty" json:"bucket_id,omitempty"`
+	BucketId *int64 `form:"bucket_id,omitempty" json:"bucket_id,omitempty"`
 
 	// CreatorId Deprecated: prefer creator_ids[].
 	//
 	// Deprecated: prefer creator_ids[].
-	CreatorId int64 `form:"creator_id,omitempty" json:"creator_id,omitempty"`
+	CreatorId *int64 `form:"creator_id,omitempty" json:"creator_id,omitempty"`
 }
 
 // ListTemplatesParams defines parameters for ListTemplates.
 type ListTemplatesParams struct {
 	// Status active|archived|trashed
-	Status string `form:"status,omitempty" json:"status,omitempty"`
+	Status *string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // ListTodosParams defines parameters for ListTodos.
 type ListTodosParams struct {
 	// Status active|archived|trashed
-	Status    string `form:"status,omitempty" json:"status,omitempty"`
-	Completed bool   `form:"completed,omitempty" json:"completed,omitempty"`
+	Status    *string `form:"status,omitempty" json:"status,omitempty"`
+	Completed *bool   `form:"completed,omitempty" json:"completed,omitempty"`
 }
 
 // GetEverythingCompletedTodosParams defines parameters for GetEverythingCompletedTodos.
@@ -3796,10 +3797,10 @@ type GetEverythingCompletedTodosParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingNoDueDateTodosParams defines parameters for GetEverythingNoDueDateTodos.
@@ -3809,10 +3810,10 @@ type GetEverythingNoDueDateTodosParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingOpenTodosParams defines parameters for GetEverythingOpenTodos.
@@ -3822,10 +3823,10 @@ type GetEverythingOpenTodosParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingOverdueTodosParams defines parameters for GetEverythingOverdueTodos.
@@ -3835,7 +3836,7 @@ type GetEverythingOverdueTodosParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 }
 
 // GetEverythingUnassignedTodosParams defines parameters for GetEverythingUnassignedTodos.
@@ -3845,16 +3846,16 @@ type GetEverythingUnassignedTodosParams struct {
 	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
 
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-	Due string `form:"due,omitempty" json:"due,omitempty"`
+	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
 	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListTodolistsParams defines parameters for ListTodolists.
 type ListTodolistsParams struct {
 	// Status active|archived|trashed
-	Status string `form:"status,omitempty" json:"status,omitempty"`
+	Status *string `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // UpdateAccountLogoMultipartRequestBody defines body for UpdateAccountLogo for multipart/form-data ContentType.
@@ -11009,9 +11010,9 @@ func NewGetEverythingCompletedCardsRequest(server string, accountId string, para
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11025,9 +11026,9 @@ func NewGetEverythingCompletedCardsRequest(server string, accountId string, para
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11097,9 +11098,9 @@ func NewGetEverythingNoDueDateCardsRequest(server string, accountId string, para
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11113,9 +11114,9 @@ func NewGetEverythingNoDueDateCardsRequest(server string, accountId string, para
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11185,9 +11186,9 @@ func NewGetEverythingNotNowCardsRequest(server string, accountId string, params 
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11201,9 +11202,9 @@ func NewGetEverythingNotNowCardsRequest(server string, accountId string, params 
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11273,9 +11274,9 @@ func NewGetEverythingOpenCardsRequest(server string, accountId string, params *G
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11289,9 +11290,9 @@ func NewGetEverythingOpenCardsRequest(server string, accountId string, params *G
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11361,9 +11362,9 @@ func NewGetEverythingOverdueCardsRequest(server string, accountId string, params
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11433,9 +11434,9 @@ func NewGetEverythingUnassignedCardsRequest(server string, accountId string, par
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11449,9 +11450,9 @@ func NewGetEverythingUnassignedCardsRequest(server string, accountId string, par
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11839,9 +11840,9 @@ func NewListCampfireLinesRequest(server string, accountId string, campfireId int
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Sort != "" {
+		if params.Sort != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -11855,9 +11856,9 @@ func NewListCampfireLinesRequest(server string, accountId string, campfireId int
 
 		}
 
-		if params.Direction != "" {
+		if params.Direction != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12129,9 +12130,9 @@ func NewListCampfireUploadsRequest(server string, accountId string, campfireId i
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Sort != "" {
+		if params.Sort != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12145,9 +12146,9 @@ func NewListCampfireUploadsRequest(server string, accountId string, campfireId i
 
 		}
 
-		if params.Direction != "" {
+		if params.Direction != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12262,9 +12263,9 @@ func NewGetEverythingCheckinsRequest(server string, accountId string, params *Ge
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12352,9 +12353,9 @@ func NewListClientApprovalsRequest(server string, accountId string, params *List
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Sort != "" {
+		if params.Sort != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12368,9 +12369,9 @@ func NewListClientApprovalsRequest(server string, accountId string, params *List
 
 		}
 
-		if params.Direction != "" {
+		if params.Direction != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12465,9 +12466,9 @@ func NewListClientCorrespondencesRequest(server string, accountId string, params
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Sort != "" {
+		if params.Sort != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12481,9 +12482,9 @@ func NewListClientCorrespondencesRequest(server string, accountId string, params
 
 		}
 
-		if params.Direction != "" {
+		if params.Direction != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -12667,9 +12668,9 @@ func NewGetEverythingCommentsRequest(server string, accountId string, params *Ge
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13049,9 +13050,9 @@ func NewGetEverythingFilesRequest(server string, accountId string, params *GetEv
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Kind != "" {
+		if params.Kind != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kind", runtime.ParamLocationQuery, params.Kind); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kind", runtime.ParamLocationQuery, *params.Kind); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13081,9 +13082,9 @@ func NewGetEverythingFilesRequest(server string, accountId string, params *GetEv
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13137,9 +13138,9 @@ func NewGetEverythingForwardsRequest(server string, accountId string, params *Ge
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13561,9 +13562,9 @@ func NewListForwardsRequest(server string, accountId string, inboxId int64, para
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Sort != "" {
+		if params.Sort != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13577,9 +13578,9 @@ func NewListForwardsRequest(server string, accountId string, inboxId int64, para
 
 		}
 
-		if params.Direction != "" {
+		if params.Direction != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13857,9 +13858,9 @@ func NewListMessagesRequest(server string, accountId string, boardId int64, para
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Sort != "" {
+		if params.Sort != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13873,9 +13874,9 @@ func NewListMessagesRequest(server string, accountId string, boardId int64, para
 
 		}
 
-		if params.Direction != "" {
+		if params.Direction != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13983,9 +13984,9 @@ func NewGetEverythingMessagesRequest(server string, accountId string, params *Ge
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -14202,9 +14203,9 @@ func NewGetMyDueAssignmentsRequest(server string, accountId string, params *GetM
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Scope != "" {
+		if params.Scope != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "scope", runtime.ParamLocationQuery, params.Scope); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "scope", runtime.ParamLocationQuery, *params.Scope); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -14258,9 +14259,9 @@ func NewListMyBookmarksRequest(server string, accountId string, params *ListMyBo
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -14314,9 +14315,9 @@ func NewListMyDraftsRequest(server string, accountId string, params *ListMyDraft
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -14782,9 +14783,9 @@ func NewGetMyNotificationsRequest(server string, accountId string, params *GetMy
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -14798,9 +14799,9 @@ func NewGetMyNotificationsRequest(server string, accountId string, params *GetMy
 
 		}
 
-		if params.LimitBubbleUps {
+		if params.LimitBubbleUps != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit_bubble_ups", runtime.ParamLocationQuery, params.LimitBubbleUps); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit_bubble_ups", runtime.ParamLocationQuery, *params.LimitBubbleUps); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -14854,9 +14855,9 @@ func NewGetBubbleUpsRequest(server string, accountId string, params *GetBubbleUp
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15168,9 +15169,9 @@ func NewListProjectsRequest(server string, accountId string, params *ListProject
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != "" {
+		if params.Status != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15283,9 +15284,9 @@ func NewListRecordingsRequest(server string, accountId string, params *ListRecor
 			}
 		}
 
-		if params.Bucket != "" {
+		if params.Bucket != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket", runtime.ParamLocationQuery, params.Bucket); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket", runtime.ParamLocationQuery, *params.Bucket); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15299,9 +15300,9 @@ func NewListRecordingsRequest(server string, accountId string, params *ListRecor
 
 		}
 
-		if params.Status != "" {
+		if params.Status != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15315,9 +15316,9 @@ func NewListRecordingsRequest(server string, accountId string, params *ListRecor
 
 		}
 
-		if params.Sort != "" {
+		if params.Sort != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15331,9 +15332,9 @@ func NewListRecordingsRequest(server string, accountId string, params *ListRecor
 
 		}
 
-		if params.Direction != "" {
+		if params.Direction != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15815,9 +15816,9 @@ func NewGetProjectTimesheetRequest(server string, accountId string, projectId in
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.From != "" {
+		if params.From != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, params.From); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, *params.From); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15831,9 +15832,9 @@ func NewGetProjectTimesheetRequest(server string, accountId string, projectId in
 
 		}
 
-		if params.To != "" {
+		if params.To != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15847,9 +15848,9 @@ func NewGetProjectTimesheetRequest(server string, accountId string, projectId in
 
 		}
 
-		if params.PersonId != 0 {
+		if params.PersonId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, params.PersonId); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, *params.PersonId); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17496,9 +17497,9 @@ func NewGetRecordingTimesheetRequest(server string, accountId string, recordingI
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.From != "" {
+		if params.From != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, params.From); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, *params.From); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17512,9 +17513,9 @@ func NewGetRecordingTimesheetRequest(server string, accountId string, recordingI
 
 		}
 
-		if params.To != "" {
+		if params.To != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17528,9 +17529,9 @@ func NewGetRecordingTimesheetRequest(server string, accountId string, recordingI
 
 		}
 
-		if params.PersonId != 0 {
+		if params.PersonId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, params.PersonId); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, *params.PersonId); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17774,9 +17775,9 @@ func NewListGaugesRequest(server string, accountId string, params *ListGaugesPar
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.BucketIds != "" {
+		if params.BucketIds != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket_ids", runtime.ParamLocationQuery, params.BucketIds); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket_ids", runtime.ParamLocationQuery, *params.BucketIds); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17864,9 +17865,9 @@ func NewGetUpcomingScheduleRequest(server string, accountId string, params *GetU
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.WindowStartsOn != "" {
+		if params.WindowStartsOn != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_starts_on", runtime.ParamLocationQuery, params.WindowStartsOn); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_starts_on", runtime.ParamLocationQuery, *params.WindowStartsOn); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17880,9 +17881,9 @@ func NewGetUpcomingScheduleRequest(server string, accountId string, params *GetU
 
 		}
 
-		if params.WindowEndsOn != "" {
+		if params.WindowEndsOn != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_ends_on", runtime.ParamLocationQuery, params.WindowEndsOn); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_ends_on", runtime.ParamLocationQuery, *params.WindowEndsOn); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17936,9 +17937,9 @@ func NewGetTimesheetReportRequest(server string, accountId string, params *GetTi
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.From != "" {
+		if params.From != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, params.From); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "from", runtime.ParamLocationQuery, *params.From); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17952,9 +17953,9 @@ func NewGetTimesheetReportRequest(server string, accountId string, params *GetTi
 
 		}
 
-		if params.To != "" {
+		if params.To != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -17968,9 +17969,9 @@ func NewGetTimesheetReportRequest(server string, accountId string, params *GetTi
 
 		}
 
-		if params.PersonId != 0 {
+		if params.PersonId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, params.PersonId); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, *params.PersonId); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18065,9 +18066,9 @@ func NewGetAssignedTodosRequest(server string, accountId string, personId int64,
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.GroupBy != "" {
+		if params.GroupBy != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "group_by", runtime.ParamLocationQuery, params.GroupBy); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "group_by", runtime.ParamLocationQuery, *params.GroupBy); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18441,9 +18442,9 @@ func NewListScheduleEntriesRequest(server string, accountId string, scheduleId i
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != "" {
+		if params.Status != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18611,9 +18612,9 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.FileType != "" {
+		if params.FileType != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "file_type", runtime.ParamLocationQuery, params.FileType); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "file_type", runtime.ParamLocationQuery, *params.FileType); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18627,9 +18628,9 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.ExcludeChat {
+		if params.ExcludeChat != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "exclude_chat", runtime.ParamLocationQuery, params.ExcludeChat); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "exclude_chat", runtime.ParamLocationQuery, *params.ExcludeChat); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18643,9 +18644,9 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.Since != "" {
+		if params.Since != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, params.Since); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18659,9 +18660,9 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.Sort != "" {
+		if params.Sort != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18675,9 +18676,9 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.Type != "" {
+		if params.Type != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "type", runtime.ParamLocationQuery, params.Type); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "type", runtime.ParamLocationQuery, *params.Type); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18691,9 +18692,9 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.BucketId != 0 {
+		if params.BucketId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket_id", runtime.ParamLocationQuery, params.BucketId); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket_id", runtime.ParamLocationQuery, *params.BucketId); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18707,9 +18708,9 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.CreatorId != 0 {
+		if params.CreatorId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "creator_id", runtime.ParamLocationQuery, params.CreatorId); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "creator_id", runtime.ParamLocationQuery, *params.CreatorId); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -18797,9 +18798,9 @@ func NewListTemplatesRequest(server string, accountId string, params *ListTempla
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != "" {
+		if params.Status != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19484,9 +19485,9 @@ func NewListTodosRequest(server string, accountId string, todolistId int64, para
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != "" {
+		if params.Status != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19500,9 +19501,9 @@ func NewListTodosRequest(server string, accountId string, todolistId int64, para
 
 		}
 
-		if params.Completed {
+		if params.Completed != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "completed", runtime.ParamLocationQuery, params.Completed); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "completed", runtime.ParamLocationQuery, *params.Completed); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19626,9 +19627,9 @@ func NewGetEverythingCompletedTodosRequest(server string, accountId string, para
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19642,9 +19643,9 @@ func NewGetEverythingCompletedTodosRequest(server string, accountId string, para
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19714,9 +19715,9 @@ func NewGetEverythingNoDueDateTodosRequest(server string, accountId string, para
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19730,9 +19731,9 @@ func NewGetEverythingNoDueDateTodosRequest(server string, accountId string, para
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19802,9 +19803,9 @@ func NewGetEverythingOpenTodosRequest(server string, accountId string, params *G
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19818,9 +19819,9 @@ func NewGetEverythingOpenTodosRequest(server string, accountId string, params *G
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19890,9 +19891,9 @@ func NewGetEverythingOverdueTodosRequest(server string, accountId string, params
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19962,9 +19963,9 @@ func NewGetEverythingUnassignedTodosRequest(server string, accountId string, par
 
 		}
 
-		if params.Due != "" {
+		if params.Due != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, *params.Due); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19978,9 +19979,9 @@ func NewGetEverythingUnassignedTodosRequest(server string, accountId string, par
 
 		}
 
-		if params.Page != 0 {
+		if params.Page != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -20503,9 +20504,9 @@ func NewListTodolistsRequest(server string, accountId string, todosetId int64, p
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.Status != "" {
+		if params.Status != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, params.Status); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err

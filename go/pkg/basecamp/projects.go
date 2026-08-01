@@ -150,7 +150,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 	// Build params for generated client
 	params := &generated.ListProjectsParams{}
 	if opts != nil && opts.Status != "" {
-		params.Status = string(opts.Status)
+		params.Status = ptr(string(opts.Status))
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
@@ -262,7 +262,7 @@ func (s *ProjectsService) Create(ctx context.Context, req *CreateProjectRequest)
 
 	body := generated.CreateProjectJSONRequestBody{
 		Name:        req.Name,
-		Description: req.Description,
+		Description: omitzero(req.Description),
 	}
 
 	resp, err := s.client.parent.gen.CreateProjectWithResponse(ctx, s.client.accountID, body)
@@ -374,15 +374,15 @@ func projectFromGenerated(gp generated.Project) Project {
 	p := Project{
 		Status:         gp.Status,
 		Name:           gp.Name,
-		Description:    gp.Description,
-		Purpose:        gp.Purpose,
-		StartDate:      gp.StartDate,
-		EndDate:        gp.EndDate,
-		ClientsEnabled: gp.ClientsEnabled,
-		BookmarkURL:    gp.BookmarkUrl,
+		Description:    deref(gp.Description),
+		Purpose:        deref(gp.Purpose),
+		StartDate:      deref(gp.StartDate),
+		EndDate:        deref(gp.EndDate),
+		ClientsEnabled: deref(gp.ClientsEnabled),
+		BookmarkURL:    deref(gp.BookmarkUrl),
 		URL:            gp.Url,
 		AppURL:         gp.AppUrl,
-		Bookmarked:     gp.Bookmarked,
+		Bookmarked:     deref(gp.Bookmarked),
 		CreatedAt:      gp.CreatedAt,
 		UpdatedAt:      gp.UpdatedAt,
 	}
@@ -400,7 +400,7 @@ func projectFromGenerated(gp generated.Project) Project {
 	}
 
 	// Convert client company
-	if gp.ClientCompany.Id != 0 || gp.ClientCompany.Name != "" {
+	if gp.ClientCompany != nil {
 		p.ClientCompany = &ClientCompany{
 			ID:   gp.ClientCompany.Id,
 			Name: gp.ClientCompany.Name,
@@ -408,10 +408,10 @@ func projectFromGenerated(gp generated.Project) Project {
 	}
 
 	// Convert clientside
-	if gp.Clientside.Url != "" || gp.Clientside.AppUrl != "" {
+	if gp.Clientside != nil {
 		p.Clientside = &Clientside{
-			URL:    gp.Clientside.Url,
-			AppURL: gp.Clientside.AppUrl,
+			URL:    deref(gp.Clientside.Url),
+			AppURL: deref(gp.Clientside.AppUrl),
 		}
 	}
 
@@ -431,9 +431,6 @@ func dockItemFromGenerated(gd generated.DockItem) DockItem {
 	if gd.Id != 0 {
 		di.ID = gd.Id
 	}
-	if gd.Position != 0 {
-		pos := int(gd.Position)
-		di.Position = &pos
-	}
+	di.Position = intPtrFrom(gd.Position)
 	return di
 }

@@ -360,18 +360,18 @@ func (s *BoostsService) Delete(ctx context.Context, boostID int64) (err error) {
 // boostFromGenerated converts a generated Boost to our clean Boost type.
 func boostFromGenerated(gb generated.Boost) Boost {
 	b := Boost{
-		Content:   gb.Content,
+		Content:   deref(gb.Content),
 		CreatedAt: gb.CreatedAt,
 	}
 
 	b.ID = gb.Id
 
-	if gb.Booster.Id != 0 || gb.Booster.Name != "" {
-		booster := personFromGenerated(gb.Booster)
+	if gb.Booster != nil {
+		booster := personFromGenerated(*gb.Booster)
 		b.Booster = &booster
 	}
 
-	if gb.Recording.Id != 0 || gb.Recording.Title != "" {
+	if gb.Recording != nil {
 		rec := Parent{
 			ID:     gb.Recording.Id,
 			Title:  gb.Recording.Title,
@@ -379,7 +379,7 @@ func boostFromGenerated(gb generated.Boost) Boost {
 			URL:    gb.Recording.Url,
 			AppURL: gb.Recording.AppUrl,
 		}
-		if gb.Recording.Bucket.Id != 0 || gb.Recording.Bucket.Name != "" {
+		if gb.Recording.Bucket != nil {
 			rec.Bucket = &Bucket{ID: gb.Recording.Bucket.Id, Name: gb.Recording.Bucket.Name, Type: gb.Recording.Bucket.Type}
 		}
 		b.Recording = &rec

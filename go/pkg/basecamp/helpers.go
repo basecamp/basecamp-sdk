@@ -281,15 +281,52 @@ func truncate(s string) string {
 	return s[:maxErrorMessageLen-3] + "..."
 }
 
-// Pointer dereference helpers for converting generated types (which use pointers)
-// to SDK types (which use values).
+// Pointer helpers for the generated-optional-pointer contract (SPEC.md §10):
+// generated optional fields are pointers (absence = nil); the hand-written SDK
+// surface keeps ergonomic value types where absence collapsing to the zero
+// value is acceptable for reads.
 
-// derefInt64 safely dereferences a pointer, returning 0 if nil.
-func derefInt64(p *int64) int64 {
+// deref safely dereferences an optional-field pointer, returning the zero
+// value when the field was absent.
+func deref[T any](p *T) T {
 	if p == nil {
-		return 0
+		var zero T
+		return zero
 	}
 	return *p
+}
+
+// omitzero converts a value-typed wrapper option to a generated request's
+// optional pointer, preserving omit-when-zero wire behavior: the zero value
+// means "not provided" and maps to nil (field omitted on the wire).
+func omitzero[T comparable](v T) *T {
+	var zero T
+	if v == zero {
+		return nil
+	}
+	return &v
+}
+
+// ptr returns a pointer to v, for optional fields where the value — zero
+// included — must be sent.
+func ptr[T any](v T) *T {
+	return &v
+}
+
+// intPtrFrom converts an optional generated int32 pointer to the SDK's *int,
+// preserving nil. Widening through deref would manufacture a pointer to zero
+// and destroy the absence the pointer exists to carry.
+//
+// Constrained to ~int32 deliberately: int is 32-bit on some Go targets, so
+// admitting ~int64 here would silently truncate. Every generated field this
+// converts is an int32; a future int64 one needs its own range-checked
+// conversion rather than a wider constraint.
+func intPtrFrom[T ~int32](p *T) *int {
+	if p == nil {
+		return nil
+	}
+	v := int(*p)
+	return &v
 }
 
 // ListMeta contains pagination metadata from list operations.

@@ -1,0 +1,111 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Guard: every optional field in the generated Go client can represent
+# absence (SPEC.md §10 Optional Fields — no zero-value sentinels).
+#
+# An optional field is one tagged `,omitempty`. It satisfies the invariant
+# when its Go type can be nil:
+#   * pointers   (*T)                — the default for optionals
+#   * slices     ([]T)               — kept native via the enhance-script pass
+#   * maps       (map[K]V)
+#   * interfaces (interface{}, any)  — e.g. WebhookEvent.Details, where
+#                                      oapi-codegen never emits *interface{}
+#
+# Every other type is a VALUE type (string/bool/numerics, time.Time,
+# types.Date, named structs, …) whose zero value would stand in for absence —
+# that is the violation this guard exists to catch. There is deliberately no
+# waiver list: the type classifier IS the policy.
+#
+# Usage: scripts/check-go-optional-pointers [path-to-client.gen.go]
+
+require "set"
+
+path = ARGV[0] || File.expand_path("../go/pkg/generated/client.gen.go", __dir__)
+abort "check-go-optional-pointers: #{path} not found" unless File.exist?(path)
+
+# Named interface types declared in the file are nil-capable too: `type Foo
+# interface{ ... }` used as an optional field satisfies the invariant exactly
+# as a literal interface{} does, and rejecting it would be a false positive.
+# Named types whose zero value is nil, resolved from their declarations in this
+# file: interfaces, slices, and maps, in both the declaration and alias forms
+# (`type X interface{...}` / `type X = interface{...}`). Rejecting any of these
+# would be a false positive — the guard enforces "can represent absence", and
+# nil is exactly that.
+source = File.read(path, encoding: "UTF-8")
+nil_capable_names = source
+  .scan(/^type (\w+)\s*=?\s*(interface\b|\[\]|map\[)/)
+  .map(&:first)
+  .to_set
+
+violations = []
+stats = Hash.new(0)
+
+# Struct field carrying omitempty in ANY struct tag. Body fields tag `json:`
+# alone; query-parameter fields tag `form:` FIRST and then `json:` — matching
+# only a leading `json:` silently exempted every query param, which is exactly
+# where an unsendable zero value hurts most.
+FIELD = /\A\t(\w+)\s+(\S+)\s+`([^`]*)`/
+# Any tag key, not just json/form: a future generator emitting e.g.
+# `query:"x,omitempty"` must still be classified, not silently exempted.
+# Tag keys may contain any character except space, quote, and colon (Go's
+# StructTag grammar), so match that class rather than \w — a key like `url-`
+# would otherwise slip past and take its field out of the guard's scope.
+# The option must be terminated by a comma or the closing quote: Go splits tag
+# values on commas, so `omitemptyfoo` is a DIFFERENT option, and matching it as
+# omitempty would let this guard reject a field that is not optional at all.
+OMITEMPTY = /[^\s":]+:"[^"]*,omitempty(?:,[^"]*)?"/
+
+# Read with an explicit UTF-8 external encoding: client.gen.go carries
+# multibyte characters in doc comments (e.g. →), and under a non-UTF-8 locale
+# (LC_ALL=C in a minimal CI container) the default external encoding is
+# US-ASCII, so matching raises ArgumentError and the guard dies on the very
+# file it guards.
+unparsed = []
+
+File.foreach(path, encoding: "UTF-8").with_index(1) do |line, lineno|
+  m = line.match(FIELD)
+  # A line carrying omitempty that the field pattern cannot parse must FAIL,
+  # never be skipped: silently ignoring a shape the generator started emitting
+  # (a deeper-indented field in a nested anonymous struct, a type containing
+  # whitespace) would quietly shrink this guard's coverage to nothing while it
+  # kept reporting success.
+  if m.nil?
+    unparsed << "#{path}:#{lineno}: #{line.strip}" if line.match?(/`[^`]*`/) && line.match?(OMITEMPTY)
+    next
+  end
+  next unless m[3].match?(OMITEMPTY)
+
+  name, type = m[1], m[2]
+  kind =
+    case type
+    when /\A\*/ then :pointer
+    when /\A\[\]/ then :slice
+    when /\Amap\[/ then :map
+    when "interface{}", "any" then :interface
+    when ->(t) { nil_capable_names.include?(t.delete_prefix("*")) } then :interface
+    else :value
+    end
+  stats[kind] += 1
+  violations << "#{path}:#{lineno}: #{name} #{type}" if kind == :value
+end
+
+total = stats.values.sum
+abort "check-go-optional-pointers: parsed zero omitempty fields from #{path} — pattern drift?" if total.zero?
+
+if unparsed.any?
+  warn "check-go-optional-pointers: #{unparsed.size} omitempty field(s) the field pattern could not parse:"
+  unparsed.each { |u| warn "  #{u}" }
+  warn "Teach FIELD the new shape — an unparsed field is unchecked, not exempt."
+  exit 1
+end
+
+if violations.any?
+  warn "check-go-optional-pointers: #{violations.size} optional field(s) cannot represent absence (non-pointer value type with omitempty):"
+  violations.each { |v| warn "  #{v}" }
+  warn "Fix the generator/enhance pass — do not add a waiver (SPEC.md §10)."
+  exit 1
+end
+
+puts "check-go-optional-pointers: #{total} optional fields OK " \
+     "(#{stats[:pointer]} pointer, #{stats[:slice]} slice, #{stats[:map]} map, #{stats[:interface]} interface)"

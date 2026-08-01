@@ -481,15 +481,37 @@ func TestTimesheetReportOptions_BuildTimesheetParams(t *testing.T) {
 			if result == nil {
 				t.Fatal("expected non-nil params")
 			}
-			if result.From != tt.expectedFrom {
-				t.Errorf("expected From %q, got %q", tt.expectedFrom, result.From)
-			}
-			if result.To != tt.expectedTo {
-				t.Errorf("expected To %q, got %q", tt.expectedTo, result.To)
-			}
-			if result.PersonId != tt.expectedPID {
-				t.Errorf("expected PersonId %d, got %d", tt.expectedPID, result.PersonId)
+			// Assert PRESENCE, not just the dereferenced value: the table uses
+			// zero values to mean "not provided", and deref() maps nil to that
+			// same zero — so a field that was wrongly SENT as empty would pass
+			// a value-only check. An unset field must be nil (omitted).
+			assertStrParam(t, "From", result.From, tt.expectedFrom)
+			assertStrParam(t, "To", result.To, tt.expectedTo)
+			if tt.expectedPID == 0 {
+				if result.PersonId != nil {
+					t.Errorf("expected PersonId to be omitted, got %d", *result.PersonId)
+				}
+			} else if result.PersonId == nil {
+				t.Errorf("expected PersonId %d, got omitted", tt.expectedPID)
+			} else if *result.PersonId != tt.expectedPID {
+				t.Errorf("expected PersonId %d, got %d", tt.expectedPID, *result.PersonId)
 			}
 		})
+	}
+}
+
+// assertStrParam checks an optional string query param: an empty expectation
+// means the field must be omitted (nil), not sent as an empty string.
+func assertStrParam(t *testing.T, name string, got *string, want string) {
+	t.Helper()
+	switch {
+	case want == "":
+		if got != nil {
+			t.Errorf("expected %s to be omitted, got %q", name, *got)
+		}
+	case got == nil:
+		t.Errorf("expected %s %q, got omitted", name, want)
+	case *got != want:
+		t.Errorf("expected %s %q, got %q", name, want, *got)
 	}
 }

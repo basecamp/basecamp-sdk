@@ -80,6 +80,6 @@ func (s *AttachmentsService) Create(ctx context.Context, filename, contentType s
 	}
 
 	return &AttachmentResponse{
-		AttachableSGID: resp.JSON201.AttachableSgid,
+		AttachableSGID: deref(resp.JSON201.AttachableSgid),
 	}, nil
 }

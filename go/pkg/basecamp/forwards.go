@@ -213,8 +213,8 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 	var params *generated.ListForwardsParams
 	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
 		params = &generated.ListForwardsParams{
-			Sort:      opts.Sort,
-			Direction: opts.Direction,
+			Sort:      omitzero(opts.Sort),
+			Direction: omitzero(opts.Direction),
 		}
 	}
 	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, inboxID, params)
@@ -464,13 +464,13 @@ func inboxFromGenerated(gi generated.Inbox) Inbox {
 		UpdatedAt:        gi.UpdatedAt,
 		Title:            gi.Title,
 		InheritsStatus:   gi.InheritsStatus,
-		Position:         int(gi.Position),
+		Position:         int(deref(gi.Position)),
 		Type:             gi.Type,
 		URL:              gi.Url,
 		AppURL:           gi.AppUrl,
-		BookmarkURL:      gi.BookmarkUrl,
-		ForwardsCount:    int(gi.ForwardsCount),
-		ForwardsURL:      gi.ForwardsUrl,
+		BookmarkURL:      deref(gi.BookmarkUrl),
+		ForwardsCount:    int(deref(gi.ForwardsCount)),
+		ForwardsURL:      deref(gi.ForwardsUrl),
 	}
 
 	if gi.Id != 0 {
@@ -503,15 +503,15 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 		Title:            gf.Title,
 		InheritsStatus:   gf.InheritsStatus,
 		Subject:          gf.Subject,
-		Content:          gf.Content,
-		From:             gf.From,
+		Content:          deref(gf.Content),
+		From:             deref(gf.From),
 		Type:             gf.Type,
 		URL:              gf.Url,
 		AppURL:           gf.AppUrl,
-		BookmarkURL:      gf.BookmarkUrl,
-		SubscriptionURL:  gf.SubscriptionUrl,
-		RepliesCount:     int(gf.RepliesCount),
-		RepliesURL:       gf.RepliesUrl,
+		BookmarkURL:      deref(gf.BookmarkUrl),
+		SubscriptionURL:  deref(gf.SubscriptionUrl),
+		RepliesCount:     int(deref(gf.RepliesCount)),
+		RepliesURL:       deref(gf.RepliesUrl),
 	}
 
 	if gf.Id != 0 {
@@ -559,9 +559,9 @@ func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
 		Type:             gr.Type,
 		URL:              gr.Url,
 		AppURL:           gr.AppUrl,
-		BookmarkURL:      gr.BookmarkUrl,
-		BoostsCount:      int(gr.BoostsCount),
-		BoostsURL:        gr.BoostsUrl,
+		BookmarkURL:      deref(gr.BookmarkUrl),
+		BoostsCount:      int(deref(gr.BoostsCount)),
+		BoostsURL:        deref(gr.BoostsUrl),
 	}
 
 	if gr.Id != 0 {

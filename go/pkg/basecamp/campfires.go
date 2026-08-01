@@ -331,8 +331,8 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64, opts
 	var params *generated.ListCampfireLinesParams
 	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
 		params = &generated.ListCampfireLinesParams{
-			Sort:      opts.Sort,
-			Direction: opts.Direction,
+			Sort:      omitzero(opts.Sort),
+			Direction: omitzero(opts.Direction),
 		}
 	}
 
@@ -459,7 +459,7 @@ func (s *CampfiresService) CreateLine(ctx context.Context, campfireID int64, con
 	if len(opts) > 0 && opts[0] != nil && opts[0].ContentType != "" {
 		switch opts[0].ContentType {
 		case LineContentTypePlain, LineContentTypeHTML:
-			body.ContentType = opts[0].ContentType
+			body.ContentType = &opts[0].ContentType
 		default:
 			err = ErrUsage("content_type must be \"text/plain\" or \"text/html\"")
 			return nil, err
@@ -571,8 +571,8 @@ func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64, op
 	var uploadParams *generated.ListCampfireUploadsParams
 	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
 		uploadParams = &generated.ListCampfireUploadsParams{
-			Sort:      opts.Sort,
-			Direction: opts.Direction,
+			Sort:      omitzero(opts.Sort),
+			Direction: omitzero(opts.Direction),
 		}
 	}
 
@@ -854,7 +854,7 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, campfireID int64, 
 		ServiceName: req.ServiceName,
 	}
 	if req.CommandURL != "" {
-		body.CommandUrl = req.CommandURL
+		body.CommandUrl = &req.CommandURL
 	}
 
 	resp, err := s.client.parent.gen.CreateChatbotWithResponse(ctx, s.client.accountID, campfireID, body)
@@ -900,7 +900,7 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, campfireID, chatbo
 		ServiceName: req.ServiceName,
 	}
 	if req.CommandURL != "" {
-		body.CommandUrl = req.CommandURL
+		body.CommandUrl = &req.CommandURL
 	}
 
 	resp, err := s.client.parent.gen.UpdateChatbotWithResponse(ctx, s.client.accountID, campfireID, chatbotID, body)
@@ -949,16 +949,16 @@ func campfireFromGenerated(gc generated.Campfire) Campfire {
 		Status:           gc.Status,
 		VisibleToClients: gc.VisibleToClients,
 		Title:            gc.Title,
-		Topic:            gc.Topic,
-		Position:         int(gc.Position),
+		Topic:            deref(gc.Topic),
+		Position:         int(deref(gc.Position)),
 		InheritsStatus:   gc.InheritsStatus,
 		Type:             gc.Type,
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
-		BookmarkURL:      gc.BookmarkUrl,
-		SubscriptionURL:  gc.SubscriptionUrl,
-		LinesURL:         gc.LinesUrl,
-		FilesURL:         gc.FilesUrl,
+		BookmarkURL:      deref(gc.BookmarkUrl),
+		SubscriptionURL:  deref(gc.SubscriptionUrl),
+		LinesURL:         deref(gc.LinesUrl),
+		FilesURL:         deref(gc.FilesUrl),
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
 	}
@@ -991,10 +991,10 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		Type:             gl.Type,
 		URL:              gl.Url,
 		AppURL:           gl.AppUrl,
-		BookmarkURL:      gl.BookmarkUrl,
-		BoostsCount:      int(gl.BoostsCount),
-		BoostsURL:        gl.BoostsUrl,
-		Content:          gl.Content,
+		BookmarkURL:      deref(gl.BookmarkUrl),
+		BoostsCount:      int(deref(gl.BoostsCount)),
+		BoostsURL:        deref(gl.BoostsUrl),
+		Content:          deref(gl.Content),
 		CreatedAt:        gl.CreatedAt,
 		UpdatedAt:        gl.UpdatedAt,
 	}
@@ -1005,12 +1005,12 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		l.Attachments = make([]CampfireLineAttachment, len(gl.Attachments))
 		for i, ga := range gl.Attachments {
 			l.Attachments[i] = CampfireLineAttachment{
-				Title:       ga.Title,
-				URL:         ga.Url,
-				Filename:    ga.Filename,
-				ContentType: ga.ContentType,
-				ByteSize:    ga.ByteSize,
-				DownloadURL: ga.DownloadUrl,
+				Title:       deref(ga.Title),
+				URL:         deref(ga.Url),
+				Filename:    deref(ga.Filename),
+				ContentType: deref(ga.ContentType),
+				ByteSize:    deref(ga.ByteSize),
+				DownloadURL: deref(ga.DownloadUrl),
 			}
 		}
 	}
@@ -1045,10 +1045,10 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 func chatbotFromGenerated(gc generated.Chatbot) Chatbot {
 	c := Chatbot{
 		ServiceName: gc.ServiceName,
-		CommandURL:  gc.CommandUrl,
-		URL:         gc.Url,
-		AppURL:      gc.AppUrl,
-		LinesURL:    gc.LinesUrl,
+		CommandURL:  deref(gc.CommandUrl),
+		URL:         deref(gc.Url),
+		AppURL:      deref(gc.AppUrl),
+		LinesURL:    deref(gc.LinesUrl),
 		CreatedAt:   gc.CreatedAt,
 		UpdatedAt:   gc.UpdatedAt,
 	}

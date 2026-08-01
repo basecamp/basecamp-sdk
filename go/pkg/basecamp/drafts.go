@@ -80,7 +80,7 @@ func (s *DraftsService) List(ctx context.Context, page int32) (result *DraftList
 
 	var params *generated.ListMyDraftsParams
 	if page > 0 {
-		params = &generated.ListMyDraftsParams{Page: page}
+		params = &generated.ListMyDraftsParams{Page: &page}
 	}
 	resp, err := s.client.parent.gen.ListMyDraftsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -127,8 +127,8 @@ func draftFromGenerated(gd generated.Draft) Draft {
 		UpdatedAt:          gd.UpdatedAt,
 		ScheduledPostingAt: gd.ScheduledPostingAt,
 	}
-	if gd.Parent != nil {
-		d.Parent = &DraftParent{ID: gd.Parent.Id, Title: gd.Parent.Title, AppURL: gd.Parent.AppUrl}
+	if p := gd.Parent; p != nil {
+		d.Parent = &DraftParent{ID: p.Id, Title: p.Title, AppURL: p.AppUrl}
 	}
 	return d
 }

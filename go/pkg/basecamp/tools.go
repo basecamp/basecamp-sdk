@@ -115,7 +115,7 @@ func (s *ToolsService) Create(ctx context.Context, bucketID int64, toolType stri
 	}
 	if opts != nil {
 		if opts.Title != "" {
-			body.Title = opts.Title
+			body.Title = &opts.Title
 		}
 		body.VisibleToClients = opts.VisibleToClients
 	}
@@ -286,26 +286,26 @@ func (s *ToolsService) Reposition(ctx context.Context, toolID int64, position in
 // toolFromGenerated converts a generated Tool to our clean type.
 func toolFromGenerated(gt generated.Tool) Tool {
 	t := Tool{
-		Status:    gt.Status,
+		Status:    deref(gt.Status),
 		CreatedAt: gt.CreatedAt,
 		UpdatedAt: gt.UpdatedAt,
 		Title:     gt.Title,
 		Name:      gt.Name,
 		Enabled:   gt.Enabled,
-		URL:       gt.Url,
-		AppURL:    gt.AppUrl,
+		URL:       deref(gt.Url),
+		AppURL:    deref(gt.AppUrl),
 	}
 
 	if gt.Id != 0 {
 		t.ID = gt.Id
 	}
 
-	if gt.Position != 0 {
-		pos := int(gt.Position)
+	if gt.Position != nil {
+		pos := int(*gt.Position)
 		t.Position = &pos
 	}
 
-	if gt.Bucket.Id != 0 || gt.Bucket.Name != "" {
+	if gt.Bucket != nil {
 		t.Bucket = &Bucket{
 			ID:   gt.Bucket.Id,
 			Name: gt.Bucket.Name,

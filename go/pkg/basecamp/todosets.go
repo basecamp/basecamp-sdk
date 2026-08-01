@@ -90,18 +90,18 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 		Type:             gts.Type,
 		URL:              gts.Url,
 		AppURL:           gts.AppUrl,
-		BookmarkURL:      gts.BookmarkUrl,
+		BookmarkURL:      deref(gts.BookmarkUrl),
 		Name:             gts.Name,
-		TodolistsCount:   int(gts.TodolistsCount),
-		TodolistsURL:     gts.TodolistsUrl,
-		CompletedRatio:   gts.CompletedRatio,
-		Completed:        gts.Completed,
-		AppTodolistsURL:  gts.AppTodolistsUrl,
+		TodolistsCount:   int(deref(gts.TodolistsCount)),
+		TodolistsURL:     deref(gts.TodolistsUrl),
+		CompletedRatio:   deref(gts.CompletedRatio),
+		Completed:        deref(gts.Completed),
+		AppTodolistsURL:  deref(gts.AppTodolistsUrl),
 		// BC5 forward-compat fields.
-		TodosCount:               int(gts.TodosCount),
-		CompletedLooseTodosCount: int(gts.CompletedLooseTodosCount),
-		TodosURL:                 gts.TodosUrl,
-		AppTodosURL:              gts.AppTodosUrl,
+		TodosCount:               int(deref(gts.TodosCount)),
+		CompletedLooseTodosCount: int(deref(gts.CompletedLooseTodosCount)),
+		TodosURL:                 deref(gts.TodosUrl),
+		AppTodosURL:              deref(gts.AppTodosUrl),
 		CreatedAt:                gts.CreatedAt,
 		UpdatedAt:                gts.UpdatedAt,
 	}
@@ -110,8 +110,8 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 		ts.ID = gts.Id
 	}
 
-	if gts.Position != 0 {
-		pos := int(gts.Position)
+	if gts.Position != nil {
+		pos := int(*gts.Position)
 		ts.Position = &pos
 	}
 
