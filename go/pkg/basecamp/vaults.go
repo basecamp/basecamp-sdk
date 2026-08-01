@@ -313,7 +313,7 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListVaultsParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
@@ -528,7 +528,7 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListDocumentsParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
@@ -774,7 +774,7 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListUploadsParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}

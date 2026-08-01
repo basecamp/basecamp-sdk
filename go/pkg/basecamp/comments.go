@@ -109,7 +109,7 @@ func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *Com
 
 	var params *generated.ListCommentsParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}

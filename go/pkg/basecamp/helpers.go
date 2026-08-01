@@ -341,14 +341,18 @@ type ListMeta struct {
 	Truncated bool
 }
 
-// pageParam narrows a wrapper's Page option to the int32 the generated params
+// pageParam narrows a wrapper's Page option to the *int32 the generated params
 // carry. A page number too large to survive the narrowing is a usage error
 // rather than a silent wraparound into a negative page on the wire.
-func pageParam(page int) (int32, error) {
+//
+// The result is a pointer because generated optional query params are pointers
+// (#560): nil is absence, and callers only reach here once Page is positive, so
+// a successful call always yields a non-nil page.
+func pageParam(page int) (*int32, error) {
 	if page > math.MaxInt32 {
-		return 0, ErrUsage("page is out of range")
+		return nil, ErrUsage("page is out of range")
 	}
-	return int32(page), nil // #nosec G115 -- bounded above by the MaxInt32 guard
+	return ptr(int32(page)), nil // #nosec G115 -- bounded above by the MaxInt32 guard
 }
 
 // isFirstPageTruncated returns true when items were capped on the first page

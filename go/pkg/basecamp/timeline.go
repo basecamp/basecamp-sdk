@@ -178,7 +178,7 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.GetProgressReportParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
@@ -261,7 +261,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.GetProjectTimelineParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
@@ -347,7 +347,7 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 
 	var params *generated.GetPersonProgressParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}

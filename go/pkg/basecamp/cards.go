@@ -336,7 +336,7 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 
 	var params *generated.ListCardsParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}

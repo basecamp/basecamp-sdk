@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -134,6 +135,33 @@ func TestPageParamReachesWire(t *testing.T) {
 				t.Errorf("expected ?page=3 on the wire, got %q", gotPage)
 			}
 		})
+	}
+}
+
+// TestPageParamOmittedWhenUnset pins the other half of the wire contract: a
+// zero Page means "no page selected" and must not reach the server at all.
+// Generated optional query params are pointers (#560), so absence is nil rather
+// than a zero value leaning on omitempty — worth asserting directly, since the
+// reaches-the-wire tests below would still pass if every request carried a
+// stray page=0.
+func TestPageParamOmittedWhenUnset(t *testing.T) {
+	var rawQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ac := client.ForAccount("12345")
+
+	if _, err := ac.Projects().List(t.Context(), &ProjectListOptions{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(rawQuery, "page") {
+		t.Errorf("expected no page parameter on the wire, got %q", rawQuery)
 	}
 }
 

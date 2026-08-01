@@ -106,7 +106,7 @@ func (s *TemplatesService) List(ctx context.Context, opts *TemplateListOptions) 
 
 	var params *generated.ListTemplatesParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}

@@ -139,12 +139,11 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 	// Build params for generated client
 	params := &generated.ListTodolistsParams{}
 	if opts != nil {
-		
-	if opts.Status != "" {
+		if opts.Status != "" {
 			params.Status = &opts.Status
 		}
 		if opts.Page > 0 {
-			var page int32
+			var page *int32
 			if page, err = pageParam(opts.Page); err != nil {
 				return nil, err
 			}

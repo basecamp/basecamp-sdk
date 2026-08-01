@@ -149,12 +149,11 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 	// Build params for generated client
 	params := &generated.ListProjectsParams{}
 	if opts != nil {
-		
-	if opts.Status != "" {
+		if opts.Status != "" {
 			params.Status = ptr(string(opts.Status))
 		}
 		if opts.Page > 0 {
-			var page int32
+			var page *int32
 			if page, err = pageParam(opts.Page); err != nil {
 				return nil, err
 			}

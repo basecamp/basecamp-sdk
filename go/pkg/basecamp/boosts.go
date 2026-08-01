@@ -81,7 +81,7 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 
 	var params *generated.ListRecordingBoostsParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
@@ -171,7 +171,7 @@ func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int6
 
 	var params *generated.ListEventBoostsParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}

@@ -89,7 +89,7 @@ func (s *ClientRepliesService) List(ctx context.Context, recordingID int64, opts
 
 	var params *generated.ListClientRepliesParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}

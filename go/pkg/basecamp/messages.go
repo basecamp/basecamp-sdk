@@ -148,7 +148,7 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 			params.Direction = &opts.Direction
 		}
 		if opts.Page > 0 {
-			var page int32
+			var page *int32
 			if page, err = pageParam(opts.Page); err != nil {
 				return nil, err
 			}

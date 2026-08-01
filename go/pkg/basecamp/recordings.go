@@ -211,7 +211,7 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 	}
 	if opts != nil {
 		if opts.Page > 0 {
-			var page int32
+			var page *int32
 			if page, err = pageParam(opts.Page); err != nil {
 				return nil, err
 			}

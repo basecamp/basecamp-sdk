@@ -299,7 +299,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListQuestionsParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
@@ -622,7 +622,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListAnswersParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
@@ -707,7 +707,7 @@ func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, p
 
 	var params *generated.GetAnswersByPersonParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}
@@ -1001,7 +1001,7 @@ func (s *CheckinsService) ListQuestionReminders(ctx context.Context, opts *Quest
 
 	var params *generated.GetQuestionRemindersParams
 	if opts != nil && opts.Page > 0 {
-		var page int32
+		var page *int32
 		if page, err = pageParam(opts.Page); err != nil {
 			return nil, err
 		}

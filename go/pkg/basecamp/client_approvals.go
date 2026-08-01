@@ -126,7 +126,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, opts *ClientApprovalL
 			Direction: omitzero(opts.Direction),
 		}
 		if opts.Page > 0 {
-			var page int32
+			var page *int32
 			if page, err = pageParam(opts.Page); err != nil {
 				return nil, err
 			}
