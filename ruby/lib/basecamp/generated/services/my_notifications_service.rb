@@ -8,7 +8,9 @@ module Basecamp
     class MyNotificationsService < BaseService
 
       # Get the current user's notification inbox (the "Hey!" menu).
-      # @param page [Integer, nil] Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through read items. Defaults to 1. This
+      #   operation is not auto-paginated in any SDK, so a page is returned as
+      #   asked for and later pages are not followed.
       # @param limit_bubble_ups [Boolean, nil] Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
       #   `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated
       #   bubble-ups endpoint (GetBubbleUps) to page through all current and

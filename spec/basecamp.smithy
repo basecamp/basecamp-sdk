@@ -9737,7 +9737,9 @@ structure GetMyNotificationsInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  /// Page number for paginating through read items. Defaults to 1. This
+  /// operation is not auto-paginated in any SDK, so a page is returned as
+  /// asked for and later pages are not followed.
   @httpQuery("page")
   page: Integer
 

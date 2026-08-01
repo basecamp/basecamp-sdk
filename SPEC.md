@@ -678,7 +678,12 @@ The variant is determined at code-generation time from the OpenAPI response sche
 
 ### The `page` Query Parameter
 
-Every list-class operation whose Basecamp endpoint paginates server-side accepts a `page` query parameter. **Its meaning currently differs between Go and the five auto-paginating SDKs, and callers must know which they are using.**
+Operations whose Basecamp endpoint honors `?page=` accept a `page` query parameter. **Its meaning currently differs between Go and the five auto-paginating SDKs, and callers must know which they are using.**
+
+Two carve-outs, so the rule above is not read as universal:
+
+- `ListWebhooks`, `ListMessageTypes`, `ListChatbots`, `ListPingablePeople`, `ListQuestionAnswerers`, and `ListUploadVersions` carry the pagination trait but declare **no** `page` parameter: their Basecamp index actions return the whole collection rather than paginating, so there is no page to select.
+- `GetMyNotifications` declares `page` but carries **no** pagination trait, so no SDK follows links for it and everything below is inapplicable — it returns the page you asked for, in all six.
 
 | SDK | Behavior with `page = 3` | Requests issued |
 |-----|--------------------------|-----------------|

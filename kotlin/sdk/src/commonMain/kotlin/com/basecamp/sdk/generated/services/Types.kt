@@ -698,7 +698,7 @@ data class UpdateMyNoteBody(
 
 /** Options for GetMyNotifications. */
 data class GetMyNotificationsOptions(
-    /** Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through read items. Defaults to 1. This operation is not auto-paginated in any SDK, so a page is returned as asked for and later pages are not followed. */
     val page: Long? = null,
     /** Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated bubble-ups endpoint (GetBubbleUps) to page through all current and scheduled bubble-ups. */
     val limitBubbleUps: Boolean? = null

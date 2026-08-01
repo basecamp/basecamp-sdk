@@ -11715,10 +11715,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "description": "Page number for paginating through read items. Defaults to 1. This\noperation is not auto-paginated in any SDK, so a page is returned as\nasked for and later pages are not followed.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "description": "Page number for paginating through read items. Defaults to 1. This\noperation is not auto-paginated in any SDK, so a page is returned as\nasked for and later pages are not followed.",
               "format": "int32"
             }
           },

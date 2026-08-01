@@ -13,7 +13,7 @@ public struct BubbleUpsMyNotificationOptions: Sendable {
 }
 
 public struct MyNotificationsMyNotificationOptions: Sendable {
-    /// Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through read items. Defaults to 1. This operation is not auto-paginated in any SDK, so a page is returned as asked for and later pages are not followed.
     public var page: Int?
     /// Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated bubble-ups endpoint (GetBubbleUps) to page through all current and scheduled bubble-ups.
     public var limitBubbleUps: Bool?

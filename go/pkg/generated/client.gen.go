@@ -3698,7 +3698,9 @@ type GetQuestionRemindersParams struct {
 
 // GetMyNotificationsParams defines parameters for GetMyNotifications.
 type GetMyNotificationsParams struct {
-	// Page Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through read items. Defaults to 1. This
+	// operation is not auto-paginated in any SDK, so a page is returned as
+	// asked for and later pages are not followed.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 
 	// LimitBubbleUps Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the

@@ -13221,7 +13221,11 @@ export interface operations {
     GetMyNotifications: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /**
+                 * @description Page number for paginating through read items. Defaults to 1. This
+                 *     operation is not auto-paginated in any SDK, so a page is returned as
+                 *     asked for and later pages are not followed.
+                 */
                 page?: number;
                 /**
                  * @description Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
