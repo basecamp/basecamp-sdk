@@ -23,6 +23,13 @@
 
 set -euo pipefail
 
+# EDITING NOTE: the jq programs below are single-quoted shell strings. An
+# apostrophe anywhere inside them — including in a comment, e.g. "the pass's
+# condition" — terminates the string and produces a confusing shell syntax
+# error (or, worse, a jq compile error that leaves the output unenhanced).
+# Write comments without apostrophes. `bash -n` catches it; so does running
+# this script and checking its exit status, which is the only reliable signal.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
@@ -400,6 +407,12 @@ unmarked=$(jq -r --argjson request_reachable "$REQUEST_REACHABLE" '
   | [ .components.schemas | to_entries[]
       | .key as $schema
       | select($reachable | index($schema) | not) | select(.value | type == "object")
+      # Mirror the entry condition of the marking pass exactly. That pass only
+      # descends into schemas that declare `"type": "object"` AND carry
+      # properties; a checker with a looser guard would flag a schema the pass
+      # deliberately skipped, turning a legitimate spec into a spurious
+      # generation failure.
+      | select(.value.type == "object") | select(.value.properties)
       | ((.value.required // []) | select(type == "array")) as $req
       | ((.value.properties // {}) | select(type == "object")) | to_entries[]
       | select(.value | type == "object")

@@ -211,7 +211,13 @@ func TestMoveCardColumn_RejectsOutOfRangePosition(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.BaseURL = "http://127.0.0.1:1"
 	svc := NewClient(cfg, &StaticTokenProvider{Token: "t"}).ForAccount("99999").CardColumns()
-	err := svc.Move(context.Background(), 1, &MoveColumnRequest{SourceID: 2, TargetID: 3, Position: math.MaxInt32 + 1})
+	// Computed at runtime, not as a constant: `math.MaxInt32 + 1` as an untyped
+	// constant does not fit in `int` on 32-bit targets and fails to compile
+	// there. Incrementing exercises the same guard on both — it exceeds
+	// MaxInt32 on 64-bit and wraps negative on 32-bit, and Move rejects each.
+	pos := math.MaxInt32
+	pos++
+	err := svc.Move(context.Background(), 1, &MoveColumnRequest{SourceID: 2, TargetID: 3, Position: pos})
 	if err == nil {
 		t.Fatal("expected a usage error for an out-of-range position")
 	}
