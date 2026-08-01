@@ -141,6 +141,50 @@ class TodolistsServiceTest < Minitest::Test
   # update / edit: the merge-safe composites (GET then PUT).
   # ---------------------------------------------------------------------
 
+  # A malformed writable field must abort before the PUT, never be coerced.
+  #
+  # Ruby has no typed decoder between the GET and the field read, so a plain
+  # `|| ""` turns `false` into `""` and passes arrays, hashes and numbers
+  # straight through. This endpoint is full-replace, so either outcome is
+  # written back over the real value — the composite erases or corrupts the
+  # field it exists to preserve, on a call that never mentioned it. The shipped
+  # Todos analogue is tracked in #576.
+  [ false, 0, [], {}, 42, true, [ "x" ], { "a" => 1 } ].each do |malformed|
+    define_method("test_update_refuses_a_malformed_description_#{malformed.inspect}") do
+      stub_todolist_get_and_put(todolist: full_todolist.merge("description" => malformed))
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, name: "Renamed list")
+      end
+
+      assert_includes error.message, '"description" is not a string'
+      assert_requested :get, "#{BASE_URL}/12345/todolists/2", times: 1
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  def test_edit_refuses_a_malformed_name_before_writing
+    stub_todolist_get_and_put(todolist: full_todolist.merge("name" => 42))
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.todolists.edit(id: 2) { |list| list.description = "<p>New</p>" }
+    end
+
+    assert_includes error.message, '"name" is not a string'
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+  end
+
+  def test_update_treats_absent_and_nil_description_as_empty
+    [ full_todolist.except("description"), full_todolist.merge("description" => nil) ].each do |body|
+      captured = stub_todolist_get_and_put(todolist: body)
+
+      @account.todolists.update(id: 2, name: "Renamed list")
+
+      assert_equal({ "name" => "Renamed list", "description" => "" }, captured[:bodies].first)
+      WebMock.reset!
+    end
+  end
+
   def test_update_name_only_preserves_the_description
     captured = stub_todolist_get_and_put
 

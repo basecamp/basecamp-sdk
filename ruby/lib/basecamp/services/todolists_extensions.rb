@@ -85,9 +85,37 @@ module Basecamp
       def fields_from_todolist(todolist)
         body = todolist["todolist"] || todolist["group"] || todolist
         TodolistFields.new(
-          name: body["name"] || "",
-          description: body["description"] || ""
+          name: writable_string(body, "name"),
+          description: writable_string(body, "description")
         )
+      end
+
+      # Reads a writable string field, refusing to coerce a malformed one.
+      #
+      # A missing key or an explicit +nil+ is genuinely empty — there is
+      # nothing to preserve, and <tt>""</tt> is what the server already holds.
+      # Anything else that is not a String is a malformed response and must NOT
+      # be coerced: a plain <tt>|| ""</tt> turns +false+ into <tt>""</tt> and
+      # passes arrays, hashes and numbers straight through. This endpoint is
+      # full-replace, so either outcome is written back over the real value —
+      # erasing or corrupting the field these composites exist to preserve, on
+      # a call that never mentioned it.
+      #
+      # Ruby has no typed decoder between the GET and this read, unlike the Go,
+      # Swift and Kotlin composites where a wrong-typed field fails at decode.
+      # The same shape is live in the shipped Todos composite; tracked in #576.
+      def writable_string(body, key)
+        value = body[key]
+
+        if value.nil?
+          ""
+        elsif value.is_a?(String)
+          value
+        else
+          raise ApiError, "Todolist field #{key.inspect} is not a string: #{value.inspect}; " \
+            "the merge-safe update/edit resend this field verbatim, so a coerced or empty " \
+            "value would overwrite the current one. Use replace to write the record deliberately."
+        end
       end
 
       # PUTs the full writable state via +replace+. Both fields are always

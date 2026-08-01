@@ -10,7 +10,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp.errors import NotFoundError, UsageError
+from basecamp.errors import ApiError, NotFoundError, UsageError
 from basecamp.hooks import BasecampHooks, OperationInfo
 
 BASE = "https://3.basecampapi.com/12345"
@@ -188,6 +188,58 @@ class TestAsyncTodolistMetadata:
         assert info.service == "todolists"
         assert info.operation == "replace"
         assert info.resource_id == 2
+
+
+class TestMalformedWritableFields:
+    """A malformed writable field must abort before the PUT, never be coerced.
+
+    Python has no typed decoder between the GET and the field read, so a plain
+    ``or ""`` turns every falsey non-string into ``""``. Because this endpoint
+    is full-replace, that value is then written back over the real one — the
+    composite erases the field it exists to preserve, on a call that never
+    mentioned it. Truthy non-strings are just as wrong: they reach the wire
+    verbatim. The shipped Todos/Cards analogue is tracked in #576.
+    """
+
+    @pytest.mark.parametrize("malformed", [False, 0, [], {}, 42, True, ["x"], {"a": 1}])
+    @respx.mock
+    def test_update_refuses_a_malformed_description(self, malformed):
+        get_route = respx.get(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=malformed))
+        )
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed list")
+
+        assert "'description' is not a string" in str(excinfo.value)
+        assert get_route.call_count == 1
+        assert put_route.call_count == 0, "the PUT must never be issued for a malformed description"
+
+    @pytest.mark.parametrize("malformed", [False, 0, [], {}, 42])
+    @respx.mock
+    def test_edit_refuses_a_malformed_name(self, malformed):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full(name=malformed)))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo, _sync_todolists().edit(id=2) as tl:
+            tl.description = "<p>New</p>"
+
+        assert "'name' is not a string" in str(excinfo.value)
+        assert put_route.call_count == 0, "the PUT must never be issued for a malformed name"
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"id": 2, "name": "Hardware"}, {"id": 2, "name": "Hardware", "description": None}],
+    )
+    @respx.mock
+    def test_absent_and_null_description_are_genuinely_empty(self, body):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        _sync_todolists().update(id=2, name="Renamed list")
+
+        assert _put_body(put_route) == {"name": "Renamed list", "description": ""}
 
 
 class TestSyncUpdate:

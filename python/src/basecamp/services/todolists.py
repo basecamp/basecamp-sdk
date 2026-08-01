@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from basecamp.errors import UsageError
+from basecamp.errors import ApiError, UsageError
 from basecamp.generated.services.todolists import AsyncTodolistsService as _GeneratedAsyncTodolistsService
 from basecamp.generated.services.todolists import TodolistsService as _GeneratedTodolistsService
 
@@ -50,9 +50,41 @@ def _fields_from_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
                 body = nested
                 break
     return {
-        "name": body.get("name") or "",
-        "description": body.get("description") or "",
+        "name": _writable_string(body, "name"),
+        "description": _writable_string(body, "description"),
     }
+
+
+def _writable_string(body: dict[str, Any], key: str) -> str:
+    """Read a writable string field, refusing to coerce a malformed one.
+
+    An absent key or an explicit ``None`` is genuinely empty — there is nothing
+    to preserve, and ``""`` is what the server already holds. Anything else
+    that is not a string is a malformed response and must NOT be coerced: a
+    plain ``or ""`` turns every falsey non-string (``False``, ``0``, ``[]``,
+    ``{}``) into ``""``, and this endpoint is full-replace, so that value would
+    be written straight back over the real one — erasing the field these
+    composites exist to preserve, on a call that never mentioned it.
+
+    Python has no typed decoder between the GET and this read, unlike the Go,
+    Swift and Kotlin composites where a wrong-typed field fails at decode. That
+    makes the check explicit work here rather than something the layer below
+    already did. The same shape is live in the shipped Todos and Cards
+    composites; that is tracked separately in #576.
+    """
+    value = body.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ApiError(
+            f"Todolist field {key!r} is not a string: {value!r}",
+            hint=(
+                "The merge-safe update/edit resend this field verbatim, so a coerced or "
+                "empty value would overwrite the current one. Use replace() to write the "
+                "record deliberately."
+            ),
+        )
+    return value
 
 
 def _replace_kwargs(fields: dict[str, Any]) -> dict[str, Any]:
