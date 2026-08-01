@@ -384,7 +384,10 @@ function parseFieldErrors(body: object): Record<string, string[]> | undefined {
   if (typeof errors !== "object" || errors === null || Array.isArray(errors)) {
     return undefined;
   }
-  const fieldErrors: Record<string, string[]> = {};
+  // Null prototype so an untrusted field name like "__proto__" becomes an
+  // ordinary own property instead of invoking the legacy prototype setter
+  // (which would both drop the entry and mutate the map's prototype).
+  const fieldErrors: Record<string, string[]> = Object.create(null);
   let found = false;
   for (const [field, value] of Object.entries(errors)) {
     if (!Array.isArray(value)) continue;

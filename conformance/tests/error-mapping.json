@@ -170,6 +170,23 @@
     "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
   },
   {
+    "name": "422 field-keyed errors treat __proto__ as an ordinary field name",
+    "description": "Verifies an untrusted field name that collides with JavaScript's legacy prototype setter is kept as an ordinary map key in every SDK — present in the flattened message and never mutating the map",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"errors": {"__proto__": ["is reserved"], "color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "__proto__: is reserved, color: is not a valid color"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
     "name": "429 maps to rate_limit error code",
     "description": "Verifies that 429 Too Many Requests maps to structured error with code 'rate_limit' and retryable=true",
     "operation": "ListProjects",

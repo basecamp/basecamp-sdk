@@ -51,7 +51,7 @@ type Error struct {
 	Code    string
 	Message string
 	Hint    string
-	// FieldErrors carries the field-keyed messages from a validation (422)
+	// FieldErrors carries the field-keyed messages from a validation (400/422)
 	// body of the form {"errors": {"field": ["msg", ...]}} — the Rails
 	// RecordInvalid rendering. Nil for every other error shape. The flattened
 	// form is also folded into Message; this slot preserves the raw,

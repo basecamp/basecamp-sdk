@@ -10,9 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import com.basecamp.sdk.serialization.normalizePersonIds
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Abstract base class for all Basecamp API services.
@@ -484,77 +482,26 @@ abstract class BaseService(
         }
     }
 
-    /** Converts an HTTP error response to a [BasecampException]. */
-    private suspend fun errorFromResponse(response: HttpResponse): BasecampException {
-        val status = response.status.value
-        val requestId = response.headers["X-Request-Id"]
-        val retryAfter = parseRetryAfter(response.headers["Retry-After"])
-
-        var message: String = response.status.description.ifEmpty { "Request failed" }
-        var serverMessage: String? = null
-        var hint: String? = null
-        var fieldErrors: Map<String, List<String>>? = null
-
-        try {
-            val bodyText = normalizePersonIds(response.bodyAsText(), json)
-            if (bodyText.isNotBlank()) {
-                val jsonBody = json.parseToJsonElement(bodyText)
-                if (jsonBody is JsonObject) {
-                    // Safe casts, not .jsonPrimitive: SPEC §6 uses a key only
-                    // when its value is a string, and a throwing access here
-                    // would abandon the field-error extraction below for
-                    // bodies like {"error": {}, "errors": {...}}.
-                    // "error" wins; "message" is the SPEC §6 step-4 fallback.
-                    (stringMember(jsonBody, "error") ?: stringMember(jsonBody, "message"))?.let {
-                        val truncated = BasecampException.truncateMessage(it)
-                        serverMessage = truncated
-                        message = truncated
-                    }
-                    stringMember(jsonBody, "error_description")?.let {
-                        hint = BasecampException.truncateMessage(it)
-                    }
-                    if (status == 400 || status == 422) {
-                        fieldErrors = parseFieldErrors(jsonBody)
-                        fieldErrors?.let { fe ->
-                            val flat = BasecampException.flattenFieldErrors(fe)
-                            // Appended in parentheses after a top-level message,
-                            // standing alone otherwise; fromHttpStatus truncates
-                            // the composed result so the tail is capped too.
-                            message = serverMessage?.let { "$it ($flat)" } ?: flat
-                        }
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            // Body is not JSON or empty — use status text
-        }
-
-        return BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter, fieldErrors)
-    }
-
-    /** Returns a member's string value, or null when absent or not a string. */
-    private fun stringMember(body: JsonObject, key: String): String? =
-        (body[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
-
     /**
-     * Extracts the field-keyed validation errors map from a parsed error body —
-     * the Rails RecordInvalid rendering `{"errors": {"field": ["msg", ...]}}`.
-     * Entries whose value is not an array are skipped, non-string elements are
-     * dropped, and a map with no usable entries is treated as absent (null).
+     * Converts an HTTP error response to a [BasecampException] via the shared
+     * SPEC §6 parser ([exceptionFromErrorBody]) used by every SDK surface.
      */
-    private fun parseFieldErrors(body: JsonObject): Map<String, List<String>>? {
-        val errors = body["errors"] as? JsonObject ?: return null
-        val fieldErrors = mutableMapOf<String, List<String>>()
-        for ((field, value) in errors) {
-            val values = value as? JsonArray ?: continue
-            val messages = values.mapNotNull { element ->
-                (element as? JsonPrimitive)?.takeIf { it.isString }?.content
-            }
-            if (messages.isNotEmpty()) {
-                fieldErrors[field] = messages
-            }
+    private suspend fun errorFromResponse(response: HttpResponse): BasecampException {
+        val bodyText = try {
+            normalizePersonIds(response.bodyAsText(), json)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
         }
-        return fieldErrors.ifEmpty { null }
+        return exceptionFromErrorBody(
+            status = response.status.value,
+            statusDescription = response.status.description,
+            bodyText = bodyText,
+            requestId = response.headers["X-Request-Id"],
+            retryAfter = parseRetryAfter(response.headers["Retry-After"]),
+            json = json,
+        )
     }
 
     companion object {

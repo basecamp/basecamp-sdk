@@ -504,6 +504,23 @@ describe("errorFromResponse", () => {
       expect(error.message).toBe("from error");
     });
 
+    it("preserves a __proto__ field as an own property without prototype pollution", async () => {
+      const response = new Response(
+        '{"errors": {"__proto__": ["is reserved"], "color": ["is not a valid color"]}}',
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message).toBe("__proto__: is reserved, color: is not a valid color");
+      expect(Object.prototype.hasOwnProperty.call(error.fieldErrors, "__proto__")).toBe(true);
+      expect(error.fieldErrors!["__proto__"]).toEqual(["is reserved"]);
+      expect(error.fieldErrors!.color).toEqual(["is not a valid color"]);
+      // The legacy prototype setter must not have fired: the map's prototype
+      // is not the attacker-controlled array.
+      expect(Array.isArray(Object.getPrototypeOf(error.fieldErrors))).toBe(false);
+    });
+
     it("leaves plain 422 error bodies unchanged", async () => {
       const response = new Response(
         JSON.stringify({ error: "Name can't be blank" }),

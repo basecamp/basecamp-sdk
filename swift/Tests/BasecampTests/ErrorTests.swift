@@ -247,6 +247,16 @@ final class ErrorTests: XCTestCase {
         XCTAssertEqual(error.message, "from error")
     }
 
+    func testFromHTTPResponse422ProtoFieldNameIsOrdinary() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: [
+                "errors": ["__proto__": ["is reserved"], "color": ["is not a valid color"]],
+            ] as [String: Any]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        XCTAssertEqual(error.message, "__proto__: is reserved, color: is not a valid color")
+    }
+
     func testFromHTTPResponse422FieldKeyedTruncatesAfterFlattening() {
         let longMessage = String(repeating: "x", count: 600)
         let body = try! JSONSerialization.data(
