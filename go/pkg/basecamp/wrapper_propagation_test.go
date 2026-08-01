@@ -204,9 +204,17 @@ func assertCreatorFullyPropagated(t *testing.T, p *Person, gp generated.Person) 
 	if p.CanManagePeople != deref(gp.CanManagePeople) {
 		t.Errorf("CanManagePeople: got %v, want %v", p.CanManagePeople, deref(gp.CanManagePeople))
 	}
-	if p.Company == nil {
+	// Keyed on the GENERATED pointer, which is the source of truth: guarding on
+	// the wrapper and then dereferencing gp.Company would report a spurious
+	// failure for a fixture that legitimately has no company.
+	switch {
+	case gp.Company == nil:
+		if p.Company != nil {
+			t.Errorf("Company: expected nil for an absent company, got %+v", p.Company)
+		}
+	case p.Company == nil:
 		t.Error("Company: expected non-nil")
-	} else {
+	default:
 		if p.Company.ID != gp.Company.Id {
 			t.Errorf("Company.ID: got %d, want %d", p.Company.ID, gp.Company.Id)
 		}

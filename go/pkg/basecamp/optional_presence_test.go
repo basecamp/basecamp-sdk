@@ -267,3 +267,21 @@ func TestPersonFromGenerated_PresentZeroTimestampsPropagate(t *testing.T) {
 		t.Error("absent timestamps must stay empty")
 	}
 }
+
+// An unparseable group_on must be reported, not silently dropped — otherwise
+// the answer is created with server-default grouping and the caller is never
+// told their input was invalid. Matches how the card/todo create paths behave.
+func TestCreateAnswer_RejectsUnparseableGroupOn(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.BaseURL = "http://127.0.0.1:1"
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "t"}).ForAccount("99999").Checkins()
+
+	_, err := svc.CreateAnswer(context.Background(), 1, &CreateAnswerRequest{Content: "c", GroupOn: "not-a-date"})
+	if err == nil {
+		t.Fatal("expected a usage error for an unparseable group_on")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected a usage error, got: %v", err)
+	}
+}

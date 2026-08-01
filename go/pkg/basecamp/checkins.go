@@ -869,9 +869,12 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, questionID int64, re
 		Content: req.Content,
 	}
 	if req.GroupOn != "" {
-		if d, parseErr := types.ParseDate(req.GroupOn); parseErr == nil {
-			body.GroupOn = &d
+		d, parseErr := types.ParseDate(req.GroupOn)
+		if parseErr != nil {
+			err = ErrUsage("answer group_on must be in YYYY-MM-DD format")
+			return nil, err
 		}
+		body.GroupOn = &d
 	}
 
 	resp, err := s.client.parent.gen.CreateAnswerWithResponse(ctx, s.client.accountID, questionID, body)
