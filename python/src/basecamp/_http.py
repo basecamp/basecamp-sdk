@@ -128,9 +128,7 @@ class HttpClient:
         directly rather than looked up by operation.
         """
         url = self._build_url(url)
-        return self._request_with_retry(
-            "GET", url, retry_on=self.DOWNLOAD_RETRY_ON, accept=None
-        )
+        return self._request_with_retry("GET", url, retry_on=self.DOWNLOAD_RETRY_ON, accept=None)
 
     def close(self) -> None:
         self._client.close()
