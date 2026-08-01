@@ -380,6 +380,7 @@ module Basecamp
         @config.max_retries
       end
       attempt = 0
+      refreshed_once = false
       last_error = nil
 
       loop do
@@ -388,7 +389,21 @@ module Basecamp
 
         begin
           return single_request(method, url, params: params, body: nil, attempt: attempt,
-            allow_cross_origin: allow_cross_origin, accept: accept)
+            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: false)
+        rescue Basecamp::AuthError => e
+          # SPEC §4: the refresh replay is a request on the wire, so it spends
+          # an attempt from THIS budget rather than an uncounted one inside
+          # single_request. max_retries is a total attempt count (#461), and a
+          # cap of one means one request whatever would have caused the second.
+          #
+          # The budget is checked BEFORE refresh so a rotation is never burned
+          # on an attempt the loop has no room to make — hence the ordering of
+          # these conditions, which short-circuit left to right.
+          replayable = !refreshed_once && e.http_status == 401 && attempt < max_attempts \
+            && @token_provider&.refreshable? && @token_provider.refresh
+          raise e unless replayable
+
+          refreshed_once = true
         rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
           raise e unless retry_eligible?(e, op_retry, retry_on)
 
@@ -434,7 +449,7 @@ module Basecamp
     end
 
     def single_request(method, url, params:, body:, attempt:, retry_count: 0, allow_cross_origin: false,
-      accept: "application/json")
+      accept: "application/json", refresh_replay: true)
       assert_credential_origin!(url, allow_cross_origin)
       info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
       @hooks.on_request_start(info)
@@ -457,7 +472,7 @@ module Basecamp
         )
       rescue Faraday::ServerError, Faraday::ClientError => e
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
-        error = handle_error(e)
+        error = handle_error(e, refresh_on_401: refresh_replay)
         result = RequestResult.new(
           status_code: e.response&.dig(:status),
           duration: duration,
@@ -466,11 +481,15 @@ module Basecamp
         )
         @hooks.on_request_end(info, result)
 
-        # After a successful token refresh on 401, retry the request once
-        if error.is_a?(Basecamp::AuthError) && error.http_status == 401 && retry_count < 1 && @token_refreshed
+        # 401 replay for callers that come here directly (mutations), which
+        # have no retry loop to own it. request_with_retry passes
+        # refresh_replay: false and replays from the loop so the extra request
+        # draws from the attempt budget (SPEC §4).
+        if refresh_replay && error.is_a?(Basecamp::AuthError) && error.http_status == 401 && retry_count < 1 \
+            && @token_refreshed
           @token_refreshed = false
           return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1,
-            allow_cross_origin: allow_cross_origin, accept: accept)
+            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: refresh_replay)
         end
 
         raise error
@@ -533,7 +552,10 @@ module Basecamp
       end
     end
 
-    def handle_error(error)
+    # refresh_on_401: false leaves the token alone — the caller (request_with_retry)
+    # owns the refresh so it can gate it on the attempt budget before spending a
+    # rotation. Classifying an error should not rotate credentials as a side effect.
+    def handle_error(error, refresh_on_401: true)
       status = error.response&.dig(:status)
       body = error.response&.dig(:body)
       headers = error.response&.dig(:headers) || {}
@@ -544,7 +566,7 @@ module Basecamp
       err = case status
       when 401
         # Try token refresh; flag for caller to retry
-        @token_refreshed = @token_provider&.refreshable? && @token_provider.refresh
+        @token_refreshed = refresh_on_401 && @token_provider&.refreshable? && @token_provider.refresh
         Basecamp::AuthError.new("Authentication failed")
       when 403
         Basecamp::ForbiddenError.new("Access denied")

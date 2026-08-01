@@ -163,6 +163,7 @@ class HttpClient:
         max_attempts = self._config.max_retries if self._config.max_retries > 0 else 1
         max_attempts = self._apply_operation_retry_max(operation, max_attempts)
         attempt = 0
+        refreshed_once = False
         last_error: BasecampError | None = None
 
         while True:
@@ -182,7 +183,24 @@ class HttpClient:
                     attempt=attempt,
                     allow_cross_origin=allow_cross_origin,
                     accept=accept,
+                    refresh_replay=False,
                 )
+            except AuthError as e:
+                # SPEC §4: the refresh replay is a request on the wire, so it
+                # spends an attempt from THIS budget rather than an uncounted
+                # one inside the single-request primitive. max_retries is a
+                # total attempt count (#461), and a cap of one means one
+                # request whatever would have caused the second.
+                #
+                # The budget is checked BEFORE refresh() so a rotation is never
+                # burned on an attempt the loop has no room to make.
+                if refreshed_once or e.http_status != 401 or attempt >= max_attempts:
+                    raise
+                tp = getattr(self._auth, "token_provider", None)
+                if not (tp and getattr(tp, "refreshable", False) and tp.refresh()):
+                    raise
+                refreshed_once = True
+                continue
             except (RateLimitError, NetworkError, ApiError) as e:
                 if not self._is_retryable_error(e, operation, retry_on=retry_on):
                     raise
@@ -218,6 +236,7 @@ class HttpClient:
         _retry_count: int = 0,
         allow_cross_origin: bool = False,
         accept: str | None = "application/json",
+        refresh_replay: bool = True,
     ) -> httpx.Response:
         if not allow_cross_origin and not (
             _security.is_localhost(url) or _security.same_origin(url, self._config.base_url)
@@ -247,8 +266,11 @@ class HttpClient:
 
             if response.status_code >= 400:
                 error = self._handle_error(response)
-                # 401 retry with token refresh
-                if isinstance(error, AuthError) and error.http_status == 401 and _retry_count < 1:
+                # 401 replay for callers that come here directly (mutations),
+                # which have no retry loop to own it. _request_with_retry
+                # passes refresh_replay=False and replays from the loop so the
+                # extra request draws from the attempt budget (SPEC §4).
+                if refresh_replay and isinstance(error, AuthError) and error.http_status == 401 and _retry_count < 1:
                     tp = getattr(self._auth, "token_provider", None)
                     if tp and getattr(tp, "refreshable", False) and tp.refresh():
                         return self._single_request(
@@ -263,6 +285,7 @@ class HttpClient:
                             _retry_count=_retry_count + 1,
                             allow_cross_origin=allow_cross_origin,
                             accept=accept,
+                            refresh_replay=refresh_replay,
                         )
                 raise error
 

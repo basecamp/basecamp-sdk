@@ -255,13 +255,35 @@ END
 ### 401 Refresh-and-Retry Algorithm
 
 1. Receive 401 response.
-2. If the token provider supports refresh (`refreshable() == true`) and refresh has not yet been attempted for this request:
+2. If the token provider supports refresh (`refreshable() == true`), refresh has not yet been attempted for this request, **and the attempt budget has another attempt left**:
    a. Call `refresh()`.
    b. If refresh succeeded, retry the request once with updated token.
    c. → response from retry.
 3. → `⊥ BasecampError(code: "auth_required", http_status: 401)`.
 
 Refresh is attempted at most once per request. Implementations track this with a boolean (e.g., `refresh_attempted`) rather than a counter.
+
+**The replay spends an attempt.** It puts a request on the wire, so it draws
+from the same total-attempt budget as a transient retry (§7): `max_retries`
+counts requests, not failure kinds, and a cap of one means one request no
+matter what would have caused the second. That is what makes §14's "disabling
+retry yields exactly ONE hop-1 attempt" literally true — refresh included —
+and it preserves the total-attempt semantics settled for observed attempts in
+#461.
+
+Step 2's budget gate is checked **before** `refresh()` is called, not after.
+Refreshing a token the SDK has no budget left to use would burn a rotation for
+nothing and still hand the caller the stale 401; declining to refresh at all is
+both cheaper and easier to reason about. The consequence is worth stating
+plainly: with a budget of one attempt, a refreshable 401 is NOT replayed and
+surfaces as `auth_required`. Callers who want the refresh replay must leave an
+attempt for it.
+
+This gate applies wherever a total-attempt budget governs the path. Go's
+hand-written mutation path has no such budget — mutations are deliberately
+single-attempt for transient failures — and keeps its documented
+mutation-specific single re-attempt after a successful refresh (see §7's
+Cross-SDK Divergence).
 
 ---
 

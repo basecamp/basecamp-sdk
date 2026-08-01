@@ -154,6 +154,61 @@ class HTTPTest < Minitest::Test
     assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
   end
 
+  # SPEC §4: the refresh replay is a request on the wire, so it spends an
+  # attempt from the same total-attempt budget as a transient retry (#565,
+  # #461). These pin the PLAIN GET path — the "every GET in Python and Ruby"
+  # case that an earlier, ungated attempt at this change regressed.
+  def test_401_refresh_replay_is_not_attempted_without_budget
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 1)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+
+    assert_raises(Basecamp::AuthError) { http.get("/test.json") }
+
+    # One request, and no rotation burned on an attempt the loop cannot make.
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 1)
+    assert_equal 0, provider.refresh_count
+  end
+
+  def test_401_refresh_replay_shares_the_budget_with_transient_retries
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 2,
+      base_delay: 0.001, max_jitter: 0.0)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+      .then.to_return(status: 503, body: '{"error": "Unavailable"}')
+
+    assert_raises(Basecamp::ApiError) { http.get("/test.json") }
+
+    # 401 (attempt 1, refresh) then 503 (attempt 2) exhausts the cap. Three
+    # requests would mean the replay rode outside it.
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+    assert_equal 1, provider.refresh_count
+  end
+
+  def test_401_refresh_replay_is_actually_sent_not_discarded
+    # The regression an ungated version caused: refresh, then rethrow the stale
+    # 401 without ever sending the refreshed request. A 200 body proves it went.
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 2)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+      .then.to_return(status: 200, body: '{"ok": true}')
+
+    response = http.get("/test.json")
+
+    assert_equal 200, response.status
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+    assert_equal 1, provider.refresh_count
+  end
+
   def test_401_no_retry_when_refresh_fails
     provider = RefreshableTokenProvider.new("old-token", refresh_result: false)
     http = Basecamp::Http.new(config: @config, token_provider: provider)
