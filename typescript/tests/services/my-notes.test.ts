@@ -83,10 +83,12 @@ describe("MyNotesService", () => {
       expect(note.content).toBe("<div>Updated</div>");
     });
 
-    it("surfaces 422 as BasecampError", async () => {
+    // my/notes_controller.rb:19 renders the field-keyed shape, which is what
+    // the operation now declares (FieldValidationError, not ValidationError).
+    it("surfaces a field-keyed 422 as BasecampError", async () => {
       server.use(
         http.put(`${BASE_URL}/my/notes.json`, () =>
-          HttpResponse.json({ error: "Unprocessable" }, { status: 422 })
+          HttpResponse.json({ errors: { content: ["can't be blank"] } }, { status: 422 })
         )
       );
 
@@ -95,6 +97,9 @@ describe("MyNotesService", () => {
         .catch((e: unknown) => e);
       expect(error).toBeInstanceOf(BasecampError);
       expect((error as BasecampError).httpStatus).toBe(422);
+      expect((error as BasecampError).code).toBe("validation");
+      expect((error as BasecampError).message).toBe("content: can't be blank");
+      expect({ ...(error as BasecampError).fieldErrors }).toEqual({ content: ["can't be blank"] });
     });
   });
 });

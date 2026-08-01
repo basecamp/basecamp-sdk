@@ -382,7 +382,7 @@ export function errorFromParsedBody(
 function parseFieldErrors(body: object): Record<string, string[]> | undefined {
   const errors = (body as { errors?: unknown }).errors;
   if (typeof errors !== "object" || errors === null || Array.isArray(errors)) {
-    return undefined;
+    return parseBareFieldErrors(body);
   }
   // Null prototype so an untrusted field name like "__proto__" becomes an
   // ordinary own property instead of invoking the legacy prototype setter
@@ -397,6 +397,32 @@ function parseFieldErrors(body: object): Record<string, string[]> | undefined {
     found = true;
   }
   return found ? fieldErrors : undefined;
+}
+
+/**
+ * Extracts an unwrapped field map — the `render json: @webhook.errors`
+ * rendering, where the whole body is `{"field": ["msg", ...]}`. The gate is
+ * all-or-nothing by design (SPEC §6 step 2): with no `errors` key to declare
+ * intent, only shape distinguishes a field map from any other JSON object, so
+ * a single non-conforming member means this is not one. Returns undefined
+ * unless every member is a non-empty array of non-empty strings.
+ */
+function parseBareFieldErrors(body: object): Record<string, string[]> | undefined {
+  if (Array.isArray(body)) return undefined;
+  if ("error" in body || "errors" in body || "message" in body) return undefined;
+
+  const entries = Object.entries(body);
+  if (entries.length === 0) return undefined;
+
+  // Null prototype, for the same reason as the wrapped map: field names are
+  // data, and "__proto__" must land as an ordinary own property.
+  const fieldErrors: Record<string, string[]> = Object.create(null);
+  for (const [field, value] of entries) {
+    if (!Array.isArray(value) || value.length === 0) return undefined;
+    if (!value.every((m) => typeof m === "string" && m.length > 0)) return undefined;
+    fieldErrors[field] = value as string[];
+  }
+  return fieldErrors;
 }
 
 /**
