@@ -2,8 +2,10 @@
 import Foundation
 
 public struct ListTodoOptions: Sendable {
+    /// active|archived|trashed
     public var status: String?
     public var completed: Bool?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

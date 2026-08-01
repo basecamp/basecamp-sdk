@@ -143,6 +143,15 @@ class PeopleService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListPeopleOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(options: PaginationOptions): ListResult<Person> =
+        list(ListPeopleOptions(maxItems = options.maxItems))
+
+    /**
      * Get a person by ID
      * @param personId The person ID
      */
@@ -246,6 +255,15 @@ class PeopleService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Person>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListProjectPeopleOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listForProject(projectId: Long, options: PaginationOptions): ListResult<Person> =
+        listForProject(projectId, ListProjectPeopleOptions(maxItems = options.maxItems))
 
     /**
      * Update project access (grant/revoke/create people)

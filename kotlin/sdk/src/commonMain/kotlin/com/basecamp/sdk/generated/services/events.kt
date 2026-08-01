@@ -35,4 +35,13 @@ class EventsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Event>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListEventsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(recordingId: Long, options: PaginationOptions): ListResult<Event> =
+        list(recordingId, ListEventsOptions(maxItems = options.maxItems))
 }

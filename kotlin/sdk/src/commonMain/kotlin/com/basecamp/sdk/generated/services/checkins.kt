@@ -36,6 +36,15 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [GetQuestionRemindersOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun reminders(options: PaginationOptions): ListResult<JsonElement> =
+        reminders(GetQuestionRemindersOptions(maxItems = options.maxItems))
+
+    /**
      * Get a single answer by id
      * @param answerId The answer ID
      */
@@ -120,6 +129,15 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Question>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListQuestionsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listQuestions(questionnaireId: Long, options: PaginationOptions): ListResult<Question> =
+        listQuestions(questionnaireId, ListQuestionsOptions(maxItems = options.maxItems))
 
     /**
      * Create a new question in a questionnaire
@@ -216,6 +234,15 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListAnswersOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listAnswers(questionId: Long, options: PaginationOptions): ListResult<Answer> =
+        listAnswers(questionId, ListAnswersOptions(maxItems = options.maxItems))
+
+    /**
      * Create a new answer for a question
      * @param questionId The question ID
      * @param body Request body
@@ -284,6 +311,15 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Answer>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [GetAnswersByPersonOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun byPerson(questionId: Long, personId: Long, options: PaginationOptions): ListResult<Answer> =
+        byPerson(questionId, personId, GetAnswersByPersonOptions(maxItems = options.maxItems))
 
     /**
      * Update notification settings for a check-in question

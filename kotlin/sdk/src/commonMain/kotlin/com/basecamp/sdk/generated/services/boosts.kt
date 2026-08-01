@@ -75,6 +75,15 @@ class BoostsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListRecordingBoostsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listForRecording(recordingId: Long, options: PaginationOptions): ListResult<Boost> =
+        listForRecording(recordingId, ListRecordingBoostsOptions(maxItems = options.maxItems))
+
+    /**
      * Create a boost on a recording
      * @param recordingId The recording ID
      * @param body Request body
@@ -121,6 +130,15 @@ class BoostsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Boost>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListEventBoostsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listForEvent(recordingId: Long, eventId: Long, options: PaginationOptions): ListResult<Boost> =
+        listForEvent(recordingId, eventId, ListEventBoostsOptions(maxItems = options.maxItems))
 
     /**
      * Create a boost on a specific event within a recording

@@ -2,6 +2,7 @@
 import Foundation
 
 public struct ListGaugeNeedlesGaugeOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -12,7 +13,9 @@ public struct ListGaugeNeedlesGaugeOptions: Sendable {
 }
 
 public struct ListGaugesGaugeOptions: Sendable {
+    /// Comma-separated list of project IDs. When provided, results are returned in the order specified instead of by risk level.
     public var bucketIds: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

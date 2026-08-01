@@ -8,7 +8,7 @@ module Basecamp
     class MyNotificationsService < BaseService
 
       # Get the current user's notification inbox (the "Hey!" menu).
-      # @param page [Integer, nil] Page number for paginating through read items. Defaults to 1.
+      # @param page [Integer, nil] Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param limit_bubble_ups [Boolean, nil] Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
       #   `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated
       #   bubble-ups endpoint (GetBubbleUps) to page through all current and
@@ -21,7 +21,7 @@ module Basecamp
       end
 
       # Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
-      # @param page [Integer, nil] Page number. Defaults to 1.
+      # @param page [Integer, nil] Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_bubble_ups(page: nil, max_items: nil)

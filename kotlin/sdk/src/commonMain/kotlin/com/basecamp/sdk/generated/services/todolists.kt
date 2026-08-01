@@ -103,6 +103,15 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListTodolistsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(todosetId: Long, options: PaginationOptions): ListResult<Todolist> =
+        list(todosetId, ListTodolistsOptions(maxItems = options.maxItems))
+
+    /**
      * Create a new todolist in a todoset
      * @param todosetId The todoset ID
      * @param body Request body

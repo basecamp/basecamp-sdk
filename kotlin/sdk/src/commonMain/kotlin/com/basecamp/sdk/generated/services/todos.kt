@@ -69,6 +69,15 @@ open class TodosService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListTodosOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(todolistId: Long, options: PaginationOptions): ListResult<Todo> =
+        list(todolistId, ListTodosOptions(maxItems = options.maxItems))
+
+    /**
      * Create a new todo in a todolist
      * @param todolistId The todolist ID
      * @param body Request body

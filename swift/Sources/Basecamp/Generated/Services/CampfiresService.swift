@@ -2,8 +2,11 @@
 import Foundation
 
 public struct ListLinesCampfireOptions: Sendable {
+    /// created_at|updated_at
     public var sort: String?
+    /// asc|desc
     public var direction: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -21,8 +24,11 @@ public struct ListLinesCampfireOptions: Sendable {
 }
 
 public struct ListUploadsCampfireOptions: Sendable {
+    /// created_at|updated_at
     public var sort: String?
+    /// asc|desc
     public var direction: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -40,6 +46,7 @@ public struct ListUploadsCampfireOptions: Sendable {
 }
 
 public struct ListCampfireOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

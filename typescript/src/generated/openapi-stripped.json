@@ -2981,10 +2981,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -3909,10 +3909,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4020,10 +4020,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4131,10 +4131,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4242,10 +4242,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4449,10 +4449,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4536,10 +4536,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -5201,10 +5201,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -5702,10 +5702,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -5898,10 +5898,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -6079,10 +6079,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -6265,10 +6265,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -6442,10 +6442,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -6619,10 +6619,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -7353,10 +7353,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -7440,10 +7440,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -7894,10 +7894,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -8278,10 +8278,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -8797,10 +8797,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -8983,10 +8983,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -9455,10 +9455,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -9542,10 +9542,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -10361,10 +10361,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -10444,10 +10444,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through read items. Defaults to 1.",
+            "description": "Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through read items. Defaults to 1.",
+              "description": "Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           },
@@ -10525,10 +10525,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number. Defaults to 1.",
+            "description": "Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number. Defaults to 1.",
+              "description": "Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -10689,10 +10689,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -11121,10 +11121,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -11358,10 +11358,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -11816,10 +11816,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -12021,10 +12021,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -12297,10 +12297,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -12422,10 +12422,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -12775,10 +12775,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -13152,10 +13152,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -13448,10 +13448,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -14328,10 +14328,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -14627,10 +14627,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -14822,10 +14822,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -14927,10 +14927,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -15815,10 +15815,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -16266,10 +16266,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -16353,10 +16353,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -16856,10 +16856,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -17423,10 +17423,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -17735,10 +17735,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -17902,10 +17902,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19091,10 +19091,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19302,10 +19302,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19512,10 +19512,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19623,10 +19623,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19734,10 +19734,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19941,10 +19941,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -20926,10 +20926,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -21571,10 +21571,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -21766,10 +21766,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -21961,10 +21961,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }

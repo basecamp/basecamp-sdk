@@ -57,6 +57,15 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListForwardRepliesOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listReplies(forwardId: Long, options: PaginationOptions): ListResult<ForwardReply> =
+        listReplies(forwardId, ListForwardRepliesOptions(maxItems = options.maxItems))
+
+    /**
      * Create a reply to a forward
      * @param forwardId The forward ID
      * @param body Request body
@@ -145,4 +154,13 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Forward>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListForwardsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(inboxId: Long, options: PaginationOptions): ListResult<Forward> =
+        list(inboxId, ListForwardsOptions(maxItems = options.maxItems))
 }

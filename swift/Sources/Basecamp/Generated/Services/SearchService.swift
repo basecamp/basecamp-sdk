@@ -2,12 +2,19 @@
 import Foundation
 
 public struct SearchSearchOptions: Sendable {
+    /// Recording types to include. Use `key` values from the metadata endpoint's `recording_search_types`. Available since Basecamp 5.
     public var typeNames: [String]?
+    /// Project IDs to filter by. Available since Basecamp 5.
     public var bucketIds: [Int]?
+    /// Creator person IDs to filter by. Available since Basecamp 5.
     public var creatorIds: [Int]?
+    /// Filter attachments by type. Use `key` values from the metadata endpoint's `file_search_types`.
     public var fileType: String?
+    /// Set to true to exclude chat results.
     public var excludeChat: Bool?
+    /// last_7_days|last_30_days|last_90_days|last_12_months|forever
     public var since: String?
+    /// best_match|recency
     public var sort: String?
     /// Deprecated: prefer type_names[].
     public var type: String?
@@ -15,6 +22,7 @@ public struct SearchSearchOptions: Sendable {
     public var bucketId: Int?
     /// Deprecated: prefer creator_ids[].
     public var creatorId: Int?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

@@ -17,6 +17,7 @@ data class UpdateAccountNameBody(
 
 /** Options for ListMyBookmarks. */
 data class ListMyBookmarksOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -25,6 +26,7 @@ data class ListMyBookmarksOptions(
 
 /** Options for ListRecordingBoosts. */
 data class ListRecordingBoostsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -38,6 +40,7 @@ data class CreateRecordingBoostBody(
 
 /** Options for ListEventBoosts. */
 data class ListEventBoostsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -56,6 +59,7 @@ data class UpdateCalendarBody(
 
 /** Options for ListCampfires. */
 data class ListCampfiresOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -76,8 +80,11 @@ data class UpdateChatbotBody(
 
 /** Options for ListCampfireLines. */
 data class ListCampfireLinesOptions(
+    /** created_at|updated_at */
     val sort: String? = null,
+    /** asc|desc */
     val direction: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -97,8 +104,11 @@ data class UpdateCampfireLineBody(
 
 /** Options for ListCampfireUploads. */
 data class ListCampfireUploadsOptions(
+    /** created_at|updated_at */
     val sort: String? = null,
+    /** asc|desc */
     val direction: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -170,6 +180,7 @@ data class MoveCardBody(
 
 /** Options for ListCards. */
 data class ListCardsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -186,6 +197,7 @@ data class CreateCardBody(
 
 /** Options for GetQuestionReminders. */
 data class GetQuestionRemindersOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -200,6 +212,7 @@ data class UpdateAnswerBody(
 
 /** Options for ListQuestions. */
 data class ListQuestionsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -222,6 +235,7 @@ data class UpdateQuestionBody(
 
 /** Options for ListAnswers. */
 data class ListAnswersOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -236,6 +250,7 @@ data class CreateAnswerBody(
 
 /** Options for GetAnswersByPerson. */
 data class GetAnswersByPersonOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -250,8 +265,11 @@ data class UpdateQuestionNotificationSettingsBody(
 
 /** Options for ListClientApprovals. */
 data class ListClientApprovalsOptions(
+    /** created_at|updated_at */
     val sort: String? = null,
+    /** asc|desc */
     val direction: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -260,8 +278,11 @@ data class ListClientApprovalsOptions(
 
 /** Options for ListClientCorrespondences. */
 data class ListClientCorrespondencesOptions(
+    /** created_at|updated_at */
     val sort: String? = null,
+    /** asc|desc */
     val direction: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -270,6 +291,7 @@ data class ListClientCorrespondencesOptions(
 
 /** Options for ListClientReplies. */
 data class ListClientRepliesOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -288,6 +310,7 @@ data class UpdateCommentBody(
 
 /** Options for ListComments. */
 data class ListCommentsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -307,6 +330,7 @@ data class UpdateDocumentBody(
 
 /** Options for ListDocuments. */
 data class ListDocumentsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -324,6 +348,7 @@ data class CreateDocumentBody(
 
 /** Options for ListMyDrafts. */
 data class ListMyDraftsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -332,6 +357,7 @@ data class ListMyDraftsOptions(
 
 /** Options for ListEvents. */
 data class ListEventsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -340,8 +366,11 @@ data class ListEventsOptions(
 
 /** Options for GetEverythingCompletedCards. */
 data class GetEverythingCompletedCardsOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -350,8 +379,11 @@ data class GetEverythingCompletedCardsOptions(
 
 /** Options for GetEverythingNoDueDateCards. */
 data class GetEverythingNoDueDateCardsOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -360,8 +392,11 @@ data class GetEverythingNoDueDateCardsOptions(
 
 /** Options for GetEverythingNotNowCards. */
 data class GetEverythingNotNowCardsOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -370,8 +405,11 @@ data class GetEverythingNotNowCardsOptions(
 
 /** Options for GetEverythingOpenCards. */
 data class GetEverythingOpenCardsOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -380,15 +418,20 @@ data class GetEverythingOpenCardsOptions(
 
 /** Options for GetEverythingOverdueCards. */
 data class GetEverythingOverdueCardsOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null
 ) {
 }
 
 /** Options for GetEverythingUnassignedCards. */
 data class GetEverythingUnassignedCardsOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -397,6 +440,7 @@ data class GetEverythingUnassignedCardsOptions(
 
 /** Options for GetEverythingCheckins. */
 data class GetEverythingCheckinsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -405,6 +449,7 @@ data class GetEverythingCheckinsOptions(
 
 /** Options for GetEverythingComments. */
 data class GetEverythingCommentsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -413,8 +458,11 @@ data class GetEverythingCommentsOptions(
 
 /** Options for GetEverythingFiles. */
 data class GetEverythingFilesOptions(
+    /** Filter by file kind: all (default), images, pdfs, documents, or videos. */
     val kind: String? = null,
+    /** Restrict to files created by the given people (repeatable). */
     val peopleIds: List<Long>? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -423,6 +471,7 @@ data class GetEverythingFilesOptions(
 
 /** Options for GetEverythingForwards. */
 data class GetEverythingForwardsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -431,6 +480,7 @@ data class GetEverythingForwardsOptions(
 
 /** Options for GetEverythingMessages. */
 data class GetEverythingMessagesOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -439,8 +489,11 @@ data class GetEverythingMessagesOptions(
 
 /** Options for GetEverythingCompletedTodos. */
 data class GetEverythingCompletedTodosOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -449,8 +502,11 @@ data class GetEverythingCompletedTodosOptions(
 
 /** Options for GetEverythingNoDueDateTodos. */
 data class GetEverythingNoDueDateTodosOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -459,8 +515,11 @@ data class GetEverythingNoDueDateTodosOptions(
 
 /** Options for GetEverythingOpenTodos. */
 data class GetEverythingOpenTodosOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -469,15 +528,20 @@ data class GetEverythingOpenTodosOptions(
 
 /** Options for GetEverythingOverdueTodos. */
 data class GetEverythingOverdueTodosOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null
 ) {
 }
 
 /** Options for GetEverythingUnassignedTodos. */
 data class GetEverythingUnassignedTodosOptions(
+    /** Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered. */
     val assigneeIds: List<Long>? = null,
+    /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -486,6 +550,7 @@ data class GetEverythingUnassignedTodosOptions(
 
 /** Options for ListForwardReplies. */
 data class ListForwardRepliesOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -499,8 +564,11 @@ data class CreateForwardReplyBody(
 
 /** Options for ListForwards. */
 data class ListForwardsOptions(
+    /** created_at|updated_at */
     val sort: String? = null,
+    /** asc|desc */
     val direction: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -519,6 +587,7 @@ data class ToggleGaugeBody(
 
 /** Options for ListGaugeNeedles. */
 data class ListGaugeNeedlesOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -534,7 +603,9 @@ data class CreateGaugeNeedleBody(
 
 /** Options for ListGauges. */
 data class ListGaugesOptions(
+    /** Comma-separated list of project IDs. When provided, results are returned in the order specified instead of by risk level. */
     val bucketIds: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -573,8 +644,11 @@ data class UpdateMessageTypeBody(
 
 /** Options for ListMessages. */
 data class ListMessagesOptions(
+    /** created_at|updated_at */
     val sort: String? = null,
+    /** asc|desc */
     val direction: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -601,6 +675,7 @@ data class UpdateMessageBody(
 
 /** Options for GetMyDueAssignments. */
 data class GetMyDueAssignmentsOptions(
+    /** Filter by due date range: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later */
     val scope: String? = null
 ) {
 }
@@ -623,13 +698,16 @@ data class UpdateMyNoteBody(
 
 /** Options for GetMyNotifications. */
 data class GetMyNotificationsOptions(
+    /** Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
+    /** Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated bubble-ups endpoint (GetBubbleUps) to page through all current and scheduled bubble-ups. */
     val limitBubbleUps: Boolean? = null
 ) {
 }
 
 /** Options for GetBubbleUps. */
 data class GetBubbleUpsOptions(
+    /** Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -660,6 +738,7 @@ data class UpdateMyProfileBody(
 
 /** Options for ListPeople. */
 data class ListPeopleOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -673,6 +752,7 @@ data class EnableOutOfOfficeBody(
 
 /** Options for ListProjectPeople. */
 data class ListProjectPeopleOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -688,7 +768,9 @@ data class UpdateProjectAccessBody(
 
 /** Options for ListProjects. */
 data class ListProjectsOptions(
+    /** active|archived|trashed */
     val status: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -712,9 +794,13 @@ data class UpdateProjectBody(
 /** Options for ListRecordings. */
 data class ListRecordingsOptions(
     val bucket: String? = null,
+    /** active|archived|trashed */
     val status: String? = null,
+    /** created_at|updated_at */
     val sort: String? = null,
+    /** asc|desc */
     val direction: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -723,6 +809,7 @@ data class ListRecordingsOptions(
 
 /** Options for GetProgressReport. */
 data class GetProgressReportOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -738,12 +825,14 @@ data class GetUpcomingScheduleOptions(
 
 /** Options for GetAssignedTodos. */
 data class GetAssignedTodosOptions(
+    /** Group by "bucket" or "date" */
     val groupBy: String? = null
 ) {
 }
 
 /** Options for GetPersonProgress. */
 data class GetPersonProgressOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -768,7 +857,9 @@ data class UpdateScheduleSettingsBody(
 
 /** Options for ListScheduleEntries. */
 data class ListScheduleEntriesOptions(
+    /** active|archived|trashed */
     val status: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -790,12 +881,19 @@ data class CreateScheduleEntryBody(
 
 /** Options for Search. */
 data class SearchOptions(
+    /** Recording types to include. Use `key` values from the metadata endpoint's `recording_search_types`. Available since Basecamp 5. */
     val typeNames: List<String>? = null,
+    /** Project IDs to filter by. Available since Basecamp 5. */
     val bucketIds: List<Long>? = null,
+    /** Creator person IDs to filter by. Available since Basecamp 5. */
     val creatorIds: List<Long>? = null,
+    /** Filter attachments by type. Use `key` values from the metadata endpoint's `file_search_types`. */
     val fileType: String? = null,
+    /** Set to true to exclude chat results. */
     val excludeChat: Boolean? = null,
+    /** last_7_days|last_30_days|last_90_days|last_12_months|forever */
     val since: String? = null,
+    /** best_match|recency */
     val sort: String? = null,
     @Deprecated("prefer type_names[].")
     val type: String? = null,
@@ -803,6 +901,7 @@ data class SearchOptions(
     val bucketId: Long? = null,
     @Deprecated("prefer creator_ids[].")
     val creatorId: Long? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -817,7 +916,9 @@ data class UpdateSubscriptionBody(
 
 /** Options for ListTemplates. */
 data class ListTemplatesOptions(
+    /** active|archived|trashed */
     val status: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -843,6 +944,7 @@ data class CreateProjectFromTemplateBody(
 
 /** Options for GetProjectTimeline. */
 data class GetProjectTimelineOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -854,6 +956,7 @@ data class GetProjectTimesheetOptions(
     val from: String? = null,
     val to: String? = null,
     val personId: Long? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -865,6 +968,7 @@ data class GetRecordingTimesheetOptions(
     val from: String? = null,
     val to: String? = null,
     val personId: Long? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -902,6 +1006,7 @@ data class RepositionTodolistGroupBody(
 
 /** Options for ListTodolistGroups. */
 data class ListTodolistGroupsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -926,7 +1031,9 @@ data class RepositionTodolistBody(
 
 /** Options for ListTodolists. */
 data class ListTodolistsOptions(
+    /** active|archived|trashed */
     val status: String? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -953,8 +1060,10 @@ data class CreateTodosetTodoBody(
 
 /** Options for ListTodos. */
 data class ListTodosOptions(
+    /** active|archived|trashed */
     val status: String? = null,
     val completed: Boolean? = null,
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -1014,6 +1123,7 @@ data class UpdateUploadBody(
 
 /** Options for ListUploads. */
 data class ListUploadsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -1036,6 +1146,7 @@ data class UpdateVaultBody(
 
 /** Options for ListVaults. */
 data class ListVaultsOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {

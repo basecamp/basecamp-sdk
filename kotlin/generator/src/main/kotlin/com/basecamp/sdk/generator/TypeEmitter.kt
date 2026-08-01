@@ -101,7 +101,19 @@ class TypeEmitter {
             // VALUE_PARAMETER), so the named-constructor-arg call site stays
             // unflagged — documented as unsupported, parallel to Swift.
             val annotation = if (q.deprecated) "    @Deprecated(${kotlinStringLiteral(q.deprecationReason ?: "deprecated")})\n" else ""
-            lines += "$annotation    val $camelName: ${q.type}? = null"
+            // Surface the OpenAPI parameter description as KDoc so IDE
+            // QuickHelp shows it — the options class is the only place a
+            // caller meets these parameters.
+            // Collapse spec line wrapping, and defuse any "*/" so a
+            // description cannot terminate the KDoc block early.
+            // A deprecated param's description IS its deprecation notice
+            // upstream; the @Deprecated annotation already carries it, so
+            // emitting KDoc too would just say it twice.
+            val doc = q.description?.takeIf { it.isNotBlank() && !q.deprecated }
+                ?.replace(Regex("\\s+"), " ")
+                ?.replace("*/", "* /")
+                ?.let { "    /** $it */\n" } ?: ""
+            lines += "$doc$annotation    val $camelName: ${q.type}? = null"
         }
         if (hasPagination) {
             lines += "    val maxItems: Int? = null"

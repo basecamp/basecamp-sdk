@@ -10,7 +10,7 @@ module Basecamp
     class CampfiresService < BaseService
 
       # List all campfires across the account
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def list(page: nil, max_items: nil)
@@ -87,7 +87,7 @@ module Basecamp
       # @param campfire_id [Integer] campfire id ID
       # @param sort [String, nil] created_at|updated_at
       # @param direction [String, nil] asc|desc
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def list_lines(campfire_id:, sort: nil, direction: nil, page: nil, max_items: nil)
@@ -145,7 +145,7 @@ module Basecamp
       # @param campfire_id [Integer] campfire id ID
       # @param sort [String, nil] created_at|updated_at
       # @param direction [String, nil] asc|desc
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def list_uploads(campfire_id:, sort: nil, direction: nil, page: nil, max_items: nil)

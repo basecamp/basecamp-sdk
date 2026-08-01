@@ -31,7 +31,7 @@ export interface UpdateDocumentRequest {
  * Options for list.
  */
 export interface ListDocumentOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. */
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
   page?: number;
 }
 

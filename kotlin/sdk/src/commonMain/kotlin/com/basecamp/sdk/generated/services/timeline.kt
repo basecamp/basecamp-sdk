@@ -35,4 +35,13 @@ class TimelineService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<TimelineEvent>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [GetProjectTimelineOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun projectTimeline(projectId: Long, options: PaginationOptions): ListResult<TimelineEvent> =
+        projectTimeline(projectId, GetProjectTimelineOptions(maxItems = options.maxItems))
 }

@@ -3,9 +3,13 @@ import Foundation
 
 public struct ListRecordingOptions: Sendable {
     public var bucket: String?
+    /// active|archived|trashed
     public var status: String?
+    /// created_at|updated_at
     public var sort: String?
+    /// asc|desc
     public var direction: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

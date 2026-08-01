@@ -36,6 +36,15 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListCampfiresOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(options: PaginationOptions): ListResult<Campfire> =
+        list(ListCampfiresOptions(maxItems = options.maxItems))
+
+    /**
      * Get a campfire by ID
      * @param campfireId The campfire ID
      */
@@ -192,6 +201,15 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListCampfireLinesOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listLines(campfireId: Long, options: PaginationOptions): ListResult<CampfireLine> =
+        listLines(campfireId, ListCampfireLinesOptions(maxItems = options.maxItems))
+
+    /**
      * Create a new line (message) in a campfire
      * @param campfireId The campfire ID
      * @param body Request body
@@ -302,6 +320,15 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<CampfireLine>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListCampfireUploadsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listUploads(campfireId: Long, options: PaginationOptions): ListResult<CampfireLine> =
+        listUploads(campfireId, ListCampfireUploadsOptions(maxItems = options.maxItems))
 
     /**
      * Upload a file to a campfire

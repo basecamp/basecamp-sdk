@@ -207,6 +207,50 @@ class ServiceEmitter(private val api: OpenApiParser) {
 
         sb.appendLine("    }")
 
+        sb.append(generatePaginationOptionsOverload(op, returnType))
+
+        return sb.toString()
+    }
+
+    /**
+     * Emits a source-compatibility overload accepting bare PaginationOptions.
+     *
+     * A paginated operation that gains its first optional query param moves from
+     * `options: PaginationOptions?` to `options: <Operation>Options?`. That is a
+     * source break for callers already passing `PaginationOptions(maxItems = ...)`,
+     * which the pre-1.0 policy in kotlin/README.md forbids: public APIs evolve
+     * append-only. The overload takes PaginationOptions without a default so a
+     * bare `list(id)` call still resolves unambiguously to the primary method.
+     */
+    private fun generatePaginationOptionsOverload(op: ParsedOperation, returnType: String): String {
+        val hasOptionalQuery = op.queryParams.any { !it.required }
+        val hasPagination = op.hasPagination && op.returnsArray
+        val isWrappedPaginated = op.hasPagination && op.paginationKey != null && !op.returnsArray
+        if (!hasOptionalQuery || !(hasPagination || isWrappedPaginated)) return ""
+
+        val optionsClassName = "${op.operationId}Options"
+        val leading = mutableListOf<String>()
+        for (p in op.pathParams) {
+            leading += p.name.snakeToCamelCase()
+        }
+        for (q in op.queryParams.filter { it.required }) {
+            leading += q.name.snakeToCamelCase()
+        }
+        val declared = buildParams(op).split(", ").filter { it.isNotEmpty() }
+        // Reuse the primary signature minus its trailing options parameter.
+        val paramDecls = declared.dropLast(1) + "options: PaginationOptions"
+        val forwarded = (leading + "$optionsClassName(maxItems = options.maxItems)").joinToString(", ")
+
+        val sb = StringBuilder()
+        sb.appendLine()
+        sb.appendLine("    /**")
+        sb.appendLine("     * Source-compatibility overload: accepts bare [PaginationOptions].")
+        sb.appendLine("     *")
+        sb.appendLine("     * Prefer [$optionsClassName], which also carries this operation's query")
+        sb.appendLine("     * parameters. This overload forwards maxItems and leaves them unset.")
+        sb.appendLine("     */")
+        sb.appendLine("    suspend fun ${op.methodName}(${paramDecls.joinToString(", ")}): $returnType =")
+        sb.appendLine("        ${op.methodName}($forwarded)")
         return sb.toString()
     }
 

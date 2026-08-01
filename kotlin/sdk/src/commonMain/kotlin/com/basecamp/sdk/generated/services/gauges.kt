@@ -119,6 +119,15 @@ class GaugesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListGaugeNeedlesOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listGaugeNeedles(projectId: Long, options: PaginationOptions): ListResult<JsonElement> =
+        listGaugeNeedles(projectId, ListGaugeNeedlesOptions(maxItems = options.maxItems))
+
+    /**
      * Create a gauge needle (progress update) for a project
      * @param projectId The project ID
      * @param body Request body
@@ -166,4 +175,13 @@ class GaugesService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<JsonElement>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListGaugesOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listGauges(options: PaginationOptions): ListResult<JsonElement> =
+        listGauges(ListGaugesOptions(maxItems = options.maxItems))
 }

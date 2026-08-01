@@ -36,6 +36,15 @@ class BookmarksService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListMyBookmarksOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listMyBookmarks(options: PaginationOptions): ListResult<Bookmark> =
+        listMyBookmarks(ListMyBookmarksOptions(maxItems = options.maxItems))
+
+    /**
      * Report whether the current user has bookmarked the recording.
      * @param recordingId The recording ID
      */

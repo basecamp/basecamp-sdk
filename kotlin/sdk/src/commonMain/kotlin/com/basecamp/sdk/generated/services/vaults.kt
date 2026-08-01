@@ -80,6 +80,15 @@ class VaultsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListVaultsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(vaultId: Long, options: PaginationOptions): ListResult<Vault> =
+        list(vaultId, ListVaultsOptions(maxItems = options.maxItems))
+
+    /**
      * Create a new vault (subfolder) in a vault
      * @param vaultId The vault ID
      * @param body Request body

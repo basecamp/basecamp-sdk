@@ -80,6 +80,15 @@ class CommentsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListCommentsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(recordingId: Long, options: PaginationOptions): ListResult<Comment> =
+        list(recordingId, ListCommentsOptions(maxItems = options.maxItems))
+
+    /**
      * Create a new comment on a recording
      * @param recordingId The recording ID
      * @param body Request body

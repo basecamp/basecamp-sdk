@@ -38,6 +38,15 @@ class ClientApprovalsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListClientApprovalsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(options: PaginationOptions): ListResult<ClientApproval> =
+        list(ListClientApprovalsOptions(maxItems = options.maxItems))
+
+    /**
      * Get a single client approval by id
      * @param approvalId The approval ID
      */

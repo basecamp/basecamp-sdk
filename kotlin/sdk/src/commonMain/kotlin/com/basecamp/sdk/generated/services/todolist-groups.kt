@@ -58,6 +58,15 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListTodolistGroupsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(todolistId: Long, options: PaginationOptions): ListResult<TodolistGroup> =
+        list(todolistId, ListTodolistGroupsOptions(maxItems = options.maxItems))
+
+    /**
      * Create a new group in a todolist
      * @param todolistId The todolist ID
      * @param body Request body

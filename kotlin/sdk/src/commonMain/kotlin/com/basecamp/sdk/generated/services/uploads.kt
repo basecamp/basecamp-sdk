@@ -102,6 +102,15 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListUploadsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(vaultId: Long, options: PaginationOptions): ListResult<Upload> =
+        list(vaultId, ListUploadsOptions(maxItems = options.maxItems))
+
+    /**
      * Create a new upload in a vault
      * @param vaultId The vault ID
      * @param body Request body

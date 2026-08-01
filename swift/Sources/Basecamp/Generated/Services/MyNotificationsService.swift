@@ -2,6 +2,7 @@
 import Foundation
 
 public struct BubbleUpsMyNotificationOptions: Sendable {
+    /// Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -12,7 +13,9 @@ public struct BubbleUpsMyNotificationOptions: Sendable {
 }
 
 public struct MyNotificationsMyNotificationOptions: Sendable {
+    /// Page number for paginating through read items. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
+    /// Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated bubble-ups endpoint (GetBubbleUps) to page through all current and scheduled bubble-ups.
     public var limitBubbleUps: Bool?
 
     public init(page: Int? = nil, limitBubbleUps: Bool? = nil) {

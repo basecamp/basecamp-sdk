@@ -34,4 +34,13 @@ class DraftsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Draft>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListMyDraftsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun listMyDrafts(options: PaginationOptions): ListResult<Draft> =
+        listMyDrafts(ListMyDraftsOptions(maxItems = options.maxItems))
 }

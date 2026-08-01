@@ -37,6 +37,15 @@ class ClientRepliesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListClientRepliesOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(recordingId: Long, options: PaginationOptions): ListResult<ClientReply> =
+        list(recordingId, ListClientRepliesOptions(maxItems = options.maxItems))
+
+    /**
      * Get a single client reply by id
      * @param recordingId The recording ID
      * @param replyId The reply ID

@@ -44,6 +44,15 @@ class ReportsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [GetProgressReportOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun progress(options: PaginationOptions): ListResult<TimelineEvent> =
+        progress(GetProgressReportOptions(maxItems = options.maxItems))
+
+    /**
      * Get upcoming schedule entries and assignable items within a date window.
      * @param options Optional query parameters and pagination control
      */
@@ -139,4 +148,13 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             person = json.decodeFromJsonElement<Person>(wrapper["person"]!!)
         )
     }
+
+    /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [GetPersonProgressOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun personProgress(personId: Long, options: PaginationOptions): PersonProgressResult =
+        personProgress(personId, GetPersonProgressOptions(maxItems = options.maxItems))
 }

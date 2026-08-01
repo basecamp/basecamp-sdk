@@ -105,6 +105,15 @@ open class CardsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Source-compatibility overload: accepts bare [PaginationOptions].
+     *
+     * Prefer [ListCardsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     */
+    suspend fun list(columnId: Long, options: PaginationOptions): ListResult<Card> =
+        list(columnId, ListCardsOptions(maxItems = options.maxItems))
+
+    /**
      * Create a card in a column
      * @param columnId The column ID
      * @param body Request body
