@@ -306,3 +306,18 @@ func TestWebhookEvent_PointerZeroSurvives_RecordingZeroOmitted(t *testing.T) {
 			"a zero must stay omitted rather than emitting a year-1 timestamp, got %q", ev.Recording.CreatedAt)
 	}
 }
+
+// The canonical events fixture emits "details": {} for an event with no
+// membership changes. Requiring a non-nil member mapped that present-empty
+// object to nil, so callers could not tell "no changes recorded" from
+// "this event carries no details at all".
+func TestEventFromGenerated_PresentEmptyDetailsSurvives(t *testing.T) {
+	e := eventFromGenerated(generated.Event{Details: &generated.EventDetails{}})
+	if e.Details == nil {
+		t.Error("a present but empty details object must survive as non-nil")
+	}
+
+	if absent := eventFromGenerated(generated.Event{}); absent.Details != nil {
+		t.Error("an absent details object must stay nil")
+	}
+}

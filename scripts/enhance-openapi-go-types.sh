@@ -173,15 +173,10 @@ walk(
 #     nothing depends on that distinction today; a future one would need a
 #     different representation (a wrapper type with an explicit presence flag),
 #     not this pass.
-( .components.schemas ) as $all
-# Seeds are the schemas actually referenced by an operation requestBody —
-# NOT the ones whose name ends in RequestContent. Four request-body roots
-# (CreateAttachmentInputPayload, CreateCampfireUploadInputPayload,
-# QuestionAnswerPayload, QuestionAnswerUpdatePayload) carry no such suffix and
-# are unreachable from any schema that does, so a name-derived seed would
-# classify them response-only and make a future optional array on them
-# unsendable-empty. Derive the seed from the spec, not from a naming habit.
-| ( $request_reachable ) as $reachable_names
+# $request_reachable is computed once in the shell above (see the preamble for
+# why the seed comes from the operations rather than a name convention) and
+# injected with --argjson.
+( $request_reachable ) as $reachable_names
 |
 .components.schemas |= with_entries(
   # NOTE: bind the key before the membership test — `index(.key)` would

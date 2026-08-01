@@ -163,7 +163,10 @@ func eventFromGenerated(ge generated.Event) Event {
 	}
 
 	// Convert details
-	if ge.Details != nil && (ge.Details.AddedPersonIds != nil || ge.Details.RemovedPersonIds != nil || ge.Details.NotifiedRecipientIds != nil) {
+	// Presence is the pointer. The canonical fixture emits "details": {} for
+	// events with no membership changes, and requiring a non-nil member mapped
+	// that present-empty object to nil.
+	if ge.Details != nil {
 		e.Details = &EventDetails{
 			AddedPersonIDs:       ge.Details.AddedPersonIds,
 			RemovedPersonIDs:     ge.Details.RemovedPersonIds,
