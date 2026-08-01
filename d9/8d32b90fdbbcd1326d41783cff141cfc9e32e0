@@ -1,0 +1,35 @@
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_555508c40a7b3b::t_c3631aa0642d49 131
+  s_555508c40a7b3b::t_9b7b4e583533ac 120
+SPEC.md
+  s_555508c40a7b3b::t_3b414596ebe347 1563
+  s_555508c40a7b3b::t_994597d305620a 1684
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/UploadsService.kt
+  s_555508c40a7b3b::t_123e067feade77 1-43
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_555508c40a7b3b::t_6a1b7f2ffe2d29 531-533,535-547
+  s_555508c40a7b3b::t_dc3f62c5de2f25 1030-1044
+  s_555508c40a7b3b::t_44de6c7916ae1f 22-23
+conformance/tests/uploads_download.json
+  s_555508c40a7b3b::t_882c03a4841a22 10,31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt
+  s_555508c40a7b3b::t_f39bb638637890 199-200
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/uploads.kt
+  s_555508c40a7b3b::t_9192c84389226f 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "d98d32b90fdbbcd1326d41783cff141cfc9e32e0",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
