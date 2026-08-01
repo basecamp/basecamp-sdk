@@ -1,0 +1,59 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Guard: every optional field in the generated Go client can represent
+# absence (SPEC.md §10 Optional Fields — no zero-value sentinels).
+#
+# An optional field is one tagged `,omitempty`. It satisfies the invariant
+# when its Go type can be nil:
+#   * pointers   (*T)                — the default for optionals
+#   * slices     ([]T)               — kept native via the enhance-script pass
+#   * maps       (map[K]V)
+#   * interfaces (interface{}, any)  — e.g. ValidationError.Details, where
+#                                      oapi-codegen never emits *interface{}
+#
+# Every other type is a VALUE type (string/bool/numerics, time.Time,
+# types.Date, named structs, …) whose zero value would stand in for absence —
+# that is the violation this guard exists to catch. There is deliberately no
+# waiver list: the type classifier IS the policy.
+#
+# Usage: scripts/check-go-optional-pointers [path-to-client.gen.go]
+
+path = ARGV[0] || File.expand_path("../go/pkg/generated/client.gen.go", __dir__)
+abort "check-go-optional-pointers: #{path} not found" unless File.exist?(path)
+
+NIL_CAPABLE = %r{\A(\*|\[\]|map\[)|\A(interface\{\}|any)\z}
+
+violations = []
+stats = Hash.new(0)
+
+File.foreach(path).with_index(1) do |line, lineno|
+  # Struct field with a json tag carrying omitempty:
+  #   \tFieldName Type `json:"name,omitempty"`
+  next unless (m = line.match(/\A\t(\w+)\s+(\S+)\s+`json:"[^"]*,omitempty[^"]*"`/))
+
+  name, type = m[1], m[2]
+  kind =
+    case type
+    when /\A\*/ then :pointer
+    when /\A\[\]/ then :slice
+    when /\Amap\[/ then :map
+    when "interface{}", "any" then :interface
+    else :value
+    end
+  stats[kind] += 1
+  violations << "#{path}:#{lineno}: #{name} #{type}" if kind == :value
+end
+
+total = stats.values.sum
+abort "check-go-optional-pointers: parsed zero omitempty fields from #{path} — pattern drift?" if total.zero?
+
+if violations.any?
+  warn "check-go-optional-pointers: #{violations.size} optional field(s) cannot represent absence (non-pointer value type with omitempty):"
+  violations.each { |v| warn "  #{v}" }
+  warn "Fix the generator/enhance pass — do not add a waiver (SPEC.md §10)."
+  exit 1
+end
+
+puts "check-go-optional-pointers: #{total} optional fields OK " \
+     "(#{stats[:pointer]} pointer, #{stats[:slice]} slice, #{stats[:map]} map, #{stats[:interface]} interface)"

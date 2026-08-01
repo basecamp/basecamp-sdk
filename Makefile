@@ -817,7 +817,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars check-fixture-coverage check-idempotency-parity check-retry-metadata-parity
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers check-fixture-coverage check-idempotency-parity check-retry-metadata-parity
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -857,6 +857,13 @@ check-fixture-coverage:
 kt-check-optional-arrays-and-scalars:
 	@./scripts/check-kotlin-optional-arrays-and-scalars.sh
 
+# Verify every optional (omitempty) field in the generated Go client can
+# represent absence: pointer, slice, map, or interface — no value-typed
+# zero-value sentinels (SPEC.md §10). No waiver list; the type classifier is
+# the policy. Pins the #436 fix.
+go-check-optional-pointers:
+	@./scripts/check-go-optional-pointers
+
 # Verify idempotency classification is identical across all six SDKs and matches
 # behavior-model.json (the naturally-idempotent mutations; Go additionally folds
 # in the read-only ops). Bash+jq — runs anywhere, enforced in CI.
@@ -891,7 +898,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars check-idempotency-parity check-retry-metadata-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers check-idempotency-parity check-retry-metadata-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
