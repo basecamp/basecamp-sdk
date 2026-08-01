@@ -368,6 +368,76 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
         XCTAssertNil(result.group, "only one arm is populated")
     }
 
+    /// A malformed todolist must surface its real decoding error, not be
+    /// laundered into the narrower arm.
+    ///
+    /// TodolistGroup's property set is a strict subset of Todolist's — it has
+    /// zero exclusive keys, and `description_attachments` is required on
+    /// Todolist alone. So a body that IS a todolist but carries one malformed
+    /// todolist-only field fails the todolist arm and then decodes *cleanly* as
+    /// a group, which simply ignores the bad key. Without the guard the caller
+    /// gets a successful `.group` with the description silently discarded —
+    /// the same swallow-and-report-success shape as the original union defect.
+    func testUnionSurfacesAMalformedTodolistRatherThanFallingBackToGroup() async throws {
+        var malformed = flatTodolistJSON()
+        malformed["description_attachments"] = "not-an-array"
+        let data = try JSONSerialization.data(withJSONObject: malformed)
+        let transport = MockTransport(
+            statusCode: 200, data: data, headers: ["Content-Type": "application/json"])
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            let result = try await account.todolists.get(id: 2)
+            XCTFail(
+                "expected the todolist arm's decoding error to surface, got "
+                    + "todolist=\(String(describing: result.todolist)) "
+                    + "group=\(String(describing: result.group))")
+        } catch let error as DecodingError {
+            guard case .typeMismatch(_, let context) = error else {
+                return XCTFail("expected DecodingError.typeMismatch, got \(error)")
+            }
+            // camelCase because BaseService.decoder applies .convertFromSnakeCase.
+            XCTAssertEqual(
+                context.codingPath.last?.stringValue, "descriptionAttachments",
+                "the error must name the field that actually failed")
+        }
+    }
+
+    /// The masking guard must match on multi-word keys, not just single-word
+    /// ones that happen to survive snake_case conversion unchanged.
+    ///
+    /// `BaseService.decoder` sets `.convertFromSnakeCase`, so the raw wire keys
+    /// arrive at the guard already camelCased. An earlier version of this guard
+    /// listed only the wire spelling and passed this file solely because
+    /// `description` is one word — every multi-word key silently failed to
+    /// match. Here the only todolist-exclusive key in the body is `groups_url`,
+    /// so the guard has to handle the converted spelling to fire at all.
+    func testUnionMaskingGuardMatchesMultiWordKeys() async throws {
+        var malformed = flatTodolistJSON()
+        // Drop the one single-word exclusive key, so `description_attachments`
+        // and `groups_url` — both multi-word, both arriving camelCased — are
+        // the only things the guard can match on.
+        malformed.removeValue(forKey: "description")
+        malformed["groups_url"] = 12345  // wrong type; String expected
+
+        let data = try JSONSerialization.data(withJSONObject: malformed)
+        let transport = MockTransport(
+            statusCode: 200, data: data, headers: ["Content-Type": "application/json"])
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            let result = try await account.todolists.get(id: 2)
+            XCTFail(
+                "the group arm must not absorb a todolist carrying groups_url, got "
+                    + "group=\(String(describing: result.group))")
+        } catch let error as DecodingError {
+            guard case .typeMismatch(_, let context) = error else {
+                return XCTFail("expected DecodingError.typeMismatch, got \(error)")
+            }
+            XCTAssertEqual(context.codingPath.last?.stringValue, "groupsUrl")
+        }
+    }
+
     /// The `{"todolist": {...}}` envelope the spec models still decodes, so the
     /// flat-body support is an addition rather than a swap.
     func testUnionDecodesTheEnvelopeShape() throws {
@@ -383,6 +453,12 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
 
     /// A body matching no arm is now an error rather than a silent all-nil
     /// value. This is the assertion that would have caught the original defect.
+    ///
+    /// The surfaced error is the *first arm's* — an empty body fails `Todolist`
+    /// on its first required key — rather than a generic "matched no variant".
+    /// Reporting the underlying cause is the same principle as the masking
+    /// guard above: the decoder never invents an error of its own while it
+    /// still holds a real one.
     func testUnionRejectsABodyMatchingNoArm() async throws {
         let data = try JSONSerialization.data(withJSONObject: [:] as [String: Any])
         let transport = MockTransport(
@@ -395,10 +471,12 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
                 "expected a decoding error, got todolist=\(String(describing: result.todolist)) "
                     + "group=\(String(describing: result.group))")
         } catch let error as DecodingError {
-            guard case .dataCorrupted(let context) = error else {
-                return XCTFail("expected DecodingError.dataCorrupted, got \(error)")
+            guard case .keyNotFound(let key, _) = error else {
+                return XCTFail("expected DecodingError.keyNotFound, got \(error)")
             }
-            XCTAssertEqual(context.debugDescription, "TodolistOrGroup: body matched no variant")
+            XCTAssertEqual(
+                key.stringValue, "appUrl",
+                "the empty body must report the todolist arm's first missing required key")
         }
     }
 
@@ -407,9 +485,20 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
     /// composite rather than converted: the group arm has no `description`
     /// field, so writing it back would erase the description.
     func testUpdate_refusesAGroupOnlyProjection() async throws {
+        // A realistic group-only body carries no todolist-exclusive key at all:
+        // BC3 emits group_position_url in place of groups_url, and this
+        // projection models neither description nor description_attachments.
+        // Leaving groups_url in would make it a malformed *todolist* instead,
+        // which the union's masking guard now correctly refuses to launder into
+        // the group arm.
         var groupOnly = flatTodolistJSON()
         groupOnly.removeValue(forKey: "description_attachments")
         groupOnly.removeValue(forKey: "description")
+        groupOnly.removeValue(forKey: "boosts_count")
+        groupOnly.removeValue(forKey: "boosts_url")
+        groupOnly.removeValue(forKey: "groups_url")
+        groupOnly["group_position_url"] =
+            "https://3.basecampapi.com/999999999/buckets/1/todolists/groups/2/position.json"
 
         let log = TodolistRequestLog()
         let account = try makeTodolistsClient(log: log, getBody: groupOnly)

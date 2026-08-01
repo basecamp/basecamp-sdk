@@ -182,12 +182,20 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
     if let oneOf = schema["oneOf"] as? [[String: Any]] {
         // Collect the arms in declaration order: the decoder tries them in this
         // order when the body arrives flat.
-        var arms: [(wireName: String, camelName: String, swiftType: String)] = []
+        var arms: [(wireName: String, camelName: String, swiftType: String, bodyKeys: Set<String>)] = []
         for variant in oneOf {
             guard let props = variant["properties"] as? [String: Any] else { continue }
             for propName in props.keys.sorted() {
                 guard let propSchema = props[propName] as? [String: Any] else { continue }
-                arms.append((propName, toCamelCase(propName), schemaToSwiftType(propSchema)))
+                // Resolve the arm's $ref so we know which wire keys its model
+                // actually carries; that drives the masking guard below.
+                var bodyKeys: Set<String> = []
+                if let ref = propSchema["$ref"] as? String,
+                   let target = schemas[String(ref.split(separator: "/").last ?? "")] as? [String: Any],
+                   let targetProps = target["properties"] as? [String: Any] {
+                    bodyKeys = Set(targetProps.keys)
+                }
+                arms.append((propName, toCamelCase(propName), schemaToSwiftType(propSchema), bodyKeys))
             }
         }
 
@@ -230,16 +238,53 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
         lines.append("            if \(anyArmDecoded) { return }")
         lines.append("        }")
         lines.append("")
+        // Falling through the arms in order would let a narrower arm mask a real
+        // decoding failure in a wider one: where arm B's keys are a subset of
+        // arm A's, a body that IS an A but carries one malformed A-only field
+        // fails A, then decodes cleanly as B — silently dropping the bad field
+        // and reporting success. So a later arm is only eligible when the body
+        // carries none of the keys exclusive to the arms before it; otherwise
+        // the earlier arm's error is the truth and is rethrown.
+        lines.append("        let bodyKeys: Set<String> = (try? decoder.container(keyedBy: PermissiveKey.self))")
+        lines.append("            .map { Set($0.allKeys.map(\\.stringValue)) } ?? []")
+        lines.append("        var firstArmError: Error?")
+        lines.append("")
         lines.append("        let flat = try decoder.singleValueContainer()")
         for (index, arm) in arms.enumerated() {
             if index == 0 {
-                lines.append("        self.\(arm.camelName) = try? flat.decode(\(arm.swiftType).self)")
+                lines.append("        do {")
+                lines.append("            self.\(arm.camelName) = try flat.decode(\(arm.swiftType).self)")
+                lines.append("        } catch {")
+                lines.append("            firstArmError = error")
+                lines.append("            self.\(arm.camelName) = nil")
+                lines.append("        }")
             } else {
-                let earlier = arms[..<index].map { "self.\($0.camelName) == nil" }.joined(separator: " && ")
-                lines.append("        self.\(arm.camelName) = (\(earlier)) ? try? flat.decode(\(arm.swiftType).self) : nil")
+                let earlierNil = arms[..<index].map { "self.\($0.camelName) == nil" }.joined(separator: " && ")
+                let earlierExclusive = arms[..<index]
+                    .reduce(into: Set<String>()) { $0.formUnion($1.bodyKeys) }
+                    .subtracting(arm.bodyKeys)
+                    .sorted()
+                var condition = earlierNil
+                if !earlierExclusive.isEmpty {
+                    // Both spellings: the SDK's decoder applies
+                    // .convertFromSnakeCase, so `allKeys` arrives camelCased,
+                    // but a decoder without that strategy reports the raw wire
+                    // key. Emitting both keeps the guard correct either way —
+                    // matching on only one spelling would leave it silently
+                    // inert for every multi-word key.
+                    let spellings = Set(earlierExclusive.flatMap { [$0, toCamelCase($0)] }).sorted()
+                    let literal = spellings.map { "\"\($0)\"" }.joined(separator: ", ")
+                    lines.append("        // Keys only an earlier arm defines, in both wire and camelCase")
+                    lines.append("        // spelling. Their presence means the body really is that earlier")
+                    lines.append("        // shape, so its failure must not be masked here.")
+                    lines.append("        let earlierOnlyKeys\(index): Set<String> = [\(literal)]")
+                    condition += " && bodyKeys.isDisjoint(with: earlierOnlyKeys\(index))"
+                }
+                lines.append("        self.\(arm.camelName) = (\(condition)) ? try? flat.decode(\(arm.swiftType).self) : nil")
             }
         }
         lines.append("        guard \(anyArmDecoded) else {")
+        lines.append("            if let firstArmError { throw firstArmError }")
         lines.append("            throw DecodingError.dataCorrupted(")
         lines.append("                DecodingError.Context(")
         lines.append("                    codingPath: decoder.codingPath,")
@@ -247,6 +292,15 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
         lines.append("                )")
         lines.append("            )")
         lines.append("        }")
+        lines.append("    }")
+        lines.append("")
+        lines.append("    /// Reads the raw wire keys so the decoder can tell which arm a flat body")
+        lines.append("    /// really is, independent of any arm's own CodingKeys.")
+        lines.append("    private struct PermissiveKey: CodingKey {")
+        lines.append("        let stringValue: String")
+        lines.append("        var intValue: Int? { nil }")
+        lines.append("        init?(stringValue: String) { self.stringValue = stringValue }")
+        lines.append("        init?(intValue: Int) { nil }")
         lines.append("    }")
         lines.append("")
         // Encoding stays enveloped: the SDK never PUTs this shape, and an

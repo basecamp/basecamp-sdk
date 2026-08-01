@@ -27,10 +27,24 @@ public struct TodolistOrGroup: Codable, Sendable {
             if self.todolist != nil || self.group != nil { return }
         }
 
+        let bodyKeys: Set<String> = (try? decoder.container(keyedBy: PermissiveKey.self))
+            .map { Set($0.allKeys.map(\.stringValue)) } ?? []
+        var firstArmError: Error?
+
         let flat = try decoder.singleValueContainer()
-        self.todolist = try? flat.decode(Todolist.self)
-        self.group = (self.todolist == nil) ? try? flat.decode(TodolistGroup.self) : nil
+        do {
+            self.todolist = try flat.decode(Todolist.self)
+        } catch {
+            firstArmError = error
+            self.todolist = nil
+        }
+        // Keys only an earlier arm defines, in both wire and camelCase
+        // spelling. Their presence means the body really is that earlier
+        // shape, so its failure must not be masked here.
+        let earlierOnlyKeys1: Set<String> = ["boostsCount", "boostsUrl", "boosts_count", "boosts_url", "description", "descriptionAttachments", "description_attachments", "groupsUrl", "groups_url"]
+        self.group = (self.todolist == nil && bodyKeys.isDisjoint(with: earlierOnlyKeys1)) ? try? flat.decode(TodolistGroup.self) : nil
         guard self.todolist != nil || self.group != nil else {
+            if let firstArmError { throw firstArmError }
             throw DecodingError.dataCorrupted(
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
@@ -38,6 +52,15 @@ public struct TodolistOrGroup: Codable, Sendable {
                 )
             )
         }
+    }
+
+    /// Reads the raw wire keys so the decoder can tell which arm a flat body
+    /// really is, independent of any arm's own CodingKeys.
+    private struct PermissiveKey: CodingKey {
+        let stringValue: String
+        var intValue: Int? { nil }
+        init?(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) { nil }
     }
 
     public func encode(to encoder: any Encoder) throws {
