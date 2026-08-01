@@ -22,15 +22,24 @@
 path = ARGV[0] || File.expand_path("../go/pkg/generated/client.gen.go", __dir__)
 abort "check-go-optional-pointers: #{path} not found" unless File.exist?(path)
 
-NIL_CAPABLE = %r{\A(\*|\[\]|map\[)|\A(interface\{\}|any)\z}
-
 violations = []
 stats = Hash.new(0)
 
-File.foreach(path).with_index(1) do |line, lineno|
-  # Struct field with a json tag carrying omitempty:
-  #   \tFieldName Type `json:"name,omitempty"`
-  next unless (m = line.match(/\A\t(\w+)\s+(\S+)\s+`json:"[^"]*,omitempty[^"]*"`/))
+# Struct field carrying omitempty in ANY struct tag. Body fields tag `json:`
+# alone; query-parameter fields tag `form:` FIRST and then `json:` — matching
+# only a leading `json:` silently exempted every query param, which is exactly
+# where an unsendable zero value hurts most.
+FIELD = /\A\t(\w+)\s+(\S+)\s+`([^`]*)`/
+OMITEMPTY = /\b(?:json|form):"[^"]*,omitempty[^"]*"/
+
+# Read with an explicit UTF-8 external encoding: client.gen.go carries
+# multibyte characters in doc comments (e.g. →), and under a non-UTF-8 locale
+# (LC_ALL=C in a minimal CI container) the default external encoding is
+# US-ASCII, so matching raises ArgumentError and the guard dies on the very
+# file it guards.
+File.foreach(path, encoding: "UTF-8").with_index(1) do |line, lineno|
+  next unless (m = line.match(FIELD))
+  next unless m[3].match?(OMITEMPTY)
 
   name, type = m[1], m[2]
   kind =

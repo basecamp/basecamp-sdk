@@ -363,7 +363,9 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 		Subscriptions:    req.Subscriptions,
 		VisibleToClients: req.VisibleToClients,
 	}
-	if len(req.ParticipantIDs) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty participant list and must reach the wire — matching UpdateEntry.
+	if req.ParticipantIDs != nil {
 		body.ParticipantIds = &req.ParticipantIDs
 	}
 	if req.Notify {

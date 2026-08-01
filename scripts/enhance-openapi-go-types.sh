@@ -85,13 +85,32 @@ walk(
 # Second pass: optional non-nullable ARRAYS on response-shaped schemas keep
 # native []T (skip the optional pointer). A nil slice already represents
 # absence; *[]T adds a deref layer with no semantic gain. Excluded on purpose:
-#   * RequestContent schemas — *[]T is required to SEND an explicit empty
+#   * REQUEST-REACHABLE schemas — *[]T is required to SEND an explicit empty
 #     array (omitempty drops a len-0 slice), e.g. Create* subscriptions where
-#     nil (server default) and [] (subscribe nobody) differ.
+#     nil (server default) and [] (subscribe nobody) differ. Reachability is
+#     the transitive $ref closure from every *RequestContent schema, NOT a name
+#     match: nested shapes like QuestionSchedule (referenced by
+#     Create/UpdateQuestion bodies) are request-reachable without carrying the
+#     suffix, and a name-only test silently made their arrays unsendable-empty.
 #   * nullable arrays — the pointer distinguishes present-null from absent
 #     (the *[]RichTextAttachment precedent).
+( .components.schemas ) as $all
+| ( [ $all | keys[] | select(test("RequestContent$")) ] ) as $seeds
+| ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
+    | until(.frontier | length == 0;
+        . as $s
+        | ( [ $s.frontier[] | ($all[.] // {}) | [.. | objects | select(has("$ref")) | .["$ref"]] ]
+            | flatten
+            | map(select(type == "string" and startswith("#/components/schemas/"))
+                  | sub("^#/components/schemas/"; ""))
+            | unique ) as $next
+        | ( $next | map(select($s.seen[.] | not)) ) as $new
+        | { seen: ($s.seen + ($new | map({key: ., value: true}) | from_entries)), frontier: $new }
+      )
+    | .seen ) as $request_reachable
+|
 .components.schemas |= with_entries(
-  if (.key | test("RequestContent$") | not) then
+  if ($request_reachable[.key] | not) then
     .value |= (
       if type == "object" and .type == "object" and .properties then
         (.required // []) as $required |

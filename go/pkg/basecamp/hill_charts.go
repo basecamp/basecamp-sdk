@@ -88,10 +88,12 @@ func (s *HillChartsService) UpdateSettings(ctx context.Context, todosetID int64,
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	body := generated.UpdateHillChartSettingsJSONRequestBody{}
-	if len(tracked) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an
+	// explicit empty list and must reach the wire.
+	if tracked != nil {
 		body.Tracked = &tracked
 	}
-	if len(untracked) > 0 {
+	if untracked != nil {
 		body.Untracked = &untracked
 	}
 

@@ -30233,8 +30233,7 @@
             "items": {
               "type": "integer",
               "format": "int32"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           },
           "hour": {
             "type": "integer",

@@ -253,6 +253,17 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
+// intPtrFrom converts an optional generated integer pointer to the SDK's *int,
+// preserving nil. Widening through deref would manufacture a pointer to zero
+// and destroy the absence the pointer exists to carry.
+func intPtrFrom[T ~int32 | ~int64](p *T) *int {
+	if p == nil {
+		return nil
+	}
+	v := int(*p)
+	return &v
+}
+
 // ListMeta contains pagination metadata from list operations.
 type ListMeta struct {
 	// TotalCount is the total number of items available (from X-Total-Count header).

@@ -2062,15 +2062,15 @@ type QuestionReminder struct {
 
 // QuestionSchedule defines model for QuestionSchedule.
 type QuestionSchedule struct {
-	Days          []int32 `json:"days,omitempty"`
-	EndDate       *string `json:"end_date,omitempty"`
-	Frequency     *string `json:"frequency,omitempty"`
-	Hour          *int32  `json:"hour,omitempty"`
-	Minute        *int32  `json:"minute,omitempty"`
-	MonthInterval *int32  `json:"month_interval,omitempty"`
-	StartDate     *string `json:"start_date,omitempty"`
-	WeekInstance  *int32  `json:"week_instance,omitempty"`
-	WeekInterval  *int32  `json:"week_interval,omitempty"`
+	Days          *[]int32 `json:"days,omitempty"`
+	EndDate       *string  `json:"end_date,omitempty"`
+	Frequency     *string  `json:"frequency,omitempty"`
+	Hour          *int32   `json:"hour,omitempty"`
+	Minute        *int32   `json:"minute,omitempty"`
+	MonthInterval *int32   `json:"month_interval,omitempty"`
+	StartDate     *string  `json:"start_date,omitempty"`
+	WeekInstance  *int32   `json:"week_instance,omitempty"`
+	WeekInterval  *int32   `json:"week_interval,omitempty"`
 }
 
 // Questionnaire defines model for Questionnaire.

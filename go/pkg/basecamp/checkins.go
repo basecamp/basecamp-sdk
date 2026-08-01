@@ -1083,17 +1083,21 @@ func questionFromGenerated(gq generated.Question) Question {
 	}
 
 	if gq.Schedule != nil && deref(gq.Schedule.Frequency) != "" {
-		days := make([]int, len(gq.Schedule.Days))
-		for i, d := range gq.Schedule.Days {
-			days[i] = int(d)
+		var days []int
+		if gq.Schedule.Days != nil {
+			days = make([]int, len(*gq.Schedule.Days))
+			for i, d := range *gq.Schedule.Days {
+				days[i] = int(d)
+			}
 		}
-		hour := int(deref(gq.Schedule.Hour))
-		minute := int(deref(gq.Schedule.Minute))
 		q.Schedule = &QuestionSchedule{
 			Frequency: deref(gq.Schedule.Frequency),
 			Days:      days,
-			Hour:      &hour,
-			Minute:    &minute,
+			// Hour/Minute are *int on the SDK type precisely so an absent
+			// value stays absent — carry the generated pointer's nil through
+			// rather than manufacturing a pointer to zero.
+			Hour:      intPtrFrom(gq.Schedule.Hour),
+			Minute:    intPtrFrom(gq.Schedule.Minute),
 			StartDate: deref(gq.Schedule.StartDate),
 			EndDate:   deref(gq.Schedule.EndDate),
 		}
@@ -1231,7 +1235,9 @@ func questionScheduleToMap(s *QuestionSchedule) map[string]any {
 	if s.Frequency != "" {
 		m["frequency"] = s.Frequency
 	}
-	if len(s.Days) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty day list and must reach the wire.
+	if s.Days != nil {
 		m["days"] = s.Days
 	}
 	if s.Hour != nil {
