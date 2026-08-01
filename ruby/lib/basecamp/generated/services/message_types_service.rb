@@ -9,10 +9,11 @@ module Basecamp
 
       # List message types in a project
       # @param bucket_id [Integer] bucket id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list(bucket_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(bucket_id:, max_items: nil)
         wrap_paginated(service: "messagetypes", operation: "list", is_mutation: false, project_id: bucket_id) do
-          paginate("/buckets/#{bucket_id}/categories.json", operation: "ListMessageTypes")
+          paginate("/buckets/#{bucket_id}/categories.json", operation: "ListMessageTypes", max_items: max_items)
         end
       end
 

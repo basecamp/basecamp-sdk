@@ -8,10 +8,11 @@ module Basecamp
     class PeopleService < BaseService
 
       # List all account users who can be pinged
-      # @return [Enumerator<Hash>] paginated results
-      def list_pingable()
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_pingable(max_items: nil)
         wrap_paginated(service: "people", operation: "list_pingable", is_mutation: false) do
-          paginate("/circles/people.json", operation: "ListPingablePeople")
+          paginate("/circles/people.json", operation: "ListPingablePeople", max_items: max_items)
         end
       end
 
@@ -58,10 +59,11 @@ module Basecamp
       end
 
       # List all people visible to the current user
-      # @return [Enumerator<Hash>] paginated results
-      def list()
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(max_items: nil)
         wrap_paginated(service: "people", operation: "list", is_mutation: false) do
-          paginate("/people.json", operation: "ListPeople")
+          paginate("/people.json", operation: "ListPeople", max_items: max_items)
         end
       end
 
@@ -105,10 +107,11 @@ module Basecamp
 
       # List all active people on a project
       # @param project_id [Integer] project id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list_for_project(project_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_for_project(project_id:, max_items: nil)
         wrap_paginated(service: "people", operation: "list_for_project", is_mutation: false, project_id: project_id) do
-          paginate("/projects/#{project_id}/people.json", operation: "ListProjectPeople")
+          paginate("/projects/#{project_id}/people.json", operation: "ListProjectPeople", max_items: max_items)
         end
       end
 

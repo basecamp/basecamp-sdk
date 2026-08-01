@@ -29,10 +29,11 @@ module Basecamp
 
       # List documents in a vault
       # @param vault_id [Integer] vault id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list(vault_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(vault_id:, max_items: nil)
         wrap_paginated(service: "documents", operation: "list", is_mutation: false, resource_id: vault_id) do
-          paginate("/vaults/#{vault_id}/documents.json", operation: "ListDocuments")
+          paginate("/vaults/#{vault_id}/documents.json", operation: "ListDocuments", max_items: max_items)
         end
       end
 

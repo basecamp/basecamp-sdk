@@ -327,7 +327,7 @@ Conformance: `conformance/tests/todos_write.json` (`update-merge`, `edit-clear`,
 
 - Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`
 - TypeScript flattens both tiers onto a single client object (no separate AccountClient exposed to consumers) — a valid language adaptation
-- Ruby returns lazy `Enumerator` for pagination rather than `ListResult`
+- Ruby returns a lazy `ListEnumerator` (an `Enumerator` subclass carrying `ListMeta`) for pagination rather than an eager `ListResult`; the first page is fetched eagerly so `meta.total_count` is available at call time, while `meta.truncated` is final only once enumeration completes
 
 ---
 
@@ -1682,11 +1682,6 @@ logic is covered by `TestIsSameOrigin` unit tests:
 - "PrioritizeAssignment POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "DeprioritizeAssignment DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "Network error on an idempotent POST is retried then succeeds" — GET-only network retry (waiver 2B.3).
-- "Total count header is accessible" — Enumerator exposes no totalCount metadata (waiver 2C.2).
-- "Missing X-Total-Count returns zero" — Enumerator exposes no totalCount metadata (waiver 2C.2).
-- "Pagination stops at maxPages safety cap" — cap is enforced, but truncation metadata is inexpressible (waiver 2C.6).
-- "maxItems caps results across pages" — no `max_items` support (waiver 2C.4).
-- "maxItems landing exactly on the final item is not truncated" — no `max_items` support (waiver 2C.4).
 - "DownloadURL retries on 503 at the auth'd first hop" — download path uses `get_no_retry`; hop-1 retry not implemented (unwaivered).
 - "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
 
@@ -2006,7 +2001,7 @@ See the Gate 3 consumption table in §7 above.
 | Swift | `ListResult<T>` | yes | yes |
 | Go | Typed `*XxxListResult` with `Meta ListMeta` | yes | yes |
 | Python | `ListResult(list)` with `meta ListMeta` | yes | yes |
-| Ruby | Lazy `Enumerator` yielding items | no (waiver 2C.2) | no (waiver 2C.6) |
+| Ruby | Lazy `ListEnumerator` (Enumerator subclass) with `meta ListMeta` | yes | yes (final after enumeration completes) |
 
 ### Error Message Truncation Unit (§9)
 

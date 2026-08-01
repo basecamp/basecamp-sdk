@@ -72,11 +72,12 @@ module Basecamp
       # List entries on a schedule
       # @param schedule_id [Integer] schedule id ID
       # @param status [String, nil] active|archived|trashed
-      # @return [Enumerator<Hash>] paginated results
-      def list_entries(schedule_id:, status: nil)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_entries(schedule_id:, status: nil, max_items: nil)
         wrap_paginated(service: "schedules", operation: "list_entries", is_mutation: false, resource_id: schedule_id) do
           params = compact_query_params(status: status)
-          paginate("/schedules/#{schedule_id}/entries.json", params: params, operation: "ListScheduleEntries")
+          paginate("/schedules/#{schedule_id}/entries.json", params: params, operation: "ListScheduleEntries", max_items: max_items)
         end
       end
 

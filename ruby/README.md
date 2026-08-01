@@ -316,7 +316,10 @@ The SDK provides 46 account-scoped services. The table below covers the common o
 
 ## Pagination
 
-All list methods return lazy Enumerators that automatically handle pagination:
+All list methods return a lazy `ListEnumerator` — an `Enumerator` subclass
+that automatically handles pagination and carries metadata. The first page is
+fetched when the method is called; later pages are fetched only as iteration
+demands them:
 
 ```ruby
 # Automatically fetches all pages
@@ -324,12 +327,40 @@ account.projects.list.each do |project|
   puts project["name"]
 end
 
-# Take only what you need
+# Take only what you need — no extra pages are fetched
 first_10 = account.todos.list(todolist_id: 456).take(10)
 
 # Convert to array (fetches all pages)
 all_projects = account.projects.list.to_a
 ```
+
+Pagination is automatic: the SDK follows Link headers up to `config.max_pages`
+(default: 10,000). The enumerator's `meta` exposes pagination metadata:
+
+```ruby
+projects = account.projects.list
+projects.meta.total_count  # X-Total-Count from the first page (0 if absent),
+                           # available immediately — page 1 is fetched eagerly
+projects.to_a
+projects.meta.truncated    # true if items beyond those yielded were available
+```
+
+Every list method also accepts a `max_items` keyword to cap how many items are
+yielded. Enumeration stops as soon as the cap is met, without fetching further
+pages. Zero or negative values disable the cap, as in the other SDKs:
+
+```ruby
+recent = account.projects.list(max_items: 50)
+recent.to_a
+recent.meta.truncated  # true only if more items were available
+```
+
+`meta.truncated` is final once enumeration completes, and is `true` only when
+items beyond those yielded were available — items were dropped by `max_items`,
+or the last-fetched page still advertised a next page when enumeration stopped
+(at `max_items` or the `max_pages` safety cap). Landing exactly on the final
+item is not truncation: when `truncated` is `false` after full enumeration,
+the result is definitely complete.
 
 ## Downloading Files
 

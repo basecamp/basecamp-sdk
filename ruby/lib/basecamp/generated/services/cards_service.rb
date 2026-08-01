@@ -43,10 +43,11 @@ module Basecamp
 
       # List cards in a column
       # @param column_id [Integer] column id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list(column_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(column_id:, max_items: nil)
         wrap_paginated(service: "cards", operation: "list", is_mutation: false, resource_id: column_id) do
-          paginate("/card_tables/lists/#{column_id}/cards.json", operation: "ListCards")
+          paginate("/card_tables/lists/#{column_id}/cards.json", operation: "ListCards", max_items: max_items)
         end
       end
 

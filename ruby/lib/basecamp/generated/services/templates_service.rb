@@ -9,11 +9,12 @@ module Basecamp
 
       # List all templates visible to the current user
       # @param status [String, nil] active|archived|trashed
-      # @return [Enumerator<Hash>] paginated results
-      def list(status: nil)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(status: nil, max_items: nil)
         wrap_paginated(service: "templates", operation: "list", is_mutation: false) do
           params = compact_query_params(status: status)
-          paginate("/templates.json", params: params, operation: "ListTemplates")
+          paginate("/templates.json", params: params, operation: "ListTemplates", max_items: max_items)
         end
       end
 
