@@ -1,0 +1,33 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampException.kt
+  s_34dec3eb0265b2::t_e20063a82386fd 103-107
+typescript/src/errors.ts
+  s_34dec3eb0265b2::t_e08faca0e653c9 72,119-123,383-385
+go/pkg/basecamp/errors.go
+  s_34dec3eb0265b2::t_e08faca0e653c9 55-59
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/ErrorParsing.kt
+  s_34dec3eb0265b2::t_e08faca0e653c9 76-78
+swift/Sources/Basecamp/BasecampError.swift
+  s_34dec3eb0265b2::t_e20063a82386fd 147-151
+ruby/lib/basecamp/validation_error.rb
+  s_34dec3eb0265b2::t_e20063a82386fd 7-10
+go/pkg/basecamp/helpers.go
+  s_34dec3eb0265b2::t_e08faca0e653c9 143-145
+python/src/basecamp/errors.py
+  s_34dec3eb0265b2::t_e20063a82386fd 126-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "566904582c35007794ef2092683efdda5076288f",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
