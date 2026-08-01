@@ -138,7 +138,11 @@ class ServiceEmitter(private val api: OpenApiParser) {
             val entityType = entitySchema?.let { TYPE_ALIASES[it] } ?: "JsonElement"
             val resultClassName = buildWrappedResultClassName(op)
 
-            sb.appendLine("        val (firstPageBody, items) = requestPaginatedWrapped<$entityType>(info, options, {")
+            // Convert custom options to PaginationOptions
+            val wrappedHasOptionalQuery = op.queryParams.any { !it.required }
+            val wrappedOptionsArg = if (wrappedHasOptionalQuery) "options?.toPaginationOptions()" else "options"
+
+            sb.appendLine("        val (firstPageBody, items) = requestPaginatedWrapped<$entityType>(info, $wrappedOptionsArg, {")
             sb.appendLine("            httpGet($pathWithQuery, operationName = info.operation)")
             sb.appendLine("        }) { body ->")
             sb.appendLine("            json.parseToJsonElement(body).jsonObject[\"${op.paginationKey}\"]!!")

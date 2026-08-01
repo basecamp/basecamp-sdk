@@ -43,7 +43,11 @@ class TypeEmitter {
 
                 // Options class
                 val hasOptionalQuery = op.queryParams.any { !it.required }
-                val hasPagination = op.hasPagination && op.returnsArray
+                // Wrapped pagination (a paginated array nested under a response
+                // key) is as paginated as the bare-array kind: the options class
+                // still needs maxItems and toPaginationOptions(), because
+                // ServiceEmitter hands the result to requestPaginatedWrapped.
+                val hasPagination = op.hasPagination && (op.returnsArray || op.paginationKey != null)
                 if (hasOptionalQuery || hasPagination) {
                     val className = if (hasPagination && !hasOptionalQuery) {
                         // Just uses PaginationOptions directly

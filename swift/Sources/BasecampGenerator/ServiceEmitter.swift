@@ -149,21 +149,10 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
     let requiredQueryParams = op.queryParams.filter { $0.required }
     let hasQueryItems = !op.queryParams.isEmpty
 
-    if hasQueryItems && !isPaginated && !isWrappedPaginated {
-        // Non-paginated ops: build URL query string inline
-        lines.append("        var queryItems: [URLQueryItem] = []")
-        for q in requiredQueryParams {
-            lines += queryItemAppendLines(q, accessor: toCamelCase(q.name), indent: "        ")
-        }
-        for q in optionalQueryParams {
-            let camelName = toCamelCase(q.name)
-            lines.append("        if let \(camelName) = options?.\(camelName) {")
-            lines += queryItemAppendLines(q, accessor: camelName, indent: "            ")
-            lines.append("        }")
-        }
-    }
-
-    if isPaginated && hasQueryItems {
+    // Every flavor of operation reads `queryItems` the same way — plain,
+    // array-paginated, and wrapped-paginated call sites all pass it along — so
+    // build it whenever the operation has query params at all.
+    if hasQueryItems {
         lines.append("        var queryItems: [URLQueryItem] = []")
         for q in requiredQueryParams {
             lines += queryItemAppendLines(q, accessor: toCamelCase(q.name), indent: "        ")
