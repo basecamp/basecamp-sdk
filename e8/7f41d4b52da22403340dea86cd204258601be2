@@ -1,0 +1,412 @@
+go/pkg/basecamp/comments.go
+  s_555508c40a7b3b::t_28b61056ffeb6b 62-63
+  s_555508c40a7b3b::t_dfecd1103c1a42 110-114,116
+  s_555508c40a7b3b::t_577f9fd688fe26 91
+go/pkg/basecamp/boosts.go
+  s_555508c40a7b3b::t_80fde1944c63c8 34-35
+  s_555508c40a7b3b::t_003e4e7431064d 82-87
+  s_555508c40a7b3b::t_a79a811418cd09 168-173
+  s_555508c40a7b3b::t_7fd757c343d978 63,149
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt
+  s_555508c40a7b3b::t_cc61c968e85995 593
+  s_555508c40a7b3b::t_30416ff13aec44 5
+go/pkg/basecamp/page_param_test.go
+  s_555508c40a7b3b::t_cf57c31bf67731 1-135
+go/pkg/basecamp/campfires.go
+  s_555508c40a7b3b::t_2036e367594579 337,342-343
+  s_555508c40a7b3b::t_bdf63e78da0bca 580,585-586
+  s_555508c40a7b3b::t_60b37e7dbe75ec 217-222
+  s_555508c40a7b3b::t_e6d9f4572bd8b8 26,42,58,199,317,344,560,587,715-717,734-736
+go/pkg/basecamp/cards.go
+  s_555508c40a7b3b::t_0623bce9939fee 315
+  s_555508c40a7b3b::t_815ee9b4a5e150 191-192
+  s_555508c40a7b3b::t_cbc8b08278b717 334-338,340
+go/pkg/basecamp/checkins.go
+  s_555508c40a7b3b::t_f9387bf6a48c76 19-20,30-31,41-42,280,300-305,598-599,619-624,683-684,700-705,757-759,968-969,987-992
+go/pkg/basecamp/client_approvals.go
+  s_555508c40a7b3b::t_a6a08e12fab29a 18,104,123,128-130
+go/pkg/basecamp/client_correspondences.go
+  s_555508c40a7b3b::t_1bb67347f2afc6 18,81,100,105-107
+go/pkg/basecamp/client_replies.go
+  s_555508c40a7b3b::t_e3d2a675d1640d 18,71,90-95
+go/pkg/basecamp/events.go
+  s_555508c40a7b3b::t_e3ab60446dad1f 21-22,73,93-98
+go/pkg/basecamp/forwards.go
+  s_555508c40a7b3b::t_16a537bb74604a 18-19,35-36,191,212,217-219,312,332-337
+go/pkg/basecamp/gauges.go
+  s_555508c40a7b3b::t_c9c182cac6268a 181
+go/pkg/basecamp/message_types.go
+  s_555508c40a7b3b::t_bb56c4722a038e 18-20,71-73
+go/pkg/basecamp/messages.go
+  s_555508c40a7b3b::t_b34573b39fa54f 93-94,122,150-152
+go/pkg/basecamp/people.go
+  s_555508c40a7b3b::t_3c9fa00b231f7b 84-86,112,131-136,313,333-338,395-397
+go/pkg/basecamp/projects.go
+  s_555508c40a7b3b::t_84f8515746eb6b 75-76,131,151-157
+go/pkg/basecamp/recordings.go
+  s_555508c40a7b3b::t_e9a1676adf3454 147-148,184,213-215
+go/pkg/basecamp/schedules.go
+  s_555508c40a7b3b::t_31b6fd21f06a03 19-20,202,223,227-229
+go/pkg/basecamp/search.go
+  s_555508c40a7b3b::t_2e623da9c935dc 149,168,195-197
+go/pkg/basecamp/templates.go
+  s_555508c40a7b3b::t_d5ddec5ce67cf6 18,89,107-112
+go/pkg/basecamp/timeline.go
+  s_555508c40a7b3b::t_202c3b8c26d518 125-126,160,179-184,238,258-263,321,340-345
+go/pkg/basecamp/timesheet.go
+  s_555508c40a7b3b::t_65c9ad41fa30f7 72,147,173-175,236,262-264
+go/pkg/basecamp/todolist_groups.go
+  s_555508c40a7b3b::t_31c0d7525957ff 18,88,107-112
+go/pkg/basecamp/todolists.go
+  s_555508c40a7b3b::t_8798db9f669288 70-71,120,141-147
+go/pkg/basecamp/todos.go
+  s_555508c40a7b3b::t_2808da351b99d1 196-197,367,394,396-398
+go/pkg/basecamp/vaults.go
+  s_555508c40a7b3b::t_77011919207833 19-20,38-39,57-58,294,314-319,505,525-530,747,767-772,948-950,966-968
+go/pkg/basecamp/webhooks.go
+  s_555508c40a7b3b::t_485dd6182e86f5 18-20,101-103
+go/pkg/generated/client.gen.go
+  s_2218d00d1182de::t_54ce629b122cfb 3460-3465,3541-3546,3554-3556,3566-3568,3590-3592,3602-3610,3637-3642,3650-3652,3662-3664,3692-3697,3716-3721,3726-3728,3745-3765,3773-3817,3825-3827,3835-3843,3865-3870,3875-3877,3921-3923,3930-3938,3946-3948,4017-4037,4944,5002,5070,5126,5233,5247,5291,5299,5307,5324,5340,5351,5383,5396,5404,5407,5460,5478,5562,5658,5666,5674,6227,6230,6463,6466,6725,6728,6917,6920,7335,7338,7383,7386,7559,7562,7599,7602,7627,7630,7685,7688,7753,7756,7803,7806,7917,7920,7975,7978,8015,8018,8025,8028,8237,8240,8297,8300,8625,8628,8993,8996,9033,9036,9073,9076,10673,10705-10726,11682,11707-11728,12098-12113,12404-12419,12643-12658,12772-12787,12841,12873-12874,12876,12878-12905,13655,13687-13708,13928-13943,14240-14255,15087,15112-15133,15318,15343-15364,15595-15610,15774-15789,15992,16024-16045,16109,16141-16162,16226,16258-16279,16372-16387,16536,16568-16589,16748,16780-16801,16906,16945-16966,17358,17390-17411,17529,17561-17582,17646,17678-17699,17709,17738-17765,17767,18223-18238,18485-18500,18513,18538-18559,18860,18892-18913,19212-19227,19494-19509,19600-19615,20157,20189-20210,20341-20356,21360-21375,21673,21705-21726,21790,21822-21843,21907,21939-21960,23534-23535,23546-23547,23606-23607,23650-23651,23662-23663,23794-23795,23806-23807,23818-23819,23999,24057,24125,24181,24288,24302,24346,24354,24362,24379,24395,24406,24438,24451,24459,24462,24515,24533,24617,24713,24721,24729,33301-33302,33485-33486,33697-33698,33873-33874,34214-34215,34258-34259,34398-34399,34424-34425,34450-34451,34503-34504,34555-34556,34590-34591,34688-34689,34731-34732,34757-34758,34766-34767,34933-34934,34987-34988,35257-35258,35563-35564,35589-35590,35615-35616
+python/src/basecamp/generated/services/boosts.py
+  s_d931ffd296629c::t_7d62fa5e467b64 30-32,38,54-56,60,92-94,100,116-118,122
+python/src/basecamp/generated/services/campfires.py
+  s_d931ffd296629c::t_04ed661d0e904d 14,18,76-82,87,127-133,138,155,159,219-225,230,270-276,281
+python/src/basecamp/generated/services/cards.py
+  s_d931ffd296629c::t_b1a120954f2e8b 48,52,110,114
+python/src/basecamp/generated/services/checkins.py
+  s_d931ffd296629c::t_698962709a86f1 14,18,50-52,58,95,99,121-123,127,165,169,201-203,209,246-248,252,274-276,280
+python/src/basecamp/generated/services/client_approvals.py
+  s_d931ffd296629c::t_a55eff142df281 15-20,25,41-46,51
+python/src/basecamp/generated/services/client_correspondences.py
+  s_d931ffd296629c::t_4d3fe0e56fc47c 15-20,25,43-48,53
+python/src/basecamp/generated/services/client_replies.py
+  s_d931ffd296629c::t_b8131d1828419d 14,18,33,37
+python/src/basecamp/generated/services/comments.py
+  s_d931ffd296629c::t_fe549216e5e20a 31,35,68,72
+python/src/basecamp/generated/services/documents.py
+  s_d931ffd296629c::t_454c9946119a86 31,35,83,87
+python/src/basecamp/generated/services/events.py
+  s_d931ffd296629c::t_7cd8b90dc05753 14,18,25,29
+python/src/basecamp/generated/services/forwards.py
+  s_d931ffd296629c::t_37f5071e62d444 22,26,57-63,68,83-85,89,120-126,131
+python/src/basecamp/generated/services/gauges.py
+  s_d931ffd296629c::t_46a0b41c58c097 48-50,54,70-72,76,117-119,123,139-141,145
+python/src/basecamp/generated/services/messages.py
+  s_d931ffd296629c::t_b4ae31ad8da2c9 15-21,26,101-107,112
+python/src/basecamp/generated/services/people.py
+  s_d931ffd296629c::t_a8b62d90af7f08 76,80,118,122,214,218,256-258,262
+python/src/basecamp/generated/services/projects.py
+  s_d931ffd296629c::t_5f7843cc829ddf 14,18,69-71,75
+python/src/basecamp/generated/services/recordings.py
+  s_d931ffd296629c::t_b93e8c862c4819 22,28,75,81
+python/src/basecamp/generated/services/reports.py
+  s_d931ffd296629c::t_90cd9bd7ad8c73 14,18,49-51,56,63,67,100-102,107
+python/src/basecamp/generated/services/schedules.py
+  s_d931ffd296629c::t_243875cd780cd7 77-79,83,186,191
+python/src/basecamp/generated/services/search.py
+  s_d931ffd296629c::t_700204808171ab 28,54,86,112
+python/src/basecamp/generated/services/templates.py
+  s_d931ffd296629c::t_142864803c8fbd 14,18,78-80,84
+python/src/basecamp/generated/services/timeline.py
+  s_d931ffd296629c::t_7644b5bf571a4b 14-16,22,29-31,37
+python/src/basecamp/generated/services/timesheets.py
+  s_d931ffd296629c::t_61577dccecdf55 21,27-31,43,49-53,111,117-121,133,139-143
+python/src/basecamp/generated/services/todolist_groups.py
+  s_d931ffd296629c::t_ee228492c69995 23,27,52,56
+python/src/basecamp/generated/services/todolists.py
+  s_d931ffd296629c::t_2f7b3fc1a88655 40-42,46,90-92,96
+python/src/basecamp/generated/services/todos.py
+  s_d931ffd296629c::t_f152d0bd3e8418 55,61,206,212
+python/src/basecamp/generated/services/uploads.py
+  s_d931ffd296629c::t_1e0fabf3bab966 39,43,101,105
+python/src/basecamp/generated/services/vaults.py
+  s_d931ffd296629c::t_3412b139eccb54 31,35,68,72
+ruby/lib/basecamp/generated/metadata.json
+  s_d931ffd296629c::t_5cb4c49d65937c 4
+ruby/lib/basecamp/generated/services/boosts_service.rb
+  s_d931ffd296629c::t_2aa5fa87e825a8 31,34,36-37,54,57,59-60
+ruby/lib/basecamp/generated/services/campfires_service.rb
+  s_d931ffd296629c::t_bfe46fbe526d5c 13,16,18-19,90,93,95,148,151,153
+ruby/lib/basecamp/generated/services/cards_service.rb
+  s_d931ffd296629c::t_22c2fc8bd79f59 46,49,51-52
+ruby/lib/basecamp/generated/services/checkins_service.rb
+  s_d931ffd296629c::t_434ca4ad0c4b0c 11,14,16-17,53,56,58-59,98,101,103-104,132,135,137-138
+ruby/lib/basecamp/generated/services/client_approvals_service.rb
+  s_d931ffd296629c::t_44783a13228b6d 13,16,18
+ruby/lib/basecamp/generated/services/client_correspondences_service.rb
+  s_d931ffd296629c::t_af5286bdcfa60c 13,16,18
+ruby/lib/basecamp/generated/services/client_replies_service.rb
+  s_d931ffd296629c::t_cd41273e70a591 12,15,17-18
+ruby/lib/basecamp/generated/services/comments_service.rb
+  s_d931ffd296629c::t_d5e39bd1670450 31,34,36-37
+ruby/lib/basecamp/generated/services/documents_service.rb
+  s_d931ffd296629c::t_c98cf59c87b4ec 32,35,37-38
+ruby/lib/basecamp/generated/services/events_service.rb
+  s_d931ffd296629c::t_d77661706dea83 12,15,17-18
+ruby/lib/basecamp/generated/services/forwards_service.rb
+  s_d931ffd296629c::t_d407eb78f72569 21,24,26-27,64,67,69
+ruby/lib/basecamp/generated/services/gauges_service.rb
+  s_d931ffd296629c::t_e0af70e8f0e7c5 52,55,57-58,77,80,82
+ruby/lib/basecamp/generated/services/messages_service.rb
+  s_d931ffd296629c::t_1815b4acc6987a 14,17,19
+ruby/lib/basecamp/generated/services/people_service.rb
+  s_d931ffd296629c::t_e24d4f3680fda4 62,65,67-68,112,115,117-118
+ruby/lib/basecamp/generated/services/projects_service.rb
+  s_d931ffd296629c::t_606a70ea754f16 12,15,17
+ruby/lib/basecamp/generated/services/recordings_service.rb
+  s_d931ffd296629c::t_5255bea1714290 16,19,21
+ruby/lib/basecamp/generated/services/reports_service.rb
+  s_d931ffd296629c::t_1c8b8423e84950 11,14,16-17,51,54,56-57
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_d931ffd296629c::t_6a3b499e4fc2cb 75,78,80
+ruby/lib/basecamp/generated/services/search_service.rb
+  s_d931ffd296629c::t_e24e7240f6242d 24,27,29
+ruby/lib/basecamp/generated/services/templates_service.rb
+  s_d931ffd296629c::t_f83c9eb66bb8a2 12,15,17
+ruby/lib/basecamp/generated/services/timeline_service.rb
+  s_d931ffd296629c::t_29f6c83e6720ff 12,15,17-18
+ruby/lib/basecamp/generated/services/timesheets_service.rb
+  s_d931ffd296629c::t_26fb7526ef3551 15,18,20,30,33,35
+ruby/lib/basecamp/generated/services/todolist_groups_service.rb
+  s_d931ffd296629c::t_b8222de476443f 23,26,28-29
+ruby/lib/basecamp/generated/services/todolists_service.rb
+  s_d931ffd296629c::t_c9d5560878fe58 44,47,49
+ruby/lib/basecamp/generated/services/todos_service.rb
+  s_d931ffd296629c::t_a7143b43f22f52 31,34,36
+ruby/lib/basecamp/generated/services/uploads_service.rb
+  s_d931ffd296629c::t_9719f98076b852 42,45,47-48
+ruby/lib/basecamp/generated/services/vaults_service.rb
+  s_d931ffd296629c::t_df418e5c091ca5 31,34,36-37
+ruby/lib/basecamp/generated/types.rb
+  s_d931ffd296629c::t_22d2cd67866703 4
+spec/basecamp.smithy
+  s_d931ffd296629c::t_447f2b22514d00 471-474,725-728,1128-1131,1290-1293,1750-1753,1874-1877,2229-2232,2344-2347,2471-2474,2711-2714,2925-2928,2964-2967,3545-3548,3609-3612,3770-3773,4024-4027,4082-4085,4438-4441,5337-5340,5454-5457,5686-5689,5748-5751,5808-5811,6179-6182,6226-6229,6675-6678,6878-6881,7038-7041,7069-7072,7304-7307,7359-7362,7834-7837,7863-7866,7892-7895,8428-8431,8461-8464,8772-8775,8802-8805
+typescript/src/generated/metadata.ts
+  s_d931ffd296629c::t_4b53653a36b978 40
+typescript/src/generated/openapi-stripped.json
+  s_555508c40a7b3b::t_66d7e4a94187e3 2980-2989,4541-4552,5206-5215,5707-5716,6084-6093,6270-6279,6447-6456,7900-7909,8284-8293,8803-8812,10367-10378,10695-10706,11127-11136,11364-11373,11822-11831,12027-12036,12303-12312,12428-12437,12781-12790,13158-13167,13454-13463,14334-14343,14633-14642,14828-14837,14933-14942,15821-15830,16272-16281,16359-16370,16862-16871,17429-17438,17744-17753,17911-17920,19100-19109,19311-19320,20940-20949,21585-21594,21780-21789,21975-21984
+typescript/src/generated/schema.d.ts
+  s_d931ffd296629c::t_c17298c1ecb63d 8064-8067,9109-9112,9548-9549,9879-9880,10133-10134,10254-10255,10370-10373,11375-11378,11629-11630,12000-12001,13163-13166,13396-13399,13701-13702,13838-13839,14141-14144,14282-14285,14423-14426,14497-14498,14742-14745,15003-15006,15202-15205,15847-15850,16050-16053,16182-16185,16243-16246,16828-16829,17155-17156,17213-17216,17573-17576,17963-17964,18131-18132,18248-18249,19017-19020,19153-19154,20246-20247,20693-20696,20825-20828,20957-20960
+typescript/src/generated/services/boosts.ts
+  s_728df3fc3109c7::t_554e1230c4cc26 24-25,40-41,130-132,148,202-204,220
+typescript/src/generated/services/campfires.ts
+  s_728df3fc3109c7::t_594bbf39491774 28-29,66-67,96-97,118-120,133-135,366,536
+typescript/src/generated/services/cards.ts
+  s_728df3fc3109c7::t_e1000f6be7cd4f 48-49,189-191,207
+typescript/src/generated/services/checkins.ts
+  s_728df3fc3109c7::t_1ca66b149f5499 30-31,48-49,80-81,104-105,148-150,265-267,283,407-409,425,528
+typescript/src/generated/services/client-approvals.ts
+  s_728df3fc3109c7::t_adcbb78ae4f129 27-28,65
+typescript/src/generated/services/client-correspondences.ts
+  s_728df3fc3109c7::t_2581e1ec17e198 27-28,65
+typescript/src/generated/services/client-replies.ts
+  s_728df3fc3109c7::t_f90dcf1d916445 23-24,46-48,64
+typescript/src/generated/services/comments.ts
+  s_728df3fc3109c7::t_bb0ef1e9be52bf 32-33,130-132,148
+typescript/src/generated/services/documents.ts
+  s_728df3fc3109c7::t_514405c901ead1 34-35,138-140,156
+typescript/src/generated/services/events.ts
+  s_728df3fc3109c7::t_b51ca12cffe930 23-24,46-48,64
+typescript/src/generated/services/forwards.ts
+  s_728df3fc3109c7::t_9cc0a03d736970 28-29,48-49,101-103,119,251
+typescript/src/generated/services/gauges.ts
+  s_728df3fc3109c7::t_74323b69b28c98 38-39,61-62,212-214,230,300
+typescript/src/generated/services/messages.ts
+  s_728df3fc3109c7::t_93a6d88a283652 28-29,101
+typescript/src/generated/services/people.ts
+  s_728df3fc3109c7::t_50848fae9f87d8 60-61,76-77,250-252,265-267,407-409,425
+typescript/src/generated/services/projects.ts
+  s_728df3fc3109c7::t_b7a894e6b3c40d 26-27,88
+typescript/src/generated/services/recordings.ts
+  s_728df3fc3109c7::t_a87f7e673d87fd 31-32,70
+typescript/src/generated/services/reports.ts
+  s_728df3fc3109c7::t_13c2a7ce474248 25-26,51-52,85-87,200
+typescript/src/generated/services/schedules.ts
+  s_728df3fc3109c7::t_9d3f506fb6a0f4 64-65,294
+typescript/src/generated/services/search.ts
+  s_728df3fc3109c7::t_03564b9d4d713e 52-53,88
+typescript/src/generated/services/templates.ts
+  s_728df3fc3109c7::t_66ce3dea900d36 26-27,92
+typescript/src/generated/services/timeline.ts
+  s_728df3fc3109c7::t_89426a5fe86cc0 23-24,61
+typescript/src/generated/services/timesheets.ts
+  s_728df3fc3109c7::t_28292d3dfa3b31 30-31,44-45,122,153
+typescript/src/generated/services/todolist-groups.ts
+  s_728df3fc3109c7::t_0ed60753464518 32-33,96-98,114
+typescript/src/generated/services/todolists.ts
+  s_728df3fc3109c7::t_8ed4f6e57ae7dd 44-45,195
+typescript/src/generated/services/todos.ts
+  s_728df3fc3109c7::t_97c10002a2034d 48-49,190
+typescript/src/generated/services/uploads.ts
+  s_728df3fc3109c7::t_c9b921207aa392 40-41,174-176,192
+typescript/src/generated/services/vaults.ts
+  s_728df3fc3109c7::t_3e01fee40a239b 32-33,127-129,145
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_b1b74299ef0baf::t_37bc915922f864 26-33,39-46,57-64,81,102,171-178,187-194,201-208,223-230,237-244,255,265-273,289-296,308-315,333-340,487-494,504,520-527,538,578,661-668,674-681,692,718-726,745-752,772,806,821,844-851,857,868,903-910,930,958,1015-1022,1037-1044
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/boosts.kt
+  s_b1b74299ef0baf::t_fcfed9da21cf7a 58,67-71,106,115-119
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/campfires.kt
+  s_b1b74299ef0baf::t_6370dd8fb1896c 19,28-32,185,297
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/cards.kt
+  s_b1b74299ef0baf::t_01a7421997138d 88,97-101
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/checkins.kt
+  s_b1b74299ef0baf::t_34bdf68b638b4c 19,28-32,105,114-118,199,208-212,269,278-282
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/client-approvals.kt
+  s_b1b74299ef0baf::t_3c5bdefc12da0c 31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/client-correspondences.kt
+  s_b1b74299ef0baf::t_c5a7b0b4ff453d 31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/client-replies.kt
+  s_b1b74299ef0baf::t_2f5649651430f4 20,29-33
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/comments.kt
+  s_b1b74299ef0baf::t_134c83cf1b450f 63,72-76
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/documents.kt
+  s_b1b74299ef0baf::t_42d3dd0573c800 64,73-77
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/events.kt
+  s_b1b74299ef0baf::t_57cdede0f72a9b 20,29-33
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/forwards.kt
+  s_b1b74299ef0baf::t_81c8b864defcad 40,49-53,140
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/gauges.kt
+  s_b1b74299ef0baf::t_16bfea5e38f348 102,111-115,161
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/messages.kt
+  s_b1b74299ef0baf::t_ff4dd28b2ff19a 32
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/people.kt
+  s_b1b74299ef0baf::t_bdd5e1473b6422 126,135-139,231,240-244
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/projects.kt
+  s_b1b74299ef0baf::t_c98748be21e355 30
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/recordings.kt
+  s_b1b74299ef0baf::t_04b2ea6438530b 35
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/reports.kt
+  s_b1b74299ef0baf::t_a26fc521b1c7e4 27,36-40,118,127-131
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/schedules.kt
+  s_b1b74299ef0baf::t_864b45ee272e3b 144
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/search.kt
+  s_b1b74299ef0baf::t_f5f12972f1401c 42
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/templates.kt
+  s_b1b74299ef0baf::t_f838c0ca7ac8fb 30
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/timeline.kt
+  s_b1b74299ef0baf::t_e4ce5658c426b0 20,29-33
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/timesheets.kt
+  s_b1b74299ef0baf::t_6e2ba777485149 33,60
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolist-groups.kt
+  s_b1b74299ef0baf::t_4c829d458af2bc 41,50-54
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolists.kt
+  s_b1b74299ef0baf::t_ebacfac2692334 96
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todos.kt
+  s_b1b74299ef0baf::t_13206263bd3052 62
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/uploads.kt
+  s_b1b74299ef0baf::t_c49206d940c0de 85,94-98
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/vaults.kt
+  s_b1b74299ef0baf::t_10ffec862b3420 63,72-76
+openapi.json
+  s_b1b74299ef0baf::t_c91c214f60e053 3336-3345,5073-5082,5815-5824,6371-6380,6793-6802,7001-7010,7200-7209,8829-8838,9257-9266,9844-9853,11627-11636,12000-12009,12487-12496,12764-12773,13277-13286,13504-13513,13819-13828,13955-13964,14352-14361,14773-14782,15102-15111,16092-16101,16424-16433,16641-16650,16757-16766,17763-17772,18269-18278,18367-18376,18938-18947,19571-19580,19908-19917,20098-20107,21432-21441,21665-21674,23481-23490,24203-24212,24420-24429,24637-24646
+swift/Sources/Basecamp/Generated/Services/BoostsService.swift
+  s_34dec3eb0265b2::t_e9bf275a3947df 5,8-9,15,18-19,65-68,72,79-82,86
+swift/Sources/Basecamp/Generated/Services/CampfiresService.swift
+  s_34dec3eb0265b2::t_1eb8154b42cd8c 7,10-15,18,26,29-34,37,43,46-47,148-150,168-170,181-184,188
+swift/Sources/Basecamp/Generated/Services/CardsService.swift
+  s_34dec3eb0265b2::t_f4c84a7917f1e1 5,8-9,36-39,43
+swift/Sources/Basecamp/Generated/Services/CheckinsService.swift
+  s_34dec3eb0265b2::t_03600ec7eaa584 5,8-9,15,18-19,25,28-29,43,46-47,84-87,91,107-110,114,130-133,137,153-156,160
+swift/Sources/Basecamp/Generated/Services/ClientApprovalsService.swift
+  s_34dec3eb0265b2::t_83746cd95c2e48 7,10-15,18,42-44
+swift/Sources/Basecamp/Generated/Services/ClientCorrespondencesService.swift
+  s_34dec3eb0265b2::t_c49b9ea08fea5b 7,10-15,18,42-44
+swift/Sources/Basecamp/Generated/Services/ClientRepliesService.swift
+  s_34dec3eb0265b2::t_c55c4907d0950f 5,8-9,26-29,33
+swift/Sources/Basecamp/Generated/Services/CommentsService.swift
+  s_34dec3eb0265b2::t_5fea7b2e63562a 5,8-9,36-39,43
+swift/Sources/Basecamp/Generated/Services/DocumentsService.swift
+  s_34dec3eb0265b2::t_c833712267974f 5,8-9,36-39,43
+swift/Sources/Basecamp/Generated/Services/EventsService.swift
+  s_34dec3eb0265b2::t_a0af471ffdfc4a 5,8-9,17-20,24
+swift/Sources/Basecamp/Generated/Services/ForwardsService.swift
+  s_34dec3eb0265b2::t_9eec2bc58935e0 5,8-9,17,20-25,28,73-76,80,94-96
+swift/Sources/Basecamp/Generated/Services/GaugesService.swift
+  s_34dec3eb0265b2::t_cffd22f0929e99 5,8-9,16,19,21,57-60,64,75-77
+swift/Sources/Basecamp/Generated/Services/MessagesService.swift
+  s_34dec3eb0265b2::t_e8879a6407b00a 7,10-15,18,52-54
+swift/Sources/Basecamp/Generated/Services/PeopleService.swift
+  s_34dec3eb0265b2::t_780288a9b1d22c 5,8-9,23,26-27,99-102,106,122-125,129
+swift/Sources/Basecamp/Generated/Services/ProjectsService.swift
+  s_34dec3eb0265b2::t_e46f5741aad539 6,9,11,42-44
+swift/Sources/Basecamp/Generated/Services/RecordingsService.swift
+  s_34dec3eb0265b2::t_70b048982da944 9,17,24,64-66
+swift/Sources/Basecamp/Generated/Services/ReportsService.swift
+  s_34dec3eb0265b2::t_1228d12c26896d 13,16-17,23,26-27,73-76,81,93-96,100
+swift/Sources/Basecamp/Generated/Services/SchedulesService.swift
+  s_34dec3eb0265b2::t_f5d853ed8b647d 6,9,11,60-62
+swift/Sources/Basecamp/Generated/Services/SearchService.swift
+  s_34dec3eb0265b2::t_983f4d91f759f1 18,32,45,100-102
+swift/Sources/Basecamp/Generated/Services/TemplatesService.swift
+  s_34dec3eb0265b2::t_381f73278437bb 6,9,11,70-72
+swift/Sources/Basecamp/Generated/Services/TimelineService.swift
+  s_34dec3eb0265b2::t_c629ddf84d4b74 5,8-9,17-20,24
+swift/Sources/Basecamp/Generated/Services/TimesheetsService.swift
+  s_34dec3eb0265b2::t_c77beffd6d5127 8,15,21,30,37,43,83-85,106-108
+swift/Sources/Basecamp/Generated/Services/TodolistGroupsService.swift
+  s_34dec3eb0265b2::t_ec0865ac82001b 5,8-9,27-30,34
+swift/Sources/Basecamp/Generated/Services/TodolistsService.swift
+  s_34dec3eb0265b2::t_97f72314696aa9 6,9,11,42-44
+swift/Sources/Basecamp/Generated/Services/TodosService.swift
+  s_34dec3eb0265b2::t_b86f897328132b 7,10-15,18,71-73
+swift/Sources/Basecamp/Generated/Services/UploadsService.swift
+  s_34dec3eb0265b2::t_5ffffbc3b91514 13,16-17,53-56,60
+swift/Sources/Basecamp/Generated/Services/VaultsService.swift
+  s_34dec3eb0265b2::t_286aae5d400fa5 5,8-9,36-39,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "e87f41d4b52da22403340dea86cd204258601be2",
+  "prompts": {},
+  "sessions": {
+    "s_2218d00d1182de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd710f98-c872-4170-b8e9-3e1b533f4f70",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_728df3fc3109c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72f87c17-2774-4ee8-960e-a816d57bc152",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d931ffd296629c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ba81883-0cd3-4faf-ba1a-4be89d947282",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
