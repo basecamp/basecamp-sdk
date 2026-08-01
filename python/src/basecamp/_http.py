@@ -119,9 +119,16 @@ class HttpClient:
             return self._request_with_retry(method, url, files=files, operation=operation)
         return self._single_request(method, url, files=files)
 
-    def get_no_retry(self, url: str) -> httpx.Response:
+    def get_download(self, url: str) -> httpx.Response:
+        """Authenticated hop-1 GET for the download flow (SPEC section 14).
+
+        Retries network errors plus the declared DOWNLOAD_RETRY_ON statuses —
+        never 500 — under the public max_retries total-attempt cap, floored at
+        one. DownloadURL has no behavior-model entry, so the policy is passed
+        directly rather than looked up by operation.
+        """
         url = self._build_url(url)
-        return self._single_request("GET", url)
+        return self._request_with_retry("GET", url, retry_on=self.DOWNLOAD_RETRY_ON)
 
     def close(self) -> None:
         self._client.close()
@@ -147,6 +154,7 @@ class HttpClient:
         files: dict | None = None,
         allow_cross_origin: bool = False,
         operation: str | None = None,
+        retry_on: frozenset[int] | None = None,
     ) -> httpx.Response:
         # max_retries is a TOTAL attempt count (config validation guarantees it
         # is >= 0). 0 is accepted as a compatibility exception and means a single
@@ -174,7 +182,7 @@ class HttpClient:
                     allow_cross_origin=allow_cross_origin,
                 )
             except (RateLimitError, NetworkError, ApiError) as e:
-                if not self._is_retryable_error(e, operation):
+                if not self._is_retryable_error(e, operation, retry_on=retry_on):
                     raise
                 last_error = e
                 if attempt >= max_attempts:
@@ -315,12 +323,23 @@ class HttpClient:
     # retry_on of its own.
     DEFAULT_RETRY_ON = frozenset({429, 503})
 
-    def _is_retryable_error(self, error: BasecampError, operation: str | None) -> bool:
+    # SPEC section 14's declared hop-1 set for downloads: a carve-out from the
+    # ungoverned GET taxonomy (which retries 500). Authoritative in BOTH
+    # directions, like an operation's declared retry_on.
+    DOWNLOAD_RETRY_ON = frozenset({429, 502, 503, 504})
+
+    def _is_retryable_error(
+        self, error: BasecampError, operation: str | None, *, retry_on: frozenset[int] | None = None
+    ) -> bool:
         # A network error carries no HTTP status, so the declared status set does
         # not apply; SPEC section 7's network-error rule governs, and errors.py's
         # classification is the right signal there.
         if error.http_status is None:
             return error.retryable
+        # An explicit declared set (the download flow) is authoritative in both
+        # directions, exactly like an operation's declared retry_on below.
+        if retry_on is not None:
+            return error.http_status in retry_on
         # No operation id means no behavior-model metadata — today only the
         # Launchpad authorization GET issued by get_absolute(). Non-Smithy
         # traffic keeps its pre-Smithy retry contract; applying the generated
