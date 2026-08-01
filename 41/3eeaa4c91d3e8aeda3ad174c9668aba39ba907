@@ -1,0 +1,21 @@
+go/pkg/basecamp/schedules.go
+  s_555508c40a7b3b::t_17fda81faa8f3c 225-229
+go/pkg/basecamp/page_param_test.go
+  s_555508c40a7b3b::t_8ff67182876266 168-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "413eeaa4c91d3e8aeda3ad174c9668aba39ba907",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
