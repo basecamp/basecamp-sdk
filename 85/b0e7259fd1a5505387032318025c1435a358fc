@@ -1,0 +1,125 @@
+ruby/test/basecamp/pagination_meta_test.rb
+  s_555508c40a7b3b::t_0d3bb2d8ad59cd 1-368,370-380
+  s_555508c40a7b3b::t_9b037fc597f74b 369
+ruby/lib/basecamp/client.rb
+  s_555508c40a7b3b::t_99a916b1ff692a 205-206,208-210,218-219,221-224,231-236
+ruby/lib/basecamp/generated/services/base_service.rb
+  s_555508c40a7b3b::t_927e679c700d3c 60-64,71-82
+  s_555508c40a7b3b::t_567f4cee5e3989 117
+ruby/scripts/generate-services.rb
+  s_555508c40a7b3b::t_ed9e822fb22fd7 614-618
+  s_555508c40a7b3b::t_391053122b9b95 665-668,670,674,676
+  s_555508c40a7b3b::t_ca9c634bf93b61 830,832
+  s_555508c40a7b3b::t_1cebcac4893ee5 699-700
+  s_555508c40a7b3b::t_659c1745f0a763 781-783
+  s_555508c40a7b3b::t_0a711bb4d440d4 738
+  s_555508c40a7b3b::t_ae1a1f88d0e0ea 844-845,847-848
+ruby/README.md
+  s_555508c40a7b3b::t_1e12623c1415a9 319-322,330,337-363
+  s_555508c40a7b3b::t_e1d52d2a3b5f7e 364
+conformance/runner/ruby/runner.rb
+  s_555508c40a7b3b::t_6551311544acc7 89
+  s_555508c40a7b3b::t_16378992c4d4f7 351-352,354-356
+  s_555508c40a7b3b::t_2a0b6fb03f3866 357-358
+  s_555508c40a7b3b::t_232bf04681806f 774-779
+  s_555508c40a7b3b::t_aa7c8382b7d893 72,79-81
+ruby/lib/basecamp/list_meta.rb
+  s_555508c40a7b3b::t_fe8b73405aa38d 1-36
+ruby/test/basecamp/operation_hooks_test.rb
+  s_555508c40a7b3b::t_66a42059312a1b 100-116,122,124-129,132-133
+  s_555508c40a7b3b::t_2bd88ecd347d06 44-47,55-58
+  s_555508c40a7b3b::t_42362944956cc5 189-191,199,203
+ruby/lib/basecamp/http.rb
+  s_555508c40a7b3b::t_ccd0155e9cb46b 173-175,178-179,181-184,189,193-194,196-199,207-234,239-241,243,245-246,248-250,252-253,255-259,261-266,268-269,271,275-278,280-283,287,289-297,300-318
+rubric-audit.json
+  s_555508c40a7b3b::t_83692be3f473d8 101
+  s_555508c40a7b3b::t_ae262bc6524c61 87
+  s_555508c40a7b3b::t_3e353c7df3cf96 97
+SPEC.md
+  s_555508c40a7b3b::t_36b839fd7efc97 330
+  s_555508c40a7b3b::t_a71a333aa33d47 1987
+ruby/lib/basecamp/list_enumerator.rb
+  s_555508c40a7b3b::t_7d55042c360e0b 1-23
+ruby/lib/basecamp/generated/services/bookmarks_service.rb
+  s_555508c40a7b3b::t_efba3bc48f9003 12-14,17
+ruby/lib/basecamp/generated/services/boosts_service.rb
+  s_555508c40a7b3b::t_9a4c91a3c07cc4 31-33,35,52-54,56
+ruby/lib/basecamp/generated/services/campfires_service.rb
+  s_555508c40a7b3b::t_52a6b999f539fe 13-15,17,32-34,36,88-90,93,145-147,150
+ruby/lib/basecamp/generated/services/cards_service.rb
+  s_555508c40a7b3b::t_7aa8db7aa8ad73 46-48,50
+ruby/lib/basecamp/generated/services/checkins_service.rb
+  s_555508c40a7b3b::t_360e3e10bd0a36 11-13,15,51-53,55,94-96,98,115-117,119,126-128,130
+ruby/lib/basecamp/generated/services/client_approvals_service.rb
+  s_555508c40a7b3b::t_4cdeb46b273a24 13-15,18
+ruby/lib/basecamp/generated/services/client_correspondences_service.rb
+  s_555508c40a7b3b::t_659f3911bd2300 13-15,18
+ruby/lib/basecamp/generated/services/client_replies_service.rb
+  s_555508c40a7b3b::t_caa0037576b6dd 12-14,16
+ruby/lib/basecamp/generated/services/comments_service.rb
+  s_555508c40a7b3b::t_a426b1ba261aef 31-33,35
+ruby/lib/basecamp/generated/services/documents_service.rb
+  s_555508c40a7b3b::t_78cfc25049b0e7 32-34,36
+ruby/lib/basecamp/generated/services/drafts_service.rb
+  s_555508c40a7b3b::t_bf019c0633ca89 12-14,17
+ruby/lib/basecamp/generated/services/events_service.rb
+  s_555508c40a7b3b::t_ee77960984d13e 12-14,16
+ruby/lib/basecamp/generated/services/everything_service.rb
+  s_555508c40a7b3b::t_ba5f3c1ef9a3db 15-17,20,29-31,34,43-45,48,57-59,62,82-84,87,93-95,98,104-106,109,117-119,122,128-130,133,139-141,144,153-155,158,167-169,172,181-183,186,206-208,211
+ruby/lib/basecamp/generated/services/forwards_service.rb
+  s_555508c40a7b3b::t_5f23cadb06226a 21-23,25,62-64,67
+ruby/lib/basecamp/generated/services/gauges_service.rb
+  s_555508c40a7b3b::t_7057922ea7b52c 52-54,56,75-77,80
+ruby/lib/basecamp/generated/services/message_types_service.rb
+  s_555508c40a7b3b::t_603aee43469110 12-14,16
+ruby/lib/basecamp/generated/services/messages_service.rb
+  s_555508c40a7b3b::t_e4c84f7cb6fcff 14-16,19
+ruby/lib/basecamp/generated/services/my_notifications_service.rb
+  s_555508c40a7b3b::t_4a09122e5e5c3c 25-27,30
+ruby/lib/basecamp/generated/services/people_service.rb
+  s_555508c40a7b3b::t_9b28939d5ece26 11-13,15,62-64,66,110-112,114
+ruby/lib/basecamp/generated/services/projects_service.rb
+  s_555508c40a7b3b::t_18a877fad8c202 12-14,17
+ruby/lib/basecamp/generated/services/recordings_service.rb
+  s_555508c40a7b3b::t_74a505ee003d3a 16-18,21
+ruby/lib/basecamp/generated/services/reports_service.rb
+  s_555508c40a7b3b::t_173c8ac33ea112 11-13,15,49-51,53
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_555508c40a7b3b::t_b489932b8730bd 75-77,80
+ruby/lib/basecamp/generated/services/search_service.rb
+  s_555508c40a7b3b::t_ba053ae525e5a0 24-26,29
+ruby/lib/basecamp/generated/services/templates_service.rb
+  s_555508c40a7b3b::t_b6c00db86a15c2 12-14,17
+ruby/lib/basecamp/generated/services/timeline_service.rb
+  s_555508c40a7b3b::t_272ca2eb42fc22 12-14,16
+ruby/lib/basecamp/generated/services/timesheets_service.rb
+  s_555508c40a7b3b::t_f89693c1e22c21 15-17,20,29-31,34
+ruby/lib/basecamp/generated/services/todolist_groups_service.rb
+  s_555508c40a7b3b::t_7161be958a9f81 23-25,27
+ruby/lib/basecamp/generated/services/todolists_service.rb
+  s_555508c40a7b3b::t_0ddb60987a0eaa 44-46,49
+ruby/lib/basecamp/generated/services/todos_service.rb
+  s_555508c40a7b3b::t_505aabd5927715 31-33,36
+ruby/lib/basecamp/generated/services/uploads_service.rb
+  s_555508c40a7b3b::t_2a85744e4eedb0 32-34,36,42-44,46
+ruby/lib/basecamp/generated/services/vaults_service.rb
+  s_555508c40a7b3b::t_3efc3b6b625dd1 31-33,35
+ruby/lib/basecamp/generated/services/webhooks_service.rb
+  s_555508c40a7b3b::t_fd3613eb9a2f5f 12-14,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "85b0e7259fd1a5505387032318025c1435a358fc",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
