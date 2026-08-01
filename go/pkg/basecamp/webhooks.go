@@ -389,7 +389,7 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	event := WebhookEvent{
 		Kind: deref(ge.Kind),
 	}
-	if ge.CreatedAt != nil && !ge.CreatedAt.IsZero() {
+	if ge.CreatedAt != nil {
 		event.CreatedAt = ge.CreatedAt.Format(time.RFC3339Nano)
 	}
 
@@ -418,6 +418,9 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 		if rec.Id != 0 {
 			event.Recording.ID = rec.Id
 		}
+		// Recording created_at/updated_at are @required and generate as VALUE
+		// time.Time, so there is no pointer to consult — IsZero is the only
+		// presence signal available here, unlike the pointer-backed fields above.
 		if !rec.CreatedAt.IsZero() {
 			event.Recording.CreatedAt = rec.CreatedAt.Format(time.RFC3339Nano)
 		}
@@ -502,10 +505,10 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 		location := *gp.Location
 		p.Location = &location
 	}
-	if gp.CreatedAt != nil && !gp.CreatedAt.IsZero() {
+	if gp.CreatedAt != nil {
 		p.CreatedAt = gp.CreatedAt.Format(time.RFC3339Nano)
 	}
-	if gp.UpdatedAt != nil && !gp.UpdatedAt.IsZero() {
+	if gp.UpdatedAt != nil {
 		p.UpdatedAt = gp.UpdatedAt.Format(time.RFC3339Nano)
 	}
 	if gp.Company != nil {
