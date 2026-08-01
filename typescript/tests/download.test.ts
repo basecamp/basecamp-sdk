@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "./setup.js";
 import { createBasecampClient } from "../src/client.js";
-import { filenameFromURL } from "../src/download.js";
+import { createDownloadURL, filenameFromURL } from "../src/download.js";
 import type { BasecampHooks, RequestInfo, RequestResult, OperationInfo } from "../src/hooks.js";
 import { BasecampError } from "../src/errors.js";
 
@@ -10,12 +10,38 @@ const BASE_URL = "https://3.basecampapi.com/12345";
 const API_ORIGIN = "https://3.basecampapi.com";
 const S3_URL = "https://s3.amazonaws.com/bucket/signed-file.png";
 
-function makeClient(hooks?: BasecampHooks) {
+function makeClient(hooks?: BasecampHooks, enableRetry?: boolean) {
   return createBasecampClient({
     accountId: "12345",
     accessToken: "test-token",
     baseUrl: BASE_URL,
     hooks,
+    ...(enableRetry === undefined ? {} : { enableRetry }),
+  });
+}
+
+/**
+ * Direct factory construction: exercises the fixed hop-1 retry policy with a
+ * millisecond backoff base (the internal test seam), so the retry tables run
+ * without real one-second sleeps. Client-level tests keep the default base.
+ */
+function makeDownloadURL(overrides?: {
+  hooks?: BasecampHooks;
+  enableRetry?: boolean;
+  requestTimeoutMs?: number;
+}) {
+  return createDownloadURL({
+    authStrategy: {
+      authenticate: async (headers) => {
+        headers.set("Authorization", "Bearer test-token");
+      },
+    },
+    userAgent: "basecamp-sdk-test",
+    baseUrl: BASE_URL,
+    hooks: overrides?.hooks,
+    requestTimeoutMs: overrides?.requestTimeoutMs ?? 30_000,
+    enableRetry: overrides?.enableRetry ?? true,
+    retryBaseDelayMs: 1,
   });
 }
 
@@ -307,25 +333,233 @@ describe("downloadURL", () => {
       ).rejects.toMatchObject({ code: "network" });
     });
 
-    it("does not retry on 429", async () => {
+  });
+
+  describe("hop-1 retry policy (SPEC §14)", () => {
+    const RAW_URL = "https://storage.3.basecamp.com/999/blobs/abc/download/file.png";
+
+    // The COMPLETE declared retry set, pinned status by status: hop 1 retries
+    // {429, 502, 503, 504} (the shared conformance fixtures cover 429/503).
+    it.each([[429], [502], [503], [504]] as const)(
+      "retries hop 1 on %d, then follows the redirect",
+      async (status) => {
+        let apiAttempts = 0;
+
+        server.use(
+          http.get(`${API_ORIGIN}/*`, () => {
+            apiAttempts++;
+            if (apiAttempts === 1) {
+              return new HttpResponse(null, { status });
+            }
+            return new HttpResponse(null, {
+              status: 302,
+              headers: { Location: S3_URL },
+            });
+          }),
+          http.get(S3_URL, () => {
+            return new HttpResponse("data", {
+              headers: { "Content-Type": "application/octet-stream" },
+            });
+          }),
+        );
+
+        const downloadURL = makeDownloadURL();
+        const result = await downloadURL(RAW_URL);
+        result.body.cancel();
+
+        expect(apiAttempts).toBe(2);
+      },
+    );
+
+    it("never retries 500 — deliberately outside the declared set", async () => {
       let attempts = 0;
 
       server.use(
         http.get(`${API_ORIGIN}/*`, () => {
           attempts++;
+          return new HttpResponse(null, { status: 500 });
+        }),
+      );
+
+      const downloadURL = makeDownloadURL();
+      await expect(downloadURL(RAW_URL)).rejects.toMatchObject({ code: "api_error" });
+
+      expect(attempts).toBe(1);
+    });
+
+    it("retries hop 1 on a network error", async () => {
+      let attempts = 0;
+
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return HttpResponse.error();
+          }
+          return new HttpResponse("content", {
+            headers: { "Content-Type": "text/plain" },
+          });
+        }),
+      );
+
+      const downloadURL = makeDownloadURL();
+      const result = await downloadURL(RAW_URL);
+      result.body.cancel();
+
+      expect(attempts).toBe(2);
+    });
+
+    it("exhausts the three-attempt budget and surfaces the final error", async () => {
+      let attempts = 0;
+
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          attempts++;
+          return new HttpResponse(null, { status: 503 });
+        }),
+      );
+
+      const downloadURL = makeDownloadURL();
+      await expect(downloadURL(RAW_URL)).rejects.toThrow(BasecampError);
+
+      expect(attempts).toBe(3);
+    });
+
+    it("makes exactly one attempt when retry is disabled", async () => {
+      let attempts = 0;
+
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          attempts++;
+          return new HttpResponse(null, { status: 503 });
+        }),
+      );
+
+      const downloadURL = makeDownloadURL({ enableRetry: false });
+      await expect(downloadURL(RAW_URL)).rejects.toThrow(BasecampError);
+
+      expect(attempts).toBe(1);
+    });
+
+    it("treats a per-attempt timeout abort as terminal — no retry after abort", async () => {
+      let attempts = 0;
+
+      server.use(
+        http.get(`${API_ORIGIN}/*`, async () => {
+          attempts++;
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          return new HttpResponse(null, { status: 503 });
+        }),
+      );
+
+      const downloadURL = makeDownloadURL({ requestTimeoutMs: 50 });
+      await expect(downloadURL(RAW_URL)).rejects.toMatchObject({ code: "network" });
+
+      expect(attempts).toBe(1);
+    });
+
+    it("sends Authorization on every hop-1 attempt and never on hop 2", async () => {
+      const apiAuthHeaders: (string | null)[] = [];
+      let s3AuthHeader: string | null = "unset";
+      let apiAttempts = 0;
+
+      server.use(
+        http.get(`${API_ORIGIN}/*`, ({ request }) => {
+          apiAttempts++;
+          apiAuthHeaders.push(request.headers.get("Authorization"));
+          if (apiAttempts === 1) {
+            return new HttpResponse(null, { status: 503 });
+          }
           return new HttpResponse(null, {
-            status: 429,
-            headers: { "Retry-After": "1" },
+            status: 302,
+            headers: { Location: S3_URL },
+          });
+        }),
+        http.get(S3_URL, ({ request }) => {
+          s3AuthHeader = request.headers.get("Authorization");
+          return new HttpResponse("data", {
+            headers: { "Content-Type": "application/octet-stream" },
+          });
+        }),
+      );
+
+      const downloadURL = makeDownloadURL();
+      const result = await downloadURL(RAW_URL);
+      result.body.cancel();
+
+      expect(apiAuthHeaders).toEqual(["Bearer test-token", "Bearer test-token"]);
+      expect(s3AuthHeader).toBeNull();
+    });
+
+    it("fires balanced start/end hooks and one onRetry per backoff", async () => {
+      const events: { kind: string; attempt: number }[] = [];
+      let apiAttempts = 0;
+
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          apiAttempts++;
+          if (apiAttempts < 3) {
+            return new HttpResponse(null, { status: 503 });
+          }
+          return new HttpResponse("content", {
+            headers: { "Content-Type": "text/plain" },
+          });
+        }),
+      );
+
+      const hooks: BasecampHooks = {
+        onRequestStart: (info) => {
+          events.push({ kind: "start", attempt: info.attempt });
+        },
+        onRequestEnd: (info) => {
+          events.push({ kind: "end", attempt: info.attempt });
+        },
+        onRetry: (_info, upcomingAttempt) => {
+          events.push({ kind: "retry", attempt: upcomingAttempt });
+        },
+      };
+
+      const downloadURL = makeDownloadURL({ hooks });
+      const result = await downloadURL(RAW_URL);
+      result.body.cancel();
+
+      const byKind = (kind: string) =>
+        events.filter((e) => e.kind === kind).map((e) => e.attempt);
+      expect(byKind("start")).toEqual([1, 2, 3]);
+      expect(byKind("end")).toEqual([1, 2, 3]);
+      // onRetry's argument is the UPCOMING attempt (SPEC §7 attempt semantics).
+      expect(byKind("retry")).toEqual([2, 3]);
+    });
+
+    it("honors Retry-After on 429 at the client level", async () => {
+      let attempts = 0;
+
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return new HttpResponse(null, {
+              status: 429,
+              headers: { "Retry-After": "1" },
+            });
+          }
+          return new HttpResponse("content", {
+            headers: { "Content-Type": "text/plain" },
           });
         }),
       );
 
       const client = makeClient();
-      await expect(
-        client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.txt"),
-      ).rejects.toMatchObject({ code: "rate_limit" });
+      const start = performance.now();
+      const result = await client.downloadURL(RAW_URL);
+      result.body.cancel();
+      const elapsed = performance.now() - start;
 
-      expect(attempts).toBe(1);
+      expect(attempts).toBe(2);
+      // Node timers may fire marginally early; require all but a sliver of
+      // the requested second so a dropped Retry-After (millisecond backoff
+      // would miss by ~999ms) still fails loudly.
+      expect(elapsed).toBeGreaterThanOrEqual(990);
     });
   });
 
@@ -478,7 +712,7 @@ describe("downloadURL", () => {
       expect(capturedResult!.statusCode).toBe(404);
     });
 
-    it("fires onRequestEnd with statusCode 0 on network failure", async () => {
+    it("fires onRequestEnd with statusCode 0 on network failure (retry disabled)", async () => {
       let reqStartCount = 0;
       let reqEndCount = 0;
       let capturedResult: RequestResult | null = null;
@@ -499,7 +733,10 @@ describe("downloadURL", () => {
         },
       };
 
-      const client = makeClient(hooks);
+      // Retry disabled: exactly one hop-1 attempt (SPEC §14 attempt budget),
+      // so the hook contract is pinned per attempt without real backoff. The
+      // retry-enabled hook shape is pinned by the balanced-hooks test above.
+      const client = makeClient(hooks, false);
       await expect(
         client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.txt"),
       ).rejects.toMatchObject({ code: "network" });

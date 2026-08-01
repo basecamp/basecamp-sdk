@@ -79,10 +79,6 @@ const TEST_ACCOUNT_ID = "999";
 const TS_SDK_SKIPS: Record<string, string> = {
   "Large integer IDs preserved without precision loss":
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
-  "DownloadURL retries on 503 at the auth'd first hop":
-    "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
-  "DownloadURL honors Retry-After on 429 at the auth'd first hop":
-    "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
 };
 
 /**
@@ -1205,11 +1201,16 @@ function shouldEnableRetry(tc: TestCase, filename: string): boolean {
   if (
     filename === "retry.json" ||
     filename === "idempotency.json" ||
-    filename === "network-retry.json"
+    filename === "network-retry.json" ||
+    filename === "downloads.json"
   ) {
     // network-retry.json's CreateTodo safety case must run retry-ENABLED so it
     // actually proves the SDK doesn't re-send a non-idempotent POST on a network
     // error (with retry off, the requestCount:1 assertion would be vacuous).
+    // downloads.json exercises the hop-1 retry policy (SPEC §14), and its
+    // no-retry cases (500, redirect-no-Location) stay single-attempt because
+    // those failures are outside the declared retry set, not because retry is
+    // disabled.
     return true;
   }
 

@@ -1,0 +1,222 @@
+/**
+ * The SDK's retry primitive: the attempt loop extracted from the client's
+ * retrying fetch so that both the middleware-chained JSON path (client.ts)
+ * and the raw-fetch download hop 1 (download.ts) share one budget/backoff/
+ * abort policy. The loop is transport-agnostic — callers own attempt
+ * preparation (auth, request construction) via `makeAttempt` and hook
+ * emission via `RetryEmit`.
+ */
+
+/**
+ * Retry configuration matching x-basecamp-retry extension schema.
+ */
+export interface RetryConfig {
+  maxAttempts: number;
+  baseDelayMs: number;
+  backoff: "exponential" | "linear" | "constant";
+  retryOn: number[];
+}
+
+/** Default retry config used when no operation-specific config is available */
+export const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxAttempts: 3,
+  baseDelayMs: 1000,
+  backoff: "exponential",
+  retryOn: [429, 503],
+};
+
+/** No-retry config for non-idempotent POST operations */
+export const NO_RETRY_CONFIG: RetryConfig = {
+  maxAttempts: 1,
+  baseDelayMs: 0,
+  backoff: "constant",
+  retryOn: [],
+};
+
+const MAX_JITTER_MS = 100;
+
+/**
+ * Lifecycle seams the retry loop emits through. The loop begins EVERY attempt
+ * and finalizes the attempts it abandons (before the backoff sleep); the
+ * terminal outcome — the response it returns, or the error it throws — is
+ * deliberately NOT finalized here. The caller owns the terminal attempt's end
+ * so it can record post-transform results (the client's cache middleware may
+ * rewrite a 304 into a cached 200 before its lifecycle middleware finalizes).
+ */
+export interface RetryEmit {
+  /** An attempt is beginning (fired for attempt 1 and every retry). */
+  begin(attempt: number): void;
+  /** An attempt was abandoned in favor of a retry (never the terminal one). */
+  finalize(outcome: { statusCode: number; error?: Error }): void;
+  /** A retry is coming: `failedAttempt` just ended, `failedAttempt + 1` is next. */
+  retrying(failedAttempt: number, error: Error, delayMs: number): void;
+}
+
+/**
+ * Marks an error thrown during attempt PREPARATION (e.g. a retry's auth
+ * refresh) rather than by the transport. The retry loop rethrows it as-is —
+ * no retry classification, no budget spent — and the caller unwraps `reason`
+ * so the original error's identity survives to its error path.
+ */
+export class TerminalRetryError extends Error {
+  constructor(readonly reason: unknown) {
+    super("attempt preparation failed terminally");
+    this.name = "TerminalRetryError";
+  }
+}
+
+/**
+ * Runs `makeAttempt` under the retry policy in `config`.
+ *
+ * `config.maxAttempts` is a total attempt count — the caller passes the
+ * effective budget (e.g. 1 when retry is disabled). Status retry is gated on
+ * the declared `retryOn` set; 429 honors Retry-After. Transport errors retry
+ * on the same budget, except aborts, which are terminal no matter what the
+ * budget says: a caller cancellation must not re-send, and a request-timeout
+ * budget is shared by every attempt and backoff — once it fires, a retry
+ * would instantly re-reject. Terminal errors are rethrown as-is so their
+ * identity survives to the caller.
+ *
+ * `signal`, when given, is the authoritative abort test: a caller can abort
+ * with a CUSTOM reason — AbortController.abort(reason) — and fetch then
+ * rejects with that reason, not a DOMException named AbortError. The
+ * DOMException check remains for abort-shaped rejections that arrive without
+ * an aborted signal (e.g. a per-attempt timeout controller).
+ */
+export async function executeWithRetry(
+  makeAttempt: (attempt: number) => Promise<Response>,
+  config: RetryConfig,
+  emit: RetryEmit,
+  signal?: AbortSignal | null,
+): Promise<Response> {
+  let attempt = 1;
+  emit.begin(attempt);
+
+  for (;;) {
+    let response: Response;
+    try {
+      response = await makeAttempt(attempt);
+    } catch (error) {
+      // Attempt preparation failed — the caller marked it terminal. Rethrow
+      // the marker itself; the caller unwraps it at its own boundary.
+      if (error instanceof TerminalRetryError) {
+        throw error;
+      }
+
+      const isAbort =
+        signal?.aborted === true ||
+        (error instanceof DOMException &&
+          (error.name === "AbortError" || error.name === "TimeoutError"));
+      if (isAbort || attempt >= config.maxAttempts) {
+        throw error;
+      }
+
+      // Network-error retry rides the same budget as status retry: a caller
+      // that resolves a no-retry policy (maxAttempts 1) is rethrown above
+      // after its single attempt.
+      const cause = error instanceof Error ? error : new Error(String(error));
+      const delay = calculateBackoffDelay(config, attempt - 1);
+
+      emit.finalize({ statusCode: 0, error: cause });
+      emit.retrying(attempt, cause, delay);
+
+      await sleep(delay, signal ?? undefined);
+
+      // Same placement rationale as the status path below.
+      attempt += 1;
+      emit.begin(attempt);
+      continue;
+    }
+
+    // Terminal: a status outside the declared retryOn set, or a spent
+    // budget — maxAttempts is a total attempt count, so attempt N is
+    // terminal when it equals the cap.
+    if (!config.retryOn.includes(response.status) || attempt >= config.maxAttempts) {
+      return response;
+    }
+
+    // For 429, respect Retry-After; otherwise back off.
+    let delay: number;
+    const retryAfter =
+      response.status === 429 ? response.headers.get("Retry-After") : null;
+    const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : NaN;
+    if (!isNaN(retryAfterSeconds)) {
+      delay = retryAfterSeconds * 1000;
+    } else {
+      delay = calculateBackoffDelay(config, attempt - 1);
+    }
+
+    const statusError = new Error(
+      `HTTP ${response.status}: ${response.statusText || "Request failed"}`,
+    );
+
+    // End the failed attempt before sleeping, so a slow backoff cannot leave
+    // an attempt open, then announce the upcoming one.
+    emit.finalize({ statusCode: response.status });
+    emit.retrying(attempt, statusError, delay);
+
+    // This response is being discarded, so release its stream before we sleep
+    // rather than leaving it open across the backoff — otherwise a throttled
+    // client holds a connection per in-flight retry and cannot reuse any of
+    // them. The multipart transport in services/base.ts already does this.
+    // Errors are ignored: the body may already be consumed or closed.
+    void response.body?.cancel().catch(() => {});
+
+    await sleep(delay, signal ?? undefined);
+
+    // Begun after the backoff but before any work that can throw. After, so
+    // the attempt's duration measures the request rather than the sleep;
+    // before, so that if the caller's attempt preparation or the fetch
+    // throws, its error path still finds a live attempt to finalize.
+    // Starting it later would let onRetry announce an attempt and then never
+    // account for it.
+    attempt += 1;
+    emit.begin(attempt);
+  }
+}
+
+export function calculateBackoffDelay(config: RetryConfig, attempt: number): number {
+  const base = config.baseDelayMs;
+  let delay: number;
+
+  switch (config.backoff) {
+    case "exponential":
+      delay = base * Math.pow(2, attempt);
+      break;
+    case "linear":
+      delay = base * (attempt + 1);
+      break;
+    case "constant":
+    default:
+      delay = base;
+  }
+
+  // Add jitter (0-100ms)
+  const jitter = Math.random() * MAX_JITTER_MS;
+  return delay + jitter;
+}
+
+/**
+ * Signal-aware sleep for backoff waits: resolves after `ms`, or rejects with
+ * the signal's abort reason the moment it fires. Without this, a caller abort
+ * or the request-timeout budget expiring during a backoff would leave the
+ * request pending for the full delay and then start another attempt — begin,
+ * auth refresh, fetch — against an already-aborted signal.
+ */
+export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason as Error);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal!.reason as Error);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
