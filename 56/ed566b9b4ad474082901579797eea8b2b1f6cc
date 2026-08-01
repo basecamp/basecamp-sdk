@@ -1,0 +1,25 @@
+typescript/src/generated/openapi-stripped.json
+  s_b1b74299ef0baf::t_787e354010a940 30711,30723
+typescript/src/generated/schema.d.ts
+  s_b1b74299ef0baf::t_787e354010a940 5964,5976
+rubric-audit.json
+  s_b1b74299ef0baf::t_e750821235d50b 21
+go/pkg/generated/client.gen.go
+  s_b1b74299ef0baf::t_787e354010a940 3401,3409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "56ed566b9b4ad474082901579797eea8b2b1f6cc",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
