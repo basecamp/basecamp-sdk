@@ -1,0 +1,23 @@
+go/pkg/basecamp/gauges.go
+  s_b1b74299ef0baf::t_41db76578234c5 93-97,274-276,319
+scripts/check-go-optional-pointers
+  s_b1b74299ef0baf::t_6135410965eff6 33-35
+go/pkg/basecamp/optional_presence_test.go
+  s_b1b74299ef0baf::t_d82b2734a3d083 139-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "7aa997153f79f763d57f4ed8b9f8416df392c437",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
