@@ -256,6 +256,40 @@ class TestMalformedWritableFields:
         assert get_route.call_count == 1
         assert put_route.call_count == 0, "a malformed name must never reach the PUT"
 
+    @pytest.mark.parametrize("body", [42, "nope", None, ["a"], True])
+    @respx.mock
+    def test_refuses_a_non_object_response_body(self, body):
+        """Row 9: the malformed envelope, one level up from malformed fields."""
+        # json=None emits an EMPTY body, which fails transport decode before the
+        # guard ever runs; send the JSON literal so the guard is what is tested.
+        respx.get(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, content=json.dumps(body), headers={"content-type": "application/json"})
+        )
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed")
+
+        assert "where a todolist object was expected" in str(excinfo.value)
+        assert put_route.call_count == 0
+
+    @respx.mock
+    def test_reports_an_unrenderable_caller_value_without_losing_the_diagnosis(self):
+        """Row 10: the guard's own error path must not throw. repr is user code."""
+
+        class Hostile:
+            def __repr__(self):
+                raise RuntimeError("nope")
+
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError) as excinfo, _sync_todolists().edit(id=2) as tl:
+            tl.description = Hostile()
+
+        assert "Hostile" in str(excinfo.value), "the type name survives even when repr fails"
+        assert put_route.call_count == 0
+
     @respx.mock
     def test_malformed_message_is_capped(self):
         """SPEC section 9 caps error messages; the value is embedded in them."""

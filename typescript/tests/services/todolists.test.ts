@@ -351,6 +351,79 @@ describe("TodolistsService", () => {
       expect(requests).toEqual(["GET"]);
     });
 
+    // Row 9: the malformed *envelope*, one level up from malformed fields. A
+    // scalar or null makes `"todolist" in response` throw a raw TypeError; an
+    // array silently reports false and falls through to the flat branch.
+    it.each([
+      ["number", 42],
+      ["string", "nope"],
+      ["null", null],
+      ["array", ["a"]],
+      ["boolean", true],
+    ])("refuses a %s response body", async (_label, body) => {
+      const id = 42;
+      const requests: string[] = [];
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/where a todolist object was expected/);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // Row 10: the guard's own error path must not throw. JSON.stringify raises
+    // TypeError on a circular structure, and a value can carry a toJSON that
+    // throws — either would replace the clean error with an incidental one.
+    it("reports a circular caller value without throwing a TypeError", async () => {
+      const id = 42;
+      const circular: Record<string, unknown> = {};
+      circular.self = circular;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(describedTodolist(id)))
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          (t as unknown as Record<string, unknown>).description = circular;
+        })
+      );
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("usage");
+      expect((error as BasecampError).message).toMatch(/must be a string, got object/);
+    });
+
+    it("reports a value whose toJSON throws without losing the diagnosis", async () => {
+      const id = 42;
+      const hostile = {
+        toJSON() {
+          throw new Error("nope");
+        },
+      };
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(describedTodolist(id)))
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          (t as unknown as Record<string, unknown>).description = hostile;
+        })
+      );
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("usage");
+    });
+
     // The group envelope models no description, so deriving a todolist from it
     // would invent an empty one and erase the real description on the PUT.
     // Swift throws here; TypeScript must not silently do what Swift refuses.

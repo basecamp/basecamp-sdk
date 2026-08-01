@@ -28,6 +28,40 @@ from basecamp.generated.services.todolists import AsyncTodolistsService as _Gene
 from basecamp.generated.services.todolists import TodolistsService as _GeneratedTodolistsService
 
 
+def _describe(value: object) -> str:
+    """Render a value for an error message without ever throwing.
+
+    The guard's own error path must not fail while explaining a failure: ``repr``
+    is arbitrary user code and can raise. The type name is always available; the
+    rendering is a bonus, capped per SPEC section 9 and dropped if it fails.
+    """
+    kind = type(value).__name__
+    try:
+        return f"{kind} {_truncate_message(repr(value))}"
+    except Exception:
+        return kind
+
+
+def _require_mapping(body: object) -> dict[str, Any]:
+    """The response must be a JSON object before any field is read.
+
+    One level up from the malformed-*field* guards: a successful GET can return a
+    scalar, a list, or null. ``"name" not in body`` raises TypeError on a scalar
+    and silently checks membership on a list, so the envelope needs checking
+    before the fields.
+    """
+    if not isinstance(body, dict):
+        raise ApiError(
+            _truncate_message(f"GetTodolistOrGroup returned {_describe(body)} where a todolist object was expected"),
+            hint=(
+                "The merge-safe update/edit read this record's fields before rewriting them, "
+                "so a non-object body cannot be used. Use replace() to write the record "
+                "deliberately."
+            ),
+        )
+    return body
+
+
 def _fields_from_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
     """Derive a todolist's full writable state from a GET response.
 
@@ -43,6 +77,7 @@ def _fields_from_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
     todolist group, BC3 renders both through the same template, and both carry
     the same writable pair — so a group is preserved exactly as a list is.
     """
+    todolist = _require_mapping(todolist)
     body = todolist
     if "name" not in todolist and "description" not in todolist:
         for key in ("todolist", "group"):
@@ -99,7 +134,7 @@ def _writable_string(body: dict[str, Any], key: str, *, required: bool = False) 
         return ""
     if not isinstance(value, str):
         raise ApiError(
-            _truncate_message(f"Todolist field {key!r} is not a string: {value!r}"),
+            _truncate_message(f"Todolist field {key!r} is not a string: {_describe(value)}"),
             hint=(
                 "The merge-safe update/edit resend this field verbatim, so a coerced or "
                 "empty value would overwrite the current one. Use replace() to write the "
@@ -148,7 +183,7 @@ def _caller_string(fields: dict[str, Any], key: str) -> str:
     value = fields[key]
     if not isinstance(value, str):
         raise UsageError(
-            _truncate_message(f"todolist {key} must be a string, got {type(value).__name__}: {value!r}"),
+            _truncate_message(f"todolist {key} must be a string, got {_describe(value)}"),
             hint=(
                 "The full writable state is PUT back verbatim, so a non-string would be "
                 "written to the record. Assign a string; use '' to clear."

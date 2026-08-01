@@ -93,7 +93,7 @@ class TodolistsService(client: AccountClient) :
      * Responses"), tolerated here only because unwrapping it costs one lookup.
      */
     private fun fieldsFromTodolist(todolist: JsonElement): TodolistFields {
-        val root = todolist.jsonObject
+        val root = requireJsonObject(todolist)
         val obj = root["todolist"] as? JsonObject ?: root["group"] as? JsonObject ?: root
         return TodolistFields(
             name = obj.writableString("name", required = true),
@@ -120,6 +120,29 @@ class TodolistsService(client: AccountClient) :
      * Every other Kotlin composite reads a typed model, where the decoder
      * already rejects a wrong-typed field. Removing that asymmetry is #544.
      */
+    /**
+     * The response must be a JSON object before any field is read.
+     *
+     * One level up from the malformed-field guards: a successful GET can return
+     * a scalar, an array, or null. `JsonElement.jsonObject` throws a raw
+     * `IllegalArgumentException` for those, which is not the SPEC §6 shape — a
+     * caller checking for `BasecampException` would miss it and it carries no
+     * hint. `JsonElement.toString()` is safe to interpolate: the type is a
+     * closed JSON tree, so rendering it cannot run user code or recurse
+     * unboundedly, which is why no separate describe-helper is needed here.
+     */
+    private fun requireJsonObject(body: JsonElement): JsonObject =
+        body as? JsonObject
+            ?: throw BasecampException.Api(
+                BasecampException.truncateMessage(
+                    "GetTodolistOrGroup returned ${body::class.simpleName} where a todolist " +
+                        "object was expected: $body"
+                ),
+                hint = "The merge-safe update/edit read this record's fields before rewriting " +
+                    "them, so a non-object body cannot be used. Use replace() to write the " +
+                    "record deliberately.",
+            )
+
     private fun JsonObject.writableString(key: String, required: Boolean = false): String =
         when (val value = this[key]) {
             null, JsonNull ->

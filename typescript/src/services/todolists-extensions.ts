@@ -11,17 +11,56 @@ import { Errors, truncateErrorMessage } from "../errors.js";
 type TodolistOrGroup = components["schemas"]["TodolistOrGroup"];
 
 /**
+ * Renders a value for an error message without ever throwing.
+ *
+ * The guard's own error path must not fail while explaining a failure.
+ * `JSON.stringify` raises `TypeError` on a circular structure, and a value can
+ * carry a `toJSON` that throws — either would replace a clean `api_error`/`usage`
+ * with an incidental `TypeError` and lose the diagnosis. The type name is always
+ * available; the rendering is a bonus, capped per §9 and dropped if it fails.
+ */
+function describeValue(value: unknown): string {
+  const kind = value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
+  try {
+    const rendered = JSON.stringify(value);
+    return rendered === undefined ? kind : `${kind} ${truncateErrorMessage(rendered)}`;
+  } catch {
+    return kind;
+  }
+}
+
+/**
+ * The response must be a JSON object before any arm or field is probed.
+ *
+ * One level up from the malformed-*field* guards: a successful GET can return a
+ * scalar, an array, or null. `"todolist" in response` throws a raw `TypeError`
+ * on a scalar or null, and on an array it silently reports false and falls
+ * through to the flat branch — so the envelope needs checking before the arms.
+ */
+function requireTodolistObject(response: unknown): Record<string, unknown> {
+  if (typeof response !== "object" || response === null || Array.isArray(response)) {
+    throw malformedResponse(
+      `GetTodolistOrGroup returned ${describeValue(response)} where a todolist object was expected`,
+      "The merge-safe update/edit read this record's fields before rewriting them, so a " +
+        "non-object body cannot be used. Use replace() to write the record deliberately."
+    );
+  }
+  return response as Record<string, unknown>;
+}
+
+/**
  * Unwraps a `/{accountId}/todolists/{id}` response into the flat recordable.
  *
  * The generated signature is the Smithy union `{ todolist } | { group }`, but
- * that envelope is a modelling convention, not the wire shape: BC3 answers
- * this route with the recordable's own flat JSON. See AGENTS.md, "Smithy Spec
- * vs Actual API Responses"; the Go SDK carries the same note on
- * `TodolistsService.Get` (`go/pkg/basecamp/todolists.go`), where it decodes
- * the raw body instead of the modelled envelope. Both shapes are handled here
- * — an envelope, should one ever arrive, and the flat body that actually does.
+ * that envelope is a modelling convention, not the wire shape: BC3 answers this
+ * route with the recordable's own flat JSON. See AGENTS.md, "Smithy Spec vs
+ * Actual API Responses"; the Go SDK carries the same note on
+ * `TodolistsService.Get` (`go/pkg/basecamp/todolists.go`), where it decodes the
+ * raw body instead of the modelled envelope. Both shapes are handled here — an
+ * envelope, should one ever arrive, and the flat body that actually does.
  */
-function unwrapTodolist(response: TodolistOrGroup): Todolist {
+function unwrapTodolist(rawResponse: TodolistOrGroup): Todolist {
+  const response = requireTodolistObject(rawResponse) as TodolistOrGroup;
   if ("todolist" in response) return response.todolist;
   if ("group" in response) {
     // Refused, not converted. The `group` projection models no `description`
@@ -53,9 +92,7 @@ function callerString(fields: TodolistFields, key: "name" | "description"): stri
   const value: unknown = fields[key];
   if (typeof value !== "string") {
     throw Errors.usage(
-      truncateErrorMessage(
-        `todolist ${key} must be a string, got ${typeof value}: ${JSON.stringify(value)}`
-      ),
+      truncateErrorMessage(`todolist ${key} must be a string, got ${describeValue(value)}`),
       "The full writable state is PUT back verbatim, so a non-string would be written to the " +
         'record. Assign a string; use "" to clear.'
     );
@@ -121,7 +158,7 @@ function writableString(
   }
   if (typeof value !== "string") {
     throw malformedResponse(
-      `todolist ${key} is not a string: ${JSON.stringify(value)}`,
+      `todolist ${key} is not a string: ${describeValue(value)}`,
       "The merge-safe update/edit resend this field verbatim, so a malformed value would " +
         "overwrite the current one. Use replace() to write the record deliberately."
     );

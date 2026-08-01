@@ -83,11 +83,45 @@ module Basecamp
       # AGENTS.md, "Smithy Spec vs Actual API Responses"). Unwrapped anyway so
       # either shape reads correctly — it costs one lookup.
       def fields_from_todolist(todolist)
+        todolist = require_hash(todolist)
         body = todolist["todolist"] || todolist["group"] || todolist
         TodolistFields.new(
           name: writable_string(body, "name", required: true),
           description: writable_string(body, "description")
         )
+      end
+
+      # Renders a value for an error message without ever throwing.
+      #
+      # The guard's own error path must not fail while explaining a failure:
+      # +inspect+ is arbitrary user code and can raise. The class name is always
+      # available; the rendering is a bonus, capped per SPEC section 9 and
+      # dropped if it fails.
+      def describe(value)
+        kind = value.class.to_s
+        begin
+          Security.truncate("#{kind} #{value.inspect}")
+        rescue StandardError
+          kind
+        end
+      end
+
+      # The response must be a Hash before any field is read.
+      #
+      # One level up from the malformed-field guards: a successful GET can return
+      # a scalar, an Array, or nil. +body["name"]+ raises TypeError on an Integer
+      # or Array, and on a String it returns a silent nil substring match — so the
+      # envelope needs checking before the fields.
+      def require_hash(body)
+        unless body.is_a?(Hash)
+          raise ApiError.new(
+            Security.truncate("GetTodolistOrGroup returned #{describe(body)} where a todolist object was expected"),
+            hint: "The merge-safe update/edit read this record's fields before rewriting them, " \
+              "so a non-object body cannot be used. Use replace to write the record deliberately."
+          )
+        end
+
+        body
       end
 
       # Reads a writable string field, refusing to coerce a malformed one.
@@ -123,7 +157,7 @@ module Basecamp
           ""
         elsif !value.is_a?(String)
           raise ApiError.new(
-            Security.truncate("Todolist field #{key.inspect} is not a string: #{value.inspect}"),
+            Security.truncate("Todolist field #{key.inspect} is not a string: #{describe(value)}"),
             hint: "The merge-safe update/edit resend this field verbatim, so a coerced or " \
               "empty value would overwrite the current one. Use replace to write the record " \
               "deliberately."
@@ -184,7 +218,7 @@ module Basecamp
           value
         else
           raise UsageError.new(
-            Security.truncate("todolist #{key} must be a String, got #{value.class}: #{value.inspect}"),
+            Security.truncate("todolist #{key} must be a String, got #{describe(value)}"),
             hint: "The full writable state is PUT back verbatim, so a non-String would be " \
               "written to the record. Assign a String; use \"\" to clear."
           )

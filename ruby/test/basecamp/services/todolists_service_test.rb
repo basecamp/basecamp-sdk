@@ -163,6 +163,38 @@ class TodolistsServiceTest < Minitest::Test
     end
   end
 
+  # Row 9: the malformed envelope, one level up from malformed fields.
+  [ 42, "nope", nil, [ "a" ], true ].each do |body|
+    define_method("test_refuses_a_non_object_response_body_#{body.inspect}") do
+      # stub_get passes Strings through verbatim, so encode first: a bare
+      # `nope` is not JSON and would fail transport decode before the guard.
+      stub_get("/12345/todolists/2", response_body: body.to_json)
+      capture_put(full_todolist)
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, name: "Renamed")
+      end
+
+      assert_includes error.message, "where a todolist object was expected"
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  # Row 10: the guard's own error path must not throw. inspect is user code.
+  def test_reports_an_unrenderable_caller_value_without_losing_the_diagnosis
+    hostile = Class.new do
+      def inspect = raise("nope")
+    end.new
+    stub_todolist_get_and_put
+
+    error = assert_raises(Basecamp::UsageError) do
+      @account.todolists.edit(id: 2) { |list| list.description = hostile }
+    end
+
+    assert_includes error.message, "must be a String"
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+  end
+
   # SPEC section 9 caps error messages; the value is embedded in them.
   def test_malformed_message_is_capped
     stub_todolist_get_and_put(todolist: full_todolist.merge("description" => [ "x" ] * 50_000))
