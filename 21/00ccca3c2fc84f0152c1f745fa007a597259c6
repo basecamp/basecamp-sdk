@@ -1,0 +1,27 @@
+scripts/enhance-openapi-go-types.sh
+  s_b1b74299ef0baf::t_f2084ba9cd71d0 100-107,109-110
+go/pkg/basecamp/wrapper_propagation_test.go
+  s_b1b74299ef0baf::t_f32b1f67f3c78f 228-231,893-907
+  s_b1b74299ef0baf::t_db30b2320e2620 908
+scripts/test-enhance-request-reachability
+  s_b1b74299ef0baf::t_8fa2536b7278da 132-144
+  s_b1b74299ef0baf::t_890752ca42137a 24
+go/pkg/basecamp/optional_presence_test.go
+  s_b1b74299ef0baf::t_44567b227d37b4 258-269,271-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "2100ccca3c2fc84f0152c1f745fa007a597259c6",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
