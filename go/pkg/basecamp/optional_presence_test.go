@@ -3,10 +3,10 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -214,7 +214,10 @@ func TestMoveCardColumn_RejectsOutOfRangePosition(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected a usage error for an out-of-range position")
 	}
-	if !strings.Contains(err.Error(), "position must be between") {
-		t.Errorf("expected a range error, got %v", err)
+	// Asserted as a typed usage error, not by substring: a bare err != nil
+	// would also pass on the connection error from the unreachable host.
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected a usage error, got: %v", err)
 	}
 }

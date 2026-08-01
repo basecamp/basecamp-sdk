@@ -1443,7 +1443,7 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		cc.Creator = &creator
 	}
 
-	if gc.OnHold != nil && gc.OnHold.Id != 0 {
+	if gc.OnHold != nil {
 		cc.OnHold = &CardColumnOnHold{
 			ID:             gc.OnHold.Id,
 			Status:         gc.OnHold.Status,
@@ -1528,7 +1528,7 @@ func cardFromGenerated(gc generated.Card) Card {
 		c.Creator = &creator
 	}
 
-	if gc.Completer != nil && (gc.Completer.Id != 0 || gc.Completer.Name != "") {
+	if gc.Completer != nil {
 		completer := personFromGenerated(*gc.Completer)
 		c.Completer = &completer
 	}
@@ -1614,7 +1614,7 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		s.Creator = &creator
 	}
 
-	if gs.Completer != nil && (gs.Completer.Id != 0 || gs.Completer.Name != "") {
+	if gs.Completer != nil {
 		completer := personFromGenerated(*gs.Completer)
 		s.Completer = &completer
 	}

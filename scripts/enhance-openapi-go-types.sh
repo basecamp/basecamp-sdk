@@ -45,7 +45,37 @@ if jq -e '.components.requestBodies // empty | length > 0' "$INPUT_FILE" > /dev/
     exit 1
 fi
 
-jq '
+# Compute the request-body reachability closure ONCE, here, and hand it to both
+# consumers via --argjson: the enhancement pass below and its self-check further
+# down. The two used to inline their own copies, which had already drifted apart
+# in formatting — and a self-check computing a different closure than the pass
+# it validates is worse than no self-check.
+REQUEST_REACHABLE=$(jq -c '
+  ( .components.schemas ) as $all
+  | ( [ .paths[]?[]? | objects | .requestBody? | objects
+        | [.. | objects | select(has("$ref")) | .["$ref"]]
+        | .[] | select(type == "string" and startswith("#/components/schemas/"))
+        | sub("^#/components/schemas/"; "") ] | unique ) as $seeds
+  | ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
+      | until(.frontier | length == 0;
+          . as $s
+          | ( [ $s.frontier[] | ($all[.] // {}) | [.. | objects | select(has("$ref")) | .["$ref"]] ]
+              | flatten
+              | map(select(type == "string" and startswith("#/components/schemas/"))
+                    | sub("^#/components/schemas/"; ""))
+              | unique ) as $next
+          | ( $next | map(select($s.seen[.] | not)) ) as $new
+          | { seen: ($s.seen + ($new | map({key: ., value: true}) | from_entries)), frontier: $new }
+        )
+      | .seen ) | keys
+' "$INPUT_FILE")
+
+if [[ -z "$REQUEST_REACHABLE" || "$REQUEST_REACHABLE" == "[]" ]]; then
+    echo "Error: computed an empty request-body reachability closure — the spec shape changed." >&2
+    exit 1
+fi
+
+jq --argjson request_reachable "$REQUEST_REACHABLE" '
 # normalize_deprecation_reason strips exactly one leading "Deprecated:"
 # (case-insensitive) plus following whitespace and trims, so oapi-codegen can
 # prepend its own "// Deprecated: " once instead of producing a doubled
@@ -119,25 +149,13 @@ walk(
 # are unreachable from any schema that does, so a name-derived seed would
 # classify them response-only and make a future optional array on them
 # unsendable-empty. Derive the seed from the spec, not from a naming habit.
-| ( [ .paths[]?[]? | objects | .requestBody? | objects
-      | [.. | objects | select(has("$ref")) | .["$ref"]]
-      | .[] | select(type == "string" and startswith("#/components/schemas/"))
-      | sub("^#/components/schemas/"; "") ] | unique ) as $seeds
-| ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
-    | until(.frontier | length == 0;
-        . as $s
-        | ( [ $s.frontier[] | ($all[.] // {}) | [.. | objects | select(has("$ref")) | .["$ref"]] ]
-            | flatten
-            | map(select(type == "string" and startswith("#/components/schemas/"))
-                  | sub("^#/components/schemas/"; ""))
-            | unique ) as $next
-        | ( $next | map(select($s.seen[.] | not)) ) as $new
-        | { seen: ($s.seen + ($new | map({key: ., value: true}) | from_entries)), frontier: $new }
-      )
-    | .seen ) as $request_reachable
+| ( $request_reachable ) as $reachable_names
 |
 .components.schemas |= with_entries(
-  if ($request_reachable[.key] | not) then
+  # NOTE: bind the key before the membership test — `index(.key)` would
+  # evaluate `.key` against the ARRAY being indexed, not against this entry.
+  .key as $schema_name
+  | if ($reachable_names | index($schema_name) | not) then
     .value |= (
       if type == "object" and .type == "object" and .properties then
         (.required // []) as $required |
@@ -345,47 +363,37 @@ walk(
 )
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 
-mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
-
 # Self-verify the array policy. The Go guard (check-go-optional-pointers)
 # enforces nil-CAPABILITY, which a native []T satisfies — so it cannot catch a
 # request-reachable array regressing to native and becoming unsendable-empty.
 # That invariant is only checkable here, against the spec, so assert it where
 # the data is: no schema reachable from an operation requestBody may carry
 # x-go-type-skip-optional-pointer on an optional array.
-leaked=$(jq -r '
+leaked=$(jq -r --argjson request_reachable "$REQUEST_REACHABLE" '
   ( .components.schemas ) as $all
-  | ( [ .paths[]?[]? | objects | .requestBody? | objects
-        | [.. | objects | select(has("$ref")) | .["$ref"]]
-        | .[] | select(type == "string" and startswith("#/components/schemas/"))
-        | sub("^#/components/schemas/"; "") ] | unique ) as $seeds
-  | ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
-      | until(.frontier | length == 0;
-          . as $s
-          | ( [ $s.frontier[] | ($all[.] // {}) | [.. | objects | select(has("$ref")) | .["$ref"]] ]
-              | flatten
-              | map(select(type == "string" and startswith("#/components/schemas/"))
-                    | sub("^#/components/schemas/"; ""))
-              | unique ) as $next
-          | ( $next | map(select($s.seen[.] | not)) ) as $new
-          | { seen: ($s.seen + ($new | map({key: ., value: true}) | from_entries)), frontier: $new }
-        )
-      | .seen ) as $reachable
-  | [ $all | to_entries[] | select($reachable[.key]) | select(.value | type == "object")
-      | .key as $schema | ((.value.required // []) | select(type == "array")) as $req
+  | ( $request_reachable ) as $reachable
+  | [ $all | to_entries[]
+      | .key as $schema
+      | select($reachable | index($schema)) | select(.value | type == "object")
+      | ((.value.required // []) | select(type == "array")) as $req
       | ((.value.properties // {}) | select(type == "object")) | to_entries[]
       | select(.value | type == "object")
       | .key as $prop
       | select(.value.type == "array" and .value["x-go-type-skip-optional-pointer"] == true)
       | select($req | index($prop) | not)
       | "\($schema).\($prop)" ] | .[]
-' "$OUTPUT_FILE")
+' "${OUTPUT_FILE}.tmp")
 
 if [[ -n "$leaked" ]]; then
     echo "Error: request-reachable optional array(s) kept native []T — an explicit empty array would be unsendable:" >&2
     echo "$leaked" | sed 's/^/  /' >&2
+    rm -f "${OUTPUT_FILE}.tmp"
     exit 1
 fi
+
+# Only now is the output known-good. Publishing before validating would leave a
+# spec that violates the policy in place for the next generator to consume.
+mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 
 # Count enhancements
 timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | length' "$OUTPUT_FILE")

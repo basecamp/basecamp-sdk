@@ -483,7 +483,7 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64
 	if req.Revoke != nil {
 		body.Revoke = &req.Revoke
 	}
-	if len(req.Create) > 0 {
+	if req.Create != nil {
 		create := make([]generated.CreatePersonRequest, 0, len(req.Create))
 		for _, cp := range req.Create {
 			create = append(create, generated.CreatePersonRequest{
