@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from basecamp._security import truncate as _truncate_message
 from basecamp.errors import ApiError, UsageError
 from basecamp.generated.services.todolists import AsyncTodolistsService as _GeneratedAsyncTodolistsService
 from basecamp.generated.services.todolists import TodolistsService as _GeneratedTodolistsService
@@ -98,7 +99,7 @@ def _writable_string(body: dict[str, Any], key: str, *, required: bool = False) 
         return ""
     if not isinstance(value, str):
         raise ApiError(
-            f"Todolist field {key!r} is not a string: {value!r}",
+            _truncate_message(f"Todolist field {key!r} is not a string: {value!r}"),
             hint=(
                 "The merge-safe update/edit resend this field verbatim, so a coerced or "
                 "empty value would overwrite the current one. Use replace() to write the "
@@ -147,7 +148,7 @@ def _caller_string(fields: dict[str, Any], key: str) -> str:
     value = fields[key]
     if not isinstance(value, str):
         raise UsageError(
-            f"todolist {key} must be a string, got {type(value).__name__}: {value!r}",
+            _truncate_message(f"todolist {key} must be a string, got {type(value).__name__}: {value!r}"),
             hint=(
                 "The full writable state is PUT back verbatim, so a non-string would be "
                 "written to the record. Assign a string; use '' to clear."

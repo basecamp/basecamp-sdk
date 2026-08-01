@@ -163,6 +163,17 @@ class TodolistsServiceTest < Minitest::Test
     end
   end
 
+  # SPEC section 9 caps error messages; the value is embedded in them.
+  def test_malformed_message_is_capped
+    stub_todolist_get_and_put(todolist: full_todolist.merge("description" => [ "x" ] * 50_000))
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.todolists.update(id: 2, name: "Renamed")
+    end
+
+    assert_operator error.message.bytesize, :<=, 500
+  end
+
   def test_edit_refuses_a_malformed_name_before_writing
     stub_todolist_get_and_put(todolist: full_todolist.merge("name" => 42))
 

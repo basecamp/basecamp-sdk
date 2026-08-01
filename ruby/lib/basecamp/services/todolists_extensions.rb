@@ -123,7 +123,7 @@ module Basecamp
           ""
         elsif !value.is_a?(String)
           raise ApiError.new(
-            "Todolist field #{key.inspect} is not a string: #{value.inspect}",
+            Security.truncate("Todolist field #{key.inspect} is not a string: #{value.inspect}"),
             hint: "The merge-safe update/edit resend this field verbatim, so a coerced or " \
               "empty value would overwrite the current one. Use replace to write the record " \
               "deliberately."
@@ -184,7 +184,7 @@ module Basecamp
           value
         else
           raise UsageError.new(
-            "todolist #{key} must be a String, got #{value.class}: #{value.inspect}",
+            Security.truncate("todolist #{key} must be a String, got #{value.class}: #{value.inspect}"),
             hint: "The full writable state is PUT back verbatim, so a non-String would be " \
               "written to the record. Assign a String; use \"\" to clear."
           )

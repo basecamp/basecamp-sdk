@@ -135,7 +135,7 @@ class TodolistsService(client: AccountClient) :
 
     private fun malformedField(key: String, value: JsonElement): BasecampException =
         BasecampException.Api(
-            "Todolist field '$key' is not a JSON string: $value",
+            BasecampException.truncateMessage("Todolist field '$key' is not a JSON string: $value"),
             hint = "The merge-safe update/edit resend this field verbatim, so a coerced or " +
                 "empty value would overwrite the current one. Fix the response, or use " +
                 "replace() to write the record deliberately.",

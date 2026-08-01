@@ -256,6 +256,17 @@ class TestMalformedWritableFields:
         assert get_route.call_count == 1
         assert put_route.call_count == 0, "a malformed name must never reach the PUT"
 
+    @respx.mock
+    def test_malformed_message_is_capped(self):
+        """SPEC section 9 caps error messages; the value is embedded in them."""
+        huge = ["x"] * 50_000
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full(description=huge)))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed")
+
+        assert len(str(excinfo.value).encode()) <= 500
+
     @pytest.mark.parametrize("bad", [42, True, [], {}, ["x"], {"a": 1}, 0, False])
     @respx.mock
     def test_edit_refuses_a_caller_supplied_non_string(self, bad):

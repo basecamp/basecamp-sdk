@@ -468,6 +468,36 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
         XCTAssertEqual(log.methods, ["GET"], "an empty name must never reach the PUT")
     }
 
+    /// A body that does not decode must surface as a statusless BasecampError,
+    /// not a raw DecodingError. Swift's decoder is the typed guard the dynamic
+    /// SDKs write by hand, but its native error is not the SPEC section 6 shape:
+    /// callers checking for BasecampError would miss it and it carries no hint.
+    func testUpdate_wrapsADecodeFailureAsAStatuslessApiError() async throws {
+        var malformed = flatTodolistJSON()
+        malformed["id"] = "not-an-int"
+
+        let log = TodolistRequestLog()
+        let account = try makeTodolistsClient(log: log, getBody: malformed)
+
+        do {
+            _ = try await account.todolists.update(
+                id: 2, req: UpdateTodolistRequest(name: "Renamed"))
+            XCTFail("expected a decode failure to surface as a BasecampError")
+        } catch let error as BasecampError {
+            guard case .api(let message, let httpStatus, let hint, _) = error else {
+                return XCTFail("expected .api for a malformed body, got \(error)")
+            }
+            XCTAssertNil(httpStatus, "the transport succeeded, so there is no status to report")
+            XCTAssertNotNil(hint)
+            XCTAssertLessThanOrEqual(message.count, 500, "SPEC section 9 caps the message")
+            XCTAssertTrue(message.contains("does not decode"), message)
+        } catch {
+            XCTFail("expected BasecampError, got a raw \(type(of: error)): \(error)")
+        }
+
+        XCTAssertEqual(log.methods, ["GET"], "a malformed body must never reach the PUT")
+    }
+
     /// The `{"todolist": {...}}` envelope the spec models still decodes, so the
     /// flat-body support is an addition rather than a swap.
     func testUnionDecodesTheEnvelopeShape() throws {
