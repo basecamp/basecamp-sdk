@@ -98,13 +98,25 @@ func evaluateAssertions(
     let captured = transport.captured
     let requestCount = captured.count
 
+    // The implicit invariants below defer to an explicit assertion, but only
+    // when that assertion actually covers the FIRST request. "Any assertion of
+    // this type exists" is too coarse: the EditTodo edit-clear fixture pins
+    // requestPath at index 1 only, so a coarse exemption left the composite's
+    // leading GET unchecked — a regression there would keep the method, body,
+    // count and index-1 path assertions all green.
+    func explicitAssertionCoversFirstRequest(_ type: String) -> Bool {
+        tc.allAssertions.contains {
+            $0.type == type && resolveRequestIndex($0.requestIndex, requestCount) == 0
+        }
+    }
+
     // Implicit method invariant: the scripted transport answers any verb, so a
     // wrong-verb request (e.g. a PUT regressing to POST) would consume a queued
-    // response silently. When the fixture declares a method and carries no
-    // explicit requestMethod assertions, the first request must use it.
+    // response silently. When the fixture declares a method and nothing
+    // explicitly pins the first request's method, it must use that verb.
     let fixtureMethod = tc.fixtureMethod.uppercased()
     if !fixtureMethod.isEmpty,
-       !tc.allAssertions.contains(where: { $0.type == "requestMethod" }),
+       !explicitAssertionCoversFirstRequest("requestMethod"),
        let first = captured.first, first.method != fixtureMethod {
         return .fail("Expected first request method \(fixtureMethod), got \(first.method)")
     }
@@ -113,10 +125,9 @@ func evaluateAssertions(
     // URL, so an operation aimed at the wrong endpoint consumes the queued
     // responses and passes its retry, status, auth and pagination assertions
     // against a resource the fixture never named. Checking the verb alone left
-    // that open. When the fixture declares a path and carries no explicit
-    // requestPath assertion, the first request must go there.
+    // that open.
     if !tc.fixturePath.isEmpty,
-       !tc.allAssertions.contains(where: { $0.type == "requestPath" }),
+       !explicitAssertionCoversFirstRequest("requestPath"),
        let first = captured.first {
         let params = (tc.pathParams ?? [:]).compactMapValues {
             $0.stringValue ?? $0.intValue.map(String.init)
