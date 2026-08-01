@@ -197,7 +197,10 @@ module Basecamp
   # @return [Hash{String => Array<String>}, nil]
   def self.parse_bare_field_errors(data)
     return nil unless data.is_a?(Hash) && !data.empty?
-    return nil if data.key?("error") || data.key?("errors") || data.key?("message")
+    # Only "errors" is structurally reserved (it belongs to the wrapped path).
+    # "error" and "message" are not excluded by name: a flat body carries them
+    # as strings, which the shape gate below already rejects.
+    return nil if data.key?("errors")
 
     data.each_with_object({}) do |(field, values), result|
       return nil unless values.is_a?(Array) && !values.empty?

@@ -426,6 +426,23 @@ final class ErrorTests: XCTestCase {
         XCTAssertNil(emptyErrors.fieldErrors)
     }
 
+    // Only "errors" is reserved by name. A record whose validated attribute is
+    // called "message" or "error" still gets its field map recognized: the flat
+    // shape carries those keys as strings, which the gate rejects on shape alone.
+    func testBareFieldMapAllowsReservedFieldNames() {
+        let named = BasecampError.fromHTTPResponse(
+            status: 400, data: Data(#"{"message": ["can't be blank"]}"#.utf8),
+            headers: [:], requestId: nil)
+        XCTAssertEqual(named.message, "message: can't be blank")
+        XCTAssertEqual(named.fieldErrors, ["message": ["can't be blank"]])
+
+        let alongside = BasecampError.fromHTTPResponse(
+            status: 400, data: Data(#"{"error": ["is invalid"], "name": ["can't be blank"]}"#.utf8),
+            headers: [:], requestId: nil)
+        XCTAssertEqual(alongside.message, "error: is invalid, name: can't be blank")
+        XCTAssertEqual(alongside.fieldErrors, ["error": ["is invalid"], "name": ["can't be blank"]])
+    }
+
     func testBareFieldMapNotExtractedOutsideValidationStatuses() {
         let error = BasecampError.fromHTTPResponse(
             status: 500, data: Data(#"{"payload_url": ["is not a valid URL"]}"#.utf8),

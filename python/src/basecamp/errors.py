@@ -188,7 +188,10 @@ def _parse_bare_field_errors(data: dict[str, object]) -> dict[str, list[str]] | 
     declare intent, only shape distinguishes a field map from any other JSON
     object, so a single non-conforming member means this is not one.
     """
-    if not data or data.keys() & {"error", "errors", "message"}:
+    # Only "errors" is structurally reserved (it belongs to the wrapped path).
+    # "error" and "message" are not excluded by name: a flat body carries them
+    # as strings, which the shape gate below already rejects.
+    if not data or "errors" in data:
         return None
     field_errors: dict[str, list[str]] = {}
     for field, values in data.items():

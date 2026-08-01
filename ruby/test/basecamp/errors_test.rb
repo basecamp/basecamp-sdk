@@ -220,6 +220,23 @@ class ErrorsTest < Minitest::Test
     end
   end
 
+  # Only "errors" is reserved by name. A record whose validated attribute is
+  # called "message" or "error" still gets its field map recognized: the flat
+  # shape carries those keys as Strings, which the gate rejects on shape alone.
+  def test_error_from_response_bare_field_map_allows_reserved_field_names
+    [
+      [ '{"message": ["can\'t be blank"]}', "message: can't be blank", { "message" => [ "can't be blank" ] } ],
+      [ '{"error": ["is invalid"], "name": ["can\'t be blank"]}',
+        "error: is invalid, name: can't be blank",
+        { "error" => [ "is invalid" ], "name" => [ "can't be blank" ] } ]
+    ].each do |body, message, field_errors|
+      error = Basecamp.error_from_response(400, body)
+
+      assert_equal message, error.message, "unexpected message for #{body}"
+      assert_equal field_errors, error.field_errors, "unexpected field_errors for #{body}"
+    end
+  end
+
   def test_error_from_response_bare_field_map_not_extracted_outside_validation
     error = Basecamp.error_from_response(500, '{"payload_url": ["is not a valid URL"]}')
 

@@ -343,7 +343,9 @@ messages into `message` and keeps the raw map in the `.validation` case's
 
 ```swift
 do {
-    try await account.calendars.update(id: calendarID, color: "chartreuse")
+    try await account.calendars.updateCalendar(
+        calendarId: calendarID,
+        req: UpdateCalendarRequest(calendar: CalendarAttributes(color: "chartreuse")))
 } catch let error as BasecampError {
     print(error.message) // "color: is not a valid color"
 

@@ -409,7 +409,10 @@ function parseFieldErrors(body: object): Record<string, string[]> | undefined {
  */
 function parseBareFieldErrors(body: object): Record<string, string[]> | undefined {
   if (Array.isArray(body)) return undefined;
-  if ("error" in body || "errors" in body || "message" in body) return undefined;
+  // Only "errors" is structurally reserved (it belongs to step 1). "error" and
+  // "message" are not excluded by name: a flat body carries them as strings,
+  // which the shape gate below already rejects.
+  if ("errors" in body) return undefined;
 
   const entries = Object.entries(body);
   if (entries.length === 0) return undefined;

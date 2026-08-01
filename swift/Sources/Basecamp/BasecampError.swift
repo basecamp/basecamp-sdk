@@ -261,7 +261,10 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     /// nil unless every member is a non-empty array of non-empty strings.
     private static func parseBareFieldErrors(_ body: [String: Any]?) -> [String: [String]]? {
         guard let body, !body.isEmpty else { return nil }
-        guard body["error"] == nil, body["errors"] == nil, body["message"] == nil else { return nil }
+        // Only "errors" is structurally reserved (it belongs to the wrapped
+        // path). "error" and "message" are not excluded by name: a flat body
+        // carries them as strings, which the shape gate below already rejects.
+        guard body["errors"] == nil else { return nil }
 
         var fieldErrors: [String: [String]] = [:]
         for (field, value) in body {

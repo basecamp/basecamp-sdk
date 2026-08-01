@@ -612,8 +612,14 @@ messages into `message` and keeps the raw map in `fieldErrors`, so you can drive
 a form without re-parsing the message:
 
 ```kotlin
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
 try {
-    account.calendars.update(calendarId, UpdateCalendarBody(color = "chartreuse"))
+    account.calendars.updateCalendar(
+        calendarId,
+        UpdateCalendarBody(calendar = buildJsonObject { put("color", "chartreuse") }),
+    )
 } catch (e: BasecampException.Validation) {
     println(e.message) // "color: is not a valid color"
 

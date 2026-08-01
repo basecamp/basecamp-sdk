@@ -310,6 +310,29 @@ class TestBareFieldMap:
         assert err.field_errors is None
         assert str(err) == message
 
+    # Only "errors" is reserved by name. A record whose validated attribute is
+    # called "message" or "error" still gets its field map recognized: the flat
+    # shape carries those keys as strings, which the gate rejects on shape alone.
+    @pytest.mark.parametrize(
+        ("body", "message", "field_errors"),
+        [
+            (
+                b'{"message": ["can\'t be blank"]}',
+                "message: can't be blank",
+                {"message": ["can't be blank"]},
+            ),
+            (
+                b'{"error": ["is invalid"], "name": ["can\'t be blank"]}',
+                "error: is invalid, name: can't be blank",
+                {"error": ["is invalid"], "name": ["can't be blank"]},
+            ),
+        ],
+    )
+    def test_allows_reserved_field_names(self, body, message, field_errors):
+        err = error_from_response(400, body)
+        assert str(err) == message
+        assert err.field_errors == field_errors
+
     def test_not_extracted_outside_validation_statuses(self):
         err = error_from_response(500, b'{"payload_url": ["is not a valid URL"]}')
         assert not hasattr(err, "field_errors")

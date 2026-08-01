@@ -66,8 +66,7 @@ func checkResponse(resp *http.Response, body []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:
-		msg := msgOrDefault(composeValidationMessage(serverMsg, fieldErrors), "validation error")
-		return &Error{Code: CodeValidation, Message: msg, Hint: serverHint, FieldErrors: fieldErrors, HTTPStatus: resp.StatusCode, RequestID: requestID}
+		return validationError(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID)
 	case http.StatusUnauthorized:
 		return &Error{Code: CodeAuth, Message: msgOrDefault(serverMsg, "authentication required"), Hint: serverHint, HTTPStatus: 401, RequestID: requestID}
 	case http.StatusForbidden:
@@ -115,9 +114,10 @@ func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][
 	hint = truncate(stringFromRaw(parsed.Description))
 
 	fieldErrors = parseFieldErrors(parsed.Errors)
-	if fieldErrors == nil && len(parsed.Error) == 0 && len(parsed.Errors) == 0 && len(parsed.Message) == 0 {
-		// SPEC §6 step 2: no wrapper and no reserved keys — the body may be the
-		// field map itself.
+	if fieldErrors == nil && len(parsed.Errors) == 0 {
+		// SPEC §6 step 2: no "errors" wrapper — the body may be the field map
+		// itself. A flat {"error": "..."} body needs no exclusion here: its
+		// member is a string, which the all-members gate rejects on shape.
 		fieldErrors = parseBareFieldErrors(body)
 	}
 	return message, hint, fieldErrors
@@ -177,6 +177,11 @@ func parseFieldErrors(raw json.RawMessage) map[string][]string {
 // map from any other JSON object, so a single non-conforming member means this
 // is not one. Returns nil unless every member is a non-empty array of non-empty
 // strings.
+//
+// Only "errors" is structurally reserved (it belongs to step 1). "error" and
+// "message" are not excluded by name: a flat body carries them as strings,
+// which the shape gate already rejects, so a validated field genuinely named
+// "message" is still recognized.
 func parseBareFieldErrors(body []byte) map[string][]string {
 	var members map[string]json.RawMessage
 	if err := json.Unmarshal(body, &members); err != nil || len(members) == 0 {
@@ -236,6 +241,21 @@ func composeValidationMessage(serverMsg string, fieldErrors map[string][]string)
 		return truncate(flat)
 	default:
 		return truncate(serverMsg + " (" + flat + ")")
+	}
+}
+
+// validationError builds the 400/422 error: the composed message, the raw
+// field map, and the hint. Both the generated service layer (checkResponse) and
+// the raw Client escape hatch (doRequest) construct it here, so the composition
+// rules cannot drift between the two paths.
+func validationError(serverMsg, serverHint string, fieldErrors map[string][]string, status int, requestID string) *Error {
+	return &Error{
+		Code:        CodeValidation,
+		Message:     msgOrDefault(composeValidationMessage(serverMsg, fieldErrors), "validation error"),
+		Hint:        serverHint,
+		FieldErrors: fieldErrors,
+		HTTPStatus:  status,
+		RequestID:   requestID,
 	}
 }
 

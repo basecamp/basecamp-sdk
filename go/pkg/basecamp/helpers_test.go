@@ -571,6 +571,48 @@ func TestCheckResponse_BareFieldMapYieldsToReservedKeys(t *testing.T) {
 	}
 }
 
+// Only "errors" is reserved by name. A record whose validated attribute is
+// called "message" or "error" still gets its field map recognized: the flat
+// shape carries those keys as strings, which the gate rejects on shape alone.
+func TestCheckResponse_BareFieldMapAllowsReservedFieldNames(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        string
+		wantMessage string
+		wantFields  map[string][]string
+	}{
+		{
+			name:        "field named message",
+			body:        `{"message":["can't be blank"]}`,
+			wantMessage: "message: can't be blank",
+			wantFields:  map[string][]string{"message": {"can't be blank"}},
+		},
+		{
+			name:        "field named error alongside another",
+			body:        `{"error":["is invalid"],"name":["can't be blank"]}`,
+			wantMessage: "error: is invalid, name: can't be blank",
+			wantFields:  map[string][]string{"error": {"is invalid"}, "name": {"can't be blank"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := &http.Response{StatusCode: 400, Header: http.Header{}}
+			err := checkResponse(resp, []byte(tt.body))
+			e, ok := err.(*Error)
+			if !ok {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if e.Message != tt.wantMessage {
+				t.Errorf("Message = %q, want %q", e.Message, tt.wantMessage)
+			}
+			if !reflect.DeepEqual(e.FieldErrors, tt.wantFields) {
+				t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, tt.wantFields)
+			}
+		})
+	}
+}
+
 // TestCheckResponse_BareFieldMapNotExtractedOutsideValidation mirrors the
 // wrapped-shape rule: the slot is populated for 400/422 only.
 func TestCheckResponse_BareFieldMapNotExtractedOutsideValidation(t *testing.T) {

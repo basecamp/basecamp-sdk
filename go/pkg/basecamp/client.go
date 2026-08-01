@@ -827,13 +827,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		// api_error with the field-keyed detail dropped.
 		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
 		serverMsg, serverHint, fieldErrors := parseErrorBody(respBody)
-		return nil, (&Error{
-			Code:        CodeValidation,
-			Message:     msgOrDefault(composeValidationMessage(serverMsg, fieldErrors), "validation error"),
-			Hint:        serverHint,
-			FieldErrors: fieldErrors,
-			HTTPStatus:  resp.StatusCode,
-		}).withRequestID(requestID)
+		return nil, validationError(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID)
 
 	case http.StatusInternalServerError: // 500
 		return nil, ErrAPI(500, "Server error (500)").withRequestID(requestID)

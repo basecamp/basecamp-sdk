@@ -575,7 +575,7 @@ a form without re-parsing the message:
 
 ```typescript
 try {
-  await client.calendars.update(calendarId, { color: "chartreuse" });
+  await client.calendars.updateCalendar(calendarId, { calendar: { color: "chartreuse" } });
 } catch (error) {
   if (isErrorCode(error, "validation")) {
     // "color: is not a valid color"

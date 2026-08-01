@@ -727,6 +727,31 @@ describe("bare field-map error bodies (SPEC §6 step 2)", () => {
     expect(error.fieldErrors).toBeUndefined();
   });
 
+  // Only "errors" is reserved by name. A record whose validated attribute is
+  // called "message" or "error" still gets its field map recognized: the flat
+  // shape carries those keys as strings, which the gate rejects on shape alone.
+  it.each([
+    {
+      name: "field named message",
+      body: { message: ["can't be blank"] },
+      message: "message: can't be blank",
+      fieldErrors: { message: ["can't be blank"] },
+    },
+    {
+      name: "field named error alongside another",
+      body: { error: ["is invalid"], name: ["can't be blank"] },
+      message: "error: is invalid, name: can't be blank",
+      fieldErrors: { error: ["is invalid"], name: ["can't be blank"] },
+    },
+  ])("recognizes a $name", ({ body, message, fieldErrors }) => {
+    const response = new Response(null, { status: 400, statusText: "Bad Request" });
+
+    const error = errorFromParsedBody(response, body);
+
+    expect(error.message).toBe(message);
+    expect({ ...error.fieldErrors }).toEqual(fieldErrors);
+  });
+
   it("is not extracted outside 400/422", () => {
     for (const status of [403, 404, 500]) {
       const response = new Response(null, { status, statusText: "Nope" });
@@ -742,7 +767,10 @@ describe("bare field-map error bodies (SPEC §6 step 2)", () => {
 
     expect(error.message).toBe("__proto__: is invalid");
     expect(Object.getPrototypeOf(error.fieldErrors)).toBeNull();
-    expect(Object.keys(error.fieldErrors ?? {})).toEqual(["__proto__"]);
-    expect(Array.isArray(Object.getPrototypeOf({}))).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(error.fieldErrors, "__proto__")).toBe(true);
+    expect(error.fieldErrors!["__proto__"]).toEqual(["is invalid"]);
+    // The legacy prototype setter must not have fired: the map's prototype is
+    // not the attacker-controlled array.
+    expect(Array.isArray(Object.getPrototypeOf(error.fieldErrors))).toBe(false);
   });
 });

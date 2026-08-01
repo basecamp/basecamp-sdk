@@ -99,7 +99,10 @@ private fun parseFieldErrors(body: JsonObject): Map<String, List<String>>? {
  */
 private fun parseBareFieldErrors(body: JsonObject): Map<String, List<String>>? {
     if (body.isEmpty()) return null
-    if (body.containsKey("error") || body.containsKey("errors") || body.containsKey("message")) return null
+    // Only "errors" is structurally reserved (it belongs to the wrapped path).
+    // "error" and "message" are not excluded by name: a flat body carries them
+    // as strings, which the shape gate below already rejects.
+    if (body.containsKey("errors")) return null
 
     val fieldErrors = mutableMapOf<String, List<String>>()
     for ((field, value) in body) {

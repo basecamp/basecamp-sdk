@@ -579,7 +579,7 @@ messages into the message and `ValidationError` keeps the raw map in
 from basecamp import ValidationError
 
 try:
-    account.calendars.update_calendar(calendar_id=calendar_id, color="chartreuse")
+    account.calendars.update_calendar(calendar_id=calendar_id, calendar={"color": "chartreuse"})
 except ValidationError as e:
     print(e)  # "color: is not a valid color"
 
