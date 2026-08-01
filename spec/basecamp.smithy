@@ -1235,7 +1235,7 @@ structure UpdateTodolistOrGroupInput {
   @required
   name: TodolistName
 
-  /// Description (Todolist only, ignored for groups). Omitting it clears it.
+  /// Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way
   description: TodolistDescription
 }
 

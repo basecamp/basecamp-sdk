@@ -5784,7 +5784,7 @@ export interface components {
         UpdateTodolistOrGroupRequestContent: {
             /** @description Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve */
             name: string;
-            /** @description Description (Todolist only, ignored for groups). Omitting it clears it. */
+            /** @description Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way */
             description?: string;
         };
         UpdateTodolistOrGroupResponseContent: components["schemas"]["TodolistOrGroup"];

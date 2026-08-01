@@ -30526,7 +30526,7 @@
           },
           "description": {
             "type": "string",
-            "description": "Description (Todolist only, ignored for groups). Omitting it clears it."
+            "description": "Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way"
           }
         },
         "required": [
