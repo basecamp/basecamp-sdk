@@ -255,12 +255,24 @@ func TestCardFromGenerated_PresentZeroCompletedAtSurvives(t *testing.T) {
 func TestPersonFromGenerated_PresentZeroTimestampsPropagate(t *testing.T) {
 	var zero time.Time
 
-	p := personFromGenerated(generated.Person{CreatedAt: &zero, UpdatedAt: &zero})
-	if p.CreatedAt == "" {
-		t.Error("a present zero created_at must propagate, not read as absent")
+	// Distinct values, compared exactly: an empty-vs-non-empty check would pass
+	// even if CreatedAt were sourced from UpdatedAt.
+	created := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	updated := time.Date(2025, 6, 7, 8, 9, 10, 0, time.UTC)
+	const layout = "2006-01-02T15:04:05Z07:00"
+
+	p := personFromGenerated(generated.Person{CreatedAt: &created, UpdatedAt: &updated})
+	if p.CreatedAt != created.Format(layout) {
+		t.Errorf("CreatedAt: got %q, want %q", p.CreatedAt, created.Format(layout))
 	}
-	if p.UpdatedAt == "" {
-		t.Error("a present zero updated_at must propagate, not read as absent")
+	if p.UpdatedAt != updated.Format(layout) {
+		t.Errorf("UpdatedAt: got %q, want %q", p.UpdatedAt, updated.Format(layout))
+	}
+
+	// And the present-zero case the pointer exists to preserve.
+	pz := personFromGenerated(generated.Person{CreatedAt: &zero, UpdatedAt: &zero})
+	if pz.CreatedAt == "" || pz.UpdatedAt == "" {
+		t.Error("a present zero timestamp must propagate, not read as absent")
 	}
 
 	if absent := personFromGenerated(generated.Person{}); absent.CreatedAt != "" || absent.UpdatedAt != "" {

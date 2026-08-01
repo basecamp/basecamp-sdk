@@ -97,13 +97,17 @@ REQUEST_REACHABLE=$(jq -c '
       | .seen ) | keys
 ' "$INPUT_FILE")
 
-# An empty closure is only suspicious when the spec HAS request bodies. A spec
-# with none — or with only unreferenced requestBodies components — legitimately
-# reaches nothing, and aborting there would fail generation on a valid input.
-OPS_WITH_BODIES=$(jq -r '[ .paths[]?[]? | objects | select(has("requestBody")) ] | length' "$INPUT_FILE")
+# An empty closure is only suspicious when some request body actually REFERENCES
+# a component. Three shapes legitimately reach nothing and must not abort:
+# a spec with no request bodies, one whose requestBodies components are all
+# unreferenced, and one whose bodies carry INLINE schemas (no $ref at all).
+BODY_COMPONENT_REFS=$(jq -r '
+  [ .paths[]?[]? | objects | .requestBody? | objects
+    | [.. | objects | select(has("$ref")) | .["$ref"]] | .[]
+    | select(type == "string" and startswith("#/components/")) ] | length' "$INPUT_FILE")
 
-if [[ "$OPS_WITH_BODIES" -gt 0 && ( -z "$REQUEST_REACHABLE" || "$REQUEST_REACHABLE" == "[]" ) ]]; then
-    echo "Error: $OPS_WITH_BODIES operation(s) declare a requestBody but the reachability closure is empty — the walker is broken." >&2
+if [[ "$BODY_COMPONENT_REFS" -gt 0 && ( -z "$REQUEST_REACHABLE" || "$REQUEST_REACHABLE" == "[]" ) ]]; then
+    echo "Error: request bodies carry $BODY_COMPONENT_REFS component reference(s) but the reachability closure is empty — the walker is broken." >&2
     exit 1
 fi
 

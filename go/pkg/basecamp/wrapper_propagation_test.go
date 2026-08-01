@@ -225,12 +225,10 @@ func assertCreatorFullyPropagated(t *testing.T, p *Person, gp generated.Person) 
 	// Exact timestamp comparison against the same RFC3339 format
 	// personFromGenerated applies — a wrong field mapping (e.g. CreatedAt
 	// sourced from UpdatedAt) would pass a mere non-empty check.
-	if want := gp.CreatedAt.Format("2006-01-02T15:04:05Z07:00"); p.CreatedAt != want {
-		t.Errorf("CreatedAt: got %q, want %q", p.CreatedAt, want)
-	}
-	if want := gp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"); p.UpdatedAt != want {
-		t.Errorf("UpdatedAt: got %q, want %q", p.UpdatedAt, want)
-	}
+	// Nil-guarded: these are pointers now, so a fixture that omits either field
+	// would panic here instead of reporting a failure.
+	assertTimestampPropagated(t, "CreatedAt", gp.CreatedAt, p.CreatedAt)
+	assertTimestampPropagated(t, "UpdatedAt", gp.UpdatedAt, p.UpdatedAt)
 }
 
 // -----------------------------------------------------------------------------
@@ -891,4 +889,20 @@ func TestRequiredBools_FalseMarshalsExplicitly(t *testing.T) {
 	hasKey(t, Forward{}, "visible_to_clients", "inherits_status")
 	hasKey(t, ForwardReply{}, "visible_to_clients", "inherits_status")
 	hasKey(t, TimesheetEntry{}, "visible_to_clients", "inherits_status")
+}
+
+// assertTimestampPropagated compares a wrapper timestamp string against the
+// generated pointer it came from, treating nil as "must be empty" rather than
+// dereferencing it.
+func assertTimestampPropagated(t *testing.T, name string, generated *time.Time, got string) {
+	t.Helper()
+	if generated == nil {
+		if got != "" {
+			t.Errorf("%s: got %q, want empty for an absent value", name, got)
+		}
+		return
+	}
+	if want := generated.Format("2006-01-02T15:04:05Z07:00"); got != want {
+		t.Errorf("%s: got %q, want %q", name, got, want)
+	}
 }

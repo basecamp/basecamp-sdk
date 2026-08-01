@@ -21,6 +21,7 @@
 #   4. unused        a requestBodies component nothing references (must not
 #                    abort, and must not drag its schema into the request set)
 #   5. response-only a schema reachable only from a response
+#   6. inline        a requestBody whose schema is inline, referencing nothing
 #
 # Usage: scripts/test-enhance-request-reachability
 
@@ -127,6 +128,19 @@ check("unused component: its schema is NOT treated as request-reachable",
 
 # 5. Response-only schemas keep the native slice.
 check("response-only: array is native []T", ok && !pointer_shaped?(out, "ResponseOnly", "tags"))
+
+# 6. An INLINE request-body schema references no component, so the closure is
+#    legitimately empty. Generation must not abort.
+spec = base_spec
+spec["components"]["schemas"]["OnlyResponse"] = schema_with_array
+spec["paths"]["/inline"] = { "post" => {
+  "requestBody" => { "content" => { "application/json" => { "schema" => {
+    "type" => "object", "properties" => { "name" => { "type" => "string" } } } } } },
+  "responses" => { "200" => json_body("#/components/schemas/OnlyResponse") } } }
+ok, out = run_enhancer(spec)
+check("inline body: enhancer succeeds (empty closure is legitimate)", ok,
+      "an assertion keyed on requestBody PRESENCE rather than component references aborts here")
+check("inline body: response-only array is still native", ok && !pointer_shaped?(out, "OnlyResponse", "tags"))
 
 if FAILURES.empty?
   puts "==> Request-body reachability: all cases pass"
