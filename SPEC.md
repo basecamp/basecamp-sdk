@@ -813,7 +813,7 @@ Enforced for Kotlin arrays and primitive scalars by `make kt-check-optional-arra
 
 - **Pointers** (`*T`) — the default: `go/oapi-codegen.yaml` does **not** set `prefer-skip-optional-pointer`, so optional value types (strings, booleans, numerics, `time.Time`, `types.Date`, nested structs) generate as pointers. `IsZero()` on a value-typed temporal field is a zero-value sentinel, not a representation of absence — there is no date/time carve-out.
 - **Slices** (`[]T`) — optional non-nullable arrays on response-shaped schemas keep native `[]T` via a generic pass in `scripts/enhance-openapi-go-types.sh` (`x-go-type-skip-optional-pointer: true`): a nil slice already represents absence. Request-shaped arrays stay pointers so an explicit empty array is sendable (`omitempty` drops a len-0 slice — e.g. `Create*` `subscriptions`, where nil means server default and `[]` means subscribe nobody), and nullable arrays stay pointers to capture present-null.
-- **Maps and interfaces** — nil-capable as-is (oapi-codegen never emits `*interface{}`; `ValidationError.Details` is the canonical example).
+- **Maps and interfaces** — nil-capable as-is (oapi-codegen never emits `*interface{}`; `WebhookEvent.Details` is the one such field today).
 
 `make go-check-optional-pointers` enforces exactly this classification over `client.gen.go` with **no waiver list** — the type classifier is the policy. For a writable optional scalar this is what makes an explicit `false` / `0` / `""` sendable at all: with a value type plus `omitempty`, the zero value was unsendable and absence was unrepresentable on decode.
 

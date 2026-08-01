@@ -512,10 +512,14 @@ func (s *TodosService) Create(ctx context.Context, todolistID int64, req *Create
 		Description: omitzero(req.Description),
 		Notify:      &req.Notify,
 	}
-	if len(req.AssigneeIDs) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and must reach the wire.
+	if req.AssigneeIDs != nil {
 		body.AssigneeIds = &req.AssigneeIDs
 	}
-	if len(req.CompletionSubscriberIDs) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and must reach the wire.
+	if req.CompletionSubscriberIDs != nil {
 		body.CompletionSubscriberIds = &req.CompletionSubscriberIDs
 	}
 	// Parse date strings to types.Date for the generated client
@@ -581,10 +585,14 @@ func (s *TodosService) CreateInTodoset(ctx context.Context, projectID, todosetID
 		Description: omitzero(req.Description),
 		Notify:      &req.Notify,
 	}
-	if len(req.AssigneeIDs) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and must reach the wire.
+	if req.AssigneeIDs != nil {
 		body.AssigneeIds = &req.AssigneeIDs
 	}
-	if len(req.CompletionSubscriberIDs) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty list and must reach the wire.
+	if req.CompletionSubscriberIDs != nil {
 		body.CompletionSubscriberIds = &req.CompletionSubscriberIDs
 	}
 	if req.DueOn != "" {

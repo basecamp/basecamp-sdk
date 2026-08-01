@@ -9,7 +9,7 @@
 #   * pointers   (*T)                — the default for optionals
 #   * slices     ([]T)               — kept native via the enhance-script pass
 #   * maps       (map[K]V)
-#   * interfaces (interface{}, any)  — e.g. ValidationError.Details, where
+#   * interfaces (interface{}, any)  — e.g. WebhookEvent.Details, where
 #                                      oapi-codegen never emits *interface{}
 #
 # Every other type is a VALUE type (string/bool/numerics, time.Time,

@@ -1116,7 +1116,9 @@ func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *Create
 	body := generated.CreateCardStepJSONRequestBody{
 		Title: req.Title,
 	}
-	if len(req.AssigneeIDs) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty assignee list and must reach the wire.
+	if req.AssigneeIDs != nil {
 		body.AssigneeIds = &req.AssigneeIDs
 	}
 	if req.DueOn != "" {

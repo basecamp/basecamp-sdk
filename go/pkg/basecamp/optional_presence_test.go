@@ -93,3 +93,46 @@ func TestCreateScheduleEntry_ExplicitEmptyParticipantsReachTheWire(t *testing.T)
 		t.Errorf("expected an empty array on the wire, got %#v", v)
 	}
 }
+
+// Hill-chart settings distinguish "leave this list alone" (nil, omitted) from
+// "make this list empty" (non-nil empty, transmitted as []).
+func TestUpdateHillChartSettings_NilOmitsAndEmptyTransmits(t *testing.T) {
+	capture := func(tracked, untracked []int64) map[string]any {
+		t.Helper()
+		var got map[string]any
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&got)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"enabled":true,"stale":false}`))
+		}))
+		t.Cleanup(srv.Close)
+
+		cfg := DefaultConfig()
+		cfg.BaseURL = srv.URL
+		svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").HillCharts()
+		if _, err := svc.UpdateSettings(context.Background(), 1, tracked, untracked); err != nil {
+			t.Fatalf("UpdateSettings: %v", err)
+		}
+		return got
+	}
+
+	omitted := capture(nil, nil)
+	if _, ok := omitted["tracked"]; ok {
+		t.Error("nil tracked must be omitted")
+	}
+	if _, ok := omitted["untracked"]; ok {
+		t.Error("nil untracked must be omitted")
+	}
+
+	explicit := capture([]int64{}, []int64{})
+	for _, key := range []string{"tracked", "untracked"} {
+		v, ok := explicit[key]
+		if !ok {
+			t.Errorf("explicit empty %s must reach the wire; key was omitted", key)
+			continue
+		}
+		if arr, isArr := v.([]any); !isArr || len(arr) != 0 {
+			t.Errorf("%s: expected an empty array, got %#v", key, v)
+		}
+	}
+}

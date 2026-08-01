@@ -1203,7 +1203,7 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 		Position:         int(deref(gu.Position)),
 		Description:      deref(gu.Description),
 		ContentType:      deref(gu.ContentType),
-		ByteSize:         derefInt64(gu.ByteSize),
+		ByteSize:         deref(gu.ByteSize),
 		Width:            int(deref(gu.Width)),
 		Height:           int(deref(gu.Height)),
 		DownloadURL:      deref(gu.DownloadUrl),

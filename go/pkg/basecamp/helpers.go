@@ -231,11 +231,6 @@ func deref[T any](p *T) T {
 	return *p
 }
 
-// derefInt64 safely dereferences a pointer, returning 0 if nil.
-func derefInt64(p *int64) int64 {
-	return deref(p)
-}
-
 // omitzero converts a value-typed wrapper option to a generated request's
 // optional pointer, preserving omit-when-zero wire behavior: the zero value
 // means "not provided" and maps to nil (field omitted on the wire).

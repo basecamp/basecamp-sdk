@@ -452,7 +452,8 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	}
 
 	// Map copy if present
-	if ge.Copy != nil && (deref(ge.Copy.Url) != "" || deref(ge.Copy.Id) != 0) {
+	// Presence is the pointer: a present-but-sparse copy object is still a copy.
+	if ge.Copy != nil {
 		c := &WebhookCopy{
 			URL:    deref(ge.Copy.Url),
 			AppURL: deref(ge.Copy.AppUrl),

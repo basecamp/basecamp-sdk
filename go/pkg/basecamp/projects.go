@@ -431,9 +431,6 @@ func dockItemFromGenerated(gd generated.DockItem) DockItem {
 	if gd.Id != 0 {
 		di.ID = gd.Id
 	}
-	if gd.Position != nil {
-		pos := int(*gd.Position)
-		di.Position = &pos
-	}
+	di.Position = intPtrFrom(gd.Position)
 	return di
 }

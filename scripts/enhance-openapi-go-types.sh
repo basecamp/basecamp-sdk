@@ -101,7 +101,17 @@ walk(
 #     different representation (a wrapper type with an explicit presence flag),
 #     not this pass.
 ( .components.schemas ) as $all
-| ( [ $all | keys[] | select(test("RequestContent$")) ] ) as $seeds
+# Seeds are the schemas actually referenced by an operation's requestBody —
+# NOT the ones whose name ends in RequestContent. Four request-body roots
+# (CreateAttachmentInputPayload, CreateCampfireUploadInputPayload,
+# QuestionAnswerPayload, QuestionAnswerUpdatePayload) carry no such suffix and
+# are unreachable from any schema that does, so a name-derived seed would
+# classify them response-only and make a future optional array on them
+# unsendable-empty. Derive the seed from the spec, not from a naming habit.
+| ( [ .paths[]?[]? | objects | .requestBody? | objects
+      | [.. | objects | select(has("$ref")) | .["$ref"]]
+      | .[] | select(type == "string" and startswith("#/components/schemas/"))
+      | sub("^#/components/schemas/"; "") ] | unique ) as $seeds
 | ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
     | until(.frontier | length == 0;
         . as $s
