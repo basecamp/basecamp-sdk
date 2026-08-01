@@ -10,6 +10,10 @@ kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt
   s_555508c40a7b3b::t_017e10b1a290b3 62-70,82-98,100-106,127-152
 SPEC.md
   s_555508c40a7b3b::t_513e7e3efc1a75 1965
+  s_555508c40a7b3b::t_47710609dcecb4 473
+  s_555508c40a7b3b::t_1ac509ad5b7e84 1969
+  s_555508c40a7b3b::t_24033c8ada6b93 439
+  s_555508c40a7b3b::t_bc1999fef2444f 476
 conformance/tests/network-retry.json
   s_555508c40a7b3b::t_7418ddfb2a8089 21
 ---
