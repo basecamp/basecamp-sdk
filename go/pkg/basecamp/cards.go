@@ -444,7 +444,7 @@ func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCa
 		Title: req.Title,
 	}
 	if req.Content != "" {
-		body.Content = req.Content
+		body.Content = &req.Content
 	}
 	if req.DueOn != "" {
 		d, parseErr := types.ParseDate(req.DueOn)
@@ -452,7 +452,7 @@ func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCa
 			err = ErrUsage("card due_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body.DueOn = d
+		body.DueOn = &d
 	}
 	if req.Notify {
 		body.Notify = &req.Notify
@@ -619,7 +619,7 @@ func (s *CardsService) Move(ctx context.Context, cardID, columnID int64, opts *M
 		ColumnId: columnID,
 	}
 	if opts != nil && opts.Position > 0 {
-		body.Position = opts.Position
+		body.Position = &opts.Position
 	}
 
 	resp, err := s.client.parent.gen.MoveCardWithResponse(ctx, s.client.accountID, cardID, body)
@@ -719,7 +719,7 @@ func (s *CardColumnsService) Create(ctx context.Context, cardTableID int64, req 
 
 	body := generated.CreateCardColumnJSONRequestBody{
 		Title:       req.Title,
-		Description: req.Description,
+		Description: omitzero(req.Description),
 	}
 
 	resp, err := s.client.parent.gen.CreateCardColumnWithResponse(ctx, s.client.accountID, cardTableID, body)
@@ -763,10 +763,10 @@ func (s *CardColumnsService) Update(ctx context.Context, columnID int64, req *Up
 
 	body := generated.UpdateCardColumnJSONRequestBody{}
 	if req.Title != "" {
-		body.Title = req.Title
+		body.Title = &req.Title
 	}
 	if req.Description != "" {
-		body.Description = req.Description
+		body.Description = &req.Description
 	}
 
 	resp, err := s.client.parent.gen.UpdateCardColumnWithResponse(ctx, s.client.accountID, columnID, body)
@@ -809,7 +809,7 @@ func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *M
 	body := generated.MoveCardColumnJSONRequestBody{
 		SourceId: req.SourceID,
 		TargetId: req.TargetID,
-		Position: int32(req.Position), // #nosec G115 -- position is validated and bounded by API
+		Position: omitzero(int32(req.Position)), // #nosec G115 -- position is validated and bounded by API
 	}
 
 	resp, err := s.client.parent.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, cardTableID, body)
@@ -1111,8 +1111,10 @@ func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *Create
 	}
 
 	body := generated.CreateCardStepJSONRequestBody{
-		Title:       req.Title,
-		AssigneeIds: req.AssigneeIDs,
+		Title: req.Title,
+	}
+	if len(req.AssigneeIDs) > 0 {
+		body.AssigneeIds = &req.AssigneeIDs
 	}
 	if req.DueOn != "" {
 		d, parseErr := types.ParseDate(req.DueOn)
@@ -1120,7 +1122,7 @@ func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *Create
 			err = ErrUsage("step due_on must be in YYYY-MM-DD format")
 			return nil, err
 		}
-		body.DueOn = d
+		body.DueOn = &d
 	}
 
 	resp, err := s.client.parent.gen.CreateCardStepWithResponse(ctx, s.client.accountID, cardID, body)
@@ -1332,8 +1334,8 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 		Type:             gc.Type,
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
-		BookmarkURL:      gc.BookmarkUrl,
-		SubscriptionURL:  gc.SubscriptionUrl,
+		BookmarkURL:      deref(gc.BookmarkUrl),
+		SubscriptionURL:  deref(gc.SubscriptionUrl),
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
 	}
@@ -1389,14 +1391,14 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		Type:             gc.Type,
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
-		BookmarkURL:      gc.BookmarkUrl,
-		Position:         int(gc.Position),
-		Color:            gc.Color,
-		Description:      gc.Description,
-		CardsCount:       int(gc.CardsCount),
-		CommentCount:     int(gc.CommentsCount),
-		CommentsCount:    int(gc.CommentsCount),
-		CardsURL:         gc.CardsUrl,
+		BookmarkURL:      deref(gc.BookmarkUrl),
+		Position:         int(deref(gc.Position)),
+		Color:            deref(gc.Color),
+		Description:      deref(gc.Description),
+		CardsCount:       int(deref(gc.CardsCount)),
+		CommentCount:     int(deref(gc.CommentsCount)),
+		CommentsCount:    int(deref(gc.CommentsCount)),
+		CardsURL:         deref(gc.CardsUrl),
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
 	}
@@ -1428,7 +1430,7 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		cc.Creator = &creator
 	}
 
-	if gc.OnHold.Id != 0 {
+	if gc.OnHold != nil && gc.OnHold.Id != 0 {
 		cc.OnHold = &CardColumnOnHold{
 			ID:             gc.OnHold.Id,
 			Status:         gc.OnHold.Status,
@@ -1461,17 +1463,17 @@ func cardFromGenerated(gc generated.Card) Card {
 		Type:             gc.Type,
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
-		BookmarkURL:      gc.BookmarkUrl,
-		SubscriptionURL:  gc.SubscriptionUrl,
-		Position:         int(gc.Position),
-		Content:          gc.Content,
-		Description:      gc.Description,
-		Completed:        gc.Completed,
-		CommentsCount:    int(gc.CommentsCount),
-		BoostsCount:      int(gc.BoostsCount),
-		BoostsURL:        gc.BoostsUrl,
-		CommentsURL:      gc.CommentsUrl,
-		CompletionURL:    gc.CompletionUrl,
+		BookmarkURL:      deref(gc.BookmarkUrl),
+		SubscriptionURL:  deref(gc.SubscriptionUrl),
+		Position:         int(deref(gc.Position)),
+		Content:          deref(gc.Content),
+		Description:      deref(gc.Description),
+		Completed:        deref(gc.Completed),
+		CommentsCount:    int(deref(gc.CommentsCount)),
+		BoostsCount:      int(deref(gc.BoostsCount)),
+		BoostsURL:        deref(gc.BoostsUrl),
+		CommentsURL:      deref(gc.CommentsUrl),
+		CompletionURL:    deref(gc.CompletionUrl),
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
 	}
@@ -1481,13 +1483,13 @@ func cardFromGenerated(gc generated.Card) Card {
 	}
 
 	// Handle due_on - it's types.Date in generated, string in SDK
-	if !gc.DueOn.IsZero() {
+	if gc.DueOn != nil && !gc.DueOn.IsZero() {
 		c.DueOn = gc.DueOn.String()
 	}
 
 	// Handle completed_at
-	if !gc.CompletedAt.IsZero() {
-		c.CompletedAt = &gc.CompletedAt
+	if gc.CompletedAt != nil && !gc.CompletedAt.IsZero() {
+		c.CompletedAt = gc.CompletedAt
 	}
 
 	if gc.Parent.Id != 0 || gc.Parent.Title != "" {
@@ -1513,8 +1515,8 @@ func cardFromGenerated(gc generated.Card) Card {
 		c.Creator = &creator
 	}
 
-	if gc.Completer.Id != 0 || gc.Completer.Name != "" {
-		completer := personFromGenerated(gc.Completer)
+	if gc.Completer != nil && (gc.Completer.Id != 0 || gc.Completer.Name != "") {
+		completer := personFromGenerated(*gc.Completer)
 		c.Completer = &completer
 	}
 
@@ -1554,10 +1556,10 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		Type:             gs.Type,
 		URL:              gs.Url,
 		AppURL:           gs.AppUrl,
-		BookmarkURL:      gs.BookmarkUrl,
-		CompletionURL:    gs.CompletionUrl,
-		Position:         int(gs.Position),
-		Completed:        gs.Completed,
+		BookmarkURL:      deref(gs.BookmarkUrl),
+		CompletionURL:    deref(gs.CompletionUrl),
+		Position:         int(deref(gs.Position)),
+		Completed:        deref(gs.Completed),
 		CreatedAt:        gs.CreatedAt,
 		UpdatedAt:        gs.UpdatedAt,
 	}
@@ -1567,13 +1569,13 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 	}
 
 	// Handle due_on - it's types.Date in generated, string in SDK
-	if !gs.DueOn.IsZero() {
+	if gs.DueOn != nil && !gs.DueOn.IsZero() {
 		s.DueOn = gs.DueOn.String()
 	}
 
 	// Handle completed_at
-	if !gs.CompletedAt.IsZero() {
-		s.CompletedAt = &gs.CompletedAt
+	if gs.CompletedAt != nil && !gs.CompletedAt.IsZero() {
+		s.CompletedAt = gs.CompletedAt
 	}
 
 	if gs.Parent.Id != 0 || gs.Parent.Title != "" {
@@ -1599,8 +1601,8 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		s.Creator = &creator
 	}
 
-	if gs.Completer.Id != 0 || gs.Completer.Name != "" {
-		completer := personFromGenerated(gs.Completer)
+	if gs.Completer != nil && (gs.Completer.Id != 0 || gs.Completer.Name != "") {
+		completer := personFromGenerated(*gs.Completer)
 		s.Completer = &completer
 	}
 

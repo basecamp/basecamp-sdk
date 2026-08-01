@@ -123,15 +123,41 @@ func truncate(s string, maxLen int) string {
 	return string(runes[:maxLen]) + "…"
 }
 
-// Pointer dereference helpers for converting generated types (which use pointers)
-// to SDK types (which use values).
+// Pointer helpers for the generated-optional-pointer contract (SPEC.md §10):
+// generated optional fields are pointers (absence = nil); the hand-written SDK
+// surface keeps ergonomic value types where absence collapsing to the zero
+// value is acceptable for reads.
+
+// deref safely dereferences an optional-field pointer, returning the zero
+// value when the field was absent.
+func deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
+}
 
 // derefInt64 safely dereferences a pointer, returning 0 if nil.
 func derefInt64(p *int64) int64 {
-	if p == nil {
-		return 0
+	return deref(p)
+}
+
+// omitzero converts a value-typed wrapper option to a generated request's
+// optional pointer, preserving omit-when-zero wire behavior: the zero value
+// means "not provided" and maps to nil (field omitted on the wire).
+func omitzero[T comparable](v T) *T {
+	var zero T
+	if v == zero {
+		return nil
 	}
-	return *p
+	return &v
+}
+
+// ptr returns a pointer to v, for optional fields where the value — zero
+// included — must be sent.
+func ptr[T any](v T) *T {
+	return &v
 }
 
 // ListMeta contains pagination metadata from list operations.

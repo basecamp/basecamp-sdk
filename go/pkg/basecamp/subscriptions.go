@@ -147,10 +147,10 @@ func (s *SubscriptionsService) Update(ctx context.Context, recordingID int64, re
 
 	body := generated.UpdateSubscriptionJSONRequestBody{}
 	if len(req.Subscriptions) > 0 {
-		body.Subscriptions = req.Subscriptions
+		body.Subscriptions = &req.Subscriptions
 	}
 	if len(req.Unsubscriptions) > 0 {
-		body.Unsubscriptions = req.Unsubscriptions
+		body.Unsubscriptions = &req.Unsubscriptions
 	}
 
 	resp, err := s.client.parent.gen.UpdateSubscriptionWithResponse(ctx, s.client.accountID, recordingID, body)

@@ -223,7 +223,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 	var params *generated.ListScheduleEntriesParams
 	if opts != nil && opts.Status != "" {
 		params = &generated.ListScheduleEntriesParams{
-			Status: opts.Status,
+			Status: &opts.Status,
 		}
 	}
 
@@ -358,11 +358,13 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 		Summary:          req.Summary,
 		StartsAt:         startsAt,
 		EndsAt:           endsAt,
-		Description:      req.Description,
-		ParticipantIds:   req.ParticipantIDs,
+		Description:      omitzero(req.Description),
 		AllDay:           req.AllDay,
 		Subscriptions:    req.Subscriptions,
 		VisibleToClients: req.VisibleToClients,
+	}
+	if len(req.ParticipantIDs) > 0 {
+		body.ParticipantIds = &req.ParticipantIDs
 	}
 	if req.Notify {
 		body.Notify = &req.Notify
@@ -575,11 +577,11 @@ func scheduleFromGenerated(gs generated.Schedule) Schedule {
 		Type:                  gs.Type,
 		URL:                   gs.Url,
 		AppURL:                gs.AppUrl,
-		BookmarkURL:           gs.BookmarkUrl,
-		Position:              int(gs.Position),
-		IncludeDueAssignments: gs.IncludeDueAssignments,
-		EntriesCount:          int(gs.EntriesCount),
-		EntriesURL:            gs.EntriesUrl,
+		BookmarkURL:           deref(gs.BookmarkUrl),
+		Position:              int(deref(gs.Position)),
+		IncludeDueAssignments: deref(gs.IncludeDueAssignments),
+		EntriesCount:          int(deref(gs.EntriesCount)),
+		EntriesURL:            deref(gs.EntriesUrl),
 	}
 
 	if gs.Id != 0 {
@@ -615,16 +617,16 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		Type:             ge.Type,
 		URL:              ge.Url,
 		AppURL:           ge.AppUrl,
-		BookmarkURL:      ge.BookmarkUrl,
-		BoostsCount:      int(ge.BoostsCount),
-		BoostsURL:        ge.BoostsUrl,
-		SubscriptionURL:  ge.SubscriptionUrl,
-		CommentsURL:      ge.CommentsUrl,
-		CommentsCount:    int(ge.CommentsCount),
-		StartsAt:         ge.StartsAt,
-		EndsAt:           ge.EndsAt,
-		AllDay:           ge.AllDay,
-		Description:      ge.Description,
+		BookmarkURL:      deref(ge.BookmarkUrl),
+		BoostsCount:      int(deref(ge.BoostsCount)),
+		BoostsURL:        deref(ge.BoostsUrl),
+		SubscriptionURL:  deref(ge.SubscriptionUrl),
+		CommentsURL:      deref(ge.CommentsUrl),
+		CommentsCount:    int(deref(ge.CommentsCount)),
+		StartsAt:         deref(ge.StartsAt),
+		EndsAt:           deref(ge.EndsAt),
+		AllDay:           deref(ge.AllDay),
+		Description:      deref(ge.Description),
 	}
 
 	if ge.Id != 0 {

@@ -54,7 +54,7 @@ func (s *BookmarksService) List(ctx context.Context, page int32) (result *Bookma
 
 	var params *generated.ListMyBookmarksParams
 	if page > 0 {
-		params = &generated.ListMyBookmarksParams{Page: page}
+		params = &generated.ListMyBookmarksParams{Page: &page}
 	}
 	resp, err := s.client.parent.gen.ListMyBookmarksWithResponse(ctx, s.client.accountID, params)
 	if err != nil {

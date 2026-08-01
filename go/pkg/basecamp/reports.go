@@ -83,7 +83,7 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 
 	var params *generated.GetAssignedTodosParams
 	if opts != nil && opts.GroupBy != "" {
-		params = &generated.GetAssignedTodosParams{GroupBy: opts.GroupBy}
+		params = &generated.GetAssignedTodosParams{GroupBy: &opts.GroupBy}
 	}
 
 	resp, err := s.client.parent.gen.GetAssignedTodosWithResponse(ctx, s.client.accountID, personID, params)
@@ -98,11 +98,11 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 	}
 
 	result = &AssignedTodosResponse{
-		GroupedBy: resp.JSON200.GroupedBy,
+		GroupedBy: deref(resp.JSON200.GroupedBy),
 	}
 
-	if resp.JSON200.Person.Id != 0 || resp.JSON200.Person.Name != "" {
-		p := personFromGenerated(resp.JSON200.Person)
+	if resp.JSON200.Person != nil {
+		p := personFromGenerated(*resp.JSON200.Person)
 		result.Person = &p
 	}
 
@@ -212,7 +212,7 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 				err = ErrUsage("window_starts_on must be in YYYY-MM-DD format")
 				return nil, err
 			}
-			params.WindowStartsOn = startDate
+			params.WindowStartsOn = &startDate
 		}
 		if endDate != "" {
 			// Validate date format
@@ -220,7 +220,7 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 				err = ErrUsage("window_ends_on must be in YYYY-MM-DD format")
 				return nil, err
 			}
-			params.WindowEndsOn = endDate
+			params.WindowEndsOn = &endDate
 		}
 	}
 
@@ -253,10 +253,10 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 // assignableFromGenerated converts a generated Assignable to our clean type.
 func assignableFromGenerated(ga generated.Assignable) Assignable {
 	a := Assignable{
-		Title:  ga.Title,
-		Type:   ga.Type,
-		URL:    ga.Url,
-		AppURL: ga.AppUrl,
+		Title:  deref(ga.Title),
+		Type:   deref(ga.Type),
+		URL:    deref(ga.Url),
+		AppURL: deref(ga.AppUrl),
 	}
 
 	if ga.Id != nil {
@@ -264,14 +264,14 @@ func assignableFromGenerated(ga generated.Assignable) Assignable {
 	}
 
 	// Convert date fields to strings
-	if !ga.DueOn.IsZero() {
+	if ga.DueOn != nil && !ga.DueOn.IsZero() {
 		a.DueOn = ga.DueOn.String()
 	}
-	if !ga.StartsOn.IsZero() {
+	if ga.StartsOn != nil && !ga.StartsOn.IsZero() {
 		a.StartsOn = ga.StartsOn.String()
 	}
 
-	if ga.Bucket.Id != 0 || ga.Bucket.Name != "" {
+	if ga.Bucket != nil {
 		a.Bucket = &Bucket{
 			ID:   ga.Bucket.Id,
 			Name: ga.Bucket.Name,
@@ -279,7 +279,7 @@ func assignableFromGenerated(ga generated.Assignable) Assignable {
 		}
 	}
 
-	if ga.Parent.Id != 0 || ga.Parent.Title != "" {
+	if ga.Parent != nil {
 		a.Parent = &Parent{
 			ID:     ga.Parent.Id,
 			Title:  ga.Parent.Title,

@@ -433,7 +433,7 @@ func (s *VaultsService) Update(ctx context.Context, vaultID int64, req *UpdateVa
 
 	body := generated.UpdateVaultJSONRequestBody{}
 	if req.Title != "" {
-		body.Title = req.Title
+		body.Title = &req.Title
 	}
 
 	resp, err := s.client.parent.gen.UpdateVaultWithResponse(ctx, s.client.accountID, vaultID, body)
@@ -597,8 +597,8 @@ func (s *DocumentsService) Create(ctx context.Context, vaultID int64, req *Creat
 
 	body := generated.CreateDocumentJSONRequestBody{
 		Title:            req.Title,
-		Content:          req.Content,
-		Status:           req.Status,
+		Content:          omitzero(req.Content),
+		Status:           omitzero(req.Status),
 		Subscriptions:    req.Subscriptions,
 		VisibleToClients: req.VisibleToClients,
 	}
@@ -643,10 +643,10 @@ func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *Up
 
 	body := generated.UpdateDocumentJSONRequestBody{}
 	if req.Title != "" {
-		body.Title = req.Title
+		body.Title = &req.Title
 	}
 	if req.Content != "" {
-		body.Content = req.Content
+		body.Content = &req.Content
 	}
 
 	resp, err := s.client.parent.gen.UpdateDocumentWithResponse(ctx, s.client.accountID, documentID, body)
@@ -834,10 +834,10 @@ func (s *UploadsService) Update(ctx context.Context, uploadID int64, req *Update
 
 	body := generated.UpdateUploadJSONRequestBody{}
 	if req.Description != "" {
-		body.Description = req.Description
+		body.Description = &req.Description
 	}
 	if req.BaseName != "" {
-		body.BaseName = req.BaseName
+		body.BaseName = &req.BaseName
 	}
 
 	resp, err := s.client.parent.gen.UpdateUploadWithResponse(ctx, s.client.accountID, uploadID, body)
@@ -881,8 +881,8 @@ func (s *UploadsService) Create(ctx context.Context, vaultID int64, req *CreateU
 
 	body := generated.CreateUploadJSONRequestBody{
 		AttachableSgid:   req.AttachableSGID,
-		Description:      req.Description,
-		BaseName:         req.BaseName,
+		Description:      omitzero(req.Description),
+		BaseName:         omitzero(req.BaseName),
 		Subscriptions:    req.Subscriptions,
 		VisibleToClients: req.VisibleToClients,
 	}
@@ -1088,14 +1088,14 @@ func vaultFromGenerated(gv generated.Vault) Vault {
 		Type:             gv.Type,
 		URL:              gv.Url,
 		AppURL:           gv.AppUrl,
-		BookmarkURL:      gv.BookmarkUrl,
-		Position:         int(gv.Position),
-		DocumentsCount:   int(gv.DocumentsCount),
-		DocumentsURL:     gv.DocumentsUrl,
-		UploadsCount:     int(gv.UploadsCount),
-		UploadsURL:       gv.UploadsUrl,
-		VaultsCount:      int(gv.VaultsCount),
-		VaultsURL:        gv.VaultsUrl,
+		BookmarkURL:      deref(gv.BookmarkUrl),
+		Position:         int(deref(gv.Position)),
+		DocumentsCount:   int(deref(gv.DocumentsCount)),
+		DocumentsURL:     deref(gv.DocumentsUrl),
+		UploadsCount:     int(deref(gv.UploadsCount)),
+		UploadsURL:       deref(gv.UploadsUrl),
+		VaultsCount:      int(deref(gv.VaultsCount)),
+		VaultsURL:        deref(gv.VaultsUrl),
 		CreatedAt:        gv.CreatedAt,
 		UpdatedAt:        gv.UpdatedAt,
 	}
@@ -1104,7 +1104,7 @@ func vaultFromGenerated(gv generated.Vault) Vault {
 		v.ID = gv.Id
 	}
 
-	if gv.Parent.Id != 0 || gv.Parent.Title != "" {
+	if gv.Parent != nil {
 		v.Parent = &Parent{
 			ID:     gv.Parent.Id,
 			Title:  gv.Parent.Title,
@@ -1140,14 +1140,14 @@ func documentFromGenerated(gd generated.Document) Document {
 		Type:             gd.Type,
 		URL:              gd.Url,
 		AppURL:           gd.AppUrl,
-		BookmarkURL:      gd.BookmarkUrl,
-		SubscriptionURL:  gd.SubscriptionUrl,
-		CommentsCount:    int(gd.CommentsCount),
-		BoostsCount:      int(gd.BoostsCount),
-		BoostsURL:        gd.BoostsUrl,
-		CommentsURL:      gd.CommentsUrl,
-		Position:         int(gd.Position),
-		Content:          gd.Content,
+		BookmarkURL:      deref(gd.BookmarkUrl),
+		SubscriptionURL:  deref(gd.SubscriptionUrl),
+		CommentsCount:    int(deref(gd.CommentsCount)),
+		BoostsCount:      int(deref(gd.BoostsCount)),
+		BoostsURL:        deref(gd.BoostsUrl),
+		CommentsURL:      deref(gd.CommentsUrl),
+		Position:         int(deref(gd.Position)),
+		Content:          deref(gd.Content),
 		CreatedAt:        gd.CreatedAt,
 		UpdatedAt:        gd.UpdatedAt,
 	}
@@ -1194,20 +1194,20 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 		Type:             gu.Type,
 		URL:              gu.Url,
 		AppURL:           gu.AppUrl,
-		BookmarkURL:      gu.BookmarkUrl,
-		SubscriptionURL:  gu.SubscriptionUrl,
-		CommentsCount:    int(gu.CommentsCount),
-		BoostsCount:      int(gu.BoostsCount),
-		BoostsURL:        gu.BoostsUrl,
-		CommentsURL:      gu.CommentsUrl,
-		Position:         int(gu.Position),
-		Description:      gu.Description,
-		ContentType:      gu.ContentType,
-		ByteSize:         gu.ByteSize,
-		Width:            int(gu.Width),
-		Height:           int(gu.Height),
-		DownloadURL:      gu.DownloadUrl,
-		Filename:         gu.Filename,
+		BookmarkURL:      deref(gu.BookmarkUrl),
+		SubscriptionURL:  deref(gu.SubscriptionUrl),
+		CommentsCount:    int(deref(gu.CommentsCount)),
+		BoostsCount:      int(deref(gu.BoostsCount)),
+		BoostsURL:        deref(gu.BoostsUrl),
+		CommentsURL:      deref(gu.CommentsUrl),
+		Position:         int(deref(gu.Position)),
+		Description:      deref(gu.Description),
+		ContentType:      deref(gu.ContentType),
+		ByteSize:         derefInt64(gu.ByteSize),
+		Width:            int(deref(gu.Width)),
+		Height:           int(deref(gu.Height)),
+		DownloadURL:      deref(gu.DownloadUrl),
+		Filename:         deref(gu.Filename),
 		CreatedAt:        gu.CreatedAt,
 		UpdatedAt:        gu.UpdatedAt,
 	}

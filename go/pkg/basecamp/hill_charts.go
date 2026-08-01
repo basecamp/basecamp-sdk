@@ -87,9 +87,12 @@ func (s *HillChartsService) UpdateSettings(ctx context.Context, todosetID int64,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	body := generated.UpdateHillChartSettingsJSONRequestBody{
-		Tracked:   tracked,
-		Untracked: untracked,
+	body := generated.UpdateHillChartSettingsJSONRequestBody{}
+	if len(tracked) > 0 {
+		body.Tracked = &tracked
+	}
+	if len(untracked) > 0 {
+		body.Untracked = &untracked
 	}
 
 	resp, err := s.client.parent.gen.UpdateHillChartSettingsWithResponse(ctx, s.client.accountID, todosetID, body)
@@ -113,9 +116,9 @@ func hillChartFromGenerated(ghc generated.HillChart) HillChart {
 	hc := HillChart{
 		Enabled:        ghc.Enabled,
 		Stale:          ghc.Stale,
-		UpdatedAt:      ghc.UpdatedAt,
-		AppUpdateURL:   ghc.AppUpdateUrl,
-		AppVersionsURL: ghc.AppVersionsUrl,
+		UpdatedAt:      deref(ghc.UpdatedAt),
+		AppUpdateURL:   deref(ghc.AppUpdateUrl),
+		AppVersionsURL: deref(ghc.AppVersionsUrl),
 	}
 
 	if len(ghc.Dots) > 0 {
@@ -126,8 +129,8 @@ func hillChartFromGenerated(ghc generated.HillChart) HillChart {
 				Label:    gd.Label,
 				Color:    gd.Color,
 				Position: int(gd.Position),
-				URL:      gd.Url,
-				AppURL:   gd.AppUrl,
+				URL:      deref(gd.Url),
+				AppURL:   deref(gd.AppUrl),
 			})
 		}
 	}

@@ -140,7 +140,7 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 	// Build params for generated client
 	params := &generated.ListTodolistsParams{}
 	if opts != nil && opts.Status != "" {
-		params.Status = opts.Status
+		params.Status = &opts.Status
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
@@ -260,7 +260,7 @@ func (s *TodolistsService) Create(ctx context.Context, todosetID int64, req *Cre
 
 	body := generated.CreateTodolistJSONRequestBody{
 		Name:             req.Name,
-		Description:      req.Description,
+		Description:      omitzero(req.Description),
 		VisibleToClients: req.VisibleToClients,
 	}
 
@@ -299,10 +299,10 @@ func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *Up
 
 	body := generated.UpdateTodolistOrGroupJSONRequestBody{}
 	if req.Name != "" {
-		body.Name = req.Name
+		body.Name = &req.Name
 	}
 	if req.Description != "" {
-		body.Description = req.Description
+		body.Description = &req.Description
 	}
 
 	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, todolistID, body)
@@ -401,21 +401,21 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		Type:             gtl.Type,
 		URL:              gtl.Url,
 		AppURL:           gtl.AppUrl,
-		BookmarkURL:      gtl.BookmarkUrl,
-		BoostsCount:      int(gtl.BoostsCount),
-		BoostsURL:        gtl.BoostsUrl,
-		SubscriptionURL:  gtl.SubscriptionUrl,
+		BookmarkURL:      deref(gtl.BookmarkUrl),
+		BoostsCount:      int(deref(gtl.BoostsCount)),
+		BoostsURL:        deref(gtl.BoostsUrl),
+		SubscriptionURL:  deref(gtl.SubscriptionUrl),
 		BubbleUpURL:      gtl.BubbleUpUrl,
-		CommentsCount:    int(gtl.CommentsCount),
-		CommentsURL:      gtl.CommentsUrl,
-		Position:         int(gtl.Position),
-		Description:      gtl.Description,
-		Completed:        gtl.Completed,
-		CompletedRatio:   gtl.CompletedRatio,
+		CommentsCount:    int(deref(gtl.CommentsCount)),
+		CommentsURL:      deref(gtl.CommentsUrl),
+		Position:         int(deref(gtl.Position)),
+		Description:      deref(gtl.Description),
+		Completed:        deref(gtl.Completed),
+		CompletedRatio:   deref(gtl.CompletedRatio),
 		Name:             gtl.Name,
-		TodosURL:         gtl.TodosUrl,
-		GroupsURL:        gtl.GroupsUrl,
-		AppTodosURL:      gtl.AppTodosUrl,
+		TodosURL:         deref(gtl.TodosUrl),
+		GroupsURL:        deref(gtl.GroupsUrl),
+		AppTodosURL:      deref(gtl.AppTodosUrl),
 		CreatedAt:        gtl.CreatedAt,
 		UpdatedAt:        gtl.UpdatedAt,
 	}

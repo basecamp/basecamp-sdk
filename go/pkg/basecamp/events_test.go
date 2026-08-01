@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func eventsFixturesDir() string {
@@ -118,5 +120,15 @@ func TestEvent_UnmarshalList(t *testing.T) {
 	}
 	if e3.Creator.Name != "Andrew Wong" {
 		t.Errorf("expected Creator.Name 'Andrew Wong', got %q", e3.Creator.Name)
+	}
+}
+
+// Regression: an event whose wire payload omits `details` decodes to a nil
+// generated.Event.Details pointer; eventFromGenerated must not deref it.
+// (Pre-guard, this panicked — Go auto-deref compiles `ge.Details.X` fine.)
+func TestEventFromGenerated_NilDetails(t *testing.T) {
+	e := eventFromGenerated(generated.Event{})
+	if e.Details != nil {
+		t.Fatalf("expected nil Details for an event without details, got %+v", e.Details)
 	}
 }

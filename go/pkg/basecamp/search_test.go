@@ -322,13 +322,13 @@ func TestSearchParams_AllFieldsWireEncoding(t *testing.T) {
 		TypeNames:   &[]string{"Message", "Todo"},
 		BucketIds:   &[]int64{1, 2},
 		CreatorIds:  &[]int64{7},
-		FileType:    "Image",
-		ExcludeChat: true,
-		Since:       "last_30_days",
-		Sort:        "recency",
-		Type:        "Message",
-		BucketId:    9,
-		CreatorId:   3,
+		FileType:    ptr("Image"),
+		ExcludeChat: ptr(true),
+		Since:       ptr("last_30_days"),
+		Sort:        ptr("recency"),
+		Type:        ptr("Message"),
+		BucketId:    ptr(int64(9)),
+		CreatorId:   ptr(int64(3)),
 	}
 
 	req, err := generated.NewSearchRequest("https://example.test", "195539477", params)

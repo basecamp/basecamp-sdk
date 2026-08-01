@@ -870,7 +870,7 @@ func (s *CheckinsService) CreateAnswer(ctx context.Context, questionID int64, re
 	}
 	if req.GroupOn != "" {
 		if d, parseErr := types.ParseDate(req.GroupOn); parseErr == nil {
-			body.GroupOn = d
+			body.GroupOn = &d
 		}
 	}
 
@@ -1033,9 +1033,9 @@ func questionnaireFromGenerated(gq generated.Questionnaire) Questionnaire {
 		Type:             gq.Type,
 		URL:              gq.Url,
 		AppURL:           gq.AppUrl,
-		BookmarkURL:      gq.BookmarkUrl,
-		QuestionsURL:     gq.QuestionsUrl,
-		QuestionsCount:   int(gq.QuestionsCount),
+		BookmarkURL:      deref(gq.BookmarkUrl),
+		QuestionsURL:     deref(gq.QuestionsUrl),
+		QuestionsCount:   int(deref(gq.QuestionsCount)),
 		Name:             gq.Name,
 	}
 
@@ -1071,42 +1071,42 @@ func questionFromGenerated(gq generated.Question) Question {
 		Type:             gq.Type,
 		URL:              gq.Url,
 		AppURL:           gq.AppUrl,
-		BookmarkURL:      gq.BookmarkUrl,
-		SubscriptionURL:  gq.SubscriptionUrl,
-		Paused:           gq.Paused,
-		AnswersCount:     int(gq.AnswersCount),
-		AnswersURL:       gq.AnswersUrl,
+		BookmarkURL:      deref(gq.BookmarkUrl),
+		SubscriptionURL:  deref(gq.SubscriptionUrl),
+		Paused:           deref(gq.Paused),
+		AnswersCount:     int(deref(gq.AnswersCount)),
+		AnswersURL:       deref(gq.AnswersUrl),
 	}
 
 	if gq.Id != 0 {
 		q.ID = gq.Id
 	}
 
-	if gq.Schedule.Frequency != "" {
+	if gq.Schedule != nil && deref(gq.Schedule.Frequency) != "" {
 		days := make([]int, len(gq.Schedule.Days))
 		for i, d := range gq.Schedule.Days {
 			days[i] = int(d)
 		}
-		hour := int(gq.Schedule.Hour)
-		minute := int(gq.Schedule.Minute)
+		hour := int(deref(gq.Schedule.Hour))
+		minute := int(deref(gq.Schedule.Minute))
 		q.Schedule = &QuestionSchedule{
-			Frequency: gq.Schedule.Frequency,
+			Frequency: deref(gq.Schedule.Frequency),
 			Days:      days,
 			Hour:      &hour,
 			Minute:    &minute,
-			StartDate: gq.Schedule.StartDate,
-			EndDate:   gq.Schedule.EndDate,
+			StartDate: deref(gq.Schedule.StartDate),
+			EndDate:   deref(gq.Schedule.EndDate),
 		}
-		if gq.Schedule.WeekInstance != 0 {
-			wi := int(gq.Schedule.WeekInstance)
+		if deref(gq.Schedule.WeekInstance) != 0 {
+			wi := int(deref(gq.Schedule.WeekInstance))
 			q.Schedule.WeekInstance = &wi
 		}
-		if gq.Schedule.WeekInterval != 0 {
-			wi := int(gq.Schedule.WeekInterval)
+		if deref(gq.Schedule.WeekInterval) != 0 {
+			wi := int(deref(gq.Schedule.WeekInterval))
 			q.Schedule.WeekInterval = &wi
 		}
-		if gq.Schedule.MonthInterval != 0 {
-			mi := int(gq.Schedule.MonthInterval)
+		if deref(gq.Schedule.MonthInterval) != 0 {
+			mi := int(deref(gq.Schedule.MonthInterval))
 			q.Schedule.MonthInterval = &mi
 		}
 	}
@@ -1149,12 +1149,12 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		Type:             ga.Type,
 		URL:              ga.Url,
 		AppURL:           ga.AppUrl,
-		BookmarkURL:      ga.BookmarkUrl,
-		BoostsCount:      int(ga.BoostsCount),
-		BoostsURL:        ga.BoostsUrl,
-		SubscriptionURL:  ga.SubscriptionUrl,
-		CommentsCount:    int(ga.CommentsCount),
-		CommentsURL:      ga.CommentsUrl,
+		BookmarkURL:      deref(ga.BookmarkUrl),
+		BoostsCount:      int(deref(ga.BoostsCount)),
+		BoostsURL:        deref(ga.BoostsUrl),
+		SubscriptionURL:  deref(ga.SubscriptionUrl),
+		CommentsCount:    int(deref(ga.CommentsCount)),
+		CommentsURL:      deref(ga.CommentsUrl),
 		Content:          ga.Content,
 	}
 
@@ -1163,7 +1163,7 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 	}
 
 	// Convert date fields to strings
-	if !ga.GroupOn.IsZero() {
+	if ga.GroupOn != nil && !ga.GroupOn.IsZero() {
 		a.GroupOn = ga.GroupOn.String()
 	}
 
@@ -1198,13 +1198,16 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 // questionReminderFromGenerated converts a generated QuestionReminder to our clean type.
 func questionReminderFromGenerated(gr generated.QuestionReminder) QuestionReminder {
 	r := QuestionReminder{
-		Question:   questionFromGenerated(gr.Question),
-		RemindAt:   gr.RemindAt,
+		RemindAt:   deref(gr.RemindAt),
 		ReminderID: gr.ReminderId,
 	}
 
+	if gr.Question != nil {
+		r.Question = questionFromGenerated(*gr.Question)
+	}
+
 	// Convert date fields to strings
-	if !gr.GroupOn.IsZero() {
+	if gr.GroupOn != nil && !gr.GroupOn.IsZero() {
 		r.GroupOn = gr.GroupOn.String()
 	}
 
@@ -1215,8 +1218,8 @@ func questionReminderFromGenerated(gr generated.QuestionReminder) QuestionRemind
 // UpdateQuestionNotificationSettingsResponseContent to our clean type.
 func questionNotificationSettingsFromGenerated(gs generated.UpdateQuestionNotificationSettingsResponseContent) QuestionNotificationSettings {
 	return QuestionNotificationSettings{
-		Responding: gs.Responding,
-		Subscribed: gs.Subscribed,
+		Responding: deref(gs.Responding),
+		Subscribed: deref(gs.Subscribed),
 	}
 }
 

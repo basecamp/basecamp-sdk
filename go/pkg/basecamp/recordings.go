@@ -216,16 +216,16 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 			for i, b := range opts.Bucket {
 				bucketStrs[i] = fmt.Sprintf("%d", b)
 			}
-			params.Bucket = strings.Join(bucketStrs, ",")
+			params.Bucket = ptr(strings.Join(bucketStrs, ","))
 		}
 		if opts.Status != "" {
-			params.Status = opts.Status
+			params.Status = &opts.Status
 		}
 		if opts.Sort != "" {
-			params.Sort = opts.Sort
+			params.Sort = &opts.Sort
 		}
 		if opts.Direction != "" {
-			params.Direction = opts.Direction
+			params.Direction = &opts.Direction
 		}
 	}
 
@@ -441,12 +441,12 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		Type:             gr.Type,
 		URL:              gr.Url,
 		AppURL:           gr.AppUrl,
-		BookmarkURL:      gr.BookmarkUrl,
-		BubbleUpURL:      gr.BubbleUpUrl,
-		Content:          gr.Content,
-		CommentsCount:    int(gr.CommentsCount),
-		CommentsURL:      gr.CommentsUrl,
-		SubscriptionURL:  gr.SubscriptionUrl,
+		BookmarkURL:      deref(gr.BookmarkUrl),
+		BubbleUpURL:      deref(gr.BubbleUpUrl),
+		Content:          deref(gr.Content),
+		CommentsCount:    int(deref(gr.CommentsCount)),
+		CommentsURL:      deref(gr.CommentsUrl),
+		SubscriptionURL:  deref(gr.SubscriptionUrl),
 		BoostsURL:        gr.BoostsUrl,
 		Subject:          gr.Subject,
 		From:             gr.From,
@@ -469,7 +469,7 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		r.ID = gr.Id
 	}
 
-	if gr.Parent.Id != 0 || gr.Parent.Title != "" {
+	if gr.Parent != nil {
 		r.Parent = &Parent{
 			ID:     gr.Parent.Id,
 			Title:  gr.Parent.Title,
@@ -492,7 +492,7 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		r.Creator = &creator
 	}
 
-	if gr.Category.Id != 0 || gr.Category.Name != "" {
+	if gr.Category != nil {
 		r.Category = &RecordingCategory{
 			ID:   gr.Category.Id,
 			Name: gr.Category.Name,
@@ -504,16 +504,15 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 	r.DescriptionAttachments = richTextAttachmentsPtrFromGenerated(gr.DescriptionAttachments)
 
 	// Door-specific fields (populated only for type=Door recordings).
-	r.Position = gr.Position
-	r.Description = gr.Description
-	if gr.Service.Name != "" || gr.Service.Code != "" || gr.Service.ExampleUrl != "" ||
-		gr.Service.SupportingText != "" || len(gr.Service.ValidPatterns) > 0 {
+	r.Position = deref(gr.Position)
+	r.Description = deref(gr.Description)
+	if gr.Service != nil {
 		r.Service = &DoorService{
-			Name:           gr.Service.Name,
-			ExampleURL:     gr.Service.ExampleUrl,
-			Code:           gr.Service.Code,
+			Name:           deref(gr.Service.Name),
+			ExampleURL:     deref(gr.Service.ExampleUrl),
+			Code:           deref(gr.Service.Code),
 			ValidPatterns:  append([]string(nil), gr.Service.ValidPatterns...),
-			SupportingText: gr.Service.SupportingText,
+			SupportingText: deref(gr.Service.SupportingText),
 		}
 	}
 

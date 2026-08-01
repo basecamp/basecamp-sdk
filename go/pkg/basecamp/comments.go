@@ -320,9 +320,9 @@ func commentFromGenerated(gc generated.Comment) Comment {
 		Type:             gc.Type,
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
-		BookmarkURL:      gc.BookmarkUrl,
-		BoostsCount:      int(gc.BoostsCount),
-		BoostsURL:        gc.BoostsUrl,
+		BookmarkURL:      deref(gc.BookmarkUrl),
+		BoostsCount:      int(deref(gc.BoostsCount)),
+		BoostsURL:        deref(gc.BoostsUrl),
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
 	}

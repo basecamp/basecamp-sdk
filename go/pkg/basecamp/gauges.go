@@ -263,10 +263,10 @@ func (s *GaugesService) CreateNeedle(ctx context.Context, projectID int64, req *
 	body := generated.CreateGaugeNeedleJSONRequestBody{
 		GaugeNeedle: generated.GaugeNeedlePayload{
 			Position:    req.Position,
-			Color:       req.Color,
-			Description: req.Description,
+			Color:       omitzero(req.Color),
+			Description: omitzero(req.Description),
 		},
-		Notify: req.Notify,
+		Notify: omitzero(req.Notify),
 	}
 	if len(req.Subscriptions) > 0 {
 		body.Subscriptions = &req.Subscriptions
@@ -310,8 +310,8 @@ func (s *GaugesService) UpdateNeedle(ctx context.Context, needleID int64, req *U
 	}
 
 	body := generated.UpdateGaugeNeedleJSONRequestBody{
-		GaugeNeedle: generated.GaugeNeedleUpdatePayload{
-			Description: req.Description,
+		GaugeNeedle: &generated.GaugeNeedleUpdatePayload{
+			Description: omitzero(req.Description),
 		},
 	}
 

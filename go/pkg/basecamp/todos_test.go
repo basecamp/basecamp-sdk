@@ -685,13 +685,13 @@ func TestTodoFromGenerated_FullPopulated(t *testing.T) {
 		Type:           "Todo",
 		Url:            "https://example.com/todo",
 		AppUrl:         "https://example.com/app/todo",
-		BookmarkUrl:    "https://example.com/bookmark",
+		BookmarkUrl:    ptr("https://example.com/bookmark"),
 		Content:        "Test content",
-		Description:    "<div>Test description</div>",
-		StartsOn:       types.Date{Year: 2024, Month: 1, Day: 15},
-		DueOn:          types.Date{Year: 2024, Month: 2, Day: 28},
-		Completed:      false,
-		Position:       3,
+		Description:    ptr("<div>Test description</div>"),
+		StartsOn:       ptr(types.Date{Year: 2024, Month: 1, Day: 15}),
+		DueOn:          ptr(types.Date{Year: 2024, Month: 2, Day: 28}),
+		Completed:      ptr(false),
+		Position:       ptr(int32(3)),
 		CreatedAt:      time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 		UpdatedAt:      time.Date(2024, 1, 5, 15, 30, 0, 0, time.UTC),
 		InheritsStatus: true,
@@ -710,16 +710,16 @@ func TestTodoFromGenerated_FullPopulated(t *testing.T) {
 		Creator: generated.Person{
 			Id:           types.FlexibleInt64(creatorID),
 			Name:         "Test Creator",
-			EmailAddress: "creator@example.com",
-			AvatarUrl:    "https://example.com/avatar",
-			Admin:        true,
-			Owner:        true,
+			EmailAddress: ptr("creator@example.com"),
+			AvatarUrl:    ptr("https://example.com/avatar"),
+			Admin:        ptr(true),
+			Owner:        ptr(true),
 		},
 		Assignees: []generated.Person{
 			{
 				Id:           types.FlexibleInt64(assigneeID),
 				Name:         "Test Assignee",
-				EmailAddress: "assignee@example.com",
+				EmailAddress: ptr("assignee@example.com"),
 			},
 		},
 	}
@@ -864,8 +864,8 @@ func TestTodoFromGenerated_ZeroDates(t *testing.T) {
 		Title:    "Todo without dates",
 		Type:     "Todo",
 		Content:  "Content",
-		StartsOn: types.Date{}, // zero date
-		DueOn:    types.Date{}, // zero date
+		StartsOn: ptr(types.Date{}), // zero date
+		DueOn:    ptr(types.Date{}), // zero date
 	}
 
 	todo := todoFromGenerated(gt)
@@ -1083,7 +1083,7 @@ func TestTodoFromGenerated_DescriptionAttachments(t *testing.T) {
 }
 
 func TestTodoFromGenerated_CommentsCount(t *testing.T) {
-	gt := generated.Todo{Id: 12345, Content: "Content", CommentsCount: 7}
+	gt := generated.Todo{Id: 12345, Content: "Content", CommentsCount: ptr(int32(7))}
 	todo := todoFromGenerated(gt)
 	if todo.CommentsCount != 7 {
 		t.Errorf("expected CommentsCount 7, got %d", todo.CommentsCount)

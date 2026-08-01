@@ -287,10 +287,10 @@ func (s *WebhooksService) Update(ctx context.Context, webhookID int64, req *Upda
 
 	body := generated.UpdateWebhookJSONRequestBody{}
 	if req.PayloadURL != "" {
-		body.PayloadUrl = req.PayloadURL
+		body.PayloadUrl = &req.PayloadURL
 	}
 	if len(req.Types) > 0 {
-		body.Types = req.Types
+		body.Types = &req.Types
 	}
 	if req.Active != nil {
 		body.Active = req.Active
@@ -338,7 +338,7 @@ func (s *WebhooksService) Delete(ctx context.Context, webhookID int64) (err erro
 // webhookFromGenerated converts a generated Webhook to our clean type.
 func webhookFromGenerated(gw generated.Webhook) Webhook {
 	w := Webhook{
-		Active:     gw.Active,
+		Active:     deref(gw.Active),
 		CreatedAt:  gw.CreatedAt,
 		UpdatedAt:  gw.UpdatedAt,
 		PayloadURL: gw.PayloadUrl,
@@ -355,16 +355,22 @@ func webhookFromGenerated(gw generated.Webhook) Webhook {
 		w.RecentDeliveries = make([]WebhookDelivery, len(gw.RecentDeliveries))
 		for i, gd := range gw.RecentDeliveries {
 			d := WebhookDelivery{
-				CreatedAt: gd.CreatedAt,
-				Request: WebhookDeliveryRequest{
-					Headers: map[string]string(gd.Request.Headers),
-					Body:    webhookEventFromGenerated(gd.Request.Body),
-				},
-				Response: WebhookDeliveryResponse{
-					Headers: map[string]string(gd.Response.Headers),
-					Code:    int(gd.Response.Code),
-					Message: gd.Response.Message,
-				},
+				CreatedAt: deref(gd.CreatedAt),
+			}
+			if gd.Request != nil {
+				d.Request = WebhookDeliveryRequest{
+					Headers: map[string]string(deref(gd.Request.Headers)),
+				}
+				if gd.Request.Body != nil {
+					d.Request.Body = webhookEventFromGenerated(*gd.Request.Body)
+				}
+			}
+			if gd.Response != nil {
+				d.Response = WebhookDeliveryResponse{
+					Headers: map[string]string(deref(gd.Response.Headers)),
+					Code:    int(deref(gd.Response.Code)),
+					Message: deref(gd.Response.Message),
+				}
 			}
 			if gd.Id != nil {
 				d.ID = *gd.Id
@@ -379,9 +385,9 @@ func webhookFromGenerated(gw generated.Webhook) Webhook {
 // webhookEventFromGenerated converts a generated WebhookEvent to our clean type.
 func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	event := WebhookEvent{
-		Kind: ge.Kind,
+		Kind: deref(ge.Kind),
 	}
-	if !ge.CreatedAt.IsZero() {
+	if ge.CreatedAt != nil && !ge.CreatedAt.IsZero() {
 		event.CreatedAt = ge.CreatedAt.Format(time.RFC3339Nano)
 	}
 
@@ -392,67 +398,68 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	event.Details = ge.Details
 
 	// Map recording
-	rec := &ge.Recording
-	event.Recording = WebhookEventRecording{
-		Status:           rec.Status,
-		VisibleToClients: rec.VisibleToClients,
-		Title:            rec.Title,
-		InheritsStatus:   rec.InheritsStatus,
-		Type:             rec.Type,
-		URL:              rec.Url,
-		AppURL:           rec.AppUrl,
-		BookmarkURL:      rec.BookmarkUrl,
-		Content:          rec.Content,
-		CommentsCount:    int(rec.CommentsCount),
-		CommentsURL:      rec.CommentsUrl,
-		SubscriptionURL:  rec.SubscriptionUrl,
-	}
-	if rec.Id != 0 {
-		event.Recording.ID = rec.Id
-	}
-	if !rec.CreatedAt.IsZero() {
-		event.Recording.CreatedAt = rec.CreatedAt.Format(time.RFC3339Nano)
-	}
-	if !rec.UpdatedAt.IsZero() {
-		event.Recording.UpdatedAt = rec.UpdatedAt.Format(time.RFC3339Nano)
-	}
-	if rec.Parent.Id != 0 {
-		event.Recording.Parent = &WebhookEventParent{
-			Title:  rec.Parent.Title,
-			Type:   rec.Parent.Type,
-			URL:    rec.Parent.Url,
-			AppURL: rec.Parent.AppUrl,
+	if rec := ge.Recording; rec != nil {
+		event.Recording = WebhookEventRecording{
+			Status:           rec.Status,
+			VisibleToClients: rec.VisibleToClients,
+			Title:            rec.Title,
+			InheritsStatus:   rec.InheritsStatus,
+			Type:             rec.Type,
+			URL:              rec.Url,
+			AppURL:           rec.AppUrl,
+			BookmarkURL:      deref(rec.BookmarkUrl),
+			Content:          deref(rec.Content),
+			CommentsCount:    int(deref(rec.CommentsCount)),
+			CommentsURL:      deref(rec.CommentsUrl),
+			SubscriptionURL:  deref(rec.SubscriptionUrl),
 		}
-		event.Recording.Parent.ID = rec.Parent.Id
-	}
-	if rec.Bucket.Id != 0 {
-		event.Recording.Bucket = &WebhookEventBucket{
-			Name: rec.Bucket.Name,
-			Type: rec.Bucket.Type,
+		if rec.Id != 0 {
+			event.Recording.ID = rec.Id
 		}
-		event.Recording.Bucket.ID = rec.Bucket.Id
-	}
-	if rec.Creator.Id != 0 {
-		p := webhookPersonFromGenerated(rec.Creator)
-		event.Recording.Creator = &p
+		if !rec.CreatedAt.IsZero() {
+			event.Recording.CreatedAt = rec.CreatedAt.Format(time.RFC3339Nano)
+		}
+		if !rec.UpdatedAt.IsZero() {
+			event.Recording.UpdatedAt = rec.UpdatedAt.Format(time.RFC3339Nano)
+		}
+		if rec.Parent != nil && rec.Parent.Id != 0 {
+			event.Recording.Parent = &WebhookEventParent{
+				Title:  rec.Parent.Title,
+				Type:   rec.Parent.Type,
+				URL:    rec.Parent.Url,
+				AppURL: rec.Parent.AppUrl,
+			}
+			event.Recording.Parent.ID = rec.Parent.Id
+		}
+		if rec.Bucket.Id != 0 {
+			event.Recording.Bucket = &WebhookEventBucket{
+				Name: rec.Bucket.Name,
+				Type: rec.Bucket.Type,
+			}
+			event.Recording.Bucket.ID = rec.Bucket.Id
+		}
+		if rec.Creator.Id != 0 {
+			p := webhookPersonFromGenerated(rec.Creator)
+			event.Recording.Creator = &p
+		}
 	}
 
 	// Map top-level creator
-	if ge.Creator.Id != 0 {
-		event.Creator = webhookPersonFromGenerated(ge.Creator)
+	if ge.Creator != nil && ge.Creator.Id != 0 {
+		event.Creator = webhookPersonFromGenerated(*ge.Creator)
 	}
 
 	// Map copy if present
-	if ge.Copy.Url != "" || (ge.Copy.Id != nil && *ge.Copy.Id != 0) {
+	if ge.Copy != nil && (deref(ge.Copy.Url) != "" || deref(ge.Copy.Id) != 0) {
 		c := &WebhookCopy{
-			URL:    ge.Copy.Url,
-			AppURL: ge.Copy.AppUrl,
+			URL:    deref(ge.Copy.Url),
+			AppURL: deref(ge.Copy.AppUrl),
 			Bucket: WebhookCopyBucket{},
 		}
 		if ge.Copy.Id != nil {
 			c.ID = *ge.Copy.Id
 		}
-		if ge.Copy.Bucket.Id != nil {
+		if ge.Copy.Bucket != nil && ge.Copy.Bucket.Id != nil {
 			c.Bucket.ID = *ge.Copy.Bucket.Id
 		}
 		event.Copy = c
@@ -464,39 +471,39 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 // webhookPersonFromGenerated maps a generated Person to WebhookEventPerson with all fields.
 func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 	p := WebhookEventPerson{
-		AttachableSGID:      gp.AttachableSgid,
+		AttachableSGID:      deref(gp.AttachableSgid),
 		Name:                gp.Name,
-		EmailAddress:        gp.EmailAddress,
-		PersonableType:      gp.PersonableType,
-		Title:               gp.Title,
-		Admin:               gp.Admin,
-		Owner:               gp.Owner,
-		Client:              gp.Client,
-		Employee:            gp.Employee,
-		TimeZone:            gp.TimeZone,
-		AvatarURL:           gp.AvatarUrl,
-		CanManageProjects:   gp.CanManageProjects,
-		CanManagePeople:     gp.CanManagePeople,
-		CanPing:             gp.CanPing,
-		CanAccessTimesheet:  gp.CanAccessTimesheet,
-		CanAccessHillCharts: gp.CanAccessHillCharts,
+		EmailAddress:        deref(gp.EmailAddress),
+		PersonableType:      deref(gp.PersonableType),
+		Title:               deref(gp.Title),
+		Admin:               deref(gp.Admin),
+		Owner:               deref(gp.Owner),
+		Client:              deref(gp.Client),
+		Employee:            deref(gp.Employee),
+		TimeZone:            deref(gp.TimeZone),
+		AvatarURL:           deref(gp.AvatarUrl),
+		CanManageProjects:   deref(gp.CanManageProjects),
+		CanManagePeople:     deref(gp.CanManagePeople),
+		CanPing:             deref(gp.CanPing),
+		CanAccessTimesheet:  deref(gp.CanAccessTimesheet),
+		CanAccessHillCharts: deref(gp.CanAccessHillCharts),
 	}
 	if gp.Id != 0 {
 		p.ID = int64(gp.Id)
 	}
-	if gp.Bio != "" {
-		p.Bio = &gp.Bio
+	if gp.Bio != nil && *gp.Bio != "" {
+		p.Bio = gp.Bio
 	}
-	if gp.Location != "" {
-		p.Location = &gp.Location
+	if gp.Location != nil && *gp.Location != "" {
+		p.Location = gp.Location
 	}
-	if !gp.CreatedAt.IsZero() {
+	if gp.CreatedAt != nil && !gp.CreatedAt.IsZero() {
 		p.CreatedAt = gp.CreatedAt.Format(time.RFC3339Nano)
 	}
-	if !gp.UpdatedAt.IsZero() {
+	if gp.UpdatedAt != nil && !gp.UpdatedAt.IsZero() {
 		p.UpdatedAt = gp.UpdatedAt.Format(time.RFC3339Nano)
 	}
-	if gp.Company.Id != 0 {
+	if gp.Company != nil && gp.Company.Id != 0 {
 		p.Company = &WebhookEventCompany{
 			Name: gp.Company.Name,
 		}

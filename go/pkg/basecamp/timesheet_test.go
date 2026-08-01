@@ -481,14 +481,14 @@ func TestTimesheetReportOptions_BuildTimesheetParams(t *testing.T) {
 			if result == nil {
 				t.Fatal("expected non-nil params")
 			}
-			if result.From != tt.expectedFrom {
-				t.Errorf("expected From %q, got %q", tt.expectedFrom, result.From)
+			if deref(result.From) != tt.expectedFrom {
+				t.Errorf("expected From %q, got %q", tt.expectedFrom, deref(result.From))
 			}
-			if result.To != tt.expectedTo {
-				t.Errorf("expected To %q, got %q", tt.expectedTo, result.To)
+			if deref(result.To) != tt.expectedTo {
+				t.Errorf("expected To %q, got %q", tt.expectedTo, deref(result.To))
 			}
-			if result.PersonId != tt.expectedPID {
-				t.Errorf("expected PersonId %d, got %d", tt.expectedPID, result.PersonId)
+			if deref(result.PersonId) != tt.expectedPID {
+				t.Errorf("expected PersonId %d, got %d", tt.expectedPID, deref(result.PersonId))
 			}
 		})
 	}

@@ -343,8 +343,8 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 
 	// Extract person from first page
 	var person *Person
-	if resp.JSON200.Person.Id != 0 || resp.JSON200.Person.Name != "" {
-		p := personFromGenerated(resp.JSON200.Person)
+	if resp.JSON200.Person != nil {
+		p := personFromGenerated(*resp.JSON200.Person)
 		person = &p
 	}
 
@@ -450,13 +450,13 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 // timelineEventFromGenerated converts a generated TimelineEvent to our clean type.
 func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 	e := TimelineEvent{
-		Kind:           ge.Kind,
-		URL:            ge.Url,
-		AppURL:         ge.AppUrl,
-		Action:         ge.Action,
-		Target:         ge.Target,
-		Title:          ge.Title,
-		SummaryExcerpt: ge.SummaryExcerpt,
+		Kind:           deref(ge.Kind),
+		URL:            deref(ge.Url),
+		AppURL:         deref(ge.AppUrl),
+		Action:         deref(ge.Action),
+		Target:         deref(ge.Target),
+		Title:          deref(ge.Title),
+		SummaryExcerpt: deref(ge.SummaryExcerpt),
 	}
 
 	if ge.Id != nil {
@@ -466,14 +466,14 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 		e.ParentRecordingID = *ge.ParentRecordingId
 	}
 
-	e.CreatedAt = ge.CreatedAt
+	e.CreatedAt = deref(ge.CreatedAt)
 
-	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
-		creator := personFromGenerated(ge.Creator)
+	if ge.Creator != nil {
+		creator := personFromGenerated(*ge.Creator)
 		e.Creator = &creator
 	}
 
-	if ge.Bucket.Id != 0 || ge.Bucket.Name != "" {
+	if ge.Bucket != nil {
 		e.Bucket = &Bucket{
 			ID:   ge.Bucket.Id,
 			Name: ge.Bucket.Name,
@@ -485,13 +485,12 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 		e.AvatarsSample = append([]string(nil), ge.AvatarsSample...)
 	}
 
-	// data is present only on schedule_entry_* events. Detect a populated
-	// payload via the timing fields so an absent object stays nil.
-	if !ge.Data.StartsAt.IsZero() || !ge.Data.EndsAt.IsZero() || ge.Data.AllDay {
+	// data is present only on schedule_entry_* events.
+	if ge.Data != nil {
 		e.Data = &TimelineEventData{
 			AllDay:   ge.Data.AllDay,
-			StartsAt: ge.Data.StartsAt,
-			EndsAt:   ge.Data.EndsAt,
+			StartsAt: deref(ge.Data.StartsAt),
+			EndsAt:   deref(ge.Data.EndsAt),
 		}
 	}
 

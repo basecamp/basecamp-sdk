@@ -122,8 +122,8 @@ func (s *ClientApprovalsService) List(ctx context.Context, opts *ClientApprovalL
 	var params *generated.ListClientApprovalsParams
 	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
 		params = &generated.ListClientApprovalsParams{
-			Sort:      opts.Sort,
-			Direction: opts.Direction,
+			Sort:      omitzero(opts.Sort),
+			Direction: omitzero(opts.Direction),
 		}
 	}
 	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, params)
@@ -227,20 +227,20 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		Type:             ga.Type,
 		URL:              ga.Url,
 		AppURL:           ga.AppUrl,
-		BookmarkURL:      ga.BookmarkUrl,
-		SubscriptionURL:  ga.SubscriptionUrl,
-		Content:          ga.Content,
-		Subject:          ga.Subject,
-		RepliesCount:     int(ga.RepliesCount),
-		RepliesURL:       ga.RepliesUrl,
-		ApprovalStatus:   ga.ApprovalStatus,
+		BookmarkURL:      deref(ga.BookmarkUrl),
+		SubscriptionURL:  deref(ga.SubscriptionUrl),
+		Content:          deref(ga.Content),
+		Subject:          deref(ga.Subject),
+		RepliesCount:     int(deref(ga.RepliesCount)),
+		RepliesURL:       deref(ga.RepliesUrl),
+		ApprovalStatus:   deref(ga.ApprovalStatus),
 	}
 
 	if ga.Id != 0 {
 		a.ID = ga.Id
 	}
 
-	if !ga.DueOn.IsZero() {
+	if ga.DueOn != nil && !ga.DueOn.IsZero() {
 		dueOn := ga.DueOn.String()
 		a.DueOn = &dueOn
 	}
@@ -268,8 +268,8 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		a.Creator = &creator
 	}
 
-	if ga.Approver.Id != 0 || ga.Approver.Name != "" {
-		approver := personFromGenerated(ga.Approver)
+	if ga.Approver != nil {
+		approver := personFromGenerated(*ga.Approver)
 		a.Approver = &approver
 	}
 
@@ -278,22 +278,22 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		a.Responses = make([]ClientApprovalResponse, 0, len(ga.Responses))
 		for _, gr := range ga.Responses {
 			resp := ClientApprovalResponse{
-				Status:           gr.Status,
-				VisibleToClients: gr.VisibleToClients,
-				CreatedAt:        gr.CreatedAt,
-				UpdatedAt:        gr.UpdatedAt,
-				Title:            gr.Title,
-				InheritsStatus:   gr.InheritsStatus,
-				Type:             gr.Type,
-				AppURL:           gr.AppUrl,
-				BookmarkURL:      gr.BookmarkUrl,
-				Content:          gr.Content,
-				Approved:         gr.Approved,
+				Status:           deref(gr.Status),
+				VisibleToClients: deref(gr.VisibleToClients),
+				CreatedAt:        deref(gr.CreatedAt),
+				UpdatedAt:        deref(gr.UpdatedAt),
+				Title:            deref(gr.Title),
+				InheritsStatus:   deref(gr.InheritsStatus),
+				Type:             deref(gr.Type),
+				AppURL:           deref(gr.AppUrl),
+				BookmarkURL:      deref(gr.BookmarkUrl),
+				Content:          deref(gr.Content),
+				Approved:         deref(gr.Approved),
 			}
 			if gr.Id != nil {
 				resp.ID = *gr.Id
 			}
-			if gr.Parent.Id != 0 || gr.Parent.Title != "" {
+			if gr.Parent != nil {
 				resp.Parent = &Parent{
 					ID:     gr.Parent.Id,
 					Title:  gr.Parent.Title,
@@ -302,15 +302,15 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 					AppURL: gr.Parent.AppUrl,
 				}
 			}
-			if gr.Bucket.Id != 0 || gr.Bucket.Name != "" {
+			if gr.Bucket != nil {
 				resp.Bucket = &Bucket{
 					ID:   gr.Bucket.Id,
 					Name: gr.Bucket.Name,
 					Type: gr.Bucket.Type,
 				}
 			}
-			if gr.Creator.Id != 0 || gr.Creator.Name != "" {
-				respCreator := personFromGenerated(gr.Creator)
+			if gr.Creator != nil {
+				respCreator := personFromGenerated(*gr.Creator)
 				resp.Creator = &respCreator
 			}
 			a.Responses = append(a.Responses, resp)

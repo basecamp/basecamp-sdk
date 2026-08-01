@@ -476,20 +476,24 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64
 		return nil, err
 	}
 
-	body := generated.UpdateProjectAccessJSONRequestBody{
-		Grant:  req.Grant,
-		Revoke: req.Revoke,
+	body := generated.UpdateProjectAccessJSONRequestBody{}
+	if len(req.Grant) > 0 {
+		body.Grant = &req.Grant
+	}
+	if len(req.Revoke) > 0 {
+		body.Revoke = &req.Revoke
 	}
 	if len(req.Create) > 0 {
-		body.Create = make([]generated.CreatePersonRequest, 0, len(req.Create))
+		create := make([]generated.CreatePersonRequest, 0, len(req.Create))
 		for _, cp := range req.Create {
-			body.Create = append(body.Create, generated.CreatePersonRequest{
+			create = append(create, generated.CreatePersonRequest{
 				Name:         cp.Name,
 				EmailAddress: cp.EmailAddress,
-				Title:        cp.Title,
-				CompanyName:  cp.CompanyName,
+				Title:        omitzero(cp.Title),
+				CompanyName:  omitzero(cp.CompanyName),
 			})
 		}
+		body.Create = &create
 	}
 
 	resp, err := s.client.parent.gen.UpdateProjectAccessWithResponse(ctx, s.client.accountID, projectID, body)
@@ -615,9 +619,9 @@ func (s *PeopleService) UpdateMyPreferences(ctx context.Context, req *UpdateMyPr
 
 	body := generated.UpdateMyPreferencesJSONRequestBody{
 		Person: generated.PreferencesPayload{
-			FirstWeekDay: req.FirstWeekDay,
-			TimeFormat:   req.TimeFormat,
-			TimeZoneName: req.TimeZoneName,
+			FirstWeekDay: omitzero(req.FirstWeekDay),
+			TimeFormat:   omitzero(req.TimeFormat),
+			TimeZoneName: omitzero(req.TimeZoneName),
 		},
 	}
 
@@ -738,25 +742,25 @@ func (s *PeopleService) DisableOutOfOffice(ctx context.Context, personID int64) 
 // personFromGenerated converts a generated Person to our clean Person type.
 func personFromGenerated(gp generated.Person) Person {
 	p := Person{
-		AttachableSGID:      gp.AttachableSgid,
+		AttachableSGID:      deref(gp.AttachableSgid),
 		Name:                gp.Name,
-		EmailAddress:        gp.EmailAddress,
-		PersonableType:      gp.PersonableType,
-		Title:               gp.Title,
-		Bio:                 gp.Bio,
-		Tagline:             gp.Tagline, // BC5 forward-compat field
-		Location:            gp.Location,
-		Admin:               gp.Admin,
-		Owner:               gp.Owner,
-		Client:              gp.Client,
-		Employee:            gp.Employee,
-		TimeZone:            gp.TimeZone,
-		AvatarURL:           gp.AvatarUrl,
-		CanPing:             gp.CanPing,
-		CanAccessHillCharts: gp.CanAccessHillCharts,
-		CanAccessTimesheet:  gp.CanAccessTimesheet,
-		CanManageProjects:   gp.CanManageProjects,
-		CanManagePeople:     gp.CanManagePeople,
+		EmailAddress:        deref(gp.EmailAddress),
+		PersonableType:      deref(gp.PersonableType),
+		Title:               deref(gp.Title),
+		Bio:                 deref(gp.Bio),
+		Tagline:             deref(gp.Tagline), // BC5 forward-compat field
+		Location:            deref(gp.Location),
+		Admin:               deref(gp.Admin),
+		Owner:               deref(gp.Owner),
+		Client:              deref(gp.Client),
+		Employee:            deref(gp.Employee),
+		TimeZone:            deref(gp.TimeZone),
+		AvatarURL:           deref(gp.AvatarUrl),
+		CanPing:             deref(gp.CanPing),
+		CanAccessHillCharts: deref(gp.CanAccessHillCharts),
+		CanAccessTimesheet:  deref(gp.CanAccessTimesheet),
+		CanManageProjects:   deref(gp.CanManageProjects),
+		CanManagePeople:     deref(gp.CanManagePeople),
 	}
 
 	if gp.Id != 0 {
@@ -764,15 +768,15 @@ func personFromGenerated(gp generated.Person) Person {
 	}
 
 	// Convert timestamps to strings (the SDK Person type uses strings for these)
-	if !gp.CreatedAt.IsZero() {
+	if gp.CreatedAt != nil && !gp.CreatedAt.IsZero() {
 		p.CreatedAt = gp.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
 	}
-	if !gp.UpdatedAt.IsZero() {
+	if gp.UpdatedAt != nil && !gp.UpdatedAt.IsZero() {
 		p.UpdatedAt = gp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
 	}
 
 	// Convert company
-	if gp.Company.Id != 0 || gp.Company.Name != "" {
+	if gp.Company != nil {
 		p.Company = &PersonCompany{
 			ID:   gp.Company.Id,
 			Name: gp.Company.Name,

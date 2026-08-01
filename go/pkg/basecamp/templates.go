@@ -216,7 +216,7 @@ func (s *TemplatesService) Create(ctx context.Context, req *CreateTemplateReques
 
 	body := generated.CreateTemplateJSONRequestBody{
 		Name:        req.Name,
-		Description: req.Description,
+		Description: omitzero(req.Description),
 	}
 
 	resp, err := s.client.parent.gen.CreateTemplateWithResponse(ctx, s.client.accountID, body)
@@ -258,10 +258,10 @@ func (s *TemplatesService) Update(ctx context.Context, templateID int64, req *Up
 	}
 
 	body := generated.UpdateTemplateJSONRequestBody{
-		Name: req.Name,
+		Name: &req.Name,
 	}
 	if req.Description != "" {
-		body.Description = req.Description
+		body.Description = &req.Description
 	}
 
 	resp, err := s.client.parent.gen.UpdateTemplateWithResponse(ctx, s.client.accountID, templateID, body)
@@ -328,7 +328,7 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 	body := generated.CreateProjectFromTemplateJSONRequestBody{
 		Project: generated.ProjectConstructionAttributes{
 			Name:        name,
-			Description: description,
+			Description: omitzero(description),
 		},
 	}
 
@@ -383,13 +383,13 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 // templateFromGenerated converts a generated Template to our clean type.
 func templateFromGenerated(gt generated.Template) Template {
 	t := Template{
-		Status:      gt.Status,
+		Status:      deref(gt.Status),
 		CreatedAt:   gt.CreatedAt,
 		UpdatedAt:   gt.UpdatedAt,
 		Name:        gt.Name,
-		Description: gt.Description,
-		URL:         gt.Url,
-		AppURL:      gt.AppUrl,
+		Description: deref(gt.Description),
+		URL:         deref(gt.Url),
+		AppURL:      deref(gt.AppUrl),
 	}
 
 	if gt.Id != 0 {
@@ -410,15 +410,15 @@ func templateFromGenerated(gt generated.Template) Template {
 func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectConstruction {
 	c := ProjectConstruction{
 		Status: gc.Status,
-		URL:    gc.Url,
+		URL:    deref(gc.Url),
 	}
 
 	if gc.Id != 0 {
 		c.ID = gc.Id
 	}
 
-	if gc.Project.Id != 0 || gc.Project.Name != "" {
-		project := projectFromGenerated(gc.Project)
+	if gc.Project != nil {
+		project := projectFromGenerated(*gc.Project)
 		c.Project = &project
 	}
 

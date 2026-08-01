@@ -107,10 +107,10 @@ func (s *LineupService) UpdateMarker(ctx context.Context, markerID int64, req *U
 
 	body := generated.UpdateLineupMarkerJSONRequestBody{}
 	if req.Name != "" {
-		body.Name = req.Name
+		body.Name = &req.Name
 	}
 	if req.Date != "" {
-		body.Date = req.Date
+		body.Date = &req.Date
 	}
 
 	resp, err := s.client.parent.gen.UpdateLineupMarkerWithResponse(ctx, s.client.accountID, markerID, body)
