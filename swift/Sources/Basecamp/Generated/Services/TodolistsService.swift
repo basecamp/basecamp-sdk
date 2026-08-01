@@ -63,7 +63,7 @@ public final class TodolistsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func update(id: Int, req: UpdateTodolistOrGroupRequest) async throws -> TodolistOrGroup {
+    public func replace(id: Int, req: UpdateTodolistOrGroupRequest) async throws -> TodolistOrGroup {
         return try await request(
             OperationInfo(service: "Todolists", operation: "UpdateTodolistOrGroup", resourceType: "todolist_or_group", isMutation: true, resourceId: id),
             method: "PUT",

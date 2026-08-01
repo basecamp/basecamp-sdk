@@ -19,9 +19,9 @@ class TodolistsService(BaseService):
             operation="GetTodolistOrGroup",
         )
 
-    def update(self, *, id: int, name: str | None = None, description: str | None = None) -> dict[str, Any]:
+    def replace(self, *, id: int, name: str, description: str | None = None) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="todolists", operation="update", is_mutation=True, resource_id=id),
+            OperationInfo(service="todolists", operation="replace", is_mutation=True, resource_id=id),
             "PUT",
             f"/todolists/{id}",
             json_body=self._compact(name=name, description=description),
@@ -69,9 +69,9 @@ class AsyncTodolistsService(AsyncBaseService):
             operation="GetTodolistOrGroup",
         )
 
-    async def update(self, *, id: int, name: str | None = None, description: str | None = None) -> dict[str, Any]:
+    async def replace(self, *, id: int, name: str, description: str | None = None) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="todolists", operation="update", is_mutation=True, resource_id=id),
+            OperationInfo(service="todolists", operation="replace", is_mutation=True, resource_id=id),
             "PUT",
             f"/todolists/{id}",
             json_body=self._compact(name=name, description=description),

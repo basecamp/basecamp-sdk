@@ -26,6 +26,10 @@ from basecamp.errors import BasecampError
 # Wire keys for todo write operations; identical to the Python kwarg /
 # edit-attribute names, so fixtures map onto the SDK surface directly.
 _TODO_WRITE_FIELDS = ("content", "description", "assignee_ids", "completion_subscriber_ids", "due_on", "starts_on", "notify")
+# The todolist writable set is exactly this pair, and it is the same pair for a
+# todolist group — the composite is deliberately variant-agnostic, so nothing
+# downstream branches on which shape came back from the GET.
+_TODOLIST_WRITE_FIELDS = ("name", "description")
 _SCHEDULE_ENTRY_WRITE_FIELDS = ("summary", "starts_at", "ends_at", "description", "participant_ids", "all_day", "notify")
 _CARD_WRITE_FIELDS = ("title", "content", "due_on", "assignee_ids")
 
@@ -191,6 +195,13 @@ class OperationMapper:
                     todo_id=path_params["todoId"],
                     **{k: body[k] for k in _TODO_WRITE_FIELDS if k in body},
                 )
+            case "UpdateTodolist":
+                # Synthetic scenario key (not a wire op): the merge-safe
+                # composite, GET then PUT of the full {name, description}.
+                return self._account.todolists.update(
+                    id=path_params["id"],
+                    **{k: body[k] for k in _TODOLIST_WRITE_FIELDS if k in body},
+                )
             case "UpdateScheduleEntry":
                 # Only pass keys the fixture carries: _compact strips None, so
                 # an absent participant_ids stays off the wire while [] survives.
@@ -223,6 +234,23 @@ class OperationMapper:
                 return self._account.todos.replace(
                     todo_id=path_params["todoId"],
                     **{k: body[k] for k in _TODO_WRITE_FIELDS if k in body},
+                )
+            case "EditTodolist":
+                # Synthetic scenario key (not a wire op): drive the edit
+                # context manager, assigning each fixture requestBody key
+                # onto the same-named attribute.
+                with self._account.todolists.edit(id=path_params["id"]) as tl:
+                    for key in _TODOLIST_WRITE_FIELDS:
+                        if key in body:
+                            setattr(tl, key, body[key])
+                return tl.result
+            case "ReplaceTodolist":
+                # The raw single PUT, no read-before-write. Scenario key only:
+                # the wire op is UpdateTodolistOrGroup, renamed to `replace`
+                # so the plain `update` can be the merge-safe composite.
+                return self._account.todolists.replace(
+                    id=path_params["id"],
+                    **{k: body[k] for k in _TODOLIST_WRITE_FIELDS if k in body},
                 )
             case "GetTimesheetEntry":
                 return self._account.timesheets.get(entry_id=path_params["entryId"])

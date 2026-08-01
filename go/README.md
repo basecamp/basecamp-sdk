@@ -353,10 +353,18 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 
 | Service | Methods |
 |---------|---------|
-| `Todos()` | List, Get, Create, Update, Trash, Complete, Uncomplete, Reposition |
+| `Todos()` | List, Get, Create, Update, Edit, Replace, Trash, Complete, Uncomplete, Reposition |
 | `Todosets()` | Get |
-| `Todolists()` | List, Get, Create, Update, Trash, Reposition |
-| `TodolistGroups()` | List, Get, Create, Reposition |
+| `Todolists()` | List, Get, Create, Update, Edit, Replace, Trash, Reposition |
+| `TodolistGroups()` | List, Get, Create, Replace, Reposition |
+
+`PUT` on these resources is a full replace: BC3 rebuilds the record from the
+params it receives, so a field you omit is cleared. `Update` (overlay the
+fields you set) and `Edit` (read-modify-write closure) are merge-safe
+composites over that route — they GET first and resend the whole
+representation. `Replace` is the raw verbatim PUT. `TodolistGroups()` offers
+only `Replace`; use `Todolists().Update`/`Edit` for merge-safe group writes,
+since the group projection does not model `description` (#544).
 
 ### Messages & Communication
 

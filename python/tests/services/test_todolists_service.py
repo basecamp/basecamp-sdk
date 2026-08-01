@@ -1,18 +1,21 @@
-"""Tests for the todolist reposition surface (sync + async)."""
+"""Tests for the todolist reposition and update/edit/replace surfaces (sync + async)."""
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import httpx
 import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp.errors import NotFoundError
+from basecamp.errors import ApiError, NotFoundError, UsageError
 from basecamp.hooks import BasecampHooks, OperationInfo
 
 BASE = "https://3.basecampapi.com/12345"
+
+_FIXTURES = Path(__file__).resolve().parents[3] / "spec" / "fixtures"
 
 
 def _todolist(name: str) -> dict:
@@ -33,6 +36,23 @@ def _todolist(name: str) -> dict:
     }
 
 
+def _todolist_full(**overrides) -> dict:
+    """Full validated Todolist shape, with the write-path values under test.
+
+    Sourced from the same fixture `make check-fixture-coverage` validates, so
+    every required field is present; the overrides are only the values the
+    body assertions trace through the GET → PUT round trip.
+    """
+    return {
+        **json.loads((_FIXTURES / "todolists" / "get.json").read_text(encoding="utf-8")),
+        "id": 2,
+        "name": "Hardware",
+        "title": "Hardware",
+        "description": "<p>Ship the hardware</p>",
+        **overrides,
+    }
+
+
 class _RecordingHooks(BasecampHooks):
     def __init__(self) -> None:
         self.operations: list[OperationInfo] = []
@@ -41,16 +61,20 @@ class _RecordingHooks(BasecampHooks):
         self.operations.append(info)
 
 
+def _operation_names(hooks: _RecordingHooks) -> list[str]:
+    return [f"{info.service}.{info.operation}" for info in hooks.operations]
+
+
 def _put_body(route) -> dict:
     return json.loads(route.calls[-1].request.content)
 
 
-def _sync_todolists():
-    return Client(access_token="test-token").for_account("12345").todolists
+def _sync_todolists(hooks: BasecampHooks | None = None):
+    return Client(access_token="test-token", hooks=hooks).for_account("12345").todolists
 
 
-def _async_todolists():
-    return AsyncClient(access_token="test-token").for_account("12345").todolists
+def _async_todolists(hooks: BasecampHooks | None = None):
+    return AsyncClient(access_token="test-token", hooks=hooks).for_account("12345").todolists
 
 
 class TestSyncReposition:
@@ -97,7 +121,7 @@ class TestAsyncReposition:
             await _async_todolists().reposition(todolist_id=999, position=1)
 
 
-# The get/update path label is the unsuffixed ``{id}``. resource_id must still
+# The get/replace path label is the unsuffixed ``{id}``. resource_id must still
 # carry it (predicate is ``endswith("Id") or == "id"``); a suffix-only
 # regression would silently drop resource_id here.
 class TestSyncTodolistMetadata:
@@ -117,18 +141,18 @@ class TestSyncTodolistMetadata:
         assert info.resource_id == 2
 
     @respx.mock
-    def test_update_scopes_resource_to_todolist_id(self):
+    def test_replace_scopes_resource_to_todolist_id(self):
         respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist("Updated List")))
 
         hooks = _RecordingHooks()
         c = Client(access_token="test-token", hooks=hooks)
-        c.for_account("12345").todolists.update(id=2, name="Updated List")
+        c.for_account("12345").todolists.replace(id=2, name="Updated List")
         c.close()
 
         assert len(hooks.operations) == 1
         info = hooks.operations[0]
         assert info.service == "todolists"
-        assert info.operation == "update"
+        assert info.operation == "replace"
         assert info.resource_id == 2
 
 
@@ -151,16 +175,526 @@ class TestAsyncTodolistMetadata:
 
     @pytest.mark.asyncio
     @respx.mock
-    async def test_update_scopes_resource_to_todolist_id(self):
+    async def test_replace_scopes_resource_to_todolist_id(self):
         respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist("Updated List")))
 
         hooks = _RecordingHooks()
         c = AsyncClient(access_token="test-token", hooks=hooks)
-        await c.for_account("12345").todolists.update(id=2, name="Updated List")
+        await c.for_account("12345").todolists.replace(id=2, name="Updated List")
         await c.close()
 
         assert len(hooks.operations) == 1
         info = hooks.operations[0]
         assert info.service == "todolists"
-        assert info.operation == "update"
+        assert info.operation == "replace"
         assert info.resource_id == 2
+
+
+class TestMalformedWritableFields:
+    """A malformed writable field must abort before the PUT, never be coerced.
+
+    Python has no typed decoder between the GET and the field read, so a plain
+    ``or ""`` turns every falsey non-string into ``""``. Because this endpoint
+    is full-replace, that value is then written back over the real one — the
+    composite erases the field it exists to preserve, on a call that never
+    mentioned it. Truthy non-strings are just as wrong: they reach the wire
+    verbatim. The shipped Todos/Cards analogue is tracked in #576.
+    """
+
+    @pytest.mark.parametrize("malformed", [False, 0, [], {}, 42, True, ["x"], {"a": 1}])
+    @respx.mock
+    def test_update_refuses_a_malformed_description(self, malformed):
+        get_route = respx.get(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=malformed))
+        )
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed list")
+
+        assert "'description' is not a string" in str(excinfo.value)
+        assert get_route.call_count == 1
+        assert put_route.call_count == 0, "the PUT must never be issued for a malformed description"
+
+    @pytest.mark.parametrize("malformed", [False, 0, [], {}, 42])
+    @respx.mock
+    def test_edit_refuses_a_malformed_name(self, malformed):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full(name=malformed)))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo, _sync_todolists().edit(id=2) as tl:
+            tl.description = "<p>New</p>"
+
+        assert "'name' is not a string" in str(excinfo.value)
+        assert put_route.call_count == 0, "the PUT must never be issued for a malformed name"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"id": 2},
+            {"id": 2, "name": None},
+            {"id": 2, "name": ""},
+        ],
+    )
+    @respx.mock
+    def test_absent_null_or_empty_name_is_a_malformed_response(self, body):
+        """`name` is required and presence-validated, so all three are malformed.
+
+        Classification is by ORIGIN: this name came off the wire, so it is an
+        ApiError. The caller supplying an empty name is a UsageError, asserted
+        separately. Before this, absent/null collapsed to "" and that empty
+        name was PUT over the real one.
+        """
+        body = {**body, "description": "<p>Ship the hardware</p>"}
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, description="<p>New</p>")
+
+        assert "'name'" in str(excinfo.value)
+        assert get_route.call_count == 1
+        assert put_route.call_count == 0, "a malformed name must never reach the PUT"
+
+    @pytest.mark.parametrize("body", [42, "nope", None, ["a"], True])
+    @respx.mock
+    def test_refuses_a_non_object_response_body(self, body):
+        """Row 9: the malformed envelope, one level up from malformed fields."""
+        # json=None emits an EMPTY body, which fails transport decode before the
+        # guard ever runs; send the JSON literal so the guard is what is tested.
+        respx.get(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, content=json.dumps(body), headers={"content-type": "application/json"})
+        )
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed")
+
+        assert "where a todolist object was expected" in str(excinfo.value)
+        assert put_route.call_count == 0
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"todolist": None},
+            {"todolist": 42},
+            {"todolist": ["a"]},
+            {"group": None},
+            {"group": "nope"},
+        ],
+    )
+    @respx.mock
+    def test_refuses_a_non_object_envelope_arm(self, body):
+        """Level 2: the outer-body guard checks only the envelope."""
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed")
+
+        assert "arm where an object was expected" in str(excinfo.value)
+        assert put_route.call_count == 0
+
+    @respx.mock
+    def test_reports_an_unrenderable_caller_value_without_losing_the_diagnosis(self):
+        """Row 10: the guard's own error path must not throw. repr is user code."""
+
+        class Hostile:
+            def __repr__(self):
+                raise RuntimeError("nope")
+
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError) as excinfo, _sync_todolists().edit(id=2) as tl:
+            tl.description = Hostile()
+
+        assert "Hostile" in str(excinfo.value), "the type name survives even when repr fails"
+        assert put_route.call_count == 0
+
+    @respx.mock
+    def test_malformed_message_is_capped(self):
+        """SPEC section 9 caps error messages; the value is embedded in them."""
+        huge = ["x"] * 50_000
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full(description=huge)))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed")
+
+        assert len(str(excinfo.value).encode()) <= 500
+
+    @pytest.mark.parametrize("bad", [42, True, [], {}, ["x"], {"a": 1}, 0, False])
+    @respx.mock
+    def test_edit_refuses_a_caller_supplied_non_string(self, bad):
+        """The mirror of the read step: caller provenance, so UsageError.
+
+        `edit` hands the caller a mutable view of the full writable state and
+        Python enforces nothing about what comes back, so a closure assigning a
+        non-string would otherwise walk straight into the full-replace PUT.
+        """
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError) as excinfo, _sync_todolists().edit(id=2) as tl:
+            tl.description = bad
+
+        assert "must be a string" in str(excinfo.value)
+        assert put_route.call_count == 0, "a non-string must never reach the PUT"
+
+    @respx.mock
+    def test_caller_supplied_empty_name_is_a_usage_error(self):
+        """The mirror case: same value, caller origin, so UsageError not ApiError."""
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError):
+            _sync_todolists().update(id=2, name="")
+
+        assert put_route.call_count == 0
+
+    @pytest.mark.parametrize(
+        "body",
+        [{"id": 2, "name": "Hardware"}, {"id": 2, "name": "Hardware", "description": None}],
+    )
+    @respx.mock
+    def test_absent_and_null_description_are_genuinely_empty(self, body):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        _sync_todolists().update(id=2, name="Renamed list")
+
+        assert _put_body(put_route) == {"name": "Renamed list", "description": ""}
+
+
+class TestSyncUpdate:
+    @respx.mock
+    def test_name_only_update_preserves_the_description(self):
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(name="Renamed list"))
+        )
+
+        result = _sync_todolists().update(id=2, name="Renamed list")
+
+        assert result["name"] == "Renamed list"
+        assert get_route.call_count == 1
+        assert put_route.call_count == 1
+        # BC3 rebuilds the todolist from the permitted params, so the sparse
+        # PUT this replaces would have erased the description outright.
+        assert _put_body(put_route) == {"name": "Renamed list", "description": "<p>Ship the hardware</p>"}
+
+    @respx.mock
+    def test_description_only_update_preserves_the_name(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        _sync_todolists().update(id=2, description="<p>New plan</p>")
+
+        assert _put_body(put_route) == {"name": "Hardware", "description": "<p>New plan</p>"}
+
+    @respx.mock
+    def test_explicit_empty_description_clears(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+
+        _sync_todolists().update(id=2, description="")
+
+        # Present-and-empty, never JSON null and never absent: the generated
+        # layer's _compact strips None, which would read as "clear" only by
+        # accident (SPEC §18 body compaction).
+        body = _put_body(put_route)
+        assert body["description"] == ""
+        assert body["name"] == "Hardware"
+
+    @respx.mock
+    def test_already_empty_description_still_goes_out(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full(description="")))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+
+        _sync_todolists().update(id=2, name="Renamed list")
+
+        assert _put_body(put_route) == {"name": "Renamed list", "description": ""}
+
+    @respx.mock
+    def test_enveloped_get_response_is_tolerated(self):
+        # BC3 answers this route with the flat recordable JSON; the Smithy
+        # envelope is a modelling convention. Reading an enveloped body must
+        # not degrade into writing an empty name.
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json={"todolist": _todolist_full()}))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        _sync_todolists().update(id=2, description="<p>New plan</p>")
+
+        assert _put_body(put_route) == {"name": "Hardware", "description": "<p>New plan</p>"}
+
+    @respx.mock
+    def test_flat_body_wins_over_a_nested_object_of_the_same_name(self):
+        # The unwrap must never hijack a flat body: a group response carries a
+        # top-level name/description, so a nested dict that happens to be keyed
+        # "group" is just data, not an envelope.
+        respx.get(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(
+                200, json=_todolist_full(group={"id": 9, "name": "Decoy", "description": "<p>Decoy</p>"})
+            )
+        )
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        _sync_todolists().update(id=2, name="Renamed list")
+
+        assert _put_body(put_route) == {"name": "Renamed list", "description": "<p>Ship the hardware</p>"}
+
+    @respx.mock
+    def test_group_variant_is_preserved_without_type_sniffing(self):
+        # The same URI addresses a todolist or a todolist group; BC3 renders
+        # both through todolists/_todolist.json.jbuilder, so a group reports
+        # "type": "Todolist" and differs only by group_position_url replacing
+        # groups_url. The composite must carry {name, description} either way.
+        group = _todolist_full(name="Peripherals", title="Peripherals")
+        group.pop("groups_url")
+        group["group_position_url"] = f"{BASE}/buckets/1/todolists/groups/2/position.json"
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=group))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json={**group, "name": "Renamed group"})
+        )
+
+        _sync_todolists().update(id=2, name="Renamed group")
+
+        assert _put_body(put_route) == {"name": "Renamed group", "description": "<p>Ship the hardware</p>"}
+
+    @respx.mock
+    def test_empty_name_raises_usage_error_without_put(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError, match=r"name must be a non-empty string") as excinfo:
+            _sync_todolists().update(id=2, name="")
+
+        assert "BC3 presence-validates it" in str(excinfo.value)
+        assert not put_route.called
+
+    @respx.mock
+    def test_hooks_observe_get_then_replace(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        hooks = _RecordingHooks()
+        _sync_todolists(hooks).update(id=2, name="Renamed list")
+
+        assert _operation_names(hooks) == ["todolists.get", "todolists.replace"]
+
+
+class TestSyncEdit:
+    @respx.mock
+    def test_edit_clears_the_description_and_keeps_the_name(self):
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+
+        with _sync_todolists().edit(id=2) as tl:
+            assert tl.name == "Hardware"
+            assert tl.description == "<p>Ship the hardware</p>"
+            tl.description = ""
+
+        assert get_route.call_count == 1
+        assert put_route.call_count == 1
+        assert _put_body(put_route) == {"name": "Hardware", "description": ""}
+        assert tl.result["description"] == ""
+
+    @respx.mock
+    def test_edit_renames_and_resends_the_description(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with _sync_todolists().edit(id=2) as tl:
+            tl.name = f"🚨 {tl.name}"
+
+        assert _put_body(put_route) == {"name": "🚨 Hardware", "description": "<p>Ship the hardware</p>"}
+
+    @respx.mock
+    def test_exception_aborts_without_put(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(RuntimeError, match="abort"), _sync_todolists().edit(id=2) as tl:
+            tl.name = "never written"
+            raise RuntimeError("abort")
+
+        assert not put_route.called
+
+    @respx.mock
+    def test_empty_name_raises_usage_error_without_put(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with (
+            pytest.raises(UsageError, match=r"name must be a non-empty string"),
+            _sync_todolists().edit(id=2) as tl,
+        ):
+            tl.name = ""
+
+        assert not put_route.called
+
+    @respx.mock
+    def test_result_raises_before_completion(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        edit = _sync_todolists().edit(id=2)
+        with pytest.raises(RuntimeError, match="edit has not completed"):
+            _ = edit.result
+
+    @respx.mock
+    def test_hooks_observe_get_then_replace(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        hooks = _RecordingHooks()
+        with _sync_todolists(hooks).edit(id=2) as tl:
+            tl.name = "observed"
+
+        assert _operation_names(hooks) == ["todolists.get", "todolists.replace"]
+
+
+class TestSyncReplace:
+    @respx.mock
+    def test_sparse_replace_issues_no_get_and_omits_the_description(self):
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(name="The whole new list", description=""))
+        )
+
+        result = _sync_todolists().replace(id=2, name="The whole new list")
+
+        assert result["name"] == "The whole new list"
+        assert not get_route.called
+        assert put_route.call_count == 1
+        # Verbatim: what you omit, the server clears. That destructiveness is
+        # the point of the name.
+        assert _put_body(put_route) == {"name": "The whole new list"}
+
+
+class TestAsyncUpdate:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_name_only_update_preserves_the_description(self):
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(name="Renamed list"))
+        )
+
+        result = await _async_todolists().update(id=2, name="Renamed list")
+
+        assert result["name"] == "Renamed list"
+        assert get_route.call_count == 1
+        assert put_route.call_count == 1
+        assert _put_body(put_route) == {"name": "Renamed list", "description": "<p>Ship the hardware</p>"}
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_explicit_empty_description_clears(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+
+        await _async_todolists().update(id=2, description="")
+
+        assert _put_body(put_route) == {"name": "Hardware", "description": ""}
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_empty_name_raises_usage_error_without_put(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError, match=r"name must be a non-empty string") as excinfo:
+            await _async_todolists().update(id=2, name="")
+
+        assert "BC3 presence-validates it" in str(excinfo.value)
+        assert not put_route.called
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_hooks_observe_get_then_replace(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        hooks = _RecordingHooks()
+        await _async_todolists(hooks).update(id=2, name="Renamed list")
+
+        assert _operation_names(hooks) == ["todolists.get", "todolists.replace"]
+
+
+class TestAsyncEdit:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_edit_clears_the_description_and_keeps_the_name(self):
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+
+        async with _async_todolists().edit(id=2) as tl:
+            assert tl.name == "Hardware"
+            tl.description = ""
+
+        assert get_route.call_count == 1
+        assert put_route.call_count == 1
+        assert _put_body(put_route) == {"name": "Hardware", "description": ""}
+        assert tl.result["description"] == ""
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_exception_aborts_without_put(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(RuntimeError, match="abort"):
+            async with _async_todolists().edit(id=2) as tl:
+                tl.name = "never written"
+                raise RuntimeError("abort")
+
+        assert not put_route.called
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_empty_name_raises_usage_error_without_put(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError, match=r"name must be a non-empty string"):
+            async with _async_todolists().edit(id=2) as tl:
+                tl.name = ""
+
+        assert not put_route.called
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_result_raises_before_completion(self):
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        edit = _async_todolists().edit(id=2)
+        with pytest.raises(RuntimeError, match="edit has not completed"):
+            _ = edit.result
+
+
+class TestAsyncReplace:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_sparse_replace_issues_no_get_and_omits_the_description(self):
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(name="The whole new list", description=""))
+        )
+
+        result = await _async_todolists().replace(id=2, name="The whole new list")
+
+        assert result["name"] == "The whole new list"
+        assert not get_route.called
+        assert put_route.call_count == 1
+        assert _put_body(put_route) == {"name": "The whole new list"}

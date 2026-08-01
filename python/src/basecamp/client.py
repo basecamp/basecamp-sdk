@@ -178,7 +178,7 @@ class AccountClient:
 
     @property
     def todolists(self):
-        from basecamp.generated.services.todolists import TodolistsService
+        from basecamp.services.todolists import TodolistsService
 
         return self._service("todolists", lambda: TodolistsService(self))
 

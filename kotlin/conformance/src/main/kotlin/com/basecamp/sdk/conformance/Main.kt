@@ -777,6 +777,47 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        // Synthetic scenario key (not a wire operation, which is
+        // UpdateTodolistOrGroup): the merge-safe composite. GET then PUT,
+        // resending the fetched description — a name-only sparse PUT would
+        // erase it. The same key covers the todolist-group variant; the
+        // composite reads {name, description} out of either projection with
+        // no type sniffing.
+        "UpdateTodolist" -> {
+            val id = tc.pathParams.longParam("id")
+            val rb = tc.requestBody
+            account.todolists.update(id, UpdateTodolistBody(
+                name = rb?.get("name")?.jsonPrimitive?.contentOrNull,
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
+        // Synthetic scenario key (not a wire operation): exercises the
+        // read-modify-write edit closure by assigning each fixture key onto
+        // the corresponding TodolistFields member.
+        "EditTodolist" -> {
+            val id = tc.pathParams.longParam("id")
+            val rb = tc.requestBody
+            account.todolists.edit(id) {
+                rb?.get("name")?.jsonPrimitive?.content?.let { name = it }
+                rb?.get("description")?.jsonPrimitive?.content?.let { description = it }
+            }
+            DispatchResult()
+        }
+
+        // Raw single PUT, no read-before-write: name is required, and an
+        // omitted description is omitted on the wire (the server clears it).
+        "ReplaceTodolist" -> {
+            val id = tc.pathParams.longParam("id")
+            val rb = tc.requestBody
+            account.todolists.replace(id, UpdateTodolistOrGroupBody(
+                name = tc.requestBody.stringParam("name"),
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
         "CreateTodo" -> {
             val todolistId = tc.pathParams.longParam("todolistId")
             val content = tc.requestBody.stringParam("content")

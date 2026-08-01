@@ -30,7 +30,7 @@ import {
 // ============================================================================
 import { ProjectsService } from "./generated/services/projects.js";
 import { TodosService } from "./services/todos-extensions.js";
-import { TodolistsService } from "./generated/services/todolists.js";
+import { TodolistsService } from "./services/todolists-extensions.js";
 import { TodosetsService } from "./generated/services/todosets.js";
 import { HillChartsService } from "./generated/services/hill-charts.js";
 import { PeopleService } from "./generated/services/people.js";
@@ -118,7 +118,7 @@ export interface BasecampClient extends RawClient {
   readonly projects: ProjectsService;
   /** Todos service - list, get, create, update, complete, and manage todos */
   readonly todos: TodosService;
-  /** Todolists service - list, get, create, and update todo lists */
+  /** Todolists service - list, get, create, update, edit, and replace todo lists */
   readonly todolists: TodolistsService;
   /** Todosets service - get todo sets (container for todo lists) */
   readonly todosets: TodosetsService;

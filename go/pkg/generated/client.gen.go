@@ -3188,11 +3188,11 @@ type UpdateTimesheetEntryResponseContent = TimesheetEntry
 
 // UpdateTodolistOrGroupRequestContent defines model for UpdateTodolistOrGroupRequestContent.
 type UpdateTodolistOrGroupRequestContent struct {
-	// Description Description (Todolist only, ignored for groups)
+	// Description Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way
 	Description *string `json:"description,omitempty"`
 
-	// Name Name (required for both Todolist and TodolistGroup)
-	Name *string `json:"name,omitempty"`
+	// Name Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve
+	Name string `json:"name"`
 }
 
 // UpdateTodolistOrGroupResponseContent Union type for polymorphic todolist endpoint

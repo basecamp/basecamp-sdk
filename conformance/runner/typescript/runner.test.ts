@@ -140,6 +140,25 @@ function mapTodoWireFields(body: Record<string, unknown>): Record<string, unknow
 }
 
 /**
+ * Fixture wire keys → SDK todolist write params. The writable set on
+ * `PUT /{accountId}/todolists/{id}` is exactly {name, description}, and both
+ * spell the same in either direction.
+ */
+const TODOLIST_WIRE_TO_SDK: Record<string, string> = {
+  name: "name",
+  description: "description",
+};
+
+/** Map only the keys present in the fixture requestBody onto SDK param names. */
+function mapTodolistWireFields(body: Record<string, unknown>): Record<string, unknown> {
+  const mapped: Record<string, unknown> = {};
+  for (const [wire, sdk] of Object.entries(TODOLIST_WIRE_TO_SDK)) {
+    if (wire in body) mapped[sdk] = body[wire];
+  }
+  return mapped;
+}
+
+/**
  * Executes the appropriate SDK method for the given operation name.
  * Returns { error?, httpStatus? } so assertions can inspect outcomes.
  *
@@ -286,6 +305,13 @@ async function executeOperation(
         await client.todos.update(Number(params.todoId), mapTodoWireFields(body));
         break;
 
+      case "UpdateTodolist":
+        // Synthetic scenario key: the merge-safe composite, not a wire
+        // operation. GET then full PUT; only fixture-present keys are passed.
+        // Variant-agnostic — the same call covers a list and a group.
+        await client.todolists.update(Number(params.id), mapTodolistWireFields(body));
+        break;
+
       case "UpdateScheduleEntry":
         // Only spread participantIds when the fixture carries the key: an
         // absent key must not become [] or null on the wire.
@@ -334,11 +360,32 @@ async function executeOperation(
         });
         break;
 
+      case "EditTodolist":
+        // Synthetic scenario key: read-modify-write via the edit callback,
+        // assigning each fixture-present key onto the mapped TodolistFields
+        // member.
+        await client.todolists.edit(Number(params.id), (t) => {
+          const mapped = mapTodolistWireFields(body);
+          for (const [key, value] of Object.entries(mapped)) {
+            (t as unknown as Record<string, unknown>)[key] = value;
+          }
+        });
+        break;
+
       case "ReplaceTodo":
         // Verbatim sparse PUT — no GET. Fixtures always include content.
         await client.todos.replace(
           Number(params.todoId),
           mapTodoWireFields(body) as { content: string },
+        );
+        break;
+
+      case "ReplaceTodolist":
+        // Verbatim sparse PUT — no GET. name is required server-side, so
+        // fixtures always include it.
+        await client.todolists.replace(
+          Number(params.id),
+          mapTodolistWireFields(body) as { name: string },
         );
         break;
 

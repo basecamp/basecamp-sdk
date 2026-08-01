@@ -345,6 +345,47 @@ Full-state serialization (update/edit): content, description, and both ID lists 
 
 Conformance: `conformance/tests/todos_write.json` (`update-merge`, `edit-clear`, `replace-omission-clears`).
 
+### Merge-Safe Write Surface (Todolists)
+
+The `PUT /{accountId}/todolists/{id}` endpoint is **full replace, omission clears** (spec operation `UpdateTodolistOrGroup`, `name` required, declared via `x-basecamp-write-semantics: {mode: "replace", clearsOmitted: true}` and the `write` clause in `behavior-model.json`). BC3's `TodolistsController#update` runs `@recording.update! recordable: Todolist.new(params.require(:todolist).permit(:name, :description, :track_todolist))` — it builds a *brand-new* `Todolist` from only the permitted params and swaps the recordable wholesale, so a field absent from the body is `nil` on the replacement. The public API docs say the same thing outright: "Pass all existing parameters in addition to those being updated. Omitting a parameter will clear its value." `name` is not merely conventionally required: `Todolist` declares `validates :name, presence: true` and `Recording` declares `validates_associated :recordable, on: :update`, so omitting it is a 422, not a preserve.
+
+The writable set is exactly `{name, description}`. `track_todolist` is **not** part of this surface: `wrap_parameters Todolist` defaults its `include:` to `Todolist.attribute_names` (`id`, `name`, `description`), so the key never reaches `params[:todolist]` on the JSON path, and the controller's own `toggle_hill_chart_tracking` is key-guarded (`return unless params.key?(:track_todolist)`) — a hill-chart side-effect directive, not recordable state.
+
+Every SDK exposes the same three-method, two-state surface over it:
+
+- **`update`** — merge-safe. GET the current list → overlay only *explicitly-set* request fields → PUT the full representation. An omitted field is untouched, guaranteed. Set-detection is language-native: TypeScript `!== undefined`, Python/Ruby `None`/`nil` kwarg defaults, Kotlin `?.let`, Swift `if let`, Go zero-value guards.
+
+  In the five SDKs whose unset marker is distinct from the empty string, an explicitly-passed `""` is a set and therefore clears.
+
+  **Go is the exception, and this bites in practice.** Its request struct uses zero-value guards (`if req.Description != ""`), so `""` *is* the unset marker: `Update` with an empty description does **nothing to that field** rather than clearing it. **To clear a field in Go, use `Edit` or `Replace` — not `Update`.**
+
+  ```go
+  // Does NOT clear the description — "" reads as "unaddressed".
+  svc.Update(ctx, id, &UpdateTodolistRequest{Description: ""})
+
+  // Clears it: Edit hands back the full writable state, where "" is unambiguous.
+  svc.Edit(ctx, id, func(f *TodolistFields) error { f.Description = ""; return nil })
+
+  // Or clear it verbatim, accepting that every unnamed field is replaced too.
+  svc.Replace(ctx, id, &ReplaceTodolistRequest{Name: "Hardware"})
+  ```
+
+  This is a language-adaptation consequence of Go's absent/empty conflation, not a behavioural divergence in the composite: every SDK preserves unaddressed fields identically, and only the spelling of "clear this one" differs.
+- **`edit`** — read-modify-write closure over the full writable state (`TodolistFields`: name, description). Clear = set empty (`""`); a closure error/throw aborts before the PUT. Python's form is a context manager (`with`/`async with`) whose `.result` holds the updated list after clean exit (RuntimeError before completion).
+- **`replace`** — the generated wire method: verbatim sparse PUT, no GET, omission clears, name required. Renamed from the plain `update` via `METHOD_NAME_OVERRIDES` in all five service generators (§18 rule 6), so the raw single-request path stays reachable under a name that says what it does.
+
+Full-state serialization (update/edit): both `name` and `description` are always sent, empties included, so clears survive. `description` is cleared by sending `""` — never by sending null (§18).
+
+The endpoint is polymorphic, and more literally so than the name suggests: there is no separate group model or group write route at all. A "group" is just a `Todolist` whose parent is another `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and the API-canonical routes mount `resources :groups, only: %i[ index create ]` — so *every* group write in the API namespace lands on `TodolistsController#update` through this same URI. BC3 renders both variants through `todolists/_todolist.json.jbuilder`, so a group carries `description` and `description_attachments` too and reports `"type": "Todolist"`, and the only structural discriminator is `groups_url` (list) XOR `group_position_url` (group). The composite is therefore deliberately **variant-agnostic**: it preserves `{name, description}` for a group exactly as for a list, with no type-sniffing. The spec models the response as the `TodolistOrGroup` union; the wire carries the recordable's flat JSON, and the SDKs read through that flat shape (see AGENTS.md, "Smithy Spec vs Actual API Responses"). Consolidating the three declared shapes into one truthful flat structure is tracked separately in #544.
+
+**Go asymmetry.** Group-ness is service-static in Go: `TodolistGroupsService` has its own write path over the same `UpdateTodolistOrGroup` wire operation, where the other five SDKs expose no group update at all (their `TodolistGroups` split is List/Create/Reposition only). Go's group surface gets the raw method **renamed to `Replace`** — so the destructive path is honestly named — but deliberately gets **no merge-safe `update`/`edit`**. The `TodolistGroup` schema does not model `description` (nor `description_attachments`, `boosts_*`, `groups_url`), so a composite reading through that projection would PUT back a zero-valued description and erase it on every call — reintroducing the exact data loss this surface removes. Merge-safe group writes go through `todolists.update`, which addresses the same route through the full `Todolist` projection. `ReplaceTodolistGroupRequest` does carry a `description` field even though the response projection cannot return one: the request body is shared with todolists and the server accepts it, and without it a group replace would be unconditionally destructive with no caller recourse. `Replace` is verbatim by definition, so this offers control rather than the illusion of a merge. Modelling `description` on the group *response* shape is #544; a reflection test fails the build if `TodolistGroup` ever gains the field while the composite is still withheld.
+
+**Hook contract:** update/edit compose the public get + replace, so hooks observe the wire operations under each SDK's native identities (conceptually one `GetTodolistOrGroup` + one `UpdateTodolistOrGroup`; one `UpdateTodolistOrGroup` for replace) — never a synthetic composite.
+
+**Race:** update/edit are read-modify-write, not atomic. There is no conditional-update signal on this endpoint; a concurrent write between the GET and PUT is overwritten — last write wins for the whole representation, with a window of one round-trip. Use `replace` to overwrite deliberately.
+
+Conformance: `conformance/tests/todolists_write.json` (`update-merge`, `update-group`, `edit-clear`, `replace-omission-clears`).
+
 ### Known Gaps (informational, not prescriptive)
 
 - Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`
@@ -411,6 +452,14 @@ Given an HTTP response with status code `status` and body `body`:
 12. Otherwise → `BasecampError(code: "api_error", http_status: status, retryable: false)`. `[static]`
 
 In all cases, extract `request_id` from `X-Request-Id` response header if present. `[conformance]`
+
+### Statusless `api_error` for a malformed 2xx body `[manual]`
+
+The mapping above is keyed on an HTTP status, because it maps *failed* responses. A composite (§18) can also fail on a **successful** one: the transport returned 2xx, and the body is malformed in a way that makes the composite's next step unsafe — a writable field of the wrong type, or a required field absent, on a read the composite is about to echo back into a full-replace write.
+
+That error is `api_error` with **no `http_status`** and **`retryable: false`**. Statusless because no status describes it (the request succeeded), and non-retryable because re-requesting cannot repair a malformed body. It is deliberately *not* `usage`/`validation`: the value came off the wire, so nothing the caller passed is at fault. The mirror case — the *caller* supplying the offending value — stays a usage error. **Classification is by origin, not by value:** the same empty string is a caller error when the caller passed it and a malformed response when the server did, so each provenance is checked where it is unambiguous (the read step owns the response, the write step owns the caller).
+
+Message is truncated to `MAX_ERROR_MESSAGE_LENGTH` like any other (§9) — the malformed value is embedded in it, so the cap is load-bearing rather than cosmetic.
 
 ### Error Body Parsing Algorithm
 
@@ -1641,6 +1690,7 @@ All wire operations are generated (rubric 1A.6). One narrow exception is sanctio
 
 Current composites:
 - **Todos** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
+- **Todolists** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todolists)". The raw path is `replace`, renamed from `update` via `METHOD_NAME_OVERRIDES` (rule 6) rather than by renaming the wire operation.
 - **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
 - **Uploads** `download` — composes the generated `get` (GetUpload) with the client-level `downloadURL` primitive (§14), erroring when the upload carries no `download_url`; the result's filename prefers the upload metadata's `filename`.
 
@@ -1701,6 +1751,7 @@ Enumerated from `conformance/schema.json`:
 | schedule-entries-write | `schedule_entries_write.json` | §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
 | security | `security.json` | §9 Security |
 | status-codes | `status-codes.json` | §11 Response Semantics |
+| todolists-write | `todolists_write.json` | §5 Merge-Safe Write Surface (Todolists), §18 Hand-Written Composite Methods |
 | todos-write | `todos_write.json` | §5 Merge-Safe Write Surface (Todos), §18 Hand-Written Composite Methods |
 | uploads-download | `uploads_download.json` | §14 Download, §18 Hand-Written Composite Methods |
 
@@ -1987,6 +2038,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `uploads_download.json` | UploadsDownload delegates through DownloadURL primitive | §14, §18 |
 | `uploads_download.json` | UploadsDownload errors when upload has no download_url | §14, §18 |
 | `todos_write.json` | update-merge / edit-clear / replace-omission-clears | §5 (Todos), §18 |
+| `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `cards_write.json` | Merge-safe update composite (5 cases: due-on preservation, verbatim raw path, explicit clears/empties) | §5 (Cards), §18 |
 | `schedule_entries_write.json` | update-omits-participant-ids / update-empty-participant-ids | §10 |
 | `live-my-surface.json` | Live schema validation, 30 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |

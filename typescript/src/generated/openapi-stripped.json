@@ -18973,7 +18973,7 @@
         }
       },
       "put": {
-        "description": "Update an existing todolist or todolist group\nThe endpoint is polymorphic - updates either a Todolist or TodolistGroup",
+        "description": "Replace a todolist (or todolist group) with a new complete representation.\nThe endpoint is polymorphic - it addresses either a Todolist or a TodolistGroup.\nThe request body is the recordable's full writable state: TodolistsController#update\nbuilds a brand-new Todolist from the permitted params and swaps it in, so any\nwritable field omitted from the request is cleared server-side (a request that\nomits description erases the description). name is required - it is\npresence-validated on the model, so a request without it is rejected.\nTo set some fields while preserving the rest, use the SDK's merge-safe\nupdate or edit methods, which GET the current list and PUT the full\nrepresentation back. Those read-modify-write helpers are not atomic:\na concurrent write between the GET and PUT is overwritten (last write\nwins for the whole representation; the window is one round-trip).",
         "operationId": "UpdateTodolistOrGroup",
         "requestBody": {
           "content": {
@@ -18982,7 +18982,8 @@
                 "$ref": "#/components/schemas/UpdateTodolistOrGroupRequestContent"
               }
             }
-          }
+          },
+          "required": true
         },
         "parameters": [
           {
@@ -19071,6 +19072,10 @@
             429,
             503
           ]
+        },
+        "x-basecamp-write-semantics": {
+          "mode": "replace",
+          "clearsOmitted": true
         }
       }
     },
@@ -30517,13 +30522,16 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Name (required for both Todolist and TodolistGroup)"
+            "description": "Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve"
           },
           "description": {
             "type": "string",
-            "description": "Description (Todolist only, ignored for groups)"
+            "description": "Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way"
           }
-        }
+        },
+        "required": [
+          "name"
+        ]
       },
       "UpdateTodolistOrGroupResponseContent": {
         "$ref": "#/components/schemas/TodolistOrGroup"

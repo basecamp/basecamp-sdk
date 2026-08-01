@@ -15,6 +15,42 @@ class TodolistsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
+  # The canonical fixture with a non-empty description, so "preserved" and
+  # "cleared" are distinguishable in the PUT body.
+  def full_todolist
+    load_fixture("todolists/get.json").merge(
+      "id" => 2,
+      "name" => "Hardware",
+      "description" => "<p>Ship the hardware</p>"
+    )
+  end
+
+  # A todolist GROUP as BC3 renders it on the same route: parented by a
+  # Todolist rather than a Todoset, with group_position_url in place of
+  # groups_url. Same writable fields, different projection.
+  def group_shaped_todolist
+    full_todolist.except("groups_url").merge(
+      "name" => "Peripherals",
+      "parent" => { "id" => 2, "title" => "Hardware", "type" => "Todolist" },
+      "group_position_url" => "https://3.basecampapi.com/12345/buckets/1/todolists/groups/2/position.json"
+    )
+  end
+
+  # Captures every PUT body so a test can assert the exact request count and
+  # the exact bytes, not just "a PUT happened".
+  def capture_put(response)
+    captured = { bodies: [] }
+    stub_request(:put, "#{BASE_URL}/12345/todolists/2")
+      .with { |req| captured[:bodies] << JSON.parse(req.body) }
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+    captured
+  end
+
+  def stub_todolist_get_and_put(todolist: full_todolist)
+    stub_get("/12345/todolists/2", response_body: todolist)
+    capture_put(todolist)
+  end
+
   def test_list
     response = [ { "id" => 1, "name" => "Sprint Tasks", "completed_ratio" => "3/10", "description_attachments" => [] } ]
 
@@ -65,15 +101,352 @@ class TodolistsServiceTest < Minitest::Test
     assert_equal "New List", result["name"]
   end
 
-  def test_update
-    response = { "id" => 2, "name" => "Updated List", "description_attachments" => [] }
+  # ---------------------------------------------------------------------
+  # replace: the server-native verbatim PUT.
+  #
+  # BC3's TodolistsController#update rebuilds the recordable from only the
+  # permitted params, so this PUT is a FULL REPLACE and every omitted field is
+  # cleared. That destructiveness is the whole reason `update` below is a
+  # composite; `replace` keeps the raw operation reachable.
+  # ---------------------------------------------------------------------
 
-    # Generated service uses /todolists/{id} without .json
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+  def test_replace_sends_exactly_one_verbatim_put
+    response = { "id" => 2, "name" => "Updated List", "description" => "", "description_attachments" => [] }
+    captured = capture_put(response)
 
-    result = @account.todolists.update(id: 2, name: "Updated List")
+    result = @account.todolists.replace(id: 2, name: "Updated List")
+
     assert_equal "Updated List", result["name"]
+    # One request, no read-before-write.
+    assert_requested :put, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_not_requested :get, "#{BASE_URL}/12345/todolists/2"
+    assert_equal 1, captured[:bodies].length
+    # Omitted stays omitted: replace never invents a description, and the
+    # server clears what the body leaves out.
+    assert_equal({ "name" => "Updated List" }, captured[:bodies].first)
+  end
+
+  def test_replace_sends_an_explicit_empty_description
+    response = { "id" => 2, "name" => "Updated List", "description" => "", "description_attachments" => [] }
+    captured = capture_put(response)
+
+    @account.todolists.replace(id: 2, name: "Updated List", description: "")
+
+    # "" survives compact_params (which strips only nil), so a caller who
+    # states the clear gets a present-and-empty key, never JSON null.
+    assert_equal({ "name" => "Updated List", "description" => "" }, captured[:bodies].first)
+  end
+
+  # ---------------------------------------------------------------------
+  # update / edit: the merge-safe composites (GET then PUT).
+  # ---------------------------------------------------------------------
+
+  # A malformed writable field must abort before the PUT, never be coerced.
+  #
+  # Ruby has no typed decoder between the GET and the field read, so a plain
+  # `|| ""` turns `false` into `""` and passes arrays, hashes and numbers
+  # straight through. This endpoint is full-replace, so either outcome is
+  # written back over the real value — the composite erases or corrupts the
+  # field it exists to preserve, on a call that never mentioned it. The shipped
+  # Todos analogue is tracked in #576.
+  [ false, 0, [], {}, 42, true, [ "x" ], { "a" => 1 } ].each do |malformed|
+    define_method("test_update_refuses_a_malformed_description_#{malformed.inspect}") do
+      stub_todolist_get_and_put(todolist: full_todolist.merge("description" => malformed))
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, name: "Renamed list")
+      end
+
+      assert_includes error.message, '"description" is not a string'
+      assert_requested :get, "#{BASE_URL}/12345/todolists/2", times: 1
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  # Row 9: the malformed envelope, one level up from malformed fields.
+  [ 42, "nope", nil, [ "a" ], true ].each do |body|
+    define_method("test_refuses_a_non_object_response_body_#{body.inspect}") do
+      # stub_get passes Strings through verbatim, so encode first: a bare
+      # `nope` is not JSON and would fail transport decode before the guard.
+      stub_get("/12345/todolists/2", response_body: body.to_json)
+      capture_put(full_todolist)
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, name: "Renamed")
+      end
+
+      assert_includes error.message, "where a todolist object was expected"
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  # Level 2: the outer-body guard checks only the envelope.
+  [ { "todolist" => nil }, { "todolist" => 42 }, { "todolist" => [ "a" ] },
+    { "group" => nil }, { "group" => "nope" } ].each_with_index do |body, i|
+    define_method("test_refuses_a_non_object_envelope_arm_#{i}") do
+      stub_get("/12345/todolists/2", response_body: body)
+      capture_put(full_todolist)
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, name: "Renamed")
+      end
+
+      assert_includes error.message, "arm where an object was expected"
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  # Row 10: the guard's own error path must not throw. inspect is user code.
+  def test_reports_an_unrenderable_caller_value_without_losing_the_diagnosis
+    hostile = Class.new do
+      def inspect = raise("nope")
+    end.new
+    stub_todolist_get_and_put
+
+    error = assert_raises(Basecamp::UsageError) do
+      @account.todolists.edit(id: 2) { |list| list.description = hostile }
+    end
+
+    assert_includes error.message, "must be a String"
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+  end
+
+  # SPEC section 9 caps error messages; the value is embedded in them.
+  def test_malformed_message_is_capped
+    stub_todolist_get_and_put(todolist: full_todolist.merge("description" => [ "x" ] * 50_000))
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.todolists.update(id: 2, name: "Renamed")
+    end
+
+    assert_operator error.message.bytesize, :<=, 500
+  end
+
+  def test_edit_refuses_a_malformed_name_before_writing
+    stub_todolist_get_and_put(todolist: full_todolist.merge("name" => 42))
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.todolists.edit(id: 2) { |list| list.description = "<p>New</p>" }
+    end
+
+    assert_includes error.message, '"name" is not a string'
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+  end
+
+  # `name` is required and presence-validated, so absent, nil and "" from the
+  # wire are all malformed. Classification is by ORIGIN: this name came off the
+  # wire, so it is an ApiError; the caller supplying an empty name is a
+  # UsageError, asserted separately below.
+  [ [ "absent", nil ], [ "nil", :nil ], [ "empty", "" ] ].each do |label, value|
+    define_method("test_#{label}_name_from_the_wire_is_a_malformed_response") do
+      body = full_todolist.dup
+      case value
+      when nil then body.delete("name")
+      when :nil then body["name"] = nil
+      else body["name"] = value
+      end
+      stub_todolist_get_and_put(todolist: body)
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, description: "<p>New</p>")
+      end
+
+      assert_includes error.message, '"name"'
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  # The mirror of the read step: caller provenance, so UsageError. +edit+ yields
+  # a mutable view of the full writable state and Ruby enforces nothing about
+  # what comes back, so a block assigning a non-String would otherwise walk
+  # straight into the full-replace PUT.
+  [ 42, true, [], {}, [ "x" ], { "a" => 1 }, 0 ].each do |bad|
+    define_method("test_edit_refuses_a_caller_supplied_#{bad.inspect}") do
+      stub_todolist_get_and_put
+
+      error = assert_raises(Basecamp::UsageError) do
+        @account.todolists.edit(id: 2) { |list| list.description = bad }
+      end
+
+      assert_includes error.message, "must be a String"
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  # The mirror case: same value, caller origin, so UsageError not ApiError.
+  def test_caller_supplied_empty_name_is_a_usage_error
+    stub_todolist_get_and_put
+
+    assert_raises(Basecamp::UsageError) do
+      @account.todolists.update(id: 2, name: "")
+    end
+
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+  end
+
+  def test_update_treats_absent_and_nil_description_as_empty
+    [ full_todolist.except("description"), full_todolist.merge("description" => nil) ].each do |body|
+      captured = stub_todolist_get_and_put(todolist: body)
+
+      @account.todolists.update(id: 2, name: "Renamed list")
+
+      assert_equal({ "name" => "Renamed list", "description" => "" }, captured[:bodies].first)
+      WebMock.reset!
+    end
+  end
+
+  def test_update_name_only_preserves_the_description
+    captured = stub_todolist_get_and_put
+
+    todolist = @account.todolists.update(id: 2, name: "Renamed list")
+
+    assert_equal 2, todolist["id"]
+    assert_requested :get, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_requested :put, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_equal({ "name" => "Renamed list", "description" => "<p>Ship the hardware</p>" }, \
+                 captured[:bodies].first)
+  end
+
+  def test_update_description_only_preserves_the_name
+    captured = stub_todolist_get_and_put
+
+    @account.todolists.update(id: 2, description: "<p>Revised</p>")
+
+    assert_equal({ "name" => "Hardware", "description" => "<p>Revised</p>" }, captured[:bodies].first)
+  end
+
+  def test_update_explicit_empty_description_clears_it
+    captured = stub_todolist_get_and_put
+
+    @account.todolists.update(id: 2, description: "")
+
+    # Present-and-empty, never absent and never null: nil is the "keep it"
+    # signal, so a clear has to travel as "" (SPEC section 18).
+    assert_equal({ "name" => "Hardware", "description" => "" }, captured[:bodies].first)
+  end
+
+  # The composite is deliberately variant-agnostic: a todolist GROUP answers
+  # the same route with a group-shaped body (parent is a Todolist,
+  # group_position_url instead of groups_url) and must round-trip through the
+  # exact same {name, description} overlay, with no type sniffing.
+  def test_update_preserves_a_group_description_without_type_sniffing
+    captured = stub_todolist_get_and_put(todolist: group_shaped_todolist)
+
+    @account.todolists.update(id: 2, name: "Renamed group")
+
+    assert_equal({ "name" => "Renamed group", "description" => "<p>Ship the hardware</p>" }, \
+                 captured[:bodies].first)
+  end
+
+  # The Smithy model wraps the response in a `todolist`/`group` envelope, but
+  # BC3 answers flat. Both shapes must read the same fields.
+  def test_update_tolerates_the_modelled_envelope
+    captured = stub_todolist_get_and_put(todolist: { "todolist" => full_todolist })
+
+    @account.todolists.update(id: 2, name: "Renamed list")
+
+    assert_equal({ "name" => "Renamed list", "description" => "<p>Ship the hardware</p>" }, \
+                 captured[:bodies].first)
+  end
+
+  def test_update_hooks_observe_get_then_replace
+    events = []
+    account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
+    stub_todolist_get_and_put
+
+    account.todolists.update(id: 2, name: "observed")
+
+    starts = events.select { |e| e[:event] == :on_operation_start }
+    assert_equal [ %w[todolists get], %w[todolists replace] ], \
+                 starts.map { |e| [ e[:info].service, e[:info].operation ] }
+  end
+
+  def test_edit_puts_the_full_state_back
+    captured = stub_todolist_get_and_put
+
+    todolist = @account.todolists.edit(id: 2) do |list|
+      assert_equal "Hardware", list.name
+      assert_equal "<p>Ship the hardware</p>", list.description
+      list.name = "🚨 #{list.name}"
+    end
+
+    assert_equal 2, todolist["id"]
+    assert_equal({ "name" => "🚨 Hardware", "description" => "<p>Ship the hardware</p>" }, \
+                 captured[:bodies].first)
+  end
+
+  def test_edit_clears_the_description_and_keeps_the_name
+    captured = stub_todolist_get_and_put
+
+    @account.todolists.edit(id: 2) { |list| list.description = "" }
+
+    assert_equal({ "name" => "Hardware", "description" => "" }, captured[:bodies].first)
+  end
+
+  # A field set to nil in the block has no meaning in a full write; it is the
+  # same statement as "", not a preserve.
+  def test_edit_nil_description_clears_present_and_empty
+    captured = stub_todolist_get_and_put
+
+    @account.todolists.edit(id: 2) { |list| list.description = nil }
+
+    assert_equal({ "name" => "Hardware", "description" => "" }, captured[:bodies].first)
+  end
+
+  def test_edit_block_error_aborts_without_put
+    captured = stub_todolist_get_and_put
+
+    error = assert_raises(RuntimeError) do
+      @account.todolists.edit(id: 2) do |list|
+        list.name = "never written"
+        raise "abort"
+      end
+    end
+
+    assert_equal "abort", error.message
+    assert_requested :get, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    assert_empty captured[:bodies]
+  end
+
+  def test_edit_requires_a_block
+    error = assert_raises(ArgumentError) { @account.todolists.edit(id: 2) }
+
+    assert_equal "edit requires a block", error.message
+    assert_not_requested :get, "#{BASE_URL}/12345/todolists/2"
+  end
+
+  # name is presence-validated server-side, so blanking it is a 422 rather
+  # than a preserve. The SDK refuses before spending the write.
+  def test_edit_blank_name_raises_usage_error_without_put
+    captured = stub_todolist_get_and_put
+
+    error = assert_raises(Basecamp::UsageError) do
+      @account.todolists.edit(id: 2) { |list| list.name = "" }
+    end
+
+    assert_equal "name must be present; a full write has no nil state and BC3 rejects a blank name with 422", \
+                 error.message
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    assert_empty captured[:bodies]
+  end
+
+  # This test previously asserted UsageError, which enshrined the bug: the
+  # caller never mentioned the name, so blaming them for a nameless response was
+  # backwards. Classification is by ORIGIN — the name came off the wire, so this
+  # is an ApiError. The caller-supplied empty name stays a UsageError, covered by
+  # test_caller_supplied_empty_name_is_a_usage_error.
+  def test_update_of_a_nameless_todolist_reports_a_malformed_response_without_put
+    captured = stub_todolist_get_and_put(todolist: full_todolist.merge("name" => nil))
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.todolists.update(id: 2, description: "<p>Revised</p>")
+    end
+
+    assert_equal 'Todolist field "name" is missing from the response', error.message
+    assert_includes error.hint, "presence-validated server-side"
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    assert_empty captured[:bodies]
   end
 
   def test_reposition
@@ -116,7 +489,9 @@ class TodolistsServiceTest < Minitest::Test
     assert_equal 2, info.resource_id
   end
 
-  def test_update_operation_metadata
+  # The wire operation is `replace`, not `update`: `update` is the composite
+  # in TodolistsExtensions and emits no operation of its own.
+  def test_replace_operation_metadata
     events = []
     account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
 
@@ -124,13 +499,13 @@ class TodolistsServiceTest < Minitest::Test
     stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    account.todolists.update(id: 2, name: "Updated List")
+    account.todolists.replace(id: 2, name: "Updated List")
 
     event = events.find { |e| e[:event] == :on_operation_start }
     assert event, "Expected on_operation_start to fire"
     info = event[:info]
     assert_equal "todolists", info.service
-    assert_equal "update", info.operation
+    assert_equal "replace", info.operation
     assert_equal 2, info.resource_id
   end
 

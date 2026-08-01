@@ -93,12 +93,77 @@ type CreateTodolistRequest struct {
 	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
-// UpdateTodolistRequest specifies the parameters for updating a todolist.
+// UpdateTodolistRequest specifies the fields to set when updating a todolist.
+// Zero-value fields are left untouched (see TodolistsService.Update).
 type UpdateTodolistRequest struct {
 	// Name is the todolist name.
 	Name string `json:"name,omitempty"`
 	// Description is an optional description (can include HTML).
 	Description string `json:"description,omitempty"`
+}
+
+// ReplaceTodolistRequest specifies the new complete representation of a
+// todolist for TodolistsService.Replace. Omitted fields are cleared
+// server-side: BC3's TodolistsController#update rebuilds the recordable from
+// only the permitted params, so a missing description erases the description.
+type ReplaceTodolistRequest struct {
+	// Name is the todolist name (required). It is always sent — the server
+	// presence-validates it, so omitting it is a 422, not a preserve.
+	Name string `json:"name"`
+	// Description is an optional description (can include HTML). Omitting it
+	// clears the description.
+	Description string `json:"description,omitempty"`
+}
+
+// TodolistFields holds a todolist's full writable state for
+// TodolistsService.Update and TodolistsService.Edit. The whole struct is PUT
+// back to the server, so clearing a field means setting it empty ("") —
+// there is no third state. The writable set is exactly {name, description}.
+type TodolistFields struct {
+	// Name is the todolist name (required; the server rejects an empty one).
+	Name string
+	// Description is a description (can include HTML). "" clears it.
+	Description string
+}
+
+// fieldsFromTodolist derives the full writable state from a fetched todolist.
+//
+// Classification is by origin, not by value. The same empty name is a caller
+// error when the caller set it and a malformed response when it came off the
+// wire, so each provenance is checked where it is unambiguous: here for the
+// response, fullBody for the caller. Name is presence-validated server-side, so
+// a todolist that comes back without one is malformed — not an empty value to
+// preserve, and emphatically not something to write back over the real name on
+// a full-replace endpoint.
+func fieldsFromTodolist(tl *Todolist) (*TodolistFields, error) {
+	if tl.Name == "" {
+		// Structured, and statusless by SPEC §6: the transport succeeded, so no
+		// HTTP status describes this, and re-requesting cannot repair a
+		// malformed body. A bare wrapped error would give callers nothing to
+		// branch on and would not carry the hint.
+		return nil, &Error{
+			Code:    CodeAPI,
+			Message: fmt.Sprintf("todolist %d came back with an empty name", tl.ID),
+			Hint:    "The name is presence-validated server-side, so this is a malformed response, not a value to preserve. Use Replace to write the record deliberately.",
+		}
+	}
+	return &TodolistFields{
+		Name:        tl.Name,
+		Description: tl.Description,
+	}, nil
+}
+
+// fullBody serializes the complete writable state for the replace transport:
+// name and description are always sent (the empty description included, so
+// clears survive the PUT — "" is how a clear is expressed, never JSON null).
+func (f *TodolistFields) fullBody() (map[string]any, error) {
+	if f.Name == "" {
+		return nil, ErrUsage("todolist name is required")
+	}
+	return map[string]any{
+		"name":        f.Name,
+		"description": f.Description,
+	}, nil
 }
 
 // TodolistsService handles todolist operations.
@@ -288,32 +353,165 @@ func (s *TodolistsService) Create(ctx context.Context, todosetID int64, req *Cre
 	return &todolist, nil
 }
 
-// Update updates an existing todolist.
+// Update sets the given fields on a todolist and preserves everything else:
+// it GETs the current todolist, overlays the explicitly-set request fields,
+// and PUTs the full representation back. A zero-value field is untouched,
+// guaranteed. Strings cannot be cleared through Update — use Edit or Replace
+// to clear.
+//
+// Hooks observe the two wire operations (Todolists.Get then
+// Todolists.Replace), not a synthetic composite.
+//
+// Update is read-modify-write, not atomic: there is no conditional-update
+// signal on this endpoint, so a concurrent write between the GET and PUT is
+// overwritten — last write wins for the whole representation. The window is
+// one round-trip. Use Replace to overwrite deliberately.
 // Returns the updated todolist.
-func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *UpdateTodolistRequest) (result *Todolist, err error) {
+func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *UpdateTodolistRequest) (*Todolist, error) {
+	if req == nil {
+		return nil, ErrUsage("update request is required")
+	}
+
+	current, err := s.Get(ctx, todolistID)
+	if err != nil {
+		return nil, err
+	}
+
+	fields, err := fieldsFromTodolist(current)
+	if err != nil {
+		return nil, err
+	}
+	if req.Name != "" {
+		fields.Name = req.Name
+	}
+	if req.Description != "" {
+		fields.Description = req.Description
+	}
+
+	return s.replaceTodolist(ctx, todolistID, fields.fullBody)
+}
+
+// Edit applies a read-modify-write closure to a todolist: it GETs the current
+// todolist, hands fn the full writable representation, and PUTs the whole
+// thing back. Clearing a field means setting it empty ("") — an untouched
+// field keeps its current value. If fn returns an error, the edit aborts and
+// nothing is written.
+//
+// Hooks observe the two wire operations (Todolists.Get then
+// Todolists.Replace), not a synthetic composite.
+//
+// Edit is read-modify-write, not atomic: there is no conditional-update
+// signal on this endpoint, so a concurrent write between the GET and PUT is
+// overwritten — last write wins for the whole representation. The window is
+// one round-trip. Use Replace to overwrite deliberately.
+// Returns the updated todolist.
+func (s *TodolistsService) Edit(ctx context.Context, todolistID int64, fn func(*TodolistFields) error) (*Todolist, error) {
+	if fn == nil {
+		return nil, ErrUsage("edit function is required")
+	}
+
+	current, err := s.Get(ctx, todolistID)
+	if err != nil {
+		return nil, err
+	}
+
+	fields, err := fieldsFromTodolist(current)
+	if err != nil {
+		return nil, err
+	}
+	if err := fn(fields); err != nil {
+		return nil, err
+	}
+
+	return s.replaceTodolist(ctx, todolistID, fields.fullBody)
+}
+
+// Replace sends the request verbatim as the todolist's new complete
+// representation — the server's native PUT semantics. No GET is issued, and
+// any field omitted from the request is cleared server-side (a missing
+// description clears it). BC3's TodolistsController#update rebuilds the
+// recordable from only the permitted params, so omission is destructive by
+// design. Name is required. Use Update or Edit to preserve unspecified
+// fields.
+// Returns the updated todolist.
+func (s *TodolistsService) Replace(ctx context.Context, todolistID int64, req *ReplaceTodolistRequest) (*Todolist, error) {
+	return s.replaceTodolist(ctx, todolistID, func() (map[string]any, error) {
+		if req == nil {
+			return nil, ErrUsage("replace request is required")
+		}
+		if req.Name == "" {
+			return nil, ErrUsage("todolist name is required")
+		}
+		body := map[string]any{"name": req.Name}
+		if req.Description != "" {
+			body["description"] = req.Description
+		}
+		return body, nil
+	})
+}
+
+// replaceTodolist is the single transport for the UpdateTodolistOrGroup wire
+// operation as TodolistsService issues it, shared by Replace, Update, and
+// Edit. It pins the Todolists.Replace hook identity and decodes the todolist
+// shape; the envelope and the one generated-client call site live in
+// replaceTodolistOrGroup.
+func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64, buildBody func() (map[string]any, error)) (*Todolist, error) {
 	op := OperationInfo{
-		Service: "Todolists", Operation: "Update",
+		Service: "Todolists", Operation: "Replace",
 		ResourceType: "todolist", IsMutation: true,
 		ResourceID: todolistID,
 	}
-	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+
+	raw, err := replaceTodolistOrGroup(ctx, s.client, op, todolistID, buildBody)
+	if err != nil {
+		return nil, err
+	}
+
+	// The API returns flat JSON, not the envelope that AsTodolistOrGroup0 expects.
+	// Decode the body directly into the generated Todolist type.
+	var gtl generated.Todolist
+	if err := json.Unmarshal(raw, &gtl); err != nil {
+		return nil, fmt.Errorf("failed to parse todolist: %w", err)
+	}
+
+	todolist := todolistFromGenerated(gtl)
+	return &todolist, nil
+}
+
+// replaceTodolistOrGroup is the one call site for the polymorphic
+// UpdateTodolistOrGroup wire operation (PUT /{accountId}/todolists/{id}).
+// TodolistsService and TodolistGroupsService both route their writes through
+// it: the endpoint accepts either shape, so only the hook identity and the
+// decoding differ. It owns the hook envelope, and buildBody runs inside that
+// envelope so usage errors are observable to hooks.
+//
+// The body is built as a map and sent through the generated *WithBody
+// variant — the SPEC §18 rule-1 Go carve-out — because the writable set has
+// to reach the wire verbatim: an empty description must arrive
+// present-and-empty (that is how a clear is expressed), which omitempty on a
+// generated struct cannot express.
+//
+// Returns the raw response body for the caller to decode.
+func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op OperationInfo, id int64, buildBody func() (map[string]any, error)) (raw []byte, err error) {
+	if gater, ok := client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return
+			return nil, err
 		}
 	}
 	start := time.Now()
-	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+	ctx = client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	body := generated.UpdateTodolistOrGroupJSONRequestBody{}
-	if req.Name != "" {
-		body.Name = &req.Name
-	}
-	if req.Description != "" {
-		body.Description = &req.Description
+	body, err := buildBody()
+	if err != nil {
+		return nil, err
 	}
 
-	resp, err := s.client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, s.client.accountID, todolistID, body)
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.parent.gen.UpdateTodolistOrGroupWithBodyWithResponse(ctx, client.accountID, id, "application/json", bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -325,15 +523,7 @@ func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *Up
 		return nil, err
 	}
 
-	// The API returns flat JSON, not the envelope that AsTodolistOrGroup0 expects.
-	// Decode resp.Body directly into the generated Todolist type.
-	var gtl generated.Todolist
-	if err := json.Unmarshal(resp.Body, &gtl); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist: %w", err)
-	}
-
-	todolist := todolistFromGenerated(gtl)
-	return &todolist, nil
+	return resp.Body, nil
 }
 
 // Trash moves a todolist to the trash.

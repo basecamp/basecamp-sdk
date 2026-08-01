@@ -3,9 +3,9 @@ import Foundation
 
 public struct UpdateTodolistOrGroupRequest: Codable, Sendable {
     public var description: String?
-    public var name: String?
+    public let name: String
 
-    public init(description: String? = nil, name: String? = nil) {
+    public init(description: String? = nil, name: String) {
         self.description = description
         self.name = name
     }

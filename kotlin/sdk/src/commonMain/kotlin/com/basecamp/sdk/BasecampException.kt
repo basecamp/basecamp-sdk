@@ -83,12 +83,20 @@ sealed class BasecampException(
         cause: Throwable? = null,
     ) : BasecampException(message, CODE_NETWORK, hint, null, true, null, cause)
 
-    /** Generic API error (5xx or unexpected status codes). */
+    /**
+     * Generic API error (5xx or unexpected status codes).
+     *
+     * [httpStatus] is nullable because not every API error has one. A composite
+     * (SPEC §18) can fail on a *successful* response whose body is malformed —
+     * the transport returned 2xx, so no status describes the failure. SPEC §6
+     * sanctions that shape as a statusless, non-retryable `api_error`; passing a
+     * placeholder like `0` would claim an HTTP status that never existed.
+     */
     class Api(
         message: String,
-        httpStatus: Int,
+        httpStatus: Int? = null,
         hint: String? = null,
-        retryable: Boolean = httpStatus in 500..599,
+        retryable: Boolean = httpStatus != null && httpStatus in 500..599,
         requestId: String? = null,
         cause: Throwable? = null,
     ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause)

@@ -177,7 +177,7 @@ class AsyncAccountClient:
 
     @property
     def todolists(self):
-        from basecamp.generated.services.todolists import AsyncTodolistsService
+        from basecamp.services.todolists import AsyncTodolistsService
 
         return self._service("todolists", lambda: AsyncTodolistsService(self))
 

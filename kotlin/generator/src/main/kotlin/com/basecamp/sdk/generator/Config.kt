@@ -117,7 +117,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
  * com.basecamp.sdk.services can add convenience methods (e.g. Todos
  * gains merge-safe update/edit on top of the generated replace).
  */
-val EXTENSIBLE_SERVICES = setOf("Todos", "Cards", "Uploads")
+val EXTENSIBLE_SERVICES = setOf("Todos", "Todolists", "Cards", "Uploads")
 
 /**
  * Services whose accessor constructs and declares a hand-written subclass
@@ -127,6 +127,7 @@ val EXTENSIBLE_SERVICES = setOf("Todos", "Cards", "Uploads")
  */
 val HAND_WRITTEN_SERVICES = mapOf(
     "Todos" to "com.basecamp.sdk.services.TodosService",
+    "Todolists" to "com.basecamp.sdk.services.TodolistsService",
     "Cards" to "com.basecamp.sdk.services.CardsService",
     "Uploads" to "com.basecamp.sdk.services.UploadsService",
 )
@@ -173,7 +174,10 @@ val METHOD_NAME_OVERRIDES = mapOf(
     // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.
     "GetCalendar" to "getCalendar",
     "GetTodolistOrGroup" to "get",
-    "UpdateTodolistOrGroup" to "update",
+    // The plain `update` name belongs to the merge-safe composite; the raw
+    // single-PUT path keeps a name that says what it does. BC3 rebuilds the
+    // todolist from the permitted params, so omission clears. See #374.
+    "UpdateTodolistOrGroup" to "replace",
     "SetCardColumnColor" to "setColor",
     "EnableCardColumnOnHold" to "enableOnHold",
     "DisableCardColumnOnHold" to "disableOnHold",

@@ -139,7 +139,10 @@ class ServiceGenerator
   METHOD_NAME_OVERRIDES = {
     'GetMyProfile' => 'my_profile',
     'GetTodolistOrGroup' => 'get',
-    'UpdateTodolistOrGroup' => 'update',
+    # The plain `update` name belongs to the merge-safe composite; the raw
+    # single-PUT path keeps a name that says what it does. BC3 rebuilds the
+    # todolist from the permitted params, so omission clears. See #374.
+    'UpdateTodolistOrGroup' => 'replace',
     'SetCardColumnColor' => 'set_color',
     'EnableCardColumnOnHold' => 'enable_on_hold',
     'DisableCardColumnOnHold' => 'disable_on_hold',

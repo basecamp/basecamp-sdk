@@ -14,4 +14,35 @@ class ZeitwerkTest < Minitest::Test
            Basecamp::Services::TodosService.ancestors.index(Basecamp::Services::TodosService),
            "extensions must be prepended (before the class in the ancestor chain)"
   end
+
+  # Same hook shape for cards: the merge-safe update sits ahead of the
+  # generated class, which keeps the raw PUT as update_verbatim.
+  def test_cards_extensions_prepended
+    assert_includes Basecamp::Services::CardsService.ancestors, \
+                    Basecamp::Services::CardsExtensions
+    assert Basecamp::Services::CardsService.ancestors.index(Basecamp::Services::CardsExtensions) <
+           Basecamp::Services::CardsService.ancestors.index(Basecamp::Services::CardsService),
+           "extensions must be prepended (before the class in the ancestor chain)"
+  end
+
+  # And for todolists, where the generated class owns `replace` and the
+  # prepended module contributes `update`/`edit`.
+  def test_todolists_extensions_prepended
+    assert_includes Basecamp::Services::TodolistsService.ancestors, \
+                    Basecamp::Services::TodolistsExtensions
+    assert Basecamp::Services::TodolistsService.ancestors.index(Basecamp::Services::TodolistsExtensions) <
+           Basecamp::Services::TodolistsService.ancestors.index(Basecamp::Services::TodolistsService),
+           "extensions must be prepended (before the class in the ancestor chain)"
+  end
+
+  # The composite surface only exists if the hook actually ran: `update` and
+  # `edit` come from the module, `replace` from the generated class.
+  def test_todolists_composite_surface_is_reachable
+    assert_equal Basecamp::Services::TodolistsExtensions, \
+                 Basecamp::Services::TodolistsService.instance_method(:update).owner
+    assert_equal Basecamp::Services::TodolistsExtensions, \
+                 Basecamp::Services::TodolistsService.instance_method(:edit).owner
+    assert_equal Basecamp::Services::TodolistsService, \
+                 Basecamp::Services::TodolistsService.instance_method(:replace).owner
+  end
 end

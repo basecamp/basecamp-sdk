@@ -133,22 +133,681 @@ describe("TodolistsService", () => {
     });
   });
 
-  describe("update", () => {
-    it("should update a todolist", async () => {
+  // PUT /{accountId}/todolists/{id} is a full replace: BC3's
+  // TodolistsController#update rebuilds the recordable from only the permitted
+  // params, so an omitted description is erased and an omitted name is a 422.
+  // `update` and `edit` are the merge-safe composites over that endpoint;
+  // `replace` is the raw verbatim PUT.
+  const describedTodolist = (id = 42, overrides: Record<string, unknown> = {}) => ({
+    ...sampleTodolist(id),
+    name: "Hardware",
+    description: "<p>Ship the hardware</p>",
+    ...overrides,
+  });
+
+  // A malformed writable field must abort before the PUT, never be forwarded.
+  //
+  // `?? ""` coalesces only null and undefined, so it rules out *erasure* while
+  // leaving *corruption* wide open: a number, boolean, array or object rides
+  // through verbatim into the full-replace PUT and overwrites the real value.
+  // TypeScript has no runtime decoder to catch this — `schema.d.ts` is erased
+  // at build time, so the GET's type is a compile-time claim nothing checks.
+  // That places this composite with Python and Ruby, not with Go and Swift.
+  // Shipped Todos/Cards analogues: #576.
+  describe("malformed writable fields", () => {
+    const malformed: [string, unknown][] = [
+      ["false", false],
+      ["zero", 0],
+      ["empty array", []],
+      ["empty object", {}],
+      ["number", 42],
+      ["true", true],
+      ["array", ["x"]],
+      ["object", { a: 1 }],
+    ];
+
+    // Asserting only the message and the request sequence is vacuous about the
+    // taxonomy: a wrong `code` satisfies both. The value arrived in a
+    // successful API response, so this is `api_error` — the caller passed
+    // nothing wrong. (The empty-name path is the opposite and stays a caller
+    // error, since BC3 presence-validates `name`.) Pin all four properties.
+    const expectResponseError = (error: unknown, field: string, requests: string[]) => {
+      expect(error).toBeInstanceOf(BasecampError);
+      const basecampError = error as BasecampError;
+      expect(basecampError.code).toBe("api_error");
+      expect(basecampError.message).toMatch(new RegExp(`todolist ${field} is not a string`));
+      expect(requests).toEqual(["GET"]);
+    };
+
+    const rejection = async (promise: Promise<unknown>): Promise<unknown> =>
+      promise.then(
+        () => {
+          throw new Error("expected the call to reject, but it resolved");
+        },
+        (error: unknown) => error
+      );
+
+    it.each(malformed)("update refuses a %s description before writing", async (_label, value) => {
       const id = 42;
+      const requests: string[] = [];
 
       server.use(
-        http.put(`${BASE_URL}/todolists/${id}`, async ({ request }) => {
-          const body = (await request.json()) as Record<string, unknown>;
-          expect(body.name).toBe("Updated list");
-          return HttpResponse.json(sampleTodolist(id));
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id, { description: value }));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
         })
       );
 
-      const todolist = await client.todolists.update(id, {
-        name: "Updated list",
+      const error = await rejection(client.todolists.update(id, { name: "Renamed list" }));
+      expectResponseError(error, "description", requests);
+    });
+
+    it.each(malformed)("edit refuses a %s name before writing", async (_label, value) => {
+      const id = 42;
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id, { name: value }));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          t.description = "<p>New</p>";
+        })
+      );
+      expectResponseError(error, "name", requests);
+    });
+
+    // `name` is required and presence-validated, so absent, null and "" from
+    // the wire are all malformed. Classification is by ORIGIN: this name came
+    // off the wire, so it is api_error. Before the fix, absent/null collapsed
+    // to "" and that empty name was PUT over the real one, successfully and
+    // silently — the only instance in this family that corrupted data on the
+    // wire rather than misclassifying or swallowing.
+    it.each([
+      ["absent", undefined],
+      ["null", null],
+      ["empty", ""],
+    ])("update refuses an %s name from the response", async (_label, value) => {
+      const id = 42;
+      const requests: string[] = [];
+      const body = describedTodolist(id) as Record<string, unknown>;
+      if (value === undefined) delete body.name;
+      else body.name = value;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(
+        client.todolists.update(id, { description: "<p>New</p>" })
+      );
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/todolist name is (missing|empty)/);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The same via the edit closure, which is the path that actually wrote the
+    // empty name: a callback deriving from `t.name` PUT it over the real one.
+    it("edit refuses an absent name from the response", async () => {
+      const id = 42;
+      const requests: string[] = [];
+      const body = describedTodolist(id) as Record<string, unknown>;
+      delete body.name;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          t.name = `${t.name} (revised)`;
+        })
+      );
+      expect((error as BasecampError).code).toBe("api_error");
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The mirror of the read step: caller provenance, so `usage`. The
+    // TodolistFields annotation is erased at build time, so a closure assigning
+    // a non-string — trivially reachable from plain JS or via `as any` — would
+    // otherwise walk straight into the full-replace PUT.
+    it.each([
+      ["number", 42],
+      ["boolean", true],
+      ["array", []],
+      ["object", { a: 1 }],
+      ["zero", 0],
+      ["false", false],
+    ])("edit refuses a caller-supplied %s", async (_label, bad) => {
+      const id = 42;
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          (t as unknown as Record<string, unknown>).description = bad;
+        })
+      );
+      expect((error as BasecampError).code).toBe("usage");
+      expect((error as BasecampError).message).toMatch(/must be a string/);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The mirror case: same value, caller origin, so `usage` not `api_error`.
+    it("a caller-supplied empty name is a usage error", async () => {
+      const id = 42;
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "" }));
+      expect((error as BasecampError).code).toBe("usage");
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // Row 9: the malformed *envelope*, one level up from malformed fields. A
+    // scalar or null makes `"todolist" in response` throw a raw TypeError; an
+    // array silently reports false and falls through to the flat branch.
+    it.each([
+      ["number", 42],
+      ["string", "nope"],
+      ["null", null],
+      ["array", ["a"]],
+      ["boolean", true],
+    ])("refuses a %s response body", async (_label, body) => {
+      const id = 42;
+      const requests: string[] = [];
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/where a todolist object was expected/);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // Level 2 of the path: the outer-body guard checks only the envelope, so a
+    // present-but-null arm slipped through and was dereferenced into a native
+    // TypeError. The path is object -> object -> scalar; this is the middle rung.
+    it.each([
+      ["null todolist arm", { todolist: null }],
+      ["scalar todolist arm", { todolist: 42 }],
+      ["array todolist arm", { todolist: ["a"] }],
+      ["null group arm", { group: null }],
+      ["scalar group arm", { group: "nope" }],
+    ])("refuses a %s", async (_label, body) => {
+      const id = 42;
+      const requests: string[] = [];
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/arm where an object was expected/);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // Row 10: the guard's own error path must not throw. JSON.stringify raises
+    // TypeError on a circular structure, and a value can carry a toJSON that
+    // throws — either would replace the clean error with an incidental one.
+    it("reports a circular caller value without throwing a TypeError", async () => {
+      const id = 42;
+      const circular: Record<string, unknown> = {};
+      circular.self = circular;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(describedTodolist(id)))
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          (t as unknown as Record<string, unknown>).description = circular;
+        })
+      );
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("usage");
+      expect((error as BasecampError).message).toMatch(/must be a string, got object/);
+    });
+
+    it("reports a value whose toJSON throws without losing the diagnosis", async () => {
+      const id = 42;
+      const hostile = {
+        toJSON() {
+          throw new Error("nope");
+        },
+      };
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(describedTodolist(id)))
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          (t as unknown as Record<string, unknown>).description = hostile;
+        })
+      );
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("usage");
+    });
+
+    // The group envelope models no description, so deriving a todolist from it
+    // would invent an empty one and erase the real description on the PUT.
+    // Swift throws here; TypeScript must not silently do what Swift refuses.
+    it("refuses a group-envelope response rather than inventing a description", async () => {
+      const id = 42;
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () =>
+          HttpResponse.json({ group: { id, name: "Peripherals" } })
+        )
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/group projection/);
+    });
+
+    // SPEC section 9 caps error messages at 500 units; the malformed value is
+    // embedded in the message, so a huge body must not blow past it.
+    it("caps the message at the SPEC section 9 limit", async () => {
+      const id = 42;
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () =>
+          HttpResponse.json(describedTodolist(id, { description: Array(50_000).fill("x") }))
+        )
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
+      expect((error as BasecampError).message.length).toBeLessThanOrEqual(500);
+      expect((error as BasecampError).hint).toBeTruthy();
+      expect((error as BasecampError).retryable).toBe(false);
+    });
+
+    it.each([
+      ["absent", undefined],
+      ["null", null],
+    ])("treats an %s description as genuinely empty", async (_label, value) => {
+      const id = 42;
+      let putBody: Record<string, unknown> = {};
+      const body = describedTodolist(id);
+      if (value === undefined) delete (body as Record<string, unknown>).description;
+      else (body as Record<string, unknown>).description = value;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(body)),
+        http.put(`${BASE_URL}/todolists/${id}`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      await client.todolists.update(id, { name: "Renamed list" });
+
+      expect(putBody).toEqual({ name: "Renamed list", description: "" });
+    });
+  });
+
+  describe("update", () => {
+    it("preserves the description when only the name is set", async () => {
+      const id = 42;
+      const requests: string[] = [];
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, async ({ request }) => {
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(id, { name: "Renamed list" }));
+        })
+      );
+
+      const todolist = await client.todolists.update(id, { name: "Renamed list" });
+
+      expect(requests).toEqual(["GET", "PUT"]);
+      expect(putBody).toEqual({
+        name: "Renamed list",
+        description: "<p>Ship the hardware</p>",
       });
       expect(todolist.id).toBe(id);
+      expect(todolist.name).toBe("Renamed list");
+    });
+
+    it("preserves the name when only the description is set", async () => {
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      await client.todolists.update(42, { description: "<p>Rewritten</p>" });
+
+      expect(putBody).toEqual({ name: "Hardware", description: "<p>Rewritten</p>" });
+    });
+
+    it("clears the description with an explicit empty string — present, never null", async () => {
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(42, { description: "" }));
+        })
+      );
+
+      await client.todolists.update(42, { description: "" });
+
+      expect(putBody).toHaveProperty("description");
+      expect(putBody.description).toBe("");
+      expect(putBody.description).not.toBeNull();
+      expect(putBody.name).toBe("Hardware");
+    });
+
+    it("carries the writable fields over for a group without sniffing the variant", async () => {
+      // The route serves todolist groups too, and BC3 answers with the group's
+      // flat JSON (no groups_url, a group_position_url instead). The composite
+      // reads {name, description} and must not branch on the variant.
+      const { groups_url: _groupsUrl, ...groupShaped } = describedTodolist(42, {
+        name: "Peripherals",
+      });
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () =>
+          HttpResponse.json({
+            ...groupShaped,
+            group_position_url: "https://3.basecampapi.com/12345/buckets/1/todolists/42/position.json",
+          })
+        ),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(groupShaped);
+        })
+      );
+
+      await client.todolists.update(42, { name: "Renamed group" });
+
+      expect(putBody).toEqual({
+        name: "Renamed group",
+        description: "<p>Ship the hardware</p>",
+      });
+    });
+
+    it("hooks observe the wire operations GetTodolistOrGroup then UpdateTodolistOrGroup", async () => {
+      const operations: OperationInfo[] = [];
+      const hookedClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: {
+          onOperationStart: (info) => {
+            operations.push(info);
+          },
+        },
+      });
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist()))
+      );
+
+      await hookedClient.todolists.update(42, { name: "observed" });
+
+      expect(operations.map((o) => o.operation)).toEqual([
+        "GetTodolistOrGroup",
+        "UpdateTodolistOrGroup",
+      ]);
+      // Scoped to the todolist id (unsuffixed {id} path param) on both legs.
+      expect(operations.map((o) => o.resourceId)).toEqual([42, 42]);
+    });
+  });
+
+  describe("edit", () => {
+    it("hands the callback current state and PUTs everything back", async () => {
+      let putBody: Record<string, unknown> = {};
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist());
+        }),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(42, { name: "🚨 Hardware" }));
+        })
+      );
+
+      const todolist = await client.todolists.edit(42, (t) => {
+        expect(t.name).toBe("Hardware");
+        expect(t.description).toBe("<p>Ship the hardware</p>");
+        t.name = `🚨 ${t.name}`;
+      });
+
+      expect(requests).toEqual(["GET", "PUT"]);
+      expect(putBody).toEqual({
+        name: "🚨 Hardware",
+        description: "<p>Ship the hardware</p>",
+      });
+      expect(todolist.name).toBe("🚨 Hardware");
+    });
+
+    it("clears the description by setting it empty — present-and-empty in the PUT body", async () => {
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(42, { description: "" }));
+        })
+      );
+
+      await client.todolists.edit(42, (t) => {
+        t.description = "";
+      });
+
+      expect(putBody).toEqual({ name: "Hardware", description: "" });
+      expect(putBody.description).not.toBeNull();
+    });
+
+    it("supports async callbacks", async () => {
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      await client.todolists.edit(42, async (t) => {
+        await Promise.resolve();
+        t.name = "Async rename";
+      });
+
+      expect(putBody.name).toBe("Async rename");
+    });
+
+    it("aborts without a PUT when the callback throws", async () => {
+      let putCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, () => {
+          putCount++;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      await expect(
+        client.todolists.edit(42, () => {
+          throw new Error("abort before the write");
+        })
+      ).rejects.toThrow("abort before the write");
+      expect(putCount).toBe(0);
+    });
+
+    it("aborts without a PUT when the callback rejects", async () => {
+      let putCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, () => {
+          putCount++;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      await expect(
+        client.todolists.edit(42, async () => {
+          await Promise.resolve();
+          throw new Error("async abort");
+        })
+      ).rejects.toThrow("async abort");
+      expect(putCount).toBe(0);
+    });
+
+    it("rejects an emptied name before the PUT — the server presence-validates it", async () => {
+      let putCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => HttpResponse.json(describedTodolist())),
+        http.put(`${BASE_URL}/todolists/42`, () => {
+          putCount++;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      const error = await client.todolists
+        .edit(42, (t) => {
+          t.name = "";
+        })
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      // `usage`, not `validation`. The composite now owns the caller-emptied
+      // name so it can classify by origin, which also aligns TypeScript with the
+      // other four SDKs (Python/Ruby UsageError, Kotlin Usage, Swift usage).
+      // Previously TS was the odd one out, inheriting `validation` from the
+      // generated `replace()` — a third code for the same condition. That
+      // generated error still governs direct `replace()` callers, where the name
+      // really is the caller's (asserted separately below).
+      expect((error as BasecampError).code).toBe("usage");
+      expect((error as BasecampError).message).toMatch(/name must not be empty/);
+      expect(putCount).toBe(0);
+    });
+  });
+
+  describe("replace", () => {
+    it("sends the request verbatim in a single PUT — no GET, omissions kept", async () => {
+      const requests: string[] = [];
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/42`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist());
+        }),
+        http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(42, { name: "The whole new list", description: "" }));
+        })
+      );
+
+      await client.todolists.replace(42, { name: "The whole new list" });
+
+      expect(requests).toEqual(["PUT"]);
+      expect(putBody).toEqual({ name: "The whole new list" });
+      expect(putBody).not.toHaveProperty("description");
+    });
+
+    it("rejects a missing name without a request", async () => {
+      let putCount = 0;
+      server.use(
+        http.put(`${BASE_URL}/todolists/42`, () => {
+          putCount++;
+          return HttpResponse.json(describedTodolist());
+        })
+      );
+
+      const error = await client.todolists.replace(42, { name: "" }).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("validation");
+      expect((error as BasecampError).message).toBe("Name is required");
+      expect(putCount).toBe(0);
     });
 
     it("scopes the resource to the todolist id (unsuffixed {id} path param)", async () => {
@@ -170,7 +829,7 @@ describe("TodolistsService", () => {
         http.put(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(sampleTodolist(id)))
       );
 
-      await hookedClient.todolists.update(id, { name: "Updated list" });
+      await hookedClient.todolists.replace(id, { name: "Updated list" });
 
       expect(captured?.operation).toBe("UpdateTodolistOrGroup");
       expect(captured?.resourceId).toBe(id);

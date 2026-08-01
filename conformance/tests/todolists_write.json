@@ -1,0 +1,587 @@
+[
+  {
+    "name": "update-merge: name-only update preserves the description",
+    "description": "The merge-safe update GETs the current todolist, overlays only the explicitly-set fields, and PUTs the full representation back. BC3's TodolistsController#update rebuilds the recordable from the permitted params, so a name-only sparse PUT would erase the description; the composite must carry it over. Two requests: GET then PUT, both pinned by path and method.",
+    "operation": "UpdateTodolist",
+    "method": "PUT",
+    "path": "/todolists/{id}",
+    "pathParams": {
+      "id": 2
+    },
+    "requestBody": {
+      "name": "Renamed list"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Hardware",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 3,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/999/buckets/1/todosets/3.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todosets/3"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "<p>Ship the hardware</p>",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "0/3",
+          "name": "Hardware",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/todos.json",
+          "groups_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/groups.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/2/todos"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Renamed list",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 3,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/999/buckets/1/todosets/3.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todosets/3"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "<p>Ship the hardware</p>",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "0/3",
+          "name": "Renamed list",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/todos.json",
+          "groups_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/groups.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/2/todos"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todolists/2",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todolists/2",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "name",
+        "expected": "Renamed list",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "<p>Ship the hardware</p>",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "todolists",
+      "write",
+      "merge"
+    ]
+  },
+  {
+    "name": "update-group: the same composite preserves a todolist group's description",
+    "description": "The PUT /todolists/{id} route is polymorphic \u2014 it addresses a todolist or a todolist group \u2014 and BC3 renders both through todolists/_todolist.json.jbuilder, so the two projections are wire-identical apart from groups_url vs group_position_url. The composite is deliberately variant-agnostic: it preserves {name, description} for a group exactly as it does for a list, with no type-sniffing.",
+    "operation": "UpdateTodolist",
+    "method": "PUT",
+    "path": "/todolists/{id}",
+    "pathParams": {
+      "id": 2
+    },
+    "requestBody": {
+      "name": "Renamed group"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Peripherals",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Hardware",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "<p>Ship the hardware</p>",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "0/3",
+          "name": "Peripherals",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/todos.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/2/todos",
+          "group_position_url": "https://3.basecampapi.com/999/buckets/1/todolists/groups/4/position.json"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Renamed group",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Hardware",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "<p>Ship the hardware</p>",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "0/3",
+          "name": "Renamed group",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/todos.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/2/todos",
+          "group_position_url": "https://3.basecampapi.com/999/buckets/1/todolists/groups/4/position.json"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todolists/2",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todolists/2",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "name",
+        "expected": "Renamed group",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "<p>Ship the hardware</p>",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "todolists",
+      "write",
+      "merge",
+      "group"
+    ]
+  },
+  {
+    "name": "edit-clear: clearing the description leaves the name intact",
+    "description": "The edit closure receives the todolist's full writable state; the runner assigns each requestBody key onto the corresponding field. Clearing the description (set empty) must arrive present-and-empty in the PUT body \u2014 never as JSON null (SPEC section 18 body compaction) \u2014 while the untouched name is carried over from the GET.",
+    "operation": "EditTodolist",
+    "method": "PUT",
+    "path": "/todolists/{id}",
+    "pathParams": {
+      "id": 2
+    },
+    "requestBody": {
+      "description": ""
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Hardware",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 3,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/999/buckets/1/todosets/3.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todosets/3"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "<p>Ship the hardware</p>",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "0/3",
+          "name": "Hardware",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/todos.json",
+          "groups_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/groups.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/2/todos"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Hardware",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 3,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/999/buckets/1/todosets/3.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todosets/3"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "0/3",
+          "name": "Hardware",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/todos.json",
+          "groups_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/groups.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/2/todos"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todolists/2",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todolists/2",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "name",
+        "expected": "Hardware",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "todolists",
+      "write",
+      "edit",
+      "clear"
+    ]
+  },
+  {
+    "name": "replace-omission-clears: sparse replace sends the request verbatim with no GET",
+    "description": "Replace is the server-native verbatim PUT and the raw operation SPEC section 18 rule 6 keeps reachable: exactly one request, no read-before-write, and any field omitted from the request is omitted from the body (the server clears it). name is required and must be present. Without this case, generator drift could turn both public methods into composite behaviour unnoticed.",
+    "operation": "ReplaceTodolist",
+    "method": "PUT",
+    "path": "/todolists/{id}",
+    "pathParams": {
+      "id": 2
+    },
+    "requestBody": {
+      "name": "The whole new list"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "The whole new list",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 3,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/999/buckets/1/todosets/3.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todosets/3"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "0/3",
+          "name": "The whole new list",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/todos.json",
+          "groups_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/groups.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/2/todos"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todolists/2",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "name",
+        "expected": "The whole new list",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "description",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "todolists",
+      "write",
+      "replace"
+    ]
+  }
+]

@@ -2998,6 +2998,10 @@
     },
     "UpdateTodolistOrGroup": {
       "idempotent": true,
+      "write": {
+        "mode": "replace",
+        "clearsOmitted": true
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
