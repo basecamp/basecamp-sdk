@@ -1501,7 +1501,7 @@ func cardFromGenerated(gc generated.Card) Card {
 	}
 
 	// Handle completed_at
-	if gc.CompletedAt != nil && !gc.CompletedAt.IsZero() {
+	if gc.CompletedAt != nil {
 		c.CompletedAt = gc.CompletedAt
 	}
 
@@ -1587,7 +1587,7 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 	}
 
 	// Handle completed_at
-	if gs.CompletedAt != nil && !gs.CompletedAt.IsZero() {
+	if gs.CompletedAt != nil {
 		s.CompletedAt = gs.CompletedAt
 	}
 

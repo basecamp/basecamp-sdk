@@ -35,7 +35,10 @@ FIELD = /\A\t(\w+)\s+(\S+)\s+`([^`]*)`/
 # Tag keys may contain any character except space, quote, and colon (Go's
 # StructTag grammar), so match that class rather than \w — a key like `url-`
 # would otherwise slip past and take its field out of the guard's scope.
-OMITEMPTY = /[^\s":]+:"[^"]*,omitempty[^"]*"/
+# The option must be terminated by a comma or the closing quote: Go splits tag
+# values on commas, so `omitemptyfoo` is a DIFFERENT option, and matching it as
+# omitempty would let this guard reject a field that is not optional at all.
+OMITEMPTY = /[^\s":]+:"[^"]*,omitempty(?:,[^"]*)?"/
 
 # Read with an explicit UTF-8 external encoding: client.gen.go carries
 # multibyte characters in doc comments (e.g. →), and under a non-UTF-8 locale

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
@@ -219,5 +220,25 @@ func TestMoveCardColumn_RejectsOutOfRangePosition(t *testing.T) {
 	apiErr, ok := errors.AsType[*Error](err)
 	if !ok || apiErr.Code != CodeUsage {
 		t.Errorf("expected a usage error, got: %v", err)
+	}
+}
+
+// Card and CardStep expose CompletedAt as *time.Time, so presence is already
+// representable — an `!IsZero()` guard on top of the nil check threw that away,
+// collapsing a present (if implausible) zero timestamp into "never completed".
+func TestCardFromGenerated_PresentZeroCompletedAtSurvives(t *testing.T) {
+	var zero time.Time
+
+	card := cardFromGenerated(generated.Card{CompletedAt: &zero})
+	if card.CompletedAt == nil {
+		t.Error("a present zero completed_at must survive as non-nil")
+	}
+	step := cardStepFromGenerated(generated.CardStep{CompletedAt: &zero})
+	if step.CompletedAt == nil {
+		t.Error("a present zero completed_at must survive as non-nil on steps")
+	}
+
+	if absent := cardFromGenerated(generated.Card{}); absent.CompletedAt != nil {
+		t.Error("an absent completed_at must stay nil")
 	}
 }
