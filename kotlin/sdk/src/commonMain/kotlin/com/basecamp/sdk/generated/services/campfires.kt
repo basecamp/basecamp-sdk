@@ -16,7 +16,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
      * List all campfires across the account
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(options: PaginationOptions? = null): ListResult<Campfire> {
+    suspend fun list(options: ListCampfiresOptions): ListResult<Campfire> {
         val info = OperationInfo(
             service = "Campfires",
             operation = "ListCampfires",
@@ -25,12 +25,28 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
-        return requestPaginated(info, options, {
-            httpGet("/chats.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options.page,
+        )
+        return requestPaginated(info, options.toPaginationOptions(), {
+            httpGet("/chats.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Campfire>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
+     *
+     * Prefer [ListCampfiresOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [list] needs an expected type to disambiguate.
+     */
+    suspend fun list(options: PaginationOptions? = null): ListResult<Campfire> =
+        list(ListCampfiresOptions(maxItems = options?.maxItems))
 
     /**
      * Get a campfire by ID
@@ -179,6 +195,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
         val qs = buildQueryString(
             "sort" to options?.sort,
             "direction" to options?.direction,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/chats/${campfireId}/lines.json" + qs, operationName = info.operation)
@@ -290,6 +307,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
         val qs = buildQueryString(
             "sort" to options?.sort,
             "direction" to options?.direction,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/chats/${campfireId}/uploads.json" + qs, operationName = info.operation)

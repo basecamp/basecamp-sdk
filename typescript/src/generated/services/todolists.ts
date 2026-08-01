@@ -41,6 +41,8 @@ export interface RepositionTodolistRequest {
 export interface ListTodolistOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -190,7 +192,7 @@ export class TodolistsService extends BaseService {
         this.client.GET("/todosets/{todosetId}/todolists.json", {
           params: {
             path: { todosetId },
-            query: { status: options?.status },
+            query: { status: options?.status, page: options?.page },
           },
         })
       , options

@@ -2,13 +2,22 @@
 import Foundation
 
 public struct ListTodoOptions: Sendable {
+    /// active|archived|trashed
     public var status: String?
     public var completed: Bool?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(status: String? = nil, completed: Bool? = nil, maxItems: Int? = nil) {
+    public init(
+        status: String? = nil,
+        completed: Bool? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
         self.status = status
         self.completed = completed
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -60,6 +69,9 @@ public final class TodosService: BaseService, @unchecked Sendable {
         }
         if let completed = options?.completed {
             queryItems.append(URLQueryItem(name: "completed", value: String(completed)))
+        }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "Todos", operation: "ListTodos", resourceType: "todo", isMutation: false, resourceId: todolistId),

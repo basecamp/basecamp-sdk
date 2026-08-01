@@ -10,11 +10,12 @@ module Basecamp
       # List all client approvals in a project
       # @param sort [String, nil] created_at|updated_at
       # @param direction [String, nil] asc|desc
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list(sort: nil, direction: nil, max_items: nil)
+      def list(sort: nil, direction: nil, page: nil, max_items: nil)
         wrap_paginated(service: "clientapprovals", operation: "list", is_mutation: false) do
-          params = compact_query_params(sort: sort, direction: direction)
+          params = compact_query_params(sort: sort, direction: direction, page: page)
           paginate("/client/approvals.json", params: params, operation: "ListClientApprovals", max_items: max_items)
         end
       end

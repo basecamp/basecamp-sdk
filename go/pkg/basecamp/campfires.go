@@ -23,7 +23,7 @@ type CampfireListOptions struct {
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page, if positive, fetches only that page and disables auto-pagination.
 	Page int
 }
 
@@ -39,7 +39,7 @@ type CampfireLineListOptions struct {
 	// If 0, uses DefaultCampfireLineLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page, if positive, fetches only that page and disables auto-pagination.
 	Page int
 }
 
@@ -55,7 +55,7 @@ type CampfireUploadListOptions struct {
 	// If 0, uses DefaultCampfireUploadLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page, if positive, fetches only that page and disables auto-pagination.
 	Page int
 }
 
@@ -196,7 +196,7 @@ func NewCampfiresService(client *AccountClient) *CampfiresService {
 //
 // Pagination options:
 //   - Limit: maximum number of campfires to return (0 = all, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned CampfireListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -214,7 +214,16 @@ func (s *CampfiresService) List(ctx context.Context, opts *CampfireListOptions) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListCampfiresWithResponse(ctx, s.client.accountID)
+	var params *generated.ListCampfiresParams
+	if opts != nil && opts.Page > 0 {
+		var page *int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListCampfiresParams{Page: page}
+	}
+
+	resp, err := s.client.parent.gen.ListCampfiresWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +318,7 @@ func (s *CampfiresService) Get(ctx context.Context, campfireID int64) (result *C
 //
 // Pagination options:
 //   - Limit: maximum number of lines to return (0 = 100, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned CampfireLineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -329,10 +338,17 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64, opts
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.ListCampfireLinesParams
-	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+	if opts != nil && (opts.Sort != "" || opts.Direction != "" || opts.Page > 0) {
 		params = &generated.ListCampfireLinesParams{
 			Sort:      omitzero(opts.Sort),
 			Direction: omitzero(opts.Direction),
+		}
+		if opts.Page > 0 {
+			var page *int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 
@@ -549,7 +565,7 @@ func (s *CampfiresService) DeleteLine(ctx context.Context, campfireID, lineID in
 //
 // Pagination options:
 //   - Limit: maximum number of uploads to return (0 = 100, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned CampfireLineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -569,10 +585,17 @@ func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64, op
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var uploadParams *generated.ListCampfireUploadsParams
-	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+	if opts != nil && (opts.Sort != "" || opts.Direction != "" || opts.Page > 0) {
 		uploadParams = &generated.ListCampfireUploadsParams{
 			Sort:      omitzero(opts.Sort),
 			Direction: omitzero(opts.Direction),
+		}
+		if opts.Page > 0 {
+			var page *int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			uploadParams.Page = page
 		}
 	}
 
@@ -701,7 +724,9 @@ type ChatbotListOptions struct {
 	// If 0 (default), returns all chatbots.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page: the page number is ignored -- this endpoint is not paginated
+	// server-side -- but any positive value still disables auto-pagination,
+	// returning the single response as-is without applying Limit.
 	Page int
 }
 
@@ -718,7 +743,9 @@ type ChatbotListResult struct {
 //
 // Pagination options:
 //   - Limit: maximum number of chatbots to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: the page number is ignored (this endpoint is not paginated
+//     server-side), but any positive value still disables auto-pagination,
+//     returning the single response as-is without applying Limit
 //
 // The returned ChatbotListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

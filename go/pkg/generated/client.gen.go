@@ -3458,6 +3458,12 @@ type CreateAttachmentParams struct {
 	Name string `form:"name" json:"name"`
 }
 
+// ListCardsParams defines parameters for ListCards.
+type ListCardsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // GetEverythingCompletedCardsParams defines parameters for GetEverythingCompletedCards.
 type GetEverythingCompletedCardsParams struct {
 	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
@@ -3467,7 +3473,7 @@ type GetEverythingCompletedCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3480,7 +3486,7 @@ type GetEverythingNoDueDateCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3493,7 +3499,7 @@ type GetEverythingNotNowCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3506,7 +3512,7 @@ type GetEverythingOpenCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3529,7 +3535,13 @@ type GetEverythingUnassignedCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListCampfiresParams defines parameters for ListCampfires.
+type ListCampfiresParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3540,6 +3552,9 @@ type ListCampfireLinesParams struct {
 
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListCampfireUploadsParams defines parameters for ListCampfireUploads.
@@ -3549,6 +3564,9 @@ type ListCampfireUploadsParams struct {
 
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // CreateCampfireUploadParams defines parameters for CreateCampfireUpload.
@@ -3559,7 +3577,7 @@ type CreateCampfireUploadParams struct {
 
 // GetEverythingCheckinsParams defines parameters for GetEverythingCheckins.
 type GetEverythingCheckinsParams struct {
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3570,6 +3588,9 @@ type ListClientApprovalsParams struct {
 
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListClientCorrespondencesParams defines parameters for ListClientCorrespondences.
@@ -3579,11 +3600,20 @@ type ListClientCorrespondencesParams struct {
 
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListClientRepliesParams defines parameters for ListClientReplies.
+type ListClientRepliesParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingCommentsParams defines parameters for GetEverythingComments.
 type GetEverythingCommentsParams struct {
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3595,13 +3625,19 @@ type GetEverythingFilesParams struct {
 	// PeopleIds Restrict to files created by the given people (repeatable).
 	PeopleIds *[]int64 `form:"people_ids[],omitempty" json:"people_ids[],omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingForwardsParams defines parameters for GetEverythingForwards.
 type GetEverythingForwardsParams struct {
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListForwardRepliesParams defines parameters for ListForwardReplies.
+type ListForwardRepliesParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3612,6 +3648,9 @@ type ListForwardsParams struct {
 
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListMessagesParams defines parameters for ListMessages.
@@ -3621,11 +3660,14 @@ type ListMessagesParams struct {
 
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingMessagesParams defines parameters for GetEverythingMessages.
 type GetEverythingMessagesParams struct {
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3638,19 +3680,27 @@ type GetMyDueAssignmentsParams struct {
 
 // ListMyBookmarksParams defines parameters for ListMyBookmarks.
 type ListMyBookmarksParams struct {
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListMyDraftsParams defines parameters for ListMyDrafts.
 type ListMyDraftsParams struct {
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetQuestionRemindersParams defines parameters for GetQuestionReminders.
+type GetQuestionRemindersParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetMyNotificationsParams defines parameters for GetMyNotifications.
 type GetMyNotificationsParams struct {
-	// Page Page number for paginating through read items. Defaults to 1.
+	// Page Page number for paginating through read items. Defaults to 1. This
+	// operation is not auto-paginated in any SDK, so a page is returned as
+	// asked for and later pages are not followed.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 
 	// LimitBubbleUps Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
@@ -3662,7 +3712,13 @@ type GetMyNotificationsParams struct {
 
 // GetBubbleUpsParams defines parameters for GetBubbleUps.
 type GetBubbleUpsParams struct {
-	// Page Page number. Defaults to 1.
+	// Page Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListPeopleParams defines parameters for ListPeople.
+type ListPeopleParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3670,6 +3726,9 @@ type GetBubbleUpsParams struct {
 type ListProjectsParams struct {
 	// Status active|archived|trashed
 	Status *string `form:"status,omitempty" json:"status,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListRecordingsParams defines parameters for ListRecordings.
@@ -3686,6 +3745,27 @@ type ListRecordingsParams struct {
 
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListGaugeNeedlesParams defines parameters for ListGaugeNeedles.
+type ListGaugeNeedlesParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListProjectPeopleParams defines parameters for ListProjectPeople.
+type ListProjectPeopleParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetProjectTimelineParams defines parameters for GetProjectTimeline.
+type GetProjectTimelineParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetProjectTimesheetParams defines parameters for GetProjectTimesheet.
@@ -3693,6 +3773,51 @@ type GetProjectTimesheetParams struct {
 	From     *string `form:"from,omitempty" json:"from,omitempty"`
 	To       *string `form:"to,omitempty" json:"to,omitempty"`
 	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListQuestionsParams defines parameters for ListQuestions.
+type ListQuestionsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListAnswersParams defines parameters for ListAnswers.
+type ListAnswersParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetAnswersByPersonParams defines parameters for GetAnswersByPerson.
+type GetAnswersByPersonParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListRecordingBoostsParams defines parameters for ListRecordingBoosts.
+type ListRecordingBoostsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListCommentsParams defines parameters for ListComments.
+type ListCommentsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListEventsParams defines parameters for ListEvents.
+type ListEventsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListEventBoostsParams defines parameters for ListEventBoosts.
+type ListEventBoostsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetRecordingTimesheetParams defines parameters for GetRecordingTimesheet.
@@ -3700,6 +3825,9 @@ type GetRecordingTimesheetParams struct {
 	From     *string `form:"from,omitempty" json:"from,omitempty"`
 	To       *string `form:"to,omitempty" json:"to,omitempty"`
 	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListGaugesParams defines parameters for ListGauges.
@@ -3707,6 +3835,15 @@ type ListGaugesParams struct {
 	// BucketIds Comma-separated list of project IDs. When provided, results are returned
 	// in the order specified instead of by risk level.
 	BucketIds *string `form:"bucket_ids,omitempty" json:"bucket_ids,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetProgressReportParams defines parameters for GetProgressReport.
+type GetProgressReportParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetUpcomingScheduleParams defines parameters for GetUpcomingSchedule.
@@ -3728,10 +3865,19 @@ type GetAssignedTodosParams struct {
 	GroupBy *string `form:"group_by,omitempty" json:"group_by,omitempty"`
 }
 
+// GetPersonProgressParams defines parameters for GetPersonProgress.
+type GetPersonProgressParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // ListScheduleEntriesParams defines parameters for ListScheduleEntries.
 type ListScheduleEntriesParams struct {
 	// Status active|archived|trashed
 	Status *string `form:"status,omitempty" json:"status,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // SearchParams defines parameters for Search.
@@ -3775,12 +3921,24 @@ type SearchParams struct {
 	//
 	// Deprecated: prefer creator_ids[].
 	CreatorId *int64 `form:"creator_id,omitempty" json:"creator_id,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListTemplatesParams defines parameters for ListTemplates.
 type ListTemplatesParams struct {
 	// Status active|archived|trashed
 	Status *string `form:"status,omitempty" json:"status,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListTodolistGroupsParams defines parameters for ListTodolistGroups.
+type ListTodolistGroupsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListTodosParams defines parameters for ListTodos.
@@ -3788,6 +3946,9 @@ type ListTodosParams struct {
 	// Status active|archived|trashed
 	Status    *string `form:"status,omitempty" json:"status,omitempty"`
 	Completed *bool   `form:"completed,omitempty" json:"completed,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingCompletedTodosParams defines parameters for GetEverythingCompletedTodos.
@@ -3799,7 +3960,7 @@ type GetEverythingCompletedTodosParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3812,7 +3973,7 @@ type GetEverythingNoDueDateTodosParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3825,7 +3986,7 @@ type GetEverythingOpenTodosParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3848,7 +4009,7 @@ type GetEverythingUnassignedTodosParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1.
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3856,6 +4017,27 @@ type GetEverythingUnassignedTodosParams struct {
 type ListTodolistsParams struct {
 	// Status active|archived|trashed
 	Status *string `form:"status,omitempty" json:"status,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListDocumentsParams defines parameters for ListDocuments.
+type ListDocumentsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListUploadsParams defines parameters for ListUploads.
+type ListUploadsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListVaultsParams defines parameters for ListVaults.
+type ListVaultsParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // UpdateAccountLogoMultipartRequestBody defines body for UpdateAccountLogo for multipart/form-data ContentType.
@@ -4762,7 +4944,7 @@ type ClientInterface interface {
 	UpdateCardColumn(ctx context.Context, accountId string, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCards request
-	ListCards(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCards(ctx context.Context, accountId string, columnId int64, params *ListCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCardWithBody request with any body
 	CreateCardWithBody(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4820,7 +5002,7 @@ type ClientInterface interface {
 	GetEverythingUnassignedCards(ctx context.Context, accountId string, params *GetEverythingUnassignedCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfires request
-	ListCampfires(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCampfires(ctx context.Context, accountId string, params *ListCampfiresParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCampfire request
 	GetCampfire(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4888,7 +5070,7 @@ type ClientInterface interface {
 	GetClientCorrespondence(ctx context.Context, accountId string, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListClientReplies request
-	ListClientReplies(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListClientReplies(ctx context.Context, accountId string, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClientReply request
 	GetClientReply(ctx context.Context, accountId string, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4944,7 +5126,7 @@ type ClientInterface interface {
 	GetForward(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListForwardReplies request
-	ListForwardReplies(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListForwardReplies(ctx context.Context, accountId string, forwardId int64, params *ListForwardRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateForwardReplyWithBody request with any body
 	CreateForwardReplyWithBody(ctx context.Context, accountId string, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5051,7 +5233,7 @@ type ClientInterface interface {
 	UpdateMyProfile(ctx context.Context, accountId string, body UpdateMyProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetQuestionReminders request
-	GetQuestionReminders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetQuestionReminders(ctx context.Context, accountId string, params *GetQuestionRemindersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyNotifications request
 	GetMyNotifications(ctx context.Context, accountId string, params *GetMyNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5065,7 +5247,7 @@ type ClientInterface interface {
 	MarkAsRead(ctx context.Context, accountId string, body MarkAsReadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPeople request
-	ListPeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListPeople(ctx context.Context, accountId string, params *ListPeopleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPerson request
 	GetPerson(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5109,7 +5291,7 @@ type ClientInterface interface {
 	ToggleGauge(ctx context.Context, accountId string, projectId int64, body ToggleGaugeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGaugeNeedles request
-	ListGaugeNeedles(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListGaugeNeedles(ctx context.Context, accountId string, projectId int64, params *ListGaugeNeedlesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateGaugeNeedleWithBody request with any body
 	CreateGaugeNeedleWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5117,7 +5299,7 @@ type ClientInterface interface {
 	CreateGaugeNeedle(ctx context.Context, accountId string, projectId int64, body CreateGaugeNeedleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectPeople request
-	ListProjectPeople(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectPeople(ctx context.Context, accountId string, projectId int64, params *ListProjectPeopleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectAccessWithBody request with any body
 	UpdateProjectAccessWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5125,7 +5307,7 @@ type ClientInterface interface {
 	UpdateProjectAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectTimeline request
-	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, params *GetProjectTimelineParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectTimesheet request
 	GetProjectTimesheet(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5142,7 +5324,7 @@ type ClientInterface interface {
 	GetQuestionnaire(ctx context.Context, accountId string, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListQuestions request
-	ListQuestions(ctx context.Context, accountId string, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListQuestions(ctx context.Context, accountId string, questionnaireId int64, params *ListQuestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateQuestionWithBody request with any body
 	CreateQuestionWithBody(ctx context.Context, accountId string, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5158,7 +5340,7 @@ type ClientInterface interface {
 	UpdateQuestion(ctx context.Context, accountId string, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListAnswers request
-	ListAnswers(ctx context.Context, accountId string, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListAnswers(ctx context.Context, accountId string, questionId int64, params *ListAnswersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateAnswerWithBody request with any body
 	CreateAnswerWithBody(ctx context.Context, accountId string, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5169,7 +5351,7 @@ type ClientInterface interface {
 	ListQuestionAnswerers(ctx context.Context, accountId string, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAnswersByPerson request
-	GetAnswersByPerson(ctx context.Context, accountId string, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetAnswersByPerson(ctx context.Context, accountId string, questionId int64, personId int64, params *GetAnswersByPersonParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateQuestionNotificationSettingsWithBody request with any body
 	UpdateQuestionNotificationSettingsWithBody(ctx context.Context, accountId string, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5201,7 +5383,7 @@ type ClientInterface interface {
 	CreateBookmark(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRecordingBoosts request
-	ListRecordingBoosts(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListRecordingBoosts(ctx context.Context, accountId string, recordingId int64, params *ListRecordingBoostsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateRecordingBoostWithBody request with any body
 	CreateRecordingBoostWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5214,7 +5396,7 @@ type ClientInterface interface {
 	SetClientVisibility(ctx context.Context, accountId string, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListComments request
-	ListComments(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListComments(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCommentWithBody request with any body
 	CreateCommentWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5222,10 +5404,10 @@ type ClientInterface interface {
 	CreateComment(ctx context.Context, accountId string, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListEvents request
-	ListEvents(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListEvents(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListEventBoosts request
-	ListEventBoosts(ctx context.Context, accountId string, recordingId int64, eventId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListEventBoosts(ctx context.Context, accountId string, recordingId int64, eventId int64, params *ListEventBoostsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateEventBoostWithBody request with any body
 	CreateEventBoostWithBody(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5278,7 +5460,7 @@ type ClientInterface interface {
 	ListGauges(ctx context.Context, accountId string, params *ListGaugesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProgressReport request
-	GetProgressReport(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProgressReport(ctx context.Context, accountId string, params *GetProgressReportParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetUpcomingSchedule request
 	GetUpcomingSchedule(ctx context.Context, accountId string, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5296,7 +5478,7 @@ type ClientInterface interface {
 	GetOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPersonProgress request
-	GetPersonProgress(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetPersonProgress(ctx context.Context, accountId string, personId int64, params *GetPersonProgressParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetScheduleEntry request
 	GetScheduleEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5380,7 +5562,7 @@ type ClientInterface interface {
 	UpdateTodolistOrGroup(ctx context.Context, accountId string, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTodolistGroups request
-	ListTodolistGroups(ctx context.Context, accountId string, todolistId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListTodolistGroups(ctx context.Context, accountId string, todolistId int64, params *ListTodolistGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodolistGroupWithBody request with any body
 	CreateTodolistGroupWithBody(ctx context.Context, accountId string, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5476,7 +5658,7 @@ type ClientInterface interface {
 	UpdateVault(ctx context.Context, accountId string, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDocuments request
-	ListDocuments(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListDocuments(ctx context.Context, accountId string, vaultId int64, params *ListDocumentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateDocumentWithBody request with any body
 	CreateDocumentWithBody(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5484,7 +5666,7 @@ type ClientInterface interface {
 	CreateDocument(ctx context.Context, accountId string, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListUploads request
-	ListUploads(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListUploads(ctx context.Context, accountId string, vaultId int64, params *ListUploadsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUploadWithBody request with any body
 	CreateUploadWithBody(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5492,7 +5674,7 @@ type ClientInterface interface {
 	CreateUpload(ctx context.Context, accountId string, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListVaults request
-	ListVaults(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListVaults(ctx context.Context, accountId string, vaultId int64, params *ListVaultsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateVaultWithBody request with any body
 	CreateVaultWithBody(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6045,10 +6227,10 @@ func (c *Client) UpdateCardColumn(ctx context.Context, accountId string, columnI
 
 // ListCards is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCards(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCards(ctx context.Context, accountId string, columnId int64, params *ListCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCardsRequest(c.Server, accountId, columnId)
+		return NewListCardsRequest(c.Server, accountId, columnId, params)
 	}, true, "ListCards", reqEditors...)
 
 }
@@ -6281,10 +6463,10 @@ func (c *Client) GetEverythingUnassignedCards(ctx context.Context, accountId str
 
 // ListCampfires is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCampfires(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCampfires(ctx context.Context, accountId string, params *ListCampfiresParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCampfiresRequest(c.Server, accountId)
+		return NewListCampfiresRequest(c.Server, accountId, params)
 	}, true, "ListCampfires", reqEditors...)
 
 }
@@ -6543,10 +6725,10 @@ func (c *Client) GetClientCorrespondence(ctx context.Context, accountId string, 
 
 // ListClientReplies is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListClientReplies(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListClientReplies(ctx context.Context, accountId string, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListClientRepliesRequest(c.Server, accountId, recordingId)
+		return NewListClientRepliesRequest(c.Server, accountId, recordingId, params)
 	}, true, "ListClientReplies", reqEditors...)
 
 }
@@ -6735,10 +6917,10 @@ func (c *Client) GetForward(ctx context.Context, accountId string, forwardId int
 
 // ListForwardReplies is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListForwardReplies(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListForwardReplies(ctx context.Context, accountId string, forwardId int64, params *ListForwardRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListForwardRepliesRequest(c.Server, accountId, forwardId)
+		return NewListForwardRepliesRequest(c.Server, accountId, forwardId, params)
 	}, true, "ListForwardReplies", reqEditors...)
 
 }
@@ -7153,10 +7335,10 @@ func (c *Client) UpdateMyProfile(ctx context.Context, accountId string, body Upd
 
 // GetQuestionReminders is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetQuestionReminders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetQuestionReminders(ctx context.Context, accountId string, params *GetQuestionRemindersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetQuestionRemindersRequest(c.Server, accountId)
+		return NewGetQuestionRemindersRequest(c.Server, accountId, params)
 	}, true, "GetQuestionReminders", reqEditors...)
 
 }
@@ -7201,10 +7383,10 @@ func (c *Client) MarkAsRead(ctx context.Context, accountId string, body MarkAsRe
 
 // ListPeople is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListPeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListPeople(ctx context.Context, accountId string, params *ListPeopleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListPeopleRequest(c.Server, accountId)
+		return NewListPeopleRequest(c.Server, accountId, params)
 	}, true, "ListPeople", reqEditors...)
 
 }
@@ -7377,10 +7559,10 @@ func (c *Client) ToggleGauge(ctx context.Context, accountId string, projectId in
 
 // ListGaugeNeedles is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListGaugeNeedles(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListGaugeNeedles(ctx context.Context, accountId string, projectId int64, params *ListGaugeNeedlesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListGaugeNeedlesRequest(c.Server, accountId, projectId)
+		return NewListGaugeNeedlesRequest(c.Server, accountId, projectId, params)
 	}, true, "ListGaugeNeedles", reqEditors...)
 
 }
@@ -7417,10 +7599,10 @@ func (c *Client) CreateGaugeNeedle(ctx context.Context, accountId string, projec
 
 // ListProjectPeople is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListProjectPeople(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListProjectPeople(ctx context.Context, accountId string, projectId int64, params *ListProjectPeopleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListProjectPeopleRequest(c.Server, accountId, projectId)
+		return NewListProjectPeopleRequest(c.Server, accountId, projectId, params)
 	}, true, "ListProjectPeople", reqEditors...)
 
 }
@@ -7445,10 +7627,10 @@ func (c *Client) UpdateProjectAccess(ctx context.Context, accountId string, proj
 
 // GetProjectTimeline is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProjectTimeline(ctx context.Context, accountId string, projectId int64, params *GetProjectTimelineParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProjectTimelineRequest(c.Server, accountId, projectId)
+		return NewGetProjectTimelineRequest(c.Server, accountId, projectId, params)
 	}, true, "GetProjectTimeline", reqEditors...)
 
 }
@@ -7503,10 +7685,10 @@ func (c *Client) GetQuestionnaire(ctx context.Context, accountId string, questio
 
 // ListQuestions is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListQuestions(ctx context.Context, accountId string, questionnaireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListQuestions(ctx context.Context, accountId string, questionnaireId int64, params *ListQuestionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListQuestionsRequest(c.Server, accountId, questionnaireId)
+		return NewListQuestionsRequest(c.Server, accountId, questionnaireId, params)
 	}, true, "ListQuestions", reqEditors...)
 
 }
@@ -7571,10 +7753,10 @@ func (c *Client) UpdateQuestion(ctx context.Context, accountId string, questionI
 
 // ListAnswers is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListAnswers(ctx context.Context, accountId string, questionId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListAnswers(ctx context.Context, accountId string, questionId int64, params *ListAnswersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListAnswersRequest(c.Server, accountId, questionId)
+		return NewListAnswersRequest(c.Server, accountId, questionId, params)
 	}, true, "ListAnswers", reqEditors...)
 
 }
@@ -7621,10 +7803,10 @@ func (c *Client) ListQuestionAnswerers(ctx context.Context, accountId string, qu
 
 // GetAnswersByPerson is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetAnswersByPerson(ctx context.Context, accountId string, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetAnswersByPerson(ctx context.Context, accountId string, questionId int64, personId int64, params *GetAnswersByPersonParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetAnswersByPersonRequest(c.Server, accountId, questionId, personId)
+		return NewGetAnswersByPersonRequest(c.Server, accountId, questionId, personId, params)
 	}, true, "GetAnswersByPerson", reqEditors...)
 
 }
@@ -7735,10 +7917,10 @@ func (c *Client) CreateBookmark(ctx context.Context, accountId string, recording
 
 // ListRecordingBoosts is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListRecordingBoosts(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListRecordingBoosts(ctx context.Context, accountId string, recordingId int64, params *ListRecordingBoostsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListRecordingBoostsRequest(c.Server, accountId, recordingId)
+		return NewListRecordingBoostsRequest(c.Server, accountId, recordingId, params)
 	}, true, "ListRecordingBoosts", reqEditors...)
 
 }
@@ -7793,10 +7975,10 @@ func (c *Client) SetClientVisibility(ctx context.Context, accountId string, reco
 
 // ListComments is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListComments(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListComments(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCommentsRequest(c.Server, accountId, recordingId)
+		return NewListCommentsRequest(c.Server, accountId, recordingId, params)
 	}, true, "ListComments", reqEditors...)
 
 }
@@ -7833,20 +8015,20 @@ func (c *Client) CreateComment(ctx context.Context, accountId string, recordingI
 
 // ListEvents is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListEvents(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListEvents(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListEventsRequest(c.Server, accountId, recordingId)
+		return NewListEventsRequest(c.Server, accountId, recordingId, params)
 	}, true, "ListEvents", reqEditors...)
 
 }
 
 // ListEventBoosts is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListEventBoosts(ctx context.Context, accountId string, recordingId int64, eventId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListEventBoosts(ctx context.Context, accountId string, recordingId int64, eventId int64, params *ListEventBoostsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListEventBoostsRequest(c.Server, accountId, recordingId, eventId)
+		return NewListEventBoostsRequest(c.Server, accountId, recordingId, eventId, params)
 	}, true, "ListEventBoosts", reqEditors...)
 
 }
@@ -8055,10 +8237,10 @@ func (c *Client) ListGauges(ctx context.Context, accountId string, params *ListG
 
 // GetProgressReport is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetProgressReport(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetProgressReport(ctx context.Context, accountId string, params *GetProgressReportParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetProgressReportRequest(c.Server, accountId)
+		return NewGetProgressReportRequest(c.Server, accountId, params)
 	}, true, "GetProgressReport", reqEditors...)
 
 }
@@ -8115,10 +8297,10 @@ func (c *Client) GetOverdueTodos(ctx context.Context, accountId string, reqEdito
 
 // GetPersonProgress is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetPersonProgress(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetPersonProgress(ctx context.Context, accountId string, personId int64, params *GetPersonProgressParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetPersonProgressRequest(c.Server, accountId, personId)
+		return NewGetPersonProgressRequest(c.Server, accountId, personId, params)
 	}, true, "GetPersonProgress", reqEditors...)
 
 }
@@ -8443,10 +8625,10 @@ func (c *Client) UpdateTodolistOrGroup(ctx context.Context, accountId string, id
 
 // ListTodolistGroups is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListTodolistGroups(ctx context.Context, accountId string, todolistId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListTodolistGroups(ctx context.Context, accountId string, todolistId int64, params *ListTodolistGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListTodolistGroupsRequest(c.Server, accountId, todolistId)
+		return NewListTodolistGroupsRequest(c.Server, accountId, todolistId, params)
 	}, true, "ListTodolistGroups", reqEditors...)
 
 }
@@ -8811,10 +8993,10 @@ func (c *Client) UpdateVault(ctx context.Context, accountId string, vaultId int6
 
 // ListDocuments is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListDocuments(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListDocuments(ctx context.Context, accountId string, vaultId int64, params *ListDocumentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListDocumentsRequest(c.Server, accountId, vaultId)
+		return NewListDocumentsRequest(c.Server, accountId, vaultId, params)
 	}, true, "ListDocuments", reqEditors...)
 
 }
@@ -8851,10 +9033,10 @@ func (c *Client) CreateDocument(ctx context.Context, accountId string, vaultId i
 
 // ListUploads is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListUploads(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListUploads(ctx context.Context, accountId string, vaultId int64, params *ListUploadsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListUploadsRequest(c.Server, accountId, vaultId)
+		return NewListUploadsRequest(c.Server, accountId, vaultId, params)
 	}, true, "ListUploads", reqEditors...)
 
 }
@@ -8891,10 +9073,10 @@ func (c *Client) CreateUpload(ctx context.Context, accountId string, vaultId int
 
 // ListVaults is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListVaults(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListVaults(ctx context.Context, accountId string, vaultId int64, params *ListVaultsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListVaultsRequest(c.Server, accountId, vaultId)
+		return NewListVaultsRequest(c.Server, accountId, vaultId, params)
 	}, true, "ListVaults", reqEditors...)
 
 }
@@ -10491,7 +10673,7 @@ func NewUpdateCardColumnRequestWithBody(server string, accountId string, columnI
 }
 
 // NewListCardsRequest generates requests for ListCards
-func NewListCardsRequest(server string, accountId string, columnId int64) (*http.Request, error) {
+func NewListCardsRequest(server string, accountId string, columnId int64, params *ListCardsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10521,6 +10703,28 @@ func NewListCardsRequest(server string, accountId string, columnId int64) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -11478,7 +11682,7 @@ func NewGetEverythingUnassignedCardsRequest(server string, accountId string, par
 }
 
 // NewListCampfiresRequest generates requests for ListCampfires
-func NewListCampfiresRequest(server string, accountId string) (*http.Request, error) {
+func NewListCampfiresRequest(server string, accountId string, params *ListCampfiresParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -11501,6 +11705,28 @@ func NewListCampfiresRequest(server string, accountId string) (*http.Request, er
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -11872,6 +12098,22 @@ func NewListCampfireLinesRequest(server string, accountId string, campfireId int
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -12162,6 +12404,22 @@ func NewListCampfireUploadsRequest(server string, accountId string, campfireId i
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -12385,6 +12643,22 @@ func NewListClientApprovalsRequest(server string, accountId string, params *List
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -12498,6 +12772,22 @@ func NewListClientCorrespondencesRequest(server string, accountId string, params
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -12551,7 +12841,7 @@ func NewGetClientCorrespondenceRequest(server string, accountId string, correspo
 }
 
 // NewListClientRepliesRequest generates requests for ListClientReplies
-func NewListClientRepliesRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+func NewListClientRepliesRequest(server string, accountId string, recordingId int64, params *ListClientRepliesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -12581,6 +12871,28 @@ func NewListClientRepliesRequest(server string, accountId string, recordingId in
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -13343,7 +13655,7 @@ func NewGetForwardRequest(server string, accountId string, forwardId int64) (*ht
 }
 
 // NewListForwardRepliesRequest generates requests for ListForwardReplies
-func NewListForwardRepliesRequest(server string, accountId string, forwardId int64) (*http.Request, error) {
+func NewListForwardRepliesRequest(server string, accountId string, forwardId int64, params *ListForwardRepliesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -13373,6 +13685,28 @@ func NewListForwardRepliesRequest(server string, accountId string, forwardId int
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -13581,6 +13915,22 @@ func NewListForwardsRequest(server string, accountId string, inboxId int64, para
 		if params.Direction != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -13877,6 +14227,22 @@ func NewListMessagesRequest(server string, accountId string, boardId int64, para
 		if params.Direction != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -14721,7 +15087,7 @@ func NewUpdateMyProfileRequestWithBody(server string, accountId string, contentT
 }
 
 // NewGetQuestionRemindersRequest generates requests for GetQuestionReminders
-func NewGetQuestionRemindersRequest(server string, accountId string) (*http.Request, error) {
+func NewGetQuestionRemindersRequest(server string, accountId string, params *GetQuestionRemindersParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14744,6 +15110,28 @@ func NewGetQuestionRemindersRequest(server string, accountId string) (*http.Requ
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -14930,7 +15318,7 @@ func NewMarkAsReadRequestWithBody(server string, accountId string, contentType s
 }
 
 // NewListPeopleRequest generates requests for ListPeople
-func NewListPeopleRequest(server string, accountId string) (*http.Request, error) {
+func NewListPeopleRequest(server string, accountId string, params *ListPeopleParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -14953,6 +15341,28 @@ func NewListPeopleRequest(server string, accountId string) (*http.Request, error
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -15185,6 +15595,22 @@ func NewListProjectsRequest(server string, accountId string, params *ListProject
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -15335,6 +15761,22 @@ func NewListRecordingsRequest(server string, accountId string, params *ListRecor
 		if params.Direction != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -15550,7 +15992,7 @@ func NewToggleGaugeRequestWithBody(server string, accountId string, projectId in
 }
 
 // NewListGaugeNeedlesRequest generates requests for ListGaugeNeedles
-func NewListGaugeNeedlesRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+func NewListGaugeNeedlesRequest(server string, accountId string, projectId int64, params *ListGaugeNeedlesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15580,6 +16022,28 @@ func NewListGaugeNeedlesRequest(server string, accountId string, projectId int64
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -15645,7 +16109,7 @@ func NewCreateGaugeNeedleRequestWithBody(server string, accountId string, projec
 }
 
 // NewListProjectPeopleRequest generates requests for ListProjectPeople
-func NewListProjectPeopleRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+func NewListProjectPeopleRequest(server string, accountId string, projectId int64, params *ListProjectPeopleParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15675,6 +16139,28 @@ func NewListProjectPeopleRequest(server string, accountId string, projectId int6
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -15740,7 +16226,7 @@ func NewUpdateProjectAccessRequestWithBody(server string, accountId string, proj
 }
 
 // NewGetProjectTimelineRequest generates requests for GetProjectTimeline
-func NewGetProjectTimelineRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+func NewGetProjectTimelineRequest(server string, accountId string, projectId int64, params *GetProjectTimelineParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -15770,6 +16256,28 @@ func NewGetProjectTimelineRequest(server string, accountId string, projectId int
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -15851,6 +16359,22 @@ func NewGetProjectTimesheetRequest(server string, accountId string, projectId in
 		if params.PersonId != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "person_id", runtime.ParamLocationQuery, *params.PersonId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -16012,7 +16536,7 @@ func NewGetQuestionnaireRequest(server string, accountId string, questionnaireId
 }
 
 // NewListQuestionsRequest generates requests for ListQuestions
-func NewListQuestionsRequest(server string, accountId string, questionnaireId int64) (*http.Request, error) {
+func NewListQuestionsRequest(server string, accountId string, questionnaireId int64, params *ListQuestionsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16042,6 +16566,28 @@ func NewListQuestionsRequest(server string, accountId string, questionnaireId in
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -16202,7 +16748,7 @@ func NewUpdateQuestionRequestWithBody(server string, accountId string, questionI
 }
 
 // NewListAnswersRequest generates requests for ListAnswers
-func NewListAnswersRequest(server string, accountId string, questionId int64) (*http.Request, error) {
+func NewListAnswersRequest(server string, accountId string, questionId int64, params *ListAnswersParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16232,6 +16778,28 @@ func NewListAnswersRequest(server string, accountId string, questionId int64) (*
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -16338,7 +16906,7 @@ func NewListQuestionAnswerersRequest(server string, accountId string, questionId
 }
 
 // NewGetAnswersByPersonRequest generates requests for GetAnswersByPerson
-func NewGetAnswersByPersonRequest(server string, accountId string, questionId int64, personId int64) (*http.Request, error) {
+func NewGetAnswersByPersonRequest(server string, accountId string, questionId int64, personId int64, params *GetAnswersByPersonParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16375,6 +16943,28 @@ func NewGetAnswersByPersonRequest(server string, accountId string, questionId in
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -16768,7 +17358,7 @@ func NewCreateBookmarkRequest(server string, accountId string, recordingId int64
 }
 
 // NewListRecordingBoostsRequest generates requests for ListRecordingBoosts
-func NewListRecordingBoostsRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+func NewListRecordingBoostsRequest(server string, accountId string, recordingId int64, params *ListRecordingBoostsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16798,6 +17388,28 @@ func NewListRecordingBoostsRequest(server string, accountId string, recordingId 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -16917,7 +17529,7 @@ func NewSetClientVisibilityRequestWithBody(server string, accountId string, reco
 }
 
 // NewListCommentsRequest generates requests for ListComments
-func NewListCommentsRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+func NewListCommentsRequest(server string, accountId string, recordingId int64, params *ListCommentsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16947,6 +17559,28 @@ func NewListCommentsRequest(server string, accountId string, recordingId int64) 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -17012,7 +17646,7 @@ func NewCreateCommentRequestWithBody(server string, accountId string, recordingI
 }
 
 // NewListEventsRequest generates requests for ListEvents
-func NewListEventsRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+func NewListEventsRequest(server string, accountId string, recordingId int64, params *ListEventsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17044,6 +17678,28 @@ func NewListEventsRequest(server string, accountId string, recordingId int64) (*
 		return nil, err
 	}
 
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
@@ -17053,7 +17709,7 @@ func NewListEventsRequest(server string, accountId string, recordingId int64) (*
 }
 
 // NewListEventBoostsRequest generates requests for ListEventBoosts
-func NewListEventBoostsRequest(server string, accountId string, recordingId int64, eventId int64) (*http.Request, error) {
+func NewListEventBoostsRequest(server string, accountId string, recordingId int64, eventId int64, params *ListEventBoostsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17090,6 +17746,28 @@ func NewListEventBoostsRequest(server string, accountId string, recordingId int6
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -17545,6 +18223,22 @@ func NewGetRecordingTimesheetRequest(server string, accountId string, recordingI
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -17791,6 +18485,22 @@ func NewListGaugesRequest(server string, accountId string, params *ListGaugesPar
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -17803,7 +18513,7 @@ func NewListGaugesRequest(server string, accountId string, params *ListGaugesPar
 }
 
 // NewGetProgressReportRequest generates requests for GetProgressReport
-func NewGetProgressReportRequest(server string, accountId string) (*http.Request, error) {
+func NewGetProgressReportRequest(server string, accountId string, params *GetProgressReportParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17826,6 +18536,28 @@ func NewGetProgressReportRequest(server string, accountId string) (*http.Request
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -18128,7 +18860,7 @@ func NewGetOverdueTodosRequest(server string, accountId string) (*http.Request, 
 }
 
 // NewGetPersonProgressRequest generates requests for GetPersonProgress
-func NewGetPersonProgressRequest(server string, accountId string, personId int64) (*http.Request, error) {
+func NewGetPersonProgressRequest(server string, accountId string, personId int64, params *GetPersonProgressParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18158,6 +18890,28 @@ func NewGetPersonProgressRequest(server string, accountId string, personId int64
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -18458,6 +19212,22 @@ func NewListScheduleEntriesRequest(server string, accountId string, scheduleId i
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -18724,6 +19494,22 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -18801,6 +19587,22 @@ func NewListTemplatesRequest(server string, accountId string, params *ListTempla
 		if params.Status != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "status", runtime.ParamLocationQuery, *params.Status); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -19355,7 +20157,7 @@ func NewUpdateTodolistOrGroupRequestWithBody(server string, accountId string, id
 }
 
 // NewListTodolistGroupsRequest generates requests for ListTodolistGroups
-func NewListTodolistGroupsRequest(server string, accountId string, todolistId int64) (*http.Request, error) {
+func NewListTodolistGroupsRequest(server string, accountId string, todolistId int64, params *ListTodolistGroupsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -19385,6 +20187,28 @@ func NewListTodolistGroupsRequest(server string, accountId string, todolistId in
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -19504,6 +20328,22 @@ func NewListTodosRequest(server string, accountId string, todolistId int64, para
 		if params.Completed != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "completed", runtime.ParamLocationQuery, *params.Completed); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -20520,6 +21360,22 @@ func NewListTodolistsRequest(server string, accountId string, todosetId int64, p
 
 		}
 
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -20817,7 +21673,7 @@ func NewUpdateVaultRequestWithBody(server string, accountId string, vaultId int6
 }
 
 // NewListDocumentsRequest generates requests for ListDocuments
-func NewListDocumentsRequest(server string, accountId string, vaultId int64) (*http.Request, error) {
+func NewListDocumentsRequest(server string, accountId string, vaultId int64, params *ListDocumentsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -20847,6 +21703,28 @@ func NewListDocumentsRequest(server string, accountId string, vaultId int64) (*h
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -20912,7 +21790,7 @@ func NewCreateDocumentRequestWithBody(server string, accountId string, vaultId i
 }
 
 // NewListUploadsRequest generates requests for ListUploads
-func NewListUploadsRequest(server string, accountId string, vaultId int64) (*http.Request, error) {
+func NewListUploadsRequest(server string, accountId string, vaultId int64, params *ListUploadsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -20942,6 +21820,28 @@ func NewListUploadsRequest(server string, accountId string, vaultId int64) (*htt
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -21007,7 +21907,7 @@ func NewCreateUploadRequestWithBody(server string, accountId string, vaultId int
 }
 
 // NewListVaultsRequest generates requests for ListVaults
-func NewListVaultsRequest(server string, accountId string, vaultId int64) (*http.Request, error) {
+func NewListVaultsRequest(server string, accountId string, vaultId int64, params *ListVaultsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -21037,6 +21937,28 @@ func NewListVaultsRequest(server string, accountId string, vaultId int64) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -22612,8 +23534,8 @@ func (s *CardsService) Move(ctx context.Context, accountId string, cardId int64,
 	return s.client.MoveCard(ctx, accountId, cardId, body, reqEditors...)
 }
 
-func (s *CardsService) List(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListCards(ctx, accountId, columnId, reqEditors...)
+func (s *CardsService) List(ctx context.Context, accountId string, columnId int64, params *ListCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListCards(ctx, accountId, columnId, params, reqEditors...)
 }
 
 func (s *CardsService) CreateWithBody(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22624,8 +23546,8 @@ func (s *CardsService) Create(ctx context.Context, accountId string, columnId in
 	return s.client.CreateCard(ctx, accountId, columnId, body, reqEditors...)
 }
 
-func (s *CampfiresService) List(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListCampfires(ctx, accountId, reqEditors...)
+func (s *CampfiresService) List(ctx context.Context, accountId string, params *ListCampfiresParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListCampfires(ctx, accountId, params, reqEditors...)
 }
 
 func (s *CampfiresService) Get(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22684,8 +23606,8 @@ func (s *PeopleService) GetMyProfile(ctx context.Context, accountId string, reqE
 	return s.client.GetMyProfile(ctx, accountId, reqEditors...)
 }
 
-func (s *PeopleService) List(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListPeople(ctx, accountId, reqEditors...)
+func (s *PeopleService) List(ctx context.Context, accountId string, params *ListPeopleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListPeople(ctx, accountId, params, reqEditors...)
 }
 
 func (s *PeopleService) Get(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22728,8 +23650,8 @@ func (s *RecordingsService) Get(ctx context.Context, accountId string, recording
 	return s.client.GetRecording(ctx, accountId, recordingId, reqEditors...)
 }
 
-func (s *CommentsService) List(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListComments(ctx, accountId, recordingId, reqEditors...)
+func (s *CommentsService) List(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListComments(ctx, accountId, recordingId, params, reqEditors...)
 }
 
 func (s *CommentsService) CreateWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22740,8 +23662,8 @@ func (s *CommentsService) Create(ctx context.Context, accountId string, recordin
 	return s.client.CreateComment(ctx, accountId, recordingId, body, reqEditors...)
 }
 
-func (s *EventsService) List(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListEvents(ctx, accountId, recordingId, reqEditors...)
+func (s *EventsService) List(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListEvents(ctx, accountId, recordingId, params, reqEditors...)
 }
 
 func (s *RecordingsService) Unarchive(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22872,8 +23794,8 @@ func (s *VaultsService) Update(ctx context.Context, accountId string, vaultId in
 	return s.client.UpdateVault(ctx, accountId, vaultId, body, reqEditors...)
 }
 
-func (s *DocumentsService) List(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListDocuments(ctx, accountId, vaultId, reqEditors...)
+func (s *DocumentsService) List(ctx context.Context, accountId string, vaultId int64, params *ListDocumentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListDocuments(ctx, accountId, vaultId, params, reqEditors...)
 }
 
 func (s *DocumentsService) CreateWithBody(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22884,8 +23806,8 @@ func (s *DocumentsService) Create(ctx context.Context, accountId string, vaultId
 	return s.client.CreateDocument(ctx, accountId, vaultId, body, reqEditors...)
 }
 
-func (s *UploadsService) List(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListUploads(ctx, accountId, vaultId, reqEditors...)
+func (s *UploadsService) List(ctx context.Context, accountId string, vaultId int64, params *ListUploadsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListUploads(ctx, accountId, vaultId, params, reqEditors...)
 }
 
 func (s *UploadsService) CreateWithBody(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -22896,8 +23818,8 @@ func (s *UploadsService) Create(ctx context.Context, accountId string, vaultId i
 	return s.client.CreateUpload(ctx, accountId, vaultId, body, reqEditors...)
 }
 
-func (s *VaultsService) List(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.ListVaults(ctx, accountId, vaultId, reqEditors...)
+func (s *VaultsService) List(ctx context.Context, accountId string, vaultId int64, params *ListVaultsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListVaults(ctx, accountId, vaultId, params, reqEditors...)
 }
 
 func (s *VaultsService) CreateWithBody(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -23077,7 +23999,7 @@ type ClientWithResponsesInterface interface {
 	UpdateCardColumnWithResponse(ctx context.Context, accountId string, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
 
 	// ListCardsWithResponse request
-	ListCardsWithResponse(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error)
+	ListCardsWithResponse(ctx context.Context, accountId string, columnId int64, params *ListCardsParams, reqEditors ...RequestEditorFn) (*ListCardsResponse, error)
 
 	// CreateCardWithBodyWithResponse request with any body
 	CreateCardWithBodyWithResponse(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCardResponse, error)
@@ -23135,7 +24057,7 @@ type ClientWithResponsesInterface interface {
 	GetEverythingUnassignedCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingUnassignedCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingUnassignedCardsResponse, error)
 
 	// ListCampfiresWithResponse request
-	ListCampfiresWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error)
+	ListCampfiresWithResponse(ctx context.Context, accountId string, params *ListCampfiresParams, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error)
 
 	// GetCampfireWithResponse request
 	GetCampfireWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error)
@@ -23203,7 +24125,7 @@ type ClientWithResponsesInterface interface {
 	GetClientCorrespondenceWithResponse(ctx context.Context, accountId string, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error)
 
 	// ListClientRepliesWithResponse request
-	ListClientRepliesWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error)
+	ListClientRepliesWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error)
 
 	// GetClientReplyWithResponse request
 	GetClientReplyWithResponse(ctx context.Context, accountId string, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
@@ -23259,7 +24181,7 @@ type ClientWithResponsesInterface interface {
 	GetForwardWithResponse(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error)
 
 	// ListForwardRepliesWithResponse request
-	ListForwardRepliesWithResponse(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error)
+	ListForwardRepliesWithResponse(ctx context.Context, accountId string, forwardId int64, params *ListForwardRepliesParams, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error)
 
 	// CreateForwardReplyWithBodyWithResponse request with any body
 	CreateForwardReplyWithBodyWithResponse(ctx context.Context, accountId string, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
@@ -23366,7 +24288,7 @@ type ClientWithResponsesInterface interface {
 	UpdateMyProfileWithResponse(ctx context.Context, accountId string, body UpdateMyProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMyProfileResponse, error)
 
 	// GetQuestionRemindersWithResponse request
-	GetQuestionRemindersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error)
+	GetQuestionRemindersWithResponse(ctx context.Context, accountId string, params *GetQuestionRemindersParams, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error)
 
 	// GetMyNotificationsWithResponse request
 	GetMyNotificationsWithResponse(ctx context.Context, accountId string, params *GetMyNotificationsParams, reqEditors ...RequestEditorFn) (*GetMyNotificationsResponse, error)
@@ -23380,7 +24302,7 @@ type ClientWithResponsesInterface interface {
 	MarkAsReadWithResponse(ctx context.Context, accountId string, body MarkAsReadJSONRequestBody, reqEditors ...RequestEditorFn) (*MarkAsReadResponse, error)
 
 	// ListPeopleWithResponse request
-	ListPeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error)
+	ListPeopleWithResponse(ctx context.Context, accountId string, params *ListPeopleParams, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error)
 
 	// GetPersonWithResponse request
 	GetPersonWithResponse(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*GetPersonResponse, error)
@@ -23424,7 +24346,7 @@ type ClientWithResponsesInterface interface {
 	ToggleGaugeWithResponse(ctx context.Context, accountId string, projectId int64, body ToggleGaugeJSONRequestBody, reqEditors ...RequestEditorFn) (*ToggleGaugeResponse, error)
 
 	// ListGaugeNeedlesWithResponse request
-	ListGaugeNeedlesWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListGaugeNeedlesResponse, error)
+	ListGaugeNeedlesWithResponse(ctx context.Context, accountId string, projectId int64, params *ListGaugeNeedlesParams, reqEditors ...RequestEditorFn) (*ListGaugeNeedlesResponse, error)
 
 	// CreateGaugeNeedleWithBodyWithResponse request with any body
 	CreateGaugeNeedleWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGaugeNeedleResponse, error)
@@ -23432,7 +24354,7 @@ type ClientWithResponsesInterface interface {
 	CreateGaugeNeedleWithResponse(ctx context.Context, accountId string, projectId int64, body CreateGaugeNeedleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGaugeNeedleResponse, error)
 
 	// ListProjectPeopleWithResponse request
-	ListProjectPeopleWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error)
+	ListProjectPeopleWithResponse(ctx context.Context, accountId string, projectId int64, params *ListProjectPeopleParams, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error)
 
 	// UpdateProjectAccessWithBodyWithResponse request with any body
 	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
@@ -23440,7 +24362,7 @@ type ClientWithResponsesInterface interface {
 	UpdateProjectAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
 	// GetProjectTimelineWithResponse request
-	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
+	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimelineParams, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
 
 	// GetProjectTimesheetWithResponse request
 	GetProjectTimesheetWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimesheetParams, reqEditors ...RequestEditorFn) (*GetProjectTimesheetResponse, error)
@@ -23457,7 +24379,7 @@ type ClientWithResponsesInterface interface {
 	GetQuestionnaireWithResponse(ctx context.Context, accountId string, questionnaireId int64, reqEditors ...RequestEditorFn) (*GetQuestionnaireResponse, error)
 
 	// ListQuestionsWithResponse request
-	ListQuestionsWithResponse(ctx context.Context, accountId string, questionnaireId int64, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error)
+	ListQuestionsWithResponse(ctx context.Context, accountId string, questionnaireId int64, params *ListQuestionsParams, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error)
 
 	// CreateQuestionWithBodyWithResponse request with any body
 	CreateQuestionWithBodyWithResponse(ctx context.Context, accountId string, questionnaireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateQuestionResponse, error)
@@ -23473,7 +24395,7 @@ type ClientWithResponsesInterface interface {
 	UpdateQuestionWithResponse(ctx context.Context, accountId string, questionId int64, body UpdateQuestionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateQuestionResponse, error)
 
 	// ListAnswersWithResponse request
-	ListAnswersWithResponse(ctx context.Context, accountId string, questionId int64, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error)
+	ListAnswersWithResponse(ctx context.Context, accountId string, questionId int64, params *ListAnswersParams, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error)
 
 	// CreateAnswerWithBodyWithResponse request with any body
 	CreateAnswerWithBodyWithResponse(ctx context.Context, accountId string, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAnswerResponse, error)
@@ -23484,7 +24406,7 @@ type ClientWithResponsesInterface interface {
 	ListQuestionAnswerersWithResponse(ctx context.Context, accountId string, questionId int64, reqEditors ...RequestEditorFn) (*ListQuestionAnswerersResponse, error)
 
 	// GetAnswersByPersonWithResponse request
-	GetAnswersByPersonWithResponse(ctx context.Context, accountId string, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*GetAnswersByPersonResponse, error)
+	GetAnswersByPersonWithResponse(ctx context.Context, accountId string, questionId int64, personId int64, params *GetAnswersByPersonParams, reqEditors ...RequestEditorFn) (*GetAnswersByPersonResponse, error)
 
 	// UpdateQuestionNotificationSettingsWithBodyWithResponse request with any body
 	UpdateQuestionNotificationSettingsWithBodyWithResponse(ctx context.Context, accountId string, questionId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateQuestionNotificationSettingsResponse, error)
@@ -23516,7 +24438,7 @@ type ClientWithResponsesInterface interface {
 	CreateBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*CreateBookmarkResponse, error)
 
 	// ListRecordingBoostsWithResponse request
-	ListRecordingBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListRecordingBoostsResponse, error)
+	ListRecordingBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListRecordingBoostsParams, reqEditors ...RequestEditorFn) (*ListRecordingBoostsResponse, error)
 
 	// CreateRecordingBoostWithBodyWithResponse request with any body
 	CreateRecordingBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRecordingBoostResponse, error)
@@ -23529,7 +24451,7 @@ type ClientWithResponsesInterface interface {
 	SetClientVisibilityWithResponse(ctx context.Context, accountId string, recordingId int64, body SetClientVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
 
 	// ListCommentsWithResponse request
-	ListCommentsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error)
+	ListCommentsWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error)
 
 	// CreateCommentWithBodyWithResponse request with any body
 	CreateCommentWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
@@ -23537,10 +24459,10 @@ type ClientWithResponsesInterface interface {
 	CreateCommentWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCommentResponse, error)
 
 	// ListEventsWithResponse request
-	ListEventsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error)
+	ListEventsWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*ListEventsResponse, error)
 
 	// ListEventBoostsWithResponse request
-	ListEventBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, reqEditors ...RequestEditorFn) (*ListEventBoostsResponse, error)
+	ListEventBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, params *ListEventBoostsParams, reqEditors ...RequestEditorFn) (*ListEventBoostsResponse, error)
 
 	// CreateEventBoostWithBodyWithResponse request with any body
 	CreateEventBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error)
@@ -23593,7 +24515,7 @@ type ClientWithResponsesInterface interface {
 	ListGaugesWithResponse(ctx context.Context, accountId string, params *ListGaugesParams, reqEditors ...RequestEditorFn) (*ListGaugesResponse, error)
 
 	// GetProgressReportWithResponse request
-	GetProgressReportWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error)
+	GetProgressReportWithResponse(ctx context.Context, accountId string, params *GetProgressReportParams, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error)
 
 	// GetUpcomingScheduleWithResponse request
 	GetUpcomingScheduleWithResponse(ctx context.Context, accountId string, params *GetUpcomingScheduleParams, reqEditors ...RequestEditorFn) (*GetUpcomingScheduleResponse, error)
@@ -23611,7 +24533,7 @@ type ClientWithResponsesInterface interface {
 	GetOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetOverdueTodosResponse, error)
 
 	// GetPersonProgressWithResponse request
-	GetPersonProgressWithResponse(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error)
+	GetPersonProgressWithResponse(ctx context.Context, accountId string, personId int64, params *GetPersonProgressParams, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error)
 
 	// GetScheduleEntryWithResponse request
 	GetScheduleEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error)
@@ -23695,7 +24617,7 @@ type ClientWithResponsesInterface interface {
 	UpdateTodolistOrGroupWithResponse(ctx context.Context, accountId string, id int64, body UpdateTodolistOrGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodolistOrGroupResponse, error)
 
 	// ListTodolistGroupsWithResponse request
-	ListTodolistGroupsWithResponse(ctx context.Context, accountId string, todolistId int64, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error)
+	ListTodolistGroupsWithResponse(ctx context.Context, accountId string, todolistId int64, params *ListTodolistGroupsParams, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error)
 
 	// CreateTodolistGroupWithBodyWithResponse request with any body
 	CreateTodolistGroupWithBodyWithResponse(ctx context.Context, accountId string, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodolistGroupResponse, error)
@@ -23791,7 +24713,7 @@ type ClientWithResponsesInterface interface {
 	UpdateVaultWithResponse(ctx context.Context, accountId string, vaultId int64, body UpdateVaultJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateVaultResponse, error)
 
 	// ListDocumentsWithResponse request
-	ListDocumentsWithResponse(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error)
+	ListDocumentsWithResponse(ctx context.Context, accountId string, vaultId int64, params *ListDocumentsParams, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error)
 
 	// CreateDocumentWithBodyWithResponse request with any body
 	CreateDocumentWithBodyWithResponse(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
@@ -23799,7 +24721,7 @@ type ClientWithResponsesInterface interface {
 	CreateDocumentWithResponse(ctx context.Context, accountId string, vaultId int64, body CreateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDocumentResponse, error)
 
 	// ListUploadsWithResponse request
-	ListUploadsWithResponse(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error)
+	ListUploadsWithResponse(ctx context.Context, accountId string, vaultId int64, params *ListUploadsParams, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error)
 
 	// CreateUploadWithBodyWithResponse request with any body
 	CreateUploadWithBodyWithResponse(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
@@ -23807,7 +24729,7 @@ type ClientWithResponsesInterface interface {
 	CreateUploadWithResponse(ctx context.Context, accountId string, vaultId int64, body CreateUploadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadResponse, error)
 
 	// ListVaultsWithResponse request
-	ListVaultsWithResponse(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error)
+	ListVaultsWithResponse(ctx context.Context, accountId string, vaultId int64, params *ListVaultsParams, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error)
 
 	// CreateVaultWithBodyWithResponse request with any body
 	CreateVaultWithBodyWithResponse(ctx context.Context, accountId string, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVaultResponse, error)
@@ -32379,8 +33301,8 @@ func (c *ClientWithResponses) UpdateCardColumnWithResponse(ctx context.Context, 
 }
 
 // ListCardsWithResponse request returning *ListCardsResponse
-func (c *ClientWithResponses) ListCardsWithResponse(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error) {
-	rsp, err := c.ListCards(ctx, accountId, columnId, reqEditors...)
+func (c *ClientWithResponses) ListCardsWithResponse(ctx context.Context, accountId string, columnId int64, params *ListCardsParams, reqEditors ...RequestEditorFn) (*ListCardsResponse, error) {
+	rsp, err := c.ListCards(ctx, accountId, columnId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -32563,8 +33485,8 @@ func (c *ClientWithResponses) GetEverythingUnassignedCardsWithResponse(ctx conte
 }
 
 // ListCampfiresWithResponse request returning *ListCampfiresResponse
-func (c *ClientWithResponses) ListCampfiresWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error) {
-	rsp, err := c.ListCampfires(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) ListCampfiresWithResponse(ctx context.Context, accountId string, params *ListCampfiresParams, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error) {
+	rsp, err := c.ListCampfires(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -32775,8 +33697,8 @@ func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Co
 }
 
 // ListClientRepliesWithResponse request returning *ListClientRepliesResponse
-func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error) {
-	rsp, err := c.ListClientReplies(ctx, accountId, recordingId, reqEditors...)
+func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error) {
+	rsp, err := c.ListClientReplies(ctx, accountId, recordingId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -32951,8 +33873,8 @@ func (c *ClientWithResponses) GetForwardWithResponse(ctx context.Context, accoun
 }
 
 // ListForwardRepliesWithResponse request returning *ListForwardRepliesResponse
-func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error) {
-	rsp, err := c.ListForwardReplies(ctx, accountId, forwardId, reqEditors...)
+func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context, accountId string, forwardId int64, params *ListForwardRepliesParams, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error) {
+	rsp, err := c.ListForwardReplies(ctx, accountId, forwardId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33292,8 +34214,8 @@ func (c *ClientWithResponses) UpdateMyProfileWithResponse(ctx context.Context, a
 }
 
 // GetQuestionRemindersWithResponse request returning *GetQuestionRemindersResponse
-func (c *ClientWithResponses) GetQuestionRemindersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error) {
-	rsp, err := c.GetQuestionReminders(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) GetQuestionRemindersWithResponse(ctx context.Context, accountId string, params *GetQuestionRemindersParams, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error) {
+	rsp, err := c.GetQuestionReminders(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33336,8 +34258,8 @@ func (c *ClientWithResponses) MarkAsReadWithResponse(ctx context.Context, accoun
 }
 
 // ListPeopleWithResponse request returning *ListPeopleResponse
-func (c *ClientWithResponses) ListPeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error) {
-	rsp, err := c.ListPeople(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) ListPeopleWithResponse(ctx context.Context, accountId string, params *ListPeopleParams, reqEditors ...RequestEditorFn) (*ListPeopleResponse, error) {
+	rsp, err := c.ListPeople(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33476,8 +34398,8 @@ func (c *ClientWithResponses) ToggleGaugeWithResponse(ctx context.Context, accou
 }
 
 // ListGaugeNeedlesWithResponse request returning *ListGaugeNeedlesResponse
-func (c *ClientWithResponses) ListGaugeNeedlesWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListGaugeNeedlesResponse, error) {
-	rsp, err := c.ListGaugeNeedles(ctx, accountId, projectId, reqEditors...)
+func (c *ClientWithResponses) ListGaugeNeedlesWithResponse(ctx context.Context, accountId string, projectId int64, params *ListGaugeNeedlesParams, reqEditors ...RequestEditorFn) (*ListGaugeNeedlesResponse, error) {
+	rsp, err := c.ListGaugeNeedles(ctx, accountId, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33502,8 +34424,8 @@ func (c *ClientWithResponses) CreateGaugeNeedleWithResponse(ctx context.Context,
 }
 
 // ListProjectPeopleWithResponse request returning *ListProjectPeopleResponse
-func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error) {
-	rsp, err := c.ListProjectPeople(ctx, accountId, projectId, reqEditors...)
+func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context, accountId string, projectId int64, params *ListProjectPeopleParams, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error) {
+	rsp, err := c.ListProjectPeople(ctx, accountId, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33528,8 +34450,8 @@ func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Contex
 }
 
 // GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
-func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
-	rsp, err := c.GetProjectTimeline(ctx, accountId, projectId, reqEditors...)
+func (c *ClientWithResponses) GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimelineParams, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error) {
+	rsp, err := c.GetProjectTimeline(ctx, accountId, projectId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33581,8 +34503,8 @@ func (c *ClientWithResponses) GetQuestionnaireWithResponse(ctx context.Context, 
 }
 
 // ListQuestionsWithResponse request returning *ListQuestionsResponse
-func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, accountId string, questionnaireId int64, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error) {
-	rsp, err := c.ListQuestions(ctx, accountId, questionnaireId, reqEditors...)
+func (c *ClientWithResponses) ListQuestionsWithResponse(ctx context.Context, accountId string, questionnaireId int64, params *ListQuestionsParams, reqEditors ...RequestEditorFn) (*ListQuestionsResponse, error) {
+	rsp, err := c.ListQuestions(ctx, accountId, questionnaireId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33633,8 +34555,8 @@ func (c *ClientWithResponses) UpdateQuestionWithResponse(ctx context.Context, ac
 }
 
 // ListAnswersWithResponse request returning *ListAnswersResponse
-func (c *ClientWithResponses) ListAnswersWithResponse(ctx context.Context, accountId string, questionId int64, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error) {
-	rsp, err := c.ListAnswers(ctx, accountId, questionId, reqEditors...)
+func (c *ClientWithResponses) ListAnswersWithResponse(ctx context.Context, accountId string, questionId int64, params *ListAnswersParams, reqEditors ...RequestEditorFn) (*ListAnswersResponse, error) {
+	rsp, err := c.ListAnswers(ctx, accountId, questionId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33668,8 +34590,8 @@ func (c *ClientWithResponses) ListQuestionAnswerersWithResponse(ctx context.Cont
 }
 
 // GetAnswersByPersonWithResponse request returning *GetAnswersByPersonResponse
-func (c *ClientWithResponses) GetAnswersByPersonWithResponse(ctx context.Context, accountId string, questionId int64, personId int64, reqEditors ...RequestEditorFn) (*GetAnswersByPersonResponse, error) {
-	rsp, err := c.GetAnswersByPerson(ctx, accountId, questionId, personId, reqEditors...)
+func (c *ClientWithResponses) GetAnswersByPersonWithResponse(ctx context.Context, accountId string, questionId int64, personId int64, params *GetAnswersByPersonParams, reqEditors ...RequestEditorFn) (*GetAnswersByPersonResponse, error) {
+	rsp, err := c.GetAnswersByPerson(ctx, accountId, questionId, personId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33766,8 +34688,8 @@ func (c *ClientWithResponses) CreateBookmarkWithResponse(ctx context.Context, ac
 }
 
 // ListRecordingBoostsWithResponse request returning *ListRecordingBoostsResponse
-func (c *ClientWithResponses) ListRecordingBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListRecordingBoostsResponse, error) {
-	rsp, err := c.ListRecordingBoosts(ctx, accountId, recordingId, reqEditors...)
+func (c *ClientWithResponses) ListRecordingBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListRecordingBoostsParams, reqEditors ...RequestEditorFn) (*ListRecordingBoostsResponse, error) {
+	rsp, err := c.ListRecordingBoosts(ctx, accountId, recordingId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33809,8 +34731,8 @@ func (c *ClientWithResponses) SetClientVisibilityWithResponse(ctx context.Contex
 }
 
 // ListCommentsWithResponse request returning *ListCommentsResponse
-func (c *ClientWithResponses) ListCommentsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error) {
-	rsp, err := c.ListComments(ctx, accountId, recordingId, reqEditors...)
+func (c *ClientWithResponses) ListCommentsWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*ListCommentsResponse, error) {
+	rsp, err := c.ListComments(ctx, accountId, recordingId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33835,8 +34757,8 @@ func (c *ClientWithResponses) CreateCommentWithResponse(ctx context.Context, acc
 }
 
 // ListEventsWithResponse request returning *ListEventsResponse
-func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListEventsResponse, error) {
-	rsp, err := c.ListEvents(ctx, accountId, recordingId, reqEditors...)
+func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListEventsParams, reqEditors ...RequestEditorFn) (*ListEventsResponse, error) {
+	rsp, err := c.ListEvents(ctx, accountId, recordingId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -33844,8 +34766,8 @@ func (c *ClientWithResponses) ListEventsWithResponse(ctx context.Context, accoun
 }
 
 // ListEventBoostsWithResponse request returning *ListEventBoostsResponse
-func (c *ClientWithResponses) ListEventBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, reqEditors ...RequestEditorFn) (*ListEventBoostsResponse, error) {
-	rsp, err := c.ListEventBoosts(ctx, accountId, recordingId, eventId, reqEditors...)
+func (c *ClientWithResponses) ListEventBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, params *ListEventBoostsParams, reqEditors ...RequestEditorFn) (*ListEventBoostsResponse, error) {
+	rsp, err := c.ListEventBoosts(ctx, accountId, recordingId, eventId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -34011,8 +34933,8 @@ func (c *ClientWithResponses) ListGaugesWithResponse(ctx context.Context, accoun
 }
 
 // GetProgressReportWithResponse request returning *GetProgressReportResponse
-func (c *ClientWithResponses) GetProgressReportWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error) {
-	rsp, err := c.GetProgressReport(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) GetProgressReportWithResponse(ctx context.Context, accountId string, params *GetProgressReportParams, reqEditors ...RequestEditorFn) (*GetProgressReportResponse, error) {
+	rsp, err := c.GetProgressReport(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -34065,8 +34987,8 @@ func (c *ClientWithResponses) GetOverdueTodosWithResponse(ctx context.Context, a
 }
 
 // GetPersonProgressWithResponse request returning *GetPersonProgressResponse
-func (c *ClientWithResponses) GetPersonProgressWithResponse(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error) {
-	rsp, err := c.GetPersonProgress(ctx, accountId, personId, reqEditors...)
+func (c *ClientWithResponses) GetPersonProgressWithResponse(ctx context.Context, accountId string, personId int64, params *GetPersonProgressParams, reqEditors ...RequestEditorFn) (*GetPersonProgressResponse, error) {
+	rsp, err := c.GetPersonProgress(ctx, accountId, personId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -34335,8 +35257,8 @@ func (c *ClientWithResponses) UpdateTodolistOrGroupWithResponse(ctx context.Cont
 }
 
 // ListTodolistGroupsWithResponse request returning *ListTodolistGroupsResponse
-func (c *ClientWithResponses) ListTodolistGroupsWithResponse(ctx context.Context, accountId string, todolistId int64, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error) {
-	rsp, err := c.ListTodolistGroups(ctx, accountId, todolistId, reqEditors...)
+func (c *ClientWithResponses) ListTodolistGroupsWithResponse(ctx context.Context, accountId string, todolistId int64, params *ListTodolistGroupsParams, reqEditors ...RequestEditorFn) (*ListTodolistGroupsResponse, error) {
+	rsp, err := c.ListTodolistGroups(ctx, accountId, todolistId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -34641,8 +35563,8 @@ func (c *ClientWithResponses) UpdateVaultWithResponse(ctx context.Context, accou
 }
 
 // ListDocumentsWithResponse request returning *ListDocumentsResponse
-func (c *ClientWithResponses) ListDocumentsWithResponse(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error) {
-	rsp, err := c.ListDocuments(ctx, accountId, vaultId, reqEditors...)
+func (c *ClientWithResponses) ListDocumentsWithResponse(ctx context.Context, accountId string, vaultId int64, params *ListDocumentsParams, reqEditors ...RequestEditorFn) (*ListDocumentsResponse, error) {
+	rsp, err := c.ListDocuments(ctx, accountId, vaultId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -34667,8 +35589,8 @@ func (c *ClientWithResponses) CreateDocumentWithResponse(ctx context.Context, ac
 }
 
 // ListUploadsWithResponse request returning *ListUploadsResponse
-func (c *ClientWithResponses) ListUploadsWithResponse(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error) {
-	rsp, err := c.ListUploads(ctx, accountId, vaultId, reqEditors...)
+func (c *ClientWithResponses) ListUploadsWithResponse(ctx context.Context, accountId string, vaultId int64, params *ListUploadsParams, reqEditors ...RequestEditorFn) (*ListUploadsResponse, error) {
+	rsp, err := c.ListUploads(ctx, accountId, vaultId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -34693,8 +35615,8 @@ func (c *ClientWithResponses) CreateUploadWithResponse(ctx context.Context, acco
 }
 
 // ListVaultsWithResponse request returning *ListVaultsResponse
-func (c *ClientWithResponses) ListVaultsWithResponse(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error) {
-	rsp, err := c.ListVaults(ctx, accountId, vaultId, reqEditors...)
+func (c *ClientWithResponses) ListVaultsWithResponse(ctx context.Context, accountId string, vaultId int64, params *ListVaultsParams, reqEditors ...RequestEditorFn) (*ListVaultsResponse, error) {
+	rsp, err := c.ListVaults(ctx, accountId, vaultId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

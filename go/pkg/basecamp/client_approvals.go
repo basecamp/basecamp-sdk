@@ -15,7 +15,7 @@ type ClientApprovalListOptions struct {
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page, if positive, fetches only that page and disables auto-pagination.
 	Page int
 
 	// Sort field: "created_at" or "updated_at".
@@ -101,7 +101,7 @@ func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 //
 // Pagination options:
 //   - Limit: maximum number of client approvals to return (0 = all, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned ClientApprovalListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -120,10 +120,17 @@ func (s *ClientApprovalsService) List(ctx context.Context, opts *ClientApprovalL
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.ListClientApprovalsParams
-	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+	if opts != nil && (opts.Sort != "" || opts.Direction != "" || opts.Page > 0) {
 		params = &generated.ListClientApprovalsParams{
 			Sort:      omitzero(opts.Sort),
 			Direction: omitzero(opts.Direction),
+		}
+		if opts.Page > 0 {
+			var page *int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, params)

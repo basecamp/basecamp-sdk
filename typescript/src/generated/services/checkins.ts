@@ -27,6 +27,8 @@ export type Person = components["schemas"]["Person"];
  * Options for reminders.
  */
 export interface RemindersCheckinOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -43,6 +45,8 @@ export interface UpdateAnswerCheckinRequest {
  * Options for listQuestions.
  */
 export interface ListQuestionsCheckinOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -73,6 +77,8 @@ export interface UpdateQuestionCheckinRequest {
  * Options for listAnswers.
  */
 export interface ListAnswersCheckinOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -95,6 +101,8 @@ export interface AnswerersCheckinOptions extends PaginationOptions {
  * Options for byPerson.
  */
 export interface ByPersonCheckinOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -137,6 +145,9 @@ export class CheckinsService extends BaseService {
       },
       () =>
         this.client.GET("/my/question_reminders.json", {
+          params: {
+            query: { page: options?.page },
+          },
         })
       , options
     );
@@ -251,6 +262,9 @@ export class CheckinsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.checkins.listQuestions(123);
+   *
+   * // With options
+   * const filtered = await client.checkins.listQuestions(123, { page: 1 });
    * ```
    */
   async listQuestions(questionnaireId: number, options?: ListQuestionsCheckinOptions): Promise<ListResult<Question>> {
@@ -266,6 +280,7 @@ export class CheckinsService extends BaseService {
         this.client.GET("/questionnaires/{questionnaireId}/questions.json", {
           params: {
             path: { questionnaireId },
+            query: { page: options?.page },
           },
         })
       , options
@@ -389,6 +404,9 @@ export class CheckinsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.checkins.listAnswers(123);
+   *
+   * // With options
+   * const filtered = await client.checkins.listAnswers(123, { page: 1 });
    * ```
    */
   async listAnswers(questionId: number, options?: ListAnswersCheckinOptions): Promise<ListResult<Answer>> {
@@ -404,6 +422,7 @@ export class CheckinsService extends BaseService {
         this.client.GET("/questions/{questionId}/answers.json", {
           params: {
             path: { questionId },
+            query: { page: options?.page },
           },
         })
       , options
@@ -506,6 +525,7 @@ export class CheckinsService extends BaseService {
         this.client.GET("/questions/{questionId}/answers/by/{personId}", {
           params: {
             path: { questionId, personId },
+            query: { page: options?.page },
           },
         })
       , options

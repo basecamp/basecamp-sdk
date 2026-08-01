@@ -17,7 +17,7 @@ class ClientRepliesService(client: AccountClient) : BaseService(client) {
      * @param recordingId The recording ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(recordingId: Long, options: PaginationOptions? = null): ListResult<ClientReply> {
+    suspend fun list(recordingId: Long, options: ListClientRepliesOptions): ListResult<ClientReply> {
         val info = OperationInfo(
             service = "ClientReplies",
             operation = "ListClientReplies",
@@ -26,12 +26,28 @@ class ClientRepliesService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = recordingId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/client/recordings/${recordingId}/replies.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options.page,
+        )
+        return requestPaginated(info, options.toPaginationOptions(), {
+            httpGet("/client/recordings/${recordingId}/replies.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<ClientReply>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
+     *
+     * Prefer [ListClientRepliesOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [list] needs an expected type to disambiguate.
+     */
+    suspend fun list(recordingId: Long, options: PaginationOptions? = null): ListResult<ClientReply> =
+        list(recordingId, ListClientRepliesOptions(maxItems = options?.maxItems))
 
     /**
      * Get a single client reply by id

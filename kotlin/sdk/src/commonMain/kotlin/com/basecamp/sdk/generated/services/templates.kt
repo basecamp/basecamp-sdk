@@ -27,6 +27,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
         )
         val qs = buildQueryString(
             "status" to options?.status,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/templates.json" + qs, operationName = info.operation)

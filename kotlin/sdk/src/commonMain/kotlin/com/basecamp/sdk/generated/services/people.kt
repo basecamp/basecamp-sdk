@@ -123,7 +123,7 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      * List all people visible to the current user
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(options: PaginationOptions? = null): ListResult<Person> {
+    suspend fun list(options: ListPeopleOptions): ListResult<Person> {
         val info = OperationInfo(
             service = "People",
             operation = "ListPeople",
@@ -132,12 +132,28 @@ class PeopleService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
-        return requestPaginated(info, options, {
-            httpGet("/people.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options.page,
+        )
+        return requestPaginated(info, options.toPaginationOptions(), {
+            httpGet("/people.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Person>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
+     *
+     * Prefer [ListPeopleOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [list] needs an expected type to disambiguate.
+     */
+    suspend fun list(options: PaginationOptions? = null): ListResult<Person> =
+        list(ListPeopleOptions(maxItems = options?.maxItems))
 
     /**
      * Get a person by ID
@@ -225,7 +241,7 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      * @param projectId The project ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listForProject(projectId: Long, options: PaginationOptions? = null): ListResult<Person> {
+    suspend fun listForProject(projectId: Long, options: ListProjectPeopleOptions): ListResult<Person> {
         val info = OperationInfo(
             service = "People",
             operation = "ListProjectPeople",
@@ -234,12 +250,28 @@ class PeopleService(client: AccountClient) : BaseService(client) {
             projectId = projectId,
             resourceId = null,
         )
-        return requestPaginated(info, options, {
-            httpGet("/projects/${projectId}/people.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options.page,
+        )
+        return requestPaginated(info, options.toPaginationOptions(), {
+            httpGet("/projects/${projectId}/people.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Person>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
+     *
+     * Prefer [ListProjectPeopleOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [listForProject] needs an expected type to disambiguate.
+     */
+    suspend fun listForProject(projectId: Long, options: PaginationOptions? = null): ListResult<Person> =
+        listForProject(projectId, ListProjectPeopleOptions(maxItems = options?.maxItems))
 
     /**
      * Update project access (grant/revoke/create people)

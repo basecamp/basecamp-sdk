@@ -11,24 +11,30 @@ from basecamp.hooks import OperationInfo
 
 
 class TimelineService(BaseService):
-    def get_project_timeline(self, *, project_id: int, max_items: int | None = None) -> ListResult:
+    def get_project_timeline(
+        self, *, project_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(
                 service="timeline", operation="get_project_timeline", is_mutation=False, project_id=project_id
             ),
             f"/projects/{project_id}/timeline.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetProjectTimeline",
         )
 
 
 class AsyncTimelineService(AsyncBaseService):
-    async def get_project_timeline(self, *, project_id: int, max_items: int | None = None) -> ListResult:
+    async def get_project_timeline(
+        self, *, project_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(
                 service="timeline", operation="get_project_timeline", is_mutation=False, project_id=project_id
             ),
             f"/projects/{project_id}/timeline.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetProjectTimeline",
         )

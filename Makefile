@@ -652,9 +652,13 @@ kt-build:
 	cd kotlin && ./gradlew :basecamp-sdk:build
 
 # Run Kotlin tests
+#
+# :generator:test covers the emitters themselves — notably the append-only
+# constructor-order rule for options classes, which the generated output alone
+# cannot demonstrate.
 kt-test:
 	@echo "==> Running Kotlin tests..."
-	cd kotlin && ./gradlew :basecamp-sdk:check
+	cd kotlin && ./gradlew :basecamp-sdk:check :generator:test
 
 # Run all Kotlin checks
 kt-check: kt-test

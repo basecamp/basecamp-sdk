@@ -27,6 +27,8 @@ export interface ForProjectTimesheetOptions extends PaginationOptions {
   to?: string;
   /** Person id */
   personId?: number;
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -39,6 +41,8 @@ export interface ForRecordingTimesheetOptions extends PaginationOptions {
   to?: string;
   /** Person id */
   personId?: number;
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -115,7 +119,7 @@ export class TimesheetsService extends BaseService {
         this.client.GET("/projects/{projectId}/timesheet.json", {
           params: {
             path: { projectId },
-            query: { from: options?.from, to: options?.to, "person_id": options?.personId },
+            query: { from: options?.from, to: options?.to, "person_id": options?.personId, page: options?.page },
           },
         })
       , options
@@ -146,7 +150,7 @@ export class TimesheetsService extends BaseService {
         this.client.GET("/recordings/{recordingId}/timesheet.json", {
           params: {
             path: { recordingId },
-            query: { from: options?.from, to: options?.to, "person_id": options?.personId },
+            query: { from: options?.from, to: options?.to, "person_id": options?.personId, page: options?.page },
           },
         })
       , options

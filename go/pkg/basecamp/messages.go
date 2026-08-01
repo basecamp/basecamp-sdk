@@ -90,9 +90,8 @@ type MessageListOptions struct {
 	// If 0, uses DefaultMessageLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -120,7 +119,7 @@ func NewMessagesService(client *AccountClient) *MessagesService {
 //
 // Pagination options:
 //   - Limit: maximum number of messages to return (0 = 100, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned MessageListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -147,6 +146,13 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 		}
 		if opts.Direction != "" {
 			params.Direction = &opts.Direction
+		}
+		if opts.Page > 0 {
+			var page *int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 

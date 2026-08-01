@@ -30,6 +30,7 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
             "from" to options?.from,
             "to" to options?.to,
             "person_id" to options?.personId,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/projects/${projectId}/timesheet.json" + qs, operationName = info.operation)
@@ -56,6 +57,7 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
             "from" to options?.from,
             "to" to options?.to,
             "person_id" to options?.personId,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/recordings/${recordingId}/timesheet.json" + qs, operationName = info.operation)

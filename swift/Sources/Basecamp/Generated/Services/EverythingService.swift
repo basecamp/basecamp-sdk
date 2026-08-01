@@ -2,6 +2,7 @@
 import Foundation
 
 public struct EverythingCheckinsEverythingOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -12,6 +13,7 @@ public struct EverythingCheckinsEverythingOptions: Sendable {
 }
 
 public struct EverythingCommentsEverythingOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -22,8 +24,11 @@ public struct EverythingCommentsEverythingOptions: Sendable {
 }
 
 public struct EverythingCompletedCardsEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -41,8 +46,11 @@ public struct EverythingCompletedCardsEverythingOptions: Sendable {
 }
 
 public struct EverythingCompletedTodosEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -60,8 +68,11 @@ public struct EverythingCompletedTodosEverythingOptions: Sendable {
 }
 
 public struct EverythingFilesEverythingOptions: Sendable {
+    /// Filter by file kind: all (default), images, pdfs, documents, or videos.
     public var kind: String?
+    /// Restrict to files created by the given people (repeatable).
     public var peopleIds: [Int]?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -79,6 +90,7 @@ public struct EverythingFilesEverythingOptions: Sendable {
 }
 
 public struct EverythingForwardsEverythingOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -89,6 +101,7 @@ public struct EverythingForwardsEverythingOptions: Sendable {
 }
 
 public struct EverythingMessagesEverythingOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -99,8 +112,11 @@ public struct EverythingMessagesEverythingOptions: Sendable {
 }
 
 public struct EverythingNoDueDateCardsEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -118,8 +134,11 @@ public struct EverythingNoDueDateCardsEverythingOptions: Sendable {
 }
 
 public struct EverythingNoDueDateTodosEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -137,8 +156,11 @@ public struct EverythingNoDueDateTodosEverythingOptions: Sendable {
 }
 
 public struct EverythingNotNowCardsEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -156,8 +178,11 @@ public struct EverythingNotNowCardsEverythingOptions: Sendable {
 }
 
 public struct EverythingOpenCardsEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -175,8 +200,11 @@ public struct EverythingOpenCardsEverythingOptions: Sendable {
 }
 
 public struct EverythingOpenTodosEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -194,7 +222,9 @@ public struct EverythingOpenTodosEverythingOptions: Sendable {
 }
 
 public struct EverythingOverdueCardsEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
 
     public init(assigneeIds: [Int]? = nil, due: String? = nil) {
@@ -204,7 +234,9 @@ public struct EverythingOverdueCardsEverythingOptions: Sendable {
 }
 
 public struct EverythingOverdueTodosEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
 
     public init(assigneeIds: [Int]? = nil, due: String? = nil) {
@@ -214,8 +246,11 @@ public struct EverythingOverdueTodosEverythingOptions: Sendable {
 }
 
 public struct EverythingUnassignedCardsEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -233,8 +268,11 @@ public struct EverythingUnassignedCardsEverythingOptions: Sendable {
 }
 
 public struct EverythingUnassignedTodosEverythingOptions: Sendable {
+    /// Restrict to tasks assigned to at least one of the given people (repeatable). Assignees on nested steps are not considered.
     public var assigneeIds: [Int]?
+    /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

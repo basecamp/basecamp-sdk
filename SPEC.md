@@ -698,6 +698,26 @@ The variant is determined at code-generation time from the OpenAPI response sche
 
 **Wrapped response pagination:** For endpoints that return a wrapper object with a paginated array inside (e.g., `personProgress` returns `{person, events: [...]}`), the generated service method paginates the embedded array while preserving the wrapper fields from the first page. The `paginate` algorithm above handles item extraction; the wrapping/unwrapping is a code-generation concern, not a transport concern. See `typescript/src/generated/services/reports.ts` and `go/pkg/basecamp/timeline.go` for reference implementations.
 
+### The `page` Query Parameter
+
+Operations whose Basecamp endpoint honors `?page=` accept a `page` query parameter. **Its meaning currently differs between Go and the five auto-paginating SDKs, and callers must know which they are using.**
+
+Two carve-outs, so the rule above is not read as universal:
+
+- `ListWebhooks`, `ListMessageTypes`, `ListChatbots`, `ListPingablePeople`, `ListQuestionAnswerers`, and `ListUploadVersions` carry the pagination trait but declare **no** `page` parameter: their Basecamp index actions return the whole collection rather than paginating, so there is no page to select.
+- `GetMyNotifications` declares `page` but carries **no** pagination trait, so no SDK follows links for it and everything below is inapplicable — it returns the page you asked for, in all six.
+
+| SDK | Behavior with `page = 3` | Requests issued |
+|-----|--------------------------|-----------------|
+| Go | Returns exactly page 3; auto-pagination is suppressed. | 1 |
+| TypeScript, Python, Ruby, Kotlin, Swift | Fetches page 3, then follows `Link: rel="next"` to the end of the collection, returning pages 3..N concatenated. | N - 2 |
+
+The divergence is structural: `page` rides in the query string of the *first* request only, while every subsequent request comes from the `Link` header. The auto-pagination algorithm above has no notion of a pinned page, so `page` acts as a starting offset rather than a selector. Go escapes this because its hand-written wrappers short-circuit before the follow loop when `Page > 0`.
+
+`max_items` bounds the walk but is not a page selector: it caps *items*, so it collapses to a single request only when the cap does not exceed that page's item count, which requires the caller to know the server's page size.
+
+This behavior predates the operations added in #561 — it has held since the first operations declared `@httpQuery("page")`. Converging all six SDKs on the Go semantics is tracked in issue #566; until then, the divergence is documented rather than silent, and SDK doc comments for `page` point here.
+
 ### Same-Origin Validation Algorithm `[conformance]`
 
 ```

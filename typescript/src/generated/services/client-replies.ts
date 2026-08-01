@@ -20,6 +20,8 @@ export type ClientReply = components["schemas"]["ClientReply"];
  * Options for list.
  */
 export interface ListClientReplyOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 
@@ -41,6 +43,9 @@ export class ClientRepliesService extends BaseService {
    * @example
    * ```ts
    * const result = await client.clientReplies.list(123);
+   *
+   * // With options
+   * const filtered = await client.clientReplies.list(123, { page: 1 });
    * ```
    */
   async list(recordingId: number, options?: ListClientReplyOptions): Promise<ListResult<ClientReply>> {
@@ -56,6 +61,7 @@ export class ClientRepliesService extends BaseService {
         this.client.GET("/client/recordings/{recordingId}/replies.json", {
           params: {
             path: { recordingId },
+            query: { page: options?.page },
           },
         })
       , options

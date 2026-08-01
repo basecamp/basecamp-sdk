@@ -2977,6 +2977,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -3899,10 +3909,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4010,10 +4020,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4121,10 +4131,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4232,10 +4242,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4439,10 +4449,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -4522,7 +4532,18 @@
       "get": {
         "description": "List all campfires across the account\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListCampfires",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "ListCampfires 200 response",
@@ -5176,6 +5197,16 @@
               "type": "string",
               "description": "asc|desc"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -5667,6 +5698,16 @@
               "type": "string",
               "description": "asc|desc"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -5857,10 +5898,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -6033,6 +6074,16 @@
             "schema": {
               "type": "string",
               "description": "asc|desc"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -6210,6 +6261,16 @@
               "type": "string",
               "description": "asc|desc"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -6377,6 +6438,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -6548,10 +6619,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -7282,10 +7353,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -7369,10 +7440,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -7819,6 +7890,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -8192,6 +8273,16 @@
             "schema": {
               "type": "string",
               "description": "asc|desc"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -8702,6 +8793,16 @@
               "type": "string",
               "description": "asc|desc"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -8882,10 +8983,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -9354,10 +9455,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -9441,10 +9542,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -10256,7 +10357,18 @@
       "get": {
         "description": "Get pending check-in reminders for the current user\n\nReturns questions that are pending a response from the authenticated user.\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages.",
         "operationId": "GetQuestionReminders",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "GetQuestionReminders 200 response",
@@ -10332,10 +10444,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through read items. Defaults to 1.",
+            "description": "Page number for paginating through read items. Defaults to 1. This\noperation is not auto-paginated in any SDK, so a page is returned as\nasked for and later pages are not followed.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through read items. Defaults to 1.",
+              "description": "Page number for paginating through read items. Defaults to 1. This\noperation is not auto-paginated in any SDK, so a page is returned as\nasked for and later pages are not followed.",
               "format": "int32"
             }
           },
@@ -10413,10 +10525,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number. Defaults to 1.",
+            "description": "Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number. Defaults to 1.",
+              "description": "Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -10573,7 +10685,18 @@
       "get": {
         "description": "List all people visible to the current user\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListPeople",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "ListPeople 200 response",
@@ -10994,6 +11117,16 @@
               "type": "string",
               "description": "active|archived|trashed"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -11220,6 +11353,16 @@
             "schema": {
               "type": "string",
               "description": "asc|desc"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -11669,6 +11812,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -11864,6 +12017,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -12130,6 +12293,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -12244,6 +12417,16 @@
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -12588,6 +12771,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -12955,6 +13148,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -13241,6 +13444,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -14111,6 +14324,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -14400,6 +14623,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -14585,6 +14818,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -14680,6 +14923,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -15558,6 +15811,16 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -15999,6 +16262,16 @@
               "type": "string",
               "description": "Comma-separated list of project IDs. When provided, results are returned\nin the order specified instead of by risk level."
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -16076,7 +16349,18 @@
       "get": {
         "description": "Get account-wide activity feed (progress report)",
         "operationId": "GetProgressReport",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "GetProgressReport 200 response",
@@ -16568,6 +16852,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -17125,6 +17419,16 @@
               "type": "string",
               "description": "active|archived|trashed"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -17427,6 +17731,16 @@
             },
             "deprecated": true,
             "x-deprecated-reason": "prefer creator_ids[]."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -17583,6 +17897,16 @@
             "schema": {
               "type": "string",
               "description": "active|archived|trashed"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -18763,6 +19087,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -18963,6 +19297,16 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
             }
           }
         ],
@@ -19168,10 +19512,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19279,10 +19623,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19390,10 +19734,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -19597,10 +19941,10 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
             "schema": {
               "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
               "format": "int32"
             }
           }
@@ -20578,6 +20922,16 @@
               "type": "string",
               "description": "active|archived|trashed"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -21213,6 +21567,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -21398,6 +21762,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -21583,6 +21957,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {

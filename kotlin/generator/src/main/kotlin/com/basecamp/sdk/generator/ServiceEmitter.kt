@@ -138,7 +138,11 @@ class ServiceEmitter(private val api: OpenApiParser) {
             val entityType = entitySchema?.let { TYPE_ALIASES[it] } ?: "JsonElement"
             val resultClassName = buildWrappedResultClassName(op)
 
-            sb.appendLine("        val (firstPageBody, items) = requestPaginatedWrapped<$entityType>(info, options, {")
+            // Convert custom options to PaginationOptions
+            val wrappedHasOptionalQuery = op.queryParams.any { !it.required }
+            val wrappedOptionsArg = if (wrappedHasOptionalQuery) "${optionsAccess(op)}toPaginationOptions()" else "options"
+
+            sb.appendLine("        val (firstPageBody, items) = requestPaginatedWrapped<$entityType>(info, $wrappedOptionsArg, {")
             sb.appendLine("            httpGet($pathWithQuery, operationName = info.operation)")
             sb.appendLine("        }) { body ->")
             sb.appendLine("            json.parseToJsonElement(body).jsonObject[\"${op.paginationKey}\"]!!")
@@ -174,7 +178,7 @@ class ServiceEmitter(private val api: OpenApiParser) {
 
             // Convert custom options to PaginationOptions
             val hasOptionalQuery = op.queryParams.any { !it.required }
-            val optionsArg = if (hasOptionalQuery) "options?.toPaginationOptions()" else "options"
+            val optionsArg = if (hasOptionalQuery) "${optionsAccess(op)}toPaginationOptions()" else "options"
 
             sb.appendLine("        return requestPaginated(info, $optionsArg, {")
             sb.appendLine("            httpGet($pathWithQuery, operationName = info.operation)")
@@ -203,8 +207,83 @@ class ServiceEmitter(private val api: OpenApiParser) {
 
         sb.appendLine("    }")
 
+        sb.append(generatePaginationOptionsOverload(op, returnType))
+
         return sb.toString()
     }
+
+    /**
+     * Emits the source-compatibility overload for an operation that gained its
+     * first optional query parameter.
+     *
+     * Such an operation used to take `options: PaginationOptions? = null` and now
+     * needs an `<Operation>Options` to carry its query parameters. Replacing the
+     * parameter outright would be a source break, which the pre-1.0 policy in
+     * kotlin/README.md forbids, so the OLD signature is kept verbatim as the
+     * defaulted overload and the new options class arrives beside it. Every call
+     * shape that compiled before still compiles: `list(id)`, `list(id, null)`,
+     * `list(id, PaginationOptions(maxItems = 3))`, and — the reason the parameter
+     * stays nullable — `list(id, aPaginationOptionsVariable)` whatever its
+     * nullability.
+     *
+     * The new options class is therefore non-null and undefaulted: two defaulted
+     * one-argument candidates would make a bare `list(id)` ambiguous. A caller
+     * wanting "no options" uses the compatibility overload, which is what the
+     * default already does.
+     *
+     * Emitted ONLY for the operations that actually made that move, listed in
+     * [PAGINATION_OPTIONS_COMPAT_OVERLOADS]. An operation that already had its
+     * own options class needs no bridge, and emitting one anyway would leave two
+     * applicable one-argument candidates — enough to make an untyped callable
+     * reference like `client.bookmarks::listMyBookmarks` ambiguous.
+     */
+    private fun generatePaginationOptionsOverload(op: ParsedOperation, returnType: String): String {
+        if (op.operationId !in PAGINATION_OPTIONS_COMPAT_OVERLOADS) return ""
+
+        val hasOptionalQuery = op.queryParams.any { !it.required }
+        val hasPagination = op.hasPagination && op.returnsArray
+        val isWrappedPaginated = op.hasPagination && op.paginationKey != null && !op.returnsArray
+        if (!hasOptionalQuery || !(hasPagination || isWrappedPaginated)) return ""
+
+        val optionsClassName = "${op.operationId}Options"
+        val leading = mutableListOf<String>()
+        for (p in op.pathParams) {
+            leading += p.name.snakeToCamelCase()
+        }
+        for (q in op.queryParams.filter { it.required }) {
+            leading += q.name.snakeToCamelCase()
+        }
+        val declared = buildParams(op).split(", ").filter { it.isNotEmpty() }
+        // Reuse the primary signature minus its trailing options parameter.
+        val paramDecls = declared.dropLast(1) + "options: PaginationOptions? = null"
+        val forwarded = (leading + "$optionsClassName(maxItems = options?.maxItems)").joinToString(", ")
+
+        val sb = StringBuilder()
+        sb.appendLine()
+        sb.appendLine("    /**")
+        sb.appendLine("     * Source-compatibility overload: the signature this operation had before")
+        sb.appendLine("     * it gained query parameters of its own.")
+        sb.appendLine("     *")
+        sb.appendLine("     * Prefer [$optionsClassName], which also carries this operation's query")
+        sb.appendLine("     * parameters. This overload forwards maxItems and leaves them unset.")
+        sb.appendLine("     *")
+        sb.appendLine("     * Because two candidates now apply, an *untyped* callable reference to")
+        sb.appendLine("     * [${op.methodName}] needs an expected type to disambiguate.")
+        sb.appendLine("     */")
+        sb.appendLine("    suspend fun ${op.methodName}(${paramDecls.joinToString(", ")}): $returnType =")
+        sb.appendLine("        ${op.methodName}($forwarded)")
+        return sb.toString()
+    }
+
+    /**
+     * How the generated body reaches into `options`: safely for the usual
+     * nullable parameter, directly for an operation carrying a
+     * PaginationOptions bridge, whose own options class is non-null. A safe call
+     * on a non-null receiver is a warning, and the SDK builds with
+     * allWarningsAsErrors.
+     */
+    private fun optionsAccess(op: ParsedOperation): String =
+        if (op.operationId in PAGINATION_OPTIONS_COMPAT_OVERLOADS) "options." else "options?."
 
     /**
      * Generates query string building code that calls BaseService.buildQueryString().
@@ -219,7 +298,7 @@ class ServiceEmitter(private val api: OpenApiParser) {
         sb.appendLine("        val qs = buildQueryString(")
         for (q in op.queryParams) {
             val camelName = q.name.snakeToCamelCase()
-            val accessor = if (q.required) camelName else "options?.$camelName"
+            val accessor = if (q.required) camelName else "${optionsAccess(op)}$camelName"
             sb.appendLine("            \"${q.name}\" to $accessor,")
         }
         sb.appendLine("        )")
@@ -374,7 +453,17 @@ class ServiceEmitter(private val api: OpenApiParser) {
         val isWrappedPaginated = op.hasPagination && op.paginationKey != null && !op.returnsArray
         if (hasOptionalQuery || hasPagination || isWrappedPaginated) {
             val optionsClassName = buildOptionsClassName(op, hasPagination || isWrappedPaginated, hasOptionalQuery)
-            parts += "options: $optionsClassName? = null"
+            // An operation that kept a PaginationOptions bridge keeps the OLD
+            // signature — `options: PaginationOptions? = null` — as the defaulted
+            // one, so every call shape that compiled before still does, `null`
+            // literal and nullable variable alike. Its own options class then has
+            // to arrive non-null and undefaulted, or a bare `list(id)` would have
+            // two applicable candidates. See generatePaginationOptionsOverload.
+            parts += if (op.operationId in PAGINATION_OPTIONS_COMPAT_OVERLOADS) {
+                "options: $optionsClassName"
+            } else {
+                "options: $optionsClassName? = null"
+            }
         }
 
         return parts.joinToString(", ")

@@ -16,9 +16,8 @@ type ScheduleEntryListOptions struct {
 	// If 0 (default), returns all entries. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 
 	// Status filters entries by status: "active", "archived", or "trashed".
@@ -200,7 +199,7 @@ func (s *SchedulesService) Get(ctx context.Context, scheduleID int64) (result *S
 //
 // Pagination options:
 //   - Limit: maximum number of entries to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned ScheduleEntryListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -221,9 +220,20 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 
 	// Build params for generated client
 	var params *generated.ListScheduleEntriesParams
-	if opts != nil && opts.Status != "" {
+	if opts != nil && (opts.Status != "" || opts.Page > 0) {
 		params = &generated.ListScheduleEntriesParams{
-			Status: &opts.Status,
+			// omitzero, not &opts.Status: the guard above now also fires for a
+			// page-only call, and a non-nil pointer to "" is sent as an empty
+			// status= rather than omitted — which would displace the server's
+			// active-entries default. Same shape as every other wrapper here.
+			Status: omitzero(opts.Status),
+		}
+		if opts.Page > 0 {
+			var page *int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 

@@ -39,11 +39,13 @@ module Basecamp
 
       # List uploads in a vault
       # @param vault_id [Integer] vault id ID
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list(vault_id:, max_items: nil)
+      def list(vault_id:, page: nil, max_items: nil)
         wrap_paginated(service: "uploads", operation: "list", is_mutation: false, resource_id: vault_id) do
-          paginate("/vaults/#{vault_id}/uploads.json", operation: "ListUploads", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/vaults/#{vault_id}/uploads.json", params: params, operation: "ListUploads", max_items: max_items)
         end
       end
 

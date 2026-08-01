@@ -21,6 +21,8 @@ export type Boost = components["schemas"]["Boost"];
  * Options for listForRecording.
  */
 export interface ListForRecordingBoostOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -35,6 +37,8 @@ export interface CreateForRecordingBoostRequest {
  * Options for listForEvent.
  */
 export interface ListForEventBoostOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -123,6 +127,9 @@ export class BoostsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.boosts.listForRecording(123);
+   *
+   * // With options
+   * const filtered = await client.boosts.listForRecording(123, { page: 1 });
    * ```
    */
   async listForRecording(recordingId: number, options?: ListForRecordingBoostOptions): Promise<ListResult<Boost>> {
@@ -138,6 +145,7 @@ export class BoostsService extends BaseService {
         this.client.GET("/recordings/{recordingId}/boosts.json", {
           params: {
             path: { recordingId },
+            query: { page: options?.page },
           },
         })
       , options
@@ -191,6 +199,9 @@ export class BoostsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.boosts.listForEvent(123, 123);
+   *
+   * // With options
+   * const filtered = await client.boosts.listForEvent(123, 123, { page: 1 });
    * ```
    */
   async listForEvent(recordingId: number, eventId: number, options?: ListForEventBoostOptions): Promise<ListResult<Boost>> {
@@ -206,6 +217,7 @@ export class BoostsService extends BaseService {
         this.client.GET("/recordings/{recordingId}/events/{eventId}/boosts.json", {
           params: {
             path: { recordingId, eventId },
+            query: { page: options?.page },
           },
         })
       , options

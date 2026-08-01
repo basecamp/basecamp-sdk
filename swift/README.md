@@ -243,6 +243,22 @@ print("Total: \(allProjects.meta.totalCount)")
 print("Truncated: \(allProjects.meta.truncated)")
 ```
 
+### The `page` option
+
+`page` sets where the walk *starts*, not which single page you get. Link-following
+continues from there to the end of the collection, so `page: 3` against a 10-page
+collection returns pages 3–10 concatenated. Pair it with `maxItems` to bound the
+result:
+
+```swift
+let fromPage3 = try await account.projects.list(options: .init(page: 3, maxItems: 50))
+```
+
+This differs from the Go SDK, where a positive `Page` fetches exactly that page
+and turns auto-pagination off. Converging the six SDKs on Go's single-page
+semantics is a breaking change tracked in
+[#566](https://github.com/basecamp/basecamp-sdk/issues/566).
+
 ## Retry Behavior
 
 The SDK automatically retries requests on transient failures:

@@ -8062,7 +8062,10 @@ export interface operations {
     };
     ListCards: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 columnId: number;
@@ -8718,7 +8721,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -8784,7 +8787,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -8850,7 +8853,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -8916,7 +8919,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9046,7 +9049,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9104,7 +9107,10 @@ export interface operations {
     };
     ListCampfires: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -9540,6 +9546,8 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -9869,6 +9877,8 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -10002,7 +10012,7 @@ export interface operations {
     GetEverythingCheckins: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -10121,6 +10131,8 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -10240,6 +10252,8 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -10354,7 +10368,10 @@ export interface operations {
     };
     ListClientReplies: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 recordingId: number;
@@ -10472,7 +10489,7 @@ export interface operations {
     GetEverythingComments: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -10978,7 +10995,7 @@ export interface operations {
                 kind?: string;
                 /** @description Restrict to files created by the given people (repeatable). */
                 "people_ids[]"?: number[];
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -11037,7 +11054,7 @@ export interface operations {
     GetEverythingForwards: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -11356,7 +11373,10 @@ export interface operations {
     };
     ListForwardReplies: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 forwardId: number;
@@ -11607,6 +11627,8 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -11976,6 +11998,8 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -12106,7 +12130,7 @@ export interface operations {
     GetEverythingMessages: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -12450,7 +12474,7 @@ export interface operations {
     ListMyBookmarks: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -12509,7 +12533,7 @@ export interface operations {
     ListMyDrafts: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -13137,7 +13161,10 @@ export interface operations {
     };
     GetQuestionReminders: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -13194,7 +13221,11 @@ export interface operations {
     GetMyNotifications: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through read items. Defaults to 1. */
+                /**
+                 * @description Page number for paginating through read items. Defaults to 1. This
+                 *     operation is not auto-paginated in any SDK, so a page is returned as
+                 *     asked for and later pages are not followed.
+                 */
                 page?: number;
                 /**
                  * @description Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
@@ -13251,7 +13282,7 @@ export interface operations {
     GetBubbleUps: {
         parameters: {
             query?: {
-                /** @description Page number. Defaults to 1. */
+                /** @description Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -13367,7 +13398,10 @@ export interface operations {
     };
     ListPeople: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -13669,6 +13703,8 @@ export interface operations {
             query?: {
                 /** @description active|archived|trashed */
                 status?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -13804,6 +13840,8 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -14105,7 +14143,10 @@ export interface operations {
     };
     ListGaugeNeedles: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 projectId: number;
@@ -14243,7 +14284,10 @@ export interface operations {
     };
     ListProjectPeople: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 projectId: number;
@@ -14381,7 +14425,10 @@ export interface operations {
     };
     GetProjectTimeline: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 projectId: number;
@@ -14452,6 +14499,8 @@ export interface operations {
                 from?: string;
                 to?: string;
                 person_id?: number;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -14695,7 +14744,10 @@ export interface operations {
     };
     ListQuestions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 questionnaireId: number;
@@ -14953,7 +15005,10 @@ export interface operations {
     };
     ListAnswers: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 questionId: number;
@@ -15149,7 +15204,10 @@ export interface operations {
     };
     GetAnswersByPerson: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 questionId: number;
@@ -15791,7 +15849,10 @@ export interface operations {
     };
     ListRecordingBoosts: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 recordingId: number;
@@ -15991,7 +16052,10 @@ export interface operations {
     };
     ListComments: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 recordingId: number;
@@ -16120,7 +16184,10 @@ export interface operations {
     };
     ListEvents: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 recordingId: number;
@@ -16178,7 +16245,10 @@ export interface operations {
     };
     ListEventBoosts: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 recordingId: number;
@@ -16760,6 +16830,8 @@ export interface operations {
                 from?: string;
                 to?: string;
                 person_id?: number;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -17085,6 +17157,8 @@ export interface operations {
                  *     in the order specified instead of by risk level.
                  */
                 bucket_ids?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -17141,7 +17215,10 @@ export interface operations {
     };
     GetProgressReport: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17498,7 +17575,10 @@ export interface operations {
     };
     GetPersonProgress: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 personId: number;
@@ -17885,6 +17965,8 @@ export interface operations {
             query?: {
                 /** @description active|archived|trashed */
                 status?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -18051,6 +18133,8 @@ export interface operations {
                  * @description Deprecated: prefer creator_ids[].
                  */
                 creator_id?: number;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -18166,6 +18250,8 @@ export interface operations {
             query?: {
                 /** @description active|archived|trashed */
                 status?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -18933,7 +19019,10 @@ export interface operations {
     };
     ListTodolistGroups: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 todolistId: number;
@@ -19066,6 +19155,8 @@ export interface operations {
                 /** @description active|archived|trashed */
                 status?: string;
                 completed?: boolean;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -19203,7 +19294,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19269,7 +19360,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19335,7 +19426,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19465,7 +19556,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. */
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -20157,6 +20248,8 @@ export interface operations {
             query?: {
                 /** @description active|archived|trashed */
                 status?: string;
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
             };
             header?: never;
             path: {
@@ -20602,7 +20695,10 @@ export interface operations {
     };
     ListDocuments: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 vaultId: number;
@@ -20731,7 +20827,10 @@ export interface operations {
     };
     ListUploads: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 vaultId: number;
@@ -20860,7 +20959,10 @@ export interface operations {
     };
     ListVaults: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                page?: number;
+            };
             header?: never;
             path: {
                 vaultId: number;

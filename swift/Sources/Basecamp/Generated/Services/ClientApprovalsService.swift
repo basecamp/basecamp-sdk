@@ -2,13 +2,23 @@
 import Foundation
 
 public struct ListClientApprovalOptions: Sendable {
+    /// created_at|updated_at
     public var sort: String?
+    /// asc|desc
     public var direction: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(sort: String? = nil, direction: String? = nil, maxItems: Int? = nil) {
+    public init(
+        sort: String? = nil,
+        direction: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
         self.sort = sort
         self.direction = direction
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -31,6 +41,9 @@ public final class ClientApprovalsService: BaseService, @unchecked Sendable {
         }
         if let direction = options?.direction {
             queryItems.append(URLQueryItem(name: "direction", value: direction))
+        }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "ClientApprovals", operation: "ListClientApprovals", resourceType: "client_approval", isMutation: false),

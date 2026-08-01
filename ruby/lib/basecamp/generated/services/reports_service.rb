@@ -8,11 +8,13 @@ module Basecamp
     class ReportsService < BaseService
 
       # Get account-wide activity feed (progress report)
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def progress(max_items: nil)
+      def progress(page: nil, max_items: nil)
         wrap_paginated(service: "reports", operation: "progress", is_mutation: false) do
-          paginate("/reports/progress.json", operation: "GetProgressReport", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/reports/progress.json", params: params, operation: "GetProgressReport", max_items: max_items)
         end
       end
 
@@ -46,11 +48,13 @@ module Basecamp
 
       # Get a person's activity timeline
       # @param person_id [Integer] person id ID
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [Hash] wrapper fields merged with a ListEnumerator of the paginated items
-      def person_progress(person_id:, max_items: nil)
+      def person_progress(person_id:, page: nil, max_items: nil)
         wrap_paginated_wrapped(key: "events", service: "reports", operation: "person_progress", is_mutation: false, resource_id: person_id) do
-          paginate_wrapped("/reports/users/progress/#{person_id}.json", key: "events", operation: "GetPersonProgress", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate_wrapped("/reports/users/progress/#{person_id}.json", key: "events", params: params, operation: "GetPersonProgress", max_items: max_items)
         end
       end
     end

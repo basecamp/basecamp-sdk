@@ -2,11 +2,15 @@
 import Foundation
 
 public struct ListTemplateOptions: Sendable {
+    /// active|archived|trashed
     public var status: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(status: String? = nil, maxItems: Int? = nil) {
+    public init(status: String? = nil, page: Int? = nil, maxItems: Int? = nil) {
         self.status = status
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -64,6 +68,9 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
         var queryItems: [URLQueryItem] = []
         if let status = options?.status {
             queryItems.append(URLQueryItem(name: "status", value: status))
+        }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "Templates", operation: "ListTemplates", resourceType: "template", isMutation: false),

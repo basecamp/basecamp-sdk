@@ -39,6 +39,7 @@ class SearchService(client: AccountClient) : BaseService(client) {
             "type" to options?.type,
             "bucket_id" to options?.bucketId,
             "creator_id" to options?.creatorId,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/search.json" + qs, operationName = info.operation)

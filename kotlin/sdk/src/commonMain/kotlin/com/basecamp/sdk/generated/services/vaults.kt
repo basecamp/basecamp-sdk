@@ -60,7 +60,7 @@ class VaultsService(client: AccountClient) : BaseService(client) {
      * @param vaultId The vault ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(vaultId: Long, options: PaginationOptions? = null): ListResult<Vault> {
+    suspend fun list(vaultId: Long, options: ListVaultsOptions): ListResult<Vault> {
         val info = OperationInfo(
             service = "Vaults",
             operation = "ListVaults",
@@ -69,12 +69,28 @@ class VaultsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = vaultId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/vaults/${vaultId}/vaults.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options.page,
+        )
+        return requestPaginated(info, options.toPaginationOptions(), {
+            httpGet("/vaults/${vaultId}/vaults.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Vault>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
+     *
+     * Prefer [ListVaultsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [list] needs an expected type to disambiguate.
+     */
+    suspend fun list(vaultId: Long, options: PaginationOptions? = null): ListResult<Vault> =
+        list(vaultId, ListVaultsOptions(maxItems = options?.maxItems))
 
     /**
      * Create a new vault (subfolder) in a vault

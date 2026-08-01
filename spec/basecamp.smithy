@@ -468,6 +468,10 @@ structure ListProjectsInput {
 
   @httpQuery("status")
   status: ProjectStatus
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListProjectsOutput {
@@ -718,6 +722,10 @@ structure ListTodosInput {
 
   @httpQuery("completed")
   completed: Boolean
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListTodosOutput {
@@ -1117,6 +1125,10 @@ structure ListTodolistsInput {
 
   @httpQuery("status")
   status: TodolistStatus
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListTodolistsOutput {
@@ -1275,6 +1287,10 @@ structure ListTodolistGroupsInput {
   @required
   @httpLabel
   todolistId: TodolistId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListTodolistGroupsOutput {
@@ -1731,6 +1747,10 @@ structure ListCommentsInput {
   @required
   @httpLabel
   recordingId: RecordingId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListCommentsOutput {
@@ -1851,6 +1871,10 @@ structure ListMessagesInput {
 
   @httpQuery("direction")
   direction: SortDirection
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListMessagesOutput {
@@ -2202,6 +2226,10 @@ structure ListVaultsInput {
   @required
   @httpLabel
   vaultId: VaultId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListVaultsOutput {
@@ -2313,6 +2341,10 @@ structure ListDocumentsInput {
   @required
   @httpLabel
   vaultId: VaultId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListDocumentsOutput {
@@ -2436,6 +2468,10 @@ structure ListUploadsInput {
   @required
   @httpLabel
   vaultId: VaultId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListUploadsOutput {
@@ -2672,6 +2708,10 @@ structure ListScheduleEntriesInput {
 
   @httpQuery("status")
   status: ScheduleEntryStatus
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListScheduleEntriesOutput {
@@ -2882,6 +2922,10 @@ structure GetProjectTimesheetInput {
 
   @httpQuery("person_id")
   person_id: PersonId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetProjectTimesheetOutput {
@@ -2917,6 +2961,10 @@ structure GetRecordingTimesheetInput {
 
   @httpQuery("person_id")
   person_id: PersonId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetRecordingTimesheetOutput {
@@ -3494,6 +3542,10 @@ structure ListCampfiresInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListCampfiresOutput {
@@ -3554,6 +3606,10 @@ structure ListCampfireLinesInput {
 
   @httpQuery("direction")
   direction: SortDirection
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListCampfireLinesOutput {
@@ -3711,6 +3767,10 @@ structure ListCampfireUploadsInput {
 
   @httpQuery("direction")
   direction: SortDirection
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListCampfireUploadsOutput {
@@ -3961,6 +4021,10 @@ structure ListForwardsInput {
 
   @httpQuery("direction")
   direction: SortDirection
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListForwardsOutput {
@@ -4015,6 +4079,10 @@ structure ListForwardRepliesInput {
   @required
   @httpLabel
   forwardId: ForwardId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListForwardRepliesOutput {
@@ -4367,6 +4435,10 @@ structure ListCardsInput {
   @required
   @httpLabel
   columnId: CardColumnId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListCardsOutput {
@@ -5263,6 +5335,10 @@ structure ListPeopleInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListPeopleOutput {
@@ -5376,6 +5452,10 @@ structure ListProjectPeopleInput {
   @required
   @httpLabel
   projectId: ProjectId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListProjectPeopleOutput {
@@ -5604,6 +5684,10 @@ structure ListClientApprovalsInput {
 
   @httpQuery("direction")
   direction: SortDirection
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListClientApprovalsOutput {
@@ -5662,6 +5746,10 @@ structure ListClientCorrespondencesInput {
 
   @httpQuery("direction")
   direction: SortDirection
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListClientCorrespondencesOutput {
@@ -5718,6 +5806,10 @@ structure ListClientRepliesInput {
   @required
   @httpLabel
   recordingId: RecordingId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListClientRepliesOutput {
@@ -6085,6 +6177,10 @@ structure ListEventsInput {
   @required
   @httpLabel
   recordingId: RecordingId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListEventsOutput {
@@ -6128,6 +6224,10 @@ structure ListRecordingsInput {
 
   @httpQuery("direction")
   direction: SortDirection
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListRecordingsOutput {
@@ -6573,6 +6673,10 @@ structure ListQuestionsInput {
   @required
   @httpLabel
   questionnaireId: QuestionnaireId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListQuestionsOutput {
@@ -6772,6 +6876,10 @@ structure ListAnswersInput {
   @required
   @httpLabel
   questionId: QuestionId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListAnswersOutput {
@@ -6928,6 +7036,10 @@ structure GetAnswersByPersonInput {
   @required
   @httpLabel
   personId: PersonId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetAnswersByPersonOutput {
@@ -6955,6 +7067,10 @@ structure GetQuestionRemindersInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetQuestionRemindersOutput {
@@ -7186,6 +7302,10 @@ structure SearchInput {
   @deprecated(message: "Use creatorIds (creator_ids[]) instead", since: "2026-07")
   @httpQuery("creator_id")
   creatorId: PersonId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure SearchOutput {
@@ -7237,6 +7357,10 @@ structure ListTemplatesInput {
 
   @httpQuery("status")
   status: TemplateStatus
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListTemplatesOutput {
@@ -7708,6 +7832,10 @@ structure GetProgressReportInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetProgressReportOutput {
@@ -7733,6 +7861,10 @@ structure GetProjectTimelineInput {
   @required
   @httpLabel
   projectId: ProjectId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetProjectTimelineOutput {
@@ -7758,6 +7890,10 @@ structure GetPersonProgressInput {
   @required
   @httpLabel
   personId: PersonId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure GetPersonProgressOutput {
@@ -8290,6 +8426,10 @@ structure ListRecordingBoostsInput {
   @required
   @httpLabel
   recordingId: RecordingId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListRecordingBoostsOutput {
@@ -8319,6 +8459,10 @@ structure ListEventBoostsInput {
   @required
   @httpLabel
   eventId: EventId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListEventBoostsOutput {
@@ -8626,6 +8770,10 @@ structure ListGaugesInput {
   /// in the order specified instead of by risk level.
   @httpQuery("bucket_ids")
   bucket_ids: String
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListGaugesOutput {
@@ -8652,6 +8800,10 @@ structure ListGaugeNeedlesInput {
   @required
   @httpLabel
   projectId: ProjectId
+
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+  @httpQuery("page")
+  page: Integer
 }
 
 structure ListGaugeNeedlesOutput {
@@ -9079,7 +9231,7 @@ structure GetEverythingMessagesInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9105,7 +9257,7 @@ structure GetEverythingCommentsInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9131,7 +9283,7 @@ structure GetEverythingCheckinsInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9157,7 +9309,7 @@ structure GetEverythingForwardsInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9195,7 +9347,7 @@ structure GetEverythingFilesInput {
   @httpQuery("people_ids[]")
   people_ids: PersonIdList
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9450,7 +9602,7 @@ structure EverythingTodosFilterInput {
   @httpQuery("due")
   due: String
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9473,7 +9625,7 @@ structure EverythingCardsFilterInput {
   @httpQuery("due")
   due: String
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9585,7 +9737,9 @@ structure GetMyNotificationsInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number for paginating through read items. Defaults to 1.
+  /// Page number for paginating through read items. Defaults to 1. This
+  /// operation is not auto-paginated in any SDK, so a page is returned as
+  /// asked for and later pages are not followed.
   @httpQuery("page")
   page: Integer
 
@@ -9672,7 +9826,7 @@ structure GetBubbleUpsInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number. Defaults to 1.
+  /// Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9873,7 +10027,7 @@ structure ListMyDraftsInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }
@@ -9961,7 +10115,7 @@ structure ListMyBookmarksInput {
   @httpLabel
   accountId: AccountId
 
-  /// Page number for paginating through results. Defaults to 1.
+  /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
   @httpQuery("page")
   page: Integer
 }

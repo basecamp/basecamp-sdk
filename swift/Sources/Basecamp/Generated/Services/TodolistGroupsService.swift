@@ -2,9 +2,12 @@
 import Foundation
 
 public struct ListTodolistGroupOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -22,9 +25,14 @@ public final class TodolistGroupsService: BaseService, @unchecked Sendable {
     }
 
     public func list(todolistId: Int, options: ListTodolistGroupOptions? = nil) async throws -> ListResult<TodolistGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "TodolistGroups", operation: "ListTodolistGroups", resourceType: "todolist_group", isMutation: false, resourceId: todolistId),
             path: "/todolists/\(todolistId)/groups.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListTodolistGroups")
         )

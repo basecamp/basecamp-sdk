@@ -9,11 +9,13 @@ module Basecamp
 
       # List all client replies for a recording (correspondence or approval)
       # @param recording_id [Integer] recording id ID
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list(recording_id:, max_items: nil)
+      def list(recording_id:, page: nil, max_items: nil)
         wrap_paginated(service: "clientreplies", operation: "list", is_mutation: false, resource_id: recording_id) do
-          paginate("/client/recordings/#{recording_id}/replies.json", operation: "ListClientReplies", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/client/recordings/#{recording_id}/replies.json", params: params, operation: "ListClientReplies", max_items: max_items)
         end
       end
 

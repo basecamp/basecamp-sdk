@@ -23,6 +23,8 @@ export type Template = components["schemas"]["Template"];
 export interface ListTemplateOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -87,7 +89,7 @@ export class TemplatesService extends BaseService {
       () =>
         this.client.GET("/templates.json", {
           params: {
-            query: { status: options?.status },
+            query: { status: options?.status, page: options?.page },
           },
         })
       , options

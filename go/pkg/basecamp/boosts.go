@@ -31,8 +31,8 @@ type BoostListOptions struct {
 	// If 0, uses DefaultBoostLimit (50). Use -1 for unlimited.
 	Limit int
 
-	// Page, if positive, disables automatic pagination and returns only the first page.
-	// NOTE: The page number itself is not honored; setting Page=2 does NOT fetch page 2.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -60,7 +60,7 @@ func NewBoostsService(client *AccountClient) *BoostsService {
 //
 // Pagination options:
 //   - Limit: maximum number of boosts to return (0 = 50, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned BoostListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -79,7 +79,16 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListRecordingBoostsWithResponse(ctx, s.client.accountID, recordingID)
+	var params *generated.ListRecordingBoostsParams
+	if opts != nil && opts.Page > 0 {
+		var page *int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListRecordingBoostsParams{Page: page}
+	}
+
+	resp, err := s.client.parent.gen.ListRecordingBoostsWithResponse(ctx, s.client.accountID, recordingID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +150,7 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 //
 // Pagination options:
 //   - Limit: maximum number of boosts to return (0 = 50, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned BoostListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -160,7 +169,16 @@ func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int6
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListEventBoostsWithResponse(ctx, s.client.accountID, recordingID, eventID)
+	var params *generated.ListEventBoostsParams
+	if opts != nil && opts.Page > 0 {
+		var page *int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListEventBoostsParams{Page: page}
+	}
+
+	resp, err := s.client.parent.gen.ListEventBoostsWithResponse(ctx, s.client.accountID, recordingID, eventID, params)
 	if err != nil {
 		return nil, err
 	}

@@ -25,6 +25,8 @@ export type CampfireLine = components["schemas"]["CampfireLine"];
  * Options for list.
  */
 export interface ListCampfireOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -61,6 +63,8 @@ export interface ListLinesCampfireOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -89,6 +93,8 @@ export interface ListUploadsCampfireOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 
@@ -109,6 +115,9 @@ export class CampfiresService extends BaseService {
    * @example
    * ```ts
    * const result = await client.campfires.list();
+   *
+   * // With options
+   * const filtered = await client.campfires.list({ page: 1 });
    * ```
    */
   async list(options?: ListCampfireOptions): Promise<ListResult<Campfire>> {
@@ -121,6 +130,9 @@ export class CampfiresService extends BaseService {
       },
       () =>
         this.client.GET("/chats.json", {
+          params: {
+            query: { page: options?.page },
+          },
         })
       , options
     );
@@ -351,7 +363,7 @@ export class CampfiresService extends BaseService {
         this.client.GET("/chats/{campfireId}/lines.json", {
           params: {
             path: { campfireId },
-            query: { sort: options?.sort, direction: options?.direction },
+            query: { sort: options?.sort, direction: options?.direction, page: options?.page },
           },
         })
       , options
@@ -521,7 +533,7 @@ export class CampfiresService extends BaseService {
         this.client.GET("/chats/{campfireId}/uploads.json", {
           params: {
             path: { campfireId },
-            query: { sort: options?.sort, direction: options?.direction },
+            query: { sort: options?.sort, direction: options?.direction, page: options?.page },
           },
         })
       , options

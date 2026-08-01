@@ -2,6 +2,8 @@ package com.basecamp.sdk.generator
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 
 /**
@@ -17,10 +19,18 @@ import java.io.File
  * Usage:
  *   ./gradlew :generator:run --args="--openapi ../openapi.json --behavior ../behavior-model.json --output sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
  */
+const val OPTIONS_PARAM_ORDER_FILENAME = "options-param-order.json"
+
+private const val COMMITTED_GENERATED_DIR = "sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
+
 fun main(args: Array<String>) {
     var openapiPath = "../openapi.json"
     var behaviorPath = "../behavior-model.json"
-    var outputDir = "sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
+    var outputDir = COMMITTED_GENERATED_DIR
+    // Read the constructor-order pin from the COMMITTED tree by default, even
+    // when --output points elsewhere: it records the order already shipped, so
+    // regenerating into a scratch directory must not reset it.
+    var optionsOrderPath = "$COMMITTED_GENERATED_DIR/$OPTIONS_PARAM_ORDER_FILENAME"
 
     var i = 0
     while (i < args.size) {
@@ -28,6 +38,7 @@ fun main(args: Array<String>) {
             "--openapi" -> openapiPath = args[++i]
             "--behavior" -> behaviorPath = args[++i]
             "--output" -> outputDir = args[++i]
+            "--options-order" -> optionsOrderPath = args[++i]
         }
         i++
     }
@@ -101,10 +112,18 @@ fun main(args: Array<String>) {
     println("Generated $serviceCount services with $opCount operations")
 
     // 3. Generate body/options types
-    val typeEmitter = TypeEmitter()
+    val typeEmitter = TypeEmitter(readOptionsParamOrder(File(optionsOrderPath)))
     val typesCode = typeEmitter.generateTypes(services)
     File(servicesDir, "Types.kt").writeText(typesCode)
     println("  types: Types.kt")
+
+    // 3b. Re-pin the options-class constructor order. Written into the output
+    // tree so a regenerate-and-diff drift gate compares it like any other
+    // generated artifact; read (above) from the committed copy, which is the
+    // shipped API's compatibility baseline.
+    val orderFile = File(outputBase, OPTIONS_PARAM_ORDER_FILENAME)
+    orderFile.writeText(renderOptionsParamOrder(typeEmitter.emittedParamOrder()))
+    println("  order: $OPTIONS_PARAM_ORDER_FILENAME (${typeEmitter.emittedParamOrder().size} options classes)")
 
     // 4. Generate Metadata.kt
     val metadataEmitter = MetadataEmitter()
@@ -121,6 +140,32 @@ fun main(args: Array<String>) {
 
     println("\nDone! Generated to: ${outputBase.absolutePath}")
 }
+
+/**
+ * Reads the shipped constructor order for options classes. A missing file is
+ * not an error — it means no order has been pinned yet, and every class is
+ * emitted in natural order and pinned from this run on.
+ */
+private fun readOptionsParamOrder(file: File): Map<String, List<String>> {
+    if (!file.exists()) return emptyMap()
+    val root = Json.parseToJsonElement(file.readText()) as JsonObject
+    return root.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }
+}
+
+/**
+ * Renders the pin. Hand-rolled rather than serialized so the on-disk shape is
+ * fixed by this repo, not by kotlinx.serialization's pretty-printer: it is a
+ * compatibility record read in diffs, and one array per class keeps a reorder
+ * visible as a one-line change.
+ */
+private fun renderOptionsParamOrder(order: Map<String, List<String>>): String {
+    val body = order.entries.joinToString(",\n") { (className, params) ->
+        "  ${jsonString(className)}: [${params.joinToString(", ") { jsonString(it) }}]"
+    }
+    return "{\n$body\n}\n"
+}
+
+private fun jsonString(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 /**
  * Find model types referenced by entity schemas that aren't in TYPE_ALIASES.

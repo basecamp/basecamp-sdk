@@ -28,6 +28,7 @@ class ClientApprovalsService(client: AccountClient) : BaseService(client) {
         val qs = buildQueryString(
             "sort" to options?.sort,
             "direction" to options?.direction,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/client/approvals.json" + qs, operationName = info.operation)

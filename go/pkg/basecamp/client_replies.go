@@ -15,7 +15,7 @@ type ClientReplyListOptions struct {
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page, if positive, fetches only that page and disables auto-pagination.
 	Page int
 }
 
@@ -68,7 +68,7 @@ func NewClientRepliesService(client *AccountClient) *ClientRepliesService {
 //
 // Pagination options:
 //   - Limit: maximum number of client replies to return (0 = all, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned ClientReplyListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -87,7 +87,16 @@ func (s *ClientRepliesService) List(ctx context.Context, recordingID int64, opts
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, recordingID)
+	var params *generated.ListClientRepliesParams
+	if opts != nil && opts.Page > 0 {
+		var page *int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListClientRepliesParams{Page: page}
+	}
+
+	resp, err := s.client.parent.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, recordingID, params)
 	if err != nil {
 		return nil, err
 	}

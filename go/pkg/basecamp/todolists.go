@@ -67,9 +67,8 @@ type TodolistListOptions struct {
 	// If 0 (default), returns all todolists. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -118,7 +117,7 @@ func NewTodolistsService(client *AccountClient) *TodolistsService {
 //
 // Pagination options:
 //   - Limit: maximum number of todolists to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned TodolistListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -139,8 +138,17 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 
 	// Build params for generated client
 	params := &generated.ListTodolistsParams{}
-	if opts != nil && opts.Status != "" {
-		params.Status = &opts.Status
+	if opts != nil {
+		if opts.Status != "" {
+			params.Status = &opts.Status
+		}
+		if opts.Page > 0 {
+			var page *int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
+		}
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)

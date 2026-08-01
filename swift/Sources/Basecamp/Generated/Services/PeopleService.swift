@@ -2,9 +2,12 @@
 import Foundation
 
 public struct ListPeopleOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -18,9 +21,12 @@ public struct ListPingablePeopleOptions: Sendable {
 }
 
 public struct ListForProjectPeopleOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -92,9 +98,14 @@ public final class PeopleService: BaseService, @unchecked Sendable {
     }
 
     public func list(options: ListPeopleOptions? = nil) async throws -> ListResult<Person> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "People", operation: "ListPeople", resourceType: "people", isMutation: false),
             path: "/people.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListPeople")
         )
@@ -110,9 +121,14 @@ public final class PeopleService: BaseService, @unchecked Sendable {
     }
 
     public func listForProject(projectId: Int, options: ListForProjectPeopleOptions? = nil) async throws -> ListResult<Person> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "People", operation: "ListProjectPeople", resourceType: "project_people", isMutation: false, projectId: projectId),
             path: "/projects/\(projectId)/people.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListProjectPeople")
         )

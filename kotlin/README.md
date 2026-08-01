@@ -34,6 +34,12 @@ promise, and we don't. One exception: when Basecamp withdraws an endpoint,
 the SDK removes the corresponding operation rather than keeping a stub whose
 only possible response is an error. Such removals track the server, ship in
 a minor version bump, and are called out in the release notes.
+
+Generated options classes are data classes with defaults, so their constructor
+positions are part of that promise. The generator pins the shipped order per
+class in `sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/options-param-order.json`
+and appends new parameters after it, so a parameter added to an operation can
+never displace one you already pass positionally.
 ## Installation
 
 The SDK is published to [GitHub Packages](https://github.com/basecamp/basecamp-sdk/packages). GitHub Packages requires an access token for every download — including for public packages like this one — so there are three steps rather than one.
@@ -519,6 +525,22 @@ allProjects.forEach { println(it.name) }
 ```
 
 `meta.truncated` is `true` only when items beyond those returned were available — items were dropped by `maxItems`, or the last-fetched page still advertised a next page when collection stopped; when it is `false`, the result is definitely complete.
+
+### The `page` option
+
+`page` sets where the walk *starts*, not which single page you get. Link-following
+continues from there to the end of the collection, so `page = 3` against a 10-page
+collection returns pages 3–10 concatenated. Pair it with `maxItems` to bound the
+result:
+
+```kotlin
+val fromPage3 = account.projects.list(ListProjectsOptions(page = 3, maxItems = 50))
+```
+
+This differs from the Go SDK, where a positive `Page` fetches exactly that page
+and turns auto-pagination off. Converging the six SDKs on Go's single-page
+semantics is a breaking change tracked in
+[#566](https://github.com/basecamp/basecamp-sdk/issues/566).
 
 ## Retry Behavior
 

@@ -12,11 +12,12 @@ module Basecamp
       # @param from [String, nil] from
       # @param to [String, nil] to
       # @param person_id [Integer, nil] person id
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def for_project(project_id:, from: nil, to: nil, person_id: nil, max_items: nil)
+      def for_project(project_id:, from: nil, to: nil, person_id: nil, page: nil, max_items: nil)
         wrap_paginated(service: "timesheets", operation: "for_project", is_mutation: false, project_id: project_id) do
-          params = compact_query_params(from: from, to: to, person_id: person_id)
+          params = compact_query_params(from: from, to: to, person_id: person_id, page: page)
           paginate("/projects/#{project_id}/timesheet.json", params: params, operation: "GetProjectTimesheet", max_items: max_items)
         end
       end
@@ -26,11 +27,12 @@ module Basecamp
       # @param from [String, nil] from
       # @param to [String, nil] to
       # @param person_id [Integer, nil] person id
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def for_recording(recording_id:, from: nil, to: nil, person_id: nil, max_items: nil)
+      def for_recording(recording_id:, from: nil, to: nil, person_id: nil, page: nil, max_items: nil)
         wrap_paginated(service: "timesheets", operation: "for_recording", is_mutation: false, resource_id: recording_id) do
-          params = compact_query_params(from: from, to: to, person_id: person_id)
+          params = compact_query_params(from: from, to: to, person_id: person_id, page: page)
           paginate("/recordings/#{recording_id}/timesheet.json", params: params, operation: "GetRecordingTimesheet", max_items: max_items)
         end
       end

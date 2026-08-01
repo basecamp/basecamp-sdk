@@ -2,9 +2,12 @@
 import Foundation
 
 public struct ListCardOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -31,9 +34,14 @@ public final class CardsService: BaseService, @unchecked Sendable {
     }
 
     public func list(columnId: Int, options: ListCardOptions? = nil) async throws -> ListResult<Card> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Cards", operation: "ListCards", resourceType: "card", isMutation: false, resourceId: columnId),
             path: "/card_tables/lists/\(columnId)/cards.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListCards")
         )

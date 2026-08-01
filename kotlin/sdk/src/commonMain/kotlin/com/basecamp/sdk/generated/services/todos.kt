@@ -59,6 +59,7 @@ open class TodosService(client: AccountClient) : BaseService(client) {
         val qs = buildQueryString(
             "status" to options?.status,
             "completed" to options?.completed,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/todolists/${todolistId}/todos.json" + qs, operationName = info.operation)

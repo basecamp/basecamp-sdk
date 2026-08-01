@@ -49,6 +49,8 @@ endpoint's `file_search_types`. */
    * @deprecated prefer creator_ids[].
    */
   creatorId?: number;
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 
@@ -83,7 +85,7 @@ export class SearchService extends BaseService {
       () =>
         this.client.GET("/search.json", {
           params: {
-            query: { q: q, "type_names[]": options?.typeNames, "bucket_ids[]": options?.bucketIds, "creator_ids[]": options?.creatorIds, "file_type": options?.fileType, "exclude_chat": options?.excludeChat, since: options?.since, sort: options?.sort, type: options?.type, "bucket_id": options?.bucketId, "creator_id": options?.creatorId },
+            query: { q: q, "type_names[]": options?.typeNames, "bucket_ids[]": options?.bucketIds, "creator_ids[]": options?.creatorIds, "file_type": options?.fileType, "exclude_chat": options?.excludeChat, since: options?.since, sort: options?.sort, type: options?.type, "bucket_id": options?.bucketId, "creator_id": options?.creatorId, page: options?.page },
           },
         })
       , options

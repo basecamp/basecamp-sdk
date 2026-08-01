@@ -15,7 +15,7 @@ type ClientCorrespondenceListOptions struct {
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page, if positive, fetches only that page and disables auto-pagination.
 	Page int
 
 	// Sort field: "created_at" or "updated_at".
@@ -78,7 +78,7 @@ func NewClientCorrespondencesService(client *AccountClient) *ClientCorrespondenc
 //
 // Pagination options:
 //   - Limit: maximum number of client correspondences to return (0 = all, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned ClientCorrespondenceListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -97,10 +97,17 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, opts *ClientCor
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	var params *generated.ListClientCorrespondencesParams
-	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+	if opts != nil && (opts.Sort != "" || opts.Direction != "" || opts.Page > 0) {
 		params = &generated.ListClientCorrespondencesParams{
 			Sort:      omitzero(opts.Sort),
 			Direction: omitzero(opts.Direction),
+		}
+		if opts.Page > 0 {
+			var page *int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, params)

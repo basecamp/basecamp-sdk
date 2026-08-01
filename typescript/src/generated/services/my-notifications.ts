@@ -21,7 +21,9 @@ export type Notification = components["schemas"]["Notification"];
  * Options for myNotifications.
  */
 export interface MyNotificationsMyNotificationOptions {
-  /** Page number for paginating through read items. Defaults to 1. */
+  /** Page number for paginating through read items. Defaults to 1. This
+operation is not auto-paginated in any SDK, so a page is returned as
+asked for and later pages are not followed. */
   page?: number;
   /** Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
 `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated
@@ -34,7 +36,7 @@ scheduled bubble-ups. */
  * Options for bubbleUps.
  */
 export interface BubbleUpsMyNotificationOptions extends PaginationOptions {
-  /** Page number. Defaults to 1. */
+  /** Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
   page?: number;
 }
 

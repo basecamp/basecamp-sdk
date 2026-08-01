@@ -2,6 +2,7 @@
 import Foundation
 
 public struct MyDueAssignmentsMyAssignmentOptions: Sendable {
+    /// Filter by due date range: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later
     public var scope: String?
 
     public init(scope: String? = nil) {

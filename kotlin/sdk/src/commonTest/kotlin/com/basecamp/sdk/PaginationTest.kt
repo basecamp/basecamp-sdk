@@ -1,15 +1,21 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.generated.models.Comment
 import com.basecamp.sdk.generated.projects
 import com.basecamp.sdk.generated.reports
+import com.basecamp.sdk.generated.services.BookmarksService
+import com.basecamp.sdk.generated.services.CommentsService
+import com.basecamp.sdk.generated.services.ListCommentsOptions
 import com.basecamp.sdk.generated.services.ListProjectsOptions
 import com.basecamp.sdk.generated.services.PersonProgressResult
+import com.basecamp.sdk.generated.services.SearchService
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -593,5 +599,63 @@ class PaginationTest {
         assertEquals(3, result.events.size)
         assertFalse(result.events.meta.truncated)
         client.close()
+    }
+
+    /**
+     * The PaginationOptions compatibility overload reaches exactly the
+     * operations whose options type changed — a compile-time assertion in both
+     * directions.
+     *
+     * An operation that gained its first optional query parameter moved from
+     * `options: PaginationOptions?` to its own options class, so it keeps a
+     * bridge and the pre-#561 call shape still resolves; the explicitly typed
+     * reference below fails to compile if the bridge is dropped. (The runtime
+     * half of that direction is `personProgress(456, PaginationOptions(...))`
+     * in the test above, which is the untouched pre-#561 call site.)
+     *
+     * An operation that always had its own options class gets no bridge, so an
+     * untyped callable reference to it stays unambiguous. Nothing constrains
+     * `unbridged` below, so a second applicable one-argument overload turns it
+     * into an overload-resolution ambiguity and the suite stops compiling —
+     * which is what a blanket bridge did to 33 operations.
+     */
+    @Test
+    fun paginationOptionsBridgeReachesOnlyOperationsWhoseOptionsTypeChanged() {
+        val bridged: suspend (CommentsService, Long, PaginationOptions?) -> ListResult<Comment> = CommentsService::list
+        val unbridged = BookmarksService::listMyBookmarks
+        val alsoUnbridged = SearchService::search
+
+        assertNotNull(bridged)
+        assertNotNull(unbridged)
+        assertNotNull(alsoUnbridged)
+    }
+
+    /**
+     * Every call shape `ListComments` accepted before it gained a `page`
+     * parameter still compiles.
+     *
+     * The bridge keeps the old `options: PaginationOptions? = null` verbatim
+     * rather than a non-null variant, because a caller holding a nullable
+     * `PaginationOptions?` — `savedOptions` below — matches neither the new
+     * options class nor a non-null bridge, and would have been broken by a
+     * bridge that only accepted non-null values.
+     *
+     * The lambda is type-checked but never invoked: these are assertions about
+     * overload resolution, not about the wire.
+     */
+    @Test
+    fun everyPreExistingCallShapeStillResolves() {
+        val savedOptions: PaginationOptions? = PaginationOptions(maxItems = 3)
+
+        val shapes: suspend (CommentsService) -> Unit = { comments ->
+            comments.list(1)                                        // no options
+            comments.list(1, null)                                  // explicit null
+            comments.list(1, PaginationOptions(maxItems = 3))       // non-null value
+            comments.list(1, savedOptions)                          // nullable variable
+            comments.list(1, options = savedOptions)                // named, nullable
+            comments.list(1, ListCommentsOptions(page = 3))         // and the new shape
+        }
+
+        assertNotNull(shapes)
     }
 }

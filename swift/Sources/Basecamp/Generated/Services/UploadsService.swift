@@ -10,9 +10,12 @@ public struct ListVersionsUploadOptions: Sendable {
 }
 
 public struct ListUploadOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -48,9 +51,14 @@ public final class UploadsService: BaseService, @unchecked Sendable {
     }
 
     public func list(vaultId: Int, options: ListUploadOptions? = nil) async throws -> ListResult<Upload> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Uploads", operation: "ListUploads", resourceType: "upload", isMutation: false, resourceId: vaultId),
             path: "/vaults/\(vaultId)/uploads.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListUploads")
         )

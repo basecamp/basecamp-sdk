@@ -28,10 +28,11 @@ class CommentsService(BaseService):
             operation="UpdateComment",
         )
 
-    def list(self, *, recording_id: int, max_items: int | None = None) -> ListResult:
+    def list(self, *, recording_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="comments", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/comments.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListComments",
         )
@@ -64,10 +65,11 @@ class AsyncCommentsService(AsyncBaseService):
             operation="UpdateComment",
         )
 
-    async def list(self, *, recording_id: int, max_items: int | None = None) -> ListResult:
+    async def list(self, *, recording_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="comments", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/comments.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListComments",
         )

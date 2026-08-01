@@ -2,6 +2,7 @@
 import Foundation
 
 public struct AssignedReportOptions: Sendable {
+    /// Group by "bucket" or "date"
     public var groupBy: String?
 
     public init(groupBy: String? = nil) {
@@ -10,17 +11,23 @@ public struct AssignedReportOptions: Sendable {
 }
 
 public struct PersonProgressReportOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct ProgressReportOptions: Sendable {
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -66,10 +73,15 @@ public final class ReportsService: BaseService, @unchecked Sendable {
     }
 
     public func personProgress(personId: Int, options: PersonProgressReportOptions? = nil) async throws -> PersonProgressResult {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         let (wrapperData, items): (Data, ListResult<TimelineEvent>) = try await requestPaginatedWrapped(
             OperationInfo(service: "Reports", operation: "GetPersonProgress", resourceType: "person_progress", isMutation: false, resourceId: personId),
             path: "/reports/users/progress/\(personId).json",
             itemsKey: "events",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "GetPersonProgress")
         )
@@ -81,9 +93,14 @@ public final class ReportsService: BaseService, @unchecked Sendable {
     }
 
     public func progress(options: ProgressReportOptions? = nil) async throws -> ListResult<TimelineEvent> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Reports", operation: "GetProgressReport", resourceType: "progress_report", isMutation: false),
             path: "/reports/progress.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "GetProgressReport")
         )

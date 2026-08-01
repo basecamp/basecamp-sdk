@@ -63,6 +63,22 @@ private func emitOptionsStructs(_ service: ServiceDefinition) -> [String] {
             // warn on the generator's own init/service reads and Swift has no
             // per-line suppression, so this is a `///` doc comment (surfaced in
             // Xcode QuickHelp), not an availability attribute. See #406.
+            // Surface the OpenAPI parameter description as a doc comment so
+            // Xcode QuickHelp shows it — the options struct is the only place a
+            // caller meets these parameters.
+            // A deprecated parameter's description IS its deprecation notice
+            // upstream, so emitting both would duplicate the marker (and trip
+            // scripts/check-deprecation-parity). Let deprecationDocLines own it.
+            if let description = param.description, !description.isEmpty, !param.deprecated {
+                // Descriptions wrap across lines in the spec; a raw newline
+                // would end the doc comment mid-sentence and leave the rest as
+                // code, so collapse to a single line.
+                let oneLine = description
+                    .split(whereSeparator: \.isNewline)
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .joined(separator: " ")
+                lines.append("    /// \(oneLine)")
+            }
             if param.deprecated {
                 lines += deprecationDocLines(reason: param.deprecationReason ?? "deprecated", indent: "    ")
             }
@@ -149,21 +165,10 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
     let requiredQueryParams = op.queryParams.filter { $0.required }
     let hasQueryItems = !op.queryParams.isEmpty
 
-    if hasQueryItems && !isPaginated && !isWrappedPaginated {
-        // Non-paginated ops: build URL query string inline
-        lines.append("        var queryItems: [URLQueryItem] = []")
-        for q in requiredQueryParams {
-            lines += queryItemAppendLines(q, accessor: toCamelCase(q.name), indent: "        ")
-        }
-        for q in optionalQueryParams {
-            let camelName = toCamelCase(q.name)
-            lines.append("        if let \(camelName) = options?.\(camelName) {")
-            lines += queryItemAppendLines(q, accessor: camelName, indent: "            ")
-            lines.append("        }")
-        }
-    }
-
-    if isPaginated && hasQueryItems {
+    // Every flavor of operation reads `queryItems` the same way — plain,
+    // array-paginated, and wrapped-paginated call sites all pass it along — so
+    // build it whenever the operation has query params at all.
+    if hasQueryItems {
         lines.append("        var queryItems: [URLQueryItem] = []")
         for q in requiredQueryParams {
             lines += queryItemAppendLines(q, accessor: toCamelCase(q.name), indent: "        ")

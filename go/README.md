@@ -499,6 +499,28 @@ webhooks, err := account.Webhooks().List(ctx, bucketID, nil)
 err = account.Webhooks().Delete(ctx, webhookID)
 ```
 
+## Pagination
+
+List methods auto-paginate: they follow the API's `Link: rel="next"` headers and
+collect every item across all pages, bounded by `Limit` when you set one.
+
+`Page` opts out of that. A positive `Page` fetches exactly that page and disables
+auto-pagination:
+
+```go
+// Page 3 only — one request, no link-following.
+result, err := account.Projects().List(ctx, &basecamp.ProjectListOptions{Page: 3})
+```
+
+A handful of endpoints are not paginated server-side (`Webhooks().List()`,
+`MessageTypes().List()`, and the other cases each options struct calls out); they
+return the whole list, and `Page` there only short-circuits auto-pagination.
+
+`Page` means something different in the other five SDKs, where a positive `page`
+is a *starting offset* that link-following then continues from. Converging the
+six on Go's single-page semantics is a breaking change tracked in
+[#566](https://github.com/basecamp/basecamp-sdk/issues/566).
+
 ## Error Handling
 
 The SDK provides structured errors with codes for programmatic handling:

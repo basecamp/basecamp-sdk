@@ -19,12 +19,13 @@ class RecordingsService(BaseService):
         status: str | None = None,
         sort: str | None = None,
         direction: str | None = None,
+        page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="recordings", operation="list", is_mutation=False),
             "/projects/recordings.json",
-            params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction),
+            params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListRecordings",
         )
@@ -71,12 +72,13 @@ class AsyncRecordingsService(AsyncBaseService):
         status: str | None = None,
         sort: str | None = None,
         direction: str | None = None,
+        page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="recordings", operation="list", is_mutation=False),
             "/projects/recordings.json",
-            params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction),
+            params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListRecordings",
         )

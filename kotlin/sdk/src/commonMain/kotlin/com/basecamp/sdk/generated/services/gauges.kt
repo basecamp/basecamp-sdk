@@ -99,7 +99,7 @@ class GaugesService(client: AccountClient) : BaseService(client) {
      * @param projectId The project ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listGaugeNeedles(projectId: Long, options: PaginationOptions? = null): ListResult<JsonElement> {
+    suspend fun listGaugeNeedles(projectId: Long, options: ListGaugeNeedlesOptions): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "Gauges",
             operation = "ListGaugeNeedles",
@@ -108,12 +108,28 @@ class GaugesService(client: AccountClient) : BaseService(client) {
             projectId = projectId,
             resourceId = null,
         )
-        return requestPaginated(info, options, {
-            httpGet("/projects/${projectId}/gauge/needles.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options.page,
+        )
+        return requestPaginated(info, options.toPaginationOptions(), {
+            httpGet("/projects/${projectId}/gauge/needles.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<JsonElement>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
+     *
+     * Prefer [ListGaugeNeedlesOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [listGaugeNeedles] needs an expected type to disambiguate.
+     */
+    suspend fun listGaugeNeedles(projectId: Long, options: PaginationOptions? = null): ListResult<JsonElement> =
+        listGaugeNeedles(projectId, ListGaugeNeedlesOptions(maxItems = options?.maxItems))
 
     /**
      * Create a gauge needle (progress update) for a project
@@ -155,6 +171,7 @@ class GaugesService(client: AccountClient) : BaseService(client) {
         )
         val qs = buildQueryString(
             "bucket_ids" to options?.bucketIds,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/reports/gauges.json" + qs, operationName = info.operation)

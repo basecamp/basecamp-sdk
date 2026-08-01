@@ -38,7 +38,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
      * @param todolistId The todolist ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(todolistId: Long, options: PaginationOptions? = null): ListResult<TodolistGroup> {
+    suspend fun list(todolistId: Long, options: ListTodolistGroupsOptions): ListResult<TodolistGroup> {
         val info = OperationInfo(
             service = "TodolistGroups",
             operation = "ListTodolistGroups",
@@ -47,12 +47,28 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = todolistId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/todolists/${todolistId}/groups.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options.page,
+        )
+        return requestPaginated(info, options.toPaginationOptions(), {
+            httpGet("/todolists/${todolistId}/groups.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<TodolistGroup>>(body)
         }
     }
+
+    /**
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
+     *
+     * Prefer [ListTodolistGroupsOptions], which also carries this operation's query
+     * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [list] needs an expected type to disambiguate.
+     */
+    suspend fun list(todolistId: Long, options: PaginationOptions? = null): ListResult<TodolistGroup> =
+        list(todolistId, ListTodolistGroupsOptions(maxItems = options?.maxItems))
 
     /**
      * Create a new group in a todolist

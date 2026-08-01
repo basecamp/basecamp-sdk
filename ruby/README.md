@@ -362,6 +362,21 @@ or the last-fetched page still advertised a next page when enumeration stopped
 item is not truncation: when `truncated` is `false` after full enumeration,
 the result is definitely complete.
 
+### The `page` keyword
+
+`page` sets where the walk *starts*, not which single page you get. Link-following
+continues from there to the end of the collection, so `page: 3` against a 10-page
+collection enumerates pages 3–10. Pair it with `max_items` to bound the result:
+
+```ruby
+from_page_3 = account.projects.list(page: 3, max_items: 50)
+```
+
+This differs from the Go SDK, where a positive `Page` fetches exactly that page
+and turns auto-pagination off. Converging the six SDKs on Go's single-page
+semantics is a breaking change tracked in
+[#566](https://github.com/basecamp/basecamp-sdk/issues/566).
+
 ## Downloading Files
 
 Fetch an upload's file content in one call. The SDK fetches the upload

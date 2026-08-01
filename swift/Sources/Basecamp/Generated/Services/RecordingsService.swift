@@ -3,9 +3,14 @@ import Foundation
 
 public struct ListRecordingOptions: Sendable {
     public var bucket: String?
+    /// active|archived|trashed
     public var status: String?
+    /// created_at|updated_at
     public var sort: String?
+    /// asc|desc
     public var direction: String?
+    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    public var page: Int?
     public var maxItems: Int?
 
     public init(
@@ -13,12 +18,14 @@ public struct ListRecordingOptions: Sendable {
         status: String? = nil,
         sort: String? = nil,
         direction: String? = nil,
+        page: Int? = nil,
         maxItems: Int? = nil
     ) {
         self.bucket = bucket
         self.status = status
         self.sort = sort
         self.direction = direction
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -57,6 +64,9 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
         }
         if let direction = options?.direction {
             queryItems.append(URLQueryItem(name: "direction", value: direction))
+        }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "Recordings", operation: "ListRecordings", resourceType: "recording", isMutation: false),

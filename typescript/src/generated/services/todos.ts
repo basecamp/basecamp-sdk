@@ -45,6 +45,8 @@ export interface ListTodoOptions extends PaginationOptions {
   status?: "active" | "archived" | "trashed";
   /** Completed */
   completed?: boolean;
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -185,7 +187,7 @@ export class TodosService extends BaseService {
         this.client.GET("/todolists/{todolistId}/todos.json", {
           params: {
             path: { todolistId },
-            query: { status: options?.status, completed: options?.completed },
+            query: { status: options?.status, completed: options?.completed, page: options?.page },
           },
         })
       , options
