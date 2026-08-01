@@ -395,6 +395,29 @@ class TestHop1RetryAsync:
 
     @respx.mock
     @pytest.mark.asyncio
+    async def test_honors_retry_after_on_429(self, monkeypatch):
+        """The async transport's backoff is pinned too, not just the sync one."""
+        delays: list[float] = []
+
+        async def record(d):
+            delays.append(d)
+
+        monkeypatch.setattr("basecamp._async_http.asyncio.sleep", record)
+
+        respx.get(self.HOP1).mock(
+            side_effect=[
+                httpx.Response(429, headers={"Retry-After": "7"}),
+                httpx.Response(200, content=b"content", headers={"content-type": "text/plain"}),
+            ]
+        )
+
+        config = make_fast_config()
+        await download_async(self.RAW, http_client=self.make_async_http(config), config=config)
+
+        assert delays == [7.0]
+
+    @respx.mock
+    @pytest.mark.asyncio
     async def test_hop1_sends_no_accept_header_on_any_attempt(self):
         """SPEC section 14 header scope, async transport (see the sync twin)."""
         hop1 = respx.get(self.HOP1).mock(

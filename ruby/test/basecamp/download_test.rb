@@ -456,10 +456,15 @@ class DownloadTest < Minitest::Test
     account = create_account_client(config: fast_download_config)
     account.download_url(HOP1_URL)
 
+    # Faraday supplies its own "*/*" default once the SDK stops setting an
+    # Accept, so the header cannot be absent outright without overriding the
+    # HTTP library. Pin the exact value rather than merely "not JSON": that
+    # catches both a reintroduced application/json and any other Accept the
+    # SDK might start attaching.
     assert_equal 2, hop1_accepts.length
     hop1_accepts.each do |accept|
-      assert_not_equal "application/json", accept,
-        "hop 1 must not send the JSON Accept header (SPEC §14)"
+      assert_equal "*/*", accept,
+        "hop 1 must carry only Faraday's default Accept, never one the SDK sets (SPEC §14)"
     end
   end
 

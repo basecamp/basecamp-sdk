@@ -88,7 +88,8 @@
     ],
     "assertions": [
       {"type": "requestCount", "expected": 1},
-      {"type": "statusCode", "expected": 500}
+      {"type": "statusCode", "expected": 500},
+      {"type": "headerPresent", "path": "Authorization", "index": 0}
     ],
     "tags": ["download", "no-retry", "500"]
   },

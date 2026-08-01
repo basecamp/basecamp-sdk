@@ -4,6 +4,9 @@ import com.basecamp.sdk.http.AuthPhaseFailure
 import com.basecamp.sdk.http.BasecampHttpClient
 import com.basecamp.sdk.http.currentTimeMillis
 import com.basecamp.sdk.http.millisToDuration
+import com.basecamp.sdk.http.safeOnRequestEnd
+import com.basecamp.sdk.http.safeOnRequestStart
+import com.basecamp.sdk.http.safeOnRetry
 import io.ktor.client.*
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
@@ -393,19 +396,4 @@ private fun BasecampHooks.safeOnOperationStart(info: OperationInfo) {
 /** Safely call onOperationEnd, catching hook exceptions. */
 private fun BasecampHooks.safeOnOperationEnd(info: OperationInfo, result: OperationResult) {
     runCatching { onOperationEnd(info, result) }
-}
-
-/** Safely call onRequestStart, catching hook exceptions. */
-private fun BasecampHooks.safeOnRequestStart(info: RequestInfo) {
-    runCatching { onRequestStart(info) }
-}
-
-/** Safely call onRequestEnd, catching hook exceptions. */
-private fun BasecampHooks.safeOnRequestEnd(info: RequestInfo, result: RequestResult) {
-    runCatching { onRequestEnd(info, result) }
-}
-
-/** Safely call onRetry, catching hook exceptions. */
-private fun BasecampHooks.safeOnRetry(info: RequestInfo, attempt: Int, error: Throwable, delayMs: Long) {
-    runCatching { onRetry(info, attempt, error, delayMs) }
 }

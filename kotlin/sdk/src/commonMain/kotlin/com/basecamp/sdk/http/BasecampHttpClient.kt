@@ -363,18 +363,22 @@ private sealed interface AttemptOutcome {
  */
 internal class AuthPhaseFailure(val original: Exception) : Exception(original)
 
-/** Safely call onRequestStart, catching hook exceptions. */
-private fun BasecampHooks.safeOnRequestStart(info: RequestInfo) {
+/**
+ * Safely call onRequestStart, catching hook exceptions. Module-internal so the
+ * download hop-1 loop shares it — a hook that throws must be swallowed the
+ * same way on both request paths.
+ */
+internal fun BasecampHooks.safeOnRequestStart(info: RequestInfo) {
     runCatching { onRequestStart(info) }
 }
 
 /** Safely call onRequestEnd, catching hook exceptions. */
-private fun BasecampHooks.safeOnRequestEnd(info: RequestInfo, result: RequestResult) {
+internal fun BasecampHooks.safeOnRequestEnd(info: RequestInfo, result: RequestResult) {
     runCatching { onRequestEnd(info, result) }
 }
 
 /** Safely call onRetry, catching hook exceptions. */
-private fun BasecampHooks.safeOnRetry(info: RequestInfo, attempt: Int, error: Throwable, delayMs: Long) {
+internal fun BasecampHooks.safeOnRetry(info: RequestInfo, attempt: Int, error: Throwable, delayMs: Long) {
     runCatching { onRetry(info, attempt, error, delayMs) }
 }
 
