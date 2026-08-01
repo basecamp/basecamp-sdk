@@ -1,0 +1,28 @@
+ruby/test/basecamp/errors_test.rb
+  s_34dec3eb0265b2::t_ca898db9711274 169-228
+ruby/README.md
+  s_34dec3eb0265b2::t_e28928ce49fbe2 424-444
+ruby/lib/basecamp.rb
+  s_34dec3eb0265b2::t_55f2a7385f2456 176-185,191-207
+  s_34dec3eb0265b2::t_5efe7a06116ffa 208-209
+ruby/test/basecamp/services/my_notes_service_test.rb
+  s_34dec3eb0265b2::t_0e7d4651c6d504 57-59,61,64,67-69
+ruby/test/basecamp/services/webhooks_service_test.rb
+  s_34dec3eb0265b2::t_edef5bee859ac3 67-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "e8eb6fd613214a4e1637f7a8a1e79bf7bb4b76b6",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
