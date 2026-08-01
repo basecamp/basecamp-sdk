@@ -106,7 +106,11 @@ func (s *TemplatesService) List(ctx context.Context, opts *TemplateListOptions) 
 
 	var params *generated.ListTemplatesParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListTemplatesParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListTemplatesParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListTemplatesWithResponse(ctx, s.client.accountID, params)

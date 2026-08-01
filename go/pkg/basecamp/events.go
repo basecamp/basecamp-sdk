@@ -92,7 +92,11 @@ func (s *EventsService) List(ctx context.Context, recordingID int64, opts *Event
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListEventsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListEventsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListEventsParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListEventsWithResponse(ctx, s.client.accountID, recordingID, params)

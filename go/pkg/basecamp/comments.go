@@ -109,7 +109,11 @@ func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *Com
 
 	var params *generated.ListCommentsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListCommentsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListCommentsParams{Page: page}
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)

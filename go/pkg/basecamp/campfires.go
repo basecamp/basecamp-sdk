@@ -216,7 +216,11 @@ func (s *CampfiresService) List(ctx context.Context, opts *CampfireListOptions) 
 
 	var params *generated.ListCampfiresParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListCampfiresParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListCampfiresParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListCampfiresWithResponse(ctx, s.client.accountID, params)
@@ -340,7 +344,11 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64, opts
 			Direction: omitzero(opts.Direction),
 		}
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 
@@ -583,7 +591,11 @@ func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64, op
 			Direction: omitzero(opts.Direction),
 		}
 		if opts.Page > 0 {
-			uploadParams.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			uploadParams.Page = page
 		}
 	}
 

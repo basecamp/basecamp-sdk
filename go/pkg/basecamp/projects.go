@@ -154,7 +154,11 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 			params.Status = ptr(string(opts.Status))
 		}
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 

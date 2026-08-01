@@ -171,7 +171,11 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 			PersonId: omitzero(opts.PersonID),
 		}
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 
@@ -260,7 +264,11 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int6
 			PersonId: omitzero(opts.PersonID),
 		}
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 

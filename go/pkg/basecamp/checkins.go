@@ -299,7 +299,11 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListQuestionsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListQuestionsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListQuestionsParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, questionnaireID, params)
@@ -618,7 +622,11 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListAnswersParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListAnswersParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListAnswersParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, questionID, params)
@@ -699,7 +707,11 @@ func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, p
 
 	var params *generated.GetAnswersByPersonParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.GetAnswersByPersonParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.GetAnswersByPersonParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.GetAnswersByPersonWithResponse(ctx, s.client.accountID, questionID, personID, params)
@@ -989,7 +1001,11 @@ func (s *CheckinsService) ListQuestionReminders(ctx context.Context, opts *Quest
 
 	var params *generated.GetQuestionRemindersParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.GetQuestionRemindersParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.GetQuestionRemindersParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.GetQuestionRemindersWithResponse(ctx, s.client.accountID, params)

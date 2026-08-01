@@ -103,7 +103,11 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, opts *ClientCor
 			Direction: omitzero(opts.Direction),
 		}
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, params)

@@ -211,7 +211,11 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 	}
 	if opts != nil {
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 		if len(opts.Bucket) > 0 {
 			bucketStrs := make([]string, len(opts.Bucket))

@@ -130,7 +130,11 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListPeopleParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListPeopleParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListPeopleParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID, params)
@@ -332,7 +336,11 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListProjectPeopleParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListProjectPeopleParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListProjectPeopleParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, projectID, params)

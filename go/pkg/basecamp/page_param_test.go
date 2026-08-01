@@ -2,6 +2,8 @@ package basecamp
 
 import (
 	"context"
+	"errors"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -131,5 +133,38 @@ func TestPageParamReachesWire(t *testing.T) {
 				t.Errorf("expected ?page=3 on the wire, got %q", gotPage)
 			}
 		})
+	}
+}
+
+// TestPageParamRejectsOutOfRange asserts that a Page number too large for the
+// int32 the generated params carry is reported as a usage error instead of
+// wrapping around to a negative page on the wire.
+func TestPageParamRejectsOutOfRange(t *testing.T) {
+	var reached bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reached = true
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ac := client.ForAccount("12345")
+
+	// math.MaxInt32+1, built at runtime so the constant does not overflow int
+	// on 32-bit platforms.
+	overflowing := math.MaxInt32 + 1
+
+	_, err := ac.Projects().List(t.Context(), &ProjectListOptions{Page: overflowing})
+	if err == nil {
+		t.Fatal("expected an error for an out-of-range page, got nil")
+	}
+	var bcErr *Error
+	if !errors.As(err, &bcErr) || bcErr.Code != CodeUsage {
+		t.Errorf("expected a usage error, got %T: %v", err, err)
+	}
+	if reached {
+		t.Error("out-of-range page must not reach the wire")
 	}
 }

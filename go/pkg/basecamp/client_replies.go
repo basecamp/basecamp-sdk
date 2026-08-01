@@ -89,7 +89,11 @@ func (s *ClientRepliesService) List(ctx context.Context, recordingID int64, opts
 
 	var params *generated.ListClientRepliesParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListClientRepliesParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListClientRepliesParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListClientRepliesWithResponse(ctx, s.client.accountID, recordingID, params)

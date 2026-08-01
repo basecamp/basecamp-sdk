@@ -106,7 +106,11 @@ func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64, opts
 
 	var params *generated.ListTodolistGroupsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListTodolistGroupsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListTodolistGroupsParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListTodolistGroupsWithResponse(ctx, s.client.accountID, todolistID, params)

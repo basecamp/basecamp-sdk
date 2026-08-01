@@ -215,7 +215,11 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 			Direction: omitzero(opts.Direction),
 		}
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, inboxID, params)
@@ -331,7 +335,11 @@ func (s *ForwardsService) ListReplies(ctx context.Context, forwardID int64, opts
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListForwardRepliesParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListForwardRepliesParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListForwardRepliesParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, forwardID, params)

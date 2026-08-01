@@ -193,7 +193,11 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	}
 	if opts != nil {
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 		if opts.Sort != "" {
 			params.Sort = &opts.Sort

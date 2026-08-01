@@ -394,7 +394,11 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 	if opts != nil && (opts.Status != "" || opts.Completed || opts.Page > 0) {
 		params = &generated.ListTodosParams{Status: omitzero(opts.Status), Completed: omitzero(opts.Completed)}
 		if opts.Page > 0 {
-			params.Page = int32(opts.Page)
+			var page int32
+			if page, err = pageParam(opts.Page); err != nil {
+				return nil, err
+			}
+			params.Page = page
 		}
 	}
 

@@ -81,7 +81,11 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 
 	var params *generated.ListRecordingBoostsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListRecordingBoostsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListRecordingBoostsParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListRecordingBoostsWithResponse(ctx, s.client.accountID, recordingID, params)
@@ -167,7 +171,11 @@ func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int6
 
 	var params *generated.ListEventBoostsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListEventBoostsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListEventBoostsParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListEventBoostsWithResponse(ctx, s.client.accountID, recordingID, eventID, params)

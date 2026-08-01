@@ -336,7 +336,11 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 
 	var params *generated.ListCardsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListCardsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListCardsParams{Page: page}
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)

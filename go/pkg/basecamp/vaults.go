@@ -313,7 +313,11 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListVaultsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListVaultsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListVaultsParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, vaultID, params)
@@ -524,7 +528,11 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListDocumentsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListDocumentsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListDocumentsParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, vaultID, params)
@@ -766,7 +774,11 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListUploadsParams
 	if opts != nil && opts.Page > 0 {
-		params = &generated.ListUploadsParams{Page: int32(opts.Page)}
+		var page int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params = &generated.ListUploadsParams{Page: page}
 	}
 
 	resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, vaultID, params)
