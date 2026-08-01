@@ -24531,7 +24531,7 @@
                 "type": "null"
               }
             ],
-            "x-go-type": "*DraftParent"
+            "x-go-type": "DraftParent"
           },
           "excerpt": {
             "type": "string",
@@ -24557,7 +24557,7 @@
               "null"
             ],
             "description": "Always present; `null` unless the draft is scheduled to publish later.\nRequired-presence with nullable value, like `parent`.",
-            "x-go-type": "*time.Time"
+            "x-go-type": "time.Time"
           }
         },
         "required": [
@@ -26624,7 +26624,7 @@
             ],
             "description": "Null until the note is first written.",
             "format": "int64",
-            "x-go-type": "*int64"
+            "x-go-type": "int64"
           },
           "type": {
             "type": "string"
@@ -26635,7 +26635,7 @@
               "null"
             ],
             "description": "Null until the note is first written.",
-            "x-go-type": "*time.Time"
+            "x-go-type": "time.Time"
           },
           "updated_at": {
             "type": [
@@ -26643,7 +26643,7 @@
               "null"
             ],
             "description": "Null until the note is first written.",
-            "x-go-type": "*time.Time"
+            "x-go-type": "time.Time"
           },
           "content": {
             "type": "string"
@@ -28414,7 +28414,7 @@
               "null"
             ],
             "description": "Always present, always null. `api/searches/show.json.jbuilder` renders the\nrecording's own partial and then unconditionally overwrites `content` with\n`nil` to strip the large HTML body out of the search payload. The key is\ntherefore guaranteed present on every result — required — and its value is\nguaranteed null. Read `plain_text_content` instead.",
-            "x-go-type": "*string"
+            "x-go-type": "string"
           },
           "description": {
             "type": [
@@ -28422,7 +28422,7 @@
               "null"
             ],
             "description": "Always present, always null — the description-attribute counterpart to\n`content`. Read `plain_text_description` instead.",
-            "x-go-type": "*string"
+            "x-go-type": "string"
           },
           "plain_text_content": {
             "type": "string",
@@ -28472,7 +28472,7 @@
               "null"
             ],
             "description": "Always present on the wire; `null` for the default \"everything\" option.\n`@required` models the presence; nullability of the value is layered on in\nthe OpenAPI (smithy-build.json jsonAdd -> type: [\"string\", \"null\"]) since\nSmithy has no native required-and-nullable.",
-            "x-go-type": "*string"
+            "x-go-type": "string"
           },
           "value": {
             "type": "string"
@@ -30709,7 +30709,7 @@
               "null"
             ],
             "description": "Wormhole color; always emitted on the wire (`json.color recording.color`),\n`null` when unset. Like destination_url, `@required` models the presence and\nthe nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->\ntype: [\"string\",\"null\"] + x-go-type \"*string\").",
-            "x-go-type": "*string"
+            "x-go-type": "string"
           },
           "linked": {
             "type": "boolean",
@@ -30721,7 +30721,7 @@
               "null"
             ],
             "description": "URL of the destination column; always present on the wire, `null` for an\nunlinked wormhole. `@required` models the presence; the nullability of the\nvalue is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:\n[\"string\",\"null\"] + x-go-type \"*string\") since Smithy has no native\nrequired-and-nullable — exactly the SearchType.key treatment. SDKs model it\nas required-but-nullable (`string | null`, not `string | null | undefined`).",
-            "x-go-type": "*string"
+            "x-go-type": "string"
           }
         },
         "required": [

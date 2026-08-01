@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-31T15:59:31Z
+# Generated: 2026-08-01T02:10:46Z
 
 require "json"
 require "time"
@@ -1490,7 +1490,7 @@ module Basecamp
         @excerpt = data["excerpt"]
         @id = parse_integer(data["id"])
         @parent = data["parent"]
-        @scheduled_posting_at = data["scheduled_posting_at"]
+        @scheduled_posting_at = parse_datetime(data["scheduled_posting_at"])
         @title = data["title"]
         @type = data["type"]
         @updated_at = parse_datetime(data["updated_at"])
@@ -2541,10 +2541,10 @@ module Basecamp
         @app_url = data["app_url"]
         @content = data["content"]
         @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
-        @created_at = data["created_at"]
+        @created_at = parse_datetime(data["created_at"])
         @id = data["id"]
         @type = data["type"]
-        @updated_at = data["updated_at"]
+        @updated_at = parse_datetime(data["updated_at"])
         @url = data["url"]
       end
 
