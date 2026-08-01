@@ -1,0 +1,45 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_b1b74299ef0baf::t_07b45a911e3e31 87
+  s_b1b74299ef0baf::t_2b097e0da55c5c 106-110
+  s_b1b74299ef0baf::t_e2d2f8145184fb 194-206
+  s_b1b74299ef0baf::t_6372d25b10e403 3
+  s_b1b74299ef0baf::t_2953b4e2e9dee6 237-251
+conformance/runner/ruby/replay-runner.rb
+  s_b1b74299ef0baf::t_9ab0561e9d779a 114-116
+  s_b1b74299ef0baf::t_1facd7f570317a 78-87
+  s_b1b74299ef0baf::t_07ab5bc138d7f5 54
+  s_b1b74299ef0baf::t_5a0554cddd5e28 146-156
+conformance/runner/typescript/live-runner.test.ts
+  s_b1b74299ef0baf::t_0abc2a672d3fcf 119-140
+  s_b1b74299ef0baf::t_5e58c3a54fd52f 231-236
+conformance/runner/go/replay_runner.go
+  s_b1b74299ef0baf::t_aea2886a3109f2 78-81
+  s_b1b74299ef0baf::t_292cdbd49b9d43 147-152
+  s_b1b74299ef0baf::t_ba10e3c8ead3a2 343-351
+  s_b1b74299ef0baf::t_3f8e2e3e50720d 105-109
+  s_b1b74299ef0baf::t_3312a2bdae8748 292-306
+conformance/runner/go/replay_runner_test.go
+  s_b1b74299ef0baf::t_ba60fd7b081d64 130-154
+conformance/runner/python/replay_runner.py
+  s_b1b74299ef0baf::t_ed83f8d024f7af 196-208
+  s_b1b74299ef0baf::t_db15249abf53f8 71
+  s_b1b74299ef0baf::t_4dd97ce00a0081 161-170
+conformance/runner/typescript/wire-capture.ts
+  s_b1b74299ef0baf::t_b987c7b71fd9fa 42-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "4aff7c5a52bddc5902aa7d84240e1d5c52eebc50",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
