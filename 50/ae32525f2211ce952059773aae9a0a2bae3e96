@@ -1,0 +1,19 @@
+README.md
+  s_34dec3eb0265b2::t_8fcdeace52d5ee 152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "50ae32525f2211ce952059773aae9a0a2bae3e96",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
