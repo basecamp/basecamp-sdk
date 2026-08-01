@@ -166,6 +166,27 @@ describe("TodolistsService", () => {
       ["object", { a: 1 }],
     ];
 
+    // Asserting only the message and the request sequence is vacuous about the
+    // taxonomy: a wrong `code` satisfies both. The value arrived in a
+    // successful API response, so this is `api_error` — the caller passed
+    // nothing wrong. (The empty-name path is the opposite and stays a caller
+    // error, since BC3 presence-validates `name`.) Pin all four properties.
+    const expectResponseError = (error: unknown, field: string, requests: string[]) => {
+      expect(error).toBeInstanceOf(BasecampError);
+      const basecampError = error as BasecampError;
+      expect(basecampError.code).toBe("api_error");
+      expect(basecampError.message).toMatch(new RegExp(`todolist ${field} is not a string`));
+      expect(requests).toEqual(["GET"]);
+    };
+
+    const rejection = async (promise: Promise<unknown>): Promise<unknown> =>
+      promise.then(
+        () => {
+          throw new Error("expected the call to reject, but it resolved");
+        },
+        (error: unknown) => error
+      );
+
     it.each(malformed)("update refuses a %s description before writing", async (_label, value) => {
       const id = 42;
       const requests: string[] = [];
@@ -181,10 +202,8 @@ describe("TodolistsService", () => {
         })
       );
 
-      await expect(client.todolists.update(id, { name: "Renamed list" })).rejects.toThrow(
-        /todolist description is not a string/
-      );
-      expect(requests).toEqual(["GET"]);
+      const error = await rejection(client.todolists.update(id, { name: "Renamed list" }));
+      expectResponseError(error, "description", requests);
     });
 
     it.each(malformed)("edit refuses a %s name before writing", async (_label, value) => {
@@ -202,12 +221,12 @@ describe("TodolistsService", () => {
         })
       );
 
-      await expect(
+      const error = await rejection(
         client.todolists.edit(id, (t) => {
           t.description = "<p>New</p>";
         })
-      ).rejects.toThrow(/todolist name is not a string/);
-      expect(requests).toEqual(["GET"]);
+      );
+      expectResponseError(error, "name", requests);
     });
 
     it.each([

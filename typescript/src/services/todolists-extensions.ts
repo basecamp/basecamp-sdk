@@ -51,10 +51,18 @@ function writableString(todolist: Todolist, key: "name" | "description"): string
   const value: unknown = todolist[key];
   if (value === undefined || value === null) return "";
   if (typeof value !== "string") {
-    throw Errors.usage(
+    // api_error, not usage: the malformed value arrived in a successful API
+    // response, so nothing the caller passed is at fault. The empty-name case
+    // is the opposite and stays a caller error — BC3 presence-validates `name`,
+    // so asking to write a blank one is genuine misuse.
+    throw Errors.apiError(
       `todolist ${key} is not a string: ${JSON.stringify(value)}`,
-      "The merge-safe update/edit resend this field verbatim, so a malformed value would " +
-        "overwrite the current one. Use replace() to write the record deliberately."
+      undefined,
+      {
+        hint:
+          "The merge-safe update/edit resend this field verbatim, so a malformed value would " +
+          "overwrite the current one. Use replace() to write the record deliberately.",
+      }
     );
   }
   return value;
