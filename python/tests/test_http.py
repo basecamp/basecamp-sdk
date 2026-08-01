@@ -758,6 +758,38 @@ class TestRefreshReplayAttemptBudget:
         assert provider.refreshes == 1
 
     @respx.mock
+    def test_refresh_network_failure_still_retries_under_the_budget(self):
+        """A token endpoint that fails is a transient failure of this attempt.
+
+        Performing the refresh inside the `except AuthError` suite would let
+        this NetworkError bypass the sibling transient handler entirely — an
+        exception raised inside an except suite is not offered to that try's
+        other handlers — ending the request with budget still unspent.
+        """
+        route = respx.get(self.URL).mock(side_effect=[httpx.Response(401), httpx.Response(200, json={"ok": True})])
+        config = Config(base_url="https://3.basecampapi.com", max_retries=3, base_delay=0.001, max_jitter=0.0)
+
+        class ExplodingProvider(StaticTokenProvider):
+            refreshable = True
+
+            def __init__(self):
+                super().__init__("test-token")
+                self.refreshes = 0
+
+            def refresh(self):
+                self.refreshes += 1
+                raise NetworkError("token endpoint timed out")
+
+        provider = ExplodingProvider()
+        client = HttpClient(config, BearerAuth(provider), BasecampHooks())
+
+        response = client.get("/thing")
+
+        assert response.status_code == 200
+        assert route.call_count == 2
+        assert provider.refreshes == 1
+
+    @respx.mock
     def test_mutations_keep_the_in_primitive_replay(self):
         # Mutations bypass the retry loop entirely (no transient budget), so
         # they keep the single-request primitive's own replay. SPEC §4's gate

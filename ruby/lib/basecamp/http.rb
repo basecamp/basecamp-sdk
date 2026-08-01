@@ -387,6 +387,14 @@ module Basecamp
         attempt += 1
         break if attempt > max_attempts
 
+        # Each rescue only CLASSIFIES the attempt; the retry side effects run
+        # below, outside every handler. An exception raised inside a rescue
+        # clause bypasses that begin's sibling rescues, so refreshing there
+        # would let a NetworkError from the token endpoint escape the loop
+        # with budget still on the table.
+        error = nil
+        stale_auth = nil
+
         begin
           return single_request(method, url, params: params, body: nil, attempt: attempt,
             allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: false)
@@ -397,24 +405,43 @@ module Basecamp
           # cap of one means one request whatever would have caused the second.
           #
           # The budget is checked BEFORE refresh so a rotation is never burned
-          # on an attempt the loop has no room to make — hence the ordering of
-          # these conditions, which short-circuit left to right.
-          replayable = !refreshed_once && e.http_status == 401 && attempt < max_attempts \
-            && @token_provider&.refreshable? && @token_provider.refresh
-          raise e unless replayable
+          # on an attempt the loop has no room to make.
+          raise e if refreshed_once || e.http_status != 401 || attempt >= max_attempts
 
-          refreshed_once = true
+          stale_auth = e
         rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
-          raise e unless retry_eligible?(e, op_retry, retry_on)
+          error = e
+        end
 
-          last_error = e
+        if stale_auth
+          begin
+            refreshed = @token_provider&.refreshable? && @token_provider.refresh
+          rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
+            # A token endpoint that times out is a transient failure of this
+            # attempt, not a terminal auth fault: it retries under the same
+            # budget, exactly as it did when the replay lived in single_request.
+            error = e
+          else
+            raise stale_auth unless refreshed
+
+            # No backoff: the token is fresh, and the server never asked us to
+            # wait. The replay still costs the attempt counted above.
+            refreshed_once = true
+            next
+          end
+        end
+
+        if error
+          raise error unless retry_eligible?(error, op_retry, retry_on)
+
+          last_error = error
 
           # Don't sleep if this was the last attempt
           break if attempt >= max_attempts
 
-          delay = calculate_delay(attempt, e.retry_after)
+          delay = calculate_delay(attempt, error.retry_after)
 
-          @hooks.on_retry(RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt), attempt + 1, e,
+          @hooks.on_retry(RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt), attempt + 1, error,
                           delay)
           sleep(delay)
         end

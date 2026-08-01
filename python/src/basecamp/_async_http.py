@@ -171,6 +171,13 @@ class AsyncHttpClient:
             if attempt > max_attempts:
                 break
 
+            # Each except suite only CLASSIFIES the attempt; the retry side
+            # effects run below, outside every handler. An exception raised
+            # inside an except suite bypasses that try's sibling handlers, so
+            # refreshing there would let a NetworkError from the token endpoint
+            # escape the loop with budget still on the table.
+            error: BasecampError | None = None
+            stale_auth: AuthError | None = None
             try:
                 return await self._single_request(
                     method,
@@ -198,23 +205,40 @@ class AsyncHttpClient:
                 # pass the gate without ever rotating the token.
                 if refreshed_once or e.http_status != 401 or attempt >= max_attempts:
                     raise
-                tp = getattr(self._auth, "token_provider", None)
-                if not (tp and getattr(tp, "refreshable", False) and await tp.refresh()):
-                    raise
-                refreshed_once = True
-                continue
+                stale_auth = e
             except (RateLimitError, NetworkError, ApiError) as e:
-                if not self._is_retryable_error(e, operation, retry_on=retry_on):
-                    raise
-                last_error = e
+                error = e
+
+            if stale_auth is not None:
+                try:
+                    tp = getattr(self._auth, "token_provider", None)
+                    refreshed = bool(tp and getattr(tp, "refreshable", False) and await tp.refresh())
+                except (RateLimitError, NetworkError, ApiError) as e:
+                    # A token endpoint that times out is a transient failure of
+                    # this attempt, not a terminal auth fault: it retries under
+                    # the same budget, exactly as it did when the replay lived
+                    # inside _single_request.
+                    error = e
+                else:
+                    if not refreshed:
+                        raise stale_auth
+                    # No backoff: the token is fresh, and the server never asked
+                    # us to wait. The replay still costs the attempt counted above.
+                    refreshed_once = True
+                    continue
+
+            if error is not None:
+                if not self._is_retryable_error(error, operation, retry_on=retry_on):
+                    raise error
+                last_error = error
                 if attempt >= max_attempts:
                     break
-                delay = self._calculate_delay(attempt, e.retry_after)
+                delay = self._calculate_delay(attempt, error.retry_after)
                 safe_hook(
                     self._hooks.on_retry,
                     RequestInfo(method=method, url=url, attempt=attempt),
                     attempt + 1,
-                    e,
+                    error,
                     delay,
                 )
                 await asyncio.sleep(delay)

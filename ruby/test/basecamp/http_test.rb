@@ -209,6 +209,40 @@ class HTTPTest < Minitest::Test
     assert_equal 1, provider.refresh_count
   end
 
+  # A token endpoint that fails is a transient failure of THIS attempt.
+  # Performing the refresh inside the `rescue Basecamp::AuthError` clause would
+  # let this NetworkError bypass the sibling transient rescue entirely — an
+  # exception raised inside a rescue is not offered to that begin's other
+  # rescues — ending the request with budget still unspent.
+  def test_401_refresh_network_failure_still_retries_under_the_budget
+    provider = Class.new do
+      attr_reader :refresh_count
+
+      def initialize = @refresh_count = 0
+      def access_token = "old-token"
+      def refreshable? = true
+
+      def refresh
+        @refresh_count += 1
+        raise Basecamp::NetworkError.new("token endpoint timed out")
+      end
+    end.new
+
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 3,
+      base_delay: 0.001, max_jitter: 0.0)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+      .then.to_return(status: 200, body: '{"ok": true}')
+
+    response = http.get("/test.json")
+
+    assert_equal 200, response.status
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+    assert_equal 1, provider.refresh_count
+  end
+
   def test_401_no_retry_when_refresh_fails
     provider = RefreshableTokenProvider.new("old-token", refresh_result: false)
     http = Basecamp::Http.new(config: @config, token_provider: provider)
