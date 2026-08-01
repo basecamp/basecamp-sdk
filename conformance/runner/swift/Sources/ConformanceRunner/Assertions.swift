@@ -98,6 +98,18 @@ func evaluateAssertions(
     let captured = transport.captured
     let requestCount = captured.count
 
+    // A fixture that queues responses is testing a wire operation, so one must
+    // have happened. Every invariant below is guarded on having captured a
+    // request, so an operation short-circuited before the transport would slip
+    // through all of them and pass on a bare noError assertion — the runner
+    // reporting green on a call it never watched.
+    //
+    // An EMPTY queue is the deliberate no-request case: the HTTPS-enforcement
+    // fixture makes no call at all, and says so with requestCount 0.
+    if !tc.responses.isEmpty, captured.isEmpty {
+        return .fail("fixture queues \(tc.responses.count) mock response(s) but the operation made no request — it never reached the transport")
+    }
+
     // The implicit invariants below defer to an explicit assertion, but only
     // for the exact request that assertion names. "Any assertion of this type
     // exists" is too coarse: the EditTodo edit-clear fixture pins requestPath
