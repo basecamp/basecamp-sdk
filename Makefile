@@ -104,9 +104,19 @@ bc3-route-parity:
 	@./scripts/check-bc3-route-parity
 
 # Freshness gate for the vendored table: regenerate at the current pin and diff.
-# Needs BC3_REPO_PATH, so it is NOT in `make check` — it runs locally and in the
-# nightly job. Generates into a real temp dir rather than a sibling .tmp file:
-# an in-tree temp path races under `make -j` and can miss extra files.
+#
+# Needs BC3_REPO_PATH, so it is NOT in `make check` and NOT in CI — no workflow
+# checks out bc3 today, and inventing a secret for one is a provisioning
+# decision, not a code change. Run it by hand when you repin. Tracked in #589.
+#
+# What still holds without it: bc3-route-parity verifies the table's recorded
+# revision equals the provenance pin, and verifies a SHA-256 fingerprint of this
+# generator plus the normalizer, so a changed extractor with a stale table fails
+# offline. What it cannot catch is a hand-edited `source.revision` that matches
+# the pin without regeneration — that needs bc3, hence #589.
+#
+# Generates into a real temp dir rather than a sibling .tmp file: an in-tree temp
+# path races under `make -j` and can miss extra files.
 bc3-routes-check:
 	@echo "==> Checking bc3 route table freshness..."
 	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \

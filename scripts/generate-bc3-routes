@@ -102,7 +102,8 @@ payload = {
     'revision' => pin,
     'date' => pin_date,
     'extracted_from' => ["#{SECTIONS_DIR}/*.md"],
-    'sections_scanned' => files.length
+    'sections_scanned' => files.length,
+    'generator_sha256' => Bc3RouteNormalizer.generator_fingerprint
   },
   'routes' => routes.keys.sort.map { |k| routes[k].merge('sections' => routes[k]['sections'].sort) }
 }

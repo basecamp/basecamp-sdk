@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'digest'
+
 # Canonicalization shared by generate-bc3-routes and check-bc3-route-parity.
 #
 # The two sides of the route-parity comparison are written in different
@@ -69,5 +71,24 @@ module Bc3RouteNormalizer
   # bc3 serves either spelling.
   def self.bucket_insensitive_key(method, path)
     "#{method.to_s.upcase} #{normalize(path).sub(%r{\A/buckets/:id}, '')}"
+  end
+
+  # SHA-256 of the code that extracts bc3's route table. generate-bc3-routes
+  # records it; check-bc3-route-parity recomputes and compares, so "the extractor
+  # changed and nobody regenerated" fails offline in every CI run, with no bc3
+  # checkout. The recorded revision alone cannot catch that: the pin can be
+  # correct while the logic that read it has moved.
+  #
+  # Defined here, once, for the same reason `normalize` is: two copies drift, and
+  # a fingerprint that disagrees with itself is worse than none. It also has to be
+  # spelling-independent — the first version built the file list from `__FILE__`
+  # (relative under a shebang exec) and `__dir__` (always absolute), so `.sort`
+  # ordered the two files differently depending on how the script was invoked and
+  # the hash never matched. Sort by basename off one absolute root.
+  FINGERPRINT_SOURCES = %w[bc3_route_normalizer.rb generate-bc3-routes].freeze
+
+  def self.generator_fingerprint
+    files = FINGERPRINT_SOURCES.sort.map { |n| File.join(__dir__, n) }
+    Digest::SHA256.hexdigest(files.map { |f| File.read(f) }.join("\0"))
   end
 end

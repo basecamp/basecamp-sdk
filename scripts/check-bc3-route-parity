@@ -29,6 +29,7 @@
 require 'json'
 require 'set'
 require 'yaml'
+require 'digest'
 require_relative 'bc3_route_normalizer'
 
 N = Bc3RouteNormalizer
@@ -69,6 +70,23 @@ if vendored != pinned
               "but spec/api-provenance.json pins #{pinned[0, 10]}. Run `make bc3-routes`."
   die(failures)
 end
+
+# The revision match above proves the table CLAIMS the right pin. It does not
+# prove the table was produced by the current extractor: change the regexes or
+# the normalizer without regenerating, and the revision still matches while the
+# contents no longer reflect what the code would produce. Fingerprinting the
+# generator closes that offline, with no bc3 checkout.
+expected_fingerprint = N.generator_fingerprint
+recorded_fingerprint = table.fetch('source')['generator_sha256']
+
+if recorded_fingerprint.nil?
+  failures << 'spec/bc3-routes.json predates generator fingerprinting. Run `make bc3-routes`.'
+elsif recorded_fingerprint != expected_fingerprint
+  failures << 'spec/bc3-routes.json was built by a different extractor than the one in the tree ' \
+              "(recorded #{recorded_fingerprint[0, 12]}, current #{expected_fingerprint[0, 12]}). " \
+              'The route table and the code that reads bc3 have diverged — run `make bc3-routes`.'
+end
+die(failures) unless failures.empty?
 
 bc3_routes = table.fetch('routes')
 if bc3_routes.length < MIN_BC3_ROUTES

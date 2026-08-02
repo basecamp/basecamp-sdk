@@ -10,7 +10,8 @@
     "extracted_from": [
       "doc/api/sections/*.md"
     ],
-    "sections_scanned": 63
+    "sections_scanned": 63,
+    "generator_sha256": "337edbe23fac14362da3c74932d45fc13f202716eebdd7f9e4af0eeca053dd72"
   },
   "routes": [
     {
