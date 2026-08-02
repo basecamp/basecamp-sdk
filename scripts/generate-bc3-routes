@@ -92,6 +92,41 @@ end
 
 abort 'ERROR: extracted zero routes — the doc format changed, fix the patterns' if routes.empty?
 
+# Per-section floor. The global route count cannot detect a SECTION-level
+# extraction failure: change one file's layout away from backticked bullets and
+# START markers and its routes vanish while the total stays comfortably above any
+# floor. Direction 2 would then pass without ever demanding a disposition for
+# those routes — a silent hole exactly where this gate is supposed to be loud.
+#
+# Sections that genuinely document no routes are named explicitly, so adding to
+# this list is a deliberate act with a reason attached.
+ZERO_ROUTE_SECTIONS = {
+  'basecamps.md' => 'conceptual overview of what a Basecamp is; documents no endpoints',
+  'rich_text.md' => 'explains the rich-text content format; documents no endpoints'
+}.freeze
+
+sections_with_routes = routes.values.flat_map { |r| r['sections'] }.uniq
+empty_sections = files.map { |f| File.basename(f) } - sections_with_routes
+unexpected = empty_sections - ZERO_ROUTE_SECTIONS.keys
+unless unexpected.empty?
+  abort <<~MSG
+    ERROR: #{unexpected.length} documentation section(s) yielded zero routes:
+    #{unexpected.map { |s| "  - #{s}" }.join("\n")}
+    Either the layout changed and the extraction patterns need updating, or the
+    section genuinely documents no endpoints — in which case add it to
+    ZERO_ROUTE_SECTIONS with a reason. Do not ignore this: a section that stops
+    yielding routes disappears from the parity comparison silently.
+  MSG
+end
+
+# The converse: a section listed as route-free that has started documenting
+# routes means the list is stale and is now suppressing a real check.
+stale_zero = ZERO_ROUTE_SECTIONS.keys & sections_with_routes
+unless stale_zero.empty?
+  abort "ERROR: #{stale_zero.join(', ')} now document routes — remove them from " \
+        'ZERO_ROUTE_SECTIONS.'
+end
+
 payload = {
   '$schema' => 'https://basecamp.com/schemas/bc3-routes.json',
   'version' => '1.0.0',

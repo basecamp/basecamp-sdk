@@ -11,7 +11,7 @@
       "doc/api/sections/*.md"
     ],
     "sections_scanned": 63,
-    "generator_sha256": "337edbe23fac14362da3c74932d45fc13f202716eebdd7f9e4af0eeca053dd72"
+    "generator_sha256": "20e682227ca1962b8127691abb41343dde05155bff529123d0dd0489f5ecc378"
   },
   "routes": [
     {
