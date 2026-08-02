@@ -46,13 +46,27 @@ module Bc3RouteNormalizer
     "#{method.to_s.upcase} #{normalize(path)}"
   end
 
-  # Second-pass identity that ignores bucket scoping.
+  # Bucket-insensitive identity — for the bc3 -> SDK direction ONLY.
   #
-  # bc3 documents many recordings both bucket-scoped
-  # (/buckets/:id/todos/:id) and flat (/todos/:id); the SDK models one or the
-  # other per operation, and which one is a modeling decision already policed
-  # by check-bucket-flat-parity. This gate is about whether bc3 serves the
-  # route at all, so it must not re-flag that same difference.
+  # ⚠️ Do NOT use this to accept an SDK route. It was originally used in both
+  # directions and that was a defect: it silently accepted 12 SDK operations
+  # whose flat spelling bc3 documents only bucket-scoped (five chatbot ops, four
+  # client-portal reads, EnableTool/DisableTool/RepositionTool). Four confirmed
+  # defects in this SDK are exactly that shape — an invented flat variant of a
+  # bucket-only route — so collapsing the distinction defeats the gate's whole
+  # purpose on the side where a wrong spelling is a live 404.
+  #
+  # It is right for the bc3 -> SDK direction, which is a coverage ledger asking
+  # "do we model this resource+verb at all". There the spelling is a modeling
+  # decision, not a reachability risk. Measured at bc3 d0edc1283b: exact
+  # matching in that direction reports 143 unmodeled routes, of which 125 (87%)
+  # are the other spelling of a resource the SDK already models. Bucket
+  # collapsing takes it to 18 real ones.
+  #
+  # Note this is also NOT what check-bucket-flat-parity does. That lint covers
+  # only `GET`s whose response is a list, and it checks SDK-internal
+  # consistency (does a flat counterpart exist in our own spec) — never whether
+  # bc3 serves either spelling.
   def self.bucket_insensitive_key(method, path)
     "#{method.to_s.upcase} #{normalize(path).sub(%r{\A/buckets/:id}, '')}"
   end

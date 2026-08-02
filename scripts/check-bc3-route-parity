@@ -96,6 +96,7 @@ allow = File.exist?(allow_path) ? (YAML.safe_load(File.read(allow_path)) || {}) 
 sdk_allow = allow['sdk_routes_absent_from_bc3_docs'] || []
 bc3_allow = allow['bc3_routes_not_modeled'] || []
 known_bad = allow['sdk_routes_known_defective'] || []
+scope_aliases = allow['scope_aliases'] || []
 
 # Known defects must stay attributable. An unattributed "we know" is just a
 # waiver with better manners.
@@ -105,33 +106,85 @@ known_bad.each do |e|
               'a known defect without a tracking issue is an untracked defect.'
 end
 
+# Scope aliases assert that bc3 serves a flat spelling it only documents
+# bucket-scoped. That is precisely the shape of four confirmed defects here, so
+# prose is not enough: require a routes.rb citation, and require the entry to
+# name where the flat form is proven reachable.
+scope_aliases.each do |e|
+  where = "scope_aliases entry #{e['method']} #{e['path']}"
+  failures << "#{where} needs `routes_rb:` citing the line that draws the FLAT form." \
+    unless e['routes_rb'].is_a?(String) && !e['routes_rb'].strip.empty?
+  failures << "#{where} needs `api_test:` (a test/api path proving the flat route answers) or " \
+              '`api_view:` (the app/views/api template it renders).' \
+    unless [e['api_test'], e['api_view']].any? { |v| v.is_a?(String) && !v.strip.empty? }
+end
+
+# Direction 2 dispositions. If this gate claims to enforce "absorbed into the
+# spec or registered", an entry cannot discharge that with free prose — it has to
+# say which mechanism is tracking it.
+VALID_DISPOSITIONS = %w[tracking_issue registry out_of_scope].freeze
+bc3_allow.each do |e|
+  where = "bc3_routes_not_modeled entry #{e['method']} #{e['path']}"
+  present = VALID_DISPOSITIONS.select { |k| e.key?(k) }
+  if present.empty?
+    failures << "#{where} has no disposition — needs exactly one of " \
+                "#{VALID_DISPOSITIONS.join(', ')}."
+  elsif present.length > 1
+    failures << "#{where} has multiple dispositions (#{present.join(', ')}); pick one."
+  else
+    case present.first
+    when 'tracking_issue'
+      failures << "#{where}: `tracking_issue` must be a number." unless e['tracking_issue'].is_a?(Integer)
+    when 'registry'
+      path = e['registry'].to_s
+      failures << "#{where}: `registry` must point at an existing spec/api-gaps/ entry (got #{path.inspect})." \
+        unless path.start_with?('spec/api-gaps/') && File.exist?(File.join(ROOT, path))
+    when 'out_of_scope'
+      failures << "#{where}: `out_of_scope` must be a non-empty justification." \
+        unless e['out_of_scope'].is_a?(String) && e['out_of_scope'].strip.length > 20
+    end
+  end
+end
+
 # Track which allowlist entries actually matched. An entry matching nothing is a
 # hard error, not a shrug: a stale waiver is indistinguishable from a covered
 # case at a glance, and check-bucket-flat-parity's lack of this check is what
 # lets its waivers rot.
 used = Set.new
 
-def allowed?(list, used, method, path)
-  want = N.bucket_insensitive_key(method, path)
-  hit = list.find { |e| N.bucket_insensitive_key(e.fetch('method'), e.fetch('path')) == want }
+# mode: :exact for anything describing an SDK route (a wrong spelling there is a
+# 404), :loose for the bc3 -> SDK coverage ledger. See bc3_route_normalizer.rb.
+def allowed?(list, used, method, path, mode: :exact)
+  keyfn = mode == :exact ? N.method(:key) : N.method(:bucket_insensitive_key)
+  want = keyfn.call(method, path)
+  hit = list.find { |e| keyfn.call(e.fetch('method'), e.fetch('path')) == want }
   return false unless hit
   used << hit.object_id
   true
 end
 
+def find_entry(list, method, path, mode: :exact)
+  keyfn = mode == :exact ? N.method(:key) : N.method(:bucket_insensitive_key)
+  want = keyfn.call(method, path)
+  list.find { |e| keyfn.call(e.fetch('method'), e.fetch('path')) == want }
+end
+
 # ------------------------------------------------- direction 1: SDK -> bc3 docs
 
+# EXACT identity only. bucket_insensitive_key is deliberately absent here: an
+# SDK route that only matches after collapsing /buckets/:id is a route bc3 may
+# not serve at that spelling, which is a 404 for every caller. Proven scope
+# aliases go in the evidence-bearing scope_aliases list instead.
 bc3_exact = bc3_routes.map { |r| N.key(r['method'], r['path']) }.to_set
-bc3_loose = bc3_routes.map { |r| N.bucket_insensitive_key(r['method'], r['path']) }.to_set
 
 flagged = []
 
 undocumented = sdk.reject do |o|
   next true if bc3_exact.include?(N.key(o[:method], o[:path]))
-  next true if bc3_loose.include?(N.bucket_insensitive_key(o[:method], o[:path]))
+  next true if allowed?(scope_aliases, used, o[:method], o[:path])
   next true if allowed?(sdk_allow, used, o[:method], o[:path])
   if allowed?(known_bad, used, o[:method], o[:path])
-    entry = known_bad.find { |e| N.bucket_insensitive_key(e['method'], e['path']) == N.bucket_insensitive_key(o[:method], o[:path]) }
+    entry = find_entry(known_bad, o[:method], o[:path])
     flagged << "#{o[:id]} (#{o[:method]} #{N.normalize(o[:path])}) — known defect, see ##{entry['issue']}"
     next true
   end
@@ -139,8 +192,17 @@ undocumented = sdk.reject do |o|
 end
 
 undocumented.sort_by { |o| o[:id].to_s }.each do |o|
+  bucket_form = bc3_routes.find do |r|
+    N.bucket_insensitive_key(r['method'], r['path']) == N.bucket_insensitive_key(o[:method], o[:path])
+  end
+  hint = if bucket_form
+           " bc3 documents it only as #{bucket_form['path']} — if the flat form is really served, " \
+           'add a scope_aliases entry citing a routes.rb line and an API test.'
+         else
+           ' Fix the route, or allowlist it with a reason.'
+         end
   failures << "#{o[:id]}: SDK declares #{o[:method]} #{N.normalize(o[:path])}, " \
-              'which bc3 does not document. Fix the route, or allowlist it with a reason.'
+              "which bc3 does not document.#{hint}"
 end
 
 # ------------------------------------------------- direction 2: bc3 docs -> SDK
@@ -155,7 +217,7 @@ sdk_loose = sdk.map { |o| N.bucket_insensitive_key(o[:method], o[:path]) }.to_se
 unmodeled = bc3_routes.reject do |r|
   sdk_exact.include?(N.key(r['method'], r['path'])) ||
     sdk_loose.include?(N.bucket_insensitive_key(r['method'], r['path'])) ||
-    allowed?(bc3_allow, used, r['method'], r['path'])
+    allowed?(bc3_allow, used, r['method'], r['path'], mode: :loose)
 end
 
 unmodeled.sort_by { |r| [r['sections'].join, r['path']] }.each do |r|
@@ -165,7 +227,7 @@ end
 
 # --------------------------------------------------------- stale allowlist scan
 
-(sdk_allow + bc3_allow + known_bad).each do |e|
+(sdk_allow + bc3_allow + known_bad + scope_aliases).each do |e|
   next if used.include?(e.object_id)
   failures << "stale allowlist entry: #{e.fetch('method')} #{e.fetch('path')} " \
               "matches nothing — remove it (reason on file: #{e['reason']})."
@@ -175,8 +237,10 @@ die(failures) unless failures.empty?
 
 marked = bc3_routes.count { |r| r['evidence'].include?('example-marker') }
 puts "==> bc3 route parity OK: #{sdk.length} SDK routes vs #{bc3_routes.length} bc3 routes " \
-     "(#{marked} live-marker-backed) at bc3 #{pinned[0, 10]}; " \
-     "#{sdk_allow.length} SDK + #{bc3_allow.length} bc3 allowlist entries, all matched."
+     "(#{marked} live-marker-backed) at bc3 #{pinned[0, 10]}."
+puts "    Direction 1 is EXACT (a wrong spelling is a 404): " \
+     "#{scope_aliases.length} evidenced scope aliases, #{sdk_allow.length} documented-elsewhere waivers."
+puts "    Direction 2 collapses bucket scoping (coverage ledger): #{bc3_allow.length} dispositions."
 
 # Loud, every run. These are live 404s in shipped consumers; the gate is green
 # only because the fixes are breaking and queued, not because they are fine.

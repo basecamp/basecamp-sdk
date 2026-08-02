@@ -129,6 +129,13 @@ jobs:
       - name: Kotlin service drift (static; jq/grep, no JVM)
         run: make kt-check-drift
 
+      # Offline by construction — compares openapi.json against the vendored
+      # spec/bc3-routes.json, so it needs no bc3 checkout and no secret and
+      # therefore cannot skip. A gate that skips when its input is absent is how
+      # two 404ing routes shipped.
+      - name: SDK routes match the routes bc3 serves
+        run: make bc3-route-parity
+
   test-go:
     name: Go Tests
     runs-on: ubuntu-latest
