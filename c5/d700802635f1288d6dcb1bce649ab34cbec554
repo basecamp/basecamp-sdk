@@ -1,0 +1,33 @@
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_1038432fab869b 132-138
+scripts/bc3_route_normalizer.rb
+  s_ae792ed0be3006::t_c98b668c5284a1 49,51-69
+spec/bc3-route-allowlist.yml
+  s_ae792ed0be3006::t_fb1c5bfdf77679 41-89
+  s_ae792ed0be3006::t_86068c035bafb3 3-6,8,10-22,25-33,35-40,90-92,94-95,139-142,226,236-244,247,251-255,259-262,264,268,271,274,277,280,283,285-286,290,293,295,299,302,305,307,311,314,317
+  s_ae792ed0be3006::t_eb99239ce43f52 158-219
+scripts/check-bc3-route-parity
+  s_ae792ed0be3006::t_07188d9dd71aa1 155-160,166-169
+  s_ae792ed0be3006::t_c2b66f971e3c1a 174-177,184,187,195-203,205
+  s_ae792ed0be3006::t_f5972cac3080ed 230,240-243
+  s_ae792ed0be3006::t_078893a00dda91 220
+  s_ae792ed0be3006::t_4b66579198c817 99,109-147,170
+  s_ae792ed0be3006::t_db7c243792fd99 148
+  s_ae792ed0be3006::t_54a9b20c87ba1d 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c5d700802635f1288d6dcb1bce649ab34cbec554",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
