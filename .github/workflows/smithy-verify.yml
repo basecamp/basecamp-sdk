@@ -42,6 +42,14 @@ jobs:
       - name: Build OpenAPI
         run: smithy build
 
+      # behavior-model-check consumes spec/build/smithy/source/model/model.json,
+      # which only exists after `smithy build` — so this is the one job that can
+      # run it. It was previously on the `make check` line but in no CI job.
+      # Runs from the repo root, overriding this workflow's `spec` default.
+      - name: Verify behavior model is up to date
+        working-directory: .
+        run: make behavior-model-check
+
       - name: Verify OpenAPI is up to date
         run: |
           cp build/smithy/openapi/openapi/Basecamp.openapi.json ../openapi.generated.json

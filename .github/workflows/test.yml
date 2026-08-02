@@ -72,6 +72,63 @@ jobs:
         env:
           LC_ALL: C
 
+  # Toolchain-light repo-wide gates from the `make check` line that previously
+  # ran on developer machines only. `make check` membership is not enforcement:
+  # a gate nothing in CI invokes is discipline, not a guarantee. These eight
+  # need bash + jq + ruby and no SDK toolchain, so they get one fast job rather
+  # than riding along inside a language job (which is how
+  # check-idempotency-parity ended up coupled to test-go).
+  #
+  # kt-check-drift belongs here despite the kt- prefix: it is jq/grep with no
+  # JVM (see its Makefile comment). The authoritative regenerate-and-diff
+  # Kotlin gate, kt-check-generated-drift, already runs in test-kotlin.
+  #
+  # One sibling deliberately lives elsewhere: behavior-model-check is a step in
+  # smithy-verify.yml, because it consumes
+  # spec/build/smithy/source/model/model.json, which only exists after
+  # `smithy build`.
+  #
+  # Invoke via `make <target>` so the recipe has exactly one definition and CI
+  # cannot drift from the Makefile.
+  spec-gates:
+    name: Spec Gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1.319.0
+        with:
+          ruby-version: "3.3"
+
+      - name: Spec version constants in sync with provenance
+        run: make sync-spec-version-check
+
+      - name: API version constants in sync with openapi.json
+        run: make sync-api-version-check
+
+      - name: Bucket-scoped vs flat operation parity
+        run: make check-bucket-flat-parity
+
+      - name: api-gaps registry frontmatter + allowlist schema
+        run: make validate-api-gaps
+
+      - name: Deprecation signal parity across six SDKs
+        run: make check-deprecation-parity
+
+      - name: Generated Go optional fields can represent absence
+        run: make go-check-optional-pointers
+
+      - name: Request-body enhancer reachability (synthetic specs)
+        run: make test-enhance-request-reachability
+
+      - name: Kotlin service drift (static; jq/grep, no JVM)
+        run: make kt-check-drift
+
   test-go:
     name: Go Tests
     runs-on: ubuntu-latest
@@ -460,23 +517,23 @@ jobs:
     # which includes its conformance step — did not succeed.
     name: Conformance Tests
     runs-on: ubuntu-latest
-    needs: [test-go, test-typescript, test-ruby, test-kotlin, test-python, test-swift]
+    needs: [test-go, test-typescript, test-ruby, test-kotlin, test-python, test-swift, spec-gates]
     if: always()
     permissions:
       contents: read
     steps:
-      - name: Verify per-language conformance results
+      - name: Verify per-language conformance and spec-gate results
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: |
           echo "$RESULTS" | jq .
           NOT_GREEN=$(echo "$RESULTS" | jq -r 'to_entries[] | select(.value.result != "success") | "\(.key): \(.value.result)"')
           if [ -n "$NOT_GREEN" ]; then
-            echo "::error::Language test jobs (which run their own conformance suites) did not succeed:"
+            echo "::error::Required upstream jobs did not succeed (language test jobs run their own conformance suites; spec-gates runs the repo-wide gates):"
             echo "$NOT_GREEN"
             exit 1
           fi
-          echo "All per-language conformance suites green"
+          echo "All per-language conformance suites and spec gates green"
 
   lint:
     name: Lint
