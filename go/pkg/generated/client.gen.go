@@ -13883,7 +13883,7 @@ func NewListForwardsRequest(server string, accountId string, inboxId int64, para
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/inboxes/%s/forwards.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/inboxes/%s/inbox_forwards.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -20041,7 +20041,7 @@ func NewRepositionTodolistGroupRequestWithBody(server string, accountId string, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/todolists/%s/position.json", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/%s/todolists/groups/%s/position.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}

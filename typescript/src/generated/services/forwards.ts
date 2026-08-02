@@ -245,7 +245,7 @@ export class ForwardsService extends BaseService {
         resourceId: inboxId,
       },
       () =>
-        this.client.GET("/inboxes/{inboxId}/forwards.json", {
+        this.client.GET("/inboxes/{inboxId}/inbox_forwards.json", {
           params: {
             path: { inboxId },
             query: { sort: options?.sort, direction: options?.direction, page: options?.page },

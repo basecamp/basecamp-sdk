@@ -311,6 +311,15 @@ class OperationMapper
       @account.everything.get_everything_no_due_date_cards.to_a
     when "GetEverythingNotNowCards"
       @account.everything.get_everything_not_now_cards.to_a
+    when "ListForwards"
+      # .to_a is load-bearing: paginate is lazy, so an unconsumed enumerator
+      # never reaches the wire and requestPath/requestCount would see nothing.
+      @account.forwards.list(inbox_id: path_params["inboxId"]).to_a
+    when "RepositionTodolistGroup"
+      @account.todolist_groups.reposition(
+        group_id: path_params["groupId"],
+        position: body["position"]
+      )
     else
       raise "Unknown operation: #{operation}"
     end

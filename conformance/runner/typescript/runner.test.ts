@@ -526,6 +526,16 @@ async function executeOperation(
         return {};
       }
 
+      case "ListForwards":
+        await client.forwards.list(Number(params.inboxId));
+        break;
+
+      case "RepositionTodolistGroup":
+        await client.todolistGroups.reposition(Number(params.groupId), {
+          position: Number(body.position),
+        });
+        break;
+
       default:
       throw new Error(`Unknown operation: ${tc.operation}`);
     }

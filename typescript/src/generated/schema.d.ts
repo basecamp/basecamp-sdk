@@ -1148,7 +1148,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/inboxes/{inboxId}/forwards.json": {
+    "/inboxes/{inboxId}/inbox_forwards.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -2663,7 +2663,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/todolists/{groupId}/position.json": {
+    "/todolists/groups/{groupId}/position.json": {
         parameters: {
             query?: never;
             header?: never;

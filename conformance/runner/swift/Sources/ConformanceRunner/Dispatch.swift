@@ -479,6 +479,22 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         _ = try await account.uploads.download(uploadId: pathParams.longParam("uploadId"))
         return DispatchResult()
 
+    // Pins the `inbox_forwards` collection segment. The shipped path said
+    // `forwards`, which bc3 does not route, so the fixture is a wire assertion
+    // on the segment rather than on any response shape.
+    case "ListForwards":
+        let forwards = try await account.forwards.list(inboxId: pathParams.longParam("inboxId"))
+        return DispatchResult(totalCount: forwards.meta.totalCount, truncated: forwards.meta.truncated)
+
+    // Pins the `todolists/groups` segment: a group repositions through its own
+    // collection, not through `/todolists/{id}`. 204-shaped (requestVoid), so
+    // there is no result to report.
+    case "RepositionTodolistGroup":
+        try await account.todolistGroups.reposition(
+            groupId: pathParams.longParam("groupId"),
+            req: RepositionTodolistGroupRequest(position: Int32(rb.longParam("position"))))
+        return DispatchResult()
+
     default:
         throw RunnerError.unknownOperation(tc.operation)
     }

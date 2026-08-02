@@ -587,7 +587,7 @@ describe("TodolistsService", () => {
         http.get(`${BASE_URL}/todolists/42`, () =>
           HttpResponse.json({
             ...groupShaped,
-            group_position_url: "https://3.basecampapi.com/12345/buckets/1/todolists/42/position.json",
+            group_position_url: "https://3.basecampapi.com/12345/buckets/1/todolists/groups/42/position.json",
           })
         ),
         http.put(`${BASE_URL}/todolists/42`, async ({ request }) => {

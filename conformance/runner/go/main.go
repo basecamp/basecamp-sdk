@@ -943,6 +943,25 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Everything().NotNowCards(ctx, 0, nil)
 		return operationResult{err: err}
 
+	case "ListForwards":
+		inboxID := getInt64Param(tc.PathParams, "inboxId")
+		result, err := account.Forwards().List(ctx, inboxID, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
+		}
+
+	case "RepositionTodolistGroup":
+		groupID := getInt64Param(tc.PathParams, "groupId")
+		position := getInt64Param(tc.RequestBody, "position")
+		err := account.TodolistGroups().Reposition(ctx, groupID, int(position))
+		return operationResult{err: err}
+
 	default:
 		return operationResult{
 			err: fmt.Errorf("unknown operation: %s", tc.Operation),

@@ -73,7 +73,7 @@ export class TodolistGroupsService extends BaseService {
         resourceId: groupId,
       },
       () =>
-        this.client.PUT("/todolists/{groupId}/position.json", {
+        this.client.PUT("/todolists/groups/{groupId}/position.json", {
           params: {
             path: { groupId },
           },

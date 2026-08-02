@@ -1513,5 +1513,93 @@
       "path",
       "my-assignments"
     ]
+  },
+  {
+    "name": "ListForwards uses the inbox_forwards segment, not forwards",
+    "description": "The SDK shipped GET /{accountId}/inboxes/{inboxId}/forwards.json, which bc3 does not route — it serves /inboxes/{id}/inbox_forwards.json (doc/api/sections/forwards.md, corroborated by a live-response example marker). Every other forwards operation already used inbox_forwards, so this was a typo that 404'd in production. Pins the corrected segment on the wire.",
+    "operation": "ListForwards",
+    "method": "GET",
+    "path": "/inboxes/{inboxId}/inbox_forwards.json",
+    "pathParams": {
+      "inboxId": 1069478966
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/inboxes/1069478966/inbox_forwards.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "forwards"
+    ]
+  },
+  {
+    "name": "RepositionTodolistGroup uses the todolists/groups segment",
+    "description": "The SDK shipped PUT /{accountId}/todolists/{groupId}/position.json, which bc3 does not route — it serves /todolists/groups/{id}/position.json (doc/api/sections/todolist_groups.md, corroborated by the group_position_url field in its own response payloads). Pins the corrected segment on the wire.",
+    "operation": "RepositionTodolistGroup",
+    "method": "PUT",
+    "path": "/todolists/groups/{groupId}/position.json",
+    "pathParams": {
+      "groupId": 1069479527
+    },
+    "requestBody": {
+      "position": 2
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {}
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/todolists/groups/1069479527/position.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT"
+      },
+      {
+        "type": "requestBody",
+        "path": "position",
+        "expected": 2
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "todolist-groups"
+    ]
   }
 ]

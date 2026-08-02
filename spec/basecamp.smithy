@@ -1341,7 +1341,7 @@ structure CreateTodolistGroupOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/todolists/{groupId}/position.json")
+@http(method: "PUT", uri: "/{accountId}/todolists/groups/{groupId}/position.json")
 operation RepositionTodolistGroup {
   input: RepositionTodolistGroupInput
   output: RepositionTodolistGroupOutput
@@ -4012,7 +4012,7 @@ structure GetInboxOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/inboxes/{inboxId}/forwards.json")
+@http(method: "GET", uri: "/{accountId}/inboxes/{inboxId}/inbox_forwards.json")
 operation ListForwards {
   input: ListForwardsInput
   output: ListForwardsOutput

@@ -13,7 +13,7 @@ module Basecamp
       # @return [void]
       def reposition(group_id:, position:)
         with_operation(service: "todolistgroups", operation: "reposition", is_mutation: true, resource_id: group_id) do
-          http_put("/todolists/#{group_id}/position.json", body: compact_params(position: position))
+          http_put("/todolists/groups/#{group_id}/position.json", body: compact_params(position: position))
           nil
         end
       end

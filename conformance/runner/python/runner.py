@@ -321,6 +321,12 @@ class OperationMapper:
                 return self._account.everything.get_everything_no_due_date_cards()
             case "GetEverythingNotNowCards":
                 return self._account.everything.get_everything_not_now_cards()
+            case "ListForwards":
+                return self._account.forwards.list(inbox_id=path_params["inboxId"])
+            case "RepositionTodolistGroup":
+                return self._account.todolist_groups.reposition(
+                    group_id=path_params["groupId"], position=body["position"]
+                )
             case _:
                 raise ValueError(f"Unknown operation: {operation}")
 

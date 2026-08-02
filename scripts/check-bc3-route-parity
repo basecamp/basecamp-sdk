@@ -1,0 +1,188 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Compare the SDK's declared HTTP routes against the routes bc3 actually serves.
+#
+# This is the gate that would have caught two shipped operations pointing at URLs
+# that do not exist:
+#
+#   ListForwards             GET /{accountId}/inboxes/{inboxId}/forwards.json
+#                            bc3 serves .../inbox_forwards.json
+#   RepositionTodolistGroup  PUT /{accountId}/todolists/{groupId}/position.json
+#                            bc3 serves /todolists/groups/{id}/position.json
+#
+# Nothing compared the two sides before. `make url-routes-check` proves
+# go/pkg/basecamp/url-routes.json regenerates FROM openapi.json — it is a
+# self-consistency check, and a route that is internally consistent and wrong
+# passes it. Neither operation appeared in the live-canary fixture set either, so
+# both 404'd in shipped consumers.
+#
+# Runs fully OFFLINE against the vendored spec/bc3-routes.json, so it is in
+# `make check` and in CI with no bc3 checkout and no secret. That is deliberate:
+# a gate that skips when its input is missing cannot prevent anything, and
+# skipping is exactly how this class of defect survived.
+#
+# Refresh the vendored table with:  make bc3-routes   (requires BC3_REPO_PATH)
+#
+# Usage: ./check-bc3-route-parity
+
+require 'json'
+require 'set'
+require 'yaml'
+require_relative 'bc3_route_normalizer'
+
+N = Bc3RouteNormalizer
+ROOT = File.expand_path('..', __dir__)
+
+# Fail-closed floors. Pinned literals in the style of expected_idempotent=77 in
+# check-idempotency-parity. Without these, a broken extraction regex yields an
+# empty route set, nothing is unmatched, and the gate passes vacuously — the
+# review-census-403 failure mode.
+MIN_BC3_ROUTES = 340
+MIN_SDK_ROUTES = 230
+
+failures = []
+def die(failures)
+  warn '==> bc3 route parity FAILED:'
+  failures.each { |f| warn "  #{f}" }
+  exit 1
+end
+
+# ---------------------------------------------------------------- load + verify
+
+table_path = File.join(ROOT, 'spec', 'bc3-routes.json')
+unless File.exist?(table_path)
+  warn "ERROR: #{table_path} is missing. Run `make bc3-routes` (needs BC3_REPO_PATH)."
+  exit 1
+end
+
+table = JSON.parse(File.read(table_path))
+provenance = JSON.parse(File.read(File.join(ROOT, 'spec', 'api-provenance.json')))
+pinned = provenance.fetch('bc3').fetch('revision')
+vendored = table.fetch('source').fetch('revision')
+
+# The table must describe the revision the SDK claims to be synced against.
+# Otherwise the gate silently compares against stale bc3 truth, which is worse
+# than not comparing at all — it looks green.
+if vendored != pinned
+  failures << "spec/bc3-routes.json is stale: built from bc3 #{vendored[0, 10]}, " \
+              "but spec/api-provenance.json pins #{pinned[0, 10]}. Run `make bc3-routes`."
+  die(failures)
+end
+
+bc3_routes = table.fetch('routes')
+if bc3_routes.length < MIN_BC3_ROUTES
+  failures << "only #{bc3_routes.length} bc3 routes extracted (floor #{MIN_BC3_ROUTES}) — " \
+              'the doc format probably changed and extraction is silently failing.'
+end
+
+openapi = JSON.parse(File.read(File.join(ROOT, 'openapi.json')))
+sdk = []
+openapi.fetch('paths').each do |path, ops|
+  ops.each do |method, op|
+    next unless N::METHODS.include?(method.upcase)
+    sdk << { id: op['operationId'], method: method.upcase, path: path }
+  end
+end
+if sdk.length < MIN_SDK_ROUTES
+  failures << "only #{sdk.length} SDK routes read from openapi.json (floor #{MIN_SDK_ROUTES})."
+end
+die(failures) unless failures.empty?
+
+# ------------------------------------------------------------------- allowlist
+
+allow_path = File.join(ROOT, 'spec', 'bc3-route-allowlist.yml')
+allow = File.exist?(allow_path) ? (YAML.safe_load(File.read(allow_path)) || {}) : {}
+sdk_allow = allow['sdk_routes_absent_from_bc3_docs'] || []
+bc3_allow = allow['bc3_routes_not_modeled'] || []
+known_bad = allow['sdk_routes_known_defective'] || []
+
+# Known defects must stay attributable. An unattributed "we know" is just a
+# waiver with better manners.
+known_bad.each do |e|
+  next if e['issue'].is_a?(Integer)
+  failures << "sdk_routes_known_defective entry #{e['method']} #{e['path']} has no numeric `issue:` — " \
+              'a known defect without a tracking issue is an untracked defect.'
+end
+
+# Track which allowlist entries actually matched. An entry matching nothing is a
+# hard error, not a shrug: a stale waiver is indistinguishable from a covered
+# case at a glance, and check-bucket-flat-parity's lack of this check is what
+# lets its waivers rot.
+used = Set.new
+
+def allowed?(list, used, method, path)
+  want = N.bucket_insensitive_key(method, path)
+  hit = list.find { |e| N.bucket_insensitive_key(e.fetch('method'), e.fetch('path')) == want }
+  return false unless hit
+  used << hit.object_id
+  true
+end
+
+# ------------------------------------------------- direction 1: SDK -> bc3 docs
+
+bc3_exact = bc3_routes.map { |r| N.key(r['method'], r['path']) }.to_set
+bc3_loose = bc3_routes.map { |r| N.bucket_insensitive_key(r['method'], r['path']) }.to_set
+
+flagged = []
+
+undocumented = sdk.reject do |o|
+  next true if bc3_exact.include?(N.key(o[:method], o[:path]))
+  next true if bc3_loose.include?(N.bucket_insensitive_key(o[:method], o[:path]))
+  next true if allowed?(sdk_allow, used, o[:method], o[:path])
+  if allowed?(known_bad, used, o[:method], o[:path])
+    entry = known_bad.find { |e| N.bucket_insensitive_key(e['method'], e['path']) == N.bucket_insensitive_key(o[:method], o[:path]) }
+    flagged << "#{o[:id]} (#{o[:method]} #{N.normalize(o[:path])}) — known defect, see ##{entry['issue']}"
+    next true
+  end
+  false
+end
+
+undocumented.sort_by { |o| o[:id].to_s }.each do |o|
+  failures << "#{o[:id]}: SDK declares #{o[:method]} #{N.normalize(o[:path])}, " \
+              'which bc3 does not document. Fix the route, or allowlist it with a reason.'
+end
+
+# ------------------------------------------------- direction 2: bc3 docs -> SDK
+#
+# Mechanizes the rule AGENTS.md already states and nothing enforced: a repin is
+# valid exactly when every drift item is either absorbed into the spec or
+# registered. Before this, advancing the pin required no triage at all.
+
+sdk_exact = sdk.map { |o| N.key(o[:method], o[:path]) }.to_set
+sdk_loose = sdk.map { |o| N.bucket_insensitive_key(o[:method], o[:path]) }.to_set
+
+unmodeled = bc3_routes.reject do |r|
+  sdk_exact.include?(N.key(r['method'], r['path'])) ||
+    sdk_loose.include?(N.bucket_insensitive_key(r['method'], r['path'])) ||
+    allowed?(bc3_allow, used, r['method'], r['path'])
+end
+
+unmodeled.sort_by { |r| [r['sections'].join, r['path']] }.each do |r|
+  failures << "bc3 documents #{r['method']} #{r['path']} (#{r['sections'].join(', ')}, " \
+              "evidence: #{r['evidence'].join('+')}) with no SDK operation and no allowlist entry."
+end
+
+# --------------------------------------------------------- stale allowlist scan
+
+(sdk_allow + bc3_allow + known_bad).each do |e|
+  next if used.include?(e.object_id)
+  failures << "stale allowlist entry: #{e.fetch('method')} #{e.fetch('path')} " \
+              "matches nothing — remove it (reason on file: #{e['reason']})."
+end
+
+die(failures) unless failures.empty?
+
+marked = bc3_routes.count { |r| r['evidence'].include?('example-marker') }
+puts "==> bc3 route parity OK: #{sdk.length} SDK routes vs #{bc3_routes.length} bc3 routes " \
+     "(#{marked} live-marker-backed) at bc3 #{pinned[0, 10]}; " \
+     "#{sdk_allow.length} SDK + #{bc3_allow.length} bc3 allowlist entries, all matched."
+
+# Loud, every run. These are live 404s in shipped consumers; the gate is green
+# only because the fixes are breaking and queued, not because they are fine.
+unless flagged.empty?
+  puts
+  puts "==> #{flagged.length} KNOWN-DEFECTIVE route#{flagged.length == 1 ? '' : 's'} " \
+       'still shipping (green only because the fix is breaking and queued):'
+  flagged.sort.each { |f| puts "      #{f}" }
+end
