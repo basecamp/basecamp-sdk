@@ -1,0 +1,31 @@
+Makefile
+  s_ae792ed0be3006::t_7367d0da61bbce 107-119
+scripts/generate-bc3-routes
+  s_ae792ed0be3006::t_2e876498fd8582 105
+  s_ae792ed0be3006::t_bfc140bc093bf2 106
+scripts/bc3_route_normalizer.rb
+  s_ae792ed0be3006::t_e3c0800e329c24 75-93
+  s_ae792ed0be3006::t_269d9ae2b9e8af 3-4
+scripts/check-bc3-route-parity
+  s_ae792ed0be3006::t_2d4d5225400ade 79
+  s_ae792ed0be3006::t_c9032d115e4842 74-78,80-90
+  s_ae792ed0be3006::t_73dfac6ef6f290 32
+spec/bc3-routes.json
+  s_ae792ed0be3006::t_1e1ca3334d69c3 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0a1de612b27af3ccc8e41de42e4a6a858106595a",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
