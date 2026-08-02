@@ -1,0 +1,24 @@
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_32c1504453f329 129-131
+  s_ae792ed0be3006::t_56ed78d7c2a1b0 520,525,532,536
+  s_ae792ed0be3006::t_c938ef26c62328 75-76,78-81,90-128
+  s_ae792ed0be3006::t_9e61540f693eaf 77,82-89
+.github/workflows/smithy-verify.yml
+  s_ae792ed0be3006::t_3977efae636871 45-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "726685b30fa697b842486945f1361d817cb71686",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
