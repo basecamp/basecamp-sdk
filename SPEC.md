@@ -2449,12 +2449,18 @@ save discipline.
 position → take the **ownership cut** → fix the snapshot → drain-and-accept → only then
 `save`.
 
-**The ownership cut, defined:** the cut is the state machine's first empty receive from the
-frame pump's queue after accepting the entry-poll response — deliberately **not** a
-drain-until-empty barrier, which races a concurrent sender and promises an unclosable
-window. "Observed" means **admitted into the state-machine-owned buffer at or before the
-cut**; a frame the transport had read but the state machine had not yet received at the cut
-does not count. **The snapshot** is the pre-cut contents of the state-machine-owned buffer,
+**The ownership cut, defined:** after accepting the entry-poll response, the state machine
+performs **one bounded admission pass** — receiving from the frame pump's queue without
+blocking until the queue is momentarily empty OR the pass has admitted
+`EVENT_FEED_LIVE_BUFFER_CAPACITY` events, whichever comes first. The cut is the completion
+of that pass. The pass is deliberately **not** a drain-until-empty barrier: unbounded
+draining races a concurrent sender, and under sustained arrival at or above the admission
+rate it never completes — the cut must be reachable in bounded time or the entry position
+never saves. The capacity bound keeps the pass finite without weakening the retained set:
+any admission beyond capacity would evict retained pre-acceptance events anyway.
+"Observed" means **admitted into the state-machine-owned buffer at or before the cut**; a
+frame the transport had read but the state machine had not yet admitted at the cut does
+not count. **The snapshot** is the pre-cut contents of the state-machine-owned buffer,
 fixed at the cut; "pre-cut events" and "post-snapshot stragglers" below are defined against
 it.
 
@@ -2633,12 +2639,21 @@ END
 -- unexpected shapes) → unrecoverable, carrying the generated error verbatim.
 
 INTERFACE CableTransport
-  dial(ws_url) → CableConn
+  dial(ws_url, cancellation) → CableConn
   -- Dials exactly one connection per call. MUST NOT auto-reconnect. MUST NOT interpret,
   -- filter, or swallow application text frames. Negotiates subprotocol
   -- "actioncable-v1-json". Refuses redirects (§23 Security Invariants).
-  -- MUST be cancellable: the connector cancels a pending dial on handshake-deadline
-  -- expiry and on close() — a dial that cannot be interrupted violates this contract.
+  -- `cancellation` is the language-native cancellation channel (Go context, TS
+  -- AbortSignal, Kotlin coroutine cancellation, Swift task cancellation, a Python/Ruby
+  -- cancel token): the connector triggers it on handshake-deadline expiry and on
+  -- close(), and a triggered dial MUST return promptly — a dial that cannot be
+  -- interrupted violates this contract.
+  -- Dial errors carry a kind: transient | policy(reason). `policy` is a PERMANENT
+  -- refusal the transport detected (a redirect encountered; a scheme the invariants
+  -- forbid; an unparseable URL) → Terminal(`invalid_cable_url`), never Backoff — a
+  -- fresh mint returns the same unusable URL. Everything else is `transient` →
+  -- transition 7. The connector performs the scheme/parse checks it can before dialing;
+  -- only the transport can see a redirect.
 END
 
 INTERFACE CableConn
