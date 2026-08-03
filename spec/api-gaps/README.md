@@ -117,9 +117,21 @@ making the absorption journey publicly auditable.
 > still answers `204`. The remaining seven commits are four dev-tooling, two
 > Turbo-morph web-only, and one push-notification backend swap.
 >
-> Earlier pins, kept as the triage record. The provenance pin was `e83b2733`
-> (2026-07-30); the `dffa7e11..e83b2733` range (96 commits), triaged at the
-> repin that set it, contains exactly two API-contract changes, both handled:
+> Earlier pins, kept as the triage record. Each names the pin it was written
+> against, in the past tense, because that is what it is — a range triaged
+> once, at the repin that set its end. Only the sentence above is a claim
+> about today.
+>
+> The pin was `d0edc128` (2026-07-31). The `e83b2733..d0edc128` range was
+> triaged at the Up Next priority-writes repin (SDK #528): the only `doc/api`
+> or routes change in it is `my_assignments.md`'s exact-target Deprioritize
+> contract (BC3 **#12483**), absorbed by that PR and recorded in
+> [`my-assignments-priorities.md`](my-assignments-priorities.md); everything
+> else (BC3 #12478/#12479/#12480/#12481/#12444, a completion-lock race fix and
+> relay-revocation ops tooling) is wire-neutral internals.
+>
+> The pin was `e83b2733` (2026-07-30); the `dffa7e11..e83b2733` range (96
+> commits) contains exactly two API-contract changes, both handled:
 > BC3 **#12464** (`b06acfac1`, boosts-feed withdrawal — absorbed by the SDK's
 > removal, recorded in `everything-boosts-withdrawn.md`) and BC3 **#12442**
 > (`b238a0743`, `assignee_ids[]`/`due` filters on the everything to-do/card
