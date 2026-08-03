@@ -975,12 +975,15 @@ func TestCheckinsService_ListAnswersByPerson_Pagination(t *testing.T) {
 			wantTruncated: false,
 		},
 		{
+			// A pinned page is one request, and the rel="next" Link this
+			// call deliberately does not follow is what makes the result
+			// truncated (SPEC §8's ListMeta).
 			name:          "Page option returns first page and skips Link follow",
 			emitNextLink:  true,
 			opts:          &AnswerListOptions{Page: 1},
 			wantAnswers:   2,
 			wantRequests:  1,
-			wantTruncated: false,
+			wantTruncated: true,
 		},
 		{
 			name:          "Limit smaller than first page truncates without follow",
@@ -1279,7 +1282,7 @@ func TestCheckinsService_ListAnswerers_Pagination(t *testing.T) {
 		wantTruncated bool
 	}{
 		{"collects across pages when no limit", nil, 4, 2, false},
-		{"Page option returns first page and skips Link follow", &PeopleListOptions{Page: 1}, 2, 1, false},
+		{"Page option returns first page and skips Link follow", &PeopleListOptions{Page: 1}, 2, 1, true},
 		{"Limit smaller than first page truncates without follow", &PeopleListOptions{Limit: 1}, 1, 1, true},
 		{"Limit straddling page boundary trims second page", &PeopleListOptions{Limit: 3}, 3, 2, true},
 	}
@@ -1395,7 +1398,7 @@ func TestCheckinsService_ListQuestionReminders_Pagination(t *testing.T) {
 		wantTruncated bool
 	}{
 		{"collects across pages when no limit", nil, 4, 2, false},
-		{"Page option returns first page and skips Link follow", &QuestionReminderListOptions{Page: 1}, 2, 1, false},
+		{"Page option returns first page and skips Link follow", &QuestionReminderListOptions{Page: 1}, 2, 1, true},
 		{"Limit smaller than first page truncates without follow", &QuestionReminderListOptions{Limit: 1}, 1, 1, true},
 		{"Limit straddling page boundary trims second page", &QuestionReminderListOptions{Limit: 3}, 3, 2, true},
 	}

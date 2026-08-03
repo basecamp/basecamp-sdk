@@ -183,7 +183,7 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &ProjectListResult{Projects: projects, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ProjectListResult{Projects: projects, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for projects)

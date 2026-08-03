@@ -160,6 +160,13 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
     let isPaginated = op.hasPagination && op.returnsArray
     let isWrappedPaginated = op.hasPagination && op.paginationKey != nil && !op.returnsArray
 
+    // A `page` query param rides into PaginationOptions as well as the query
+    // string: BaseService needs it to know the caller pinned a single page and
+    // must not follow Link headers (SPEC section 8).
+    let paginationOptsArg = op.queryParams.contains { !$0.required && $0.name == "page" }
+        ? "options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) }"
+        : "options.flatMap { PaginationOptions(maxItems: $0.maxItems) }"
+
     // Build query items for ops with query params
     let optionalQueryParams = op.queryParams.filter { !$0.required }
     let requiredQueryParams = op.queryParams.filter { $0.required }
@@ -213,7 +220,7 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
             lines.append("            queryItems: queryItems.isEmpty ? nil : queryItems,")
         }
         if hasOptions {
-            lines.append("            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },")
+            lines.append("            paginationOpts: \(paginationOptsArg),")
         }
         lines.append("            retryConfig: Metadata.retryConfig(for: \"\(op.operationId)\")")
         lines.append("        )")
@@ -256,7 +263,7 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
             lines.append("            queryItems: queryItems.isEmpty ? nil : queryItems,")
         }
         if hasOptions {
-            lines.append("            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },")
+            lines.append("            paginationOpts: \(paginationOptsArg),")
         }
         lines.append("            retryConfig: Metadata.retryConfig(for: \"\(op.operationId)\")")
         lines.append("        )")

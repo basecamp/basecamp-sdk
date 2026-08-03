@@ -105,7 +105,10 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     switch tc.operation {
     case "ListProjects":
         let maxItems = tc.configOverrides?.maxItems
-        let options = (maxItems ?? 0) > 0 ? ListProjectOptions(maxItems: maxItems) : nil
+        let page = tc.configOverrides?.page
+        let options = (maxItems ?? 0) > 0 || (page ?? 0) > 0
+            ? ListProjectOptions(page: page, maxItems: maxItems)
+            : nil
         let result = try await account.projects.list(options: options)
         return DispatchResult(totalCount: result.meta.totalCount, truncated: result.meta.truncated)
 

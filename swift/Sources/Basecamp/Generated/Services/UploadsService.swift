@@ -59,7 +59,7 @@ public final class UploadsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Uploads", operation: "ListUploads", resourceType: "upload", isMutation: false, resourceId: vaultId),
             path: "/vaults/\(vaultId)/uploads.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListUploads")
         )
     }

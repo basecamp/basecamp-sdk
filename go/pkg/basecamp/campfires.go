@@ -244,7 +244,7 @@ func (s *CampfiresService) List(ctx context.Context, opts *CampfireListOptions) 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &CampfireListResult{Campfires: campfires, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &CampfireListResult{Campfires: campfires, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (no limit)
@@ -373,7 +373,7 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64, opts
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
@@ -619,7 +619,7 @@ func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64, op
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &CampfireLineListResult{Lines: lines, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit
@@ -787,7 +787,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireI
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &ChatbotListResult{Chatbots: chatbots, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ChatbotListResult{Chatbots: chatbots, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for chatbots)

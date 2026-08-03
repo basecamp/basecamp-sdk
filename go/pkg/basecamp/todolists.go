@@ -238,7 +238,7 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &TodolistListResult{Todolists: todolists, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &TodolistListResult{Todolists: todolists, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for todolists), >0 = specific limit

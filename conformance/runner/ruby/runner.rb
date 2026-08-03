@@ -201,7 +201,7 @@ class OperationMapper
     @account = account_client
   end
 
-  def call(operation, path_params: {}, query_params: {}, body: nil, path: "", max_items: nil)
+  def call(operation, path_params: {}, query_params: {}, body: nil, path: "", max_items: nil, page: nil)
     case operation
     when "DownloadURL"
       raise "DownloadURL test case requires a non-empty path" if path.nil? || path.empty?
@@ -209,8 +209,13 @@ class OperationMapper
       @account.download_url(raw_url)
     when "ListProjects"
       # Returned unconsumed so the runner can consume then assert on .meta;
-      # the plain arity stays exercised when the fixture carries no maxItems.
-      max_items ? @account.projects.list(max_items: max_items) : @account.projects.list
+      # the plain arity stays exercised when the fixture carries neither a
+      # maxItems cap nor a pinned page.
+      if max_items || page
+        @account.projects.list(max_items: max_items, page: page)
+      else
+        @account.projects.list
+      end
     when "GetProject"
       @account.projects.get(project_id: path_params["projectId"])
     when "CreateProject"
@@ -588,7 +593,8 @@ class TestRunner
         query_params: @test["queryParams"] || {},
         body: @test["requestBody"],
         path: @test["path"] || "",
-        max_items: (@test["configOverrides"] || {})["maxItems"]
+        max_items: (@test["configOverrides"] || {})["maxItems"],
+        page: (@test["configOverrides"] || {})["page"]
       )
       # Consume-then-assert: pagination metadata (truncated in particular) is
       # final only after the lazy enumeration completes, and consumption is

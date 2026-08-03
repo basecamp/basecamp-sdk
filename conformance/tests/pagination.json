@@ -229,5 +229,71 @@
       {"type": "responseMeta", "path": "truncated", "expected": false}
     ],
     "tags": ["pagination", "max-items"]
+  },
+  {
+    "name": "A positive page selects exactly that page",
+    "description": "Verifies SPEC section 8's page contract: page=3 issues EXACTLY one request, returns only that page's items, and does not follow Link rel=next. truncated is true because the selected page advertised a further page. The over-fetch control is the auto-follow case above, which walks a same-shaped queue in 3 requests when no page is pinned (2C.1, 2C.3, #566)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "configOverrides": {
+      "page": 3
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=4>; rel=\"next\"",
+          "X-Total-Count": "9"
+        },
+        "body": [
+          {"id": 5, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 5", "url": "https://3.basecampapi.com/999/projects/5.json", "app_url": "https://3.basecamp.com/999/projects/5"},
+          {"id": 6, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 6", "url": "https://3.basecampapi.com/999/projects/6.json", "app_url": "https://3.basecamp.com/999/projects/6"}
+        ]
+      },
+      {
+        "status": 200,
+        "body": [
+          {"id": 7, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 7", "url": "https://3.basecampapi.com/999/projects/7.json", "app_url": "https://3.basecamp.com/999/projects/7"},
+          {"id": 8, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 8", "url": "https://3.basecampapi.com/999/projects/8.json", "app_url": "https://3.basecamp.com/999/projects/8"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "totalCount", "expected": 9},
+      {"type": "responseMeta", "path": "truncated", "expected": true}
+    ],
+    "tags": ["pagination", "page-selection"]
+  },
+  {
+    "name": "A pinned final page is not truncated",
+    "description": "The page contract's other half: pinning the last page (no Link rel=next) still costs exactly one request, and truncated is false because nothing beyond the returned items was available. Keeps the truncated assertion in the sibling case from passing on a hardcoded true (SPEC section 8, #566)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "configOverrides": {
+      "page": 3
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "X-Total-Count": "6"
+        },
+        "body": [
+          {"id": 5, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 5", "url": "https://3.basecampapi.com/999/projects/5.json", "app_url": "https://3.basecamp.com/999/projects/5"},
+          {"id": 6, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 6", "url": "https://3.basecampapi.com/999/projects/6.json", "app_url": "https://3.basecamp.com/999/projects/6"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "totalCount", "expected": 6},
+      {"type": "responseMeta", "path": "truncated", "expected": false}
+    ],
+    "tags": ["pagination", "page-selection"]
   }
 ]

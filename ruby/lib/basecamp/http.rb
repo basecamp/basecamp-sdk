@@ -247,6 +247,7 @@ module Basecamp
     # snapshot rather than a hybrid of captured and current data.
     def paginated_enumerator(path, params:, operation:, max_items:, key: nil)
       max_items = nil if max_items && max_items <= 0
+      single_page = single_page_selected?(params)
       base_url = build_url(path)
 
       @hooks.on_paginate(base_url, 1)
@@ -277,6 +278,12 @@ module Basecamp
         loop do
           next_link = parse_next_link(response.headers["Link"])
 
+          # A pinned page is the whole answer (SPEC §8): this pass yields that
+          # page and stops, so a next link we deliberately do not follow is
+          # what makes the result truncated. Recorded before the yields for the
+          # same reason as the capping case below.
+          meta.mark_truncated! if single_page && next_link
+
           capped = false
           items.each_with_index do |item, index|
             yielded += 1
@@ -289,6 +296,7 @@ module Basecamp
             break if capped
           end
           break if capped
+          break if single_page
           break if next_link.nil?
 
           next_url = Security.resolve_url(url, next_link)
@@ -310,6 +318,20 @@ module Basecamp
           url = next_url
         end
       end
+    end
+
+    # Reports whether the outgoing query pins a single page (SPEC §8).
+    #
+    # The query parameters are the authority: `page` reaches the wire only when
+    # the caller passed it, so reading it back here needs no extra plumbing
+    # through every generated service method. `to_i` rather than an Integer
+    # check so a string-typed "3" selects page 3 instead of silently walking
+    # the collection from there.
+    # @param params [Hash, nil] the outgoing query parameters
+    # @return [Boolean]
+    def single_page_selected?(params)
+      page = params && (params[:page] || params["page"])
+      page.respond_to?(:to_i) && page.to_i.positive?
     end
 
     # Parses a pagination page body: size check, JSON parse, and person-ID

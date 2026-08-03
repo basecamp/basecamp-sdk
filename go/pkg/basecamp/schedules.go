@@ -259,7 +259,7 @@ func (s *SchedulesService) ListEntries(ctx context.Context, scheduleID int64, op
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &ScheduleEntryListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ScheduleEntryListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for entries), >0 = specific limit

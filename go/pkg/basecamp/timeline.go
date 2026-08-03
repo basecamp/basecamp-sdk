@@ -203,7 +203,7 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &TimelineListResult{Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &TimelineListResult{Events: events, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	limit := DefaultTimelineLimit
@@ -286,7 +286,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &TimelineListResult{Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &TimelineListResult{Events: events, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	limit := DefaultTimelineLimit
@@ -381,7 +381,7 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &PersonProgressResult{Person: person, Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &PersonProgressResult{Person: person, Events: events, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	limit := DefaultTimelineLimit

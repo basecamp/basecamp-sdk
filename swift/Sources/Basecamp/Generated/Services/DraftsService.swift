@@ -23,7 +23,7 @@ public final class DraftsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Drafts", operation: "ListMyDrafts", resourceType: "my_draft", isMutation: false),
             path: "/my/drafts.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListMyDrafts")
         )
     }

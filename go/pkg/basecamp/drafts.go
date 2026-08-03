@@ -98,7 +98,7 @@ func (s *DraftsService) List(ctx context.Context, page int32) (result *DraftList
 	}
 	totalCount := parseTotalCount(resp.HTTPResponse)
 	if page > 0 {
-		return &DraftListResult{Drafts: drafts, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &DraftListResult{Drafts: drafts, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(drafts), 0)

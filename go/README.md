@@ -569,14 +569,15 @@ auto-pagination:
 result, err := account.Projects().List(ctx, &basecamp.ProjectListOptions{Page: 3})
 ```
 
+`Meta.Truncated` still answers "was there more": on a pinned page it is true when
+the response carried a `rel="next"` Link this SDK deliberately did not follow.
+
 A handful of endpoints are not paginated server-side (`Webhooks().List()`,
 `MessageTypes().List()`, and the other cases each options struct calls out); they
 return the whole list, and `Page` there only short-circuits auto-pagination.
 
-`Page` means something different in the other five SDKs, where a positive `page`
-is a *starting offset* that link-following then continues from. Converging the
-six on Go's single-page semantics is a breaking change tracked in
-[#566](https://github.com/basecamp/basecamp-sdk/issues/566).
+All six SDKs share these semantics — one request, that page only, no
+link-following. See SPEC section 8.
 
 ## Error Handling
 

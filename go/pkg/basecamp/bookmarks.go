@@ -72,7 +72,7 @@ func (s *BookmarksService) List(ctx context.Context, page int32) (result *Bookma
 	}
 	totalCount := parseTotalCount(resp.HTTPResponse)
 	if page > 0 {
-		return &BookmarkListResult{Bookmarks: bookmarks, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &BookmarkListResult{Bookmarks: bookmarks, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(bookmarks), 0)

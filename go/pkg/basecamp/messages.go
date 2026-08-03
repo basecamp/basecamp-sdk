@@ -178,7 +178,7 @@ func (s *MessagesService) List(ctx context.Context, boardID int64, opts *Message
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &MessageListResult{Messages: messages, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &MessageListResult{Messages: messages, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit

@@ -42,7 +42,7 @@ public final class CommentsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Comments", operation: "ListComments", resourceType: "comment", isMutation: false, resourceId: recordingId),
             path: "/recordings/\(recordingId)/comments.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListComments")
         )
     }

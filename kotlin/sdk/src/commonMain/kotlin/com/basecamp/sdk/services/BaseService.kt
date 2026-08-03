@@ -241,6 +241,20 @@ abstract class BaseService(
             val firstPageItems = parseItems(bodyText)
             val totalCount = parseTotalCount(response.headers.toMap())
 
+            // A pinned page is the whole answer: return it without following
+            // links. `truncated` still reports whether more items existed —
+            // dropped by the cap, or reachable through the next link we
+            // deliberately did not follow.
+            if ((options?.page ?: 0L) > 0L) {
+                val cap = maxItems?.takeIf { it > 0 && firstPageItems.size > it }
+                val hasMore = cap != null || parseNextLink(response.headers["Link"]) != null
+                val items = if (cap != null) firstPageItems.take(cap) else firstPageItems
+                val duration = (currentTimeMillis() - startTime).millisToDuration()
+                val result = ListResult(items, ListMeta(totalCount, hasMore))
+                hooks.safeOnOperationEnd(info, OperationResult(duration))
+                return result
+            }
+
             // Check if maxItems is satisfied by the first page
             if (maxItems != null && maxItems > 0 && firstPageItems.size >= maxItems) {
                 val hasMore = firstPageItems.size > maxItems
@@ -339,6 +353,20 @@ abstract class BaseService(
             val firstPageBody = normalizePersonIds(response.bodyAsText(), json)
             val firstPageItems = parseItems(firstPageBody)
             val totalCount = parseTotalCount(response.headers.toMap())
+
+            // A pinned page is the whole answer: return it without following
+            // links. `truncated` still reports whether more items existed —
+            // dropped by the cap, or reachable through the next link we
+            // deliberately did not follow.
+            if ((options?.page ?: 0L) > 0L) {
+                val cap = maxItems?.takeIf { it > 0 && firstPageItems.size > it }
+                val hasMore = cap != null || parseNextLink(response.headers["Link"]) != null
+                val items = if (cap != null) firstPageItems.take(cap) else firstPageItems
+                val duration = (currentTimeMillis() - startTime).millisToDuration()
+                val result = ListResult(items, ListMeta(totalCount, hasMore))
+                hooks.safeOnOperationEnd(info, OperationResult(duration))
+                return Pair(firstPageBody, result)
+            }
 
             // Check if maxItems is satisfied by the first page
             if (maxItems != null && maxItems > 0 && firstPageItems.size >= maxItems) {

@@ -108,7 +108,7 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = default (50), -1 = unlimited, >0 = specific limit
@@ -198,7 +198,7 @@ func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int6
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = default (50), -1 = unlimited, >0 = specific limit

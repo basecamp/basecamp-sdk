@@ -424,7 +424,7 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit

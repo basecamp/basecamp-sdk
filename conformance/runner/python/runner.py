@@ -205,7 +205,17 @@ class OperationMapper:
     def __init__(self, account_client):
         self._account = account_client
 
-    def __call__(self, operation: str, *, path_params: dict, query_params: dict, body: dict | None, path: str = "", max_items: int | None = None) -> Any:
+    def __call__(
+        self,
+        operation: str,
+        *,
+        path_params: dict,
+        query_params: dict,
+        body: dict | None,
+        path: str = "",
+        max_items: int | None = None,
+        page: int | None = None,
+    ) -> Any:
         match operation:
             case "DownloadURL":
                 if not path:
@@ -213,8 +223,11 @@ class OperationMapper:
                 raw_url = "https://storage.3.basecamp.com" + path
                 return self._account.download_url(raw_url)
             case "ListProjects":
-                if max_items:
-                    return self._account.projects.list(max_items=max_items)
+                # A pinned page and a max_items cap are independent knobs;
+                # the plain no-argument arity stays exercised when the fixture
+                # carries neither.
+                if max_items or page:
+                    return self._account.projects.list(max_items=max_items, page=page)
                 return self._account.projects.list()
             case "GetProject":
                 return self._account.projects.get(project_id=path_params["projectId"])
@@ -537,6 +550,7 @@ class TestRunner:
                     body=self._test.get("requestBody"),
                     path=self._test.get("path", ""),
                     max_items=(self._test.get("configOverrides") or {}).get("maxItems"),
+                    page=(self._test.get("configOverrides") or {}).get("page"),
                 )
                 return self._verify_assertions(result=result, error=None)
             except Exception as e:

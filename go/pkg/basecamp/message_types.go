@@ -110,7 +110,7 @@ func (s *MessageTypesService) List(ctx context.Context, bucketID int64, opts *Me
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &MessageTypeListResult{MessageTypes: types, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &MessageTypeListResult{MessageTypes: types, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (no limit)

@@ -97,6 +97,44 @@ type UpdateGaugeNeedleRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+// GaugeListOptions specifies pagination for listing gauges.
+type GaugeListOptions struct {
+	// Limit is the maximum number of gauges to return.
+	// If 0 (default), returns all gauges.
+	Limit int
+
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
+// GaugeListResult contains the results from listing gauges.
+type GaugeListResult struct {
+	// Gauges is the list of gauges returned.
+	Gauges []Gauge
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
+// GaugeNeedleListOptions specifies pagination for listing gauge needles.
+type GaugeNeedleListOptions struct {
+	// Limit is the maximum number of needles to return.
+	// If 0 (default), returns all needles.
+	Limit int
+
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
+// GaugeNeedleListResult contains the results from listing gauge needles.
+type GaugeNeedleListResult struct {
+	// Needles is the list of gauge needles returned.
+	Needles []GaugeNeedle
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
 // GaugesService handles gauge operations.
 type GaugesService struct {
 	client *AccountClient
@@ -121,8 +159,9 @@ func decodeGaugePayload(data []byte, v any) error {
 	return json.Unmarshal(normalized, v)
 }
 
-// List returns all gauges for the account, following pagination automatically.
-func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
+// List returns gauges for the account, following pagination automatically.
+// A positive opts.Page returns exactly that page in a single request.
+func (s *GaugesService) List(ctx context.Context, opts *GaugeListOptions) (result *GaugeListResult, err error) {
 	op := OperationInfo{
 		Service: "Gauges", Operation: "List",
 		ResourceType: "gauge", IsMutation: false,
@@ -136,7 +175,17 @@ func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListGaugesWithResponse(ctx, s.client.accountID, nil)
+	var params *generated.ListGaugesParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListGaugesParams{}
+		var page *int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params.Page = page
+	}
+
+	resp, err := s.client.parent.gen.ListGaugesWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -149,8 +198,21 @@ func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
 		return nil, fmt.Errorf("failed to parse gauges: %w", err)
 	}
 
+	totalCount := parseTotalCount(resp.HTTPResponse)
+	if opts != nil && opts.Page > 0 {
+		return &GaugeListResult{Gauges: gauges, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+	}
+
+	limit := 0
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+	if limit > 0 && len(gauges) >= limit {
+		return &GaugeListResult{Gauges: gauges[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(gauges), limit)}}, nil
+	}
+
 	// Follow pagination via Link headers
-	rawMore, _, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(gauges), 0)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(gauges), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -162,11 +224,13 @@ func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
 		gauges = append(gauges, g)
 	}
 
-	return gauges, nil
+	return &GaugeListResult{Gauges: gauges, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
-// ListNeedles returns all needles for a project's gauge, following pagination automatically.
-func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (result []GaugeNeedle, err error) {
+// ListNeedles returns needles for a project's gauge, following pagination
+// automatically. A positive opts.Page returns exactly that page in a single
+// request.
+func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64, opts *GaugeNeedleListOptions) (result *GaugeNeedleListResult, err error) {
 	op := OperationInfo{
 		Service: "Gauges", Operation: "ListNeedles",
 		ResourceType: "gauge_needle", IsMutation: false,
@@ -181,7 +245,17 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (resul
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListGaugeNeedlesWithResponse(ctx, s.client.accountID, projectID, nil)
+	var params *generated.ListGaugeNeedlesParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListGaugeNeedlesParams{}
+		var page *int32
+		if page, err = pageParam(opts.Page); err != nil {
+			return nil, err
+		}
+		params.Page = page
+	}
+
+	resp, err := s.client.parent.gen.ListGaugeNeedlesWithResponse(ctx, s.client.accountID, projectID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +268,21 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (resul
 		return nil, fmt.Errorf("failed to parse gauge needles: %w", err)
 	}
 
+	totalCount := parseTotalCount(resp.HTTPResponse)
+	if opts != nil && opts.Page > 0 {
+		return &GaugeNeedleListResult{Needles: needles, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+	}
+
+	limit := 0
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+	if limit > 0 && len(needles) >= limit {
+		return &GaugeNeedleListResult{Needles: needles[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(needles), limit)}}, nil
+	}
+
 	// Follow pagination via Link headers
-	rawMore, _, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(needles), 0)
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(needles), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +294,7 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (resul
 		needles = append(needles, n)
 	}
 
-	return needles, nil
+	return &GaugeNeedleListResult{Needles: needles, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // GetNeedle returns a single gauge needle by ID.

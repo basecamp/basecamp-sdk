@@ -89,7 +89,7 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Timesheets", operation: "GetProjectTimesheet", resourceType: "project_timesheet", isMutation: false, projectId: projectId),
             path: "/projects/\(projectId)/timesheet.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetProjectTimesheet")
         )
     }
@@ -112,7 +112,7 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Timesheets", operation: "GetRecordingTimesheet", resourceType: "recording_timesheet", isMutation: false, resourceId: recordingId),
             path: "/recordings/\(recordingId)/timesheet.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetRecordingTimesheet")
         )
     }

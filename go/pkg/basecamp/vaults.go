@@ -333,7 +333,7 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &VaultListResult{Vaults: vaults, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &VaultListResult{Vaults: vaults, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for vaults), >0 = specific limit
@@ -565,7 +565,7 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &DocumentListResult{Documents: documents, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &DocumentListResult{Documents: documents, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for documents), >0 = specific limit
@@ -768,7 +768,7 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &UploadListResult{Uploads: uploads, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &UploadListResult{Uploads: uploads, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for uploads), >0 = specific limit
@@ -984,7 +984,7 @@ func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64, opts 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &UploadVersionListResult{Versions: versions, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &UploadVersionListResult{Versions: versions, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for versions)

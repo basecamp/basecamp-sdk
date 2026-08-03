@@ -261,7 +261,7 @@ func (s *EverythingService) finishRecordingsPage(ctx context.Context, httpResp *
 	}
 	totalCount := parseTotalCount(httpResp)
 	if page > 0 {
-		return &RecordingsPage{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &RecordingsPage{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(httpResp)}}, nil
 	}
 	rawMore, truncated, err := s.client.parent.followPagination(ctx, httpResp, len(recordings), 0)
 	if err != nil {
@@ -320,7 +320,7 @@ func (s *EverythingService) Files(ctx context.Context, page int32, opts *Everyth
 	}
 	totalCount := parseTotalCount(resp.HTTPResponse)
 	if page > 0 {
-		return &EverythingFilesPage{Files: files, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &EverythingFilesPage{Files: files, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(files), 0)
 	if err != nil {
@@ -662,7 +662,7 @@ func (s *EverythingService) finishTodoGroupsPage(ctx context.Context, httpResp *
 	}
 	totalCount := parseTotalCount(httpResp)
 	if page > 0 {
-		return &BucketTodosGroupsPage{Groups: groups, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &BucketTodosGroupsPage{Groups: groups, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(httpResp)}}, nil
 	}
 	rawMore, truncated, err := s.client.parent.followPagination(ctx, httpResp, len(groups), 0)
 	if err != nil {
@@ -690,7 +690,7 @@ func (s *EverythingService) finishCardGroupsPage(ctx context.Context, httpResp *
 	}
 	totalCount := parseTotalCount(httpResp)
 	if page > 0 {
-		return &BucketCardsGroupsPage{Groups: groups, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &BucketCardsGroupsPage{Groups: groups, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(httpResp)}}, nil
 	}
 	rawMore, truncated, err := s.client.parent.followPagination(ctx, httpResp, len(groups), 0)
 	if err != nil {

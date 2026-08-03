@@ -24,6 +24,17 @@ data class PaginationOptions(
      * When null or 0, all pages are fetched.
      */
     val maxItems: Int? = null,
+    /**
+     * Selects a single page. A positive [page] returns exactly that page in
+     * exactly one request: `Link: rel="next"` is not followed, and
+     * [ListMeta.truncated] reports whether a further page existed. When null,
+     * 0, or negative, auto-pagination walks the whole collection.
+     *
+     * Only meaningful for operations whose endpoint honors `?page=`; the few
+     * list endpoints that return their whole collection at once never emit a
+     * next link, so pinning a page there changes nothing. See SPEC section 8.
+     */
+    val page: Long? = null,
 )
 
 /**

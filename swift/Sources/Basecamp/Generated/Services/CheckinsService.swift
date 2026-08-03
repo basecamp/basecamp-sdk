@@ -93,7 +93,7 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Checkins", operation: "GetAnswersByPerson", resourceType: "answers_by_person", isMutation: false, resourceId: personId),
             path: "/questions/\(questionId)/answers/by/\(personId)",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetAnswersByPerson")
         )
     }
@@ -116,7 +116,7 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Checkins", operation: "GetQuestionReminders", resourceType: "question_reminder", isMutation: false),
             path: "/my/question_reminders.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetQuestionReminders")
         )
     }
@@ -139,7 +139,7 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Checkins", operation: "ListAnswers", resourceType: "answer", isMutation: false, resourceId: questionId),
             path: "/questions/\(questionId)/answers.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListAnswers")
         )
     }
@@ -162,7 +162,7 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Checkins", operation: "ListQuestions", resourceType: "question", isMutation: false, resourceId: questionnaireId),
             path: "/questionnaires/\(questionnaireId)/questions.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListQuestions")
         )
     }

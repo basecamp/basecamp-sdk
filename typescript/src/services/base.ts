@@ -49,6 +49,38 @@ export interface FetchResponse<T> {
 const DEFAULT_MAX_PAGES = 10_000;
 
 /**
+ * True when the caller pinned a single page (SPEC section 8).
+ *
+ * A positive `page` is a selector, not a starting offset: the operation issues
+ * exactly one request and never follows `Link: rel="next"`. Absent, 0, and
+ * negative all mean "walk the collection".
+ */
+function isPageSelected(opts?: PaginationOptions): boolean {
+  return typeof opts?.page === "number" && opts.page > 0;
+}
+
+/**
+ * Builds the ListResult for a pinned page.
+ *
+ * `truncated` still answers "were there more items than these": true when the
+ * selected page carried a next link, or when the maxItems cap dropped items
+ * from it.
+ */
+function selectedPageResult<T>(
+  response: Response,
+  items: T[],
+  totalCount: number,
+  maxItems: number | undefined,
+): ListResult<T> {
+  const capped = maxItems !== undefined && maxItems > 0 && items.length > maxItems;
+  const truncated = capped || parseNextLink(response.headers.get("Link")) !== null;
+  return new ListResult(
+    capped ? items.slice(0, maxItems) : items,
+    { totalCount, truncated },
+  );
+}
+
+/**
  * Abstract base class for all Basecamp API services.
  *
  * Services extend this class to inherit common functionality
@@ -356,6 +388,12 @@ export abstract class BaseService {
       const totalCount = parseTotalCount(response);
       const maxItems = paginationOpts?.maxItems;
 
+      // A pinned page is the whole answer: return it without following links.
+      if (isPageSelected(paginationOpts)) {
+        result.durationMs = Math.round(performance.now() - start);
+        return selectedPageResult(response, firstPageItems, totalCount, maxItems);
+      }
+
       // If maxItems is set and first page satisfies it, return early
       if (maxItems && maxItems > 0 && firstPageItems.length >= maxItems) {
         // Only mark truncated if there are actually more items beyond maxItems
@@ -440,6 +478,13 @@ export abstract class BaseService {
 
       const firstPageItems: TItem[] = (firstPageData[key] as TItem[]) ?? [];
       const maxItems = paginationOpts?.maxItems;
+
+      // A pinned page is the whole answer: return it without following links.
+      if (isPageSelected(paginationOpts)) {
+        result.durationMs = Math.round(performance.now() - start);
+        const listResult = selectedPageResult(response, firstPageItems, totalCount, maxItems);
+        return { ...wrapper, [key]: listResult } as Omit<Record<string, unknown>, K> & Record<K, ListResult<TItem>>;
+      }
 
       // If maxItems is set and first page satisfies it, return early
       if (maxItems && maxItems > 0 && firstPageItems.length >= maxItems) {

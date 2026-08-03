@@ -9,7 +9,11 @@ package basecamp
 // needles.
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -124,5 +128,144 @@ func TestGauge_MarshalRoundTripsPresence(t *testing.T) {
 	}
 	if !strings.Contains(string(data), `"description_attachments":[]`) {
 		t.Errorf("expected present-empty description_attachments to encode as [], got %s", data)
+	}
+}
+
+// The gauge list surfaces took no options struct at all before #570, so `page`
+// could not reach the wire and every call walked the whole collection. These
+// tests pin the shape sibling services already had: a positive Page selects
+// exactly that page (one request, no Link follow) and reports Truncated from
+// the rel="next" Link it deliberately did not follow (SPEC §8).
+
+func testGaugesServer(t *testing.T, handler http.HandlerFunc) *GaugesService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	return client.ForAccount("99999").Gauges()
+}
+
+func TestGaugesService_List_PageSelectsOnePage(t *testing.T) {
+	var requestCount int
+	var sawPage string
+	svc := testGaugesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		if requestCount == 1 {
+			sawPage = r.URL.Query().Get("page")
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s/99999/reports/gauges.json?page=4>; rel="next"`, r.Host))
+			w.Header().Set("X-Total-Count", "9")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id": 1, "title": "One"}, {"id": 2, "title": "Two"}]`))
+	})
+
+	result, err := svc.List(context.Background(), &GaugeListOptions{Page: 3})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sawPage != "3" {
+		t.Errorf("expected page=3 on the wire, got %q", sawPage)
+	}
+	if requestCount != 1 {
+		t.Errorf("expected 1 HTTP request, got %d", requestCount)
+	}
+	if len(result.Gauges) != 2 {
+		t.Errorf("expected 2 gauges, got %d", len(result.Gauges))
+	}
+	if result.Meta.TotalCount != 9 {
+		t.Errorf("expected TotalCount 9, got %d", result.Meta.TotalCount)
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated=true: the selected page advertised a next page")
+	}
+}
+
+func TestGaugesService_List_NoPageFollowsLinks(t *testing.T) {
+	var requestCount int
+	svc := testGaugesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		if requestCount == 1 {
+			if r.URL.Query().Get("page") != "" {
+				t.Errorf("expected no page param, got %q", r.URL.Query().Get("page"))
+			}
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s/99999/reports/gauges.json?page=2>; rel="next"`, r.Host))
+			w.WriteHeader(200)
+			w.Write([]byte(`[{"id": 1, "title": "One"}]`))
+			return
+		}
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id": 2, "title": "Two"}]`))
+	})
+
+	result, err := svc.List(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if requestCount != 2 {
+		t.Errorf("expected 2 HTTP requests, got %d", requestCount)
+	}
+	if len(result.Gauges) != 2 {
+		t.Errorf("expected 2 gauges, got %d", len(result.Gauges))
+	}
+	if result.Meta.Truncated {
+		t.Error("expected Truncated=false after the walk reached the last page")
+	}
+}
+
+func TestGaugesService_ListNeedles_PageSelectsOnePage(t *testing.T) {
+	var requestCount int
+	var sawPage string
+	svc := testGaugesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		if requestCount == 1 {
+			sawPage = r.URL.Query().Get("page")
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s/99999/projects/7/gauge/needles.json?page=3>; rel="next"`, r.Host))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id": 11, "type": "Gauge::Needle"}]`))
+	})
+
+	result, err := svc.ListNeedles(context.Background(), 7, &GaugeNeedleListOptions{Page: 2})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sawPage != "2" {
+		t.Errorf("expected page=2 on the wire, got %q", sawPage)
+	}
+	if requestCount != 1 {
+		t.Errorf("expected 1 HTTP request, got %d", requestCount)
+	}
+	if len(result.Needles) != 1 {
+		t.Errorf("expected 1 needle, got %d", len(result.Needles))
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated=true: the selected page advertised a next page")
+	}
+}
+
+func TestGaugesService_ListNeedles_PinnedFinalPageIsNotTruncated(t *testing.T) {
+	var requestCount int
+	svc := testGaugesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id": 11, "type": "Gauge::Needle"}]`))
+	})
+
+	result, err := svc.ListNeedles(context.Background(), 7, &GaugeNeedleListOptions{Page: 9})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if requestCount != 1 {
+		t.Errorf("expected 1 HTTP request, got %d", requestCount)
+	}
+	if result.Meta.Truncated {
+		t.Error("expected Truncated=false: the pinned page carried no next link")
 	}
 }

@@ -28,6 +28,18 @@ export interface PaginationOptions {
    * When undefined or 0, all pages are fetched.
    */
   maxItems?: number;
+
+  /**
+   * Selects a single page. A positive `page` returns exactly that page in
+   * exactly one request: the `Link: rel="next"` header is not followed, and
+   * `.meta.truncated` reports whether a further page existed. When undefined,
+   * 0, or negative, auto-pagination walks the whole collection.
+   *
+   * Only meaningful for operations whose endpoint honors `?page=`; the handful
+   * of list endpoints that return their whole collection at once never emit a
+   * next link, so pinning a page there changes nothing. See SPEC section 8.
+   */
+  page?: number;
 }
 
 /**

@@ -69,7 +69,7 @@ func TestOperationProjectResourceScope(t *testing.T) {
 
 		// Group 2 — project scope only; no deeper resource id.
 		{"Gauges.ListNeedles", func(ctx context.Context, ac *AccountClient) {
-			_, _ = ac.Gauges().ListNeedles(ctx, projectID)
+			_, _ = ac.Gauges().ListNeedles(ctx, projectID, nil)
 		}, projectID, 0},
 		{"Gauges.CreateNeedle", func(ctx context.Context, ac *AccountClient) {
 			_, _ = ac.Gauges().CreateNeedle(ctx, projectID, &CreateGaugeNeedleRequest{})

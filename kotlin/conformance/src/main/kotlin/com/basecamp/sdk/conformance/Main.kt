@@ -122,6 +122,8 @@ data class ConfigOverrides(
     val baseUrl: String? = null,
     val maxPages: Int? = null,
     val maxItems: Int? = null,
+    /** Pins the list operation to a single page (SPEC §8). */
+    val page: Long? = null,
 )
 
 @kotlinx.serialization.Serializable
@@ -686,8 +688,9 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
     return when (tc.operation) {
         "ListProjects" -> {
             val maxItems = tc.configOverrides?.maxItems
-            val opts = if (maxItems != null && maxItems > 0) {
-                ListProjectsOptions(maxItems = maxItems)
+            val page = tc.configOverrides?.page
+            val opts = if ((maxItems != null && maxItems > 0) || (page != null && page > 0)) {
+                ListProjectsOptions(maxItems = maxItems, page = page)
             } else null
             val result = account.projects.list(opts)
             DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)

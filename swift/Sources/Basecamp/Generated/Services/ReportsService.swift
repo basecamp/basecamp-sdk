@@ -82,7 +82,7 @@ public final class ReportsService: BaseService, @unchecked Sendable {
             path: "/reports/users/progress/\(personId).json",
             itemsKey: "events",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetPersonProgress")
         )
         struct Wrapper: Decodable {
@@ -101,7 +101,7 @@ public final class ReportsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Reports", operation: "GetProgressReport", resourceType: "progress_report", isMutation: false),
             path: "/reports/progress.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetProgressReport")
         )
     }

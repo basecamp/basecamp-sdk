@@ -23,7 +23,7 @@ public final class EventsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Events", operation: "ListEvents", resourceType: "event", isMutation: false, resourceId: recordingId),
             path: "/recordings/\(recordingId)/events.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListEvents")
         )
     }

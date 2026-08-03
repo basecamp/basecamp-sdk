@@ -42,7 +42,7 @@ public final class CardsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Cards", operation: "ListCards", resourceType: "card", isMutation: false, resourceId: columnId),
             path: "/card_tables/lists/\(columnId)/cards.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListCards")
         )
     }

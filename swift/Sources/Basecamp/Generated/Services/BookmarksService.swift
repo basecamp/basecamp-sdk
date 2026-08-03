@@ -50,7 +50,7 @@ public final class BookmarksService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Bookmarks", operation: "ListMyBookmarks", resourceType: "bookmark", isMutation: false),
             path: "/my/bookmarks.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListMyBookmarks")
         )
     }

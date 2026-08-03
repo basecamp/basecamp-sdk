@@ -237,7 +237,7 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &ForwardListResult{Forwards: forwards, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ForwardListResult{Forwards: forwards, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for forwards), >0 = specific limit
@@ -357,7 +357,7 @@ func (s *ForwardsService) ListReplies(ctx context.Context, forwardID int64, opts
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &ForwardReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &ForwardReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for replies), >0 = specific limit

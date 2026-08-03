@@ -158,7 +158,7 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for people)
@@ -364,7 +364,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for people)
@@ -442,7 +442,7 @@ func (s *PeopleService) Pingable(ctx context.Context, opts *PeopleListOptions) (
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for people)

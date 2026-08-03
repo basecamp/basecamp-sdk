@@ -49,7 +49,7 @@ public final class ClientApprovalsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "ClientApprovals", operation: "ListClientApprovals", resourceType: "client_approval", isMutation: false, projectId: bucketId),
             path: "/buckets/\(bucketId)/client/approvals.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListClientApprovals")
         )
     }

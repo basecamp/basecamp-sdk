@@ -365,7 +365,7 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for cards), >0 = specific limit

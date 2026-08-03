@@ -112,7 +112,7 @@ public final class SearchService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Search", operation: "Search", resourceType: "resource", isMutation: false),
             path: "/search.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "Search")
         )
     }

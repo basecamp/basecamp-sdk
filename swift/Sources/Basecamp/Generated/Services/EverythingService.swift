@@ -300,7 +300,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingCheckins", resourceType: "everything_checkin", isMutation: false),
             path: "/checkins.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingCheckins")
         )
     }
@@ -314,7 +314,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingComments", resourceType: "everything_comment", isMutation: false),
             path: "/comments.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingComments")
         )
     }
@@ -336,7 +336,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingCompletedCards", resourceType: "everything_completed_card", isMutation: false),
             path: "/cards/completed.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingCompletedCards")
         )
     }
@@ -358,7 +358,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingCompletedTodos", resourceType: "everything_completed_todo", isMutation: false),
             path: "/todos/completed.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingCompletedTodos")
         )
     }
@@ -380,7 +380,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingFiles", resourceType: "everything_file", isMutation: false),
             path: "/files.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingFiles")
         )
     }
@@ -394,7 +394,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingForwards", resourceType: "everything_forward", isMutation: false),
             path: "/forwards.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingForwards")
         )
     }
@@ -408,7 +408,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingMessages", resourceType: "everything_message", isMutation: false),
             path: "/messages.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingMessages")
         )
     }
@@ -430,7 +430,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingNoDueDateCards", resourceType: "everything_no_due_date_card", isMutation: false),
             path: "/cards/no_due_date.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingNoDueDateCards")
         )
     }
@@ -452,7 +452,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingNoDueDateTodos", resourceType: "everything_no_due_date_todo", isMutation: false),
             path: "/todos/no_due_date.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingNoDueDateTodos")
         )
     }
@@ -474,7 +474,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingNotNowCards", resourceType: "everything_not_now_card", isMutation: false),
             path: "/cards/not_now.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingNotNowCards")
         )
     }
@@ -496,7 +496,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingOpenCards", resourceType: "everything_open_card", isMutation: false),
             path: "/cards/open.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingOpenCards")
         )
     }
@@ -518,7 +518,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingOpenTodos", resourceType: "everything_open_todo", isMutation: false),
             path: "/todos/open.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingOpenTodos")
         )
     }
@@ -576,7 +576,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingUnassignedCards", resourceType: "everything_unassigned_card", isMutation: false),
             path: "/cards/unassigned.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingUnassignedCards")
         )
     }
@@ -598,7 +598,7 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Everything", operation: "GetEverythingUnassignedTodos", resourceType: "everything_unassigned_todo", isMutation: false),
             path: "/todos/unassigned.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetEverythingUnassignedTodos")
         )
     }

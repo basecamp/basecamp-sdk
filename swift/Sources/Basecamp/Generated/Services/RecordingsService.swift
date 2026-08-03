@@ -63,7 +63,7 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Recordings", operation: "ListRecordings", resourceType: "recording", isMutation: false),
             path: "/projects/recordings.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListRecordings")
         )
     }

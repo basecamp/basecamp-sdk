@@ -35,7 +35,7 @@ public final class MyNotificationsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "MyNotifications", operation: "GetBubbleUps", resourceType: "bubble_up", isMutation: false),
             path: "/my/readings/bubble_ups.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetBubbleUps")
         )
     }

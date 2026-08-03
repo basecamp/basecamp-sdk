@@ -52,7 +52,7 @@ interface TestCase {
   mockResponses: MockResponse[];
   assertions: Assertion[];
   tags?: string[];
-  configOverrides?: { baseUrl?: string; maxPages?: number; maxItems?: number };
+  configOverrides?: { baseUrl?: string; maxPages?: number; maxItems?: number; page?: number };
   /**
    * Live tests are loaded by live-runner.test.ts; this runner ignores them.
    * Defaults to "mock" when omitted.
@@ -179,8 +179,9 @@ async function executeOperation(
     switch (tc.operation) {
       case "ListProjects": {
         const maxItems = tc.configOverrides?.maxItems;
+        const page = tc.configOverrides?.page;
         const projects = await client.projects.list(
-          maxItems ? { maxItems } : undefined,
+          maxItems || page ? { ...(maxItems ? { maxItems } : {}), ...(page ? { page } : {}) } : undefined,
         );
         return {
           meta: {

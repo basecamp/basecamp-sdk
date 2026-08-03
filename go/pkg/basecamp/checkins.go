@@ -327,7 +327,7 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &QuestionListResult{Questions: questions, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &QuestionListResult{Questions: questions, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for questions), >0 = specific limit
@@ -650,7 +650,7 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for answers), >0 = specific limit
@@ -732,7 +732,7 @@ func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, p
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	limit := 0
@@ -805,7 +805,7 @@ func (s *CheckinsService) ListAnswerers(ctx context.Context, questionID int64, o
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	limit := 0
@@ -1026,7 +1026,7 @@ func (s *CheckinsService) ListQuestionReminders(ctx context.Context, opts *Quest
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &QuestionReminderListResult{Reminders: reminders, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &QuestionReminderListResult{Reminders: reminders, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	limit := 0

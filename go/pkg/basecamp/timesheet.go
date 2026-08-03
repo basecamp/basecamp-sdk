@@ -200,7 +200,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &TimesheetListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &TimesheetListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for timesheet entries)
@@ -293,7 +293,7 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int6
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &TimesheetListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount}}, nil
+		return &TimesheetListResult{Entries: entries, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	// Determine limit: 0 = all (default for timesheet entries)
