@@ -85,7 +85,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
      * [listForRecording] needs an expected type to disambiguate.
      */
     suspend fun listForRecording(recordingId: Long, options: PaginationOptions? = null): ListResult<Boost> =
-        listForRecording(recordingId, ListRecordingBoostsOptions(maxItems = options?.maxItems))
+        listForRecording(recordingId, ListRecordingBoostsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a boost on a recording
@@ -146,7 +146,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
      * [listForEvent] needs an expected type to disambiguate.
      */
     suspend fun listForEvent(recordingId: Long, eventId: Long, options: PaginationOptions? = null): ListResult<Boost> =
-        listForEvent(recordingId, eventId, ListEventBoostsOptions(maxItems = options?.maxItems))
+        listForEvent(recordingId, eventId, ListEventBoostsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a boost on a specific event within a recording

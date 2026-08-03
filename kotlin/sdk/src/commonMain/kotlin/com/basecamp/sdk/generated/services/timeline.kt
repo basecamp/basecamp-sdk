@@ -47,5 +47,5 @@ class TimelineService(client: AccountClient) : BaseService(client) {
      * [projectTimeline] needs an expected type to disambiguate.
      */
     suspend fun projectTimeline(projectId: Long, options: PaginationOptions? = null): ListResult<TimelineEvent> =
-        projectTimeline(projectId, GetProjectTimelineOptions(maxItems = options?.maxItems))
+        projectTimeline(projectId, GetProjectTimelineOptions(maxItems = options?.maxItems, page = options?.page))
 }

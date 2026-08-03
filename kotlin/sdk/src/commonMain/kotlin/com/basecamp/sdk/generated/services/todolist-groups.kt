@@ -68,7 +68,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(todolistId: Long, options: PaginationOptions? = null): ListResult<TodolistGroup> =
-        list(todolistId, ListTodolistGroupsOptions(maxItems = options?.maxItems))
+        list(todolistId, ListTodolistGroupsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a new group in a todolist

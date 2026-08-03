@@ -46,7 +46,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * [reminders] needs an expected type to disambiguate.
      */
     suspend fun reminders(options: PaginationOptions? = null): ListResult<JsonElement> =
-        reminders(GetQuestionRemindersOptions(maxItems = options?.maxItems))
+        reminders(GetQuestionRemindersOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Get a single answer by id
@@ -145,7 +145,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * [listQuestions] needs an expected type to disambiguate.
      */
     suspend fun listQuestions(questionnaireId: Long, options: PaginationOptions? = null): ListResult<Question> =
-        listQuestions(questionnaireId, ListQuestionsOptions(maxItems = options?.maxItems))
+        listQuestions(questionnaireId, ListQuestionsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a new question in a questionnaire
@@ -252,7 +252,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * [listAnswers] needs an expected type to disambiguate.
      */
     suspend fun listAnswers(questionId: Long, options: PaginationOptions? = null): ListResult<Answer> =
-        listAnswers(questionId, ListAnswersOptions(maxItems = options?.maxItems))
+        listAnswers(questionId, ListAnswersOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a new answer for a question
@@ -335,7 +335,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * [byPerson] needs an expected type to disambiguate.
      */
     suspend fun byPerson(questionId: Long, personId: Long, options: PaginationOptions? = null): ListResult<Answer> =
-        byPerson(questionId, personId, GetAnswersByPersonOptions(maxItems = options?.maxItems))
+        byPerson(questionId, personId, GetAnswersByPersonOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Update notification settings for a check-in question

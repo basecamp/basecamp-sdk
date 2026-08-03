@@ -91,7 +91,7 @@ open class DocumentsService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(vaultId: Long, options: PaginationOptions? = null): ListResult<Document> =
-        list(vaultId, ListDocumentsOptions(maxItems = options?.maxItems))
+        list(vaultId, ListDocumentsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a new document in a vault

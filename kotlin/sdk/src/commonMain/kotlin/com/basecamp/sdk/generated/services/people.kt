@@ -153,7 +153,7 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(options: PaginationOptions? = null): ListResult<Person> =
-        list(ListPeopleOptions(maxItems = options?.maxItems))
+        list(ListPeopleOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Get a person by ID
@@ -271,7 +271,7 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      * [listForProject] needs an expected type to disambiguate.
      */
     suspend fun listForProject(projectId: Long, options: PaginationOptions? = null): ListResult<Person> =
-        listForProject(projectId, ListProjectPeopleOptions(maxItems = options?.maxItems))
+        listForProject(projectId, ListProjectPeopleOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Update project access (grant/revoke/create people)

@@ -115,7 +115,7 @@ open class CardsService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(columnId: Long, options: PaginationOptions? = null): ListResult<Card> =
-        list(columnId, ListCardsOptions(maxItems = options?.maxItems))
+        list(columnId, ListCardsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a card in a column

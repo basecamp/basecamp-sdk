@@ -90,7 +90,7 @@ class CommentsService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(recordingId: Long, options: PaginationOptions? = null): ListResult<Comment> =
-        list(recordingId, ListCommentsOptions(maxItems = options?.maxItems))
+        list(recordingId, ListCommentsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a new comment on a recording

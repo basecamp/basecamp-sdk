@@ -54,7 +54,7 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      * [progress] needs an expected type to disambiguate.
      */
     suspend fun progress(options: PaginationOptions? = null): ListResult<TimelineEvent> =
-        progress(GetProgressReportOptions(maxItems = options?.maxItems))
+        progress(GetProgressReportOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Get upcoming schedule entries and assignable items within a date window.
@@ -164,5 +164,5 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      * [personProgress] needs an expected type to disambiguate.
      */
     suspend fun personProgress(personId: Long, options: PaginationOptions? = null): PersonProgressResult =
-        personProgress(personId, GetPersonProgressOptions(maxItems = options?.maxItems))
+        personProgress(personId, GetPersonProgressOptions(maxItems = options?.maxItems, page = options?.page))
 }

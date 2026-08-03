@@ -67,7 +67,7 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
      * [listReplies] needs an expected type to disambiguate.
      */
     suspend fun listReplies(forwardId: Long, options: PaginationOptions? = null): ListResult<ForwardReply> =
-        listReplies(forwardId, ListForwardRepliesOptions(maxItems = options?.maxItems))
+        listReplies(forwardId, ListForwardRepliesOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Get a forward reply by ID

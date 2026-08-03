@@ -47,5 +47,5 @@ class EventsService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(recordingId: Long, options: PaginationOptions? = null): ListResult<Event> =
-        list(recordingId, ListEventsOptions(maxItems = options?.maxItems))
+        list(recordingId, ListEventsOptions(maxItems = options?.maxItems, page = options?.page))
 }

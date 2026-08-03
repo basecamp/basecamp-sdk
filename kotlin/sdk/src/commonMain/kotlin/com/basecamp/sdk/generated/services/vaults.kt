@@ -90,7 +90,7 @@ class VaultsService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(vaultId: Long, options: PaginationOptions? = null): ListResult<Vault> =
-        list(vaultId, ListVaultsOptions(maxItems = options?.maxItems))
+        list(vaultId, ListVaultsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a new vault (subfolder) in a vault
