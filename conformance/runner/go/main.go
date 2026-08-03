@@ -1061,25 +1061,16 @@ func checkAssertion(
 ) *TestResult {
 	sdkErr := opResult.err
 
-	// Detect if any mock response includes a Link header with rel="next".
-	// The real SDK auto-paginates, so actual requestCount will be >= expected.
-	hasLinkNextHeader := false
-	for _, mr := range tc.MockResponses {
-		if link, ok := mr.Headers["Link"]; ok && strings.Contains(link, `rel="next"`) {
-			hasLinkNextHeader = true
-			break
-		}
-	}
-
 	switch assertion.Type {
 	case "requestCount":
-		expected := expectedInt(assertion.Expected)
-		if hasLinkNextHeader {
-			if requestCount < expected {
-				return fail(tc, fmt.Sprintf("Expected >= %d requests (SDK auto-paginates), got %d", expected, requestCount))
-			}
-		} else if requestCount != expected {
-			return fail(tc, fmt.Sprintf("Expected %d requests, got %d", expected, requestCount))
+		// The Go SDK auto-paginates list operations, so a fixture that counts
+		// first-page requests only is inapplicable — but ONLY its count is.
+		// The rest of the case still runs. See requestCountApplies (#573).
+		if !requestCountApplies(tc.Tags) {
+			return nil
+		}
+		if msg := checkRequestCount(requestCount, expectedInt(assertion.Expected)); msg != "" {
+			return fail(tc, msg)
 		}
 
 	case "delayBetweenRequests":

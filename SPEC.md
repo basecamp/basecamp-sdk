@@ -1911,12 +1911,43 @@ either **waiver-backed** (a `rubric-audit.json` waiver ID), **architectural**
 with no rubric record — tracked work, not an accepted divergence). A PR that
 closes a gap deletes exactly its own lines.
 
+One fixture, "List operation returns first page with Link header"
+(`conformance/tests/pagination.json`, tagged `link-header`), is handled by a
+tag branch rather than a named-skip entry, because the exclusion is
+architectural: every SDK auto-paginates by design, so its first-page-only
+`requestCount` assertion is inapplicable. What that branch excludes differs by
+runner, and the difference is deliberate:
+
+- **Go, Python, Ruby, TypeScript** suppress the `requestCount` ASSERTION only.
+  The case still runs, and its `statusCode: 200` and `noError` assertions still
+  fire. This is what lets `requestCount` be asserted as an exact count
+  everywhere else (#573) without shedding the rest of the case.
+
+- **Kotlin and Swift** skip the whole CASE, as they always have. Both derive a
+  response's status from the last mock response the SDK consumed, and an
+  auto-paginating SDK walks past the end of a one-response queue, so `statusCode`
+  reports "no response" and the case cannot pass on those two runners. Narrowing
+  them to the assertion was tried and reverted: `make conformance-kotlin` and
+  `make conformance-swift` each then report
+  `FAIL: List operation returns first page with Link header` /
+  `Expected status code 200, but got no response` and exit 2. Widening their
+  status model is separate work, not a skip to delete here.
+
+Note the shape this avoids: #573 first narrowed nothing and instead added the
+whole-case skip to all four remaining runners, which left the fixture skipped by
+all six — present in `pagination.json`, passing `conformance-fixtures-check` and
+`check-fixture-coverage`, and executed by nothing. That is #572's defect one
+layer down. Nothing in the build detects a fixture no runner runs; that gap is
+tracked as #602.
+
 **Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin
 logic is covered by `TestIsSameOrigin` unit tests:
 - "Mixed-case host and explicit default port stay on the mocked origin" — Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply.
 - "Bracketed IPv6 loopback origin stays on the mocked origin" — same as above.
 
-**Python** (`conformance/runner/python/runner.py` `SKIPS`) — none.
+**Python** (`conformance/runner/python/runner.py` `SKIPS`) — none. The
+`link-header` fixture above runs; only its `requestCount` assertion is
+suppressed.
 
 **Ruby** (`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`):
 - "PUT operation is naturally idempotent" — GET-only retry (waiver 2B.3).
@@ -1934,13 +1965,11 @@ logic is covered by `TestIsSameOrigin` unit tests:
 **TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
 - "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
 
-**Kotlin** (`kotlin/conformance/.../Main.kt` — one tag-based branch; `KOTLIN_SKIPS`
-is empty):
-- "List operation returns first page with Link header" — skipped via the `link-header` tag branch, not `KOTLIN_SKIPS`: Kotlin auto-paginates by design, so a first-page-only requestCount assertion is inapplicable (architectural).
+**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` is empty) — none
+beyond the whole-case `link-header` tag branch described above.
 
-**Swift** (`conformance/runner/swift/.../Runner.swift` — one tag-based branch;
-`temporarySkips` is empty):
-- "List operation returns first page with Link header" — skipped via the `link-header` tag branch, not `temporarySkips`: Swift auto-paginates by design, so a first-page-only requestCount assertion is inapplicable (architectural, identical to Kotlin and TypeScript).
+**Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is
+empty) — none beyond the whole-case `link-header` tag branch described above.
 
 Swift carries no capability skips. It is three-gate on retry (status, network,
 idempotent POST) and, since #563, retries the authenticated download hop, so

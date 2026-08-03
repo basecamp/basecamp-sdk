@@ -110,6 +110,57 @@ def check_delay_gaps(
     return None
 
 
+def check_request_count(actual: int, expected: int) -> str | None:
+    """Validate one ``requestCount`` assertion; None when it holds.
+
+    EXACT, always — including the auto-paginating fixtures. The runner used to
+    relax this to a lower bound whenever any mock response carried
+    ``Link: rel="next"``, on the theory that an auto-paginating SDK would
+    legitimately make more requests than the fixture named. That is backwards
+    for the fixtures the relaxation covered: in conformance/tests/pagination.json,
+    "Pagination stops at maxPages safety cap" and "maxItems caps results across
+    pages" each queue THREE pages and expect TWO requests, because stopping
+    early is the behavior under test. ``>=`` passes an SDK that ignored the cap
+    and walked every page. "Auto-pagination follows Link headers across multiple
+    pages" is the exposed case: its only assertions are requestCount and
+    noError, so an over-fetch has nothing else to catch it.
+
+    The one fixture where the count genuinely does not apply to an
+    auto-paginating SDK — "List operation returns first page with Link header",
+    which asserts a single request — carries the ``link-header`` tag, and
+    ``request_count_applies`` reports False for it. Nothing that still reaches
+    this function needs the relaxation.
+
+    Swift took this in #558; #573 is the same fix for the other five runners.
+    """
+    if actual != expected:
+        return f"Expected {expected} requests, got {actual}"
+    return None
+
+
+#: Marks a fixture whose requestCount counts first-page requests only, which an
+#: auto-paginating SDK cannot satisfy.
+LINK_HEADER_TAG = "link-header"
+
+
+def request_count_applies(tags: list[str]) -> bool:
+    """Whether a fixture's ``requestCount`` assertion is meaningful for this SDK.
+
+    SCOPE: this suppresses ONE ASSERTION, not the whole test case. An earlier
+    revision skipped the entire ``link-header`` case in every runner, which took
+    its ``statusCode: 200`` and ``noError`` assertions down with the
+    inapplicable ``requestCount`` — Kotlin and Swift had always skipped the case
+    wholesale, so once Go, Python, Ruby and TypeScript joined them the fixture
+    was executed by nothing at all while still sitting in
+    conformance/tests/pagination.json, passing conformance-fixtures-check and
+    check-fixture-coverage. That is the #572 shape ("present, run by nothing")
+    one layer down. Only the count is inapplicable; the status code and the
+    absence of an error are not, and they are the assertions that catch an
+    auto-paginating SDK that walked the Link header into an error.
+    """
+    return LINK_HEADER_TAG not in tags
+
+
 @dataclass
 class TestTracker:
     requests: list[dict] = field(default_factory=list)
@@ -564,13 +615,17 @@ class TestRunner:
         for assertion in self._test.get("assertions", []):
             match assertion["type"]:
                 case "requestCount":
-                    actual = self._tracker.request_count
-                    expected = assertion["expected"]
-                    if self._auto_paginates():
-                        if actual < expected:
-                            failures.append(f"Expected >= {expected} requests, got {actual}")
-                    elif actual != expected:
-                        failures.append(f"Expected {expected} requests, got {actual}")
+                    # The Python SDK auto-paginates list operations, so a
+                    # fixture that counts first-page requests only is
+                    # inapplicable — but ONLY its count is. The rest of the
+                    # case still runs. See request_count_applies (#573).
+                    if not request_count_applies(self._test.get("tags", [])):
+                        continue
+                    failure = check_request_count(
+                        self._tracker.request_count, assertion["expected"]
+                    )
+                    if failure is not None:
+                        failures.append(failure)
 
                 case "delayBetweenRequests":
                     # Not all gaps are retry gaps — the download flow's final
