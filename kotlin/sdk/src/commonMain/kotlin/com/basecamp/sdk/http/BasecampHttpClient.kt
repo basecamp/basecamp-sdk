@@ -334,9 +334,36 @@ internal class BasecampHttpClient(
 
         private const val MAX_JITTER_MS = 100L
 
-        /** Exponential backoff: base * 2^(attempt-1) + jitter. */
+        /**
+         * Ceiling on the backoff term (SPEC §7 "Backoff Ceiling"). Jitter is
+         * added on top, so the longest single backoff sleep is this plus
+         * [MAX_JITTER_MS].
+         */
+        internal const val MAX_BACKOFF_DELAY_MS = 30_000L
+
+        /**
+         * Exponential backoff: `min(base * 2^(attempt-1), MAX_BACKOFF_DELAY_MS) + jitter`.
+         *
+         * The clamp is load-bearing, not defensive. `1L shl 63` is
+         * [Long.MIN_VALUE] and `1L shl 64` wraps the shift back to 1, so an
+         * unclamped product goes negative at attempt 54, lands on exactly 0 at
+         * 63, and collapses to the base value past 64 — and `delay()` returns
+         * immediately for any non-positive argument. The result is a client
+         * hammering a server that is already answering 429/503, which is the
+         * precise traffic pattern backoff exists to prevent.
+         *
+         * The multiplier is compared against `MAX_BACKOFF_DELAY_MS / base`
+         * before multiplying, so no intermediate ever leaves `Long` range. The
+         * shift itself is bounded at 62 for the same reason.
+         */
         internal fun calculateBackoffDelay(baseDelayMs: Long, attempt: Int): Long {
-            val delay = baseDelayMs * (1L shl (attempt - 1))
+            val base = baseDelayMs.coerceAtLeast(0L)
+            val multiplier = 1L shl (attempt - 1).coerceIn(0, 62)
+            val delay = when {
+                base == 0L -> 0L
+                multiplier > MAX_BACKOFF_DELAY_MS / base -> MAX_BACKOFF_DELAY_MS
+                else -> base * multiplier
+            }
             val jitter = (kotlin.random.Random.nextLong(MAX_JITTER_MS))
             return delay + jitter
         }

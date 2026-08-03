@@ -572,7 +572,7 @@ Kotlin, and Ruby.
 - **TypeScript** implements the three-gate algorithm with the retry loop beneath the openapi-fetch middleware chain (the client's custom `fetch`), so attempts run to each operation's declared `retry.max` and network errors retry under the same idempotency gate; caller aborts and request timeouts are terminal. **Kotlin** implements the three-gate algorithm for both HTTP status and network-error retries (POST retries only when `idempotent: true`, full exponential backoff): one eligibility gate covers both failure shapes, with the whole-request timeout (Ktor's `HttpRequestTimeoutException`) deliberately not retried and auth headers re-attached per attempt.
 - **Go** implements the three-gate on its generated operation path: it retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (the naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and the flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Governed GETs (those carrying their canonical operation ID) are bounded by the per-op ceiling and status-gated on the declared `retryOn`; ungoverned GETs (`get_absolute`, OAuth discovery) keep the taxonomy-driven pre-metadata contract. Ruby is acceptably conservative.
-- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the seven idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors but only for retry-eligible operations. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
+- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the seven idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors but only for retry-eligible operations. A network error is classified by *meaning*, not by type: a `Transport` that reports connectivity failure as the SDK's own `BasecampError.network` reaches the retry branch exactly as a raw `URLError` does (#567). `Transport` is `public`, so that normalization is the natural implementation and must not be the one that disables retry. Any other `BasecampError` out of the transport (`.auth`, `.usage`, `.api`, …) stays terminal on sight, and the non-HTTP-response guard raises a distinct internal error so a deterministic programming fault is never mistaken for a transport blip. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
 - The spec prescribes the three-gate algorithm.
 
 ### Retry Algorithm
@@ -635,14 +635,61 @@ The loop always terminates via step 3e (raise on network error), 3f (return non-
 ### Backoff Formula
 
 ```
-delay = base_delay_ms * 2^(retry_index) + random(0, max_jitter)
+delay = min(base_delay_ms * 2^(retry_index), MAX_BACKOFF_DELAY_MS) + random(0, max_jitter)
 ```
 
 Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt` — when the initial request (attempt=0) fails and reaches step 3h, it computes the delay for the first retry using `2^0 = 1×base_delay_ms`. Default constants (from `retry_config` or Config):
 - `base_delay_ms` = 1000 (from `retry_config.base_delay_ms`)
 - `max_jitter` = 100ms (from Config; not part of `retry_config` — sourced from the client's Config RECORD)
+- `MAX_BACKOFF_DELAY_MS` = 30,000 (30s) — the ceiling on the backoff term, below
 
 Retry-After header value takes precedence when present and valid.
+
+### Backoff Ceiling `[CONFLICT]`
+
+The backoff term is **saturating**: it grows exponentially up to `MAX_BACKOFF_DELAY_MS`
+and then stops. This is a correctness requirement, not a politeness one — an unbounded
+`2^n` is not merely a long sleep, it is a different failure in every host language, and
+each of the six SDKs demonstrated one before #577:
+
+| Overflow shape | SDKs | What actually happens |
+|---|---|---|
+| Signed 64-bit wrap | Kotlin (`1L shl`), Go (`1<<`) | The product goes negative and the sleep primitive treats a non-positive delay as "no delay" — the client tight-loops against a server that is already answering 429/503, which is the exact traffic pattern backoff exists to prevent |
+| Trap on overflow | Swift (`UInt64` multiply) | The process **crashes**. Swift's `<<` is a smart shift, so an over-shift silently yields `0` (tight loop), but at `1 << 63` the multiply overflows `UInt64` and traps |
+| Saturate to infinity | TypeScript (`Math.pow`) | `Infinity` reaches `setTimeout`, which clamps an out-of-range delay to **1ms** — a tight loop again |
+| Unbounded integer | Python (`2 **`), Ruby (`2**`) | No wrap: the multiplier becomes an arbitrary-precision bignum. Python raises `OverflowError` converting it to a float; Ruby coerces to `Float::INFINITY` and `sleep` never returns |
+
+Requirements:
+
+1. **Saturate, never wrap, never diverge.** An implementation must not evaluate an
+   unbounded `2^retry_index`. Clamp the exponent, or compare the multiplier against
+   `MAX_BACKOFF_DELAY_MS / base_delay_ms` before multiplying — either keeps every
+   intermediate inside the host's numeric range.
+2. **The ceiling bounds the backoff term, not the total sleep.** Jitter is added after
+   clamping, so the longest single backoff sleep is `MAX_BACKOFF_DELAY_MS + max_jitter`.
+   This matches Go's generated client, which has capped at `RetryConfig.MaxDelay = 30s`
+   since it was first templated; 30s is adopted as the cross-SDK constant because it is
+   the one value already shipping.
+3. **The ceiling applies to `linear` and `constant` backoff too**, and therefore to
+   `base_delay_ms` itself: a caller configuring a base delay above the ceiling gets the
+   ceiling. The rule is "no single computed backoff sleep exceeds `MAX_BACKOFF_DELAY_MS`",
+   with no carve-out for the first one. No shipped configuration approaches it —
+   `behavior-model.json` tops out at `base_delay_ms: 2000`, and the default three
+   attempts never compute past `2000 × 2 = 4000ms`, so the ceiling is unreachable on
+   default paths and changes no shipped behavior.
+4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h;
+   the ceiling governs the locally-computed formula only. Implementations may still
+   bound it against host limits — Swift clamps its seconds→nanoseconds conversion to
+   86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap.
+
+**Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
+validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects
+`n < 1`, and Python/Ruby take a caller cap that is intersected with — never raised
+above — the per-operation max, so a caller who *lowers* the cap is fine but the
+operation ceiling itself is whatever `behavior-model.json` says. Reaching the overflow
+needs a long genuine failure streak, so this is a robustness gap rather than a live
+incident; the consequences (crash, tight loop, infinite sleep) are severe enough that
+the gate belongs in the spec rather than in six independent judgment calls.
 
 ### Default and No-Retry Configs
 
@@ -1904,6 +1951,7 @@ All magic numbers in one place, derived from shipping SDK code (not `rubric-audi
 | `DEFAULT_MAX_RETRIES` | 3 | — | All six SDKs |
 | `DEFAULT_BASE_DELAY` | 1000 | milliseconds | All six SDKs |
 | `DEFAULT_MAX_JITTER` | 100 | milliseconds | All six SDKs |
+| `MAX_BACKOFF_DELAY` | 30,000 (30s) | milliseconds | All six SDKs; ceiling on the §7 backoff term, jitter added on top. Was Go's generated `RetryConfig.MaxDelay` before #577 generalized it |
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |

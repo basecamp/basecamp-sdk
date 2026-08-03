@@ -18,6 +18,11 @@ package final class HTTPClient: Sendable {
     private static let maxJitterMs: UInt64 = 100
     private static let defaultBaseDelayMs: UInt64 = 1_000
 
+    /// Ceiling on the backoff term (SPEC §7, "Backoff Ceiling"). Jitter is
+    /// added after the clamp, so the longest single backoff sleep is this plus
+    /// ``maxJitterMs``.
+    static let maxBackoffDelayMs: UInt64 = 30_000
+
     /// HTTP methods that are naturally idempotent and therefore always
     /// retry-eligible (SPEC §7). Hoisted to a static constant so the retry gate
     /// on the hot path does not allocate a `Set` per request.
@@ -31,6 +36,45 @@ package final class HTTPClient: Sendable {
     /// `Retry-After` on 429. The signed second hop is exempt: no retry, no auth.
     private static let downloadMaxAttempts = 3
     private static let downloadRetryOn: Set<Int> = [429, 502, 503, 504]
+
+    /// Raised by the response-type guard when a `Transport` hands back a
+    /// `URLResponse` that is not an `HTTPURLResponse`.
+    ///
+    /// It needs its own type rather than reusing `BasecampError.network`.
+    /// Since #567 the retry loops route a transport-thrown `.network` to the
+    /// retry branch, and a non-HTTP response is a deterministic programming
+    /// error — retrying it three times just repeats it. This type never
+    /// escapes the SDK: every site that raises it surfaces
+    /// ``invalidResponseType`` instead, so the public error contract is
+    /// exactly what it was.
+    private struct InvalidResponseTypeError: Error {}
+
+    /// The caller-facing error for a non-HTTP `URLResponse`. Unchanged from
+    /// before #567 — same case, same message.
+    private static var invalidResponseType: BasecampError {
+        .network(message: "Invalid response type", cause: nil)
+    }
+
+    /// Whether a thrown error is the transport reporting a connectivity
+    /// failure, and therefore eligible for the retry branch (SPEC §7).
+    ///
+    /// `Transport` is `public` and documented as a seam, so a consumer wiring
+    /// in their own networking stack will normalize connection resets and
+    /// timeouts into `BasecampError.network` — that is precisely the
+    /// classification §6 defines for the condition, `retryable: true`. Before
+    /// #567 both retry loops classified *every* `BasecampError` out of the
+    /// transport as terminal, so the more carefully an implementer read the
+    /// error taxonomy, the more certainly they disabled their own retries.
+    ///
+    /// Any other `BasecampError` (`.auth`, `.usage`, `.api`, …) is the
+    /// transport's own final verdict on the request and stays terminal on
+    /// sight, as does ``InvalidResponseTypeError``, which is not a transport
+    /// failure at all.
+    private static func isTransportNetworkFailure(_ error: any Error) -> Bool {
+        guard let basecampError = error as? BasecampError else { return true }
+        if case .network = basecampError { return true }
+        return false
+    }
 
     /// Whether an error represents cooperative cancellation.
     ///
@@ -147,7 +191,7 @@ package final class HTTPClient: Sendable {
                 let (data, response) = try await transport.data(for: request)
 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    throw BasecampError.network(message: "Invalid response type", cause: nil)
+                    throw InvalidResponseTypeError()
                 }
 
                 let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
@@ -198,12 +242,20 @@ package final class HTTPClient: Sendable {
                         directive = .done(data, httpResponse)
                     }
                 }
-            } catch let error as BasecampError {
-                // A BasecampError thrown by the transport (or the response-type
-                // guard) is rethrown untouched, with no request-end event.
+            } catch is InvalidResponseTypeError {
+                // A deterministic programming error, not a transport blip:
+                // terminal on sight, with no request-end event, exactly as it
+                // behaved when the guard raised BasecampError.network directly.
+                directive = .fail(Self.invalidResponseType)
+            } catch let error as BasecampError where !Self.isTransportNetworkFailure(error) {
+                // A non-network BasecampError thrown by the transport is its
+                // own final verdict: rethrown untouched, with no request-end
+                // event.
                 directive = .fail(error)
             } catch {
-                // Network-level error
+                // Network-level error — a raw transport failure, or a Transport
+                // that reports connectivity failure as BasecampError.network
+                // (#567). Both mean the same thing, so both retry.
                 let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
                 safeInvokeHooks {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
@@ -226,7 +278,12 @@ package final class HTTPClient: Sendable {
                     )
                     directive = .retry(error: error, delaySeconds: delaySeconds)
                 } else {
-                    directive = .fail(BasecampError.network(message: "Network error", cause: error))
+                    // A transport that already speaks BasecampError keeps its
+                    // own message; wrapping it in a second, vaguer .network
+                    // would discard the only diagnostic the caller has.
+                    directive = .fail(
+                        error as? BasecampError
+                            ?? BasecampError.network(message: "Network error", cause: error))
                 }
             }
 
@@ -272,7 +329,10 @@ package final class HTTPClient: Sendable {
         let (data, response) = try await transport.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw BasecampError.network(message: "Invalid response type", cause: nil)
+            // Neither of these two helpers retries, so the guard can surface
+            // the caller-facing error directly. Routed through the shared
+            // constant so the message stays defined in exactly one place.
+            throw Self.invalidResponseType
         }
 
         return (data, httpResponse)
@@ -322,7 +382,7 @@ package final class HTTPClient: Sendable {
                 let (data, response) = try await transport.dataNoRedirect(for: request)
 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    throw BasecampError.network(message: "Invalid response type", cause: nil)
+                    throw InvalidResponseTypeError()
                 }
 
                 let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
@@ -349,9 +409,15 @@ package final class HTTPClient: Sendable {
                 } else {
                     directive = .done(data, httpResponse)
                 }
-            } catch let error as BasecampError {
+            } catch is InvalidResponseTypeError {
+                directive = .fail(Self.invalidResponseType)
+            } catch let error as BasecampError where !Self.isTransportNetworkFailure(error) {
                 directive = .fail(error)
             } catch {
+                // Both loops classify identically (#567): a transport-thrown
+                // BasecampError.network is a connectivity failure and retries,
+                // the same as a raw URLError would. Splitting the two loops
+                // here would be worse than the gap it closes.
                 let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
                 safeInvokeHooks {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
@@ -374,7 +440,9 @@ package final class HTTPClient: Sendable {
                     )
                     directive = .retry(error: error, delaySeconds: delaySeconds)
                 } else {
-                    directive = .fail(BasecampError.network(message: "Network error", cause: error))
+                    directive = .fail(
+                        error as? BasecampError
+                            ?? BasecampError.network(message: "Network error", cause: error))
                 }
             }
 
@@ -414,7 +482,10 @@ package final class HTTPClient: Sendable {
             let (data, response) = try await transport.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw BasecampError.network(message: "Invalid response type", cause: nil)
+                // Neither of these two helpers retries, so the guard can surface
+                // the caller-facing error directly. Routed through the shared
+                // constant so the message stays defined in exactly one place.
+                throw Self.invalidResponseType
             }
 
             return (data, httpResponse)
@@ -451,19 +522,46 @@ package final class HTTPClient: Sendable {
             return TimeInterval(retryAfter)
         }
 
-        let base: UInt64
-        switch backoff {
-        case .exponential:
-            base = baseDelayMs * (1 << UInt64(attempt - 1))
-        case .linear:
-            base = baseDelayMs * UInt64(attempt)
-        case .constant:
-            base = baseDelayMs
-        }
+        let base = Self.backoffDelayMs(baseDelayMs: baseDelayMs, backoff: backoff, attempt: attempt)
 
         // Add jitter (0-100ms)
         let jitter = UInt64.random(in: 0...Self.maxJitterMs)
         return TimeInterval(base + jitter) / 1000.0
+    }
+
+    /// The backoff term in milliseconds for a 1-based attempt, saturating at
+    /// ``maxBackoffDelayMs`` (SPEC §7, "Backoff Ceiling").
+    ///
+    /// The clamp is load-bearing rather than defensive, and Swift's failure
+    /// without it is the worst of the six SDKs: `baseDelayMs * (1 << ...)`
+    /// **traps**. `<<` on an unsigned integer is a smart shift, so an
+    /// over-shift silently yields `0` — the tight retry loop against a server
+    /// already answering 429/503 — but at `1 << 63` the multiply overflows
+    /// `UInt64` and the process dies. `UInt64(attempt - 1)` traps on a
+    /// negative operand for the same reason, so the exponent is floored, not
+    /// converted.
+    ///
+    /// The multiplier is compared against `maxBackoffDelayMs / baseDelayMs`
+    /// before multiplying, so no intermediate can leave `UInt64` range.
+    static func backoffDelayMs(baseDelayMs: UInt64, backoff: RetryBackoff, attempt: Int) -> UInt64 {
+        guard baseDelayMs > 0 else { return 0 }
+
+        let multiplier: UInt64
+        switch backoff {
+        case .exponential:
+            // 63 is the first shift that sets the sign bit's worth of
+            // magnitude; at or past it the ceiling is reached regardless.
+            let exponent = max(attempt - 1, 0)
+            guard exponent < 63 else { return maxBackoffDelayMs }
+            multiplier = 1 << UInt64(exponent)
+        case .linear:
+            multiplier = UInt64(max(attempt, 1))
+        case .constant:
+            multiplier = 1
+        }
+
+        guard multiplier <= maxBackoffDelayMs / baseDelayMs else { return maxBackoffDelayMs }
+        return baseDelayMs * multiplier
     }
 
     private func safeInvokeHooks(_ invoke: (any BasecampHooks) -> Void) {

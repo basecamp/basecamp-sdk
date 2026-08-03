@@ -36,6 +36,13 @@ export const NO_RETRY_CONFIG: RetryConfig = {
 const MAX_JITTER_MS = 100;
 
 /**
+ * Ceiling on the backoff term (SPEC §7, "Backoff Ceiling"). Jitter is added
+ * after the clamp, so the longest single backoff sleep is this plus
+ * `MAX_JITTER_MS`.
+ */
+export const MAX_BACKOFF_DELAY_MS = 30_000;
+
+/**
  * Lifecycle seams the retry loop emits through. The loop begins EVERY attempt
  * and finalizes the attempts it abandons (before the backoff sleep); the
  * terminal outcome — the response it returns, or the error it throws — is
@@ -175,21 +182,51 @@ export async function executeWithRetry(
   }
 }
 
-export function calculateBackoffDelay(config: RetryConfig, attempt: number): number {
-  const base = config.baseDelayMs;
-  let delay: number;
+/**
+ * The backoff term, saturating at {@link MAX_BACKOFF_DELAY_MS} (SPEC §7).
+ *
+ * Shared by both of the SDK's retry loops — this one and the raw multipart
+ * loop in `services/base.ts` — so the ceiling cannot be honored on one path
+ * and not the other.
+ *
+ * The clamp is load-bearing rather than defensive. `Math.pow(2, attempt)`
+ * reaches `Infinity` at attempt 1024, and `setTimeout` clamps an out-of-range
+ * delay to **1ms**: the failure mode of an unbounded backoff in JS is not a
+ * long sleep, it is a tight retry loop against a server that is already
+ * answering 429/503. Well before that, the computed delays run to millennia.
+ *
+ * `attempt` is the 0-indexed retry count (first retry = 0), matching the SPEC
+ * §7 `retry_index`.
+ */
+export function saturatingBackoff(
+  baseDelayMs: number,
+  backoff: RetryConfig["backoff"],
+  attempt: number,
+): number {
+  const base = baseDelayMs > 0 ? baseDelayMs : 0;
+  const index = attempt > 0 ? attempt : 0;
 
-  switch (config.backoff) {
+  let delay: number;
+  switch (backoff) {
     case "exponential":
-      delay = base * Math.pow(2, attempt);
+      // Bounding the exponent keeps the product finite: 2^53 is already 9e15,
+      // so with any base at all the ceiling is long since reached, and
+      // Math.min below does the rest without ever seeing Infinity or NaN.
+      delay = base * Math.pow(2, Math.min(index, 53));
       break;
     case "linear":
-      delay = base * (attempt + 1);
+      delay = base * (Math.min(index, Number.MAX_SAFE_INTEGER) + 1);
       break;
     case "constant":
     default:
       delay = base;
   }
+
+  return Math.min(delay, MAX_BACKOFF_DELAY_MS);
+}
+
+export function calculateBackoffDelay(config: RetryConfig, attempt: number): number {
+  const delay = saturatingBackoff(config.baseDelayMs, config.backoff, attempt);
 
   // Add jitter (0-100ms)
   const jitter = Math.random() * MAX_JITTER_MS;

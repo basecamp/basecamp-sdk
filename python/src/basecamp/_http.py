@@ -7,6 +7,7 @@ import httpx
 
 from basecamp import _security
 from basecamp._version import API_VERSION, VERSION
+from basecamp.config import saturating_backoff
 from basecamp.errors import (
     ApiError,
     AuthError,
@@ -371,9 +372,11 @@ class HttpClient:
         return f"{self._config.base_url}{path}"
 
     def _calculate_delay(self, attempt: int, server_retry_after: int | None = None) -> float:
+        # Retry-After is server-directed and exempt from the ceiling (SPEC
+        # section 7); only the locally-computed term saturates.
         if server_retry_after and server_retry_after > 0:
             return float(server_retry_after)
-        base = self._config.base_delay * (2 ** (attempt - 1))
+        base = saturating_backoff(self._config.base_delay, attempt)
         jitter = random.random() * self._config.max_jitter
         return base + jitter
 

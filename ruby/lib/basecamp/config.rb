@@ -45,6 +45,36 @@ module Basecamp
     DEFAULT_MAX_JITTER = 0.1
     DEFAULT_MAX_PAGES = 10_000
 
+    # Ceiling on the backoff term (SPEC §7, "Backoff Ceiling"), in seconds.
+    # Jitter is added after the clamp, so the longest single backoff sleep is
+    # this plus +max_jitter+.
+    MAX_BACKOFF_DELAY = 30.0
+
+    # Largest exponent evaluated before the clamp takes over. 2**64 is 1.8e19,
+    # so with any base delay at all the ceiling is long since reached; the bound
+    # exists because Ruby Integers are unbounded — 2**10_000 is a real
+    # three-kilobyte number, not an overflow.
+    MAX_BACKOFF_EXPONENT = 64
+
+    # Exponential backoff for a 1-based attempt, saturating at MAX_BACKOFF_DELAY.
+    #
+    # The clamp is load-bearing rather than defensive. Ruby's +**+ promotes
+    # instead of overflowing, so +base_delay * (2**(attempt - 1))+ on a long
+    # failure streak coerces to +Float::INFINITY+ — and +sleep(Float::INFINITY)+
+    # never returns. A retry that never happens is not backoff.
+    #
+    # @param base_delay [Float] initial backoff delay in seconds
+    # @param attempt [Integer] 1-based attempt number
+    # @return [Float] the backoff term in seconds
+    def self.saturating_backoff(base_delay, attempt)
+      if base_delay <= 0
+        0.0
+      else
+        exponent = [ [ attempt - 1, 0 ].max, MAX_BACKOFF_EXPONENT ].min
+        [ base_delay * (2**exponent), MAX_BACKOFF_DELAY ].min.to_f
+      end
+    end
+
     # Creates a new configuration with the given options.
     #
     # @param base_url [String] API base URL

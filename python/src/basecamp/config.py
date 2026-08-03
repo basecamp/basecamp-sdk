@@ -12,6 +12,32 @@ DEFAULT_BASE_DELAY = 1.0
 DEFAULT_MAX_JITTER = 0.1
 DEFAULT_MAX_PAGES = 10_000
 
+# Ceiling on the backoff term (SPEC section 7, "Backoff Ceiling"), in seconds.
+# Jitter is added after the clamp, so the longest single backoff sleep is this
+# plus max_jitter.
+MAX_BACKOFF_DELAY = 30.0
+
+# Largest exponent evaluated before the clamp takes over. 2**64 is 1.8e19, so
+# with any base delay at all the ceiling is long since reached; the bound exists
+# because Python integers are unbounded and 2 ** 10_000 is a real three-kilobyte
+# integer, not an overflow.
+_MAX_BACKOFF_EXPONENT = 64
+
+
+def saturating_backoff(base_delay: float, attempt: int) -> float:
+    """Exponential backoff for a 1-based attempt, saturating at MAX_BACKOFF_DELAY.
+
+    The clamp is load-bearing rather than defensive. Python's ``**`` does not
+    overflow — it promotes — so ``base_delay * (2 ** (attempt - 1))`` for a long
+    failure streak either raises ``OverflowError`` converting an arbitrary-
+    precision integer to a float, or hands ``time.sleep`` a delay measured in
+    geological time. Neither is a retry.
+    """
+    if base_delay <= 0:
+        return 0.0
+    exponent = min(max(attempt - 1, 0), _MAX_BACKOFF_EXPONENT)
+    return min(base_delay * (2**exponent), MAX_BACKOFF_DELAY)
+
 
 @dataclass(frozen=True)
 class Config:
