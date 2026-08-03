@@ -1,0 +1,30 @@
+scripts/sync-api-version.sh
+  s_ae792ed0be3006::t_af05782c7d6294 62-64,66
+AGENTS.md
+  s_ae792ed0be3006::t_364772fccc067d 188-191
+scripts/sync-doc-constants.rb
+  s_ae792ed0be3006::t_56e5e4dac9ddae 395-412,415
+  s_ae792ed0be3006::t_66386d42c6364b 64-65,69-81
+  s_ae792ed0be3006::t_51fdad0a115f1f 284
+  s_ae792ed0be3006::t_725c4d4bbf15f0 369
+  s_ae792ed0be3006::t_85a5fac0db15a1 187,192
+  s_ae792ed0be3006::t_e09bc76a4c44bf 32-37
+  s_ae792ed0be3006::t_b311c2901defeb 217-228
+  s_ae792ed0be3006::t_54c3dba3dd47fb 283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "23d39eec2826ea0b1f508e1f7ccc436e441ded8a",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
