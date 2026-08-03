@@ -1,0 +1,85 @@
+Makefile
+  s_ae792ed0be3006::t_805301bdd63701 523-538,543-549,552
+  s_ae792ed0be3006::t_e2c67c17a893ed 853-854
+  s_ae792ed0be3006::t_f250d76bcfc163 855,860,1040-1041,1149-1150,1155
+  s_ae792ed0be3006::t_d60b549c8cb808 497-514,516-522,539-542,550-551,553-555
+  s_ae792ed0be3006::t_cbcaf8c78ea831 452
+  s_ae792ed0be3006::t_0dc53bdb49bfae 454
+  s_ae792ed0be3006::t_88e391dcbbf917 1034-1039
+  s_ae792ed0be3006::t_7a193b6ce3de57 649-654,656,968,1042-1049,1072,1156
+scripts/check-runner-test-reachability
+  s_ae792ed0be3006::t_3c38f1d6a2121a 317-322,336,339,342
+  s_ae792ed0be3006::t_8c0268c704e00a 107,182
+  s_ae792ed0be3006::t_46441cec6aef2c 405-410
+  s_ae792ed0be3006::t_98cd21d4d91656 17-20,23-28,52,56-58,60,64,67-68,84-85,195,198,216,233,252-254,266-269,300-304,306-307,331,334-335,338,341,346,350,362-365,375,432,479
+  s_ae792ed0be3006::t_5e3f037ac0b15f 106,388-404,412-423,425,428-431,433-434,438-465,467-477,480-483,511-516
+  s_ae792ed0be3006::t_c96f633efb5f74 109-133,143-156
+  s_ae792ed0be3006::t_d3ca4fc7d71fb5 485-510
+  s_ae792ed0be3006::t_6972e7b2dc9b58 478
+  s_ae792ed0be3006::t_9b7a0c3b7ac054 61-63
+  s_ae792ed0be3006::t_214a5b96b3e94e 159-167,179-180,190,204-207,209,212,231-232,234-245,248
+  s_ae792ed0be3006::t_01a8729194ffe4 134-142
+  s_ae792ed0be3006::t_a27e9c28bbff6d 323-330,332
+  s_ae792ed0be3006::t_52735a2051ca65 87-97
+  s_ae792ed0be3006::t_ab441a3db14db0 1-16,21-22,29,55,59,65-66,69-83,86,98-105,108,157-158,177-178,181,183-188,191-194,196-197,199-203,214-215,217-220,246-247,249-251,255-265,271-281,283-299,305,308-316,333,337,340,343-345,347-349,351-352,354-361,366-374,376-387,411,424,426-427,435-437,466,517-526
+  s_ae792ed0be3006::t_85276801082c6c 213,270,282
+  s_ae792ed0be3006::t_26fb5a03ebe4bc 30-51,53-54
+  s_ae792ed0be3006::t_fd85d930b85e71 353
+  s_ae792ed0be3006::t_1995b6bf5ccdd1 484
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_fe71915a961006 139-147
+  s_ae792ed0be3006::t_4df2bf5bc0ac8e 230-237
+  s_ae792ed0be3006::t_e96749d2b1c4c5 541-543
+  s_ae792ed0be3006::t_346d52445f2624 441-443,445-448
+  s_ae792ed0be3006::t_c48d53c7a6f6c5 361,363-364
+  s_ae792ed0be3006::t_688415ab9ac821 482
+  s_ae792ed0be3006::t_b0da0335eecccf 148-154
+CONTRIBUTING.md
+  s_ae792ed0be3006::t_5525a383e91e2d 393-402
+SPEC.md
+  s_ae792ed0be3006::t_a699dd65ca973f 2044
+conformance/runner/go/replay_runner.go
+  s_ae792ed0be3006::t_f57cf70029d9d4 35-43,89-169
+conformance/runner/go/replay_runner_test.go
+  s_ae792ed0be3006::t_f9e75348068002 20,23,29-97
+conformance/runner/python/replay_runner.py
+  s_ae792ed0be3006::t_ea1d9be195c957 60-66,79-99
+conformance/runner/python/test_replay_runner.py
+  s_ae792ed0be3006::t_8f2b47f8059aec 30-70
+conformance/runner/ruby/replay-runner.rb
+  s_ae792ed0be3006::t_5e3714fcbfd2cc 43-48,50-81
+conformance/runner/ruby/replay_runner_test.rb
+  s_ae792ed0be3006::t_b5da16cf887b41 31-71
+kotlin/conformance/build.gradle.kts
+  s_ae792ed0be3006::t_b48a762aa4c272 44-47,50
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_fe679e9320c10f::t_ef91b782cdbc4d 3-4,6-8,11-12,50-56,83-95,97,109-131
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/ReplayDecodersTest.kt
+  s_ae792ed0be3006::t_46633a46b50725 1-134
+scripts/check-replay-decoder-parity
+  s_ae792ed0be3006::t_1e8bf8dd7f340a 1-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "46eb2aa8619554b09a783fbe80841abd9ab1712e",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_fe679e9320c10f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0d7e9b3-61f7-45c3-932b-ac2006ada4df",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
