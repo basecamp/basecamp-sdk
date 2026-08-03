@@ -2442,12 +2442,14 @@ Two dispatch clarifications, pinned:
   queue depth or consumer latency: a fired staleness deadline observed on return from a
   slow delivery is authoritative, and frames still
   queued at that moment were received before the firing and already reset the timer then.
-  **Staleness is suspended while the pump is blocked on a full hand-off queue**: a full
-  queue proves the peer was sending faster than the connector consumed — the opposite of
-  a dead peer — and a pump that isn't reading cannot observe resets, so absence of a
-  reset is not evidence. The timer re-arms fresh when the pump resumes reading;
-  "authoritative" above therefore holds exactly when the pump was reading throughout the
-  window.
+  **Staleness is suspended while the pump is blocked on a full hand-off queue** — a full
+  queue proves the peer was sending faster than the connector consumed, the opposite of
+  a dead peer, and a pump that isn't reading cannot observe resets, so absence of a
+  reset is not evidence. Suspension is realized **at evaluation, not arming**: the timer
+  stays armed throughout (the per-state exact-set invariants are unchanged — `staleness`
+  remains in every socket-open state's set), and a firing whose window overlapped a
+  pump-blocked interval is disregarded and re-armed rather than dispatched. A firing
+  whose window the pump spent reading is authoritative.
 - **The frame pump's hand-off queue is bounded and never drops.** The pump reads frames
   from the transport and hands them to the state machine over a queue of small fixed depth
   (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
@@ -3290,7 +3292,7 @@ by named tier-3 tests.
 | SDK | Tier-2 scenario lane | Compensation / note |
 |-----|----------------------|---------------------|
 | Go | Real default transport against an in-process loopback ws server; fixtures consumed as data | Full-jitter formula additionally pinned exactly via an injected deterministic rand source (tier 3) |
-| TypeScript | Real transport under MSW `ws` interception | Default transport must use the global `WebSocket` (Node ≥ 22), never the `ws` package |
+| TypeScript | Real transport under MSW `ws` interception | Default transport must use the global `WebSocket` (Node ≥ 22), never the `ws` package. The global API exposes no read limit, so the `max_frame_bytes` cap is enforced at message receipt — before any parse, decode, or queueing — rather than during the read: the allocation itself cannot be pre-bounded on this lane (accepted, documented divergence); an injected `transport` MAY provide true bounded reads |
 | Python | Real transport over an in-process `websockets` loopback | Connector transport ships under an optional `stream` extra |
 | Ruby | Real transport over a `websocket-driver` loopback | `websocket-driver` becomes a runtime dependency |
 | Kotlin | jvmTest-only: real ktor ws client against a test-scoped server (`MockEngine` cannot mock WebSockets) | State machine mirrored in commonTest tier 3 for the four acceptance scenarios |
