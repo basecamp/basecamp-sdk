@@ -247,7 +247,14 @@ func ExampleSearchService_Search_sorted() {
 	}
 
 	for _, r := range results.Results {
-		fmt.Printf("%s: %s\n", r.CreatedAt.Format("2006-01-02"), r.Title)
+		// CreatedAt is optional (*time.Time) — nil means the API did not send
+		// it. Note that r.CreatedAt.Format(…) would compile here and panic on
+		// nil, so the check is load-bearing, not defensive style.
+		created := "unknown"
+		if r.CreatedAt != nil {
+			created = r.CreatedAt.Format("2006-01-02")
+		}
+		fmt.Printf("%s: %s\n", created, r.Title)
 	}
 }
 
