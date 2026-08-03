@@ -117,14 +117,10 @@ SDKS = {
             rf"os\.environ\[\s*{Q}{NAME}{ENDQ}",
             rf"os\.getenv\(\s*{Q}{NAME}{ENDQ}",
             # `from os import getenv` is the ordinary spelling, and requiring
-            # the `os.` qualifier made those reads invisible -- the fail-open
-            # direction, where the gate swears nothing reads the variable.
-            # The lookbehind keeps these from matching the qualified forms
-            # above a second time, which would double-count their call sites,
-            # and keeps `mygetenv(...)` out.
-            rf"(?<![.\w])getenv\(\s*{Q}{NAME}{ENDQ}",
-            rf"(?<![.\w])environ\.get\(\s*{Q}{NAME}{ENDQ}",
-            rf"(?<![.\w])environ\[\s*{Q}{NAME}{ENDQ}",
+            # the `os.` qualifier made those reads invisible. Those forms are
+            # not listed here, because whether `getenv(...)` is an environment
+            # read depends on where the name came from -- see
+            # `python_dynamic_patterns`, which reads the file's imports first.
         ],
     },
     "TypeScript": {
@@ -175,6 +171,56 @@ SDKS = {
         "patterns": [rf"System\.getenv\(\s*{DQ}{NAME}{ENDQ}"],
     },
 }
+
+# Python binds the unqualified spellings by import, so whether `getenv("X")` is
+# an environment read is a fact about the file's import lines, not about the
+# call. Both directions are real and both were live at some point in this PR:
+# requiring the `os.` qualifier hid every read written the ordinary way, and
+# matching the bare name regardless invented one out of
+# `from helpers import getenv`. Reading the imports settles it, and settles
+# aliases with it -- `from os import getenv as ge` binds `ge`, which no fixed
+# pattern could have known.
+#
+# Deliberately file-scoped rather than a general name resolver: an import line
+# is a local, syntactic fact, where following a name through assignments and
+# re-exports is program analysis and is where this gate stops.
+PY_FROM_OS_RE = re.compile(r"^[ \t]*from[ \t]+os[ \t]+import[ \t]+([^\n#]+)", re.M)
+
+
+def python_os_aliases(text: str) -> dict[str, str]:
+    """Local names this file binds to `os.getenv` / `os.environ`."""
+    bound: dict[str, str] = {}
+    for match in PY_FROM_OS_RE.finditer(text):
+        for part in match.group(1).strip().strip("()").split(","):
+            bits = part.split()
+            if len(bits) == 3 and bits[1] == "as":
+                original, local = bits[0], bits[2]
+            elif len(bits) == 1:
+                original = local = bits[0]
+            else:
+                continue
+            if original in ("getenv", "environ"):
+                bound[local] = original
+    return bound
+
+
+def python_dynamic_patterns(text: str) -> list[str]:
+    """Read patterns for the unqualified names this file actually imported.
+
+    The lookbehind keeps these off the `os.`-qualified spellings, which the
+    static patterns already match -- without it every qualified call site would
+    be counted a second time.
+    """
+    patterns = []
+    for local, original in sorted(python_os_aliases(text).items()):
+        name = re.escape(local)
+        if original == "getenv":
+            patterns.append(rf"(?<![.\w]){name}\(\s*{Q}{NAME}{ENDQ}")
+        else:
+            patterns.append(rf"(?<![.\w]){name}\.get\(\s*{Q}{NAME}{ENDQ}")
+            patterns.append(rf"(?<![.\w]){name}\[\s*{Q}{NAME}{ENDQ}")
+    return patterns
+
 
 # Lexical quirks that are not implied by the comment style. Getting these wrong
 # is not academic: each was a real miss found in review.
@@ -312,6 +358,11 @@ DEFAULT_FLAGS = {
 # is actually reading rather than by the comment style alone.
 for _sdk, _spec in SDKS.items():
     _spec["flags"] = LANG_FLAGS[_sdk]
+
+# Attached here rather than in the table because it is a function defined below
+# it, and only Python has one: its unqualified read spellings are bound by the
+# file's own import lines, so their patterns cannot be known until the file is.
+SDKS["Python"]["dynamic_patterns"] = python_dynamic_patterns
 
 ROOT_README = "README.md"
 
@@ -1198,7 +1249,12 @@ def real_reads(spec: dict, scoped: bool = True) -> dict[str, list[str]]:
             spec["comments"],
             spec.get("flags"),
         )
-        for pattern in compiled:
+        # Patterns that depend on this file's own imports, not just on the
+        # language. Compiled per file because that is the scope of the fact.
+        dynamic = spec.get("dynamic_patterns")
+        file_patterns = compiled + (
+            [re.compile(p) for p in dynamic(text)] if dynamic else [])
+        for pattern in file_patterns:
             # finditer + the named group, not findall: these patterns carry a
             # quote group too, and findall would hand back tuples.
             for match in pattern.finditer(text):

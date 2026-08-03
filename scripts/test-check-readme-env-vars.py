@@ -1607,6 +1607,36 @@ def main() -> int:
         })
         check("a lookalike helper is not an env read", run_gate(root, PY_SDK), [])
 
+        # ...and neither is a same-named function from somewhere else. Whether
+        # `getenv(...)` reads the environment is a fact about the file's
+        # imports, so matching the bare name regardless invents a read.
+        root = tmp / "py-foreign-getenv"
+        build(root, {
+            "python/README.md": "no tables\n",
+            "python/src/c.py":
+                'from helpers import getenv\n\nv = getenv("BASECAMP_FAKE")\n',
+        })
+        check("an unqualified getenv not imported from os is not a read",
+              run_gate(root, PY_SDK), [])
+
+        # Reading the imports settles aliases too, which no fixed pattern could.
+        root = tmp / "py-aliased-getenv"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_ALIAS"),
+            "python/src/c.py":
+                'from os import getenv as ge\n\nv = ge("BASECAMP_ALIAS")\n',
+        })
+        check("an aliased os import is still a read", run_gate(root, PY_SDK), [])
+
+        root = tmp / "py-aliased-environ"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_ENVA"),
+            "python/src/c.py":
+                'from os import environ as en\n\nv = en["BASECAMP_ENVA"]\n',
+        })
+        check("an aliased environ import is still a read",
+              run_gate(root, PY_SDK), [])
+
         # 18. `const { env } = process` aliases the whole environment without
         #     ever spelling `process.env`.
         root = tmp / "ts-destructured-env-alias"
