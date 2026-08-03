@@ -6,6 +6,7 @@ SPEC.md
 spec/api-gaps/README.md
   s_ae792ed0be3006::t_fcd3463ca1f997 129-131
   s_ae792ed0be3006::t_394fa1afad67fa 132
+  s_ae792ed0be3006::t_bb34e7c0f2fe76 120-128,133-134
 ---
 {
   "schema_version": "authorship/3.0.0",
