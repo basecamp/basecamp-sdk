@@ -2,7 +2,7 @@
 import Foundation
 
 public struct ByPersonCheckinOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -13,7 +13,7 @@ public struct ByPersonCheckinOptions: Sendable {
 }
 
 public struct RemindersCheckinOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -24,7 +24,7 @@ public struct RemindersCheckinOptions: Sendable {
 }
 
 public struct ListAnswersCheckinOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -43,7 +43,7 @@ public struct AnswerersCheckinOptions: Sendable {
 }
 
 public struct ListQuestionsCheckinOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

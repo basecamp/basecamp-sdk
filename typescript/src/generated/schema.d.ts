@@ -7672,7 +7672,7 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -7737,7 +7737,7 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -7798,7 +7798,7 @@ export interface operations {
     ListClientReplies: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -8815,7 +8815,7 @@ export interface operations {
     ListCards: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9473,7 +9473,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9539,7 +9539,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9605,7 +9605,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9671,7 +9671,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9801,7 +9801,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9860,7 +9860,7 @@ export interface operations {
     ListCampfires: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -9981,7 +9981,7 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -10312,7 +10312,7 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -10447,7 +10447,7 @@ export interface operations {
     GetEverythingCheckins: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -10678,7 +10678,7 @@ export interface operations {
     GetEverythingComments: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -11184,7 +11184,7 @@ export interface operations {
                 kind?: string;
                 /** @description Restrict to files created by the given people (repeatable). */
                 "people_ids[]"?: number[];
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -11243,7 +11243,7 @@ export interface operations {
     GetEverythingForwards: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -11563,7 +11563,7 @@ export interface operations {
     ListForwardReplies: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -11745,7 +11745,7 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -12116,7 +12116,7 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -12248,7 +12248,7 @@ export interface operations {
     GetEverythingMessages: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -12592,7 +12592,7 @@ export interface operations {
     ListMyBookmarks: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -12651,7 +12651,7 @@ export interface operations {
     ListMyDrafts: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -13280,7 +13280,7 @@ export interface operations {
     GetQuestionReminders: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -13400,7 +13400,7 @@ export interface operations {
     GetBubbleUps: {
         parameters: {
             query?: {
-                /** @description Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -13517,7 +13517,7 @@ export interface operations {
     ListPeople: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -13821,7 +13821,7 @@ export interface operations {
             query?: {
                 /** @description active|archived|trashed */
                 status?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -13958,7 +13958,7 @@ export interface operations {
                 sort?: string;
                 /** @description asc|desc */
                 direction?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -14262,7 +14262,7 @@ export interface operations {
     ListGaugeNeedles: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -14403,7 +14403,7 @@ export interface operations {
     ListProjectPeople: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -14544,7 +14544,7 @@ export interface operations {
     GetProjectTimeline: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -14617,7 +14617,7 @@ export interface operations {
                 from?: string;
                 to?: string;
                 person_id?: number;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -14863,7 +14863,7 @@ export interface operations {
     ListQuestions: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -15124,7 +15124,7 @@ export interface operations {
     ListAnswers: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -15323,7 +15323,7 @@ export interface operations {
     GetAnswersByPerson: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -15910,7 +15910,7 @@ export interface operations {
     ListRecordingBoosts: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -16113,7 +16113,7 @@ export interface operations {
     ListComments: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -16245,7 +16245,7 @@ export interface operations {
     ListEvents: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -16306,7 +16306,7 @@ export interface operations {
     ListEventBoosts: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -16890,7 +16890,7 @@ export interface operations {
                 from?: string;
                 to?: string;
                 person_id?: number;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -17217,7 +17217,7 @@ export interface operations {
                  *     in the order specified instead of by risk level.
                  */
                 bucket_ids?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -17276,7 +17276,7 @@ export interface operations {
     GetProgressReport: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -17636,7 +17636,7 @@ export interface operations {
     GetPersonProgress: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -18025,7 +18025,7 @@ export interface operations {
             query?: {
                 /** @description active|archived|trashed */
                 status?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -18193,7 +18193,7 @@ export interface operations {
                  * @description Deprecated: prefer creator_ids[].
                  */
                 creator_id?: number;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -18638,7 +18638,7 @@ export interface operations {
             query?: {
                 /** @description active|archived|trashed */
                 status?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19408,7 +19408,7 @@ export interface operations {
     ListTodolistGroups: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19543,7 +19543,7 @@ export interface operations {
                 /** @description active|archived|trashed */
                 status?: string;
                 completed?: boolean;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19682,7 +19682,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19748,7 +19748,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19814,7 +19814,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -19944,7 +19944,7 @@ export interface operations {
                 "assignee_ids[]"?: number[];
                 /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
                 due?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -20580,7 +20580,7 @@ export interface operations {
             query?: {
                 /** @description active|archived|trashed */
                 status?: string;
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -21028,7 +21028,7 @@ export interface operations {
     ListDocuments: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -21160,7 +21160,7 @@ export interface operations {
     ListUploads: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;
@@ -21292,7 +21292,7 @@ export interface operations {
     ListVaults: {
         parameters: {
             query?: {
-                /** @description Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+                /** @description Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
                 page?: number;
             };
             header?: never;

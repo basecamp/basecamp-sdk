@@ -51,7 +51,7 @@ export interface UpdateChatbotCampfireRequest {
  * Options for list.
  */
 export interface ListCampfireOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -63,7 +63,7 @@ export interface ListLinesCampfireOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -93,7 +93,7 @@ export interface ListUploadsCampfireOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 

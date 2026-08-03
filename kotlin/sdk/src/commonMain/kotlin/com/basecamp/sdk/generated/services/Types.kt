@@ -17,7 +17,7 @@ data class UpdateAccountNameBody(
 
 /** Options for ListMyBookmarks. */
 data class ListMyBookmarksOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -26,7 +26,7 @@ data class ListMyBookmarksOptions(
 
 /** Options for ListRecordingBoosts. */
 data class ListRecordingBoostsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -40,7 +40,7 @@ data class CreateRecordingBoostBody(
 
 /** Options for ListEventBoosts. */
 data class ListEventBoostsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -71,7 +71,7 @@ data class UpdateChatbotBody(
 
 /** Options for ListCampfires. */
 data class ListCampfiresOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -85,7 +85,7 @@ data class ListCampfireLinesOptions(
     /** asc|desc */
     val direction: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -109,7 +109,7 @@ data class ListCampfireUploadsOptions(
     /** asc|desc */
     val direction: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -180,7 +180,7 @@ data class MoveCardBody(
 
 /** Options for ListCards. */
 data class ListCardsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -197,7 +197,7 @@ data class CreateCardBody(
 
 /** Options for GetQuestionReminders. */
 data class GetQuestionRemindersOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -212,7 +212,7 @@ data class UpdateAnswerBody(
 
 /** Options for ListQuestions. */
 data class ListQuestionsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -235,7 +235,7 @@ data class UpdateQuestionBody(
 
 /** Options for ListAnswers. */
 data class ListAnswersOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -250,7 +250,7 @@ data class CreateAnswerBody(
 
 /** Options for GetAnswersByPerson. */
 data class GetAnswersByPersonOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -270,7 +270,7 @@ data class ListClientApprovalsOptions(
     /** asc|desc */
     val direction: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -283,7 +283,7 @@ data class ListClientCorrespondencesOptions(
     /** asc|desc */
     val direction: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -291,7 +291,7 @@ data class ListClientCorrespondencesOptions(
 
 /** Options for ListClientReplies. */
 data class ListClientRepliesOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -310,7 +310,7 @@ data class UpdateCommentBody(
 
 /** Options for ListComments. */
 data class ListCommentsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -330,7 +330,7 @@ data class ReplaceDocumentBody(
 
 /** Options for ListDocuments. */
 data class ListDocumentsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -348,7 +348,7 @@ data class CreateDocumentBody(
 
 /** Options for ListMyDrafts. */
 data class ListMyDraftsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -357,7 +357,7 @@ data class ListMyDraftsOptions(
 
 /** Options for ListEvents. */
 data class ListEventsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -370,7 +370,7 @@ data class GetEverythingCompletedCardsOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -383,7 +383,7 @@ data class GetEverythingNoDueDateCardsOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -396,7 +396,7 @@ data class GetEverythingNotNowCardsOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -409,7 +409,7 @@ data class GetEverythingOpenCardsOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -431,7 +431,7 @@ data class GetEverythingUnassignedCardsOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -440,7 +440,7 @@ data class GetEverythingUnassignedCardsOptions(
 
 /** Options for GetEverythingCheckins. */
 data class GetEverythingCheckinsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -449,7 +449,7 @@ data class GetEverythingCheckinsOptions(
 
 /** Options for GetEverythingComments. */
 data class GetEverythingCommentsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -462,7 +462,7 @@ data class GetEverythingFilesOptions(
     val kind: String? = null,
     /** Restrict to files created by the given people (repeatable). */
     val peopleIds: List<Long>? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -471,7 +471,7 @@ data class GetEverythingFilesOptions(
 
 /** Options for GetEverythingForwards. */
 data class GetEverythingForwardsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -480,7 +480,7 @@ data class GetEverythingForwardsOptions(
 
 /** Options for GetEverythingMessages. */
 data class GetEverythingMessagesOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -493,7 +493,7 @@ data class GetEverythingCompletedTodosOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -506,7 +506,7 @@ data class GetEverythingNoDueDateTodosOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -519,7 +519,7 @@ data class GetEverythingOpenTodosOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -541,7 +541,7 @@ data class GetEverythingUnassignedTodosOptions(
     val assigneeIds: List<Long>? = null,
     /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
     val due: String? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -561,7 +561,7 @@ data class UpdateFolderBody(
 
 /** Options for ListForwardReplies. */
 data class ListForwardRepliesOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -575,7 +575,7 @@ data class ListForwardsOptions(
     /** asc|desc */
     val direction: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -593,7 +593,7 @@ data class ToggleGaugeBody(
 
 /** Options for ListGaugeNeedles. */
 data class ListGaugeNeedlesOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -612,7 +612,7 @@ data class ListGaugesOptions(
     /** Comma-separated list of project IDs. When provided, results are returned in the order specified instead of by risk level. */
     val bucketIds: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -655,7 +655,7 @@ data class ListMessagesOptions(
     /** asc|desc */
     val direction: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -713,7 +713,7 @@ data class GetMyNotificationsOptions(
 
 /** Options for GetBubbleUps. */
 data class GetBubbleUpsOptions(
-    /** Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -744,7 +744,7 @@ data class UpdateMyProfileBody(
 
 /** Options for ListPeople. */
 data class ListPeopleOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -758,7 +758,7 @@ data class EnableOutOfOfficeBody(
 
 /** Options for ListProjectPeople. */
 data class ListProjectPeopleOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -777,7 +777,7 @@ data class ListProjectsOptions(
     /** active|archived|trashed */
     val status: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -807,7 +807,7 @@ data class ListRecordingsOptions(
     /** asc|desc */
     val direction: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -815,7 +815,7 @@ data class ListRecordingsOptions(
 
 /** Options for GetProgressReport. */
 data class GetProgressReportOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -838,7 +838,7 @@ data class GetAssignedTodosOptions(
 
 /** Options for GetPersonProgress. */
 data class GetPersonProgressOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -866,7 +866,7 @@ data class ListScheduleEntriesOptions(
     /** active|archived|trashed */
     val status: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -908,7 +908,7 @@ data class SearchOptions(
     @Deprecated("prefer creator_ids[].")
     val creatorId: Long? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -925,7 +925,7 @@ data class ListTemplatesOptions(
     /** active|archived|trashed */
     val status: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -950,7 +950,7 @@ data class CreateProjectFromTemplateBody(
 
 /** Options for GetProjectTimeline. */
 data class GetProjectTimelineOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -963,7 +963,7 @@ data class GetProjectTimesheetOptions(
     val to: String? = null,
     val personId: Long? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -975,7 +975,7 @@ data class GetRecordingTimesheetOptions(
     val to: String? = null,
     val personId: Long? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -1012,7 +1012,7 @@ data class RepositionTodolistGroupBody(
 
 /** Options for ListTodolistGroups. */
 data class ListTodolistGroupsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -1040,7 +1040,7 @@ data class ListTodolistsOptions(
     /** active|archived|trashed */
     val status: String? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -1070,7 +1070,7 @@ data class ListTodosOptions(
     val status: String? = null,
     val completed: Boolean? = null,
     val maxItems: Int? = null,
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
@@ -1129,7 +1129,7 @@ data class UpdateUploadBody(
 
 /** Options for ListUploads. */
 data class ListUploadsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -1152,7 +1152,7 @@ data class UpdateVaultBody(
 
 /** Options for ListVaults. */
 data class ListVaultsOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
     val page: Long? = null,
     val maxItems: Int? = null
 ) {

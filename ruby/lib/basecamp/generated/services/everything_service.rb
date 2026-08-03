@@ -11,7 +11,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_completed_cards(assignee_ids: nil, due: nil, page: nil, max_items: nil)
@@ -25,7 +25,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_no_due_date_cards(assignee_ids: nil, due: nil, page: nil, max_items: nil)
@@ -39,7 +39,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_not_now_cards(assignee_ids: nil, due: nil, page: nil, max_items: nil)
@@ -53,7 +53,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_open_cards(assignee_ids: nil, due: nil, page: nil, max_items: nil)
@@ -78,7 +78,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_unassigned_cards(assignee_ids: nil, due: nil, page: nil, max_items: nil)
@@ -89,7 +89,7 @@ module Basecamp
       end
 
       # Get every automatic check-in answer across all accessible projects, newest-first.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_checkins(page: nil, max_items: nil)
@@ -100,7 +100,7 @@ module Basecamp
       end
 
       # Get every comment across all accessible projects, newest-first (paginated).
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_comments(page: nil, max_items: nil)
@@ -113,7 +113,7 @@ module Basecamp
       # Get every file recording across all accessible projects, newest-first (paginated).
       # @param kind [String, nil] Filter by file kind: all (default), images, pdfs, documents, or videos.
       # @param people_ids [Array, nil] Restrict to files created by the given people (repeatable).
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_files(kind: nil, people_ids: nil, page: nil, max_items: nil)
@@ -124,7 +124,7 @@ module Basecamp
       end
 
       # Get every inbox forward across all accessible projects, newest-first (paginated).
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_forwards(page: nil, max_items: nil)
@@ -135,7 +135,7 @@ module Basecamp
       end
 
       # Get every message across all accessible projects, newest-first (paginated).
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_messages(page: nil, max_items: nil)
@@ -149,7 +149,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_completed_todos(assignee_ids: nil, due: nil, page: nil, max_items: nil)
@@ -163,7 +163,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_no_due_date_todos(assignee_ids: nil, due: nil, page: nil, max_items: nil)
@@ -177,7 +177,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_open_todos(assignee_ids: nil, due: nil, page: nil, max_items: nil)
@@ -202,7 +202,7 @@ module Basecamp
       # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
       #   Assignees on nested steps are not considered.
       # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def get_everything_unassigned_todos(assignee_ids: nil, due: nil, page: nil, max_items: nil)

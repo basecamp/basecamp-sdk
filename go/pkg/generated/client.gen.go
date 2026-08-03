@@ -3568,7 +3568,7 @@ type ListClientApprovalsParams struct {
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3580,19 +3580,19 @@ type ListClientCorrespondencesParams struct {
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListClientRepliesParams defines parameters for ListClientReplies.
 type ListClientRepliesParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListCardsParams defines parameters for ListCards.
 type ListCardsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3605,7 +3605,7 @@ type GetEverythingCompletedCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3618,7 +3618,7 @@ type GetEverythingNoDueDateCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3631,7 +3631,7 @@ type GetEverythingNotNowCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3644,7 +3644,7 @@ type GetEverythingOpenCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3667,13 +3667,13 @@ type GetEverythingUnassignedCardsParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListCampfiresParams defines parameters for ListCampfires.
 type ListCampfiresParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3685,7 +3685,7 @@ type ListCampfireLinesParams struct {
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3697,7 +3697,7 @@ type ListCampfireUploadsParams struct {
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3709,13 +3709,13 @@ type CreateCampfireUploadParams struct {
 
 // GetEverythingCheckinsParams defines parameters for GetEverythingCheckins.
 type GetEverythingCheckinsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingCommentsParams defines parameters for GetEverythingComments.
 type GetEverythingCommentsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3727,19 +3727,19 @@ type GetEverythingFilesParams struct {
 	// PeopleIds Restrict to files created by the given people (repeatable).
 	PeopleIds *[]int64 `form:"people_ids[],omitempty" json:"people_ids[],omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingForwardsParams defines parameters for GetEverythingForwards.
 type GetEverythingForwardsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListForwardRepliesParams defines parameters for ListForwardReplies.
 type ListForwardRepliesParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3751,7 +3751,7 @@ type ListForwardsParams struct {
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3763,13 +3763,13 @@ type ListMessagesParams struct {
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingMessagesParams defines parameters for GetEverythingMessages.
 type GetEverythingMessagesParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3782,19 +3782,19 @@ type GetMyDueAssignmentsParams struct {
 
 // ListMyBookmarksParams defines parameters for ListMyBookmarks.
 type ListMyBookmarksParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListMyDraftsParams defines parameters for ListMyDrafts.
 type ListMyDraftsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetQuestionRemindersParams defines parameters for GetQuestionReminders.
 type GetQuestionRemindersParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3814,13 +3814,13 @@ type GetMyNotificationsParams struct {
 
 // GetBubbleUpsParams defines parameters for GetBubbleUps.
 type GetBubbleUpsParams struct {
-	// Page Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListPeopleParams defines parameters for ListPeople.
 type ListPeopleParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3829,7 +3829,7 @@ type ListProjectsParams struct {
 	// Status active|archived|trashed
 	Status *string `form:"status,omitempty" json:"status,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3848,25 +3848,25 @@ type ListRecordingsParams struct {
 	// Direction asc|desc
 	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListGaugeNeedlesParams defines parameters for ListGaugeNeedles.
 type ListGaugeNeedlesParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListProjectPeopleParams defines parameters for ListProjectPeople.
 type ListProjectPeopleParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetProjectTimelineParams defines parameters for GetProjectTimeline.
 type GetProjectTimelineParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3876,49 +3876,49 @@ type GetProjectTimesheetParams struct {
 	To       *string `form:"to,omitempty" json:"to,omitempty"`
 	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListQuestionsParams defines parameters for ListQuestions.
 type ListQuestionsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListAnswersParams defines parameters for ListAnswers.
 type ListAnswersParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetAnswersByPersonParams defines parameters for GetAnswersByPerson.
 type GetAnswersByPersonParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListRecordingBoostsParams defines parameters for ListRecordingBoosts.
 type ListRecordingBoostsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListCommentsParams defines parameters for ListComments.
 type ListCommentsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListEventsParams defines parameters for ListEvents.
 type ListEventsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListEventBoostsParams defines parameters for ListEventBoosts.
 type ListEventBoostsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3928,7 +3928,7 @@ type GetRecordingTimesheetParams struct {
 	To       *string `form:"to,omitempty" json:"to,omitempty"`
 	PersonId *int64  `form:"person_id,omitempty" json:"person_id,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3938,13 +3938,13 @@ type ListGaugesParams struct {
 	// in the order specified instead of by risk level.
 	BucketIds *string `form:"bucket_ids,omitempty" json:"bucket_ids,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetProgressReportParams defines parameters for GetProgressReport.
 type GetProgressReportParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3969,7 +3969,7 @@ type GetAssignedTodosParams struct {
 
 // GetPersonProgressParams defines parameters for GetPersonProgress.
 type GetPersonProgressParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -3978,7 +3978,7 @@ type ListScheduleEntriesParams struct {
 	// Status active|archived|trashed
 	Status *string `form:"status,omitempty" json:"status,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -4024,7 +4024,7 @@ type SearchParams struct {
 	// Deprecated: prefer creator_ids[].
 	CreatorId *int64 `form:"creator_id,omitempty" json:"creator_id,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -4033,13 +4033,13 @@ type ListTemplatesParams struct {
 	// Status active|archived|trashed
 	Status *string `form:"status,omitempty" json:"status,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListTodolistGroupsParams defines parameters for ListTodolistGroups.
 type ListTodolistGroupsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -4049,7 +4049,7 @@ type ListTodosParams struct {
 	Status    *string `form:"status,omitempty" json:"status,omitempty"`
 	Completed *bool   `form:"completed,omitempty" json:"completed,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -4062,7 +4062,7 @@ type GetEverythingCompletedTodosParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -4075,7 +4075,7 @@ type GetEverythingNoDueDateTodosParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -4088,7 +4088,7 @@ type GetEverythingOpenTodosParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -4111,7 +4111,7 @@ type GetEverythingUnassignedTodosParams struct {
 	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
 	Due *string `form:"due,omitempty" json:"due,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
@@ -4120,25 +4120,25 @@ type ListTodolistsParams struct {
 	// Status active|archived|trashed
 	Status *string `form:"status,omitempty" json:"status,omitempty"`
 
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListDocumentsParams defines parameters for ListDocuments.
 type ListDocumentsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListUploadsParams defines parameters for ListUploads.
 type ListUploadsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListVaultsParams defines parameters for ListVaults.
 type ListVaultsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 

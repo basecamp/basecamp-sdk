@@ -24,7 +24,7 @@ export type Inbox = components["schemas"]["Inbox"];
  * Options for listReplies.
  */
 export interface ListRepliesForwardOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -36,7 +36,7 @@ export interface ListForwardOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 

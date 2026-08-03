@@ -35,7 +35,7 @@ export interface ToggleGaugeGaugeRequest {
  * Options for listGaugeNeedles.
  */
 export interface ListGaugeNeedlesGaugeOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -58,7 +58,7 @@ export interface ListGaugesGaugeOptions extends PaginationOptions {
   /** Comma-separated list of project IDs. When provided, results are returned
 in the order specified instead of by risk level. */
   bucketIds?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 

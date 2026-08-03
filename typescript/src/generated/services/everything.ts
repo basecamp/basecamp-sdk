@@ -35,7 +35,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -48,7 +48,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -61,7 +61,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -74,7 +74,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -98,7 +98,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -106,7 +106,7 @@ Assignees on nested steps are not considered. */
  * Options for everythingCheckins.
  */
 export interface EverythingCheckinsEverythingOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -114,7 +114,7 @@ export interface EverythingCheckinsEverythingOptions extends PaginationOptions {
  * Options for everythingComments.
  */
 export interface EverythingCommentsEverythingOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -126,7 +126,7 @@ export interface EverythingFilesEverythingOptions extends PaginationOptions {
   kind?: string;
   /** Restrict to files created by the given people (repeatable). */
   peopleIds?: number[];
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -134,7 +134,7 @@ export interface EverythingFilesEverythingOptions extends PaginationOptions {
  * Options for everythingForwards.
  */
 export interface EverythingForwardsEverythingOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -142,7 +142,7 @@ export interface EverythingForwardsEverythingOptions extends PaginationOptions {
  * Options for everythingMessages.
  */
 export interface EverythingMessagesEverythingOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -155,7 +155,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -168,7 +168,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -181,7 +181,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -205,7 +205,7 @@ Assignees on nested steps are not considered. */
   assigneeIds?: number[];
   /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
   due?: string;
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 

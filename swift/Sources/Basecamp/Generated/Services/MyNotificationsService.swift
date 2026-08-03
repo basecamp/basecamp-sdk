@@ -2,7 +2,7 @@
 import Foundation
 
 public struct BubbleUpsMyNotificationOptions: Sendable {
-    /// Page number. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
