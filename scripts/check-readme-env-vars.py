@@ -511,6 +511,14 @@ def operand_position(text: str, i: int, flags: dict) -> bool:
             k -= 1
         if k < 0:
             return True
+    # `++` and `--` end a value, so what follows one is division -- but their
+    # single characters are both in REGEX_PRECEDERS, which read `x++ / y / 2`
+    # as a regex and masked everything between the slashes. Only the postfix
+    # form can sit here at all: prefix `++` is followed by its operand, never
+    # by an operator, so a doubled sign immediately before a `/` is always the
+    # postfix one and always division.
+    if text[k] in "+-" and k > 0 and text[k - 1] == text[k]:
+        return False
     if text[k] in REGEX_PRECEDERS:
         return True
     if text[k] == ")":
@@ -1165,6 +1173,57 @@ def real_reads(spec: dict, scoped: bool = True) -> dict[str, list[str]]:
     return found
 
 
+# Invariant 4 says "at all", and every pattern above needs a *named* variable to
+# match. A wholesale grab names none: `System.getenv()["BASECAMP_TOKEN"]`, a bare
+# `process.env` spread into a config object, `ProcessInfo.processInfo.environment`
+# handed on entire. So the one claim those break -- "reads no environment
+# variables at all" -- is exactly the one nothing here could see, and it would
+# have gone on passing while an SDK read the whole environment.
+#
+# Only the three SDKs that claim to read nothing need this, and for them the
+# question is simpler than name resolution: touching the environment API at all
+# is the violation. That is a fixed, tiny pattern set rather than more lexer.
+ENV_API = {
+    "TypeScript": [r"process\.env\b"],
+    "Swift": [r"ProcessInfo\.processInfo\.environment\b"],
+    "Kotlin": [r"System\.getenv\b"],
+}
+
+
+def env_api_sites(sdk: str, spec: dict) -> list[str]:
+    """'file:line' for every touch of the environment API in this SDK's source.
+
+    Same masking as `real_reads`, so a doc comment or a string literal spelling
+    `process.env` is not a touch -- every one of these appears in the READMEs'
+    own examples, and counting those would fail CI on a correct tree.
+    """
+    root = REPO / spec["source"]
+    sites: list[str] = []
+    if not root.is_dir():
+        return sites
+    compiled = [re.compile(p) for p in ENV_API.get(sdk, [])]
+    if not compiled:
+        return sites
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.suffix not in spec["suffixes"]:
+            continue
+        rel = path.relative_to(REPO)
+        if is_test(rel):
+            continue
+        text, in_string = strip_noncode(
+            path.read_text(encoding="utf-8", errors="replace"),
+            spec["comments"],
+            spec.get("flags"),
+        )
+        for pattern in compiled:
+            for match in pattern.finditer(text):
+                if in_string[match.start()]:
+                    continue
+                lineno = text.count("\n", 0, match.start()) + 1
+                sites.append(f"{rel}:{lineno}")
+    return sites
+
+
 def table_rows(readme: Path) -> list[tuple[int, list[str]]]:
     """Markdown table rows, as (line number, cells)."""
     rows = []
@@ -1453,6 +1512,17 @@ def main() -> int:
             failures.append(
                 f"{ROOT_README}: claims {sdk} reads no environment variables, but "
                 f"found: {detail}"
+            )
+        # ...and a grab of the whole environment names no variable, so the
+        # inventory above cannot see it even though it breaks the same
+        # sentence. Only asked when that inventory is empty: a named read
+        # already fails this claim, and says which variable, so reporting the
+        # API touch alongside it would be the same defect twice.
+        elif env_api_sites(sdk, SDKS[sdk]):
+            sites = env_api_sites(sdk, SDKS[sdk])
+            failures.append(
+                f"{ROOT_README}: claims {sdk} reads no environment variables, but its "
+                f"source reaches the whole environment at {', '.join(sites[:3])}"
             )
 
     # 5. Prose attribution, every README: "<SDK> reads `VAR`" must be true.

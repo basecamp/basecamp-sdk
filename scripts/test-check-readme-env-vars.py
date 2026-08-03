@@ -103,6 +103,11 @@ def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = (),
             every = gate.real_reads(sdks[sdk], scoped=False)
             if every:
                 failures.append(f"noenv:{sdk}:{sorted(every)[0]}")
+            # ...and a wholesale grab, which names no variable and so cannot
+            # appear in the inventory above at all. Only when that inventory is
+            # empty, matching main(): a named read already fails the claim.
+            elif gate.env_api_sites(sdk, sdks[sdk]):
+                failures.append(f"envapi:{sdk}")
         return failures
     finally:
         gate.REPO, gate.SDKS, gate.NO_ENV_SDKS = old_repo, old_sdks, old_no_env
@@ -1387,7 +1392,73 @@ def main() -> int:
         check("a backslash still escapes swift multiline interpolation",
               run_gate(root, SW_SDK, no_env_sdks=("Swift",)), [])
 
-        # 13. The shipped entrypoint, end to end. Everything above drives the
+        # 13. `++` and `--` end a value, so the slash after one is division --
+        #     but both of their characters are in REGEX_PRECEDERS, so the
+        #     single-character heuristic called it a regex and masked the read
+        #     between the slashes. Fail-open.
+        root = tmp / "ts-postfix-division"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts":
+                "let x = 1;\nconst n = x++ / process.env.BASECAMP_REAL / 2;\n",
+        })
+        check("division after a postfix increment keeps its read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        # ...while a single `+` really does expect an operand, so the regex
+        # reading must survive for it.
+        root = tmp / "ts-plus-regex"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                'const s = "" + /process.env.BASECAMP_FAKE/.source;\n',
+        })
+        check("a regex after a single plus is still a regex",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # 14. "Reads no environment variables at all" is broken by a grab of the
+        #     whole environment too, and that names no variable -- so the read
+        #     patterns, which all require a quoted name, could never see it.
+        root = tmp / "kotlin-whole-env"
+        build(root, {
+            "kotlin/README.md": "no tables\n",
+            "kotlin/sdk/src/c.kt": 'val t = System.getenv()["BASECAMP_TOKEN"]\n',
+        })
+        check("a whole-environment grab breaks the no-env claim",
+              run_gate(root, KT_SDK, no_env_sdks=("Kotlin",)), ["envapi:Kotlin"])
+
+        root = tmp / "ts-whole-env"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts": "const cfg = { ...process.env };\n",
+        })
+        check("a spread of process.env breaks the no-env claim",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), ["envapi:TypeScript"])
+
+        root = tmp / "swift-whole-env"
+        build(root, {
+            "swift/README.md": "no tables\n",
+            "swift/Sources/c.swift":
+                "let all = ProcessInfo.processInfo.environment\n",
+        })
+        check("passing the whole swift environment breaks the claim",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)), ["envapi:Swift"])
+
+        # ...but the READMEs' own examples spell these APIs in prose and code
+        # blocks, and the SDK sources carry them in doc comments. Counting those
+        # would fail CI on a correct tree, which is how a gate gets deleted.
+        root = tmp / "ts-whole-env-in-comment"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                '// Callers do `process.env.BASECAMP_TOKEN` themselves.\n'
+                'const s = "process.env";\n',
+        })
+        check("a documented environment API is not a touch",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # 15. The shipped entrypoint, end to end. Everything above drives the
         #     helpers `main()` drives, so until here the exit code that `make
         #     check` and the CI step branch on had no coverage at all -- a
         #     `main()` that collected every failure and then returned 0 would
