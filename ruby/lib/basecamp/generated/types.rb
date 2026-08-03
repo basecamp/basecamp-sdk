@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-04T04:04:08Z
+# Generated: 2026-08-04T05:29:38Z
 
 require "json"
 require "time"
@@ -1251,6 +1251,108 @@ module Basecamp
       end
     end
 
+    # CloudFile
+    class CloudFile
+      include TypeHelpers
+      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :service, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :description, :position, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator description_attachments id inherits_status parent service status title type updated_at url visible_to_clients].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @service = parse_type(data["service"], "CloudFileService")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @description = data["description"]
+        @position = parse_integer(data["position"])
+        @subscription_url = data["subscription_url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "description_attachments" => @description_attachments,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "service" => @service,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "description" => @description,
+          "position" => @position,
+          "subscription_url" => @subscription_url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # CloudFileService
+    class CloudFileService
+      include TypeHelpers
+      attr_accessor :code, :example_url, :name, :valid_patterns, :supporting_text
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[code example_url name valid_patterns].freeze
+      end
+
+      def initialize(data = {})
+        @code = data["code"]
+        @example_url = data["example_url"]
+        @name = data["name"]
+        @valid_patterns = data["valid_patterns"]
+        @supporting_text = data["supporting_text"]
+      end
+
+      def to_h
+        {
+          "code" => @code,
+          "example_url" => @example_url,
+          "name" => @name,
+          "valid_patterns" => @valid_patterns,
+          "supporting_text" => @supporting_text,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # Comment
     class Comment
       include TypeHelpers
@@ -2160,6 +2262,75 @@ module Basecamp
       def to_h
         {
           "enabled" => @enabled,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # GoogleDocument
+    class GoogleDocument
+      include TypeHelpers
+      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :document_type, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :description, :position, :subscription_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator description_attachments document_type id inherits_status parent status title type updated_at url visible_to_clients].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
+        @document_type = data["document_type"]
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @description = data["description"]
+        @position = parse_integer(data["position"])
+        @subscription_url = data["subscription_url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "description_attachments" => @description_attachments,
+          "document_type" => @document_type,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "description" => @description,
+          "position" => @position,
+          "subscription_url" => @subscription_url,
         }.compact
       end
 

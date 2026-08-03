@@ -18,6 +18,7 @@ extension AccountClient {
     public var clientCorrespondences: ClientCorrespondencesService { service("clientCorrespondences") { ClientCorrespondencesService(accountClient: self) } }
     public var clientReplies: ClientRepliesService { service("clientReplies") { ClientRepliesService(accountClient: self) } }
     public var clientVisibility: ClientVisibilityService { service("clientVisibility") { ClientVisibilityService(accountClient: self) } }
+    public var cloudFiles: CloudFilesService { service("cloudFiles") { CloudFilesService(accountClient: self) } }
     public var comments: CommentsService { service("comments") { CommentsService(accountClient: self) } }
     public var documents: DocumentsService { service("documents") { DocumentsService(accountClient: self) } }
     public var drafts: DraftsService { service("drafts") { DraftsService(accountClient: self) } }
@@ -26,6 +27,7 @@ extension AccountClient {
     public var folders: FoldersService { service("folders") { FoldersService(accountClient: self) } }
     public var forwards: ForwardsService { service("forwards") { ForwardsService(accountClient: self) } }
     public var gauges: GaugesService { service("gauges") { GaugesService(accountClient: self) } }
+    public var googleDocuments: GoogleDocumentsService { service("googleDocuments") { GoogleDocumentsService(accountClient: self) } }
     public var hillCharts: HillChartsService { service("hillCharts") { HillChartsService(accountClient: self) } }
     public var lineup: LineupService { service("lineup") { LineupService(accountClient: self) } }
     public var messageBoards: MessageBoardsService { service("messageBoards") { MessageBoardsService(accountClient: self) } }

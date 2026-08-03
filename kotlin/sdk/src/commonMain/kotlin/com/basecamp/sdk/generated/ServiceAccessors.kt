@@ -75,6 +75,10 @@ val AccountClient.clientReplies: ClientRepliesService
 val AccountClient.clientVisibility: ClientVisibilityService
     get() = service("ClientVisibility") { ClientVisibilityService(this) }
 
+/** CloudFiles operations. */
+val AccountClient.cloudFiles: CloudFilesService
+    get() = service("CloudFiles") { CloudFilesService(this) }
+
 /** Comments operations. */
 val AccountClient.comments: CommentsService
     get() = service("Comments") { CommentsService(this) }
@@ -106,6 +110,10 @@ val AccountClient.forwards: ForwardsService
 /** Gauges operations. */
 val AccountClient.gauges: GaugesService
     get() = service("Gauges") { GaugesService(this) }
+
+/** GoogleDocuments operations. */
+val AccountClient.googleDocuments: GoogleDocumentsService
+    get() = service("GoogleDocuments") { GoogleDocumentsService(this) }
 
 /** HillCharts operations. */
 val AccountClient.hillCharts: HillChartsService

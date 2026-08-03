@@ -488,6 +488,67 @@ type ClientSide struct {
 	Url    *string `json:"url,omitempty"`
 }
 
+// CloudFile defines model for CloudFile.
+type CloudFile struct {
+	AppUrl                 string               `json:"app_url"`
+	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
+	BoostsCount            *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl              *string              `json:"boosts_url,omitempty"`
+	Bucket                 TodoBucket           `json:"bucket"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsUrl            *string              `json:"comments_url,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	Creator                Person               `json:"creator"`
+	Description            *string              `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status"`
+	Parent                 RecordingParent      `json:"parent"`
+	Position               *int32               `json:"position,omitempty"`
+
+	// Service The external service a cloud file points at, embedded in every cloud file
+	// response so clients can render the service's name, supporting text, and
+	// example URL without shipping a hard-coded catalogue. Serialized by
+	// CloudFile::Service#as_json.
+	Service         CloudFileService `json:"service"`
+	Status          string           `json:"status"`
+	SubscriptionUrl *string          `json:"subscription_url,omitempty"`
+	Title           string           `json:"title"`
+	Type            string           `json:"type"`
+	UpdatedAt       time.Time        `json:"updated_at"`
+
+	// Url The link on the external service — NOT this record's API URL. The
+	// cloud_files jbuilder renders the shared recording partial first and then
+	// `json.(recording.recordable, :url, :service)`, which overwrites the
+	// recording's `url` key with the recordable's. `app_url` is still this
+	// record's Basecamp URL.
+	Url              string `json:"url"`
+	VisibleToClients bool   `json:"visible_to_clients"`
+}
+
+// CloudFileService The external service a cloud file points at, embedded in every cloud file
+// response so clients can render the service's name, supporting text, and
+// example URL without shipping a hard-coded catalogue. Serialized by
+// CloudFile::Service#as_json.
+type CloudFileService struct {
+	// Code Short identifier for the external service — "dropbox", "google_doc",
+	// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
+	// is always present. `other` accepts any well-formed HTTPS URL.
+	Code string `json:"code"`
+
+	// ExampleUrl A representative URL for the service, suitable as an input placeholder.
+	ExampleUrl string `json:"example_url"`
+	Name       string `json:"name"`
+
+	// SupportingText Human-readable hint ("a file or folder on Dropbox"). Absent for services
+	// that declare none — CloudFile::Service::Services::Other, for one.
+	SupportingText *string `json:"supporting_text,omitempty"`
+
+	// ValidPatterns Regular expressions the cloud file's `url` is validated against. Sending a
+	// `url` that matches none of the selected service's patterns is a 422.
+	ValidPatterns []string `json:"valid_patterns"`
+}
+
 // Comment defines model for Comment.
 type Comment struct {
 	AppUrl             string               `json:"app_url"`
@@ -581,6 +642,28 @@ type CreateChatbotRequestContent struct {
 // CreateChatbotResponseContent defines model for CreateChatbotResponseContent.
 type CreateChatbotResponseContent = Chatbot
 
+// CreateCloudFileRequestContent defines model for CreateCloudFileRequestContent.
+type CreateCloudFileRequestContent struct {
+	Description *string `json:"description,omitempty"`
+
+	// Service Short identifier for the external service — "dropbox", "google_doc",
+	// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
+	// is always present. `other` accepts any well-formed HTTPS URL.
+	Service       string   `json:"service"`
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	Title         *string  `json:"title,omitempty"`
+	Url           string   `json:"url"`
+
+	// VisibleToClients Whether the cloud file is visible to the project's clients. Applies only
+	// when creating directly in the tool's vault — an item created inside a
+	// folder inherits the folder's visibility and ignores this. A client caller
+	// always creates client-visible records regardless of what is sent.
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
+}
+
+// CreateCloudFileResponseContent defines model for CreateCloudFileResponseContent.
+type CreateCloudFileResponseContent = CloudFile
+
 // CreateCommentRequestContent defines model for CreateCommentRequestContent.
 type CreateCommentRequestContent struct {
 	Content string `json:"content"`
@@ -642,6 +725,32 @@ type CreateGaugeNeedleRequestContent struct {
 
 // CreateGaugeNeedleResponseContent defines model for CreateGaugeNeedleResponseContent.
 type CreateGaugeNeedleResponseContent = GaugeNeedle
+
+// CreateGoogleDocumentRequestContent defines model for CreateGoogleDocumentRequestContent.
+type CreateGoogleDocumentRequestContent struct {
+	Description *string `json:"description,omitempty"`
+
+	// DocumentType One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
+	// unrecognized value is rejected up front with a field-keyed 422
+	// ({"errors": {"document_type": ["is not a valid document type"]}}) rather
+	// than reaching validation.
+	DocumentType string `json:"document_type"`
+
+	// Status active|drafted — defaults to drafted
+	Status        *string  `json:"status,omitempty"`
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	Title         *string  `json:"title,omitempty"`
+	Url           string   `json:"url"`
+
+	// VisibleToClients Whether the document is visible to the project's clients. Applies only
+	// when creating directly in the tool's vault — an item created inside a
+	// folder inherits the folder's visibility and ignores this. A client caller
+	// always creates client-visible records regardless of what is sent.
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
+}
+
+// CreateGoogleDocumentResponseContent defines model for CreateGoogleDocumentResponseContent.
+type CreateGoogleDocumentResponseContent = GoogleDocument
 
 // CreateLineupMarkerRequestContent defines model for CreateLineupMarkerRequestContent.
 type CreateLineupMarkerRequestContent struct {
@@ -1350,6 +1459,9 @@ type GetClientCorrespondenceResponseContent = ClientCorrespondence
 // GetClientReplyResponseContent defines model for GetClientReplyResponseContent.
 type GetClientReplyResponseContent = ClientReply
 
+// GetCloudFileResponseContent defines model for GetCloudFileResponseContent.
+type GetCloudFileResponseContent = CloudFile
+
 // GetCommentResponseContent defines model for GetCommentResponseContent.
 type GetCommentResponseContent = Comment
 
@@ -1418,6 +1530,9 @@ type GetForwardResponseContent = Forward
 
 // GetGaugeNeedleResponseContent defines model for GetGaugeNeedleResponseContent.
 type GetGaugeNeedleResponseContent = GaugeNeedle
+
+// GetGoogleDocumentResponseContent defines model for GetGoogleDocumentResponseContent.
+type GetGoogleDocumentResponseContent = GoogleDocument
 
 // GetHillChartResponseContent defines model for GetHillChartResponseContent.
 type GetHillChartResponseContent = HillChart
@@ -1606,6 +1721,41 @@ type GetVaultResponseContent = Vault
 
 // GetWebhookResponseContent defines model for GetWebhookResponseContent.
 type GetWebhookResponseContent = Webhook
+
+// GoogleDocument defines model for GoogleDocument.
+type GoogleDocument struct {
+	AppUrl                 string               `json:"app_url"`
+	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
+	BoostsCount            *int32               `json:"boosts_count,omitempty"`
+	BoostsUrl              *string              `json:"boosts_url,omitempty"`
+	Bucket                 TodoBucket           `json:"bucket"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsUrl            *string              `json:"comments_url,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	Creator                Person               `json:"creator"`
+	Description            *string              `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+
+	// DocumentType One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
+	// unrecognized value is rejected up front with a field-keyed 422
+	// ({"errors": {"document_type": ["is not a valid document type"]}}) rather
+	// than reaching validation.
+	DocumentType    string          `json:"document_type"`
+	Id              int64           `json:"id"`
+	InheritsStatus  bool            `json:"inherits_status"`
+	Parent          RecordingParent `json:"parent"`
+	Position        *int32          `json:"position,omitempty"`
+	Status          string          `json:"status"`
+	SubscriptionUrl *string         `json:"subscription_url,omitempty"`
+	Title           string          `json:"title"`
+	Type            string          `json:"type"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+
+	// Url The Google Workspace document link — NOT this record's API URL. Same
+	// recordable-overwrites-recording rendering as CloudFile#url.
+	Url              string `json:"url"`
+	VisibleToClients bool   `json:"visible_to_clients"`
+}
 
 // HillChart defines model for HillChart.
 type HillChart struct {
@@ -3262,6 +3412,22 @@ type UpdateChatbotRequestContent struct {
 // UpdateChatbotResponseContent defines model for UpdateChatbotResponseContent.
 type UpdateChatbotResponseContent = Chatbot
 
+// UpdateCloudFileRequestContent defines model for UpdateCloudFileRequestContent.
+type UpdateCloudFileRequestContent struct {
+	Description *string `json:"description,omitempty"`
+
+	// Service Short identifier for the external service — "dropbox", "google_doc",
+	// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
+	// is always present. `other` accepts any well-formed HTTPS URL.
+	Service       string   `json:"service"`
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	Title         *string  `json:"title,omitempty"`
+	Url           string   `json:"url"`
+}
+
+// UpdateCloudFileResponseContent defines model for UpdateCloudFileResponseContent.
+type UpdateCloudFileResponseContent = CloudFile
+
 // UpdateCommentRequestContent defines model for UpdateCommentRequestContent.
 type UpdateCommentRequestContent struct {
 	Content string `json:"content"`
@@ -3290,6 +3456,26 @@ type UpdateGaugeNeedleRequestContent struct {
 
 // UpdateGaugeNeedleResponseContent defines model for UpdateGaugeNeedleResponseContent.
 type UpdateGaugeNeedleResponseContent = GaugeNeedle
+
+// UpdateGoogleDocumentRequestContent defines model for UpdateGoogleDocumentRequestContent.
+type UpdateGoogleDocumentRequestContent struct {
+	Description *string `json:"description,omitempty"`
+
+	// DocumentType One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
+	// unrecognized value is rejected up front with a field-keyed 422
+	// ({"errors": {"document_type": ["is not a valid document type"]}}) rather
+	// than reaching validation.
+	DocumentType string `json:"document_type"`
+
+	// Status active|drafted
+	Status        *string  `json:"status,omitempty"`
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	Title         *string  `json:"title,omitempty"`
+	Url           string   `json:"url"`
+}
+
+// UpdateGoogleDocumentResponseContent defines model for UpdateGoogleDocumentResponseContent.
+type UpdateGoogleDocumentResponseContent = GoogleDocument
 
 // UpdateHillChartSettingsRequestContent defines model for UpdateHillChartSettingsRequestContent.
 type UpdateHillChartSettingsRequestContent struct {
@@ -4350,6 +4536,12 @@ type CreateToolJSONRequestBody = CreateToolRequestContent
 // CreateTodosetTodoJSONRequestBody defines body for CreateTodosetTodo for application/json ContentType.
 type CreateTodosetTodoJSONRequestBody = CreateTodosetTodoRequestContent
 
+// CreateCloudFileJSONRequestBody defines body for CreateCloudFile for application/json ContentType.
+type CreateCloudFileJSONRequestBody = CreateCloudFileRequestContent
+
+// CreateGoogleDocumentJSONRequestBody defines body for CreateGoogleDocument for application/json ContentType.
+type CreateGoogleDocumentJSONRequestBody = CreateGoogleDocumentRequestContent
+
 // CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
 type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
 
@@ -4392,6 +4584,9 @@ type CreateCampfireLineJSONRequestBody = CreateCampfireLineRequestContent
 // UpdateCampfireLineJSONRequestBody defines body for UpdateCampfireLine for application/json ContentType.
 type UpdateCampfireLineJSONRequestBody = UpdateCampfireLineRequestContent
 
+// UpdateCloudFileJSONRequestBody defines body for UpdateCloudFile for application/json ContentType.
+type UpdateCloudFileJSONRequestBody = UpdateCloudFileRequestContent
+
 // UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
 type UpdateCommentJSONRequestBody = UpdateCommentRequestContent
 
@@ -4403,6 +4598,9 @@ type ReplaceDocumentJSONRequestBody = ReplaceDocumentRequestContent
 
 // UpdateGaugeNeedleJSONRequestBody defines body for UpdateGaugeNeedle for application/json ContentType.
 type UpdateGaugeNeedleJSONRequestBody = UpdateGaugeNeedleRequestContent
+
+// UpdateGoogleDocumentJSONRequestBody defines body for UpdateGoogleDocument for application/json ContentType.
+type UpdateGoogleDocumentJSONRequestBody = UpdateGoogleDocumentRequestContent
 
 // CreateLineupMarkerJSONRequestBody defines body for CreateLineupMarker for application/json ContentType.
 type CreateLineupMarkerJSONRequestBody = CreateLineupMarkerRequestContent
@@ -5145,6 +5343,16 @@ type ClientInterface interface {
 
 	CreateTodosetTodo(ctx context.Context, accountId string, bucketId int64, todosetId int64, body CreateTodosetTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateCloudFileWithBody request with any body
+	CreateCloudFileWithBody(ctx context.Context, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateCloudFile(ctx context.Context, accountId string, bucketId int64, vaultId int64, body CreateCloudFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateGoogleDocumentWithBody request with any body
+	CreateGoogleDocumentWithBody(ctx context.Context, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateGoogleDocument(ctx context.Context, accountId string, bucketId int64, vaultId int64, body CreateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListWebhooks request
 	ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5293,6 +5501,14 @@ type ClientInterface interface {
 	// GetClientCorrespondence request
 	GetClientCorrespondence(ctx context.Context, accountId string, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetCloudFile request
+	GetCloudFile(ctx context.Context, accountId string, cloudFileId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCloudFileWithBody request with any body
+	UpdateCloudFileWithBody(ctx context.Context, accountId string, cloudFileId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateCloudFile(ctx context.Context, accountId string, cloudFileId int64, body UpdateCloudFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetEverythingComments request
 	GetEverythingComments(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5339,6 +5555,14 @@ type ClientInterface interface {
 	UpdateGaugeNeedleWithBody(ctx context.Context, accountId string, needleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateGaugeNeedle(ctx context.Context, accountId string, needleId int64, body UpdateGaugeNeedleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetGoogleDocument request
+	GetGoogleDocument(ctx context.Context, accountId string, googleDocumentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGoogleDocumentWithBody request with any body
+	UpdateGoogleDocumentWithBody(ctx context.Context, accountId string, googleDocumentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateGoogleDocument(ctx context.Context, accountId string, googleDocumentId int64, body UpdateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetForward request
 	GetForward(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6358,6 +6582,66 @@ func (c *Client) CreateTodosetTodo(ctx context.Context, accountId string, bucket
 
 }
 
+// CreateCloudFileWithBody executes the CreateCloudFile operation.
+
+func (c *Client) CreateCloudFileWithBody(ctx context.Context, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateCloudFileRequestWithBody(c.Server, accountId, bucketId, vaultId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateCloudFile(ctx context.Context, accountId string, bucketId int64, vaultId int64, body CreateCloudFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateCloudFileRequest(c.Server, accountId, bucketId, vaultId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// CreateGoogleDocumentWithBody executes the CreateGoogleDocument operation.
+
+func (c *Client) CreateGoogleDocumentWithBody(ctx context.Context, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateGoogleDocumentRequestWithBody(c.Server, accountId, bucketId, vaultId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateGoogleDocument(ctx context.Context, accountId string, bucketId int64, vaultId int64, body CreateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateGoogleDocumentRequest(c.Server, accountId, bucketId, vaultId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // ListWebhooks is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6972,6 +7256,34 @@ func (c *Client) GetClientCorrespondence(ctx context.Context, accountId string, 
 
 }
 
+// GetCloudFile is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetCloudFile(ctx context.Context, accountId string, cloudFileId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCloudFileRequest(c.Server, accountId, cloudFileId)
+	}, true, "GetCloudFile", reqEditors...)
+
+}
+
+// UpdateCloudFileWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateCloudFileWithBody(ctx context.Context, accountId string, cloudFileId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateCloudFileRequestWithBody(c.Server, accountId, cloudFileId, contentType, body)
+	}, true, "UpdateCloudFile", reqEditors...)
+
+}
+
+func (c *Client) UpdateCloudFile(ctx context.Context, accountId string, cloudFileId int64, body UpdateCloudFileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateCloudFileRequest(c.Server, accountId, cloudFileId, body)
+	}, true, "UpdateCloudFile", reqEditors...)
+
+}
+
 // GetEverythingComments is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetEverythingComments(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -7131,6 +7443,34 @@ func (c *Client) UpdateGaugeNeedle(ctx context.Context, accountId string, needle
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateGaugeNeedleRequest(c.Server, accountId, needleId, body)
 	}, true, "UpdateGaugeNeedle", reqEditors...)
+
+}
+
+// GetGoogleDocument is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetGoogleDocument(ctx context.Context, accountId string, googleDocumentId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetGoogleDocumentRequest(c.Server, accountId, googleDocumentId)
+	}, true, "GetGoogleDocument", reqEditors...)
+
+}
+
+// UpdateGoogleDocumentWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateGoogleDocumentWithBody(ctx context.Context, accountId string, googleDocumentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateGoogleDocumentRequestWithBody(c.Server, accountId, googleDocumentId, contentType, body)
+	}, true, "UpdateGoogleDocument", reqEditors...)
+
+}
+
+func (c *Client) UpdateGoogleDocument(ctx context.Context, accountId string, googleDocumentId int64, body UpdateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateGoogleDocumentRequest(c.Server, accountId, googleDocumentId, body)
+	}, true, "UpdateGoogleDocument", reqEditors...)
 
 }
 
@@ -10999,6 +11339,128 @@ func NewCreateTodosetTodoRequestWithBody(server string, accountId string, bucket
 	return req, nil
 }
 
+// NewCreateCloudFileRequest calls the generic CreateCloudFile builder with application/json body
+func NewCreateCloudFileRequest(server string, accountId string, bucketId int64, vaultId int64, body CreateCloudFileJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateCloudFileRequestWithBody(server, accountId, bucketId, vaultId, "application/json", bodyReader)
+}
+
+// NewCreateCloudFileRequestWithBody generates requests for CreateCloudFile with any type of body
+func NewCreateCloudFileRequestWithBody(server string, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s/cloud_files.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateGoogleDocumentRequest calls the generic CreateGoogleDocument builder with application/json body
+func NewCreateGoogleDocumentRequest(server string, accountId string, bucketId int64, vaultId int64, body CreateGoogleDocumentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateGoogleDocumentRequestWithBody(server, accountId, bucketId, vaultId, "application/json", bodyReader)
+}
+
+// NewCreateGoogleDocumentRequestWithBody generates requests for CreateGoogleDocument with any type of body
+func NewCreateGoogleDocumentRequestWithBody(server string, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "vaultId", runtime.ParamLocationPath, vaultId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/vaults/%s/google_documents.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListWebhooksRequest generates requests for ListWebhooks
 func NewListWebhooksRequest(server string, accountId string, bucketId int64) (*http.Request, error) {
 	var err error
@@ -13281,6 +13743,101 @@ func NewGetClientCorrespondenceRequest(server string, accountId string, correspo
 	return req, nil
 }
 
+// NewGetCloudFileRequest generates requests for GetCloudFile
+func NewGetCloudFileRequest(server string, accountId string, cloudFileId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cloudFileId", runtime.ParamLocationPath, cloudFileId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/cloud_files/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateCloudFileRequest calls the generic UpdateCloudFile builder with application/json body
+func NewUpdateCloudFileRequest(server string, accountId string, cloudFileId int64, body UpdateCloudFileJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateCloudFileRequestWithBody(server, accountId, cloudFileId, "application/json", bodyReader)
+}
+
+// NewUpdateCloudFileRequestWithBody generates requests for UpdateCloudFile with any type of body
+func NewUpdateCloudFileRequestWithBody(server string, accountId string, cloudFileId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "cloudFileId", runtime.ParamLocationPath, cloudFileId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/cloud_files/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetEverythingCommentsRequest generates requests for GetEverythingComments
 func NewGetEverythingCommentsRequest(server string, accountId string, params *GetEverythingCommentsParams) (*http.Request, error) {
 	var err error
@@ -13924,6 +14481,101 @@ func NewUpdateGaugeNeedleRequestWithBody(server string, accountId string, needle
 	}
 
 	operationPath := fmt.Sprintf("/%s/gauge_needles/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetGoogleDocumentRequest generates requests for GetGoogleDocument
+func NewGetGoogleDocumentRequest(server string, accountId string, googleDocumentId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "googleDocumentId", runtime.ParamLocationPath, googleDocumentId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/google_documents/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateGoogleDocumentRequest calls the generic UpdateGoogleDocument builder with application/json body
+func NewUpdateGoogleDocumentRequest(server string, accountId string, googleDocumentId int64, body UpdateGoogleDocumentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateGoogleDocumentRequestWithBody(server, accountId, googleDocumentId, "application/json", bodyReader)
+}
+
+// NewUpdateGoogleDocumentRequestWithBody generates requests for UpdateGoogleDocument with any type of body
+func NewUpdateGoogleDocumentRequestWithBody(server string, accountId string, googleDocumentId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "googleDocumentId", runtime.ParamLocationPath, googleDocumentId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/google_documents/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -22666,6 +23318,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
 	"CreateTool":                         {Idempotent: false, HasSensitiveParams: false},
 	"CreateTodosetTodo":                  {Idempotent: false, HasSensitiveParams: false},
+	"CreateCloudFile":                    {Idempotent: false, HasSensitiveParams: false},
+	"CreateGoogleDocument":               {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetCalendar":                        {Idempotent: true, HasSensitiveParams: false},
@@ -22706,6 +23360,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"ListPingablePeople":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetClientApproval":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetClientCorrespondence":            {Idempotent: true, HasSensitiveParams: false},
+	"GetCloudFile":                       {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCloudFile":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingComments":              {Idempotent: true, HasSensitiveParams: false},
 	"GetComment":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateComment":                      {Idempotent: true, HasSensitiveParams: false},
@@ -22719,6 +23375,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"DestroyGaugeNeedle":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetGaugeNeedle":                     {Idempotent: true, HasSensitiveParams: false},
 	"UpdateGaugeNeedle":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetGoogleDocument":                  {Idempotent: true, HasSensitiveParams: false},
+	"UpdateGoogleDocument":               {Idempotent: true, HasSensitiveParams: false},
 	"GetForward":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListForwardReplies":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetForwardReply":                    {Idempotent: true, HasSensitiveParams: false},
@@ -22916,6 +23574,8 @@ var operationRetryMax = map[string]int{
 	"GetClientReply":                     3,
 	"CreateTool":                         2,
 	"CreateTodosetTodo":                  3,
+	"CreateCloudFile":                    2,
+	"CreateGoogleDocument":               2,
 	"ListWebhooks":                       3,
 	"CreateWebhook":                      2,
 	"GetCalendar":                        3,
@@ -22956,6 +23616,8 @@ var operationRetryMax = map[string]int{
 	"ListPingablePeople":                 3,
 	"GetClientApproval":                  3,
 	"GetClientCorrespondence":            3,
+	"GetCloudFile":                       3,
+	"UpdateCloudFile":                    3,
 	"GetEverythingComments":              3,
 	"GetComment":                         3,
 	"UpdateComment":                      3,
@@ -22969,6 +23631,8 @@ var operationRetryMax = map[string]int{
 	"DestroyGaugeNeedle":                 2,
 	"GetGaugeNeedle":                     3,
 	"UpdateGaugeNeedle":                  2,
+	"GetGoogleDocument":                  3,
+	"UpdateGoogleDocument":               3,
 	"GetForward":                         3,
 	"ListForwardReplies":                 3,
 	"GetForwardReply":                    3,
@@ -23164,6 +23828,8 @@ var operationRetryOn = map[string][]int{
 	"GetClientReply":                     {429, 503},
 	"CreateTool":                         {429, 503},
 	"CreateTodosetTodo":                  {429, 503},
+	"CreateCloudFile":                    {429, 503},
+	"CreateGoogleDocument":               {429, 503},
 	"ListWebhooks":                       {429, 503},
 	"CreateWebhook":                      {429, 503},
 	"GetCalendar":                        {429, 503},
@@ -23204,6 +23870,8 @@ var operationRetryOn = map[string][]int{
 	"ListPingablePeople":                 {429, 503},
 	"GetClientApproval":                  {429, 503},
 	"GetClientCorrespondence":            {429, 503},
+	"GetCloudFile":                       {429, 503},
+	"UpdateCloudFile":                    {429, 503},
 	"GetEverythingComments":              {429, 503},
 	"GetComment":                         {429, 503},
 	"UpdateComment":                      {429, 503},
@@ -23217,6 +23885,8 @@ var operationRetryOn = map[string][]int{
 	"DestroyGaugeNeedle":                 {429, 503},
 	"GetGaugeNeedle":                     {429, 503},
 	"UpdateGaugeNeedle":                  {429, 503},
+	"GetGoogleDocument":                  {429, 503},
+	"UpdateGoogleDocument":               {429, 503},
 	"GetForward":                         {429, 503},
 	"ListForwardReplies":                 {429, 503},
 	"GetForwardReply":                    {429, 503},
@@ -24435,6 +25105,16 @@ type ClientWithResponsesInterface interface {
 
 	CreateTodosetTodoWithResponse(ctx context.Context, accountId string, bucketId int64, todosetId int64, body CreateTodosetTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodosetTodoResponse, error)
 
+	// CreateCloudFileWithBodyWithResponse request with any body
+	CreateCloudFileWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCloudFileResponse, error)
+
+	CreateCloudFileWithResponse(ctx context.Context, accountId string, bucketId int64, vaultId int64, body CreateCloudFileJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCloudFileResponse, error)
+
+	// CreateGoogleDocumentWithBodyWithResponse request with any body
+	CreateGoogleDocumentWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGoogleDocumentResponse, error)
+
+	CreateGoogleDocumentWithResponse(ctx context.Context, accountId string, bucketId int64, vaultId int64, body CreateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGoogleDocumentResponse, error)
+
 	// ListWebhooksWithResponse request
 	ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
 
@@ -24583,6 +25263,14 @@ type ClientWithResponsesInterface interface {
 	// GetClientCorrespondenceWithResponse request
 	GetClientCorrespondenceWithResponse(ctx context.Context, accountId string, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error)
 
+	// GetCloudFileWithResponse request
+	GetCloudFileWithResponse(ctx context.Context, accountId string, cloudFileId int64, reqEditors ...RequestEditorFn) (*GetCloudFileResponse, error)
+
+	// UpdateCloudFileWithBodyWithResponse request with any body
+	UpdateCloudFileWithBodyWithResponse(ctx context.Context, accountId string, cloudFileId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCloudFileResponse, error)
+
+	UpdateCloudFileWithResponse(ctx context.Context, accountId string, cloudFileId int64, body UpdateCloudFileJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCloudFileResponse, error)
+
 	// GetEverythingCommentsWithResponse request
 	GetEverythingCommentsWithResponse(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*GetEverythingCommentsResponse, error)
 
@@ -24629,6 +25317,14 @@ type ClientWithResponsesInterface interface {
 	UpdateGaugeNeedleWithBodyWithResponse(ctx context.Context, accountId string, needleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGaugeNeedleResponse, error)
 
 	UpdateGaugeNeedleWithResponse(ctx context.Context, accountId string, needleId int64, body UpdateGaugeNeedleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGaugeNeedleResponse, error)
+
+	// GetGoogleDocumentWithResponse request
+	GetGoogleDocumentWithResponse(ctx context.Context, accountId string, googleDocumentId int64, reqEditors ...RequestEditorFn) (*GetGoogleDocumentResponse, error)
+
+	// UpdateGoogleDocumentWithBodyWithResponse request with any body
+	UpdateGoogleDocumentWithBodyWithResponse(ctx context.Context, accountId string, googleDocumentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGoogleDocumentResponse, error)
+
+	UpdateGoogleDocumentWithResponse(ctx context.Context, accountId string, googleDocumentId int64, body UpdateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGoogleDocumentResponse, error)
 
 	// GetForwardWithResponse request
 	GetForwardWithResponse(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error)
@@ -26207,6 +26903,76 @@ func (r CreateTodosetTodoResponse) ContentType() string {
 	return ""
 }
 
+type CreateCloudFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateCloudFileResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCloudFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCloudFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCloudFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateGoogleDocumentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateGoogleDocumentResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateGoogleDocumentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateGoogleDocumentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateGoogleDocumentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListWebhooksResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -27580,6 +28346,75 @@ func (r GetClientCorrespondenceResponse) ContentType() string {
 	return ""
 }
 
+type GetCloudFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetCloudFileResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCloudFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCloudFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCloudFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateCloudFileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateCloudFileResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateCloudFileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateCloudFileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCloudFileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetEverythingCommentsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -28020,6 +28855,75 @@ func (r UpdateGaugeNeedleResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateGaugeNeedleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetGoogleDocumentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetGoogleDocumentResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGoogleDocumentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGoogleDocumentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetGoogleDocumentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateGoogleDocumentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateGoogleDocumentResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateGoogleDocumentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateGoogleDocumentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateGoogleDocumentResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -33811,6 +34715,40 @@ func (c *ClientWithResponses) CreateTodosetTodoWithResponse(ctx context.Context,
 	return ParseCreateTodosetTodoResponse(rsp)
 }
 
+// CreateCloudFileWithBodyWithResponse request with arbitrary body returning *CreateCloudFileResponse
+func (c *ClientWithResponses) CreateCloudFileWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCloudFileResponse, error) {
+	rsp, err := c.CreateCloudFileWithBody(ctx, accountId, bucketId, vaultId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCloudFileResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateCloudFileWithResponse(ctx context.Context, accountId string, bucketId int64, vaultId int64, body CreateCloudFileJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCloudFileResponse, error) {
+	rsp, err := c.CreateCloudFile(ctx, accountId, bucketId, vaultId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCloudFileResponse(rsp)
+}
+
+// CreateGoogleDocumentWithBodyWithResponse request with arbitrary body returning *CreateGoogleDocumentResponse
+func (c *ClientWithResponses) CreateGoogleDocumentWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, vaultId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGoogleDocumentResponse, error) {
+	rsp, err := c.CreateGoogleDocumentWithBody(ctx, accountId, bucketId, vaultId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGoogleDocumentResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateGoogleDocumentWithResponse(ctx context.Context, accountId string, bucketId int64, vaultId int64, body CreateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGoogleDocumentResponse, error) {
+	rsp, err := c.CreateGoogleDocument(ctx, accountId, bucketId, vaultId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGoogleDocumentResponse(rsp)
+}
+
 // ListWebhooksWithResponse request returning *ListWebhooksResponse
 func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
 	rsp, err := c.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
@@ -34283,6 +35221,32 @@ func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Co
 	return ParseGetClientCorrespondenceResponse(rsp)
 }
 
+// GetCloudFileWithResponse request returning *GetCloudFileResponse
+func (c *ClientWithResponses) GetCloudFileWithResponse(ctx context.Context, accountId string, cloudFileId int64, reqEditors ...RequestEditorFn) (*GetCloudFileResponse, error) {
+	rsp, err := c.GetCloudFile(ctx, accountId, cloudFileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCloudFileResponse(rsp)
+}
+
+// UpdateCloudFileWithBodyWithResponse request with arbitrary body returning *UpdateCloudFileResponse
+func (c *ClientWithResponses) UpdateCloudFileWithBodyWithResponse(ctx context.Context, accountId string, cloudFileId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCloudFileResponse, error) {
+	rsp, err := c.UpdateCloudFileWithBody(ctx, accountId, cloudFileId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCloudFileResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateCloudFileWithResponse(ctx context.Context, accountId string, cloudFileId int64, body UpdateCloudFileJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCloudFileResponse, error) {
+	rsp, err := c.UpdateCloudFile(ctx, accountId, cloudFileId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCloudFileResponse(rsp)
+}
+
 // GetEverythingCommentsWithResponse request returning *GetEverythingCommentsResponse
 func (c *ClientWithResponses) GetEverythingCommentsWithResponse(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*GetEverythingCommentsResponse, error) {
 	rsp, err := c.GetEverythingComments(ctx, accountId, params, reqEditors...)
@@ -34430,6 +35394,32 @@ func (c *ClientWithResponses) UpdateGaugeNeedleWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseUpdateGaugeNeedleResponse(rsp)
+}
+
+// GetGoogleDocumentWithResponse request returning *GetGoogleDocumentResponse
+func (c *ClientWithResponses) GetGoogleDocumentWithResponse(ctx context.Context, accountId string, googleDocumentId int64, reqEditors ...RequestEditorFn) (*GetGoogleDocumentResponse, error) {
+	rsp, err := c.GetGoogleDocument(ctx, accountId, googleDocumentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGoogleDocumentResponse(rsp)
+}
+
+// UpdateGoogleDocumentWithBodyWithResponse request with arbitrary body returning *UpdateGoogleDocumentResponse
+func (c *ClientWithResponses) UpdateGoogleDocumentWithBodyWithResponse(ctx context.Context, accountId string, googleDocumentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGoogleDocumentResponse, error) {
+	rsp, err := c.UpdateGoogleDocumentWithBody(ctx, accountId, googleDocumentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGoogleDocumentResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateGoogleDocumentWithResponse(ctx context.Context, accountId string, googleDocumentId int64, body UpdateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGoogleDocumentResponse, error) {
+	rsp, err := c.UpdateGoogleDocument(ctx, accountId, googleDocumentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGoogleDocumentResponse(rsp)
 }
 
 // GetForwardWithResponse request returning *GetForwardResponse
@@ -37795,6 +38785,118 @@ func ParseCreateTodosetTodoResponse(rsp *http.Response) (*CreateTodosetTodoRespo
 	return response, nil
 }
 
+// ParseCreateCloudFileResponse parses an HTTP response from a CreateCloudFileWithResponse call
+func ParseCreateCloudFileResponse(rsp *http.Response) (*CreateCloudFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCloudFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateCloudFileResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateGoogleDocumentResponse parses an HTTP response from a CreateGoogleDocumentWithResponse call
+func ParseCreateGoogleDocumentResponse(rsp *http.Response) (*CreateGoogleDocumentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateGoogleDocumentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateGoogleDocumentResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseListWebhooksResponse parses an HTTP response from a ListWebhooksWithResponse call
 func ParseListWebhooksResponse(rsp *http.Response) (*ListWebhooksResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -39887,6 +40989,112 @@ func ParseGetClientCorrespondenceResponse(rsp *http.Response) (*GetClientCorresp
 	return response, nil
 }
 
+// ParseGetCloudFileResponse parses an HTTP response from a GetCloudFileWithResponse call
+func ParseGetCloudFileResponse(rsp *http.Response) (*GetCloudFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCloudFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetCloudFileResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateCloudFileResponse parses an HTTP response from a UpdateCloudFileWithResponse call
+func ParseUpdateCloudFileResponse(rsp *http.Response) (*UpdateCloudFileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateCloudFileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateCloudFileResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseGetEverythingCommentsResponse parses an HTTP response from a GetEverythingCommentsWithResponse call
 func ParseGetEverythingCommentsResponse(rsp *http.Response) (*GetEverythingCommentsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -40552,6 +41760,112 @@ func ParseUpdateGaugeNeedleResponse(rsp *http.Response) (*UpdateGaugeNeedleRespo
 		var dest RateLimitErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetGoogleDocumentResponse parses an HTTP response from a GetGoogleDocumentWithResponse call
+func ParseGetGoogleDocumentResponse(rsp *http.Response) (*GetGoogleDocumentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGoogleDocumentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetGoogleDocumentResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateGoogleDocumentResponse parses an HTTP response from a UpdateGoogleDocumentWithResponse call
+func ParseUpdateGoogleDocumentResponse(rsp *http.Response) (*UpdateGoogleDocumentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateGoogleDocumentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateGoogleDocumentResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

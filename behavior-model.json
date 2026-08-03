@@ -127,6 +127,17 @@
         ]
       }
     },
+    "CreateCloudFile": {
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateComment": {
       "retry": {
         "max": 2,
@@ -172,6 +183,17 @@
       }
     },
     "CreateGaugeNeedle": {
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateGoogleDocument": {
       "retry": {
         "max": 2,
         "base_delay_ms": 1000,
@@ -853,6 +875,18 @@
         ]
       }
     },
+    "GetCloudFile": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetComment": {
       "readonly": true,
       "retry": {
@@ -1162,6 +1196,18 @@
       }
     },
     "GetGaugeNeedle": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetGoogleDocument": {
       "readonly": true,
       "retry": {
         "max": 3,
@@ -2829,6 +2875,22 @@
         ]
       }
     },
+    "UpdateCloudFile": {
+      "idempotent": true,
+      "write": {
+        "mode": "replace",
+        "clearsOmitted": true
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "UpdateComment": {
       "idempotent": true,
       "retry": {
@@ -2857,6 +2919,22 @@
       "idempotent": true,
       "retry": {
         "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateGoogleDocument": {
+      "idempotent": true,
+      "write": {
+        "mode": "replace",
+        "clearsOmitted": true
+      },
+      "retry": {
+        "max": 3,
         "base_delay_ms": 1000,
         "backoff": "exponential",
         "retry_on": [

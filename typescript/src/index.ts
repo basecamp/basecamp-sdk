@@ -367,6 +367,20 @@ export {
   type ReplaceDocumentRequest,
 } from "./generated/services/documents.js";
 
+export {
+  CloudFilesService,
+  type CloudFile,
+  type CreateCloudFileCloudFileRequest,
+  type UpdateCloudFileCloudFileRequest,
+} from "./generated/services/cloud-files.js";
+
+export {
+  GoogleDocumentsService,
+  type GoogleDocument,
+  type CreateGoogleDocumentGoogleDocumentRequest,
+  type UpdateGoogleDocumentGoogleDocumentRequest,
+} from "./generated/services/google-documents.js";
+
 export { UploadsService } from "./services/uploads-extensions.js";
 export {
   type Upload,

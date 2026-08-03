@@ -400,6 +400,16 @@ module Basecamp
       service(:documents) { Services::DocumentsService.new(self) }
     end
 
+    # @return [Services::CloudFilesService]
+    def cloud_files
+      service(:cloud_files) { Services::CloudFilesService.new(self) }
+    end
+
+    # @return [Services::GoogleDocumentsService]
+    def google_documents
+      service(:google_documents) { Services::GoogleDocumentsService.new(self) }
+    end
+
     # @return [Services::UploadsService]
     def uploads
       service(:uploads) { Services::UploadsService.new(self) }

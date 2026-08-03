@@ -3,12 +3,26 @@ gap: recordable-subtypes-doc
 status: partial-coverage
 detected: 2026-05-01
 sdk_demand: medium
+smithy_refs:
+  - "GetCloudFile operation"
+  - "CreateCloudFile operation"
+  - "UpdateCloudFile operation"
+  - "CloudFile structure"
+  - "CloudFileService structure"
+  - "GetGoogleDocument operation"
+  - "CreateGoogleDocument operation"
+  - "UpdateGoogleDocument operation"
+  - "GoogleDocument structure"
 bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3a
   routes:
-    - "POST /:account_id/buckets/:bucket_id/cloud_files.json (create — shipped)"
-    - "POST /:account_id/buckets/:bucket_id/google_documents.json (create — shipped)"
+    - "GET /:account_id/cloud_files/:id.json (absorbed — GetCloudFile)"
+    - "PUT /:account_id/cloud_files/:id.json (absorbed — UpdateCloudFile)"
+    - "POST /:account_id/buckets/:bucket_id/vaults/:vault_id/cloud_files.json (absorbed — CreateCloudFile)"
+    - "GET /:account_id/google_documents/:id.json (absorbed — GetGoogleDocument)"
+    - "PUT /:account_id/google_documents/:id.json (absorbed — UpdateGoogleDocument)"
+    - "POST /:account_id/buckets/:bucket_id/vaults/:vault_id/google_documents.json (absorbed — CreateGoogleDocument)"
     - "(Journal / Journal::Entry routes — NOT shipped; dropped from the BC5 API train)"
     - "(plus polymorphic surfacing in existing Recording responses — no new GET routes)"
   controllers:
@@ -27,18 +41,31 @@ bc3_refs:
 Split outcome from the BC5 API train (2026-07-18..21), tracked in this single
 brief (no split into per-subtype briefs):
 
-- **Shipped:** `CloudFile` (linked external file: Google Drive, Dropbox, etc.)
-  and `GoogleDocument` (specifically a Google Docs link, distinct from
-  CloudFile) landed via BC3 **#12320** — `doc/api/sections/cloud_files.md` and
-  `doc/api/sections/google_documents.md` are on `master`. SDK absorption for
-  these two is pending.
+- **Shipped and absorbed:** `CloudFile` (linked external file: Google Drive,
+  Dropbox, etc.) and `GoogleDocument` (specifically a Google Docs link, distinct
+  from CloudFile) landed via BC3 **#12320** — `doc/api/sections/cloud_files.md`
+  and `doc/api/sections/google_documents.md` are on `master`. SDK absorption
+  landed in #551: six operations (get/create/update per subtype) plus the
+  `CloudFile`, `CloudFileService`, and `GoogleDocument` structures.
+
+  Note the create route: it is nested under the **vault**, and bucket-scoped —
+  `POST /buckets/:bucket_id/vaults/:vault_id/cloud_files.json`. The earlier
+  entry in this brief spelled it `POST /buckets/:bucket_id/cloud_files.json`,
+  which BC3 does not draw for JSON creates; `config/routes.rb` nests
+  cloud_files/google_documents under `resources :vaults` inside the bucket
+  scope, and bc3's own API test drives `bucket_vault_cloud_files_url`. The
+  get/update pair, by contrast, is flat and unscoped
+  (`resources :cloud_files, only: %i[ show update ]`), with the bucket-scoped
+  spelling accepted as a documented legacy alias.
 - **Did NOT ship:** `Journal` and `Journal::Entry`. BC3 **#11629**'s "Drop
   journal doc generation" commit removed the journal JSON API coverage from
   the train — no product surface, no traffic. The journal routes remain
   undocumented; treat them as out of API scope until BC3 revisits.
 
-The status stays `partial-coverage`: part of the subtype family has a merged
-contract awaiting absorption, part has no JSON contract at all.
+The status stays `partial-coverage`, but the split has moved: the CloudFile /
+GoogleDocument half is now absorbed, and what remains uncovered is Journal /
+Journal::Entry, which has no JSON contract to model. The brief closes when BC3
+either gives journals a contract or the family is formally descoped.
 
 **Door** was previously excluded from standalone API coverage here (covered only
 as a string-typed `type` value on existing Recording responses). BC3 **#12375**
@@ -69,7 +96,7 @@ Journal::Entry — there is no contract to model.
 
 ## Implementation notes for BC3
 
-- CloudFile + GoogleDocument: shipped — nothing pending.
+- CloudFile + GoogleDocument: shipped and absorbed — nothing pending.
 - Journal: if BC3 later gives journals a product surface and JSON contract,
   that is net-new API work (routes, jbuilder views, doc section); this brief
   then updates its scope.

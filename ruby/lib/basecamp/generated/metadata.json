@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-08-03T21:18:05Z",
+  "generated": "2026-08-04T05:29:38Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -378,6 +378,28 @@
     "CreateTodosetTodo": {
       "retry": {
         "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateCloudFile": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateGoogleDocument": {
+      "retry": {
+        "maxAttempts": 2,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -913,6 +935,31 @@
         ]
       }
     },
+    "GetCloudFile": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateCloudFile": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
     "GetEverythingComments": {
       "retry": {
         "maxAttempts": 3,
@@ -1078,6 +1125,31 @@
     "DestroyGaugeNeedle": {
       "retry": {
         "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "GetGoogleDocument": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateGoogleDocument": {
+      "retry": {
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [

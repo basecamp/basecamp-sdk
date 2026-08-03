@@ -97,6 +97,8 @@ type AccountClient struct {
 	checkins              *CheckinsService
 	vaults                *VaultsService
 	documents             *DocumentsService
+	cloudFiles            *CloudFilesService
+	googleDocuments       *GoogleDocumentsService
 	uploads               *UploadsService
 	cardTables            *CardTablesService
 	cards                 *CardsService
@@ -1330,6 +1332,26 @@ func (ac *AccountClient) Documents() *DocumentsService {
 		ac.documents = NewDocumentsService(ac)
 	}
 	return ac.documents
+}
+
+// CloudFiles returns the CloudFilesService for cloud file operations.
+func (ac *AccountClient) CloudFiles() *CloudFilesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.cloudFiles == nil {
+		ac.cloudFiles = NewCloudFilesService(ac)
+	}
+	return ac.cloudFiles
+}
+
+// GoogleDocuments returns the GoogleDocumentsService for Google document operations.
+func (ac *AccountClient) GoogleDocuments() *GoogleDocumentsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.googleDocuments == nil {
+		ac.googleDocuments = NewGoogleDocumentsService(ac)
+	}
+	return ac.googleDocuments
 }
 
 // Uploads returns the UploadsService for upload (file) operations.

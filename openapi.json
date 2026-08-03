@@ -3183,6 +3183,248 @@
         }
       }
     },
+    "/{accountId}/buckets/{bucketId}/vaults/{vaultId}/cloud_files.json": {
+      "post": {
+        "description": "Create a new cloud file in a vault.\n`url` is validated against the selected service's patterns, so it must be a\nreal link for that service; use service \"other\" for anything that matches no\nrecognized service. Omitting `title` is allowed and reads back as\n\"Untitled\".",
+        "operationId": "CreateCloudFile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCloudFileRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "vaultId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateCloudFile 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCloudFileResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Files"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/buckets/{bucketId}/vaults/{vaultId}/google_documents.json": {
+      "post": {
+        "description": "Create a new Google document in a vault.\nAn unrecognized `document_type` is rejected before validation with the\nfield-keyed 422 {\"errors\": {\"document_type\": [\"is not a valid document\ntype\"]}} — the enum would otherwise raise rather than add an error.\nOmitting `title` is allowed and reads back as \"Untitled\".",
+        "operationId": "CreateGoogleDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoogleDocumentRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "vaultId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateGoogleDocument 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateGoogleDocumentResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Files"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/buckets/{bucketId}/webhooks.json": {
       "get": {
         "description": "List all webhooks for a project\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -7456,6 +7698,215 @@
         }
       }
     },
+    "/{accountId}/cloud_files/{cloudFileId}": {
+      "get": {
+        "description": "Get a single cloud file by id",
+        "operationId": "GetCloudFile",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "cloudFileId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetCloudFile 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCloudFileResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Files"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Replace a cloud file with a new complete representation.\nBC3 builds a brand-new CloudFile from the permitted params and swaps the\nrecordable wholesale, so the request body is the full writable state:\nomitting `title` clears it (and the cloud file then reads back as\n\"Untitled\"), and omitting `description` clears it. `url` and `service` carry\npresence/format validations, so they are required here rather than\nclearable — a request without them is a 422, not a silent wipe.\nUpdating a drafted cloud file also publishes it.\nSubscribers are the exception to omission-clears: a drafted cloud file keeps\nits current subscribers when the request addresses neither `subscriptions`\nnor `notify`. The creator is always on the list.\nThe legacy bucket-scoped path PUT /buckets/{bucketId}/cloud_files/{id}.json\nis also accepted by BC3; this flat spelling is the documented one.",
+        "operationId": "UpdateCloudFile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCloudFileRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "cloudFileId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UpdateCloudFile 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCloudFileResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Files"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        },
+        "x-basecamp-write-semantics": {
+          "mode": "replace",
+          "clearsOmitted": true
+        }
+      }
+    },
     "/{accountId}/comments.json": {
       "get": {
         "description": "Get every comment across all accessible projects, newest-first (paginated).\nEach item embeds its `bucket`.",
@@ -8785,6 +9236,215 @@
             429,
             503
           ]
+        }
+      }
+    },
+    "/{accountId}/google_documents/{googleDocumentId}": {
+      "get": {
+        "description": "Get a single Google document by id",
+        "operationId": "GetGoogleDocument",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "googleDocumentId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetGoogleDocument 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetGoogleDocumentResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Files"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Replace a Google document with a new complete representation.\nBC3 builds a brand-new GoogleDocument from the permitted params and swaps\nthe recordable wholesale, so the request body is the full writable state:\nomitting `title` clears it (and the document then reads back as \"Untitled\"),\nand omitting `description` clears it. `url` and `document_type` are required\nhere — `document_type` because an absent or unrecognized value is a 422, and\n`url` because it carries a presence validation.\nSubscribers are the exception to omission-clears: a drafted document keeps\nits current subscribers when the request addresses neither `subscriptions`\nnor `notify`. The creator is always on the list.\nThe legacy bucket-scoped path\nPUT /buckets/{bucketId}/google_documents/{id}.json is also accepted by BC3;\nthis flat spelling is the documented one.",
+        "operationId": "UpdateGoogleDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGoogleDocumentRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "googleDocumentId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UpdateGoogleDocument 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateGoogleDocumentResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Files"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        },
+        "x-basecamp-write-semantics": {
+          "mode": "replace",
+          "clearsOmitted": true
         }
       }
     },
@@ -27022,6 +27682,147 @@
         },
         "x-deprecated-reason": "This shape is deprecated since 2024-01: Use Client Visibility feature instead"
       },
+      "CloudFile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "visible_to_clients": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "inherits_status": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "The link on the external service — NOT this record's API URL. The\ncloud_files jbuilder renders the shared recording partial first and then\n`json.(recording.recordable, :url, :service)`, which overwrites the\nrecording's `url` key with the recordable's. `app_url` is still this\nrecord's Basecamp URL."
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "bookmark_url": {
+            "type": "string"
+          },
+          "subscription_url": {
+            "type": "string"
+          },
+          "comments_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "comments_url": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/TodoBucket"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "description": {
+            "type": "string"
+          },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
+          "service": {
+            "$ref": "#/components/schemas/CloudFileService"
+          },
+          "boosts_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "boosts_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "description_attachments",
+          "id",
+          "inherits_status",
+          "parent",
+          "service",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
+      },
+      "CloudFileService": {
+        "type": "object",
+        "description": "The external service a cloud file points at, embedded in every cloud file\nresponse so clients can render the service's name, supporting text, and\nexample URL without shipping a hard-coded catalogue. Serialized by\nCloudFile::Service#as_json.",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "example_url": {
+            "type": "string",
+            "description": "A representative URL for the service, suitable as an input placeholder."
+          },
+          "code": {
+            "type": "string",
+            "description": "Short identifier for the external service — \"dropbox\", \"google_doc\",\n\"figma\", \"other\", … Derived from the CloudFile::Service subclass name, so it\nis always present. `other` accepts any well-formed HTTPS URL."
+          },
+          "valid_patterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Regular expressions the cloud file's `url` is validated against. Sending a\n`url` that matches none of the selected service's patterns is a 422."
+          },
+          "supporting_text": {
+            "type": "string",
+            "description": "Human-readable hint (\"a file or folder on Dropbox\"). Absent for services\nthat declare none — CloudFile::Service::Services::Other, for one."
+          }
+        },
+        "required": [
+          "code",
+          "example_url",
+          "name",
+          "valid_patterns"
+        ]
+      },
       "Comment": {
         "type": "object",
         "properties": {
@@ -27243,6 +28044,42 @@
       "CreateChatbotResponseContent": {
         "$ref": "#/components/schemas/Chatbot"
       },
+      "CreateCloudFileRequestContent": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string",
+            "description": "Short identifier for the external service — \"dropbox\", \"google_doc\",\n\"figma\", \"other\", … Derived from the CloudFile::Service subclass name, so it\nis always present. `other` accepts any well-formed HTTPS URL."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "visible_to_clients": {
+            "type": "boolean",
+            "description": "Whether the cloud file is visible to the project's clients. Applies only\nwhen creating directly in the tool's vault — an item created inside a\nfolder inherits the folder's visibility and ignores this. A client caller\nalways creates client-visible records regardless of what is sent."
+          }
+        },
+        "required": [
+          "service",
+          "url"
+        ]
+      },
+      "CreateCloudFileResponseContent": {
+        "$ref": "#/components/schemas/CloudFile"
+      },
       "CreateCommentRequestContent": {
         "type": "object",
         "properties": {
@@ -27348,6 +28185,46 @@
       },
       "CreateGaugeNeedleResponseContent": {
         "$ref": "#/components/schemas/GaugeNeedle"
+      },
+      "CreateGoogleDocumentRequestContent": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string",
+            "description": "One of \"doc\", \"sheet\", \"slide\", \"other\". Backed by a Rails enum, so an\nunrecognized value is rejected up front with a field-keyed 422\n({\"errors\": {\"document_type\": [\"is not a valid document type\"]}}) rather\nthan reaching validation."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "active|drafted — defaults to drafted"
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "visible_to_clients": {
+            "type": "boolean",
+            "description": "Whether the document is visible to the project's clients. Applies only\nwhen creating directly in the tool's vault — an item created inside a\nfolder inherits the folder's visibility and ignores this. A client caller\nalways creates client-visible records regardless of what is sent."
+          }
+        },
+        "required": [
+          "document_type",
+          "url"
+        ]
+      },
+      "CreateGoogleDocumentResponseContent": {
+        "$ref": "#/components/schemas/GoogleDocument"
       },
       "CreateLineupMarkerRequestContent": {
         "type": "object",
@@ -29070,6 +29947,9 @@
       "GetClientReplyResponseContent": {
         "$ref": "#/components/schemas/ClientReply"
       },
+      "GetCloudFileResponseContent": {
+        "$ref": "#/components/schemas/CloudFile"
+      },
       "GetCommentResponseContent": {
         "$ref": "#/components/schemas/Comment"
       },
@@ -29183,6 +30063,9 @@
       },
       "GetGaugeNeedleResponseContent": {
         "$ref": "#/components/schemas/GaugeNeedle"
+      },
+      "GetGoogleDocumentResponseContent": {
+        "$ref": "#/components/schemas/GoogleDocument"
       },
       "GetHillChartResponseContent": {
         "$ref": "#/components/schemas/HillChart"
@@ -29465,6 +30348,114 @@
       },
       "GetWebhookResponseContent": {
         "$ref": "#/components/schemas/Webhook"
+      },
+      "GoogleDocument": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "visible_to_clients": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "inherits_status": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "The Google Workspace document link — NOT this record's API URL. Same\nrecordable-overwrites-recording rendering as CloudFile#url."
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "bookmark_url": {
+            "type": "string"
+          },
+          "subscription_url": {
+            "type": "string"
+          },
+          "comments_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "comments_url": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/TodoBucket"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "description": {
+            "type": "string"
+          },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
+          "document_type": {
+            "type": "string",
+            "description": "One of \"doc\", \"sheet\", \"slide\", \"other\". Backed by a Rails enum, so an\nunrecognized value is rejected up front with a field-keyed 422\n({\"errors\": {\"document_type\": [\"is not a valid document type\"]}}) rather\nthan reaching validation."
+          },
+          "boosts_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "boosts_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "creator",
+          "description_attachments",
+          "document_type",
+          "id",
+          "inherits_status",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
+        ]
       },
       "HillChart": {
         "type": "object",
@@ -33419,6 +34410,38 @@
       "UpdateChatbotResponseContent": {
         "$ref": "#/components/schemas/Chatbot"
       },
+      "UpdateCloudFileRequestContent": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string",
+            "description": "Short identifier for the external service — \"dropbox\", \"google_doc\",\n\"figma\", \"other\", … Derived from the CloudFile::Service subclass name, so it\nis always present. `other` accepts any well-formed HTTPS URL."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        "required": [
+          "service",
+          "url"
+        ]
+      },
+      "UpdateCloudFileResponseContent": {
+        "$ref": "#/components/schemas/CloudFile"
+      },
       "UpdateCommentRequestContent": {
         "type": "object",
         "properties": {
@@ -33458,6 +34481,42 @@
       },
       "UpdateGaugeNeedleResponseContent": {
         "$ref": "#/components/schemas/GaugeNeedle"
+      },
+      "UpdateGoogleDocumentRequestContent": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string",
+            "description": "One of \"doc\", \"sheet\", \"slide\", \"other\". Backed by a Rails enum, so an\nunrecognized value is rejected up front with a field-keyed 422\n({\"errors\": {\"document_type\": [\"is not a valid document type\"]}}) rather\nthan reaching validation."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "active|drafted"
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        "required": [
+          "document_type",
+          "url"
+        ]
+      },
+      "UpdateGoogleDocumentResponseContent": {
+        "$ref": "#/components/schemas/GoogleDocument"
       },
       "UpdateHillChartSettingsRequestContent": {
         "type": "object",

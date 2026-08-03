@@ -115,8 +115,12 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # only); CreateFolder is neither.
 # Timesheet entry destroy absorption (#582, +1 op): DestroyTimesheetEntry is a
 # naturally idempotent DELETE, so it lands in both counts (+1 each).
-expected_idempotent=79
-expected_union=202
+# cloud_files + google_documents absorption (+6 ops, #551): UpdateCloudFile and
+# UpdateGoogleDocument are naturally idempotent (+2 both counts); GetCloudFile
+# and GetGoogleDocument are readonly (+2 union only); the two creates are
+# neither.
+expected_idempotent=81
+expected_union=206
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"
