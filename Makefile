@@ -688,8 +688,14 @@ conformance: oauth-fixtures-check oauth-token-fixtures-check conformance-fixture
 # `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/decode/<lang>/`. Failures in any
 # stage fail the orchestrator.
 #
+# check-replay-decoder-parity runs FIRST, as a prerequisite: a fixture
+# operation missing from a replay decoder map makes the replay half of this
+# target impossible, and the runners only discover that after the ~30-minute
+# live capture has already finished. The static check answers the same question
+# in 0.3s. (#553 — the four maps were 20 operations behind and nothing said so.)
+#
 # Opt-in target: not invoked by `make check`.
-conformance-live:
+conformance-live: check-replay-decoder-parity
 	@test -n "$$LIVE_RECORD_DIR" || (echo "LIVE_RECORD_DIR is required" >&2; exit 1)
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
 	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 1)
@@ -1001,7 +1007,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1075,6 +1081,14 @@ check-retry-metadata-parity:
 check-runner-test-reachability:
 	@./scripts/check-runner-test-reachability
 
+# Verify every live operation in conformance/tests/live-my-surface.json has a
+# decoder in all five dispatch tables (TS LIVE_OPERATIONS plus the four replay
+# runners). The runners' own coverage gates only fire during a live canary, and
+# that canary skips whenever its secrets are unset — which is how four tables
+# sat 20 operations behind the fixture with CI green (#553). Bash+jq, 0.3s.
+check-replay-decoder-parity:
+	@./scripts/check-replay-decoder-parity
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
@@ -1097,7 +1111,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -1181,6 +1195,7 @@ help:
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"
 	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json"
 	@echo "  check-runner-test-reachability  Assert every runner test file is reachable from discovery"
+	@echo "  check-replay-decoder-parity  Assert all five replay/dispatch tables cover the live fixture"
 	@echo ""
 	@echo "Ruby SDK:"
 	@echo "  rb-generate          Generate types and metadata from OpenAPI"

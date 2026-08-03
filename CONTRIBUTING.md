@@ -390,7 +390,16 @@ added to:
 - `conformance/runner/go/replay_runner.go` — Go decoder.
 - `kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt` — Kotlin decoder.
 
-Each runner's coverage gate refuses to start until all five are in place.
+Each runner's coverage gate refuses to start until all five are in place —
+but that gate only fires during a live canary, and the scheduled canary skips
+whenever its secrets are unconfigured, so for a long stretch four of the five
+tables sat twenty operations behind the fixture with CI fully green (#553).
+`scripts/check-replay-decoder-parity` now compares all five tables against
+`live-my-surface.json` statically on every `make check` and CI run, and runs as
+a prerequisite of `make conformance-live` so a mismatch fails in under a second
+instead of after the capture. It pins the live-operation count too: adding a
+live fixture entry means bumping `expected_live_ops` and registering the
+decoder in the same commit.
 
 > **Historical note — pairwise BC4↔BC5 comparison (retired).** An earlier
 > canary captured snapshots from two live backends (BC4 and BC5) and asserted

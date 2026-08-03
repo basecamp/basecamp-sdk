@@ -41,6 +41,11 @@ dependencies {
 
 // The runner's assertion helpers are unit-tested (DelayGapsTest): a bounds
 // branch that only ever runs against passing fixtures is not a guard.
+//
+// workingDir matches `run` and `runReplay` so a test can resolve repo paths
+// the same way the runners do — ReplayDecodersTest reads the live conformance
+// fixture at ../conformance/tests/live-my-surface.json.
 tasks.withType<Test> {
     useJUnitPlatform()
+    workingDir = rootProject.projectDir
 }

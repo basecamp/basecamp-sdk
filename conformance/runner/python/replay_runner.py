@@ -57,6 +57,13 @@ def _decode(body_text: str) -> None:
 # the dict explicit (rather than a default fallback) makes the
 # coverage_gate diagnostic accurate: a typo or missing op surfaces
 # loudly instead of being absorbed by a default decoder.
+#
+# Must cover every live operation in conformance/tests/live-my-surface.json.
+# coverage_gate() enforces that at replay time, but replay only runs during a
+# live canary — which skips whenever the canary secrets are unset, so this map
+# silently lost twenty operations for the length of #553. The static guard
+# scripts/check-replay-decoder-parity now compares it against the fixture on
+# every `make check` and CI run.
 DECODERS: dict[str, Callable[[str], None]] = {
     "ListProjects": _decode,
     "GetProject": _decode,
@@ -69,6 +76,27 @@ DECODERS: dict[str, Callable[[str], None]] = {
     "ListTodolists": _decode,
     "ListTodos": _decode,
     "GetCalendar": _decode,
+    "GetProgressReport": _decode,
+    "GetBubbleUps": _decode,
+    "ListRecordings": _decode,
+    "Search": _decode,
+    # The sixteen Everything aggregates.
+    "GetEverythingMessages": _decode,
+    "GetEverythingComments": _decode,
+    "GetEverythingCheckins": _decode,
+    "GetEverythingFiles": _decode,
+    "GetEverythingForwards": _decode,
+    "GetEverythingOpenTodos": _decode,
+    "GetEverythingCompletedTodos": _decode,
+    "GetEverythingOverdueTodos": _decode,
+    "GetEverythingUnassignedTodos": _decode,
+    "GetEverythingNoDueDateTodos": _decode,
+    "GetEverythingOpenCards": _decode,
+    "GetEverythingCompletedCards": _decode,
+    "GetEverythingOverdueCards": _decode,
+    "GetEverythingUnassignedCards": _decode,
+    "GetEverythingNoDueDateCards": _decode,
+    "GetEverythingNotNowCards": _decode,
 }
 
 

@@ -32,8 +32,15 @@ const ReplaySchemaVersion = 1
 // bodyText into the generated response type produced by oapi-codegen
 // (the same types the SDK uses internally) and returns the unmarshal
 // error, or nil on success. Keep this table in sync with
-// LIVE_OPERATIONS in conformance/runner/typescript/live-dispatch.ts —
-// the coverage gate enforces parity.
+// LIVE_OPERATIONS in conformance/runner/typescript/live-dispatch.ts.
+//
+// Parity is enforced twice. At replay time the coverage gate refuses to run
+// with a fixture operation that has no decoder — but that only fires during a
+// live canary, which skips whenever the canary secrets are unset, so this table
+// silently lost twenty operations for the length of #553. STATICALLY,
+// scripts/check-replay-decoder-parity compares this map against
+// conformance/tests/live-my-surface.json on every `make check` and CI run, so
+// the drift now fails in 0.3s instead of never.
 var decoders = map[string]func(bodyText string) error{
 	"ListProjects": func(bt string) error {
 		var v generated.ListProjectsResponseContent
@@ -77,6 +84,87 @@ var decoders = map[string]func(bodyText string) error{
 	},
 	"GetCalendar": func(bt string) error {
 		var v generated.GetCalendarResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetProgressReport": func(bt string) error {
+		var v generated.GetProgressReportResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetBubbleUps": func(bt string) error {
+		var v generated.GetBubbleUpsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"ListRecordings": func(bt string) error {
+		var v generated.ListRecordingsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"Search": func(bt string) error {
+		var v generated.SearchResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	// The sixteen Everything aggregates.
+	"GetEverythingMessages": func(bt string) error {
+		var v generated.GetEverythingMessagesResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingComments": func(bt string) error {
+		var v generated.GetEverythingCommentsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingCheckins": func(bt string) error {
+		var v generated.GetEverythingCheckinsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingFiles": func(bt string) error {
+		var v generated.GetEverythingFilesResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingForwards": func(bt string) error {
+		var v generated.GetEverythingForwardsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingOpenTodos": func(bt string) error {
+		var v generated.GetEverythingOpenTodosResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingCompletedTodos": func(bt string) error {
+		var v generated.GetEverythingCompletedTodosResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingOverdueTodos": func(bt string) error {
+		var v generated.GetEverythingOverdueTodosResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingUnassignedTodos": func(bt string) error {
+		var v generated.GetEverythingUnassignedTodosResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingNoDueDateTodos": func(bt string) error {
+		var v generated.GetEverythingNoDueDateTodosResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingOpenCards": func(bt string) error {
+		var v generated.GetEverythingOpenCardsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingCompletedCards": func(bt string) error {
+		var v generated.GetEverythingCompletedCardsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingOverdueCards": func(bt string) error {
+		var v generated.GetEverythingOverdueCardsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingUnassignedCards": func(bt string) error {
+		var v generated.GetEverythingUnassignedCardsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingNoDueDateCards": func(bt string) error {
+		var v generated.GetEverythingNoDueDateCardsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
+	"GetEverythingNotNowCards": func(bt string) error {
+		var v generated.GetEverythingNotNowCardsResponseContent
 		return json.Unmarshal([]byte(bt), &v)
 	},
 }
