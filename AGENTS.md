@@ -222,6 +222,18 @@ that file still fails until someone reads it and restates the number. A SHA
 that is not the current pin is not checked at all — sorting those needs the
 pin's whole history, which CI's shallow clones do not have.
 
+Expect the range form to trip this, because a range written at a repin ends
+*at* the pin that repin set. An `` `A..B` `` whose `B` is today's revision
+names it as surely as a bare mention does, and the check reads inside compound
+code spans precisely so it cannot be smuggled past that way. A range is still
+an as-of fact — grant it and move on. `A` is not the current pin and is never
+flagged.
+
+(This paragraph deliberately says `A..B` rather than quoting the live range:
+documentation of the convention must not itself restate the constant, or it
+becomes the very class-A claim it is warning about — as this one did, and the
+gate caught it.)
+
 The same marker convention covers `<!-- @api-version -->` (from `openapi.json`
 `info.version`) and SPEC §19's `<!-- @assertion-types:begin/end -->` table
 (from `conformance/schema.json`). `spec/doc-constants.json` commits the exact
