@@ -2451,13 +2451,17 @@ position → take the **ownership cut** → fix the snapshot → drain-and-accep
 
 **The ownership cut, defined:** after accepting the entry-poll response, the state machine
 performs **one bounded admission pass** — receiving from the frame pump's queue without
-blocking until the queue is momentarily empty OR the pass has admitted
-`EVENT_FEED_LIVE_BUFFER_CAPACITY` events, whichever comes first. The cut is the completion
-of that pass. The pass is deliberately **not** a drain-until-empty barrier: unbounded
-draining races a concurrent sender, and under sustained arrival at or above the admission
+blocking until the queue is momentarily empty OR the pass has **dequeued**
+`EVENT_FEED_LIVE_BUFFER_CAPACITY` frames of any kind, whichever comes first. The cut is
+the completion of that pass. The bound counts dequeued frames, not admitted events: pings,
+control frames, and unknown types are dequeued without being admitted, and an
+event-counting bound would let a heartbeat-replenished queue spin the pass forever. The
+pass is deliberately **not** a drain-until-empty barrier: unbounded
+draining races a concurrent sender, and under sustained arrival at or above the dequeue
 rate it never completes — the cut must be reachable in bounded time or the entry position
-never saves. The capacity bound keeps the pass finite without weakening the retained set:
-any admission beyond capacity would evict retained pre-acceptance events anyway.
+never saves. The frame bound keeps the pass finite without weakening the retained set:
+admitted events never exceed dequeued frames, and any admission beyond capacity would
+evict retained pre-acceptance events anyway.
 "Observed" means **admitted into the state-machine-owned buffer at or before the cut**; a
 frame the transport had read but the state machine had not yet admitted at the cut does
 not count. **The snapshot** is the pre-cut contents of the state-machine-owned buffer,
@@ -2597,7 +2601,11 @@ is deterministic.
 
 ```
 INTERFACE TicketMinter
-  mint_stream_ticket() → StreamTicket   -- one fully-governed generated CreateStreamTicket call
+  mint_stream_ticket(cancellation) → StreamTicket
+  -- One fully-governed generated CreateStreamTicket call. `cancellation` is the same
+  -- language-native channel the dial seam takes (Go context, TS AbortSignal, …): the
+  -- connector triggers it on close() and caller cancellation, and a triggered call MUST
+  -- return promptly — the universal edge to Closed cannot wait out a stalled request.
 END
 
 RECORD StreamTicket
@@ -2612,7 +2620,9 @@ END
 -- success) → unrecoverable → Terminal(mint_failed), generated error attached.
 
 INTERFACE PollSource
-  poll(cursor: Cursor, filters: Filters) → PollPage   -- one fully-governed generated PollEvents call
+  poll(cursor: Cursor, filters: Filters, cancellation) → PollPage
+  -- One fully-governed generated PollEvents call; `cancellation` as on TicketMinter —
+  -- triggered on close()/caller cancellation, prompt return required.
 END
 
 RECORD Cursor           -- exactly one field set; the zero Cursor is the bare present entry
