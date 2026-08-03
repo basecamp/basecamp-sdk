@@ -1,0 +1,153 @@
+spec/fixtures/manifest.yaml
+  s_ae792ed0be3006::t_1a7bf4d7c4a973 113-120,219-220
+python/src/basecamp/generated/services/cloud_files.py
+  s_ae792ed0be3006::t_c47b8229b42129 1-144
+swift/Sources/Basecamp/Generated/AccountClient+Services.swift
+  s_ae792ed0be3006::t_41348682a30d7d 21,30
+swift/Sources/Basecamp/Generated/Models/UpdateGoogleDocumentRequest.swift
+  s_ae792ed0be3006::t_d95f5818255d99 1-27
+SPEC.md
+  s_ae792ed0be3006::t_29605fcbf62007 772,1256,3267-3269
+openapi.json
+  s_ae792ed0be3006::t_64635926a9054c 3186-3427,7701,7703-7704,7718-7719,7722-7724,7729,7733,7758-7759,7763,7780,7782-7994,8816-9014,9016-9017,9020,9028,9030-9031,9045-9046,9049-9051,9056,9060,9085-9086,9090,9107,9118-9130,9154-9162,9194-9203,9240-9242,9244-9245,9259,9270,9274,9321,9334-9335,9340,9343-9344,9359,9370,9374,9410,9414,9431,9437,9444-9447,27545-27665,27668,27672,27681,27683,27685,27688-27705,27708-27713,27936-27971,28078-28117,29839-29841,29956-29958,30241-30348,34344-34375,34416-34451
+typescript/src/generated/services/cloud-files.ts
+  s_ae792ed0be3006::t_189dbe18ab7449 1-186
+ruby/scripts/generate-services.rb
+  s_ae792ed0be3006::t_b95c0519f6b960 70-72
+go/pkg/basecamp/cloud_files.go
+  s_ae792ed0be3006::t_46716d67bf2459 1-330
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_3603f543b4e907 2863-3082,6915,6917-6918,6921-6922,6925-6927,6932,6936,6961-6962,6966,6983,6994-7007,7010,7021,7025-7210,7909-8085,8087-8088,8091,8099,8101-8102,8105-8106,8109-8111,8116,8120,8145-8146,8150,8167,8178-8190,8203-8211,8243-8252,8289-8291,8293-8294,8297,8308,8312,8359,8372-8373,8378,8381-8382,8386,8397,8401,8437,8441,8458,8464,8471-8474,24749-24869,24872,24876,24885,24887,24889,24892-24909,24912-24917,25140-25175,25282-25321,27043-27045,27160-27162,27445-27552,31548-31579,31620-31655
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_ae792ed0be3006::t_adfdbc7a017e82 55-56
+swift/Sources/Basecamp/Generated/Models/CloudFileService.swift
+  s_ae792ed0be3006::t_2240a8916d60a5 1-24
+python/src/basecamp/client.py
+  s_ae792ed0be3006::t_fc808b439aa770 263-274
+typescript/src/index.ts
+  s_ae792ed0be3006::t_7fbe17676130cc 370-381
+go/pkg/basecamp/url-routes.json
+  s_ae792ed0be3006::t_f2bf3eada6b4c0 371-412,885-902,1016-1033
+swift/Sources/Basecamp/Generated/Services/CloudFilesService.swift
+  s_ae792ed0be3006::t_4e4b5ab01276f4 1-33
+ruby/test/basecamp/services/google_documents_service_test.rb
+  s_ae792ed0be3006::t_5d48d69e11f4f0 1-114
+python/src/basecamp/generated/metadata.json
+  s_ae792ed0be3006::t_654514d661715b 126-136,192-202,836-846,1089-1099,2464-2475,2512-2523
+scripts/check-idempotency-parity
+  s_ae792ed0be3006::t_b3145d99b10384 116-121
+swift/Sources/Basecamp/Generated/Models/GoogleDocument.swift
+  s_ae792ed0be3006::t_a4c5b913255680 1-78
+behavior-model.json
+  s_ae792ed0be3006::t_4f7e3ce79a55d8 130-140,196-206,866-877,1198-1209,2845-2860,2897-2912
+go/pkg/generated/client.gen.go
+  s_ae792ed0be3006::t_1d15aa54b22da6 491-551,645-666,729-754,1424-1426,1496-1498,1668-1702,3241-3256,3286-3305,4370-4375,4418-4420,4433-4435,5239-5248,5397-5404,5452-5459,6475-6534,7149-7176,7339-7366,11222-11234,11251-11257,11263,11273,11278-11279,11283-11284,11291,11294-11295,11312-11318,11324,11344-11345,11357,11367,11385-11386,11393,11396-11397,11409,11419,11429,11439-11440,11452,11462,11480-11481,11488,11491-11492,11504,11514,11534-11641,13626-13720,14383-14477,23160-23161,23202-23203,23217-23218,23415-23416,23457-23458,23472-23473,23668-23669,23710-23711,23725-23726,24944-24953,25102-25109,25157-25164,26739-26808,28182-28250,28697-28765,34517-34550,35023-35048,35198-35223,38316-38417,38424,38431,38449-38450,38452,38466-38467,38474,38480-38481,38485,38499-38504,38522-38523,38530,38536-38537,38541,38555-38556,38558-38564,38578-38579,38586,38593,38612,38634-38635,38642,38649,38668,40782-40887,41566-41671
+typescript/tests/services/cloud-files.test.ts
+  s_ae792ed0be3006::t_029ce43980497e 114-158
+  s_ae792ed0be3006::t_1ba99b8e8ff82c 1-113,159-219
+ruby/lib/basecamp/generated/types.rb
+  s_ae792ed0be3006::t_b5660c859a604d 4,1254-1355,2273-2341
+ruby/lib/basecamp/generated/metadata.json
+  s_ae792ed0be3006::t_f9326fb53a9215 4,389-410,938-962,1139-1163
+go/pkg/basecamp/cloud_files_test.go
+  s_ae792ed0be3006::t_cf144775c8acbf 1-302
+  s_ae792ed0be3006::t_c0ccef3a1d2967 303-306
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_ae792ed0be3006::t_4249f45fe7c18e 17,23,80,103,225,229,312,316
+python/src/basecamp/generated/types.py
+  s_ae792ed0be3006::t_7779c50ca67ad0 395-428,482-490,518-527,969-994,1943-1950,1963-1971
+swift/Sources/Basecamp/Generated/Models/CloudFile.swift
+  s_ae792ed0be3006::t_2d7402dbabed57 1-78
+typescript/tests/services/google-documents.test.ts
+  s_ae792ed0be3006::t_c86f477bc727ba 1-192
+spec/overlays/tags.smithy
+  s_ae792ed0be3006::t_8dd5570c3e91f3 65-70
+  s_ae792ed0be3006::t_23c10e51f57391 51
+typescript/src/generated/services/google-documents.ts
+  s_ae792ed0be3006::t_7f541e61faefbd 1-194
+typescript/src/generated/schema.d.ts
+  s_ae792ed0be3006::t_8c1b8b5e5e15e1 380-425,985-1016,1178-1209,3757-3819,3882-3901,3939-3961,4530,4553,4644-4682,6076-6088,6105-6120,8351,8357,8361-8365,8367-8368,8373,8394-8402,8423,8429,8435,8439,8445,8466-8467,8472,8475-8476,8481,8484-8485,8490,8495,8500,8506,8512,8553,8558,8564,8568-8569,8574,8577-8578,8583,8586-8733,11110-11238,12066-12194
+python/scripts/generate_services.py
+  s_ae792ed0be3006::t_53a96fe925ba14 72-73
+spec/fixtures/google_documents/get.json
+  s_ae792ed0be3006::t_5575d76212e110 1-54
+python/src/basecamp/async_client.py
+  s_ae792ed0be3006::t_c589c67663d9c3 262-273
+ruby/lib/basecamp/generated/services/google_documents_service.rb
+  s_ae792ed0be3006::t_41a40ed5533cb3 1-61
+typescript/src/client.ts
+  s_ae792ed0be3006::t_16f6c94441bfbb 63-64
+  s_ae792ed0be3006::t_85dd0a0e6121d3 191-194,476-480,885-886
+go/pkg/basecamp/client.go
+  s_ae792ed0be3006::t_b885ff1ae8bda6 100-101,1337-1356
+typescript/src/generated/path-mapping.ts
+  s_ae792ed0be3006::t_6a01ca3b45bec9 38-39,79-80,94-95
+swift/Sources/Basecamp/Generated/Services/GoogleDocumentsService.swift
+  s_ae792ed0be3006::t_4f9e88832303c0 1-33
+swift/Sources/Basecamp/Generated/Models/CreateGoogleDocumentRequest.swift
+  s_ae792ed0be3006::t_ff95addfab259c 1-30
+python/src/basecamp/generated/services/google_documents.py
+  s_ae792ed0be3006::t_05847a05ec3715 1-172
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/cloud-files.kt
+  s_ae792ed0be3006::t_0e96b6a5ebda81 1-90
+swift/Sources/Basecamp/Generated/Models/CreateCloudFileRequest.swift
+  s_ae792ed0be3006::t_57bb6ab7d48109 1-27
+typescript/src/generated/services/index.ts
+  s_ae792ed0be3006::t_c91afcfbf0634c 13-14
+spec/api-gaps/recordable-subtypes-doc.md
+  s_ae792ed0be3006::t_c49e40c6498d26 44-59,65-68,99
+  s_ae792ed0be3006::t_8c528d208cd011 6-15,20-25
+swift/Sources/Basecamp/Generated/Models/UpdateCloudFileRequest.swift
+  s_ae792ed0be3006::t_361da4218b8d84 1-24
+python/src/basecamp/generated/services/__init__.py
+  s_ae792ed0be3006::t_d758d4bdc659e5 22,31,93-94,111-112
+typescript/src/generated/metadata.ts
+  s_ae792ed0be3006::t_9814a1c4ec70ec 40,425-446,974-998,1175-1199
+spec/basecamp.smithy
+  s_ae792ed0be3006::t_3e76a03719c525 3700-3844
+  s_ae792ed0be3006::t_660df99b7de2c9 116-121
+  s_ae792ed0be3006::t_79d2283d16678b 2651-2913
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_ae792ed0be3006::t_e9fea5d8da6eb8 306-324,640-660
+ruby/lib/basecamp/client.rb
+  s_ae792ed0be3006::t_a5af1ebab33250 403-412
+python/tests/services/test_google_documents_service.py
+  s_ae792ed0be3006::t_fb65513e9be8d0 1-136
+spec/fixtures/cloud_files/get.json
+  s_ae792ed0be3006::t_b9db234a7338e0 1-62
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt
+  s_ae792ed0be3006::t_a604c80db3788e 78-81,114-117
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  s_ae792ed0be3006::t_1820716570587b 54-55
+ruby/test/basecamp/services/cloud_files_service_test.rb
+  s_ae792ed0be3006::t_bb933c0130c064 1-119
+python/tests/services/test_cloud_files_service.py
+  s_ae792ed0be3006::t_c1878ceeeebdb7 1-140,142-143
+  s_ae792ed0be3006::t_944f45a327e29f 141
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_ae792ed0be3006::t_ae1b043cbeb86e 34,40,97,120,242,246
+ruby/lib/basecamp/generated/services/cloud_files_service.rb
+  s_ae792ed0be3006::t_f758a43d1eb915 1-57
+go/pkg/basecamp/google_documents.go
+  s_ae792ed0be3006::t_d5d5d0a43ee903 1-312
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/google-documents.kt
+  s_ae792ed0be3006::t_8c1e664d205e2a 1-92
+typescript/scripts/generate-services.ts
+  s_ae792ed0be3006::t_3c76c96ca68197 214-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "dc0f896628661b04a002a95a1e096b9851a6db45",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
