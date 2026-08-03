@@ -1,0 +1,31 @@
+spec/api-gaps/schedule-recurrence-writes.md
+  s_ae792ed0be3006::t_09eeef909152e3 145-149
+  s_ae792ed0be3006::t_de7914ca6104fd 187-193,196-309
+  s_ae792ed0be3006::t_36c06d6f27b18c 117-134,138-144,150-154
+  s_ae792ed0be3006::t_fd6baa60051f6e 47-54,60-100
+  s_ae792ed0be3006::t_26dbe222b1e3ca 105-110
+  s_ae792ed0be3006::t_741f81c4c3833a 135-137
+  s_ae792ed0be3006::t_0aa4d67b0c7f89 160-183
+spec/api-gaps/external-links-doors.md
+  s_ae792ed0be3006::t_1470efa4838eca 97-99
+  s_ae792ed0be3006::t_de806379fd63d1 49-58
+  s_ae792ed0be3006::t_2f4fb4140866f3 142-226
+spec/bc3-route-allowlist.yml
+  s_ae792ed0be3006::t_912f8316faafd0 190-200,204-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "10cbdccd794b01e52e283b45027170d8507b8d0a",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
