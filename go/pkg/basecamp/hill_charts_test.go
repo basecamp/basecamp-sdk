@@ -74,6 +74,13 @@ func TestHillChart_TimestampParsing(t *testing.T) {
 		t.Fatalf("failed to unmarshal get.json: %v", err)
 	}
 
+	// UpdatedAt is optional (*time.Time): nil-check before dereferencing.
+	// `hc.UpdatedAt.IsZero()` still compiles against the pointer and would
+	// panic here if the fixture ever dropped the key — see
+	// TestNilOptionalTimestampPanicsOnValueReceiverCall.
+	if hc.UpdatedAt == nil {
+		t.Fatal("expected UpdatedAt to be present in get.json")
+	}
 	if hc.UpdatedAt.IsZero() {
 		t.Error("expected non-zero UpdatedAt")
 	}

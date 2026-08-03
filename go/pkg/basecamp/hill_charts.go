@@ -10,9 +10,15 @@ import (
 
 // HillChart represents a hill chart for a todoset.
 type HillChart struct {
-	Enabled        bool           `json:"enabled"`
-	Stale          bool           `json:"stale"`
-	UpdatedAt      time.Time      `json:"updated_at,omitempty"`
+	Enabled bool `json:"enabled"`
+	Stale   bool `json:"stale"`
+	// UpdatedAt is when the chart last moved. Optional — a chart that has
+	// never been updated omits it. A pointer so absence stays distinguishable
+	// from a real value: a value-typed time.Time would read as
+	// 0001-01-01T00:00:00Z, and `,omitempty` cannot hide that because
+	// encoding/json never treats a struct as empty. Mirrors the *time.Time
+	// convention used for Card.CompletedAt and TimelineEvent.UpdatedAt.
+	UpdatedAt      *time.Time     `json:"updated_at,omitempty"`
 	AppUpdateURL   string         `json:"app_update_url,omitempty"`
 	AppVersionsURL string         `json:"app_versions_url,omitempty"`
 	Dots           []HillChartDot `json:"dots,omitempty"`
@@ -118,7 +124,7 @@ func hillChartFromGenerated(ghc generated.HillChart) HillChart {
 	hc := HillChart{
 		Enabled:        ghc.Enabled,
 		Stale:          ghc.Stale,
-		UpdatedAt:      deref(ghc.UpdatedAt),
+		UpdatedAt:      ghc.UpdatedAt,
 		AppUpdateURL:   deref(ghc.AppUpdateUrl),
 		AppVersionsURL: deref(ghc.AppVersionsUrl),
 	}
