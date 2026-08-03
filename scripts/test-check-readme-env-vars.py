@@ -84,6 +84,7 @@ PY_SDK = {"Python": gate.SDKS["Python"]}
 RB_SDK = {"Ruby": gate.SDKS["Ruby"]}
 TS_SDK = {"TypeScript": gate.SDKS["TypeScript"]}
 PY_RB = {"Python": gate.SDKS["Python"], "Ruby": gate.SDKS["Ruby"]}
+SW_SDK = {"Swift": gate.SDKS["Swift"]}
 
 TABLE = "| Variable | Description |\n|---|---|\n| `{var}` | thing |\n"
 
@@ -214,6 +215,50 @@ def main() -> int:
         })
         check("a real read beside a string example still counts",
               run_gate(root, PY_SDK), [])
+
+        # 5b-iii. An interpolation is executable code that happens to sit inside
+        #     a literal. Masking it would hide a genuine read — the fail-open
+        #     direction — so each language's spelling is exercised.
+        root = tmp / "interp-ts"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_TMPL\n",
+            "typescript/src/c.ts": "const label = `token=${process.env.BASECAMP_TMPL}`;\n",
+        })
+        check("a template-literal interpolation is a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_TMPL"])
+
+        root = tmp / "interp-rb"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_INTERP"),
+            "ruby/lib/c.rb": 'v = "#{ENV[\'BASECAMP_INTERP\']}"\n',
+        })
+        check("a ruby #{} interpolation is a read", run_gate(root, RB_SDK), [])
+
+        root = tmp / "interp-py"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_FSTR"),
+            "python/src/c.py": 'v = f"{os.environ.get(\'BASECAMP_FSTR\')}"\n',
+        })
+        check("a python f-string interpolation is a read", run_gate(root, PY_SDK), [])
+
+        # ...but the same braces without an `f` prefix are literal text.
+        root = tmp / "interp-py-plain"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_NOTF"),
+            "python/src/c.py": 'v = "{os.environ.get(\'BASECAMP_NOTF\')}"\n',
+        })
+        check("braces without an f prefix are not a read",
+              run_gate(root, PY_SDK), ["forward:Python:BASECAMP_NOTF"])
+
+        root = tmp / "interp-swift"
+        build(root, {
+            "swift/README.md": "mentions BASECAMP_SW\n",
+            "swift/Sources/c.swift":
+                'let s = "tok=\\(ProcessInfo.processInfo.environment["BASECAMP_SW"])"\n',
+        })
+        check("a swift \\() interpolation is a read",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)), ["noenv:Swift:BASECAMP_SW"])
 
         # 5c. A `#` inside a string literal does not start a comment, so a read
         #     later on the same line must still be seen.

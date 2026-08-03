@@ -158,6 +158,53 @@ CLAIM_END_RE = re.compile(r"\.\s|\n")
 STRING_QUOTES = {"hash": "\"'", "slash": "\"'`"}
 
 
+def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str) -> int:
+    """Index of the delimiter closing the one already opened, honouring nesting.
+
+    Returns len(text) when unterminated, so a malformed literal consumes the
+    rest of the file rather than silently resyncing mid-expression.
+    """
+    depth = 1
+    k = start
+    while k < len(text):
+        if text[k] == open_ch:
+            depth += 1
+        elif text[k] == close_ch:
+            depth -= 1
+            if depth == 0:
+                return k
+        k += 1
+    return len(text)
+
+
+def interpolation_openers(text: str, i: int, quote: str, style: str) -> list[tuple[str, str]]:
+    """Interpolation delimiters valid inside the literal opening at `i`.
+
+    Interpolations are the one part of a string literal that is executable, so
+    they must stay visible to the read patterns. Each language spells them
+    differently, and spelling them wrong fails *open* -- a masked read is a read
+    the gate swears does not exist.
+    """
+    if quote == "`":
+        return [("${", "}")]  # TypeScript and Kotlin raw strings
+    if style == "slash":
+        if quote == '"':
+            return [("${", "}"), ("\\(", ")")]  # Kotlin, and Swift's \( ... )
+        return []
+    openers = []
+    if quote == '"':
+        openers.append(("#{", "}"))  # Ruby
+    # Python f-strings, whose braces are code. Only with an `f` prefix: an
+    # ordinary "{...}" is literal text, and treating it as code would let a
+    # documentation example count as a read.
+    prefix_start = i
+    while prefix_start > 0 and text[prefix_start - 1].isalpha():
+        prefix_start -= 1
+    if "f" in text[prefix_start:i].lower():
+        openers.append(("{", "}"))
+    return openers
+
+
 def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
     """Blank comments and doc-only string blocks, preserving every offset.
 
@@ -200,9 +247,19 @@ def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
             continue
         if text[i] in quotes:
             quote = text[i]
+            openers = interpolation_openers(text, i, quote, style)
+            swift_interp = ("\\(", ")") in openers
             j = i + 1
+            holes: list[tuple[int, int]] = []
             while j < n:
                 if text[j] == "\\":
+                    # Swift interpolation opens with a backslash, so it has to be
+                    # tested before the generic escape skip swallows the paren.
+                    if swift_interp and text.startswith("\\(", j):
+                        end = matching_delimiter(text, j + 2, "(", ")")
+                        holes.append((j + 2, end))
+                        j = end + 1
+                        continue
                     j += 2
                     continue
                 if text[j] == quote:
@@ -212,9 +269,25 @@ def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
                 # TypeScript backtick literals legitimately span lines.
                 if text[j] == "\n" and quote != "`":
                     break
+                opened = False
+                for opener, closer in openers:
+                    if opener != "\\(" and text.startswith(opener, j):
+                        end = matching_delimiter(text, j + len(opener), "{", closer)
+                        holes.append((j + len(opener), end))
+                        j = end + 1
+                        opened = True
+                        break
+                if opened:
+                    continue
                 j += 1
             for k in range(i, min(j, n)):
                 in_string[k] = 1
+            # An interpolation is executable code that merely lives inside a
+            # literal, so it is un-masked: `token=${process.env.BASECAMP_TOKEN}`
+            # is a genuine read, and masking it would hide one.
+            for hole_start, hole_end in holes:
+                for k in range(hole_start, min(hole_end, n)):
+                    in_string[k] = 0
             i = j
             continue
         if style == "slash" and text.startswith("//", i):

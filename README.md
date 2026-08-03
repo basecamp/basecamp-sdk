@@ -46,9 +46,9 @@ Every Basecamp API request carries an OAuth 2.0 access token. There is no API ke
 |---|---|---|
 | already holds a token you obtained elsewhere | **static token** | you do |
 | can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** | a refreshing token provider (built in for Go, Ruby, Python; wire it yourself in TypeScript and Kotlin) |
-| has no browser at all (CLI, daemon, CI job, device) | **device flow** ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)) | Go's `AuthManager`; in Ruby and Python the standalone refresh helper, **not** their built-in token providers (see below); wire it yourself in TypeScript and Kotlin |
+| has no browser, but a person can approve on another device (CLI, headless server, TV) | **device flow** ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)) | Go's `AuthManager`; in Ruby and Python the standalone refresh helper, **not** their built-in token providers (see below); wire it yourself in TypeScript and Kotlin |
 
-The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+The one-line rule: **a redirect URI you control → authorization code; no browser but someone to approve → device flow; a token already in hand → static token.** An unattended daemon or CI job fits none of the three on its own — the device flow needs a person to enter the user code at the verification URI — so provision a token out of band and hand it to the process as a static or refresh token.
 
 2. Get the client credentials that grant needs:
 
