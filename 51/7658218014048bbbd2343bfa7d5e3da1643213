@@ -1,0 +1,19 @@
+typescript/package-lock.json
+  s_62d102ac250358::t_7ad4d3b0e80d29 903-905,923-925,943-945,963-965,983-985,1003-1005,1023-1025,1043-1045
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "517658218014048bbbd2343bfa7d5e3da1643213",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
