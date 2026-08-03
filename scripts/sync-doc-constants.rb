@@ -29,18 +29,17 @@
 # Modes
 #   --check (default)  Report drift; exit 1 on any error.
 #   --write            Rewrite marked spans in place from the sources.
-#
-#   --openapi PATH     Read the API version from PATH instead of ./openapi.json.
-#                      sync-api-version.sh forwards its own documented
-#                      [openapi.json] argument here; without that, one sync
-#                      could set the SDK constants from a caller-supplied file
-#                      and the prose from the repo's, leaving them disagreeing.
 #                      Only the two scalar constants are writable — an
 #                      assertion-type row needs a human-written description,
 #                      so --write never touches @assertion-types and never
 #                      fails on it. `make doc-constants-check` is what catches
 #                      that one; keeping it out of the writer keeps a schema
 #                      edit from breaking every `make generate`.
+#   --openapi PATH     Read the API version from PATH instead of ./openapi.json.
+#                      sync-api-version.sh forwards its own documented
+#                      [openapi.json] argument here; without that, one sync
+#                      could set the SDK constants from a caller-supplied file
+#                      and the prose from the repo's, leaving them disagreeing.
 #
 # liveAssertions (.properties.liveAssertions...) is deliberately NOT gated:
 # SPEC §19 does not tabulate it, and the live canary is governed by
@@ -49,6 +48,15 @@
 require "json"
 
 ROOT = File.expand_path("..", __dir__)
+
+# Every input here is UTF-8 by construction — openapi.json, the tracked
+# Markdown, and this script's own messages all contain non-ASCII. Ruby
+# otherwise reads and writes in the locale's encoding, so under LC_ALL=C the
+# gate died on the first byte of an em dash instead of checking anything.
+# Encodings are pinned explicitly rather than left to the environment.
+UTF8 = "UTF-8"
+$stdout.set_encoding(UTF8)
+$stderr.set_encoding(UTF8)
 
 LINE_KINDS  = %w[api-version bc3-pin].freeze
 BLOCK_KINDS = %w[assertion-types].freeze
@@ -64,7 +72,7 @@ class Failure < StandardError; end
 def read_json_at(path, label)
   raise Failure, "missing #{label}" unless File.exist?(path)
 
-  JSON.parse(File.read(path))
+  JSON.parse(File.read(path, encoding: UTF8))
 rescue JSON::ParserError => e
   raise Failure, "#{label} is not valid JSON: #{e.message}"
 end
@@ -91,7 +99,7 @@ end
 # Markdown files git actually tracks. `git ls-files` (not Dir.glob) so the
 # gitignored internal docs/ tree and vendored node_modules never get scanned.
 def tracked_markdown
-  out = IO.popen(["git", "-C", ROOT, "ls-files", "-z", "--", "*.md"], &:read)
+  out = IO.popen(["git", "-C", ROOT, "ls-files", "-z", "--", "*.md"], external_encoding: UTF8, &:read)
   raise Failure, "git ls-files failed (is #{ROOT} a git checkout?)" unless $?.success?
 
   out.split("\0").reject(&:empty?).sort
@@ -113,7 +121,7 @@ end
 def scan_file(file)
   spans = []
   errors = []
-  lines = File.readlines(File.join(ROOT, file), chomp: true)
+  lines = File.readlines(File.join(ROOT, file), chomp: true, encoding: UTF8)
   open_block = nil
   in_fence = false
 
@@ -327,7 +335,7 @@ def run(mode, openapi)
       next if writable.empty?
 
       path = File.join(ROOT, file)
-      original = File.read(path)
+      original = File.read(path, encoding: UTF8)
       lines = original.lines
       writable.each do |span|
         index = span.line_no - 1
@@ -339,7 +347,7 @@ def run(mode, openapi)
       updated = lines.join
       next if updated == original
 
-      File.write(path, updated)
+      File.write(path, updated, encoding: UTF8)
       written << file
     end
 
