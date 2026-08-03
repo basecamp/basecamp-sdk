@@ -55,6 +55,20 @@
 # recorded, and so would not be missed if it went), or a marked file the
 # inventory does not mention at all.
 #
+# Known residual, examined and accepted: a count is per file, not per claim, so
+# unmarking one @api-version sentence in SPEC.md while marking a different one
+# in the same change keeps the total at 2 and passes, leaving the first
+# unprotected. Closing it needs per-claim identity — named markers, say
+# <!-- @api-version#headers --> with the inventory listing names — which is a
+# real option and no more churn than counts, since both move only when claims
+# are added or removed. It is not done here because it changes the marker
+# grammar that AGENTS.md and SPEC.md document, and it collides with the
+# :begin/:end suffix; and because unlike everything else fixed in review, this
+# one cannot happen by ordinary authoring. It takes a deliberate relocation of
+# a marker within one file, which is a reviewed edit to marked spans by
+# definition. Cross-FILE relocation is already caught. If a third @api-version
+# claim ever appears, revisit: the argument weakens as the count grows.
+#
 # Modes
 #   --check (default)  Report drift; exit 1 on any error.
 #   --write            Rewrite marked spans in place from the sources.
