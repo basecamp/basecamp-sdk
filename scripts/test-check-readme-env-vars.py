@@ -58,6 +58,10 @@ def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = ()) -> list[str]:
             for var in sorted(reads[sdk]):
                 if var not in text:
                     failures.append(f"reverse:{sdk}:{var}")
+            for _, claimed_sdk, named in gate.prose_claims(readme):
+                for var in named:
+                    if var not in reads.get(claimed_sdk, {}):
+                        failures.append(f"prose:{claimed_sdk}:{var}")
         for sdk in no_env_sdks:
             if reads.get(sdk):
                 failures.append(f"noenv:{sdk}:{sorted(reads[sdk])[0]}")
@@ -79,6 +83,7 @@ def check(name: str, actual, expected) -> None:
 PY_SDK = {"Python": gate.SDKS["Python"]}
 RB_SDK = {"Ruby": gate.SDKS["Ruby"]}
 TS_SDK = {"TypeScript": gate.SDKS["TypeScript"]}
+PY_RB = {"Python": gate.SDKS["Python"], "Ruby": gate.SDKS["Ruby"]}
 
 TABLE = "| Variable | Description |\n|---|---|\n| `{var}` | thing |\n"
 
@@ -180,6 +185,36 @@ def main() -> int:
         check("python docstring example is not a read",
               run_gate(root, PY_SDK), ["forward:Python:BASECAMP_DOCSTR"])
 
+        # 5b-ii. Example text inside an ordinary string is data, not a call.
+        root = tmp / "stringliteral-ts"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts": 'const hint = "process.env.BASECAMP_FAKE";\n',
+        })
+        check("env syntax inside a string is not a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        root = tmp / "stringliteral-py"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "python/src/c.py": 'HINT = \'os.environ.get("BASECAMP_FAKE")\'\n',
+        })
+        check("env call quoted inside a string is not a read",
+              run_gate(root, PY_SDK), ["forward:Python:BASECAMP_FAKE"])
+
+        # ...while the real call on the very next line still registers, so the
+        # mask rejects only the literal and not the file.
+        root = tmp / "stringliteral-mixed"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_REALONE"),
+            "python/src/c.py": (
+                'HINT = "process.env.BASECAMP_FAKE"\n'
+                'v = os.environ.get("BASECAMP_REALONE")\n'
+            ),
+        })
+        check("a real read beside a string example still counts",
+              run_gate(root, PY_SDK), [])
+
         # 5c. A `#` inside a string literal does not start a comment, so a read
         #     later on the same line must still be seen.
         root = tmp / "hashinstring"
@@ -253,6 +288,73 @@ def main() -> int:
         })
         check("checkout under a Tests/ parent still scans",
               run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_UNDER_TESTS"])
+
+        # 8b. Prose attribution (invariant 5). The tables were never where the
+        #     original XDG bug lived — it was a sentence — so a true sentence
+        #     must pass and a false one must fail.
+        root = tmp / "prose-true"
+        build(root, {
+            "python/README.md": "Python reads `BASECAMP_REALPROSE` on request.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_REALPROSE")\n',
+        })
+        check("true prose attribution passes", run_gate(root, PY_SDK), [])
+
+        root = tmp / "prose-false"
+        build(root, {
+            "python/README.md": "Python reads `BASECAMP_PROSEPHANTOM` on request.\n",
+            "python/src/c.py": "v = 1\n",
+        })
+        check("false prose attribution is caught",
+              run_gate(root, PY_SDK), ["prose:Python:BASECAMP_PROSEPHANTOM"])
+
+        # Two claims on one line must split at the second SDK, not pool their
+        # variables — this is the shape the root README actually ships.
+        root = tmp / "prose-split-ok"
+        build(root, {
+            "python/README.md": "Python reads `BASECAMP_ONE` and Ruby reads `BASECAMP_TWO` here.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_ONE")\n',
+            "ruby/README.md": "mentions BASECAMP_TWO\n",
+            "ruby/lib/c.rb": 'v = ENV["BASECAMP_TWO"]\n',
+        })
+        check("a two-SDK sentence attributes each variable to its own SDK",
+              run_gate(root, PY_RB), [])
+
+        # ...and the second clause is really checked, not merely parsed.
+        root = tmp / "prose-split-bad"
+        build(root, {
+            "python/README.md": "Python reads `BASECAMP_ONE` and Ruby reads `BASECAMP_TWO` here.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_ONE")\n',
+            "ruby/README.md": "mentions BASECAMP_TWO\n",
+            "ruby/lib/c.rb": "v = 1\n",
+        })
+        check("a false second clause is caught",
+              run_gate(root, PY_RB), ["prose:Ruby:BASECAMP_TWO"])
+
+        # The passive voice names a symbol, not an SDK, and must not fire —
+        # go/README.md ships exactly this sentence.
+        root = tmp / "prose-passive"
+        build(root, {
+            "python/README.md": "`BASECAMP_PASSIVE` is read by `AuthManager.AccessToken`.\n",
+            "python/src/c.py": "v = 1\n",
+        })
+        check("passive voice is not an SDK attribution", run_gate(root, PY_SDK), [])
+
+        # Likewise a symbol subject: python/README.md says "a plain `Config()`
+        # reads no environment at all".
+        root = tmp / "prose-symbol-subject"
+        build(root, {
+            "python/README.md": "A plain `Config()` reads no environment; `BASECAMP_NOPE` is inert.\n",
+            "python/src/c.py": "v = 1\n",
+        })
+        check("a symbol subject is not an SDK attribution", run_gate(root, PY_SDK), [])
+
+        # Fenced examples are not claims.
+        root = tmp / "prose-fenced"
+        build(root, {
+            "python/README.md": "intro\n\n```\nPython reads `BASECAMP_INFENCE`\n```\n",
+            "python/src/c.py": "v = 1\n",
+        })
+        check("a fenced example is not a prose claim", run_gate(root, PY_SDK), [])
 
         # 9. Out-of-family variables are ignored; the gate only polices
         #    BASECAMP_*/XDG_*, not every env var an SDK might touch.

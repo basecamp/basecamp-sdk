@@ -48,6 +48,11 @@ python/.pytest_cache/
 python/.coverage
 python/src/*.egg-info/
 
+# Repo-level Python tooling. The README env-var gate's self-test imports the
+# gate by path, and SourceFileLoader caches its bytecode next to it.
+scripts/__pycache__/
+scripts/*.pyc
+
 # Python conformance runner artifacts
 conformance/runner/python/.venv/
 conformance/runner/python/**/__pycache__/

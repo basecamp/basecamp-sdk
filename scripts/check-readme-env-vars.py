@@ -7,7 +7,7 @@ wrong SDK (`XDG_CACHE_HOME` credited to Ruby, which never reads it). Both are
 invisible to every other gate in `make check`, because nothing here is
 generated -- the prose is hand-written and drifts silently.
 
-This checks four invariants:
+This checks five invariants:
 
   1. Forward, per SDK: every variable named in an SDK README's env-var table is
      genuinely read by that SDK's source.
@@ -17,6 +17,14 @@ This checks four invariants:
      in that SDK's README, so a new read cannot ship undocumented.
   4. The root README's "TypeScript, Swift, and Kotlin read no environment
      variables at all" sentence still holds.
+  5. Prose attribution: a sentence of the form "<SDK> reads `VAR`" must be true.
+
+Invariant 5 exists because 1 and 2 only police table rows, and the attribution
+bug that prompted this gate was in prose, not a table: the root README said the
+XDG variables were the ones "Go and Ruby use to site their cache and config
+directories" when Ruby never reads `XDG_CACHE_HOME` at all. With only the table
+checks, rewording that sentence back to credit Ruby with `XDG_CACHE_HOME` passes
+silently -- verified by doing exactly that and watching the gate report success.
 
 "Genuinely reads" means an env-read call site in non-test source, not a bare
 mention. That distinction is the whole point: every `process.env.BASECAMP_*`
@@ -123,24 +131,46 @@ VAR_RE = re.compile(r"\b((?:BASECAMP|XDG)_[A-Z0-9_]+)\b")
 
 FILENAME_TEST_MARKERS = ("_test.", "test_", ".test.", "_spec.")
 
+# Invariant 5. Only the active voice with a bare SDK name as the subject --
+# "Go reads `X`". The passive "`BASECAMP_TOKEN` is read by `AuthManager`" and
+# "`Config()` reads no environment" both name a *symbol* rather than an SDK, and
+# neither matches, which is what keeps this from firing on the per-SDK READMEs.
+SDK_READS_RE = re.compile(
+    rf"\b(?P<sdk>{'|'.join(SDKS)})\b\s+reads?\b"
+)
+
+# A claim runs to the next such claim or the end of its sentence, whichever
+# comes first, so "Go reads `A` ... and Ruby reads `B`" splits at "Ruby".
+CLAIM_END_RE = re.compile(r"\.\s|\n")
+
 # Quote characters that open a string literal, per comment style. String bodies
 # are kept — the variable name lives inside one — but they are skipped over so a
 # `#` or `//` inside a string is not mistaken for the start of a comment.
 STRING_QUOTES = {"hash": "\"'", "slash": "\"'`"}
 
 
-def strip_noncode(text: str, style: str) -> str:
+def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
     """Blank comments and doc-only string blocks, preserving every offset.
+
+    Returns the cleaned text plus a mask marking offsets that sit inside a
+    string literal (opening quote included).
 
     Removed characters become spaces and newlines are kept, so match offsets
     still map to the right line of the original file.
 
-    A line-prefix test is not enough: in an unstarred block comment the interior
-    lines start with ordinary code characters, so `/*\\nprocess.env.FOO\\n*/`
-    would otherwise count as a real read.
+    Two things this has to get right, having got both wrong before:
+
+    * A line-prefix comment test is not enough — inside an unstarred block
+      comment the interior lines begin with ordinary code characters, so
+      `/*\\nprocess.env.FOO\\n*/` would count as a read.
+    * String bodies must be *kept* (the variable name lives inside one) but
+      still tracked, because an ordinary string such as
+      `"process.env.BASECAMP_FAKE"` is data, not a read. Callers reject a match
+      whose API prefix begins inside a literal; see `real_reads`.
     """
     out = list(text)
     n = len(text)
+    in_string = bytearray(n)
     quotes = STRING_QUOTES[style]
     i = 0
 
@@ -174,6 +204,8 @@ def strip_noncode(text: str, style: str) -> str:
                 if text[j] == "\n" and quote != "`":
                     break
                 j += 1
+            for k in range(i, min(j, n)):
+                in_string[k] = 1
             i = j
             continue
         if style == "slash" and text.startswith("//", i):
@@ -204,7 +236,7 @@ def strip_noncode(text: str, style: str) -> str:
             i = end
             continue
         i += 1
-    return "".join(out)
+    return "".join(out), in_string
 
 
 def is_test(rel_path: Path) -> bool:
@@ -244,11 +276,20 @@ def real_reads(spec: dict) -> dict[str, list[str]]:
         # patterns allow whitespace after the opening paren/bracket, so a call
         # split across lines — os.getenv(\n    "BASECAMP_FOO") — is still a read,
         # and a per-line scan would silently miss it.
-        text = strip_noncode(path.read_text(encoding="utf-8", errors="replace"), spec["comments"])
+        text, in_string = strip_noncode(
+            path.read_text(encoding="utf-8", errors="replace"), spec["comments"]
+        )
         for pattern in compiled:
             # finditer + the named group, not findall: these patterns carry a
             # quote group too, and findall would hand back tuples.
             for match in pattern.finditer(text):
+                # The match starts at the API prefix (`os.getenv`, `process.env`),
+                # which is code. If that prefix is itself inside a literal, this
+                # is example text in a string, not a call — `"process.env.FOO"`
+                # is data. The *name* is legitimately inside a literal, so only
+                # the start offset is tested.
+                if in_string[match.start()]:
+                    continue
                 name = match.group("name")
                 if VAR_RE.fullmatch(name):
                     lineno = text.count("\n", 0, match.start()) + 1
@@ -268,6 +309,42 @@ def table_rows(readme: Path) -> list[tuple[int, list[str]]]:
             continue  # separator row
         rows.append((lineno, cells))
     return rows
+
+
+def prose_lines(readme: Path) -> list[tuple[int, str]]:
+    """README prose, as (line number, text), minus code blocks and table rows.
+
+    Fenced blocks are shell and source examples, where "Go reads" would be a
+    comment rather than a claim; table rows are already covered by invariants 1
+    and 2, and scanning them here would double-report the same defect.
+    """
+    out = []
+    fenced = False
+    for lineno, line in enumerate(readme.read_text(encoding="utf-8").splitlines(), 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced or line.strip().startswith("|"):
+            continue
+        out.append((lineno, line))
+    return out
+
+
+def prose_claims(readme: Path) -> list[tuple[int, str, list[str]]]:
+    """Every "<SDK> reads `VAR`" claim, as (line number, sdk, variables)."""
+    claims = []
+    for lineno, line in prose_lines(readme):
+        matches = list(SDK_READS_RE.finditer(line))
+        for index, match in enumerate(matches):
+            start = match.end()
+            stop = matches[index + 1].start() if index + 1 < len(matches) else len(line)
+            terminator = CLAIM_END_RE.search(line, start, stop)
+            if terminator:
+                stop = terminator.start()
+            named = VAR_RE.findall(line[start:stop])
+            if named:
+                claims.append((lineno, match.group("sdk"), named))
+    return claims
 
 
 def main() -> int:
@@ -330,6 +407,19 @@ def main() -> int:
                 f"{ROOT_README}: claims {sdk} reads no environment variables, but "
                 f"found: {detail}"
             )
+
+    # 5. Prose attribution, every README: "<SDK> reads `VAR`" must be true.
+    for readme_rel in [ROOT_README] + [s["readme"] for s in SDKS.values()]:
+        readme = REPO / readme_rel
+        if not readme.is_file():
+            continue
+        for lineno, sdk, named in prose_claims(readme):
+            for var in named:
+                if var not in reads[sdk]:
+                    failures.append(
+                        f"{readme_rel}:{lineno}: prose says {sdk} reads {var}, but no "
+                        f"read of it exists in {SDKS[sdk]['source']}/"
+                    )
 
     if failures:
         print("README environment-variable check FAILED:\n", file=sys.stderr)
