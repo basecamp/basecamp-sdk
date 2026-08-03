@@ -24,10 +24,11 @@ no changes under `doc/api/` or the API controllers/views.
 
 - **BC3 plan owns**: server-side audit, jbuilder + controller + doc
   additions, BC4 compat verification, regenerating live-server doc
-  snapshots, eventually opening Smithy PRs in this repo.
+  snapshots, reviewing the Smithy PRs the SDK opens in this repo.
 - **This SDK plan owns**: the single-backend live canary against production
   BC5, schema validation on raw wire bytes plus 4-language decode
-  consistency, additive Smithy absorption per BC3 deliverable, the API-gap
+  consistency, authoring the Smithy + regeneration PRs and additive
+  absorption per BC3 deliverable (Lifecycle step 3; BC3 reviews), the API-gap
   detector that catches anything BC3 hasn't registered, the bucket-flat
   parity lint, the API gap registry at [`spec/api-gaps/`](spec/api-gaps/).
 
@@ -44,9 +45,11 @@ no changes under `doc/api/` or the API controllers/views.
 
 ## Contract decisions (cross-team)
 
-Three cross-team items. The first two, surfaced by the SDK canary, settled
+Four cross-team items. The first two, surfaced by the SDK canary, settled
 as of the BC5 API train (8 BC3 PRs merged to `master`, 2026-07-18..21); the
-third, surfaced by a live failure, settled by BC5's release replacing BC4:
+third, surfaced by a live failure, settled by BC5's release replacing BC4;
+the fourth, surfaced by the SDK's pre-merge review of BC3's event-feed
+branch, has its contract decisions recorded pre-merge:
 
 1. `memories` going to `[]` on `GET /my/readings.json` — **settled:
    permanently empty by documented contract**.
@@ -85,6 +88,30 @@ third, surfaced by a live failure, settled by BC5's release replacing BC4:
    (status `absorbed-in-sdk`). Remaining tail is documentation only:
    `doc/api/sections/tools.md` still documents the removed clone contract
    (bc3#12364).
+4. Account-wide event feed (poll lane + Action Cable push lane) on BC3's
+   unmerged `eventstream+accountid` branch (BC3 #9646/#9659) — **contract
+   decisions recorded pre-merge**, verified at branch head `8be5c67de5`
+   (a branch-head verification record, not a provenance pin): the poll
+   response body envelope `{"events", "position", "next"}` is the contract
+   (headers are echoes); the filter digest is published as a versioned
+   `srv1` contract (bare 16-hex on the wire; `srv1-<digest>` is the SDK's
+   checkpoint-lineage namespace); the 409 filter-mismatch body names
+   `position_digest` and `filters_digest`; the disconnect-reason matrix is
+   four rows (including `remote`/reconnect:true server-initiated disconnect
+   — revocation is not wire-distinguishable, a failing re-mint is the
+   designed detection path); stream tickets are stateless replayable
+   bearers (mint is safe-to-retry; statelessness re-confirmed at BC3's
+   merge-time gate); entry-boundary semantics are position-relative
+   (`since=now` permanently excludes an in-flight lower id that commits
+   after entry — the SDK connector's drain-before-save entry sequencing
+   encodes the consequence). Division of labor per Lifecycle step 3: the
+   SDK authors the Smithy + regeneration PRs, BC3 reviews. Fixture freezing
+   and Layer-1 absorption are gated on BC3's merge-time gate (rebase both
+   PRs, re-run CI, fresh exact-head reviews, re-confirmed ticket
+   statelessness, regenerated wire transcripts). Filed as
+   [`spec/api-gaps/event-feed.md`](spec/api-gaps/event-feed.md)
+   (status `no-json-contract` — the branch is unmerged; neither route
+   exists on `master`).
 
 These records live on in the registry and this SDK plan's §8.
 
