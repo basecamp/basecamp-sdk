@@ -244,7 +244,8 @@ sync-api-version-check:
 # Check the constants restated in prose (API_VERSION, bc3 provenance pin,
 # SPEC §19's assertion-type table) against their machine-readable sources.
 # Only HTML-comment-marked spans are checked; spec/doc-constants.json commits
-# the per-file marker floor so deleting a marker cannot silence the gate.
+# the exact per-file marker count so neither deleting a marker nor quietly
+# adding an unrecorded one can silence the gate.
 # The live run only ever proves the gate can say yes, so the self-test follows:
 # it crafts each failure mode and asserts the gate rejects it.
 doc-constants-check:

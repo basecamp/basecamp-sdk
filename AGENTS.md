@@ -214,11 +214,13 @@ whole history, which CI's shallow clones do not have.
 
 The same marker convention covers `<!-- @api-version -->` (from `openapi.json`
 `info.version`) and SPEC §19's `<!-- @assertion-types:begin/end -->` table
-(from `conformance/schema.json`). `spec/doc-constants.json` commits a per-file
-floor on how many markers each file must carry, so deleting a marker fails the
-gate instead of silencing it, and a `.writerExcludes` list of files the writer
-must never touch — `spec/api-gaps/README.md` is on it, because its pin sentence
-heads the range triage and cannot advance without that triage advancing too.
+(from `conformance/schema.json`). `spec/doc-constants.json` commits the exact
+number of markers each file carries, so deleting one fails the gate instead of
+silencing it — and adding one fails too, until you record it, which is what
+makes the next deletion fail. It also carries `.writerExcludes`, the files the
+writer must never touch: `spec/api-gaps/README.md` is on it, because its pin
+sentence heads the range triage and cannot advance without that triage
+advancing too.
 `scripts/test-doc-constants.rb` (run by `make doc-constants-check`) asserts the
 gate rejects each of these failure modes.
 

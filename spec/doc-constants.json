@@ -2,10 +2,14 @@
   "$comment": [
     "Policy for scripts/sync-doc-constants.rb (make doc-constants-check).",
     "",
-    "markerFloors — each entry is a MINIMUM: the named file must carry at least",
-    "this many spans marked with the given HTML comment. Adding a new marked claim",
-    "never needs a bump; deleting one to make the gate go quiet fails here instead.",
-    "Moving a claim to another file is a two-line edit in the same commit.",
+    "markerCounts — the EXACT number of spans each file carries for a given HTML",
+    "comment. Any deviation fails: too few means a claim was deleted or unmarked,",
+    "too many means one was added without being recorded here (and so would not be",
+    "missed if it later went), and a marked file absent from this list is not",
+    "protected at all. Adding or moving a claim is a one-line edit in the same",
+    "commit. This was a minimum until review pointed out that a minimum protects",
+    "only the first N claims in a file — a later addition could be deleted again",
+    "with the count still satisfied.",
     "",
     "writerExcludes — files whose marked spans the WRITER (--write, reached from",
     "`make generate` via sync-api-version) must never rewrite. The gate still",
@@ -22,7 +26,7 @@
     "as-of fact bound to something fixed (a PR, a verification), not a claim about",
     "the pin."
   ],
-  "markerFloors": {
+  "markerCounts": {
     "api-version": {
       "SPEC.md": 2
     },

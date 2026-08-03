@@ -77,7 +77,7 @@ def default_files
       "bc3" => { "revision" => REVISION, "date" => PIN_DATE }
     ),
     "spec/doc-constants.json" => JSON.pretty_generate(
-      "markerFloors" => {
+      "markerCounts" => {
         "api-version" => { "SPEC.md" => 1 },
         "bc3-pin" => { "COORDINATION.md" => 1 },
         "assertion-types" => { "SPEC.md" => 1 },
@@ -244,6 +244,13 @@ out, status = gate lambda { |f|
 expect_fail(failures, "unmarked current-pin restatement", out, status,
             "is the current provenance pin, restated outside a @bc3-pin span")
 
+# Backticks must not be the way around the rule.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = "# An entry\n\nThe provenance pin is #{SHORT} today.\n"
+}
+expect_fail(failures, "unmarked BARE current-pin restatement", out, status,
+            "is the current provenance pin, restated outside a @bc3-pin span")
+
 out, status = gate lambda { |f|
   f["spec/api-gaps/entry.md"] = "# An entry\n\nSDK #528 repinned to `#{SHORT}`.\n"
   cfg = JSON.parse(f["spec/doc-constants.json"])
@@ -317,36 +324,62 @@ expect_fail(failures, "nested block begin", out, status, "inside an unclosed")
 out, status = gate ->(f) { f["SPEC.md"] += "\n<!-- @assertion-types:end -->\n" }
 expect_fail(failures, ":end without :begin", out, status, ":end without a matching :begin")
 
-# --- marker-count floor --------------------------------------------------------
+# --- marker inventory (exact counts) -------------------------------------------
 
 out, status = gate ->(f) { f["COORDINATION.md"] = f["COORDINATION.md"].sub(" <!-- @bc3-pin -->", "") }
-expect_fail(failures, "marker deleted below the floor", out, status,
-            "COORDINATION.md: marker floor violated")
+expect_fail(failures, "marker deleted", out, status,
+            "COORDINATION.md: spec/doc-constants.json declares 1 @bc3-pin marker(s), found 0")
 
-# A marker moved to another file still leaves the original below its floor —
-# the floor is per-file precisely so this is not a silent relocation.
+# The reason this is an exact count and not a floor: a claim ADDED to a file
+# that already satisfies its number would otherwise be unprotected forever —
+# delete it again later and the count still passes.
+out, status = gate lambda { |f|
+  f["SPEC.md"] += "\nAlso API_VERSION is `#{API_VER}`. <!-- @api-version -->\n"
+}
+expect_fail(failures, "marker added without recording it", out, status,
+            "A marked claim was added without recording it — set the count to 2")
+
+# ...and once recorded, deleting THAT marker fails too — the property a floor
+# could not give.
+out, status = gate lambda { |f|
+  cfg = JSON.parse(f["spec/doc-constants.json"])
+  cfg["markerCounts"]["api-version"]["SPEC.md"] = 2
+  f["spec/doc-constants.json"] = JSON.pretty_generate(cfg)
+}
+expect_fail(failures, "recorded marker later deleted", out, status,
+            "declares 2 @api-version marker(s), found 1")
+
+# A marker in a file the inventory never mentions is equally unprotected.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] += "\nThe pin is `#{SHORT}` as of the #{PIN_DATE} sync. <!-- @bc3-pin -->\n"
+}
+expect_fail(failures, "marker in an undeclared file", out, status,
+            "spec/api-gaps/entry.md: carries 1 @bc3-pin marker(s) that spec/doc-constants.json does not declare")
+
+# A marker moved to another file leaves the original short — the count is
+# per-file precisely so a relocation is not silent.
 out, status = gate lambda { |f|
   f["COORDINATION.md"] = f["COORDINATION.md"].sub(" <!-- @bc3-pin -->", "")
   f["spec/api-gaps/entry.md"] += "\nThe pin is `#{SHORT}` as of the #{PIN_DATE} sync. <!-- @bc3-pin -->\n"
 }
-expect_fail(failures, "marker relocated without moving the floor", out, status,
-            "marker floor violated")
+expect_fail(failures, "marker relocated without moving the count", out, status,
+            "COORDINATION.md: spec/doc-constants.json declares 1 @bc3-pin marker(s), found 0")
 
 # Backticked markers are documentation OF the convention, not uses of it — they
-# must not count toward a floor.
+# must not count toward the inventory.
 out, status = gate lambda { |f|
   f["COORDINATION.md"] = "# Coordination\n\nMark the line with `<!-- @bc3-pin -->` to gate it.\n"
 }
-expect_fail(failures, "backticked marker does not satisfy the floor", out, status,
-            "marker floor violated")
+expect_fail(failures, "backticked marker does not satisfy the count", out, status,
+            "declares 1 @bc3-pin marker(s), found 0")
 
 out, status = gate lambda { |f|
   cfg = JSON.parse(f["spec/doc-constants.json"])
-  cfg["markerFloors"]["not-a-kind"] = { "SPEC.md" => 1 }
+  cfg["markerCounts"]["not-a-kind"] = { "SPEC.md" => 1 }
   f["spec/doc-constants.json"] = JSON.pretty_generate(cfg)
 }
-expect_fail(failures, "floor declared for an unknown kind", out, status,
-            "floor declared for unknown marker @not-a-kind")
+expect_fail(failures, "count declared for an unknown kind", out, status,
+            "count declared for unknown marker @not-a-kind")
 
 # --- source-of-truth failures --------------------------------------------------
 

@@ -40,7 +40,10 @@
 #                the span is the lines strictly between them.
 #
 # Deleting a marker to silence the gate is itself caught: spec/doc-constants.json
-# commits a per-file marker-count FLOOR, and dropping below it fails.
+# commits the EXACT per-file marker count, and any deviation fails — too few
+# (a claim was deleted or unmarked), too many (a claim was added without being
+# recorded, and so would not be missed if it went), or a marked file the
+# inventory does not mention at all.
 #
 # Modes
 #   --check (default)  Report drift; exit 1 on any error.
@@ -307,20 +310,30 @@ end
 # walking git log of spec/api-provenance.json — slow, and wrong under the
 # shallow clones CI uses. So this catches the claim as it is made, and AGENTS.md
 # governs the ones already settled.
-def check_unmarked_pin(file, prose, revision, allowed)
-  prose.filter_map do |line_no, line|
-    hits = line.scan(TICKED_HEX_RE).flatten.select { |h| revision.start_with?(h) }
-    next if hits.empty?
+#
+# Backticked and bare occurrences both count. Requiring backticks here would
+# leave "the provenance pin is d0edc128" as a one-character way around the
+# rule, and unlike the generic bare-SHA heuristic this match is the live
+# revision's own prefix, so it cannot collide with an ordinary number.
+def cites_current_pin?(line, revision)
+  ticked = line.scan(TICKED_HEX_RE).flatten.select { |h| revision.start_with?(h) }
+  return ticked.first unless ticked.empty?
 
-    if allowed.key?(file)
-      nil
-    else
-      "#{file}:#{line_no}: `#{hits.first}` is the current provenance pin, restated outside a " \
-        "@bc3-pin span. Either mark the line <!-- @bc3-pin --> (and name the sync date) so " \
-        "`make sync-api-version` keeps it current, or bind the SHA to what makes it permanently " \
-        "true — the PR that shipped it, the verification it backs — and record the file in " \
-        "spec/doc-constants.json .unmarkedPinCitations with that reason."
-    end
+  line.gsub(BACKTICKED_RE, " ")[/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/]
+end
+
+def check_unmarked_pin(file, prose, revision, allowed)
+  return [] if allowed.key?(file)
+
+  prose.filter_map do |line_no, line|
+    hit = cites_current_pin?(line, revision)
+    next if hit.nil?
+
+    "#{file}:#{line_no}: `#{hit}` is the current provenance pin, restated outside a " \
+      "@bc3-pin span. Either mark the line <!-- @bc3-pin --> (and name the sync date) so " \
+      "`make sync-api-version` keeps it current, or bind the SHA to what makes it permanently " \
+      "true — the PR that shipped it, the verification it backs — and record the file in " \
+      "spec/doc-constants.json .unmarkedPinCitations with that reason."
   end
 end
 
@@ -385,7 +398,7 @@ def run(mode, openapi)
   end
 
   config = read_json("spec/doc-constants.json")
-  floors = dig!(config, "spec/doc-constants.json", "markerFloors")
+  declared = dig!(config, "spec/doc-constants.json", "markerCounts")
   writer_excludes = config.fetch("writerExcludes", {})
   pin_citations   = config.fetch("unmarkedPinCitations", {})
 
@@ -399,22 +412,49 @@ def run(mode, openapi)
     prose_by_file[file] = file_prose
   end
 
-  # Marker-count floor: deleting a marked claim to silence the gate fails here.
+  # Marker inventory: spec/doc-constants.json states EXACTLY how many marked
+  # claims each file carries, and every deviation fails.
+  #
+  # This was a floor — a minimum — which left a hole worth more than the
+  # convenience it bought. Under a minimum, a claim added to a file that
+  # already met its count is unprotected forever: add a third @api-version to
+  # SPEC.md against a floor of 2, delete it later, and two markers remain, so
+  # the gate passes while the value it used to guard drifts. The whole point of
+  # this section is that deleting a marked claim fails, so it has to hold for
+  # every claim, not just the first N. An exact count costs one line in the
+  # same commit that adds the marker, and buys an inventory that is true.
   counts = Hash.new(0)
   spans.each { |s| counts[[s.kind, s.file]] += 1 }
-  floors.each do |kind, per_file|
+
+  declared_pairs = []
+  declared.each do |kind, per_file|
     unless KNOWN_KINDS.include?(kind)
-      errors << "spec/doc-constants.json: floor declared for unknown marker @#{kind}"
+      errors << "spec/doc-constants.json: count declared for unknown marker @#{kind}"
       next
     end
-    per_file.each do |file, floor|
+    per_file.each do |file, expected|
+      declared_pairs << [kind, file]
       found = counts[[kind, file]]
-      next if found >= floor
+      next if found == expected
 
-      errors << "#{file}: marker floor violated — spec/doc-constants.json requires at least " \
-                "#{floor} @#{kind} marker(s), found #{found}. A current-value claim was deleted " \
-                "or unmarked; if it genuinely moved, move the floor in the same commit."
+      errors <<
+        if found < expected
+          "#{file}: spec/doc-constants.json declares #{expected} @#{kind} marker(s), found " \
+            "#{found}. A current-value claim was deleted or unmarked; if it genuinely moved, " \
+            "move the count in the same commit."
+        else
+          "#{file}: spec/doc-constants.json declares #{expected} @#{kind} marker(s), found " \
+            "#{found}. A marked claim was added without recording it — set the count to " \
+            "#{found} in the same commit, so deleting it later fails too."
+        end
     end
+  end
+
+  # A marker in a file nobody declared is equally unprotected: it could be
+  # removed with nothing to notice.
+  (counts.keys - declared_pairs).each do |kind, file|
+    errors << "#{file}: carries #{counts[[kind, file]]} @#{kind} marker(s) that " \
+              "spec/doc-constants.json does not declare — add the count so deleting them fails."
   end
 
   if mode == :write
@@ -499,9 +539,7 @@ def run(mode, openapi)
   # silently pre-authorize the next author to write an unmarked restatement
   # there.
   pin_citations.each_key do |file|
-    cited = prose_by_file.fetch(file, []).any? do |_, line|
-      line.scan(TICKED_HEX_RE).flatten.any? { |h| revision.start_with?(h) }
-    end
+    cited = prose_by_file.fetch(file, []).any? { |_, line| cites_current_pin?(line, revision) }
     next if cited
 
     errors << "spec/doc-constants.json: .unmarkedPinCitations lists #{file}, but it no longer " \
