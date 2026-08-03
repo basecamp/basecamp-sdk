@@ -2218,7 +2218,10 @@ All id fields carry §10's 64-bit integer contract; no new type spelling is intr
 it.
 
 Filter validation is client-side and fail-closed `[conformance]`: ids must be positive; type
-strings non-empty with no commas, whitespace, or quotes; each id list capped at 100. A
+strings non-empty with no commas, whitespace, or quotes; each id list capped at 100. The
+capacity options are validated the same way: `dedupeCapacity` and `liveBufferCapacity`
+must be positive (there is no dedupe-disabled mode — a zero capacity would silently break
+the deduplicated-surface promise). A
 violation is a `usage`-coded construction error (Consumer Surface above) — zero wire
 attempts. Positions are filter-bound; changing filters starts a new checkpoint lineage (the
 server enforces this with 409).
@@ -2722,8 +2725,10 @@ INTERFACE CableConn
                          -- distinction lives only in this raw frame. Byte-level
                          -- representation is language-native (Go []byte); verbatim-ness
                          -- is the contract. Peer close surfaces as CloseError{code, reason}.
-  write_frame(String)
-  close(code, reason)    -- idempotent, safe from any context, unblocks read_frame
+  write_frame(String)    -- close()/cancellation MUST unblock an in-progress write; a
+                         -- write failure takes the current state's socket-failure path
+  close(code, reason)    -- idempotent, safe from any context, unblocks read_frame AND
+                         -- write_frame
 END
 
 INTERFACE Clock
@@ -2790,8 +2795,11 @@ origin.
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 
-**Every delay the connector takes flows through the injected Clock** — no native timer or
-sleep may bypass it. There are exactly six timer kinds, kebab-case:
+**Every delay the connector itself takes flows through the injected Clock** — no native
+timer or sleep may bypass it. Delays *inside* a seam call are outside this rule: a
+generated operation's §7 retry backoff is the operation's own machinery (native, as
+shipped), which is exactly why conformance counts seam calls rather than wire attempts —
+scenarios never depend on advancing seam-internal time. There are exactly six timer kinds, kebab-case:
 
 | Kind | Armed | Duration |
 |---|---|---|
