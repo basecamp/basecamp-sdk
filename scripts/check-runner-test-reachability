@@ -1,0 +1,941 @@
+#!/usr/bin/env bash
+#
+# check-runner-test-reachability — assert every conformance-runner test file is
+# actually executed by something.
+#
+# #572: `conformance-runner-tests` ran the Python and Ruby runner suites by
+# NAMING one file each (`test_delay_gaps.py`, `delay_gaps_test.rb`), and
+# .github/workflows/test.yml named the same two a second time. The two
+# replay-runner suites — conformance/runner/python/test_replay_runner.py and
+# conformance/runner/ruby/replay_runner_test.rb — matched neither name and were
+# therefore executed by nothing, for months, in a fully green repo. That is the
+# exact defect `conformance-runner-tests` was created to close (assertion code
+# nothing exercises), reproduced one level up in the build.
+#
+# Two teeth, because the gap has two ways back in:
+#
+#   (1) ENUMERATION BAN. No `conformance-runner-tests-*` recipe, and nothing in
+#       the CI workflow, may name an individual runner test file. Discovery must
+#       be the only selector, so adding a test file is sufficient to run it.
+#       This is the tooth that fails against pre-fix main.
+#
+#   (2) DISCOVERABILITY. Every file that CONTAINS tests (detected by content —
+#       a TestCase subclass, a Minitest::Test, a `func TestX`, a vitest import,
+#       an `@Test`, an XCTestCase) must sit where its language's discovery
+#       looks: matching the discovery glob for Go/Python/Ruby/TypeScript, and
+#       under the test source root for Kotlin/Swift (Gradle and SwiftPM discover
+#       by directory, not by filename). This is the tooth a misnamed or
+#       misplaced future file trips.
+#
+#       NAME IS NOT ENOUGH — reachability is name AND placement. Each glob
+#       language declares a discovery SCOPE:
+#
+#         recursive  discovery walks subdirectories, so only the name decides.
+#                    Go (`go test ./...`), pytest and vitest are recursive by
+#                    their own toolchains' rules.
+#         toplevel   discovery expands a glob in the language directory itself,
+#                    so a correctly-named file one directory down is run by
+#                    nothing and must be reported.
+#
+#       Ruby is the arm this distinction exists for. Its discovery is not a
+#       toolchain's, it is hand-rolled in the Makefile, so this check DERIVES
+#       Ruby's scope from that recipe (ruby_discovery_scope) instead of assuming
+#       one. An earlier revision assumed recursive while the recipe ran
+#       `for f in *_test.rb` — a top-level glob — and so certified
+#       conformance/runner/ruby/nested/probe_test.rb as "matched by *_test.rb"
+#       while `make conformance-runner-tests-ruby` never opened it. A
+#       guaranteed-failing file was reachable-by-this-check and executed by
+#       nothing: exactly the #572 shape, inside the #572 gate. Deriving the
+#       scope is what keeps the check and the recipe from disagreeing again.
+#
+# All are fail-closed: a language whose content scan finds ZERO test files is a
+# failure, not a vacuous pass — an empty result means the detector broke, and a
+# detector that matches nothing cannot report anything unreachable. Likewise a
+# Ruby recipe whose scope cannot be determined is a failure, not a default.
+#
+# The enumeration ban compares against the basenames tooth (2) actually found on
+# disk rather than a "looks like a test filename" regex, so the discovery globs
+# the recipes legitimately contain (`*_test.rb`) are not themselves reported.
+#
+# Roots are overridable via REPO_ROOT so --self-test can point the whole check
+# at a synthetic tree and prove each tooth fires — for a misnamed file, for a
+# misplaced one under a top-level Ruby recipe, for the test forms the CONTENT
+# DETECTOR must not miss (an unsuffixed `func Example()`, a class-based pytest
+# suite, a Jupiter @ParameterizedTest, a parameterized @Test), for locations a
+# toolchain silently skips, and for a CI workflow that stops invoking a suite.
+# Two cases assert the detectors stay QUIET where they should, so the loud ones
+# cannot be satisfied by over-matching.
+#
+# The content detector is this check's weakest surface, because a miss there is
+# SILENT: the arm's `found` count stays nonzero thanks to the other files, so it
+# prints `ok` rather than reporting anything. Every detector gap found so far has
+# a committed self-test case; add one with any future widening.
+#
+# Exit non-zero on any violation. Wired into `make check` and CI (spec-gates).
+set -uo pipefail
+
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+SELF_TEST=0
+if [[ "${1:-}" == "--self-test" ]]; then
+    SELF_TEST=1
+    shift
+fi
+
+REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+cd "$REPO_ROOT" || exit 2
+
+# Byte-wise collation so globs and sorts order identically everywhere.
+export LC_ALL=C
+
+fail=0
+pass=0
+# Basenames of every test-bearing file found on disk, for the enumeration ban.
+TEST_BASENAMES=()
+
+# Source files only. Toolchain scratch (.venv, node_modules, Gradle/SwiftPM
+# build trees) is full of third-party test files that no discovery of OURS is
+# expected to reach, and none of it is committed.
+PRUNE=(-name .venv -o -name node_modules -o -name vendor -o -name build
+       -o -name .build -o -name .gradle -o -name .pytest_cache -o -name .git)
+
+# find_sources <dir> <ext> — committed *.<ext> under <dir>, vendored trees pruned.
+find_sources() {
+    find "$1" \( "${PRUNE[@]}" \) -prune -o -type f -name "*.$2" -print 2>/dev/null | sort
+}
+
+note_fail() {
+    fail=$((fail + 1))
+    echo "  FAIL: $1"
+    shift
+    local line
+    for line in "$@"; do
+        echo "        $line"
+    done
+}
+
+# ---------------------------------------------------------------------------
+# Makefile recipe extraction. Used by tooth (1) (the enumeration ban) and by
+# ruby_discovery_scope, which is consulted by tooth (2) — hence defined up here.
+#
+# make_recipes <target-prefix-pattern>: the target line plus the indented and
+# continued lines under it, up to the next unindented line.
+# ---------------------------------------------------------------------------
+make_recipes() {
+    [[ -f Makefile ]] || return 0
+    awk -v pat="$1" '
+        $0 ~ pat                                  { inrecipe = 1; print; next }
+        inrecipe && /^[\t ]/                      { print; next }
+        inrecipe && /^(ifdef|ifndef|else|endif)/  { print; next }
+        inrecipe                                  { inrecipe = 0 }
+    ' Makefile
+}
+
+# ruby_discovery_scope — read the Ruby runner-test recipe and report the scope
+# its discovery actually has: `recursive`, `toplevel`, or `unknown`.
+#
+# Ruby is the only glob language whose discovery is written here rather than
+# supplied by a test toolchain, so it is the only one where this check could
+# drift from what really runs. Unrecognized shapes report `unknown` and fail;
+# guessing is how the hole this function closes was opened.
+ruby_discovery_scope() {
+    local body
+    # Join backslash continuations first: the recipe is one shell command split
+    # over several Makefile lines, and a line-wise match would read `find` and
+    # its `-name '*_test.rb'` as unrelated. Match what the shell sees.
+    body="$(make_recipes '^conformance-runner-tests-ruby:' | awk '
+        { line = line $0 }
+        sub(/\\$/, "", line) { next }
+        { print line; line = "" }
+        END { if (line != "") print line }
+    ')"
+    if [[ -z "$body" ]]; then
+        echo unknown
+    elif grep -Eq "find[[:space:]].*-name[[:space:]]+['\"]?\*_test\.rb" <<<"$body"; then
+        # `find ... -name '*_test.rb'` walks subdirectories.
+        echo recursive
+    elif grep -Eq "for[[:space:]]+[[:alnum:]_]+[[:space:]]+in[[:space:]]+\*_test\.rb" <<<"$body"; then
+        # A bare `for f in *_test.rb` expands in the language directory only.
+        echo toplevel
+    else
+        echo unknown
+    fi
+}
+
+# swift_test_target_path — read conformance/runner/swift/Package.swift and
+# report the SwiftPM test target's declared `path`, relative to the package.
+#
+# Derived rather than assumed, for the same reason ruby_discovery_scope is:
+# SwiftPM compiles the testTarget's `path` and nothing else, so `Tests/` is the
+# convention, not the contract. An unreadable manifest reports `unknown` and
+# fails — a guessed test root is how the Ruby hole opened.
+swift_test_target_path() {
+    local manifest="$1"
+    [[ -f "$manifest" ]] || { echo unknown; return; }
+    # From `.testTarget(` to that block's first `path:` string literal.
+    awk '
+        index($0, ".testTarget(") > 0 { intt = 1 }
+        intt && match($0, /path:[[:space:]]*"[^"]+"/) {
+            s = substr($0, RSTART, RLENGTH)
+            match(s, /"[^"]+"/)
+            print substr(s, RSTART + 1, RLENGTH - 2)
+            exit
+        }
+    ' "$manifest" | head -1 | grep . || echo unknown
+}
+
+# ---------------------------------------------------------------------------
+# Tooth (2): every test-bearing file sits where discovery finds it.
+#
+# check_glob_discovery <label> <ext> <dir> <content-marker-regex> <scope> <glob>...
+#   A file under <dir> whose contents match <content-marker-regex> must be
+#   reachable by <dir>'s discovery, which means BOTH:
+#     - its basename matches at least one <glob>, and
+#     - under scope `toplevel`, it sits directly in <dir> — a nested file is
+#       correctly named and still run by nothing.
+#   Under scope `recursive` the depth is irrelevant and only the name decides.
+#   Any other <scope> value is a hard failure: an undetermined scope must not
+#   silently fall back to the permissive branch.
+#
+#   ORDER MATTERS. The content scan runs BEFORE the scope is judged, because
+#   the scan is what populates TEST_BASENAMES, and tooth (1) reports only names
+#   it has seen. Bailing out on an unreadable scope first meant that against a
+#   Makefile whose Ruby recipe NAMES a file — the very state this check
+#   exists to reject — Ruby's scope read as `unknown`, the arm returned before
+#   collecting anything, and the enumeration ban then had no `delay_gaps_test.rb`
+#   to report. The run still failed, so nothing passed silently, but it named
+#   half the enumeration. A check that fires must fire completely.
+# ---------------------------------------------------------------------------
+check_glob_discovery() {
+    local label="$1" ext="$2" dir="$3" marker="$4" scope="$5" ignore_re="$6"
+    shift 6
+    local globs=("$@")
+
+    if [[ ! -d "$dir" ]]; then
+        note_fail "$label: directory $dir does not exist" \
+            "the runner layout moved — update this check deliberately"
+        return
+    fi
+
+    local found=0 misnamed=() nested=() ignored=()
+    local file base rel matched glob
+    while IFS= read -r file; do
+        grep -Eq "$marker" "$file" || continue
+        base="$(basename "$file")"
+        TEST_BASENAMES+=("$base")
+        rel="${file#"$dir"/}"
+        # Toolchain-ignored locations. `recursive` means "walks subdirectories",
+        # not "walks every subdirectory": `go help packages` says the go tool
+        # ignores directories and files beginning with "." or "_", and any
+        # directory named testdata. A _test.go under one of those is matched by
+        # the glob, reached by find, and compiled by nothing.
+        if [[ -n "$ignore_re" ]] && grep -Eq "$ignore_re" <<<"$rel"; then
+            ignored+=("$file")
+            continue
+        fi
+        found=$((found + 1))
+        matched=0
+        for glob in "${globs[@]}"; do
+            # shellcheck disable=SC2053  # deliberate glob match, not a string compare
+            if [[ "$base" == $glob ]]; then
+                matched=1
+                break
+            fi
+        done
+        if [[ "$matched" -eq 0 ]]; then
+            misnamed+=("$file")
+            continue
+        fi
+        # Name is fine. Record the depth; whether it MATTERS is the scope's call.
+        if [[ "$rel" == */* ]]; then
+            nested+=("$file")
+        fi
+    done < <(find_sources "$dir" "$ext")
+
+    if [[ "$found" -eq 0 ]]; then
+        note_fail "$label: no test-bearing files found under $dir" \
+            "the content detector matched nothing — a broken detector, not an empty suite"
+        return
+    fi
+
+    if [[ "$scope" != recursive && "$scope" != toplevel ]]; then
+        note_fail "$label: discovery scope is '$scope', not recursive or toplevel" \
+            "the recipe's discovery could not be read, so placement cannot be judged" \
+            "fix the recipe or teach ruby_discovery_scope its shape — do not assume"
+        return
+    fi
+
+    # Guarded on the count, not just on the scope: bash 3.2 — still /bin/bash on
+    # macOS — treats "${empty[@]}" as an unbound variable under `set -u` and
+    # aborts the script. Every other expansion here is already inside a
+    # `-gt 0` guard for the same reason.
+    local misplaced=()
+    if [[ "$scope" == toplevel && "${#nested[@]}" -gt 0 ]]; then
+        misplaced=("${nested[@]}")
+    fi
+
+    local clean=1
+    if [[ "${#misnamed[@]}" -gt 0 ]]; then
+        note_fail "$label: test file(s) matched by no discovery glob (${globs[*]})" \
+            "${misnamed[@]}"
+        clean=0
+    fi
+    if [[ "${#ignored[@]}" -gt 0 ]]; then
+        note_fail "$label: test file(s) in a location the toolchain skips" \
+            "${ignored[@]}" \
+            "the go tool ignores directories and files beginning with '.' or '_'," \
+            "and any directory named testdata (go help packages), so a correctly-" \
+            "named _test.go there is compiled by nothing. Move it, or rename the" \
+            "directory."
+        clean=0
+    fi
+    if [[ "${#misplaced[@]}" -gt 0 ]]; then
+        note_fail "$label: test file(s) nested below $dir, which discovery does not enter" \
+            "${misplaced[@]}" \
+            "$label discovery is a top-level glob — a correctly-named file one" \
+            "directory down is executed by nothing (#572). Move it up, or make" \
+            "the recipe recurse."
+        clean=0
+    fi
+    [[ "$clean" -eq 1 ]] || return
+
+    pass=$((pass + 1))
+    echo "  ok: $label — $found test file(s), all matched by ${globs[*]} ($scope discovery)"
+}
+
+# check_dir_discovery <label> <ext> <test-root> <scan-root> <content-marker-regex>
+#   Gradle's `test` task and SwiftPM's `swift test` discover by DIRECTORY, so
+#   reachability is "is it under the COMPILED test directory?".
+#
+#   <scan-root> is the whole module, not just its production sources, and
+#   anything test-bearing under it that is NOT under <test-root> is stranded.
+#   Scanning only `Sources/` was too narrow in the same way `Tests/` was too
+#   broad: SwiftPM compiles exactly the testTarget's declared `path`, so
+#   Tests/ReplayTests/ReplayTests.swift — a sibling of the declared target,
+#   plainly "under Tests" — is compiled by nothing, and the declared target's
+#   own files keep `found` nonzero so the arm still printed `ok`. Gradle is the
+#   same story one directory up: its test source set is src/test/kotlin, not
+#   src/test.
+check_dir_discovery() {
+    local label="$1" ext="$2" test_root="$3" scan_root="$4" marker="$5"
+
+    if [[ ! -d "$test_root" ]]; then
+        note_fail "$label: test root $test_root does not exist" \
+            "the runner layout moved — update this check deliberately"
+        return
+    fi
+
+    local found=0 stranded=() file
+    while IFS= read -r file; do
+        grep -Eq "$marker" "$file" || continue
+        if [[ "$file" == "$test_root"/* ]]; then
+            found=$((found + 1))
+            TEST_BASENAMES+=("$(basename "$file")")
+        else
+            stranded+=("$file")
+        fi
+    done < <(find_sources "$scan_root" "$ext")
+
+    if [[ "$found" -eq 0 ]]; then
+        note_fail "$label: no test-bearing files found under $test_root" \
+            "the content detector matched nothing — a broken detector, not an empty suite"
+        return
+    fi
+
+    if [[ "${#stranded[@]}" -gt 0 ]]; then
+        note_fail "$label: test file(s) outside the compiled test directory ($test_root)" \
+            "${stranded[@]}" \
+            "$label discovery compiles $test_root and nothing else — a test beside" \
+            "it, even under the same Tests/ or src/test/ parent, is run by nothing."
+        return
+    fi
+
+    pass=$((pass + 1))
+    echo "  ok: $label — $found test file(s), all under $test_root"
+}
+
+# ---------------------------------------------------------------------------
+# Tooth (1): no recipe names an individual test file.
+# ---------------------------------------------------------------------------
+check_no_enumeration() {
+    local label="$1" src="$2"
+    local base hits=()
+    # An empty basename list means every tooth-(2) arm bailed out, which is
+    # already several loud failures — but expanding it unguarded would abort the
+    # whole script on bash 3.2 under `set -u` before those failures print.
+    if [[ "${#TEST_BASENAMES[@]}" -eq 0 ]]; then
+        note_fail "$label: no test basenames were collected, so enumeration cannot be judged" \
+            "every per-language check failed before finding a file — fix those first"
+        return
+    fi
+    for base in "${TEST_BASENAMES[@]}"; do
+        grep -Fq -- "$base" <<<"$src" && hits+=("$base")
+    done
+    if [[ "${#hits[@]}" -gt 0 ]]; then
+        note_fail "$label names individual test file(s) — discovery must be the only selector" \
+            "${hits[@]}" \
+            "a suite that does not match the named file is executed by nothing (#572)"
+        return
+    fi
+    pass=$((pass + 1))
+    echo "  ok: $label enumerates no test file"
+}
+
+echo "==> Checking conformance-runner test reachability"
+
+# --- Tooth 2, per language --------------------------------------------------
+# Go, Python and TypeScript are `recursive` on their toolchains' own authority:
+# `go test ./...` walks the package tree, pytest recurses from its rootdir, and
+# vitest's default include is `**/*.test.ts`. Ruby's scope is read back out of
+# the Makefile, because Ruby's discovery is written there.
+RUBY_SCOPE="$(ruby_discovery_scope)"
+
+# Go's rule is "the prefix, then a character that is not a lowercase letter" —
+# `go help test`: TestXxx/BenchmarkXxx/FuzzXxx where Xxx does not start with a
+# lowercase letter, and Example with no suffix at all. `[[:upper:]]` demanded a
+# suffix AND demanded it be a letter, so `func Example()`, `func Test(` and
+# `func Test_helper(` — all of which `go test` runs — were invisible to the
+# detector. Invisible is the dangerous direction here: an undetected file is not
+# reported as unreachable, and the other Go test files keep `found` nonzero, so
+# the arm still prints `ok`. `[^a-z]` is Go's rule spelled directly.
+# The ignore pattern is Go's own: `go help packages` — "Directory and file
+# names that begin with '.' or '_' are ignored by the go tool, as are
+# directories named testdata".
+check_glob_discovery "Go" go conformance/runner/go \
+    '^func (Test|Benchmark|Fuzz|Example)[^a-z]' recursive \
+    '(^|/)[._]|(^|/)testdata(/|$)' '*_test.go'
+
+# The ignore pattern is pytest's `norecursedirs` default, which `pytest --help`
+# gives as `*.egg .* _darcs build CVS dist node_modules venv {arch}`: a
+# correctly-named test under dist/ or venv/ is matched by the glob and collected
+# by nothing.
+#
+# pytest collects `test*` FUNCTIONS at module level and `test*` METHODS of
+# `Test*` classes, and a class-based suite need import nothing at all:
+#
+#     class TestStranded:
+#         def test_failure(self): assert False
+#
+# has no `import pytest`, no `unittest`, and its `def test` is INDENTED, so an
+# anchored `^def test_` never saw it. The indented-def alternative is what
+# catches it. Matching on the class NAME instead would be wrong in the other
+# direction: runner.py declares TestCase/TestResult/TestRunner/TestTracker as
+# its own plumbing, and flagging those would be a false failure.
+check_glob_discovery "Python" py conformance/runner/python \
+    'unittest\.TestCase|^import pytest|^from unittest|^def test|^[[:space:]]+def test' \
+    recursive '(^|/)(\.[^/]*|[^/]*\.egg|_darcs|build|CVS|dist|node_modules|venv|\{arch\})/' \
+    'test_*.py' '*_test.py'
+
+check_glob_discovery "Ruby" rb conformance/runner/ruby \
+    'minitest/autorun|Minitest::Test' "$RUBY_SCOPE" '' '*_test.rb'
+
+# Quote-agnostic: `from 'vitest'` is the same import and the same discovery.
+check_glob_discovery "TypeScript" ts conformance/runner/typescript \
+    "from ['\"]vitest['\"]" recursive '' '*.test.ts'
+
+# Gradle's Kotlin test source set is src/test/kotlin, NOT src/test — the whole
+# module is scanned so a .kt under src/test/anything-else is reported.
+#
+# The annotation may carry arguments: JUnit 4's `@Test(expected = …)`, and
+# Swift Testing's `@Test("display name")` / `@Test(arguments: …)`. Requiring
+# whitespace-or-EOL after `@Test` made every parameterized form invisible,
+# which is the silent direction — the arm keeps printing `ok`.
+#
+# And `@Test` is not JUnit Jupiter's only test-declaring annotation. This module
+# has `testImplementation(libs.junit.jupiter)` and `useJUnitPlatform()`, so
+# @ParameterizedTest, @RepeatedTest, @TestFactory and @TestTemplate all declare
+# runnable tests. Matching the literal `@Test` saw none of them.
+KOTLIN_TEST_ANNOTATION='^[[:space:]]*@(Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)([[:space:](]|$)'
+check_dir_discovery "Kotlin" kt \
+    kotlin/conformance/src/test/kotlin kotlin/conformance/src \
+    "$KOTLIN_TEST_ANNOTATION"
+
+SWIFT_PKG=conformance/runner/swift
+SWIFT_TEST_PATH="$(swift_test_target_path "$SWIFT_PKG/Package.swift")"
+if [[ "$SWIFT_TEST_PATH" == unknown ]]; then
+    note_fail "Swift: could not read the test target's path from $SWIFT_PKG/Package.swift" \
+        "SwiftPM compiles the testTarget's declared path and nothing else, so the" \
+        "test root cannot be assumed — teach swift_test_target_path its shape"
+else
+    check_dir_discovery "Swift" swift \
+        "$SWIFT_PKG/$SWIFT_TEST_PATH" "$SWIFT_PKG" \
+        'XCTestCase|^[[:space:]]*@Test([[:space:](]|$)'
+fi
+
+# --- Tooth 1: the Makefile recipes ------------------------------------------
+MAKE_RECIPES="$(make_recipes '^conformance-runner-tests[[:alnum:]-]*:')"
+if [[ -z "$MAKE_RECIPES" ]]; then
+    note_fail "Makefile: found no conformance-runner-tests* recipes to inspect" \
+        "the extraction broke — this check would otherwise pass vacuously"
+else
+    check_no_enumeration "Makefile conformance-runner-tests* recipe" "$MAKE_RECIPES"
+fi
+
+# --- Tooth 1: the CI workflow ------------------------------------------------
+# CI must reach the runner suites through the make targets, so "what runs" has
+# exactly one definition. Any runner test filename in test.yml is a second
+# enumeration by construction — that is how #572's two files stayed unrun even
+# though both the Makefile and CI looked like they covered the directory.
+WORKFLOW=.github/workflows/test.yml
+if [[ ! -f "$WORKFLOW" ]]; then
+    note_fail "$WORKFLOW is missing" "cannot verify CI does not re-enumerate"
+else
+    check_no_enumeration "$WORKFLOW" "$(cat "$WORKFLOW")"
+    # And it must actually call them: a workflow that dropped the steps
+    # entirely would trivially satisfy the enumeration ban.
+    # Comment-stripped, like the TypeScript check below: a step commented out
+    # wholesale still leaves `# - run: make conformance-runner-tests-go` in the
+    # file, and a raw grep would report the target as invoked while CI no longer
+    # runs it. The enumeration ban above deliberately keeps scanning the RAW
+    # file — a test filename left in a comment selects nothing, but it is a
+    # stale reference worth surfacing rather than hiding.
+    workflow_code="$(sed 's/#.*//' "$WORKFLOW")"
+    missing_targets=()
+    for target in go python ruby kotlin swift; do
+        grep -q "make conformance-runner-tests-$target\$" <<<"$workflow_code" \
+            || missing_targets+=("conformance-runner-tests-$target")
+    done
+    if [[ "${#missing_targets[@]}" -gt 0 ]]; then
+        note_fail "$WORKFLOW does not invoke every per-language runner-test target" \
+            "${missing_targets[@]}"
+    else
+        pass=$((pass + 1))
+        echo "  ok: $WORKFLOW invokes all five conformance-runner-tests-* targets"
+    fi
+
+    # TypeScript is the sixth language and the only one with NO
+    # conformance-runner-tests-* target: its runner tests and its conformance
+    # suite are the same vitest invocation, which CI spells `npx vitest run`
+    # (deliberately, not `npm test` — see the workflow's own comment about the
+    # pretest rebuild). So the loop above cannot cover it, and without this the
+    # seven TypeScript test files this check counts could disappear from CI
+    # entirely while all nine checks still reported green. Accept either the
+    # direct vitest call or the make target that wraps it.
+    #
+    # Both invocation checks read `workflow_code`, the comment-stripped file.
+    # The workflow explains its own choice of `npx vitest run` over `npm test`
+    # in a comment three lines above the step, so a naive grep matched the PROSE
+    # and passed with the step deleted — the first version of this very check
+    # did exactly that, and its red proof is what caught it. Match what CI would
+    # run, not what it says about it.
+    if grep -Eq '(^|[^-[:alnum:]])(npx )?vitest run|make conformance-typescript[[:space:]]*$' \
+        <<<"$workflow_code"; then
+        pass=$((pass + 1))
+        echo "  ok: $WORKFLOW invokes the TypeScript runner suite"
+    else
+        note_fail "$WORKFLOW does not invoke the TypeScript runner suite" \
+            "no 'vitest run' and no 'make conformance-typescript' step" \
+            "TypeScript has no conformance-runner-tests-* target, so nothing else" \
+            "here would notice its suite vanishing from CI."
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Self-test: prove tooth (2) fires, on BOTH halves of reachability.
+#
+# Each case builds a synthetic runner tree, points the whole check at it with
+# REPO_ROOT, and asserts on the report. The trees are deliberately incomplete
+# (no Go/Python/Kotlin/Swift dirs), so every case exits non-zero for several
+# reasons at once — what is being asserted is that the probe file is named, or
+# deliberately NOT named, in the output.
+#
+# Case 1  misnamed:  replay_runner_spec.rb, matched by no glob → reported.
+# Case 2  misplaced: nested/probe_test.rb under a TOP-LEVEL Ruby recipe →
+#                    reported. This is the false green that shipped: the file
+#                    is correctly named, `find` reaches it, and the recipe's
+#                    `for f in *_test.rb` never opens it.
+# Case 3  the same nested file under a RECURSIVE Ruby recipe → NOT reported,
+#                    because there it really does run. Without case 3, case 2
+#                    would also pass if placement were flagged unconditionally,
+#                    and the scope derivation would be decorative.
+# Case 4  undetected: a Go file named examples.go holding `func Example()` →
+#                    reported. This one guards the CONTENT DETECTOR rather than
+#                    the globs. A marker the detector misses is worse than a
+#                    misnamed file, because the arm still prints `ok` — the
+#                    other Go files keep `found` nonzero, so nothing looks
+#                    wrong. `[[:upper:]]` missed every unsuffixed Go test form.
+# Case 5  the same hole in Python: a class-based pytest suite that imports
+#                    nothing, whose `def test` is indented inside `class Test*`.
+#                    `^def test_` never saw it.
+# Case 6  the converse of 5, and what keeps 5 honest: the runner's own
+#                    Test*-NAMED plumbing (TestResult, TestRunner, ...) must NOT
+#                    be reported. Detection keys on the indented test METHOD,
+#                    not on the class name, precisely so this stays quiet.
+# Case 7  a Swift test in a SIBLING directory of the declared testTarget path →
+#                    reported. SwiftPM compiles the target's `path` and nothing
+#                    else, so "under Tests/" is not the same as "compiled".
+# Case 8  a parameterized `@Test("name")` under Sources/ → reported. The marker
+#                    must not demand whitespace-or-EOL after the attribute.
+# Case 9  a Go _test.go under `_ignored/` → reported. `recursive` means "walks
+#                    subdirectories", not "walks every subdirectory": go help
+#                    packages ignores "." / "_" names and testdata dirs.
+# Case 10 a Kotlin @ParameterizedTest under src/main → reported. @Test is not
+#                    Jupiter's only test-declaring annotation.
+# Case 11 a workflow that no longer invokes the TypeScript suite → reported.
+#                    TypeScript has no conformance-runner-tests-* target, so the
+#                    per-language target loop cannot speak for it.
+# Case 12 a pytest suite under dist/ → reported. pytest's norecursedirs default
+#                    skips it; `recursive` is the toolchain's rule, not "all".
+# Case 13 a runner-test step commented out wholesale → reported missing. Its
+#                    text survives in the file; only the YAML stops running.
+# ---------------------------------------------------------------------------
+selftest_tree() {
+    # selftest_tree <dir> <ruby-recipe-body>
+    local dir="$1" recipe="$2"
+    mkdir -p "$dir/conformance/runner/ruby"
+    printf 'require "minitest/autorun"\nclass X < Minitest::Test\n  def test_a; end\nend\n' \
+        > "$dir/conformance/runner/ruby/toplevel_test.rb"
+    { echo 'conformance-runner-tests-ruby:'; printf '%s\n' "$recipe"; } > "$dir/Makefile"
+}
+
+TOPLEVEL_RECIPE=$'\tcd conformance/runner/ruby && \\\n\tfor f in *_test.rb; do bundle exec ruby "$$f" || exit 1; done'
+RECURSIVE_RECIPE=$'\tcd conformance/runner/ruby && \\\n\tfiles=$$(find . -type f -name \'*_test.rb\' | sort); \\\n\tfor f in $$files; do bundle exec ruby "$$f" || exit 1; done'
+
+if [[ "$SELF_TEST" -eq 1 ]]; then
+    st_fail=0
+    WORK="$(mktemp -d "${TMPDIR:-/tmp}/runner-reachability-selftest.XXXXXX")" || exit 2
+    trap 'rm -rf "$WORK"' EXIT
+
+    echo ""
+    echo "==> Self-test 1: a misnamed Ruby suite must be reported unreachable"
+    selftest_tree "$WORK/misnamed" "$RECURSIVE_RECIPE"
+    printf 'require "minitest/autorun"\nclass X < Minitest::Test\n  def test_a; end\nend\n' \
+        > "$WORK/misnamed/conformance/runner/ruby/replay_runner_spec.rb"
+    out="$(REPO_ROOT="$WORK/misnamed" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: self-test tree passed (exit 0) — tooth (2) is vacuous"
+        st_fail=1
+    elif ! grep -q 'replay_runner_spec\.rb' <<<"$out"; then
+        echo "  FAIL: failed for the wrong reason — no mention of replay_runner_spec.rb"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: misnamed suite reported (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 2: a nested Ruby suite under a top-level recipe must be reported"
+    selftest_tree "$WORK/misplaced" "$TOPLEVEL_RECIPE"
+    mkdir -p "$WORK/misplaced/conformance/runner/ruby/nested"
+    printf 'require "minitest/autorun"\nclass X < Minitest::Test\n  def test_a; assert false; end\nend\n' \
+        > "$WORK/misplaced/conformance/runner/ruby/nested/probe_test.rb"
+    out="$(REPO_ROOT="$WORK/misplaced" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: nested-probe tree passed (exit 0) — the placement tooth is vacuous"
+        st_fail=1
+    elif ! grep -q 'nested/probe_test\.rb' <<<"$out"; then
+        echo "  FAIL: nested probe was not reported — a correctly-named, unrun file passed"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: nested suite reported unreachable under a top-level recipe (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 3: the same nested suite under a recursive recipe must NOT be reported"
+    selftest_tree "$WORK/nested-ok" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/nested-ok/conformance/runner/ruby/nested"
+    printf 'require "minitest/autorun"\nclass X < Minitest::Test\n  def test_a; end\nend\n' \
+        > "$WORK/nested-ok/conformance/runner/ruby/nested/probe_test.rb"
+    out="$(REPO_ROOT="$WORK/nested-ok" "$SELF" 2>&1)"
+    if grep -q 'nested/probe_test\.rb' <<<"$out"; then
+        echo "  FAIL: nested probe reported under a RECURSIVE recipe — placement is being"
+        echo "        flagged unconditionally, so case 2 proves nothing about the scope"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: nested suite accepted where discovery actually recurses"
+    fi
+
+    echo ""
+    echo "==> Self-test 4: an unsuffixed Go example outside a _test.go file must be reported"
+    # Two Go files: a legitimate one so the arm's `found` count is nonzero (the
+    # condition under which the old detector's miss printed `ok`), and the probe.
+    selftest_tree "$WORK/go-example" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/go-example/conformance/runner/go"
+    printf 'package main\n\nimport "testing"\n\nfunc TestReal(t *testing.T) {}\n' \
+        > "$WORK/go-example/conformance/runner/go/real_test.go"
+    printf 'package main\n\nfunc Example() {\n\t// go test runs this; it is not in a _test.go file\n}\n' \
+        > "$WORK/go-example/conformance/runner/go/examples.go"
+    out="$(REPO_ROOT="$WORK/go-example" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: go-example tree passed (exit 0) — the content detector is missing it"
+        st_fail=1
+    elif ! grep -q 'examples\.go' <<<"$out"; then
+        echo "  FAIL: unsuffixed \`func Example()\` was not detected — the Go arm reports \`ok\`"
+        echo "        over a file go test runs and no glob covers"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: unsuffixed Go example reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 5: a class-based pytest suite outside a collected filename must be reported"
+    # Same shape as case 4, for Python: a real suite that imports nothing and
+    # whose test method is indented inside a Test* class.
+    selftest_tree "$WORK/py-class" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/py-class/conformance/runner/python"
+    printf 'def test_real():\n    assert True\n' \
+        > "$WORK/py-class/conformance/runner/python/test_real.py"
+    printf 'class TestStranded:\n    def test_failure(self):\n        assert False, "pytest would run this if the file were named for collection"\n' \
+        > "$WORK/py-class/conformance/runner/python/stranded.py"
+    out="$(REPO_ROOT="$WORK/py-class" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: py-class tree passed (exit 0) — the content detector is missing it"
+        st_fail=1
+    elif ! grep -q 'stranded\.py' <<<"$out"; then
+        echo "  FAIL: class-based pytest suite was not detected — the Python arm reports \`ok\`"
+        echo "        over a suite no collected filename covers"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: class-based pytest suite reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 6: the runner's own Test*-named plumbing must NOT be reported"
+    # The other direction, and the reason the detector keys on an indented
+    # `def test` rather than on a `Test*` class name: conformance/runner/python/
+    # runner.py declares TestCase, TestResult, TestRunner and TestTracker as
+    # ordinary dataclasses. A name-based detector would fail the build over them.
+    selftest_tree "$WORK/py-plumbing" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/py-plumbing/conformance/runner/python"
+    printf 'def test_real():\n    assert True\n' \
+        > "$WORK/py-plumbing/conformance/runner/python/test_real.py"
+    printf 'from dataclasses import dataclass\n\n\n@dataclass\nclass TestResult:\n    passed: bool\n\n\nclass TestRunner:\n    def run(self):\n        return TestResult(True)\n' \
+        > "$WORK/py-plumbing/conformance/runner/python/runner.py"
+    out="$(REPO_ROOT="$WORK/py-plumbing" "$SELF" 2>&1)"
+    if grep -q 'runner\.py' <<<"$out"; then
+        echo "  FAIL: the runner's own Test*-named classes were reported as a stranded suite"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: Test*-named plumbing accepted (detection keys on the test method, not the class name)"
+    fi
+
+    echo ""
+    echo "==> Self-test 7: a Swift test beside the declared test target must be reported"
+    # SwiftPM compiles the testTarget's `path` and nothing else, so a sibling
+    # directory under Tests/ is not "the test root" — it is unreachable.
+    selftest_tree "$WORK/swift-sibling" "$RECURSIVE_RECIPE"
+    swift_pkg="$WORK/swift-sibling/conformance/runner/swift"
+    mkdir -p "$swift_pkg/Tests/ConformanceSupportTests" "$swift_pkg/Tests/ReplayTests"
+    printf 'import PackageDescription\nlet package = Package(\n    name: "ConformanceRunner",\n    targets: [\n        .testTarget(\n            name: "ConformanceSupportTests",\n            path: "Tests/ConformanceSupportTests"\n        )\n    ]\n)\n' \
+        > "$swift_pkg/Package.swift"
+    printf 'import XCTest\nfinal class RealTests: XCTestCase {\n    func testReal() {}\n}\n' \
+        > "$swift_pkg/Tests/ConformanceSupportTests/RealTests.swift"
+    printf 'import XCTest\nfinal class ReplayTests: XCTestCase {\n    func testStranded() { XCTFail("compiled by nothing") }\n}\n' \
+        > "$swift_pkg/Tests/ReplayTests/ReplayTests.swift"
+    out="$(REPO_ROOT="$WORK/swift-sibling" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: swift-sibling tree passed (exit 0) — Tests/ is being taken as the test root"
+        st_fail=1
+    elif ! grep -q 'ReplayTests\.swift' <<<"$out"; then
+        echo "  FAIL: a test outside the declared testTarget path was not reported"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: Swift test beside the declared target reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 8: a parameterized Swift Testing attribute must be detected"
+    # `@Test("name")` and `@Test(arguments:)` are discovered by SwiftPM. A
+    # marker demanding whitespace-or-EOL after @Test saw neither, so such a
+    # file under Sources/ was invisible while the XCTest files kept `found`
+    # nonzero and the arm printed `ok`.
+    selftest_tree "$WORK/swift-attr" "$RECURSIVE_RECIPE"
+    swift_pkg="$WORK/swift-attr/conformance/runner/swift"
+    mkdir -p "$swift_pkg/Tests/ConformanceSupportTests" "$swift_pkg/Sources/ConformanceSupport"
+    printf 'import PackageDescription\nlet package = Package(\n    name: "ConformanceRunner",\n    targets: [\n        .testTarget(\n            name: "ConformanceSupportTests",\n            path: "Tests/ConformanceSupportTests"\n        )\n    ]\n)\n' \
+        > "$swift_pkg/Package.swift"
+    printf 'import XCTest\nfinal class RealTests: XCTestCase {\n    func testReal() {}\n}\n' \
+        > "$swift_pkg/Tests/ConformanceSupportTests/RealTests.swift"
+    printf 'import Testing\n\n@Test("a display name")\nfunc stranded() {\n    #expect(Bool(false))\n}\n' \
+        > "$swift_pkg/Sources/ConformanceSupport/Stranded.swift"
+    out="$(REPO_ROOT="$WORK/swift-attr" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: swift-attr tree passed (exit 0) — the parameterized @Test is invisible"
+        st_fail=1
+    elif ! grep -q 'Stranded\.swift' <<<"$out"; then
+        echo "  FAIL: \`@Test(\"…\")\` was not detected — the Swift arm reports \`ok\`"
+        echo "        over a test SwiftPM discovers and the test target does not compile"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: parameterized Swift Testing attribute reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 9: a Go test under an underscore directory must be reported"
+    # `recursive` means "walks subdirectories", not "walks every subdirectory".
+    # go help packages: names beginning with "." or "_", and directories named
+    # testdata, are ignored by the go tool — so `go test ./...` never compiles
+    # this file, while the glob matches and `find` reaches it.
+    selftest_tree "$WORK/go-ignored" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/go-ignored/conformance/runner/go/_ignored"
+    printf 'package main\n\nimport "testing"\n\nfunc TestReal(t *testing.T) {}\n' \
+        > "$WORK/go-ignored/conformance/runner/go/real_test.go"
+    printf 'package ignored\n\nimport "testing"\n\nfunc TestProbe(t *testing.T) { t.Fatal("executed by nothing") }\n' \
+        > "$WORK/go-ignored/conformance/runner/go/_ignored/probe_test.go"
+    out="$(REPO_ROOT="$WORK/go-ignored" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: go-ignored tree passed (exit 0) — _ dirs are being treated as discoverable"
+        st_fail=1
+    elif ! grep -q '_ignored/probe_test\.go' <<<"$out"; then
+        echo "  FAIL: a _test.go under _ignored/ was not reported — the glob matched and"
+        echo "        \`go test ./...\` skipped it"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: Go test in a toolchain-ignored directory reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 10: a JUnit Jupiter @ParameterizedTest under src/main must be reported"
+    # @Test is not Jupiter's only test-declaring annotation. A @ParameterizedTest
+    # (or @RepeatedTest/@TestFactory/@TestTemplate) stranded in the main source
+    # set is compiled into the product and run by nothing, while DelayGapsTest
+    # and friends keep `found` nonzero so the arm prints `ok`.
+    selftest_tree "$WORK/kt-jupiter" "$RECURSIVE_RECIPE"
+    kt_test="$WORK/kt-jupiter/kotlin/conformance/src/test/kotlin"
+    kt_main="$WORK/kt-jupiter/kotlin/conformance/src/main/kotlin"
+    mkdir -p "$kt_test" "$kt_main"
+    printf 'import org.junit.jupiter.api.Test\n\nclass RealTest {\n    @Test\n    fun real() {}\n}\n' \
+        > "$kt_test/RealTest.kt"
+    printf 'import org.junit.jupiter.params.ParameterizedTest\nimport org.junit.jupiter.params.provider.ValueSource\n\nclass StrandedTest {\n    @ParameterizedTest\n    @ValueSource(ints = [1, 2])\n    fun stranded(n: Int) {\n        throw AssertionError("compiled into the product, run by nothing")\n    }\n}\n' \
+        > "$kt_main/StrandedTest.kt"
+    out="$(REPO_ROOT="$WORK/kt-jupiter" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: kt-jupiter tree passed (exit 0) — @ParameterizedTest is invisible"
+        st_fail=1
+    elif ! grep -q 'StrandedTest\.kt' <<<"$out"; then
+        echo "  FAIL: @ParameterizedTest was not detected — the Kotlin arm reports \`ok\`"
+        echo "        over a test Gradle runs and the main source set does not host"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: Jupiter @ParameterizedTest reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 11: a workflow that stops invoking the TypeScript suite must be reported"
+    # TypeScript has no conformance-runner-tests-* target, so the per-language
+    # target loop cannot cover it. Drop the vitest step and nothing else here
+    # notices seven test files leaving CI.
+    selftest_tree "$WORK/ts-uninvoked" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/ts-uninvoked/.github/workflows"
+    {
+        echo 'jobs:'
+        echo '  test:'
+        echo '    steps:'
+        for t in go python ruby kotlin swift; do
+            echo "      - run: make conformance-runner-tests-$t"
+        done
+    } > "$WORK/ts-uninvoked/.github/workflows/test.yml"
+    out="$(REPO_ROOT="$WORK/ts-uninvoked" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: ts-uninvoked tree passed (exit 0) — the TS suite can leave CI unnoticed"
+        st_fail=1
+    elif ! grep -q 'does not invoke the TypeScript runner suite' <<<"$out"; then
+        echo "  FAIL: a workflow with no vitest step was not reported"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: missing TypeScript invocation reported (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 12: a pytest suite under dist/ must be reported"
+    # pytest's norecursedirs default skips dist/, venv/, build/, dot-dirs and
+    # friends. A correctly-named test there is matched by the glob and collected
+    # by nothing.
+    selftest_tree "$WORK/py-norecurse" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/py-norecurse/conformance/runner/python/dist"
+    printf 'def test_real():\n    assert True\n' \
+        > "$WORK/py-norecurse/conformance/runner/python/test_real.py"
+    printf 'def test_stranded():\n    assert False, "collected by nothing"\n' \
+        > "$WORK/py-norecurse/conformance/runner/python/dist/test_stranded.py"
+    out="$(REPO_ROOT="$WORK/py-norecurse" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: py-norecurse tree passed (exit 0) — dist/ is being treated as collected"
+        st_fail=1
+    elif ! grep -q 'dist/test_stranded\.py' <<<"$out"; then
+        echo "  FAIL: a test under dist/ was not reported — the glob matched and pytest"
+        echo "        never collected it"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: pytest suite in a norecursedirs location reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 13: a commented-out runner-test step must not count as invoked"
+    # A step commented out wholesale leaves its text in the file. A raw grep
+    # would report the target as invoked while CI no longer runs it.
+    selftest_tree "$WORK/wf-commented" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/wf-commented/.github/workflows"
+    {
+        echo 'jobs:'
+        echo '  test:'
+        echo '    steps:'
+        echo '      # - run: make conformance-runner-tests-go'
+        for t in python ruby kotlin swift; do
+            echo "      - run: make conformance-runner-tests-$t"
+        done
+        echo '      - run: npx vitest run'
+    } > "$WORK/wf-commented/.github/workflows/test.yml"
+    out="$(REPO_ROOT="$WORK/wf-commented" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: wf-commented tree passed (exit 0) — a commented step counts as invoked"
+        st_fail=1
+    elif ! grep -q 'conformance-runner-tests-go' <<<"$out"; then
+        echo "  FAIL: the commented-out Go step was still counted as an invocation"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: commented-out runner-test step reported missing (exit $st)"
+    fi
+
+    echo ""
+    if [[ "$st_fail" -eq 0 ]]; then
+        echo "==> Self-test passed"
+        exit 0
+    fi
+    echo "==> Self-test FAILED"
+    exit 1
+fi
+
+echo ""
+if [[ "$fail" -eq 0 ]]; then
+    echo "==> Runner-test reachability clean ($pass checks passed)"
+    exit 0
+else
+    echo "==> Runner-test reachability FAILED ($fail failure(s), $pass passed)"
+    exit 1
+fi
