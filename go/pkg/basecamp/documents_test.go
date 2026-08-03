@@ -871,3 +871,52 @@ func TestDocumentsService_UpdatePreservesAGatingHookError(t *testing.T) {
 		t.Fatalf("expected no requests when the gate refuses, got %+v", *reqs)
 	}
 }
+
+// failingAuth is an AuthStrategy that refuses to sign the request, standing in
+// for a token refresh or keyring failure.
+type failingAuth struct{ err error }
+
+func (a failingAuth) Authenticate(context.Context, *http.Request) error { return a.err }
+
+// The authEditor runs inside the generated client, per request, so an auth
+// failure surfaces from the same call the response decoder does — with no HTTP
+// response behind it. It must keep its own taxonomy: reporting a credential
+// failure as malformed document JSON leaves callers unable to recognize it.
+func TestDocumentsService_UpdatePreservesAnAuthError(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	reqs := &[]capturedDocumentRequest{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*reqs = append(*reqs, capturedDocumentRequest{method: r.Method, path: r.URL.Path})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	authErr := ErrAuth("token refresh failed")
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+		WithAuthStrategy(failingAuth{err: authErr}))
+	svc := client.ForAccount("99999").Documents()
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+		Content: "<div>New body.</div>",
+	})
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+
+	var apiErr *Error
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	if apiErr.Code != CodeAuth {
+		t.Fatalf("expected the auth taxonomy to survive, got code %q (message %q)", apiErr.Code, apiErr.Message)
+	}
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatalf("expected no PUT after an auth failure, got %+v", r)
+		}
+	}
+}

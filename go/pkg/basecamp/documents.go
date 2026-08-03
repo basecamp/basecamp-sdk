@@ -147,9 +147,18 @@ func (f *DocumentFields) fullBody() (map[string]any, error) {
 // runs, and wrapping that would break errors.Is and misreport why nothing was
 // sent; keeping the classifier below the gate removes it from the candidate set
 // entirely rather than trying to recognize it.
+//
+// One preflight failure still reaches this call site, though, because it
+// happens INSIDE the generated client: the authEditor installed in
+// initGeneratedClient runs per request, so a token refresh or keyring failure
+// surfaces here with no HTTP response behind it. That is why *Error is excluded
+// too — an error already carrying the SDK taxonomy cannot have come from the
+// response decoder, which never produces one. Without that, an ErrAuth would be
+// reported as malformed document JSON and callers would stop recognizing it.
 func normalizeDocumentDecodeError(err error) error {
+	var sdkErr *Error
 	var urlErr *url.Error
-	if errors.As(err, &urlErr) ||
+	if errors.As(err, &sdkErr) || errors.As(err, &urlErr) ||
 		errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
