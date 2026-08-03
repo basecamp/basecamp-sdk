@@ -1,0 +1,88 @@
+go/pkg/basecamp/helpers.go
+  s_ae792ed0be3006::t_ab00b0f84a88a4 371-386
+go/pkg/basecamp/people.go
+  s_ae792ed0be3006::t_595362ad6d0b1c 84-87
+  s_c34d12fa92bb83::t_1803c17e4488b8 163-164,370-371,449-450
+SPEC.md
+  s_ae792ed0be3006::t_f03b007cfd8b6c 871-882,888-889
+conformance/tests/pagination.json
+  s_ae792ed0be3006::t_746496174a7c8d 298-327
+go/README.md
+  s_ae792ed0be3006::t_f0b0b7de2c9c5a 572-576,578
+go/pkg/basecamp/boosts.go
+  s_ae792ed0be3006::t_b89cd31ce14bfe 34-37,113-114,204-205
+go/pkg/basecamp/campfires.go
+  s_ae792ed0be3006::t_64b919f0eab2f4 247-248,377-378,624-625,792-793
+go/pkg/basecamp/cards.go
+  s_ae792ed0be3006::t_5f3f062601c1ac 192-195,370-371
+go/pkg/basecamp/checkins.go
+  s_ae792ed0be3006::t_4c5298cb9e7f90 19-22,32-35,45-48,336-337,660-661,743-744,817-818,1039-1040
+go/pkg/basecamp/client_approvals.go
+  s_ae792ed0be3006::t_efb2f4eae1a86e 157-158
+go/pkg/basecamp/client_correspondences.go
+  s_ae792ed0be3006::t_75fa91be25f22c 134-135
+go/pkg/basecamp/client_replies.go
+  s_ae792ed0be3006::t_ada29f1d7eeb40 120-121
+go/pkg/basecamp/comments.go
+  s_ae792ed0be3006::t_3da0f82140a873 62-65,143-144
+go/pkg/basecamp/events.go
+  s_ae792ed0be3006::t_da565b68e67dbc 21-24,125-126
+go/pkg/basecamp/forwards.go
+  s_ae792ed0be3006::t_b466289e47da66 18-21,37-40,250-251,371-372
+go/pkg/basecamp/gauges.go
+  s_ae792ed0be3006::t_491f8af8f29b18 106-109,127-130,207-208,278-279
+go/pkg/basecamp/gauges_test.go
+  s_ae792ed0be3006::t_b45f4b10166037 272-359
+go/pkg/basecamp/message_types.go
+  s_ae792ed0be3006::t_1cba8057c33038 113-114
+go/pkg/basecamp/messages.go
+  s_ae792ed0be3006::t_8d0b7c1756f3ea 93-96,183-184
+go/pkg/basecamp/projects.go
+  s_ae792ed0be3006::t_a5f62e937f5b42 75-78,188-189
+go/pkg/basecamp/recordings.go
+  s_ae792ed0be3006::t_e342c597cc3167 147-150,262-263
+go/pkg/basecamp/schedules.go
+  s_ae792ed0be3006::t_0e54c47f33bfc0 19-22,264-265
+go/pkg/basecamp/search.go
+  s_ae792ed0be3006::t_3eeef17a51fc65 260-261
+go/pkg/basecamp/templates.go
+  s_ae792ed0be3006::t_2b353c3a9a4ab2 137-138
+go/pkg/basecamp/timeline.go
+  s_ae792ed0be3006::t_c4000c4c0d9570 125-128,208-209,292-293,388-389
+go/pkg/basecamp/timesheet.go
+  s_ae792ed0be3006::t_c23b4dd594212b 203-204,297-298
+go/pkg/basecamp/todolist_groups.go
+  s_ae792ed0be3006::t_d6704f6fc56b6c 149-150
+go/pkg/basecamp/todolists.go
+  s_ae792ed0be3006::t_7d654e1b9c09a6 70-73,243-244
+go/pkg/basecamp/todos.go
+  s_ae792ed0be3006::t_fa0b1917c20b16 196-199,429-430
+go/pkg/basecamp/vaults.go
+  s_ae792ed0be3006::t_a024e996d78285 19-22,40-43,61-64,342-343,575-576,779-780,996-997
+go/pkg/basecamp/webhooks.go
+  s_ae792ed0be3006::t_b5b707bed478b0 143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "63fa5b5a0117bc96f3eb72b88982af502d68cf05",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_c34d12fa92bb83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a924b533ff8d31c04",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
