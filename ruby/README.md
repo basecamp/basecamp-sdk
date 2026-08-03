@@ -45,7 +45,7 @@ The one-line rule: **a redirect URI you control → authorization code; no brows
 
 ## Finding your account ID
 
-Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* client because it takes no account context. Unlike the other SDKs, Ruby does not hardcode Launchpad here: `Http#get_authorization_document` runs resource-first discovery (SPEC.md §16) against your configured base URL and fetches `/authorization.json` from the *selected* issuer, reaching Launchpad only on a soft fallback. Point egress rules and HTTP stubs at the issuer discovery selects, not at Launchpad; a hard selection failure raises `Basecamp::Oauth::DiscoverySelectionError` before any credentialed request goes out.
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* client because it takes no account context. Unlike the other SDKs that ship this service (Go, Python, TypeScript all hardcode Launchpad), Ruby does not: `Http#get_authorization_document` runs resource-first discovery (SPEC.md §16) against your configured base URL and fetches `/authorization.json` from the *selected* issuer, reaching Launchpad only on a soft fallback. Point egress rules and HTTP stubs at the issuer discovery selects, not at Launchpad; a hard selection failure raises `Basecamp::Oauth::DiscoverySelectionError` before any credentialed request goes out.
 
 ```ruby
 client = Basecamp.client(access_token: ENV["BASECAMP_TOKEN"])
