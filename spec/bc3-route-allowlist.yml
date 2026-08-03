@@ -187,12 +187,29 @@ bc3_routes_not_modeled:
     path: /vaults/:id/google_documents
     tracking_issue: 551
 
-  # -- dock doors: registered, status partial-coverage (door create documented,
-  #    door show not) --
+  # -- dock doors: the two door-scoped routes get DIFFERENT dispositions, decided
+  #    2026-08-03. The show route is a redirector and can never be modeled, so it
+  #    is out_of_scope, not registered. Only create remains open, and it stays
+  #    registered against the partial-coverage entry. Full reasoning, verified
+  #    against the pinned bc3 revision, is in the entry's "Disposition of the two
+  #    allowlisted door routes" section.
+  #
+  #    Door index is drawn (bare `resources :doors`, no only:/except:) but has no
+  #    app/views/api template, so it is not renderable under the API host. It is
+  #    absent here only because spec/bc3-routes.json is extracted from doc/api,
+  #    which does not bullet it. --
 
   - method: GET
     path: /dock/doors/:id
-    registry: spec/api-gaps/external-links-doors.md
+    out_of_scope: >-
+      A redirector, not a JSON resource. Docks::DoorsController#show is
+      `redirect_to @recording.door.url`, and doc/api/sections/external_links.md
+      documents the response as 302 with a Location header pointing at the
+      external link's outside URL — there is no representation at any content
+      type. Modeling it would make a credentialed client follow a redirect to a
+      user-supplied third-party address (four of six SDK transports follow
+      redirects by default), and the external URL is already delivered as a
+      plain field by the modeled type=Door ListRecordings query.
   - method: POST
     path: /dock/doors
     registry: spec/api-gaps/external-links-doors.md
