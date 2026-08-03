@@ -1,0 +1,19 @@
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_ae792ed0be3006::t_19bdd38e1650cd 354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5fda7c2f56c388892a2a3b1c2d3764ce592c296a",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
