@@ -115,6 +115,7 @@
       "items": {
         "type": "object",
         "required": ["type"],
+        "$comment": "errorRaised is the inverse of noError and takes no `expected`: the dispatch must fail SOMEHOW, without pinning which canonical code. It exists for the malformed-response family (#576), where the six SDKs refuse the same body by six different mechanisms — a hand-written guard in TypeScript/Python/Ruby, and the model decoder in Go/Kotlin/Swift — so no single errorType is assertable. A fixture declaring it also tells the Kotlin and Swift runners that a decoder rejection is the POINT of the case rather than a malformed-fixture bug.",
         "properties": {
           "type": {
             "type": "string",
@@ -129,6 +130,7 @@
               "headerValue",
               "errorType",
               "noError",
+              "errorRaised",
               "requestPath",
               "requestMethod",
               "requestBody",

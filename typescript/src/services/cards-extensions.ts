@@ -1,5 +1,9 @@
 import { CardsService as GeneratedCardsService } from "../generated/services/cards.js";
 import type { Card } from "../generated/services/cards.js";
+import { requireRecord, writableString } from "./merge-safe.js";
+
+/** The deliberate-overwrite escape hatch named in this composite's error hints. */
+const ESCAPE = "updateVerbatim()";
 
 /**
  * Request parameters for `update`.
@@ -87,10 +91,25 @@ export class CardsService extends GeneratedCardsService {
 
     if (req.dueOn === undefined) {
       // Unaddressed: preserve whatever is there now.
-      const current = await this.get(cardId);
+      //
+      // The fetched date is validated before it is resent. `if (current.due_on)`
+      // was the worst instance of #576 and failed in both directions at once:
+      // a falsey non-string was DROPPED, and an omitted `due_on` is exactly how
+      // BC3 erases a card's due date — the behaviour this composite exists to
+      // prevent — while a truthy non-string (`42`, `true`, `["x"]`, `{a:1}`)
+      // was forwarded verbatim and written to the card. Nothing below this
+      // rejects either: `schema.d.ts` is erased at build time, so `Card` is a
+      // compile-time claim about runtime data. See `merge-safe.ts`.
+      const current = requireRecord(await this.get(cardId), {
+        record: "Card",
+        operation: "GetCard",
+        escape: ESCAPE,
+      });
       // The Card response carries wire-shaped keys; the request builder takes
-      // camelCase.
-      if (current.due_on) body.dueOn = current.due_on;
+      // camelCase. An absent or null date stays absent — omission is how the
+      // API expresses "no due date", and `""` is not a date it accepts.
+      const dueOn = writableString(current, "due_on", { record: "Card", escape: ESCAPE });
+      if (dueOn !== "") body.dueOn = dueOn;
     } else if (req.dueOn !== null) {
       body.dueOn = req.dueOn;
     }

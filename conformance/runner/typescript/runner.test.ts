@@ -16,6 +16,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkDelayGaps } from "./delay-gaps.js";
+import { errorRaisedFailure } from "./error-raised.js";
 
 // =============================================================================
 // Types mirroring conformance/schema.json
@@ -930,6 +931,16 @@ function checkAssertions(
           result.error,
           `[${tc.name}] expected no error, got: ${result.error?.message}`,
         ).toBeUndefined();
+        break;
+      }
+
+      // The inverse of noError, and deliberately code-agnostic. See
+      // errorRaisedFailure for the contract and for why the branch lives there
+      // rather than inline: no committed fixture can reach its failing side, so
+      // it is unit-tested instead.
+      case "errorRaised": {
+        const failure = errorRaisedFailure(result.error !== undefined);
+        expect(failure, `[${tc.name}] ${failure}`).toBeUndefined();
         break;
       }
 

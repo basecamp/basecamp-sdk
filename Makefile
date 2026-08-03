@@ -494,10 +494,36 @@ oauth-token-fixtures-check:
 # {status:204, networkError:false}) would only be caught, if at all, by each
 # runner's looser runtime backstop. tests.schema.json wraps schema.json as an
 # array so check-jsonschema validates each element of the array-shaped files.
+#
+# Schema validation checks the fixture FORMAT, not that a mock body still
+# decodes into the generated models. The runners enforce that (Kotlin/Swift
+# fail loudly on a body that no longer matches) — except where a fixture
+# declares errorRaised, which deliberately switches that policy off. The
+# control-sibling gate below is what keeps those fixtures honest.
+#
+# The metaschema pass runs FIRST because validating fixtures against a schema
+# that is not itself a valid schema proves nothing. Draft 2020-12 requires every
+# value under `properties` to be a schema object or boolean, so an annotation
+# like `$comment` placed there declares a property of that name with a string
+# for a schema — accepted silently by the fixture pass, rejected by any
+# validator that meta-validates first.
+#
+# The self-test runs after the live check for the same reason the gate exists:
+# pointed only at the valid fixture set, the gate proves it can say yes and
+# nothing else. Several of its rejections — a kill case answering 204 above all
+# — are invisible to both the schema pass and every runner, so a regression that
+# removed them would show up as a clean `make conformance` and nowhere else.
 conformance-fixtures-check:
+	@echo "==> Validating conformance schemas against the JSON Schema metaschema..."
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--check-metaschema conformance/schema.json conformance/tests.schema.json
 	@echo "==> Validating conformance fixtures against schema.json..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/tests.schema.json conformance/tests/*.json
+	@echo "==> Checking errorRaised fixtures have body-pinning control siblings..."
+	python3 conformance/check_kill_case_controls.py
+	@echo "==> Self-testing the control-sibling gate's rejections..."
+	@python3 conformance/test_check_kill_case_controls.py
 
 # Unit-test the runners' own assertion helpers.
 #
@@ -506,11 +532,16 @@ conformance-fixtures-check:
 # #563 shipped a delayBetweenRequests check that vacuously passed when the gap
 # it named did not exist; nothing caught it because every committed fixture
 # supplied the gap. These pin the branches the fixtures cannot reach.
+#
+# errorRaised (#576) is the same shape: every fixture declaring it is one the
+# SDK does refuse, so its failing branch is unreachable from conformance/tests/
+# and a handler that accepted everything would look green in all six runners.
 conformance-runner-tests:
 	@echo "==> Running conformance runner unit tests..."
 	cd conformance/runner/go && go test ./...
-	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py
+	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py test_error_raised.py
 	cd conformance/runner/ruby && bundle install --quiet && bundle exec ruby delay_gaps_test.rb
+	cd conformance/runner/ruby && bundle exec ruby error_raised_test.rb
 	cd kotlin && ./gradlew --quiet :conformance:test
 	@$(MAKE) --no-print-directory conformance-swift-runner-tests
 
