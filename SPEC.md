@@ -2239,13 +2239,13 @@ typed error element is emitted), `Closed` (absorbing; no error element).
 | 2 | Backoff | Minting | `backoff` timer fired (a fresh ticket is ALWAYS minted next) |
 | 3 | Minting | Connecting | ticket minted; dial the mint's `url` verbatim |
 | 4 | Minting | Backoff | mint transient/throttled, or an unauthorized mint (401/403) below the shared-counter threshold (Retry-After honored as the floor of the next delay) |
-| 5 | Minting | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (shared counter across unauthorized mints and `unauthorized` disconnects; resets on `confirm_subscription`) |
+| 5 | Minting | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (shared counter across unauthorized mints, `unauthorized` disconnects, and unauthorized polls; resets only on a successful poll page) |
 | 6 | Connecting | AwaitingWelcome | dial ok; frame pump started; `handshake-deadline` armed (10s) |
 | 7 | Connecting | Backoff | dial failed |
 | 8 | AwaitingWelcome | AwaitingConfirmation | `welcome` → send subscribe; re-arm as `confirmation-deadline` (10s) |
 | 9 | AwaitingWelcome | Backoff | socket error/close, staleness expiry, or handshake deadline lapsed (full teardown first) |
 | 10 | AwaitingWelcome | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (reason-string dispatch on the literal `unauthorized`; shared counter with unauthorized mints) |
-| 11 | AwaitingConfirmation | CatchingUp | `confirm_subscription` → cancel deadline; reset attempt + auth counters; select entry cursor |
+| 11 | AwaitingConfirmation | CatchingUp | `confirm_subscription` → cancel deadline; reset the attempt counter (the authorization counter resets only on a successful poll page); select entry cursor |
 | 12 | AwaitingConfirmation | Terminal(`subscription_rejected`) | `reject_subscription` → cancel deadline, **close the socket**, ZERO reconnects |
 | 13 | AwaitingConfirmation | Terminal(`protocol_fatal`) | raw disconnect frame `reason=invalid_event_stream_command, reconnect=false` |
 | 14 | AwaitingConfirmation | Backoff | confirmation deadline lapsed → dispose conn + pump + ALL of the attempt's timers, then jittered fresh-ticket retry |
@@ -2267,7 +2267,7 @@ Semantic-signal dispositions are an **overlay** on this table, not additional nu
 rows: a `FeedGap` signal arises at transition 17; a `BufferOverflow` signal arises whenever
 the live buffer drops events (any buffer-holding state) and is dispatched synchronously
 before the next Save; a Terminate disposition — or an absent handler — lands in the
-corresponding Terminal state from wherever the signal was dispatched. Five further edges
+corresponding Terminal state from wherever the signal was dispatched. Six further edges
 sit outside the 26 numbered rows for the same reason: the Terminal(`checkpoint_load`) edge
 (fires on the first iteration, before the first mint — zero wire attempts); the
 Terminal(`usage`) edge (a re-consumed iterator); the Terminal(`invalid_continuation`) edge
@@ -2275,7 +2275,8 @@ Terminal(`usage`) edge (a re-consumed iterator); the Terminal(`invalid_continuat
 `resume` URL is about to be followed — row 16's follow and row 17's Accept re-entry both
 pass through it; zero requests to the failing URL); the Terminal(`poll_failed`) edge (an
 `unrecoverable`-kind poll error — Seam Contracts below — from any polling state, carrying
-the generated error); and the poll transient/throttle
+the generated error); the Terminal(`mint_failed`) edge (an `unrecoverable`-kind mint
+error, from Minting, carrying the generated error); and the poll transient/throttle
 **self-loop** inside CatchingUp (the `poll-retry` timer — a wait, not a state change).
 An `unauthorized`-kind poll error rides the reconnect cycle — full teardown → Backoff with
 a shared-counter increment (the fresh mint/token cycle is its recovery path) — and the
@@ -2296,8 +2297,12 @@ Interpretation, pinned:
   `EVENT_FEED_AUTH_FAILURE_THRESHOLD = 3` the connector surfaces `authorization_failed`
   (a mixed sequence — mint 401, `unauthorized` disconnect, poll 401 — is terminal). A
   single blip must not kill a long-lived agent: a ticket that expired in the mint→dial
-  race is indistinguishable from revocation on one sample. The counter resets on
-  `confirm_subscription` **and on any successful poll page**, and only these three
+  race is indistinguishable from revocation on one sample. **The counter resets only on
+  a successful poll page** — never on `confirm_subscription`: a confirmed subscription
+  proves the ticket worked, not the bearer, and resetting there would let alternating
+  poll-401 → reconnect → confirm cycles hold the counter below threshold forever. A
+  connect-level blip still clears promptly — every confirmation is followed by the
+  catch-up poll, whose first successful page resets the counter. Only these three
   failure shapes ever increment it.
 - **Poll transients and throttles are never terminal.** They retry inside CatchingUp on the
   `poll-retry` timer, with one algorithm: a server-directed `Retry-After` is waited
@@ -2427,7 +2432,8 @@ cursor resolves at the server's present head — the class, used by this name th
 this section and the state table: the zero Cursor (bare present entry); `since="now"`; a
 410 reset's resume URL (the server documents it as `since=now` with the canonical filter
 set preserved); and a 400-position/409 re-entry that falls back to the present because no
-accepted event id exists. Entries positioned in served history — `position=`,
+poll-served id exists (the reset cursor is poll-lane-only — a live-delivered id never
+positions a re-entry). Entries positioned in served history — `position=`,
 `since=<id>`, `since=0` — are **position-resume class** and keep the unamended per-page
 save discipline.
 
@@ -2551,6 +2557,7 @@ Terminal reasons end iteration with exactly one typed error element:
 | `feed_gap` | 410 with no registered handler, or a handler returning Terminate |
 | `invalid_continuation` | a `next` or 410 `resume` URL failed same-origin/downgrade validation (Continuation and Resume URL Validation below); no request is issued to it |
 | `poll_failed` | an `unrecoverable`-kind poll error — a generated-operation outcome outside the feed's 400/409/410 matrix and the retryable classes (e.g. 404, 405, an unexpected shape) — passed through with the generated error attached |
+| `mint_failed` | an `unrecoverable`-kind mint error — a non-retryable `CreateStreamTicket` outcome other than 401/403 (e.g. 404, 422, a malformed success) — passed through with the generated error attached |
 
 `auth_revoked` is deliberately **reserved, not used**: the wire carries no distinct
 revocation signal — revocation is one possible cause of repeated unauthorized failures, and
@@ -2583,7 +2590,11 @@ RECORD StreamTicket
   expires_in : Integer   -- seconds (~120); server-owned, NEVER used for client scheduling
   url        : String    -- connect verbatim; never assemble cable topology client-side
 END
--- Mint errors carry a kind: transient | throttled(retry_after) | unauthorized.
+-- Mint errors carry a kind: transient | throttled(retry_after) | unauthorized |
+-- unrecoverable(error). The adapter maps every §6/§7 outcome onto exactly one kind:
+-- retryable outcomes exhausted inside the seam → transient/throttled; 401/403 →
+-- unauthorized (shared counter); anything else non-retryable (404, 422, a malformed
+-- success) → unrecoverable → Terminal(mint_failed), generated error attached.
 
 INTERFACE PollSource
   poll(cursor: Cursor, filters: Filters) → PollPage   -- one fully-governed generated PollEvents call
