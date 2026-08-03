@@ -181,6 +181,21 @@ Update the `revision` and `date` fields, then `make provenance-sync`. This is no
 
 The Smithy service version is derived from the shared provenance date. Run `make sync-spec-version` (or `make smithy-build`, which does this automatically) after updating provenance.
 
+**Prose restates the pin, and prose drifts.** `COORDINATION.md` and
+`spec/api-gaps/README.md` each name the current pin in narrative, and both sat
+two repins stale before `make doc-constants-check` existed. A sentence that
+states the *current* pin carries an `<!-- @bc3-pin -->` marker at the end of its
+line; `make sync-api-version` rewrites every marked span from
+`spec/api-provenance.json` (SHA abbreviation length preserved) and the gate
+fails on any that drifted. Prose about *past* pins — "the pin has since advanced
+to X", "the `A..B` range contains…" — stays unmarked and is never rewritten:
+`spec/api-gaps/` cites ~30 historical SHAs on purpose, and a gate that rewrote
+them would convert settled triage into a claim nobody made. The same convention
+covers `<!-- @api-version -->` (from `openapi.json` `info.version`) and SPEC §19's
+`<!-- @assertion-types:begin/end -->` table (from `conformance/schema.json`).
+`spec/doc-constants.json` commits a per-file floor on how many markers each file
+must carry, so deleting a marker fails the gate instead of silencing it.
+
 **Pin semantics.** The pin is the conformance baseline as of the last sync — it asserts that all upstream drift up to that revision has been *triaged*, not that every contract in it has been *absorbed*. Upstream contracts shipped past the SDK's modeled surface are tracked in `spec/api-gaps/` (status `addressed-in-bc3-pr-N`) until an absorption PR lands. A repin is valid exactly when every drift item in `pin..HEAD` is either absorbed into the spec or registered in `spec/api-gaps/`; it is not blocked on absorption itself. The pin never moves backward. The `compatibility.*` pins mark the last **verified API-surface state** of their branch, not a last-glanced timestamp — refresh one only when re-verifying that branch's API surface, and record verification dates in the PR that did the checking.
 
 ### Pre-sync
@@ -198,7 +213,10 @@ Use `make sync-status` to see upstream diffs since last sync.
 7. Update tests for any changed paths/signatures
 8. Update provenance, run `make provenance-sync`
 9. Run `make sync-spec-version` (or `make smithy-build`)
-10. `make` must pass clean
+10. Run `make sync-api-version` — it rewrites the SDK constants *and* the
+    `@bc3-pin` / `@api-version` marked spans in prose; record the new range's
+    triage in `spec/api-gaps/README.md` (unmarked, it is history)
+11. `make` must pass clean
 
 ---
 

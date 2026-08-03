@@ -93,8 +93,14 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `2c0dafba13` (2026-08-02). The
-> `d0edc1283b..2c0dafba13` range (11 commits) contains exactly **one**
+> The provenance pin is `2c0dafba13` (2026-08-02). <!-- @bc3-pin -->
+> That line is checked by `make doc-constants-check` and deliberately *not*
+> rewritten by `make sync-api-version`: this file is in
+> `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
+> the range triage below and cannot advance without that triage advancing too.
+> The ranges themselves are settled history and stay unmarked.
+>
+> The `d0edc1283b..2c0dafba13` range (11 commits) contains exactly **one**
 > API-contract change: BC3 **#12384** (`dc6cd10714`, the Folders API),
 > absorbed here as `FoldersService` and recorded in
 > [`folders-api.md`](folders-api.md). BC3 **#12494** (`344581a379`) and
@@ -112,8 +118,8 @@ making the absorption journey publicly auditable.
 > Turbo-morph web-only, and one push-notification backend swap.
 >
 > Earlier pins, kept as the triage record. The provenance pin was `e83b2733`
-> (2026-07-30). The `dffa7e11..e83b2733`
-> range (96 commits) contains exactly two API-contract changes, both handled:
+> (2026-07-30); the `dffa7e11..e83b2733` range (96 commits), triaged at the
+> repin that set it, contains exactly two API-contract changes, both handled:
 > BC3 **#12464** (`b06acfac1`, boosts-feed withdrawal — absorbed by the SDK's
 > removal, recorded in `everything-boosts-withdrawn.md`) and BC3 **#12442**
 > (`b238a0743`, `assignee_ids[]`/`due` filters on the everything to-do/card

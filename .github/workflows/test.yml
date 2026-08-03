@@ -111,6 +111,13 @@ jobs:
       - name: API version constants in sync with openapi.json
         run: make sync-api-version-check
 
+      # Prose restates three constants (API_VERSION, the bc3 provenance pin,
+      # SPEC §19's assertion-type table). Marked spans only — spec/api-gaps/
+      # legitimately cites historical SHAs — plus a committed marker floor so
+      # deleting a marker cannot silence the gate.
+      - name: Documentation constants in sync with their sources
+        run: make doc-constants-check
+
       - name: Bucket-scoped vs flat operation parity
         run: make check-bucket-flat-parity
 

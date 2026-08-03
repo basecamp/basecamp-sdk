@@ -1058,7 +1058,7 @@ Every JSON API request must include all four headers below. Download requests (�
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
 - `{VERSION}` is the SDK version (e.g., `0.6.0`)
-- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-03-23`), derived from the shared date in `spec/api-provenance.json`
+- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-03-23`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
 
 ### Redirect Handling
 
@@ -1711,7 +1711,11 @@ Test cases conform to `conformance/schema.json`. Each test specifies:
 
 ### Assertion Types
 
-Enumerated from `conformance/schema.json`:
+Enumerated from `conformance/schema.json` — the table below is gated against
+that enum by `make doc-constants-check`, so a new assertion type cannot ship
+undocumented:
+
+<!-- @assertion-types:begin -->
 
 | Type | Description |
 |------|-------------|
@@ -1732,6 +1736,8 @@ Enumerated from `conformance/schema.json`:
 | `requestScheme` | URL scheme (http/https) of request |
 | `urlOrigin` | Origin validation result (accepted/rejected) |
 | `responseMeta` | Metadata on paginated response (totalCount, truncated) |
+
+<!-- @assertion-types:end -->
 
 ### Test Categories and Owning Sections
 
@@ -1850,6 +1856,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | `provenance-check` | Embedded provenance matches `spec/api-provenance.json` |
 | `sync-spec-version-check` | Smithy service version matches the shared date in `spec/api-provenance.json` |
 | `sync-api-version-check` | `API_VERSION` constants match `openapi.json` `info.version` across all SDKs |
+| `doc-constants-check` | Constants restated in prose match their sources: `@api-version`-marked spans vs. `openapi.json` `info.version`, `@bc3-pin`-marked spans vs. `spec/api-provenance.json`, and §19's `@assertion-types` table vs. `conformance/schema.json`. Only marked spans are checked — `spec/api-gaps/` cites historical bc3 SHAs on purpose — and `spec/doc-constants.json` commits a per-file marker floor so deleting a marker cannot silence the gate. `make sync-api-version` rewrites the two scalar constants |
 | `url-routes-check` | `go/pkg/basecamp/url-routes.json` (embedded via `//go:embed`) matches regeneration from `openapi.json` |
 | `go-check-drift` | Go generated services match current OpenAPI spec |
 | `kt-check-drift` | Kotlin generated services match current OpenAPI spec (operation-level coverage) |
@@ -1907,7 +1914,7 @@ All magic numbers in one place, derived from shipping SDK code (not `rubric-audi
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
-| `API_VERSION` | `2026-03-23` | — | `openapi.json` `info.version` |
+| `API_VERSION` | `2026-03-23` | — | `openapi.json` `info.version` <!-- @api-version --> |
 | `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
 
 ---

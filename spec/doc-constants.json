@@ -1,0 +1,21 @@
+{
+  "$comment": [
+    "Marker-count floors for scripts/sync-doc-constants.rb (make doc-constants-check).",
+    "Each entry is a MINIMUM: the named file must carry at least this many spans",
+    "marked with the given HTML comment. Adding a new marked claim never needs a",
+    "bump; deleting one to make the gate go quiet fails here instead.",
+    "Moving a claim to another file is a two-line edit in the same commit."
+  ],
+  "markerFloors": {
+    "api-version": {
+      "SPEC.md": 2
+    },
+    "bc3-pin": {
+      "COORDINATION.md": 1,
+      "spec/api-gaps/README.md": 1
+    },
+    "assertion-types": {
+      "SPEC.md": 1
+    }
+  }
+}

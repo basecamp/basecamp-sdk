@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# Syncs API_VERSION constants across all SDKs from openapi.json info.version.
+# Syncs API_VERSION constants across all SDKs from openapi.json info.version,
+# then syncs the doc constants restated in prose (marked spans only) from the
+# same sources — see scripts/sync-doc-constants.rb.
 # Usage: scripts/sync-api-version.sh [openapi.json]
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 OPENAPI="${1:-openapi.json}"
 
@@ -49,5 +53,16 @@ sedi "s/public static let apiVersion = \".*\"/public static let apiVersion = \"$
 # Python
 sedi "s/^API_VERSION = \".*\"/API_VERSION = \"$API_VERSION\"/" \
   python/src/basecamp/_version.py
+
+# Prose: the same constants restated in SPEC.md / COORDINATION.md / api-gaps.
+# Only HTML-comment-marked spans are touched, so the ~20 historical bc3 SHAs
+# cited in spec/api-gaps/ narrative are left alone. Assertion-type table drift
+# is reported by `make doc-constants-check`, not fixed here — a new row needs a
+# human-written description, and failing here would break every `make generate`.
+if command -v ruby >/dev/null 2>&1; then
+  ruby "$SCRIPT_DIR/sync-doc-constants.rb" --write
+else
+  echo "WARNING: ruby not found; skipped prose doc-constant sync (make doc-constants-check will fail)" >&2
+fi
 
 echo "Done."
