@@ -907,13 +907,47 @@ func (c *Client) assertCredentialOrigin(req *http.Request) error {
 }
 
 func (c *Client) backoffDelay(attempt int) time.Duration {
-	// Exponential backoff: base * 2^(attempt-1)
-	delay := c.httpOpts.BaseDelay * time.Duration(1<<(attempt-1))
+	delay := saturatingBackoff(c.httpOpts.BaseDelay, attempt)
 
 	// Add jitter
 	jitter := time.Duration(rand.Int63n(int64(c.httpOpts.MaxJitter))) // #nosec G404 -- jitter doesn't need cryptographic randomness
 
 	return delay + jitter
+}
+
+// saturatingBackoff computes base * 2^(attempt-1) for a 1-based attempt,
+// saturating at MaxBackoffDelay (SPEC §7, "Backoff Ceiling").
+//
+// The clamp is load-bearing. `1 << (attempt-1)` is evaluated in int: at attempt
+// 64 that is 1<<63, which is negative, and Go defines a shift at or past the
+// operand width as 0. Either way the product stops being a delay — and both
+// time.Sleep and time.After treat a non-positive duration as "no wait", so an
+// unclamped formula turned a long failure streak into a retry loop with no
+// backoff at all, against a server already answering 429/503.
+//
+// The multiplier is compared against MaxBackoffDelay/base before multiplying,
+// so no intermediate can overflow int64.
+func saturatingBackoff(base time.Duration, attempt int) time.Duration {
+	if base <= 0 {
+		return 0
+	}
+	shift := attempt - 1
+	if shift < 0 {
+		shift = 0
+	}
+	// 62 is the largest shift that stays positive in int64; anything at or past
+	// it is far above any ceiling worth computing.
+	if shift >= 62 {
+		return MaxBackoffDelay
+	}
+	// The multiplier is a plain count, not a duration — multiplying two
+	// time.Durations would be a unit error (and golangci's durationcheck says
+	// so), so the arithmetic happens in int64 nanoseconds.
+	multiplier := int64(1) << uint(shift)
+	if multiplier > int64(MaxBackoffDelay)/int64(base) {
+		return MaxBackoffDelay
+	}
+	return time.Duration(int64(base) * multiplier)
 }
 
 // parseNextLink extracts the next URL from a Link header.

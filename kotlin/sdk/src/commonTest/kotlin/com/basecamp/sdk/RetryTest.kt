@@ -36,6 +36,57 @@ class RetryTest {
         assert(delay3 in 4000..4100) { "Expected ~4000, got $delay3" }
     }
 
+    /**
+     * #577: the backoff term saturates at [BasecampHttpClient.MAX_BACKOFF_DELAY_MS]
+     * instead of overflowing.
+     *
+     * Before the fix `baseDelayMs * (1L shl (attempt - 1))` wrapped: `1L shl 63`
+     * sets the sign bit, so with the 1000ms default the product went NEGATIVE at
+     * attempt 54, and `delay()` returns immediately for a non-positive argument.
+     * The client stopped backing off entirely and hammered a server that was
+     * already answering 429/503. `1L shl 64` wraps the shift itself back to 1,
+     * so past that the delay collapsed to the base value.
+     *
+     * The builder validates `maxRetries >= 0` with no upper bound, so a caller
+     * setting a large cap reaches these attempt numbers on a long failure streak.
+     *
+     * The bound asserted is two-sided, and that matters: a one-sided "never too
+     * long" check would pass on the two worst attempts. `1L shl 63` is
+     * `Long.MIN_VALUE`, and `1000 * Long.MIN_VALUE` wraps to exactly 0 — a 0ms
+     * backoff that looks perfectly in range while being the tight loop itself.
+     * Once the exponential term is past the ceiling the delay must SIT at the
+     * ceiling, so 0ms and a collapsed 1000ms both fail.
+     */
+    @Test
+    fun backoffDelaySaturatesInsteadOfOverflowing() {
+        val base = 1000L
+        val ceiling = BasecampHttpClient.MAX_BACKOFF_DELAY_MS + 100L
+
+        // With base 1000, attempt 6 is the first whose unclamped term (32,000ms)
+        // exceeds the 30,000ms ceiling, so every attempt from here on must land
+        // in [MAX_BACKOFF_DELAY_MS, MAX_BACKOFF_DELAY_MS + MAX_JITTER_MS].
+        // Collected rather than asserted one at a time so a failure names every
+        // overflow shape at once.
+        val violations = listOf(6, 10, 53, 54, 55, 62, 63, 64, 65, 128, Int.MAX_VALUE)
+            .map { it to BasecampHttpClient.calculateBackoffDelay(base, it) }
+            .filter { (_, delay) -> delay !in BasecampHttpClient.MAX_BACKOFF_DELAY_MS..ceiling }
+        assert(violations.isEmpty()) {
+            "expected every delay in ${BasecampHttpClient.MAX_BACKOFF_DELAY_MS}..$ceiling ms, got " +
+                violations.joinToString { (attempt, delay) -> "attempt $attempt -> ${delay}ms" }
+        }
+
+        // The ceiling binds base_delay_ms itself (SPEC §7 requirement 3).
+        val hugeBase = BasecampHttpClient.calculateBackoffDelay(600_000L, 1)
+        assert(hugeBase in 0..ceiling) {
+            "a base delay above the ceiling must clamp to it, got $hugeBase"
+        }
+
+        // A zero/negative base delay stays at zero rather than saturating.
+        assert(BasecampHttpClient.calculateBackoffDelay(0L, 90) in 0..100L) {
+            "a zero base delay must not produce a ceiling-length sleep"
+        }
+    }
+
     @Test
     fun retryOn429ForGet() = runTest {
         var requestCount = 0

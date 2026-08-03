@@ -36,6 +36,13 @@ export const NO_RETRY_CONFIG: RetryConfig = {
 const MAX_JITTER_MS = 100;
 
 /**
+ * Ceiling on the backoff term (SPEC §7, "Backoff Ceiling"). Jitter is added
+ * after the clamp, so the longest single backoff sleep is this plus
+ * `MAX_JITTER_MS`.
+ */
+export const MAX_BACKOFF_DELAY_MS = 30_000;
+
+/**
  * Lifecycle seams the retry loop emits through. The loop begins EVERY attempt
  * and finalizes the attempts it abandons (before the backoff sleep); the
  * terminal outcome — the response it returns, or the error it throws — is
@@ -175,21 +182,101 @@ export async function executeWithRetry(
   }
 }
 
-export function calculateBackoffDelay(config: RetryConfig, attempt: number): number {
-  const base = config.baseDelayMs;
-  let delay: number;
+/**
+ * `base * 2**exponent`, computed without ever forming `2**exponent`.
+ *
+ * JS has no `ldexp`, and `Math.pow(2, e)` is `Infinity` for `e > 1023` — so for
+ * a denormal-small base the *product* is still an ordinary number long after the
+ * multiplier has overflowed. Scaling in bounded steps keeps every intermediate
+ * finite, which is what lets the exponent bound come from the base alone.
+ */
+function scaleByPowerOfTwo(base: number, exponent: number): number {
+  let result = base;
+  for (let remaining = exponent; remaining > 0; ) {
+    const step = Math.min(remaining, 1000);
+    result *= Math.pow(2, step);
+    if (!Number.isFinite(result)) return Infinity;
+    remaining -= step;
+  }
+  return result;
+}
 
-  switch (config.backoff) {
+/**
+ * Smallest exponent `e` with `base * 2**e >= MAX_BACKOFF_DELAY_MS`.
+ *
+ * Computed in the LOG domain rather than as `MAX_BACKOFF_DELAY_MS / base`. That
+ * ratio is `Infinity` for any base below ~1.67e-304 ms, and falling back to a
+ * fixed 1023 then saturates *early*: such a base reaches only a fraction of the
+ * ceiling at exponent 1023, so returning the ceiling there overstates the
+ * specified term instead of tracking it. The log form has no such cliff, so the
+ * numeric backstop is gone entirely rather than merely made rarer.
+ */
+function saturatingExponent(base: number): number {
+  // log2 is not correctly rounded here, so the estimate can land one either side
+  // of the true boundary. Both corrections are bounded.
+  let exponent = Math.max(Math.ceil(Math.log2(MAX_BACKOFF_DELAY_MS) - Math.log2(base)), 0);
+  while (exponent > 0 && scaleByPowerOfTwo(base, exponent - 1) >= MAX_BACKOFF_DELAY_MS) exponent--;
+  while (scaleByPowerOfTwo(base, exponent) < MAX_BACKOFF_DELAY_MS) exponent++;
+  return exponent;
+}
+
+/**
+ * The backoff term, saturating at {@link MAX_BACKOFF_DELAY_MS} (SPEC §7).
+ *
+ * Shared by both of the SDK's retry loops — this one and the raw multipart
+ * loop in `services/base.ts` — so the ceiling cannot be honored on one path
+ * and not the other.
+ *
+ * The clamp is load-bearing rather than defensive. `Math.pow(2, attempt)`
+ * reaches `Infinity` at attempt 1024, and `setTimeout` clamps an out-of-range
+ * delay to **1ms**: the failure mode of an unbounded backoff in JS is not a
+ * long sleep, it is a tight retry loop against a server that is already
+ * answering 429/503. Well before that, the computed delays run to millennia.
+ *
+ * The exponent is compared against the point where the term reaches the ceiling
+ * *before* `Math.pow` is evaluated, and that point is derived from the
+ * CONFIGURED base — the same contract Go, Kotlin and Swift get from comparing
+ * their multiplier against `MAX_BACKOFF_DELAY_MS / base` before multiplying. A
+ * fixed exponent cap plus a trailing `Math.min` looks equivalent and is not:
+ * for a small enough base the capped product never reaches the ceiling, so the
+ * delay plateaus below it forever instead of saturating at it.
+ *
+ * `attempt` is the 0-indexed retry count (first retry = 0), matching the SPEC
+ * §7 `retry_index`.
+ */
+export function saturatingBackoff(
+  baseDelayMs: number,
+  backoff: RetryConfig["backoff"],
+  attempt: number,
+): number {
+  const base = baseDelayMs > 0 ? baseDelayMs : 0;
+  const index = attempt > 0 ? attempt : 0;
+  if (base === 0) return 0;
+
+  let delay: number;
+  switch (backoff) {
     case "exponential":
-      delay = base * Math.pow(2, attempt);
+      if (index >= saturatingExponent(base)) return MAX_BACKOFF_DELAY_MS;
+      delay = scaleByPowerOfTwo(base, index);
       break;
-    case "linear":
-      delay = base * (attempt + 1);
+    case "linear": {
+      // Compared before multiplying, so `Infinity * 0`-shaped intermediates
+      // never arise. `index + 1` is finite for any finite index.
+      const multiplier = index + 1;
+      if (multiplier >= MAX_BACKOFF_DELAY_MS / base) return MAX_BACKOFF_DELAY_MS;
+      delay = base * multiplier;
       break;
+    }
     case "constant":
     default:
       delay = base;
   }
+
+  return Math.min(delay, MAX_BACKOFF_DELAY_MS);
+}
+
+export function calculateBackoffDelay(config: RetryConfig, attempt: number): number {
+  const delay = saturatingBackoff(config.baseDelayMs, config.backoff, attempt);
 
   // Add jitter (0-100ms)
   const jitter = Math.random() * MAX_JITTER_MS;

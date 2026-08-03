@@ -16,6 +16,15 @@ const (
 	DefaultMaxPages   = 10000
 )
 
+// MaxBackoffDelay is the ceiling on the exponential backoff term (SPEC §7,
+// "Backoff Ceiling"). Jitter is added after the clamp, so the longest single
+// backoff sleep is MaxBackoffDelay + MaxJitter.
+//
+// It matches the generated client's RetryConfig.MaxDelay, which has capped at
+// 30s since that retry loop was first templated; #577 generalized the value to
+// every backoff site in every SDK.
+const MaxBackoffDelay = 30 * time.Second
+
 // HTTPOptions configures the HTTP client behavior.
 type HTTPOptions struct {
 	// Timeout is the request timeout (default: 30s).
