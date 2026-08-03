@@ -27,7 +27,6 @@ let typeAliases: [String: (name: String, kind: String)] = [
     "Template": ("Template", "entity"),
     "Todolist": ("Todolist", "entity"),
     "Todoset": ("Todoset", "entity"),
-    "TodolistGroup": ("TodolistGroup", "entity"),
     "Questionnaire": ("Questionnaire", "entity"),
     "Question": ("Question", "entity"),
     "QuestionAnswer": ("Answer", "entity"),

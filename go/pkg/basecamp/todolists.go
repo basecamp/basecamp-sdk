@@ -13,7 +13,17 @@ import (
 // Note: Todolists default to fetching all (no limit) since they are structural
 // indices, not high-volume content. Use Limit to cap results if needed.
 
-// Todolist represents a Basecamp todolist.
+// Todolist represents a Basecamp todolist — or a group inside one. There is
+// only this type: BC3 has no group model, so a group is a Todolist whose
+// parent is a Todolist, rendered through the same jbuilder and reporting
+// Type "Todolist".
+//
+// Discriminate structurally, never on Type:
+//
+//   - GroupsURL non-empty  → a to-do list; Parent is a Todoset.
+//   - GroupPositionURL non-empty → a group; Parent is a Todolist.
+//
+// Exactly one of the two is present on any response.
 type Todolist struct {
 	ID               int64     `json:"id"`
 	Status           string    `json:"status"`
@@ -53,8 +63,24 @@ type Todolist struct {
 	CompletedRatio         string               `json:"completed_ratio"`
 	Name                   string               `json:"name"`
 	TodosURL               string               `json:"todos_url"`
-	GroupsURL              string               `json:"groups_url"`
-	AppTodosURL            string               `json:"app_todos_url"`
+	// GroupsURL is the API URL for this list's groups. Present only when Parent
+	// is a Todoset — i.e. this is a to-do list, not a group. Mutually exclusive
+	// with GroupPositionURL.
+	GroupsURL string `json:"groups_url"`
+	// GroupPositionURL is the API URL for repositioning this group within its
+	// parent list. Present only when Parent is a Todolist — i.e. this is a
+	// group. Mutually exclusive with GroupsURL.
+	GroupPositionURL string `json:"group_position_url"`
+	// AppTodosURL is the in-app (non-API) URL for this list's todos, alongside
+	// the API-host TodosURL.
+	AppTodosURL string `json:"app_todos_url"`
+	// Color is one of BC3's recording colors (white, red, orange, yellow,
+	// green, blue, aqua, purple, gray, pink, brown). The key is always emitted
+	// but its value is null when unset, which decodes to "".
+	Color string `json:"color"`
+	// CommentsAppURL is the in-app (non-API) URL for this recording's comments,
+	// alongside the API-host CommentsURL.
+	CommentsAppURL string `json:"comments_app_url"`
 }
 
 // TodolistListOptions specifies options for listing todolists.
@@ -301,14 +327,11 @@ func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *T
 		return nil, err
 	}
 
-	// The API returns flat JSON, not the envelope that AsTodolistOrGroup0 expects.
-	// Decode resp.Body directly into the generated Todolist type.
-	var gtl generated.Todolist
-	if err := json.Unmarshal(resp.Body, &gtl); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist: %w", err)
-	}
-
-	todolist := todolistFromGenerated(gtl)
+	// One flat shape (#544): GetTodolistOrGroupResponseContent is generated.Todolist
+	// itself, so the generated parser's decode is the decode — no hand-rolled
+	// second pass over resp.Body. A group answers here too and lands in the same
+	// struct.
+	todolist := todolistFromGenerated(*resp.JSON200)
 	return &todolist, nil
 }
 
@@ -455,7 +478,7 @@ func (s *TodolistsService) Replace(ctx context.Context, todolistID int64, req *R
 
 // replaceTodolist is the single transport for the UpdateTodolistOrGroup wire
 // operation as TodolistsService issues it, shared by Replace, Update, and
-// Edit. It pins the Todolists.Replace hook identity and decodes the todolist
+// Edit. It pins the Todolists.Replace hook identity and projects the todolist
 // shape; the envelope and the one generated-client call site live in
 // replaceTodolistOrGroup.
 func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64, buildBody func() (map[string]any, error)) (*Todolist, error) {
@@ -465,16 +488,9 @@ func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64
 		ResourceID: todolistID,
 	}
 
-	raw, err := replaceTodolistOrGroup(ctx, s.client, op, todolistID, buildBody)
+	gtl, err := replaceTodolistOrGroup(ctx, s.client, op, todolistID, buildBody)
 	if err != nil {
 		return nil, err
-	}
-
-	// The API returns flat JSON, not the envelope that AsTodolistOrGroup0 expects.
-	// Decode the body directly into the generated Todolist type.
-	var gtl generated.Todolist
-	if err := json.Unmarshal(raw, &gtl); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist: %w", err)
 	}
 
 	todolist := todolistFromGenerated(gtl)
@@ -494,11 +510,13 @@ func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64
 // present-and-empty (that is how a clear is expressed), which omitempty on a
 // generated struct cannot express.
 //
-// Returns the raw response body for the caller to decode.
-func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op OperationInfo, id int64, buildBody func() (map[string]any, error)) (raw []byte, err error) {
+// Returns the decoded generated shape. Since #544 that is one flat
+// generated.Todolist for both variants, so each caller only chooses which
+// wrapper name to project it under.
+func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op OperationInfo, id int64, buildBody func() (map[string]any, error)) (gtl generated.Todolist, err error) {
 	if gater, ok := client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return nil, err
+			return generated.Todolist{}, err
 		}
 	}
 	start := time.Now()
@@ -507,26 +525,26 @@ func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op Opera
 
 	body, err := buildBody()
 	if err != nil {
-		return nil, err
+		return generated.Todolist{}, err
 	}
 
 	bodyReader, err := marshalBody(body)
 	if err != nil {
-		return nil, err
+		return generated.Todolist{}, err
 	}
 	resp, err := client.parent.gen.UpdateTodolistOrGroupWithBodyWithResponse(ctx, client.accountID, id, "application/json", bodyReader)
 	if err != nil {
-		return nil, err
+		return generated.Todolist{}, err
 	}
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
+		return generated.Todolist{}, err
 	}
 	if resp.JSON200 == nil {
 		err = fmt.Errorf("unexpected empty response")
-		return nil, err
+		return generated.Todolist{}, err
 	}
 
-	return resp.Body, nil
+	return *resp.JSON200, nil
 }
 
 // Trash moves a todolist to the trash.
@@ -592,7 +610,10 @@ func (s *TodolistsService) Reposition(ctx context.Context, todolistID int64, pos
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
-// todolistFromGenerated converts a generated Todolist to our clean Todolist type.
+// todolistFromGenerated converts a generated Todolist to our clean Todolist
+// type. It is variant-agnostic: a group decodes into generated.Todolist just
+// as a to-do list does, so both arrive here and the structural discriminator
+// (GroupsURL vs GroupPositionURL) simply carries through.
 func todolistFromGenerated(gtl generated.Todolist) Todolist {
 	tl := Todolist{
 		Status:           gtl.Status,
@@ -609,16 +630,24 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		BubbleUpURL:      gtl.BubbleUpUrl,
 		CommentsCount:    int(deref(gtl.CommentsCount)),
 		CommentsURL:      deref(gtl.CommentsUrl),
+		CommentsAppURL:   deref(gtl.CommentsAppUrl),
 		Position:         int(deref(gtl.Position)),
-		Description:      deref(gtl.Description),
+		// Description is @required and never null on the wire:
+		// format_api_content funnels a blank rich text through call_pipeline,
+		// which returns "" rather than nil. No deref — it is a plain string.
+		Description:      gtl.Description,
 		Completed:        deref(gtl.Completed),
 		CompletedRatio:   deref(gtl.CompletedRatio),
 		Name:             gtl.Name,
 		TodosURL:         deref(gtl.TodosUrl),
 		GroupsURL:        deref(gtl.GroupsUrl),
-		AppTodosURL:      deref(gtl.AppTodosUrl),
-		CreatedAt:        gtl.CreatedAt,
-		UpdatedAt:        gtl.UpdatedAt,
+		GroupPositionURL: deref(gtl.GroupPositionUrl),
+		// Color's key is always emitted but its value is null when unset, so a
+		// nil pointer and an unset color are the same thing: "".
+		Color:       deref(gtl.Color),
+		AppTodosURL: deref(gtl.AppTodosUrl),
+		CreatedAt:   gtl.CreatedAt,
+		UpdatedAt:   gtl.UpdatedAt,
 	}
 
 	if gtl.Id != 0 {

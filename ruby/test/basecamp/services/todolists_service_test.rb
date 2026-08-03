@@ -25,15 +25,15 @@ class TodolistsServiceTest < Minitest::Test
     )
   end
 
-  # A todolist GROUP as BC3 renders it on the same route: parented by a
-  # Todolist rather than a Todoset, with group_position_url in place of
-  # groups_url. Same writable fields, different projection.
+  # A todolist GROUP as BC3 renders it on the same route, taken from the shared
+  # fixture rather than hand-rolled: todolists/groups/{index,show}.json.jbuilder
+  # render todolists/_todolist.json.jbuilder, so a group IS a Todolist and
+  # since #544 it is the same modelled shape — description included. What
+  # differs is structural, never the type string: the parent is a Todolist, so
+  # group_position_url stands in for groups_url. Renumbered onto id 2 so it
+  # answers the same stubbed route as full_todolist.
   def group_shaped_todolist
-    full_todolist.except("groups_url").merge(
-      "name" => "Peripherals",
-      "parent" => { "id" => 2, "title" => "Hardware", "type" => "Todolist" },
-      "group_position_url" => "https://3.basecampapi.com/12345/buckets/1/todolists/groups/2/position.json"
-    )
+    load_fixture("todolist_groups/get.json").merge("id" => 2, "name" => "Peripherals")
   end
 
   # Captures every PUT body so a test can assert the exact request count and
@@ -163,7 +163,9 @@ class TodolistsServiceTest < Minitest::Test
     end
   end
 
-  # Row 9: the malformed envelope, one level up from malformed fields.
+  # Row 9: the malformed BODY, one level up from malformed fields — and since
+  # #544 the only level above them, the outer object having replaced the
+  # object-in-an-arm the union used to model.
   [ 42, "nope", nil, [ "a" ], true ].each do |body|
     define_method("test_refuses_a_non_object_response_body_#{body.inspect}") do
       # stub_get passes Strings through verbatim, so encode first: a bare
@@ -180,20 +182,48 @@ class TodolistsServiceTest < Minitest::Test
     end
   end
 
-  # Level 2: the outer-body guard checks only the envelope.
+  # The former envelope arms, now unmodelled wrappers.
+  #
+  # #544 collapsed the todolist/group oneOf into one flat structure, so the arm
+  # guard is gone and these are no longer "a body with a bad arm" — they are
+  # bodies with no name, which is precisely what the required-field guard is
+  # for. The read path lost a LEVEL (object -> scalar, where it was object ->
+  # object -> scalar); it did not lose the guard. Ruby still has no decoder
+  # between the GET and the field read, flat shape or not.
   [ { "todolist" => nil }, { "todolist" => 42 }, { "todolist" => [ "a" ] },
     { "group" => nil }, { "group" => "nope" } ].each_with_index do |body, i|
-    define_method("test_refuses_a_non_object_envelope_arm_#{i}") do
+    define_method("test_refuses_an_unmodelled_wrapper_#{i}") do
       stub_get("/12345/todolists/2", response_body: body)
-      capture_put(full_todolist)
+      captured = capture_put(full_todolist)
 
       error = assert_raises(Basecamp::ApiError) do
         @account.todolists.update(id: 2, name: "Renamed")
       end
 
-      assert_includes error.message, "arm where an object was expected"
+      assert_equal 'Todolist field "name" is missing from the response', error.message
       assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+      assert_empty captured[:bodies]
     end
+  end
+
+  # The Ruby-specific hazard on the shortened path: `body["name"]` on a String
+  # is a SUBSTRING SEARCH, not a hash miss, so it does not raise — it lies.
+  # This body answers "name" for name and "description" for description, so
+  # without require_hash the composite would PUT the literal string "name" over
+  # the record's real name and report success. That is why the defect outlived
+  # eight review passes on #574, and why flattening the shape does not retire
+  # the body-shape guard.
+  def test_refuses_a_string_body_whose_text_contains_the_field_names
+    stub_get("/12345/todolists/2", response_body: "name and description are words here".to_json)
+    captured = capture_put(full_todolist)
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.todolists.update(id: 2, description: "<p>Revised</p>")
+    end
+
+    assert_includes error.message, "where a todolist object was expected"
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    assert_empty captured[:bodies]
   end
 
   # Row 10: the guard's own error path must not throw. inspect is user code.
@@ -329,19 +359,52 @@ class TodolistsServiceTest < Minitest::Test
   # the same route with a group-shaped body (parent is a Todolist,
   # group_position_url instead of groups_url) and must round-trip through the
   # exact same {name, description} overlay, with no type sniffing.
+  #
+  # The premise is asserted first, because it is the thing #544 repaired: the
+  # group projection carries a description AT ALL. The pre-#544 model gave
+  # groups their own shape with no description member and the shared fixture
+  # matched it, so the round-trip below had nothing to preserve.
   def test_update_preserves_a_group_description_without_type_sniffing
-    captured = stub_todolist_get_and_put(todolist: group_shaped_todolist)
+    group = group_shaped_todolist
+    assert_not_empty group["description"], "a group projection must carry a description to preserve"
+    assert group.key?("group_position_url"), "a group's parent is a Todolist"
+    assert_not group.key?("groups_url"), "only a todoset-parented list carries groups_url"
+    assert_equal "Todolist", group["type"], "a group reports type Todolist; discrimination is structural"
+
+    captured = stub_todolist_get_and_put(todolist: group)
 
     @account.todolists.update(id: 2, name: "Renamed group")
 
-    assert_equal({ "name" => "Renamed group", "description" => "<p>Ship the hardware</p>" }, \
+    assert_equal({ "name" => "Renamed group", "description" => group["description"] }, \
                  captured[:bodies].first)
   end
 
-  # The Smithy model wraps the response in a `todolist`/`group` envelope, but
-  # BC3 answers flat. Both shapes must read the same fields.
-  def test_update_tolerates_the_modelled_envelope
+  # #544 removed the todolist/group envelope from the model, and with it the
+  # arm lookup that used to unwrap one. A wrapped body is now a malformed
+  # response rather than a second supported shape: unwrapping an unmodelled key
+  # would take the WRAPPER's name and description and PUT them over the record,
+  # on a call that never mentioned either. Refusing costs the caller an error;
+  # guessing costs them the record.
+  def test_update_refuses_the_former_envelope_instead_of_unwrapping_it
     captured = stub_todolist_get_and_put(todolist: { "todolist" => full_todolist })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.todolists.update(id: 2, name: "Renamed list")
+    end
+
+    assert_equal 'Todolist field "name" is missing from the response', error.message
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    assert_empty captured[:bodies]
+  end
+
+  # No key in the body diverts the read: the composite reads the flat top
+  # level, always. The arm lookup this replaces preferred a `todolist`/`group`
+  # key over the real fields, so a body carrying one had its wrapper's values
+  # written over the record — and reported success, which is the silent
+  # wrong-write class rather than an error the caller could see.
+  def test_update_reads_the_flat_body_not_a_nested_group_key
+    decoy = full_todolist.merge("name" => "Decoy", "description" => "<p>Decoy description</p>")
+    captured = stub_todolist_get_and_put(todolist: full_todolist.merge("group" => decoy))
 
     @account.todolists.update(id: 2, name: "Renamed list")
 

@@ -8,6 +8,8 @@ import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
 import todolistFixture from "../../../spec/fixtures/todolists/get.json";
+import groupFixture from "../../../spec/fixtures/todolist_groups/get.json";
+import groupListFixture from "../../../spec/fixtures/todolist_groups/list.json";
 import type { OperationInfo } from "../../src/hooks.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -84,6 +86,56 @@ describe("TodolistsService", () => {
     });
   });
 
+  // #544: `Todolist`, `TodolistGroup` and the `TodolistOrGroup` union are one
+  // flat structure. A group IS a to-do list — BC3's
+  // todolists/groups/{index,show}.json.jbuilder render
+  // todolists/_todolist.json.jbuilder — so both routes decode into the same
+  // shape and a group carries its own description, which the old group
+  // projection modelled away. Discrimination is structural: groups_url (parent
+  // is a Todoset) XOR group_position_url (parent is a Todolist), never the
+  // `type` string, which reads "Todolist" for both.
+  //
+  // Both stubs are the shared, coverage-guarded group fixtures, so they cannot
+  // drift from the validated shape. The list case lives here rather than in
+  // todolistGroups.test.ts because what it pins is this one shape serving both
+  // routes.
+  describe("flat todolist/group shape", () => {
+    it("get returns a group with its description and group_position_url intact", async () => {
+      const id = groupFixture.id;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(groupFixture))
+      );
+
+      const group = await client.todolists.get(id);
+
+      expect(group.description).toBe(groupFixture.description);
+      expect(group.description_attachments).toEqual([]);
+      expect(group.group_position_url).toBe(groupFixture.group_position_url);
+      // The group half of the structural discriminator is exclusive: a group's
+      // parent is a Todolist, so it has no groups_url.
+      expect(group).not.toHaveProperty("groups_url");
+      expect(group.type).toBe("Todolist");
+    });
+
+    it("lists groups as an array of that same flat shape", async () => {
+      const todolistId = todolistFixture.id;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${todolistId}/groups.json`, () =>
+          HttpResponse.json(groupListFixture)
+        )
+      );
+
+      const groups = await client.todolistGroups.list(todolistId);
+
+      expect(groups).toHaveLength(groupListFixture.length);
+      expect(groups[0]!.description).toBe(groupListFixture[0]!.description);
+      expect(groups[0]!.group_position_url).toBe(groupListFixture[0]!.group_position_url);
+      expect(groups[0]!.type).toBe("Todolist");
+    });
+  });
+
   describe("list", () => {
     it("should list todolists in a todoset", async () => {
       const todosetId = 200;
@@ -154,6 +206,12 @@ describe("TodolistsService", () => {
   // at build time, so the GET's type is a compile-time claim nothing checks.
   // That places this composite with Python and Ruby, not with Go and Swift.
   // Shipped Todos/Cards analogues: #576.
+  //
+  // #544 flattened the wire shape, which removed the *envelope-arm* rung of the
+  // read path (`{ todolist } | { group }`) and nothing else: a flat Smithy shape
+  // changes what the API returns, it does not hand TypeScript a decoder it never
+  // had. The path is object → scalar now — the body, then each writable field —
+  // and both rungs are exercised below. Structural safety for this SDK is #578.
   describe("malformed writable fields", () => {
     const malformed: [string, unknown][] = [
       ["false", false],
@@ -351,14 +409,25 @@ describe("TodolistsService", () => {
       expect(requests).toEqual(["GET"]);
     });
 
-    // Row 9: the malformed *envelope*, one level up from malformed fields. A
-    // scalar or null makes `"todolist" in response` throw a raw TypeError; an
-    // array silently reports false and falls through to the flat branch.
+    // Rung 1: the malformed *body*, one level up from malformed fields. `null`
+    // makes the very next field read throw a raw TypeError, while a scalar or an
+    // array answers `undefined` for every key — which without this guard is
+    // misdiagnosed one rung down as "name is missing from the response", a
+    // body-shape fault reported as a field fault. The array is the case that
+    // used to fall through silently (`"todolist" in response` returns FALSE on an
+    // array), and it is still the sharp one now that the arms are gone: an array
+    // IS an object to `typeof`, so only the explicit `Array.isArray` check keeps
+    // it out. Hence the negative assertion — landing on the field message would
+    // mean the body guard had stopped covering it.
     it.each([
       ["number", 42],
       ["string", "nope"],
       ["null", null],
       ["array", ["a"]],
+      // A list body served on the single-record route. Kept small: the message
+      // embeds the value and SPEC section 9 caps it at 500 units, so a full
+      // fixture would truncate the assertion's own suffix away.
+      ["array holding a todolist", [{ id: 42, name: "Hardware", description: "<p>Ship it</p>" }]],
       ["boolean", true],
     ])("refuses a %s response body", async (_label, body) => {
       const id = 42;
@@ -378,19 +447,26 @@ describe("TodolistsService", () => {
       expect(error).toBeInstanceOf(BasecampError);
       expect((error as BasecampError).code).toBe("api_error");
       expect((error as BasecampError).message).toMatch(/where a todolist object was expected/);
+      expect((error as BasecampError).message).not.toMatch(/is missing from the response/);
       expect(requests).toEqual(["GET"]);
     });
 
-    // Level 2 of the path: the outer-body guard checks only the envelope, so a
-    // present-but-null arm slipped through and was dereferenced into a native
-    // TypeError. The path is object -> object -> scalar; this is the middle rung.
+    // The arms are gone (#544) and nothing unwraps any more, so a body still
+    // shaped like the old envelope is just an object with no writable fields at
+    // the top level — and the required-field rung refuses it. Two of these were
+    // live defects under the old three-rung path: `{ todolist: {...} }` was
+    // unwrapped and its interior written back, and `{ todolist: null }` was
+    // dereferenced into a native TypeError. Both must now fail as an ordinary
+    // malformed todolist, before any PUT.
     it.each([
-      ["null todolist arm", { todolist: null }],
-      ["scalar todolist arm", { todolist: 42 }],
-      ["array todolist arm", { todolist: ["a"] }],
-      ["null group arm", { group: null }],
-      ["scalar group arm", { group: "nope" }],
-    ])("refuses a %s", async (_label, body) => {
+      [
+        "a todolist envelope",
+        { todolist: { name: "Hardware", description: "<p>Ship the hardware</p>" } },
+      ],
+      ["a group envelope", { group: { name: "Peripherals", description: "<p>Cables</p>" } }],
+      ["a null todolist arm", { todolist: null }],
+      ["a null group arm", { group: null }],
+    ])("refuses %s rather than unwrapping it", async (_label, body) => {
       const id = 42;
       const requests: string[] = [];
       server.use(
@@ -407,7 +483,7 @@ describe("TodolistsService", () => {
       const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
       expect(error).toBeInstanceOf(BasecampError);
       expect((error as BasecampError).code).toBe("api_error");
-      expect((error as BasecampError).message).toMatch(/arm where an object was expected/);
+      expect((error as BasecampError).message).toMatch(/todolist name is missing from the response/);
       expect(requests).toEqual(["GET"]);
     });
 
@@ -454,20 +530,30 @@ describe("TodolistsService", () => {
       expect((error as BasecampError).code).toBe("usage");
     });
 
-    // The group envelope models no description, so deriving a todolist from it
-    // would invent an empty one and erase the real description on the PUT.
-    // Swift throws here; TypeScript must not silently do what Swift refuses.
-    it("refuses a group-envelope response rather than inventing a description", async () => {
-      const id = 42;
+    // The inverse of the refusal this replaces. The old `group` arm modelled no
+    // description, so the composite refused it outright rather than invent an
+    // empty one and erase the real value on the full-replace PUT. A flat group
+    // carries its description like any list, so there is nothing to refuse and
+    // nothing to invent: the real description is read and resent verbatim.
+    it("preserves a flat group's description rather than inventing one", async () => {
+      const id = groupFixture.id;
+      let putBody: Record<string, unknown> = {};
+
       server.use(
-        http.get(`${BASE_URL}/todolists/${id}`, () =>
-          HttpResponse.json({ group: { id, name: "Peripherals" } })
-        )
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(groupFixture)),
+        http.put(`${BASE_URL}/todolists/${id}`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ ...groupFixture, name: "Renamed group" });
+        })
       );
 
-      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
-      expect((error as BasecampError).code).toBe("api_error");
-      expect((error as BasecampError).message).toMatch(/group projection/);
+      await client.todolists.update(id, { name: "Renamed group" });
+
+      expect(putBody).toEqual({
+        name: "Renamed group",
+        description: groupFixture.description,
+      });
+      expect(putBody.description).not.toBe("");
     });
 
     // SPEC section 9 caps error messages at 500 units; the malformed value is
@@ -575,9 +661,10 @@ describe("TodolistsService", () => {
     });
 
     it("carries the writable fields over for a group without sniffing the variant", async () => {
-      // The route serves todolist groups too, and BC3 answers with the group's
-      // flat JSON (no groups_url, a group_position_url instead). The composite
-      // reads {name, description} and must not branch on the variant.
+      // The route serves todolist groups too, and since #544 a group is
+      // literally the same structure — no groups_url, a group_position_url
+      // instead, and a description of its own. The composite reads
+      // {name, description} and must not branch on the variant.
       const { groups_url: _groupsUrl, ...groupShaped } = describedTodolist(42, {
         name: "Peripherals",
       });

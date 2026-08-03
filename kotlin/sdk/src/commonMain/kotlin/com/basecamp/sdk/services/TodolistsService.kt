@@ -2,13 +2,10 @@ package com.basecamp.sdk.services
 
 import com.basecamp.sdk.AccountClient
 import com.basecamp.sdk.BasecampException
+import com.basecamp.sdk.generated.models.Todolist
 import com.basecamp.sdk.generated.services.UpdateTodolistBody
 import com.basecamp.sdk.generated.services.UpdateTodolistOrGroupBody
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.SerializationException
 
 /**
  * A todolist's full writable state, the receiver of the
@@ -32,6 +29,16 @@ class TodolistFields internal constructor(
  * `description` erases it. The raw, destructive-by-design path stays reachable
  * as `replace`.
  *
+ * The route is polymorphic — the same URI addresses a to-do list or a to-do
+ * list *group* — but there is no second shape to read. BC3 has no group model:
+ * `todolists/groups/{index,show}.json.jbuilder` render
+ * `todolists/_todolist.json.jbuilder`, so a group is a [Todolist] whose parent
+ * is a Todolist, reports `"type": "Todolist"`, and carries
+ * `description`/`description_attachments` like any list. The structural
+ * discriminator is `group_position_url` in place of `groups_url` — never the
+ * type string, which is identical for both. These composites therefore read
+ * one decoded [Todolist] with no variant branching at all.
+ *
  * Both composites call the public `get` and `replace` methods, so hooks
  * observe the two wire operations (`GetTodolistOrGroup` then
  * `UpdateTodolistOrGroup`), not a synthetic composite.
@@ -52,8 +59,8 @@ class TodolistsService(client: AccountClient) :
      *
      * Not atomic — see the class docs for the GET→PUT race.
      */
-    suspend fun update(id: Long, body: UpdateTodolistBody): JsonElement {
-        val fields = fieldsFromTodolist(get(id))
+    suspend fun update(id: Long, body: UpdateTodolistBody): Todolist {
+        val fields = fieldsFromTodolist(fetchTodolist(id))
         body.name?.let { fields.name = it }
         body.description?.let { fields.description = it }
         return putFields(id, fields)
@@ -75,108 +82,73 @@ class TodolistsService(client: AccountClient) :
      *
      * Not atomic — see the class docs for the GET→PUT race.
      */
-    suspend fun edit(id: Long, block: TodolistFields.() -> Unit): JsonElement {
-        val fields = fieldsFromTodolist(get(id))
+    suspend fun edit(id: Long, block: TodolistFields.() -> Unit): Todolist {
+        val fields = fieldsFromTodolist(fetchTodolist(id))
         fields.block()
         return putFields(id, fields)
     }
 
     /**
-     * Reads the writable state out of a fetched todolist.
+     * GETs the todolist the composites read their writable state from,
+     * normalizing a decode failure into the SPEC §6 shape.
      *
-     * The route is polymorphic — the same URI addresses a todolist or a
-     * todolist group — and BC3 renders both through the same jbuilder, so the
-     * two projections are wire-identical and this reads them identically, with
-     * no type sniffing. The wire carries the recordable's FLAT JSON; the
-     * `{"todolist": ...}` / `{"group": ...}` envelope in the Smithy spec is a
-     * modelling convention (see AGENTS.md, "Smithy Spec vs Actual API
-     * Responses"), tolerated here only because unwrapping it costs one lookup.
+     * kotlinx.serialization is the typed guard the dynamic SDKs write by hand,
+     * and it rejects a structurally wrong-typed or missing required field
+     * before this composite ever sees it — but it reports that as a raw
+     * [SerializationException], which is not the shape SPEC §6 defines for a
+     * malformed 2xx body: callers catching [BasecampException] would miss it
+     * entirely and it carries no hint. Wrap it, so a malformed response looks
+     * the same in every SDK.
+     *
+     * (The client-wide `coerceInputValues`/`isLenient` scalar hole means a bare
+     * JSON scalar is coerced rather than rejected. That is a cross-service gap
+     * tracked out of #576, not something this composite can close.)
      */
-    private fun fieldsFromTodolist(todolist: JsonElement): TodolistFields {
-        val root = requireJsonObject(todolist)
-        val obj = root["todolist"] as? JsonObject ?: root["group"] as? JsonObject ?: root
-        return TodolistFields(
-            name = obj.writableString("name", required = true),
-            description = obj.writableString("description"),
-        )
-    }
-
-    /**
-     * Reads a writable string field out of the fetched body.
-     *
-     * An absent key or an explicit JSON null is genuinely empty — there is
-     * nothing to preserve, and `""` is what the server already holds.
-     * Anything else that is not a JSON string is a malformed response and must
-     * NOT be coerced. `contentOrNull` would render a number or boolean as
-     * text, and a JSON array or object is not a [JsonPrimitive] at all so it
-     * would fall through to `""`. Either way [putFields] would then write that
-     * coerced-or-empty value back in the full-replace PUT — silently
-     * overwriting or erasing the exact field these composites exist to
-     * preserve. Fail before the PUT instead, so a malformed response surfaces
-     * as an error rather than as data loss.
-     *
-     * This path only exists because `GetTodolistOrGroup` is modelled as a
-     * `oneOf`, so the Kotlin generator returns an untyped [JsonElement] for it.
-     * Every other Kotlin composite reads a typed model, where the decoder
-     * already rejects a wrong-typed field. Removing that asymmetry is #544.
-     */
-    /**
-     * The response must be a JSON object before any field is read.
-     *
-     * One level up from the malformed-field guards: a successful GET can return
-     * a scalar, an array, or null. `JsonElement.jsonObject` throws a raw
-     * `IllegalArgumentException` for those, which is not the SPEC §6 shape — a
-     * caller checking for `BasecampException` would miss it and it carries no
-     * hint. `JsonElement.toString()` is safe to interpolate: the type is a
-     * closed JSON tree, so rendering it cannot run user code or recurse
-     * unboundedly, which is why no separate describe-helper is needed here.
-     */
-    private fun requireJsonObject(body: JsonElement): JsonObject =
-        body as? JsonObject
-            ?: throw BasecampException.Api(
-                BasecampException.truncateMessage(
-                    "GetTodolistOrGroup returned ${body::class.simpleName} where a todolist " +
-                        "object was expected: $body"
-                ),
-                hint = "The merge-safe update/edit read this record's fields before rewriting " +
-                    "them, so a non-object body cannot be used. Use replace() to write the " +
+    private suspend fun fetchTodolist(id: Long): Todolist =
+        try {
+            get(id)
+        } catch (e: SerializationException) {
+            throw BasecampException.Api(
+                message = "GetTodolistOrGroup returned a body that does not decode as a " +
+                    "todolist: ${e.message}",
+                hint = "The merge-safe update/edit resend this record's fields verbatim, so a " +
+                    "malformed response cannot be written back safely. Use replace to write the " +
                     "record deliberately.",
+                retryable = false,
+                cause = e,
             )
-
-    private fun JsonObject.writableString(key: String, required: Boolean = false): String =
-        when (val value = this[key]) {
-            null, JsonNull ->
-                if (required) throw missingField(key) else ""
-            is JsonPrimitive ->
-                when {
-                    !value.isString -> throw malformedField(key, value)
-                    required && value.content.isEmpty() -> throw emptyField(key)
-                    else -> value.content
-                }
-            else -> throw malformedField(key, value)
         }
 
-    private fun malformedField(key: String, value: JsonElement): BasecampException =
-        BasecampException.Api(
-            BasecampException.truncateMessage("Todolist field '$key' is not a JSON string: $value"),
-            hint = "The merge-safe update/edit resend this field verbatim, so a coerced or " +
-                "empty value would overwrite the current one. Fix the response, or use " +
-                "replace() to write the record deliberately.",
-        )
-
-    private fun missingField(key: String): BasecampException =
-        BasecampException.Api(
-            "Todolist field '$key' is missing from the response",
-            hint = "$key is required and presence-validated server-side, so a todolist without " +
-                "one is a malformed response, not an empty value to preserve.",
-        )
-
-    private fun emptyField(key: String): BasecampException =
-        BasecampException.Api(
-            "Todolist field '$key' is empty in the response",
-            hint = "$key is presence-validated server-side, so an empty one is a malformed " +
-                "response. The caller did not ask to clear it.",
-        )
+    /**
+     * Reads the writable state out of a fetched todolist.
+     *
+     * `description` needs no check: it is non-nullable and required on the
+     * model, so the decoder has already refused an absent, null or structurally
+     * wrong-typed one. BC3's `format_api_content` renders a blank rich text as
+     * `""`, never JSON null, so an empty description is a real value to
+     * preserve — not a malformed response.
+     *
+     * `name` is the exception, and it needs a hand-written check the decoder
+     * cannot supply. The field is non-nullable on the model, so absent and null
+     * are already refused — but `""` decodes fine, and BC3 presence-validates
+     * the name, so it can never render one empty. An empty name on a 2xx read
+     * is therefore a malformed response, and carrying it into the full-replace
+     * PUT would blank the real name on a call that only touched `description`.
+     */
+    private fun fieldsFromTodolist(todolist: Todolist): TodolistFields {
+        if (todolist.name.isEmpty()) {
+            throw BasecampException.Api(
+                message = "GetTodolistOrGroup returned a todolist with an empty \"name\", " +
+                    "but the API never renders it empty",
+                hint = "name is presence-validated server-side, so an empty one is a malformed " +
+                    "response, not an empty value to preserve. The merge-safe update/edit resend " +
+                    "this field verbatim, so it would blank the current one. Use replace to " +
+                    "write the record deliberately.",
+                retryable = false,
+            )
+        }
+        return TodolistFields(name = todolist.name, description = todolist.description)
+    }
 
     /**
      * PUTs the full writable state via `replace`: name and description are
@@ -185,7 +157,7 @@ class TodolistsService(client: AccountClient) :
      * compaction (SPEC §18) forbids and the generated body builder would drop
      * anyway, turning the clear into an omission the caller never asked for.
      */
-    private suspend fun putFields(id: Long, fields: TodolistFields): JsonElement {
+    private suspend fun putFields(id: Long, fields: TodolistFields): Todolist {
         if (fields.name.isEmpty()) {
             throw BasecampException.Usage(
                 "todolist name is required",

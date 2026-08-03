@@ -357,6 +357,24 @@ class OperationMapper
         todo_id: path_params["todoId"],
         **todo_write_kwargs(body)
       )
+    # #544: a group is a Todolist. GET /todolists/{id} answers the flat
+    # recordable JSON for a list and for a group alike, so this one dispatch
+    # serves both read cases in todolists_read.json. The Hash is returned as
+    # the case RESULT so the responseBody assertions read the value the SDK
+    # handed back — wire-shaped keys, since Ruby's generated get returns
+    # http_get(...).json verbatim.
+    when "GetTodolistOrGroup"
+      @account.todolists.get(id: path_params["id"])
+    # The group list returns an array of that same flat shape. Convention for
+    # this case, stated in the fixture's own description: the FIRST decoded
+    # element is the result, so responseBody reads element 0. .to_a is
+    # load-bearing (paginate is lazy, so an unconsumed enumerator never reaches
+    # the wire); an empty list fails rather than yielding nil for every path.
+    when "ListTodolistGroups"
+      groups = @account.todolist_groups.list(todolist_id: path_params["todolistId"]).to_a
+      raise "ListTodolistGroups returned no groups; expected at least one to assert on" if groups.empty?
+
+      groups.first
     # UpdateTodolist / EditTodolist / ReplaceTodolist are SYNTHETIC scenario
     # keys, not spec operationIds: all three ride the one real operation,
     # UpdateTodolistOrGroup (PUT /todolists/{id}). They name the three SDK

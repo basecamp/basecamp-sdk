@@ -1,14 +1,6 @@
 import { TodolistsService as GeneratedTodolistsService } from "../generated/services/todolists.js";
 import type { Todolist } from "../generated/services/todolists.js";
-import type { components } from "../generated/schema.js";
 import { Errors, truncateErrorMessage } from "../errors.js";
-
-/**
- * The response shape the generated `get` and `replace` are typed with — both
- * `GetTodolistOrGroupResponseContent` and `UpdateTodolistOrGroupResponseContent`
- * alias this union.
- */
-type TodolistOrGroup = components["schemas"]["TodolistOrGroup"];
 
 /**
  * Renders a value for an error message without ever throwing.
@@ -30,77 +22,37 @@ function describeValue(value: unknown): string {
 }
 
 /**
- * The response must be a JSON object before any arm or field is probed.
+ * Level 1 of the wire-to-written-value path: the response must be a JSON object
+ * before any field is probed.
  *
- * One level up from the malformed-*field* guards: a successful GET can return a
- * scalar, an array, or null. `"todolist" in response` throws a raw `TypeError`
- * on a scalar or null, and on an array it silently reports false and falls
- * through to the flat branch — so the envelope needs checking before the arms.
+ * One level up from the malformed-*field* guards. A successful GET can still
+ * return a scalar, an array, or null, and each fails a different way without
+ * this: `null.name` throws a raw `TypeError` instead of the documented
+ * statusless `api_error`, while a scalar or an **array** yields `undefined` for
+ * every key and so gets misdiagnosed one rung down as "name is missing from the
+ * response" — a body-shape fault reported as a field fault. The array case is
+ * the one that used to fall through silently, and `Array.isArray` is what keeps
+ * it caught here.
+ *
+ * Since #544 the route is modelled as one flat `Todolist` — the `TodolistOrGroup`
+ * union and its `{ todolist } | { group }` arms are gone, and with them the
+ * middle rung of this path. It is object → scalar now: the body (here) and each
+ * writable field (`writableString`). A string has no interior, so there is no
+ * third. What is emphatically NOT gone is validation: `schema.d.ts` is erased at
+ * build time, so a flat shape gives TypeScript no decoder it did not have
+ * before. Structural safety for this SDK is #578.
+ *
+ * The cast is an assertion about the body's shape only. It claims nothing about
+ * the fields, which `writableString` still checks one by one.
  */
-function requireTodolistObject(response: unknown): Record<string, unknown> {
+function requireTodolistObject(response: unknown, operation: string): Todolist {
   if (typeof response !== "object" || response === null || Array.isArray(response)) {
     throw malformedResponse(
-      `GetTodolistOrGroup returned ${describeValue(response)} where a todolist object was expected`,
+      `${operation} returned ${describeValue(response)} where a todolist object was expected`,
       "The merge-safe update/edit read this record's fields before rewriting them, so a " +
         "non-object body cannot be used. Use replace() to write the record deliberately."
     );
   }
-  return response as Record<string, unknown>;
-}
-
-/**
- * Unwraps a `/{accountId}/todolists/{id}` response into the flat recordable.
- *
- * The generated signature is the Smithy union `{ todolist } | { group }`, but
- * that envelope is a modelling convention, not the wire shape: BC3 answers this
- * route with the recordable's own flat JSON. See AGENTS.md, "Smithy Spec vs
- * Actual API Responses"; the Go SDK carries the same note on
- * `TodolistsService.Get` (`go/pkg/basecamp/todolists.go`), where it decodes the
- * raw body instead of the modelled envelope. Both shapes are handled here — an
- * envelope, should one ever arrive, and the flat body that actually does.
- */
-/**
- * Level 2 of the wire-to-written-value path: a present envelope arm must itself
- * be a non-null object.
- *
- * `requireTodolistObject` checks only the outer body, so `{"todolist": null}`
- * passes it, and dereferencing the arm then produces a native `TypeError`
- * instead of the documented statusless `api_error`. The full path is
- * object → object → scalar and has exactly three levels: the body (row 9), the
- * arm (here), and each writable field (`writableString`). A string has no
- * interior, so there is no fourth.
- */
-function requireArmObject(arm: unknown, armName: string): Record<string, unknown> {
-  if (typeof arm !== "object" || arm === null || Array.isArray(arm)) {
-    throw malformedResponse(
-      `GetTodolistOrGroup returned ${describeValue(arm)} in its ${armName} arm where an object was expected`,
-      "The merge-safe update/edit read this record's fields before rewriting them, so a " +
-        "non-object arm cannot be used. Use replace() to write the record deliberately."
-    );
-  }
-  return arm as Record<string, unknown>;
-}
-
-function unwrapTodolist(rawResponse: TodolistOrGroup): Todolist {
-  const response = requireTodolistObject(rawResponse) as TodolistOrGroup;
-  if ("todolist" in response) {
-    return requireArmObject(response.todolist, "todolist") as unknown as Todolist;
-  }
-  if ("group" in response) {
-    // Validate the arm before refusing it, so a malformed arm is reported as
-    // malformed rather than as a well-formed group projection.
-    requireArmObject(response.group, "group");
-    // Refused, not converted. The `group` projection models no `description`
-    // at all, so deriving a todolist from it would invent an empty one — and
-    // on a full-replace endpoint that empty value is written back, erasing the
-    // description. That is the same erasure Swift's unwrapper throws on; TS
-    // must not silently do what Swift refuses.
-    throw malformedResponse(
-      "GetTodolistOrGroup returned a todolist group projection, which carries no description",
-      "Writing it back would erase the description. Use replace() to overwrite deliberately."
-    );
-  }
-  // The flat recordable the API really sends.
   return response as unknown as Todolist;
 }
 
@@ -152,9 +104,14 @@ function malformedResponse(message: string, hint: string) {
  *
  * `required` fields (those the schema marks non-nullable, as `name` is) must
  * arrive as a non-empty string: absent, `null`, and `""` are all malformed,
- * because BC3 presence-validates `name` so no real todolist has one. Optional
- * fields (`description`) treat absent and `null` as genuinely empty — there is
- * nothing to preserve and `""` is what the server already holds.
+ * because BC3 presence-validates `name` so no real todolist has one.
+ *
+ * `description` stays on the tolerant side: absent and `null` are read as
+ * genuinely empty. Since #544 the spec marks it required-and-never-null for a
+ * group as much as for a list — `format_api_content` funnels a blank rich text
+ * through `call_pipeline`, which returns `""` — so a body without one is in fact
+ * malformed. Reading it as empty is deliberately unchanged here: `""` is what
+ * such a record holds, and a full-replace PUT has no third state to express.
  *
  * Anything of the wrong type is malformed either way: `?? ""` only coalesces
  * null and undefined, so a number, boolean, array or object would ride through
@@ -235,6 +192,15 @@ export interface TodolistFields {
  * omitting it is never a preserve. The writable set is exactly
  * `{name, description}`.
  *
+ * The route serves a to-do list and a to-do list group alike, and since #544
+ * both are the one flat `Todolist` shape — BC3's
+ * `todolists/groups/{index,show}.json.jbuilder` render
+ * `todolists/_todolist.json.jbuilder`, so a group reports `"type": "Todolist"`
+ * and carries `description`/`description_attachments` like any list. Nothing
+ * here branches on the variant; where it matters at all, discrimination is
+ * structural (`groups_url` for a Todoset parent, `group_position_url` for a
+ * Todolist parent), never the `type` string.
+ *
  * Both methods compose the public `get` and `replace` methods, so hooks
  * observe the two wire operations (`GetTodolistOrGroup` then
  * `UpdateTodolistOrGroup`), not a synthetic composite.
@@ -302,7 +268,7 @@ export class TodolistsService extends GeneratedTodolistsService {
 
   /** Fetches the todolist and derives its full writable state. */
   private async currentFields(id: number): Promise<TodolistFields> {
-    const current = unwrapTodolist(await this.get(id));
+    const current = requireTodolistObject(await this.get(id), "GetTodolistOrGroup");
     return {
       name: writableString(current, "name", true),
       description: writableString(current, "description"),
@@ -333,6 +299,12 @@ export class TodolistsService extends GeneratedTodolistsService {
           "name, or use replace() if you mean to write the record verbatim."
       );
     }
-    return unwrapTodolist(await this.replace(id, { name, description }));
+    // The PUT answers with the written record, which is handed straight back to
+    // the caller as a `Todolist`; check its shape too rather than let an array
+    // or a scalar out under that type.
+    return requireTodolistObject(
+      await this.replace(id, { name, description }),
+      "UpdateTodolistOrGroup"
+    );
   }
 }

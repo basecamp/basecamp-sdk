@@ -19,37 +19,24 @@ type TodolistGroupListOptions struct {
 	Page int
 }
 
-// TodolistGroup represents a Basecamp todolist group (organizational folder within a todolist).
-type TodolistGroup struct {
-	ID               int64     `json:"id"`
-	Status           string    `json:"status"`
-	VisibleToClients bool      `json:"visible_to_clients"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Title            string    `json:"title"`
-	InheritsStatus   bool      `json:"inherits_status"`
-	Type             string    `json:"type"`
-	URL              string    `json:"url"`
-	AppURL           string    `json:"app_url"`
-	BookmarkURL      string    `json:"bookmark_url"`
-	SubscriptionURL  string    `json:"subscription_url"`
-	// BubbleUpURL is the URL of the Bubble Up record for this recording. Always
-	// present: todolists/_todolist.json.jbuilder renders the shared recording
-	// partial with bubbleupable: true unconditionally, and every list, show, and
-	// group path renders that partial.
-	BubbleUpURL    string  `json:"bubble_up_url"`
-	CommentsCount  int     `json:"comments_count"`
-	CommentsURL    string  `json:"comments_url"`
-	Position       int     `json:"position"`
-	Parent         *Parent `json:"parent,omitempty"`
-	Bucket         *Bucket `json:"bucket,omitempty"`
-	Creator        *Person `json:"creator,omitempty"`
-	Name           string  `json:"name"`
-	Completed      bool    `json:"completed"`
-	CompletedRatio string  `json:"completed_ratio"`
-	TodosURL       string  `json:"todos_url"`
-	AppTodosURL    string  `json:"app_todos_url"`
-}
+// TodolistGroup is a group inside a to-do list. It is an alias, not a
+// separate type: BC3 has no group model at all. A group is a Todolist whose
+// parent is a Todolist (Todolist#group?), there is no Todolist::Group class,
+// and todolists/groups/{index,show}.json.jbuilder render the very same
+// todolists/_todolist.json.jbuilder partial — so a group carries description
+// and description_attachments like any list and reports Type "Todolist".
+//
+// The name is kept because TodolistGroupsService reads better with it, and
+// because the group-scoped routes are real even though the shape is not. Every
+// value here is a Todolist and can be passed anywhere one is expected.
+//
+// Discriminate structurally, never on Type:
+//
+//   - GroupsURL non-empty → a to-do list; Parent is a Todoset.
+//   - GroupPositionURL non-empty → a group; Parent is a Todolist.
+//
+// See Todolist for the field documentation.
+type TodolistGroup = Todolist
 
 // CreateTodolistGroupRequest specifies the parameters for creating a todolist group.
 type CreateTodolistGroupRequest struct {
@@ -66,6 +53,9 @@ type CreateTodolistGroupRequest struct {
 // from only the permitted params ({name, description}) — a group is just a
 // Todolist whose parent is a Todolist, and it carries a description like any
 // other. Omitting the description therefore erases it.
+//
+// Description round-trips: the response is the flat Todolist shape (#544), so
+// the TodolistGroup that comes back carries the description that was written.
 type ReplaceTodolistGroupRequest struct {
 	// Name is the group name (required). It is always sent — the server
 	// presence-validates it, so omitting it is a 422, not a preserve.
@@ -140,7 +130,7 @@ func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64, opts
 	var groups []TodolistGroup
 	if resp.JSON200 != nil {
 		for _, gg := range *resp.JSON200 {
-			groups = append(groups, todolistGroupFromGenerated(gg))
+			groups = append(groups, todolistFromGenerated(gg))
 		}
 	}
 
@@ -173,11 +163,11 @@ func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64, opts
 
 	// Parse additional pages
 	for _, raw := range rawMore {
-		var gg generated.TodolistGroup
+		var gg generated.Todolist
 		if err := json.Unmarshal(raw, &gg); err != nil {
 			return nil, fmt.Errorf("failed to parse todolist group: %w", err)
 		}
-		groups = append(groups, todolistGroupFromGenerated(gg))
+		groups = append(groups, todolistFromGenerated(gg))
 	}
 
 	return &TodolistGroupListResult{Groups: groups, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
@@ -212,14 +202,9 @@ func (s *TodolistGroupsService) Get(ctx context.Context, groupID int64) (result 
 		return nil, err
 	}
 
-	// The API returns flat JSON, not the envelope that AsTodolistOrGroup1 expects.
-	// Decode resp.Body directly into the generated TodolistGroup type.
-	var gg generated.TodolistGroup
-	if err := json.Unmarshal(resp.Body, &gg); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist group: %w", err)
-	}
-
-	group := todolistGroupFromGenerated(gg)
+	// One flat shape (#544): the group and the list are the same
+	// generated.Todolist, so the generated parser's decode is the decode.
+	group := todolistFromGenerated(*resp.JSON200)
 	return &group, nil
 }
 
@@ -261,7 +246,7 @@ func (s *TodolistGroupsService) Create(ctx context.Context, todolistID int64, re
 		return nil, err
 	}
 
-	group := todolistGroupFromGenerated(*resp.JSON201)
+	group := todolistFromGenerated(*resp.JSON201)
 	return &group, nil
 }
 
@@ -274,24 +259,24 @@ func (s *TodolistGroupsService) Create(ctx context.Context, todolistID int64, re
 // recordable from only the permitted params. A missing description therefore
 // clears the group's description. Name is required.
 //
-// There is deliberately no merge-safe Update or Edit on this service. The
-// TodolistGroup projection does not model description (nor
-// description_attachments, boosts_*, or groups_url), so a composite built on
-// TodolistGroupsService.Get would read a group with no description and then
-// PUT the zero value — erasing the description on every call, which is the
-// data loss this triad exists to remove. Callers who want a merge-safe group
-// write should use Todolists().Update or Todolists().Edit: they address the
-// same PUT /{accountId}/todolists/{id} route through the full Todolist
-// projection, which is variant-agnostic and preserves a group's
-// {name, description} correctly. Tracked by #544, the flat-shape
-// consolidation that would model description on groups and unblock a
-// composite here.
+// There is deliberately no merge-safe Update or Edit on this service, and the
+// reason is no longer data loss. Before #544 the group projection modelled no
+// description, so a composite built on TodolistGroupsService.Get would have
+// read "" for it and PUT that back, erasing it on every call. TodolistGroup is
+// now an alias for Todolist and carries the field, so that hazard is gone. The
+// composite still is not built because the other five SDKs expose no group
+// write of any kind, and Todolists().Update / Todolists().Edit already address
+// this exact PUT /{accountId}/todolists/{id} route through the same
+// variant-agnostic projection — a sixth spelling of that composite would widen
+// a cross-SDK asymmetry rather than close a gap. Merge-safe group writes go
+// through Todolists().Update or Todolists().Edit, which preserve a group's
+// {name, description} exactly as they do a list's.
 //
-// Description is still offered on the request because the wire body is shared
-// with todolists and accepts it: without it a group replace would be
-// unconditionally destructive with no caller recourse. It does not round-trip
-// — the returned TodolistGroup will not carry it back — for the same #544
-// reason.
+// Description is offered on the request because the wire body is shared with
+// todolists and accepts it: without it a group replace would be
+// unconditionally destructive with no caller recourse. It round-trips — the
+// returned TodolistGroup carries the description back, because the response is
+// the same flat Todolist shape.
 // Returns the updated group.
 func (s *TodolistGroupsService) Replace(ctx context.Context, groupID int64, req *ReplaceTodolistGroupRequest) (*TodolistGroup, error) {
 	return s.replaceGroup(ctx, groupID, func() (map[string]any, error) {
@@ -311,9 +296,10 @@ func (s *TodolistGroupsService) Replace(ctx context.Context, groupID int64, req 
 
 // replaceGroup is the single transport for the UpdateTodolistOrGroup wire
 // operation as TodolistGroupsService issues it. It pins the
-// TodolistGroups.Replace hook identity and decodes the group shape; the
-// envelope and the one generated-client call site live in
-// replaceTodolistOrGroup, shared with TodolistsService.
+// TodolistGroups.Replace hook identity; the envelope, the one generated-client
+// call site, and the decode live in replaceTodolistOrGroup, shared with
+// TodolistsService. Only the hook identity differs — since #544 both services
+// project the same flat shape.
 func (s *TodolistGroupsService) replaceGroup(ctx context.Context, groupID int64, buildBody func() (map[string]any, error)) (*TodolistGroup, error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "Replace",
@@ -321,19 +307,12 @@ func (s *TodolistGroupsService) replaceGroup(ctx context.Context, groupID int64,
 		ResourceID: groupID,
 	}
 
-	raw, err := replaceTodolistOrGroup(ctx, s.client, op, groupID, buildBody)
+	gg, err := replaceTodolistOrGroup(ctx, s.client, op, groupID, buildBody)
 	if err != nil {
 		return nil, err
 	}
 
-	// The API returns flat JSON, not the envelope that AsTodolistOrGroup1 expects.
-	// Decode the body directly into the generated TodolistGroup type.
-	var gg generated.TodolistGroup
-	if err := json.Unmarshal(raw, &gg); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist group: %w", err)
-	}
-
-	group := todolistGroupFromGenerated(gg)
+	group := todolistFromGenerated(gg)
 	return &group, nil
 }
 
@@ -392,60 +371,4 @@ func (s *TodolistGroupsService) Trash(ctx context.Context, groupID int64) (err e
 		return err
 	}
 	return checkResponse(resp.HTTPResponse, resp.Body)
-}
-
-// todolistGroupFromGenerated converts a generated TodolistGroup to our clean TodolistGroup type.
-func todolistGroupFromGenerated(gg generated.TodolistGroup) TodolistGroup {
-	g := TodolistGroup{
-		Status:           gg.Status,
-		VisibleToClients: gg.VisibleToClients,
-		Title:            gg.Title,
-		InheritsStatus:   gg.InheritsStatus,
-		Type:             gg.Type,
-		URL:              gg.Url,
-		AppURL:           gg.AppUrl,
-		BookmarkURL:      deref(gg.BookmarkUrl),
-		SubscriptionURL:  deref(gg.SubscriptionUrl),
-		BubbleUpURL:      gg.BubbleUpUrl,
-		CommentsCount:    int(deref(gg.CommentsCount)),
-		CommentsURL:      deref(gg.CommentsUrl),
-		Position:         int(deref(gg.Position)),
-		Name:             gg.Name,
-		Completed:        deref(gg.Completed),
-		CompletedRatio:   deref(gg.CompletedRatio),
-		TodosURL:         deref(gg.TodosUrl),
-		AppTodosURL:      deref(gg.AppTodosUrl),
-		CreatedAt:        gg.CreatedAt,
-		UpdatedAt:        gg.UpdatedAt,
-	}
-
-	if gg.Id != 0 {
-		g.ID = gg.Id
-	}
-
-	// Convert nested types
-	if gg.Parent.Id != 0 || gg.Parent.Title != "" {
-		g.Parent = &Parent{
-			ID:     gg.Parent.Id,
-			Title:  gg.Parent.Title,
-			Type:   gg.Parent.Type,
-			URL:    gg.Parent.Url,
-			AppURL: gg.Parent.AppUrl,
-		}
-	}
-
-	if gg.Bucket.Id != 0 || gg.Bucket.Name != "" {
-		g.Bucket = &Bucket{
-			ID:   gg.Bucket.Id,
-			Name: gg.Bucket.Name,
-			Type: gg.Bucket.Type,
-		}
-	}
-
-	if gg.Creator.Id != 0 || gg.Creator.Name != "" {
-		creator := personFromGenerated(gg.Creator)
-		g.Creator = &creator
-	}
-
-	return g
 }

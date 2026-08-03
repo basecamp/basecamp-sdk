@@ -1118,7 +1118,8 @@ structure ListTodolistsOutput {
 }
 
 /// Get a single todolist or todolist group by id
-/// The endpoint is polymorphic - the same URI returns either a Todolist or TodolistGroup
+/// The endpoint is polymorphic, but it answers with one shape: BC3 has no group
+/// model, so both variants come back as a flat Todolist (see the Todolist shape).
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/todolists/{id}")
@@ -1140,13 +1141,7 @@ structure GetTodolistOrGroupInput {
 
 structure GetTodolistOrGroupOutput {
 
-  result: TodolistOrGroup
-}
-
-/// Union type for polymorphic todolist endpoint
-union TodolistOrGroup {
-  todolist: Todolist
-  group: TodolistGroup
+  result: Todolist
 }
 
 /// Create a new todolist in a todoset
@@ -1181,7 +1176,8 @@ structure CreateTodolistOutput {
 }
 
 /// Replace a todolist (or todolist group) with a new complete representation.
-/// The endpoint is polymorphic - it addresses either a Todolist or a TodolistGroup.
+/// The endpoint is polymorphic - it addresses a to-do list or a group, and answers
+/// with the same flat Todolist shape either way.
 /// The request body is the recordable's full writable state: TodolistsController#update
 /// builds a brand-new Todolist from the permitted params and swaps it in, so any
 /// writable field omitted from the request is cleared server-side (a request that
@@ -1212,7 +1208,7 @@ structure UpdateTodolistOrGroupInput {
   @httpLabel
   id: Long
 
-  /// Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve
+  /// Name (required for a to-do list and for a group alike) - presence-validated server-side, so omitting it is a 422, not a preserve
   @required
   name: TodolistName
 
@@ -1222,7 +1218,7 @@ structure UpdateTodolistOrGroupInput {
 
 structure UpdateTodolistOrGroupOutput {
 
-  result: TodolistOrGroup
+  result: Todolist
 }
 
 /// Reposition a to-do list within its to-do set.
@@ -1257,6 +1253,8 @@ structure RepositionTodolistOutput {}
 // Note: GetTodolistGroup and UpdateTodolistGroup are consolidated into
 // GetTodolistOrGroup and UpdateTodolistOrGroup above (polymorphic endpoints)
 // TrashTodolist and TrashTodolistGroup use generic TrashRecording operation
+// Every group projection is a Todolist: BC3 renders groups through
+// todolists/_todolist.json.jbuilder, so there is one response shape here.
 
 /// List groups in a todolist
 ///
@@ -1288,7 +1286,7 @@ structure ListTodolistGroupsInput {
 
 structure ListTodolistGroupsOutput {
 
-  groups: TodolistGroupList
+  groups: TodolistList
 }
 
 /// Create a new group in a todolist
@@ -1315,7 +1313,7 @@ structure CreateTodolistGroupInput {
 
 structure CreateTodolistGroupOutput {
 
-  group: TodolistGroup
+  group: Todolist
 }
 
 /// Reposition a todolist group
@@ -1605,6 +1603,26 @@ list TodolistList {
   member: Todolist
 }
 
+/// A to-do list, or a group inside one. There is only this shape.
+///
+/// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+/// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+/// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+/// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+/// So a group reports `"type": "Todolist"` (the shared recording partial emits
+/// `recordable_type`) and carries `description`/`description_attachments` like
+/// any other list. Every operation that returns a list or a group returns this
+/// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+/// group list, group create and group get.
+///
+/// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+/// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+/// and emits exactly one of:
+///
+/// - `groups_url` — a to-do list; its `parent` is a Todoset.
+/// - `group_position_url` — a group; its `parent` is a Todolist.
+///
+/// The two are mutually exclusive and exactly one is always present.
 structure Todolist {
   @required
   id: TodolistId
@@ -1645,7 +1663,19 @@ structure Todolist {
   bucket: TodoBucket
   @required
   creator: Person
+
+  /// Rich text description (HTML). Required and never null: the shared rich-text
+  /// partial emits the key unconditionally, and `format_api_content` funnels a
+  /// blank or absent rich text through `call_pipeline`, which returns `""` rather
+  /// than nil. A list with no description carries `""`, not `null`, and a group
+  /// carries it too — `todolists/groups/{index,show}.json.jbuilder` render the
+  /// same partial.
+  @required
   description: TodolistDescription
+
+  /// Downloadable files embedded in `description`. Required and never null:
+  /// the partial emits `rich_text&.downloadable_attachments.to_a`, so the value
+  /// is `[]` when there is no description and when there are no attachments.
   @required
   description_attachments: RichTextAttachmentList
   completed: Boolean
@@ -1653,68 +1683,41 @@ structure Todolist {
   @required
   name: TodolistName
   todos_url: String
+
+  /// API URL for this list's groups. The to-do-list half of the structural
+  /// discriminator: emitted only when `parent` is a Todoset, and mutually
+  /// exclusive with `group_position_url`.
   groups_url: String
+
+  /// API URL for repositioning this group within its parent list. The group half
+  /// of the structural discriminator: emitted only when `parent` is a Todolist,
+  /// and mutually exclusive with `groups_url`.
+  group_position_url: String
+
+  /// In-app (non-API) URL for this record's to-dos, alongside the API-host
+  /// `todos_url`.
   app_todos_url: String
+
+  /// Color of the list or group, one of BC3's `Colored` enum values
+  /// (`white red orange yellow green blue aqua purple gray pink brown`). For a
+  /// top-level list a hill-chart dot color takes precedence over the recording's
+  /// own. Optional because the underlying column is nullable — the key is
+  /// emitted on every projection but its value is JSON `null` when unset.
+  color: String
+
+  /// In-app (non-API) URL for this recording's comments, alongside the API-host
+  /// `comments_url`.
+  comments_app_url: String
   boosts_count: Integer
   boosts_url: String
 }
 
 // ===== Todolist Group Shapes =====
+// A group has no shape of its own — see `Todolist`. Only the group operations'
+// path/body scalars survive here.
 
 long TodolistGroupId
 string TodolistGroupName
-
-list TodolistGroupList {
-  member: TodolistGroup
-}
-
-structure TodolistGroup {
-  @required
-  id: TodolistGroupId
-  @required
-  status: String
-  @required
-  visible_to_clients: Boolean
-  @required
-  created_at: ISO8601Timestamp
-  @required
-  updated_at: ISO8601Timestamp
-  @required
-  title: String
-  @required
-  inherits_status: Boolean
-  @required
-  type: String
-  @required
-  url: String
-  @required
-  app_url: String
-  bookmark_url: String
-  subscription_url: String
-
-  /// URL of the Bubble Up record for this recording (BC5 addition). Required:
-  /// `todolists/_todolist.json.jbuilder` renders the shared recording partial
-  /// with `bubbleupable: true` unconditionally, and every list, show, and group
-  /// path renders that partial — so the key is present on every projection of
-  /// this shape.
-  @required
-  bubble_up_url: String
-  comments_count: Integer
-  comments_url: String
-  position: Integer
-  @required
-  parent: TodoParent
-  @required
-  bucket: TodoBucket
-  @required
-  creator: Person
-  @required
-  name: TodolistGroupName
-  completed: Boolean
-  completed_ratio: String
-  todos_url: String
-  app_todos_url: String
-}
 
 // ===== Comment Operations (Batch 1) =====
 

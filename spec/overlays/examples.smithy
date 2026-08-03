@@ -3,39 +3,46 @@ namespace basecamp
 
 use smithy.api#examples
 
-// Polymorphic endpoints
+// Polymorphic endpoint: one flat shape, discriminated by groups_url XOR
+// group_position_url. Both variants report type "Todolist" — BC3's recording
+// partial emits recordable_type, and a group is a Todolist whose parent is a
+// Todolist. Never branch on the type string.
 apply GetTodolistOrGroup @examples([
   {
-    title: "Get a Todolist"
-    documentation: "Returns a Todolist when ID refers to a todolist"
+    title: "Get a to-do list"
+    documentation: "A to-do list: parent is a Todoset, and groups_url is present"
     input: { accountId: "999", id: 987654 }
-    output: { result: { todolist: {
+    output: { result: {
       id: 987654, status: "active", name: "Launch Tasks",
       visible_to_clients: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z",
-      title: "Launch Tasks", inherits_status: true, type: "Todolist", description_attachments: [],
+      title: "Launch Tasks", inherits_status: true, type: "Todolist",
+      description: "", description_attachments: [],
       url: "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
       app_url: "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
       bubble_up_url: "https://3.basecampapi.com/999/buckets/12345678/recordings/987654/bubble_up.json",
       creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
       bucket: { id: 12345678, name: "My Project", type: "Project" },
-      parent: { id: 99999, title: "To-dos", type: "Todoset", url: "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json", app_url: "https://3.basecamp.com/999/buckets/12345678/todosets/99999" }
-    } } }
+      parent: { id: 99999, title: "To-dos", type: "Todoset", url: "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json", app_url: "https://3.basecamp.com/999/buckets/12345678/todosets/99999" },
+      groups_url: "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json"
+    } }
   },
   {
-    title: "Get a TodolistGroup"
-    documentation: "Returns a TodolistGroup when ID refers to a group"
+    title: "Get a group"
+    documentation: "A group: parent is a Todolist, and group_position_url replaces groups_url"
     input: { accountId: "999", id: 111222 }
-    output: { result: { group: {
+    output: { result: {
       id: 111222, status: "active", name: "Q1 Milestones",
       visible_to_clients: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z",
-      title: "Q1 Milestones", inherits_status: true, type: "TodolistGroup",
+      title: "Q1 Milestones", inherits_status: true, type: "Todolist",
+      description: "", description_attachments: [],
       url: "https://3.basecampapi.com/999/buckets/12345678/todolists/111222.json",
       app_url: "https://3.basecamp.com/999/buckets/12345678/todolists/111222",
       bubble_up_url: "https://3.basecampapi.com/999/buckets/12345678/recordings/111222/bubble_up.json",
       creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
       bucket: { id: 12345678, name: "My Project", type: "Project" },
-      parent: { id: 99999, title: "To-dos", type: "Todoset", url: "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json", app_url: "https://3.basecamp.com/999/buckets/12345678/todosets/99999" }
-    } } }
+      parent: { id: 987654, title: "Launch Tasks", type: "Todolist", url: "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json", app_url: "https://3.basecamp.com/999/buckets/12345678/todolists/987654" },
+      group_position_url: "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json"
+    } }
   }
 ])
 

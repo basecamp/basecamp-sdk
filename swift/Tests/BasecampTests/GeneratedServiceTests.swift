@@ -354,8 +354,9 @@ final class GeneratedServiceTests: XCTestCase {
 
     /// A full todolist body as BC3 renders it — FLAT, no `todolist` envelope
     /// (see spec/fixtures/todolists/get.json). An empty `[:]` would no longer
-    /// do: the TodolistOrGroup union decoder now rejects a body that matches
-    /// neither arm instead of quietly producing an all-nil value.
+    /// do: `GetTodolistOrGroup` decodes into `Todolist`, whose required members
+    /// reject a body that is not one instead of quietly producing an empty
+    /// value (#544).
     private func todolistWireJSON(id: Int = 42) -> [String: Any] {
         [
             "id": id,

@@ -25,9 +25,10 @@ not — the generated services return ``dict[str, Any]``, so nothing rejects a
 wrong-typed field and the check has to be explicit. That is why these guards
 exist in Python, Ruby and TypeScript and nowhere else (#576).
 
-Todolists carries its own copy of these guards (#574, landed a commit earlier);
-it is left alone here because the flat-shape work in #544 owns those files. A
-generated validating layer (#578) is the intended end state for all of them.
+Todolists carries its own copy of these guards (#574). #544 flattened the shape
+those guards read - dropping the envelope-arm rung, not the guards - but did not
+unify them here. A generated validating layer (#578) is the intended end state
+for all of them.
 """
 
 from __future__ import annotations

@@ -53,13 +53,15 @@
       "can_manage_people": true
     },
     "description": "",
+    "description_attachments": [],
     "completed": false,
     "completed_ratio": "0/3",
     "name": "Hardware",
-    "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519/todos.json",
+    "color": "blue",
     "groups_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519/groups.json",
+    "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519/todos.json",
     "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519/todos",
-    "description_attachments": []
+    "comments_app_url": "https://3.basecamp.com/195539477/buckets/2085958500/recordings/1069479519/comments"
   },
   {
     "id": 1069479522,
@@ -115,12 +117,14 @@
       "can_manage_people": true
     },
     "description": "Mobile and web app development tasks",
+    "description_attachments": [],
     "completed": false,
     "completed_ratio": "2/5",
     "name": "Software",
-    "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479522/todos.json",
+    "color": null,
     "groups_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479522/groups.json",
+    "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479522/todos.json",
     "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479522/todos",
-    "description_attachments": []
+    "comments_app_url": "https://3.basecamp.com/195539477/buckets/2085958500/recordings/1069479522/comments"
   }
 ]

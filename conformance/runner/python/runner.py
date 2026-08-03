@@ -502,6 +502,24 @@ class OperationMapper:
                 return self._account.todolist_groups.reposition(
                     group_id=path_params["groupId"], position=body["position"]
                 )
+            case "GetTodolistOrGroup":
+                # One flat shape for both variants (#544): the same GET answers
+                # for a to-do list and for a group inside one. Returned as the
+                # case result so the responseBody assertions read what the SDK
+                # actually handed back — a read that yielded nothing fails here
+                # rather than passing quietly.
+                return self._account.todolists.get(id=path_params["id"])
+            case "ListTodolistGroups":
+                # The group list is an array of that same flat shape. Dispatch
+                # convention, stated in the fixture's own description: the FIRST
+                # element is the result, so the responseBody paths read element
+                # 0. An empty list is a failure rather than a silent pass —
+                # every one of those assertions would otherwise read None off a
+                # missing element and only the expected values would differ.
+                groups = self._account.todolist_groups.list(todolist_id=path_params["todolistId"])
+                if not groups:
+                    raise ValueError("ListTodolistGroups returned no groups; the first element is the case result")
+                return groups[0]
             case _:
                 raise ValueError(f"Unknown operation: {operation}")
 

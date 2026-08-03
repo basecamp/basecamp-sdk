@@ -18,7 +18,7 @@ module Basecamp
 
       # Replace a todolist (or todolist group) with a new complete representation.
       # @param id [Integer] id ID
-      # @param name [String] Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve
+      # @param name [String] Name (required for a to-do list and for a group alike) - presence-validated server-side, so omitting it is a 422, not a preserve
       # @param description [String, nil] Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way
       # @return [Hash] response data
       def replace(id:, name:, description: nil)

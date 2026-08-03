@@ -16,6 +16,13 @@ Neither is atomic: there is no conditional-update signal on this endpoint, so
 a concurrent write between the GET and PUT is overwritten — last write wins
 for the whole representation. The window is one round-trip. Use ``replace``
 to overwrite deliberately.
+
+The same URI addresses a to-do list or a group inside one — BC3 has no group
+model, so a group is a ``Todolist`` whose parent is a ``Todolist`` — and since
+#544 the spec models that as the single flat ``Todolist`` shape rather than a
+``TodolistOrGroup`` union of three. Everything below is therefore
+variant-agnostic and reads the body flat: no envelope, no arms, and no
+branching on ``type``, which reads ``"Todolist"`` for both.
 """
 
 from __future__ import annotations
@@ -46,9 +53,15 @@ def _require_mapping(body: object) -> dict[str, Any]:
     """The response must be a JSON object before any field is read.
 
     One level up from the malformed-*field* guards: a successful GET can return a
-    scalar, a list, or null. ``"name" not in body`` raises TypeError on a scalar
-    and silently checks membership on a list, so the envelope needs checking
-    before the fields.
+    scalar, a list, or null, and ``body.get("name")`` raises AttributeError on
+    every one of those, so the body is checked before the fields.
+
+    Since #544 this is the first of TWO levels rather than of three — body then
+    scalar, with no union arm in between — which is a level fewer to guard, not
+    a reason to stop guarding. The flat shape says what the API returns; it does
+    not hand Python a decoder, and there is none under this read: the generated
+    methods return ``dict[str, Any]`` verbatim. Making that structurally safe is
+    tracked in #578.
     """
     if not isinstance(body, dict):
         raise ApiError(
@@ -62,50 +75,27 @@ def _require_mapping(body: object) -> dict[str, Any]:
     return body
 
 
-def _require_arm(arm: object, arm_name: str) -> dict[str, Any]:
-    """Level 2 of the wire-to-written-value path: a present arm must be an object.
-
-    ``_require_mapping`` checks only the outer body, so ``{"todolist": None}``
-    passes it and the arm is then read as if it were a todolist. The full path is
-    object -> object -> scalar and has exactly three levels: the body, the arm,
-    and each writable field. A string has no interior, so there is no fourth.
-    """
-    if not isinstance(arm, dict):
-        raise ApiError(
-            _truncate_message(
-                f"GetTodolistOrGroup returned {_describe(arm)} in its {arm_name} arm where an object was expected"
-            ),
-            hint=(
-                "The merge-safe update/edit read this record's fields before rewriting them, "
-                "so a non-object arm cannot be used. Use replace() to write the record "
-                "deliberately."
-            ),
-        )
-    return arm
-
-
 def _fields_from_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
     """Derive a todolist's full writable state from a GET response.
 
-    BC3 answers this route with the recordable's FLAT JSON; the
-    ``{"todolist": ...}`` / ``{"group": ...}`` envelope in the Smithy spec is
-    a modelling convention, not the wire shape. Unwrapping one anyway costs a
-    dict lookup and stops a hypothetical enveloped body from reading every
-    field as empty — which here would mean writing an empty name. The flat
-    shape always wins: only a body carrying neither writable key is treated as
-    an envelope, so a nested ``group`` object could never hijack the read.
+    BC3 answers this route with the recordable's FLAT JSON, and since #544 the
+    spec agrees: ``Todolist``, ``TodolistGroup`` and the ``TodolistOrGroup``
+    union were three declarations of one wire body and are now one structure.
+    So the read is object -> scalar, with no arm to unwrap between them. The
+    unwrap this used to do — and the conditional that kept a nested ``group``
+    key from hijacking a flat body — went out together with the union that
+    made either necessary; a ``group`` key in the body is now ordinary data
+    that no code path looks at.
 
-    Nothing here sniffs the variant. The same URI addresses a todolist or a
-    todolist group, BC3 renders both through the same template, and both carry
-    the same writable pair — so a group is preserved exactly as a list is.
+    Nothing here sniffs the variant, and nothing may. The same URI addresses a
+    to-do list or a group inside one, BC3 renders both through
+    ``todolists/_todolist.json.jbuilder``, and both report ``"type":
+    "Todolist"``. They differ only structurally — ``groups_url`` when the
+    parent is a todoset, ``group_position_url`` when it is a todolist — and
+    they carry the same writable pair either way, so a group's description is
+    preserved exactly as a list's is.
     """
-    todolist = _require_mapping(todolist)
-    body = todolist
-    if "name" not in todolist and "description" not in todolist:
-        for key in ("todolist", "group"):
-            if key in todolist:
-                body = _require_arm(todolist[key], key)
-                break
+    body = _require_mapping(todolist)
     return {
         "name": _writable_string(body, "name", required=True),
         "description": _writable_string(body, "description"),
@@ -139,8 +129,11 @@ def _writable_string(body: dict[str, Any], key: str, *, required: bool = False) 
     Python has no typed decoder between the GET and this read, unlike the Go,
     Swift and Kotlin composites where a wrong-typed field fails at decode. That
     makes the check explicit work here rather than something the layer below
-    already did. The same shape is live in the shipped Todos and Cards
-    composites; that is tracked separately in #576.
+    already did, and #544 did not change it: flattening the declared shape
+    changes what the API returns, not what Python validates — ``get`` still
+    hands back the parsed JSON as ``dict[str, Any]``. The same shape is live in
+    the shipped Todos and Cards composites; that is tracked separately in #576,
+    and giving Python a decoder at all in #578.
     """
     value = body.get(key)
     if value is None:

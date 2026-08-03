@@ -203,6 +203,147 @@ func TestTodolistGroupsService_Get(t *testing.T) {
 	}
 }
 
+// The group variant of the same flat shape (#544). Every field asserted here
+// is one the pre-#544 TodolistGroup projection did not model at all, so a group
+// came back with an empty Description, a nil DescriptionAttachments, and no way
+// to tell it apart from a list except by re-reading the raw body.
+//
+// GroupsURL must be empty and GroupPositionURL must not: that pair, never the
+// Type string, is what distinguishes the variants. Type reads "Todolist" here —
+// asserted so the reason nothing branches on it stays visible.
+func TestTodolistGroupsService_GetDecodesTheGroupVariant(t *testing.T) {
+	fixture := loadTodolistGroupsFixture(t, "get.json")
+	svc := testTodolistGroupsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	group, err := svc.Get(context.Background(), 1069479600)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	const wantDescription = "<div>Phase one hardware work</div>"
+	if group.Description != wantDescription {
+		t.Errorf("Description: got %q, want %q — BC3 renders a group through todolists/_todolist.json.jbuilder, so it carries one like any list", group.Description, wantDescription)
+	}
+	if group.DescriptionAttachments == nil {
+		t.Error("DescriptionAttachments: got nil, want a non-nil empty slice — the server sent [], and the old group projection had no such field at all")
+	}
+	const wantGroupPositionURL = "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/groups/1069479600/position.json"
+	if group.GroupPositionURL != wantGroupPositionURL {
+		t.Errorf("GroupPositionURL: got %q, want %q — a group's parent is a Todolist, so this is the variant marker", group.GroupPositionURL, wantGroupPositionURL)
+	}
+	if group.GroupsURL != "" {
+		t.Errorf("GroupsURL: got %q, want empty — the two discriminators are mutually exclusive and this recording is a group", group.GroupsURL)
+	}
+	const wantCommentsAppURL = "https://3.basecamp.com/195539477/buckets/2085958500/recordings/1069479600/comments"
+	if group.CommentsAppURL != wantCommentsAppURL {
+		t.Errorf("CommentsAppURL: got %q, want %q", group.CommentsAppURL, wantCommentsAppURL)
+	}
+	if group.Type != "Todolist" {
+		t.Errorf("Type: got %q, want %q — a group reports the list type, which is why discrimination is structural", group.Type, "Todolist")
+	}
+	// color is null on a group in this fixture; the key is always emitted and a
+	// null decodes to "" rather than leaking a nil pointer to callers.
+	if group.Color != "" {
+		t.Errorf("Color: got %q, want empty for a null color", group.Color)
+	}
+}
+
+// The shared fixture's description_attachments is [], which proves the key
+// survives but not that the elements do. Inject one real attachment and read it
+// back through the same projection.
+func TestTodolistGroupsService_GetDecodesDescriptionAttachments(t *testing.T) {
+	fixture := patchTodolistFixture(t, loadTodolistGroupsFixture(t, "get.json"), map[string]any{
+		"description_attachments": []any{
+			map[string]any{
+				"id":            1234,
+				"sgid":          "BAh7CEkiCGdpZAY6BkVU",
+				"filename":      "spec.pdf",
+				"content_type":  "application/pdf",
+				"byte_size":     91234,
+				"download_url":  "https://3.basecampapi.com/195539477/blobs/BAh7CEkiCGdpZAY6BkVU/download/spec.pdf",
+				"previewable":   false,
+				"preview_url":   "",
+				"thumbnail_url": "",
+			},
+		},
+	})
+	svc := testTodolistGroupsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	group, err := svc.Get(context.Background(), 1069479600)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(group.DescriptionAttachments) != 1 {
+		t.Fatalf("DescriptionAttachments: got %d elements, want 1", len(group.DescriptionAttachments))
+	}
+	att := group.DescriptionAttachments[0]
+	if att.ID != 1234 {
+		t.Errorf("DescriptionAttachments[0].ID: got %d, want 1234", att.ID)
+	}
+	if att.Filename != "spec.pdf" {
+		t.Errorf("DescriptionAttachments[0].Filename: got %q, want %q", att.Filename, "spec.pdf")
+	}
+	if att.ContentType != "application/pdf" {
+		t.Errorf("DescriptionAttachments[0].ContentType: got %q, want %q", att.ContentType, "application/pdf")
+	}
+}
+
+// The group list returns an array of the same flat shape.
+func TestTodolistGroupsService_ListDecodesTheFlatShape(t *testing.T) {
+	fixture := loadTodolistGroupsFixture(t, "list.json")
+	svc := testTodolistGroupsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/todolists/1069479519/groups.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.List(context.Background(), 1069479519, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Groups) != 2 {
+		t.Fatalf("expected 2 groups, got %d", len(result.Groups))
+	}
+
+	first := result.Groups[0]
+	if first.Name != "Phase 1" {
+		t.Errorf("Groups[0].Name: got %q, want %q", first.Name, "Phase 1")
+	}
+	if first.Description != "<div>Phase one hardware work</div>" {
+		t.Errorf("Groups[0].Description: got %q, want %q", first.Description, "<div>Phase one hardware work</div>")
+	}
+	if first.GroupPositionURL == "" {
+		t.Error("Groups[0].GroupPositionURL: got empty, want the group variant's discriminator")
+	}
+	if first.GroupsURL != "" {
+		t.Errorf("Groups[0].GroupsURL: got %q, want empty", first.GroupsURL)
+	}
+	if first.CommentsAppURL == "" {
+		t.Error("Groups[0].CommentsAppURL: got empty, want the in-app comments URL")
+	}
+
+	// An empty description is "" and never null, so it stays distinguishable
+	// from the attachments array, which is present-and-empty beside it.
+	second := result.Groups[1]
+	if second.Description != "" {
+		t.Errorf("Groups[1].Description: got %q, want %q", second.Description, "")
+	}
+	if second.DescriptionAttachments == nil {
+		t.Error("Groups[1].DescriptionAttachments: got nil, want a non-nil empty slice")
+	}
+}
+
 // testTodolistGroupsCaptureServer records every request's method, path, and
 // (for PUTs) decoded body, answering all of them with body.
 func testTodolistGroupsCaptureServer(t *testing.T, body []byte, hooks Hooks) (*TodolistGroupsService, *[]capturedTodolistRequest) {
@@ -278,11 +419,22 @@ func TestTodolistGroupsService_Replace(t *testing.T) {
 // rendered through the same todolists/_todolist.json.jbuilder partial — and
 // BC3 rebuilds the recordable from the permitted params, so a caller must be
 // able to send one or the replace erases it.
+//
+// It also round-trips since #544: the response projection carries description,
+// so the group handed back is the one that was written. Before the
+// consolidation the request field existed but the reply dropped it, and a
+// caller had no way to confirm what it had just written.
 func TestTodolistGroupsService_ReplaceCarriesDescription(t *testing.T) {
-	fixture := loadTodolistGroupsFixture(t, "get.json")
+	// The server echoes a body whose description is the one being written, so
+	// asserting on the returned group tests the response projection rather than
+	// the fixture's stock value.
+	fixture := patchTodolistFixture(t, loadTodolistGroupsFixture(t, "get.json"), map[string]any{
+		"name":        "Updated Phase 1",
+		"description": "<p>Ship the peripherals</p>",
+	})
 	svc, reqs := testTodolistGroupsCaptureServer(t, fixture, nil)
 
-	_, err := svc.Replace(context.Background(), 1069479600, &ReplaceTodolistGroupRequest{
+	group, err := svc.Replace(context.Background(), 1069479600, &ReplaceTodolistGroupRequest{
 		Name:        "Updated Phase 1",
 		Description: "<p>Ship the peripherals</p>",
 	})
@@ -303,6 +455,16 @@ func TestTodolistGroupsService_ReplaceCarriesDescription(t *testing.T) {
 	}
 	if desc != "<p>Ship the peripherals</p>" {
 		t.Errorf("expected description '<p>Ship the peripherals</p>', got %v", desc)
+	}
+
+	if group.Name != "Updated Phase 1" {
+		t.Errorf("returned Name: got %q, want %q", group.Name, "Updated Phase 1")
+	}
+	if group.Description != "<p>Ship the peripherals</p>" {
+		t.Errorf("returned Description: got %q, want %q — the description must round-trip, not just reach the wire", group.Description, "<p>Ship the peripherals</p>")
+	}
+	if group.GroupPositionURL == "" {
+		t.Error("returned GroupPositionURL: got empty, want the group discriminator carried back by the replace projection")
 	}
 }
 
@@ -382,51 +544,76 @@ func TestReplaceTodolistGroupRequest_NameAlwaysMarshals(t *testing.T) {
 	}
 }
 
+// TodolistGroup is an alias for Todolist, not a struct of its own. Asserted at
+// compile time: two distinct named struct types are never assignable to each
+// other in Go, however identical their fields, so this declaration stops
+// compiling the moment the alias is respelled as a separate definition.
+var _ Todolist = TodolistGroup{}
+
 // TodolistGroupsService deliberately ships no merge-safe Update or Edit. This
 // pins the reason so the gap cannot be closed by accident, and so it reopens on
-// its own the moment the reason expires. Both failure messages are written to be
+// its own the moment the reason expires. The failure messages are written to be
 // read cold, months from now, by someone who has never seen this decision.
+//
+// The reason is NOT data loss any more. Before #544 the group projection
+// modelled no description, so a composite reading through it would have PUT
+// back a zero value and erased the description on every call. TodolistGroup is
+// now an alias for Todolist and carries the field, so that hazard is gone. What
+// remains is a cross-SDK parity argument, which is smaller but still real.
 func TestTodolistGroupsService_ShipsNoMergeSafeComposite(t *testing.T) {
-	if _, ok := reflect.TypeFor[TodolistGroup]().FieldByName("Description"); ok {
-		t.Fatal(`TodolistGroup now has a Description field, so this guard has done its job and should be removed.
+	// The alias is load-bearing for the reason below: "todolists.Update already
+	// addresses the same route through the same projection" is only true while
+	// the group and the list ARE one type. reflect.Type identity is what
+	// distinguishes an alias from a separate-but-identical struct — the
+	// compile-time assertion above catches the same regression earlier, and this
+	// carries the explanation.
+	if reflect.TypeFor[TodolistGroup]() != reflect.TypeFor[Todolist]() {
+		t.Fatalf(`TodolistGroup is no longer the same type as Todolist (got %v vs %v).
 
-Why it existed: PUT /{accountId}/todolists/{id} is a full replace — BC3 rebuilds the
-recordable from the permitted params, so every writable field omitted from the body is
-cleared. A merge-safe composite therefore has to read the current value of every field it
-sends. TodolistGroup used to model no description at all, so a composite built on
-TodolistGroupsService.Get would have read "" for it and PUT that back, erasing the
-description on every single call — the exact data loss the Todolists triad removed.
-Withholding the composite was the only way to avoid reintroducing it through this service.
+#544 consolidated Todolist, TodolistGroup and the TodolistOrGroup union into one flat shape,
+because BC3 has no group model: todolists/groups/{index,show}.json.jbuilder render
+todolists/_todolist.json.jbuilder, so a group IS a Todolist whose parent is a Todolist. Go
+spells that as "type TodolistGroup = Todolist". If it has drifted back into a struct of its
+own, the projections can diverge again silently — which is exactly how the group surface
+came to drop description in the first place.
 
-What to do now: the field exists, so the composite is safe to build. Add Update and Edit to
-TodolistGroupsService mirroring TodolistsService (GET via the public Get, overlay only the
-explicitly-set fields, PUT the full state through the shared replaceTodolistOrGroup
-transport), give them conformance coverage, and delete this guard along with the
-"no merge-safe composite" paragraph in SPEC section 5 and the note on
-TodolistGroupsService.Replace. Until then, merge-safe group writes go through
-todolists.Update, which addresses the same route via the full Todolist projection.
-
-Context: #544 (flat-shape consolidation), #545 (the triad this guard came from).`)
+Restore the alias, or, if the split is deliberate, re-derive every claim that rests on the
+two being one type: the "no merge-safe composite" reason below and in SPEC section 5, the
+note on TodolistGroupsService.Replace, and todolistFromGenerated serving both services.`,
+			reflect.TypeFor[TodolistGroup](), reflect.TypeFor[Todolist]())
 	}
 
 	svc := reflect.PointerTo(reflect.TypeFor[TodolistGroupsService]())
 	for _, name := range []string{"Update", "Edit"} {
 		if _, ok := svc.MethodByName(name); ok {
-			t.Errorf(`TodolistGroupsService.%s exists, but TodolistGroup still models no Description.
+			t.Errorf(`TodolistGroupsService.%s exists, but this service deliberately ships no merge-safe composite.
 
-A merge-safe composite on this service cannot preserve a field the projection does not
-carry: it would read "" for the description and PUT that back, and because this endpoint is
-a full replace, that erases the group's description on every call. That is the data loss the
-Todolists triad exists to remove — this would reintroduce it through the group service.
+The old reason — TodolistGroup modelled no description, so a composite would have read "" and
+PUT that back, erasing it on a full-replace endpoint — expired with #544. TodolistGroup is now
+an alias for Todolist and carries the field, so %s would be safe to build. It is still withheld
+for a different and smaller reason:
 
-Either remove %s, or land #544 first so TodolistGroup carries Description and the composite
-can actually read what it is about to rewrite. Callers who need a merge-safe group write
-today should use todolists.Update, which addresses the same route through the full Todolist
-projection and preserves {name, description} for either variant.`, name, name)
+  1. The other five SDKs (TypeScript, Ruby, Python, Kotlin, Swift) expose no group write at
+     all — their TodolistGroups surface is List/Create/Reposition. Go already diverges by
+     offering Replace; adding a composite on top would widen that asymmetry, not close a gap.
+  2. There is nothing to close. PUT /{accountId}/todolists/{id} is one polymorphic route, and
+     todolists.Update/Edit already address it through the very same projection — literally the
+     same Go type. A group round-trips {name, description} through them correctly, with no
+     type-sniffing. %s would be a sixth spelling of a composite that already works.
+
+Either remove %s, or land the cross-SDK group-write surface first and update SPEC section 5's
+"Go asymmetry" paragraph, the note on TodolistGroupsService.Replace, and this guard together.
+
+Context: #544 (flat-shape consolidation), #545 (the Todolists triad this guard came from).`,
+				name, name, name, name)
 		}
 	}
 	if _, ok := svc.MethodByName("Replace"); !ok {
-		t.Error("expected TodolistGroupsService.Replace, the verbatim write this service does offer")
+		t.Error(`expected TodolistGroupsService.Replace, the verbatim write this service does offer.
+
+Replace is the raw PUT, renamed from update so the destructive path is honestly named
+(SPEC section 18 rule 6). Removing it would leave the group surface with no write at all
+and silently drop the only reason ReplaceTodolistGroupRequest exists.`)
 	}
 }
 

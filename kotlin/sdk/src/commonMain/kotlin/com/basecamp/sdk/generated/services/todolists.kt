@@ -16,7 +16,7 @@ open class TodolistsService(client: AccountClient) : BaseService(client) {
      * Get a single todolist or todolist group by id
      * @param id The id
      */
-    suspend fun get(id: Long): JsonElement {
+    suspend fun get(id: Long): Todolist {
         val info = OperationInfo(
             service = "Todolists",
             operation = "GetTodolistOrGroup",
@@ -28,7 +28,7 @@ open class TodolistsService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpGet("/todolists/${id}", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<JsonElement>(body)
+            json.decodeFromString<Todolist>(body)
         }
     }
 
@@ -37,7 +37,7 @@ open class TodolistsService(client: AccountClient) : BaseService(client) {
      * @param id The id
      * @param body Request body
      */
-    suspend fun replace(id: Long, body: UpdateTodolistOrGroupBody): JsonElement {
+    suspend fun replace(id: Long, body: UpdateTodolistOrGroupBody): Todolist {
         val info = OperationInfo(
             service = "Todolists",
             operation = "UpdateTodolistOrGroup",
@@ -52,7 +52,7 @@ open class TodolistsService(client: AccountClient) : BaseService(client) {
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
-            json.decodeFromString<JsonElement>(body)
+            json.decodeFromString<Todolist>(body)
         }
     }
 

@@ -25,10 +25,10 @@
  * type on a GET result is a compile-time claim nothing validates; structurally
  * this sits with Python and Ruby, not with Go and Swift (#576).
  *
- * Todolists carries its own copy of these guards (#574, landed a commit
- * earlier); it is left alone here because the flat-shape work in #544 owns
- * those files. A generated validating layer (#578) is the intended end state
- * for all of them.
+ * Todolists carries its own copy of these guards (#574). #544 flattened the
+ * shape those guards read — dropping the envelope-arm rung, not the guards —
+ * but did not unify them here. A generated validating layer (#578) is the
+ * intended end state for all of them.
  */
 import { Errors, truncateErrorMessage, type BasecampError } from "../errors.js";
 

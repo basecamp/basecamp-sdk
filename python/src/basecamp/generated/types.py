@@ -1725,42 +1725,18 @@ class Todolist(TypedDict):
     boosts_url: NotRequired[str]
     bubble_up_url: str
     bucket: TodoBucket
+    color: NotRequired[str]
+    comments_app_url: NotRequired[str]
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     completed: NotRequired[bool]
     completed_ratio: NotRequired[str]
     created_at: str
     creator: Person
-    description: NotRequired[str]
+    description: str
     description_attachments: list[RichTextAttachment]
+    group_position_url: NotRequired[str]
     groups_url: NotRequired[str]
-    id: int
-    inherits_status: bool
-    name: str
-    parent: TodoParent
-    position: NotRequired[int]
-    status: str
-    subscription_url: NotRequired[str]
-    title: str
-    todos_url: NotRequired[str]
-    type: str
-    updated_at: str
-    url: str
-    visible_to_clients: bool
-
-
-class TodolistGroup(TypedDict):
-    app_todos_url: NotRequired[str]
-    app_url: str
-    bookmark_url: NotRequired[str]
-    bubble_up_url: str
-    bucket: TodoBucket
-    comments_count: NotRequired[int]
-    comments_url: NotRequired[str]
-    completed: NotRequired[bool]
-    completed_ratio: NotRequired[str]
-    created_at: str
-    creator: Person
     id: int
     inherits_status: bool
     name: str

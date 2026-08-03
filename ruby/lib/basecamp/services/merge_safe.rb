@@ -30,10 +30,10 @@ module Basecamp
     # wrong-typed field and the check has to be explicit. That is why these
     # guards exist in Ruby, Python and TypeScript and nowhere else (#576).
     #
-    # Todolists carries its own copy of these guards (#574, landed a commit
-    # earlier); it is left alone here because the flat-shape work in #544 owns
-    # those files. A generated validating layer (#578) is the intended end
-    # state for all of them.
+    # Todolists carries its own copy of these guards (#574). #544 flattened the
+    # shape those guards read — dropping the envelope-arm rung, not the guards —
+    # but did not unify them here. A generated validating layer (#578) is the
+    # intended end state for all of them.
     module MergeSafe
       RESEND_HINT = "The merge-safe update/edit resend this field verbatim, so a coerced or " \
         "empty value would overwrite the current one. Use %<escape>s to write the record " \

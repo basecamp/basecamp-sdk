@@ -228,6 +228,102 @@ func TestTodolistsService_Get(t *testing.T) {
 	}
 }
 
+// #544 consolidated Todolist, TodolistGroup and the TodolistOrGroup union into
+// one flat shape. This pins the to-do-list variant end to end through the SDK:
+// the list half of the structural discriminator is set (GroupsURL) and the
+// group half is not (GroupPositionURL), and Color and CommentsAppURL — which
+// the pre-#544 projections modelled on neither variant — arrive populated.
+//
+// Type is asserted only to document that it reads "Todolist" here just as it
+// does on a group, which is exactly why nothing branches on it.
+func TestTodolistsService_GetDecodesTheFlatListVariant(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	todolist, err := svc.Get(context.Background(), 1069479519)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	const wantGroupsURL = "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519/groups.json"
+	if todolist.GroupsURL != wantGroupsURL {
+		t.Errorf("GroupsURL: got %q, want %q — a list's parent is a Todoset, so groups_url is the variant marker", todolist.GroupsURL, wantGroupsURL)
+	}
+	if todolist.GroupPositionURL != "" {
+		t.Errorf("GroupPositionURL: got %q, want empty — the two discriminators are mutually exclusive and this recording is a list", todolist.GroupPositionURL)
+	}
+	if todolist.Color != "blue" {
+		t.Errorf("Color: got %q, want %q", todolist.Color, "blue")
+	}
+	const wantCommentsAppURL = "https://3.basecamp.com/195539477/buckets/2085958500/recordings/1069479519/comments"
+	if todolist.CommentsAppURL != wantCommentsAppURL {
+		t.Errorf("CommentsAppURL: got %q, want %q", todolist.CommentsAppURL, wantCommentsAppURL)
+	}
+	if todolist.Type != "Todolist" {
+		t.Errorf("Type: got %q, want %q", todolist.Type, "Todolist")
+	}
+	// description is @required and never null: format_api_content returns ""
+	// for a blank rich text, and description_attachments is [] alongside it.
+	if todolist.Description != "" {
+		t.Errorf("Description: got %q, want %q for this fixture", todolist.Description, "")
+	}
+	if todolist.DescriptionAttachments == nil {
+		t.Error("DescriptionAttachments: got nil, want a non-nil empty slice — the server sent [], and collapsing that into nil loses the present-but-empty state")
+	}
+}
+
+// The todoset-scoped list returns the same flat shape, one element per list.
+func TestTodolistsService_ListDecodesTheFlatShape(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "list.json")
+	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/todosets/1069479338/todolists.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.List(context.Background(), 1069479338, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Todolists) != 2 {
+		t.Fatalf("expected 2 todolists, got %d", len(result.Todolists))
+	}
+
+	first := result.Todolists[0]
+	if first.Name != "Hardware" {
+		t.Errorf("Todolists[0].Name: got %q, want %q", first.Name, "Hardware")
+	}
+	if first.GroupsURL == "" {
+		t.Error("Todolists[0].GroupsURL: got empty, want the list variant's discriminator")
+	}
+	if first.GroupPositionURL != "" {
+		t.Errorf("Todolists[0].GroupPositionURL: got %q, want empty", first.GroupPositionURL)
+	}
+	if first.Color != "blue" {
+		t.Errorf("Todolists[0].Color: got %q, want %q", first.Color, "blue")
+	}
+	if first.CommentsAppURL == "" {
+		t.Error("Todolists[0].CommentsAppURL: got empty, want the in-app comments URL")
+	}
+
+	// color is null on this element: the key is always emitted, and a null
+	// decodes to "" rather than leaking a nil pointer to callers.
+	second := result.Todolists[1]
+	if second.Description != "Mobile and web app development tasks" {
+		t.Errorf("Todolists[1].Description: got %q, want %q", second.Description, "Mobile and web app development tasks")
+	}
+	if second.Color != "" {
+		t.Errorf("Todolists[1].Color: got %q, want empty for a null color", second.Color)
+	}
+}
+
 // --- Update / Edit / Replace triad ---
 
 // patchTodolistFixture returns the fixture with the given top-level keys

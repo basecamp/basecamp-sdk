@@ -77,15 +77,23 @@ module Basecamp
 
       private
 
-      # Derives the full writable state from a GET response. BC3 answers this
-      # route with the recordable's flat JSON; the +todolist+/+group+ envelope
-      # in the Smithy model is a spec convention, not the wire shape (see
-      # AGENTS.md, "Smithy Spec vs Actual API Responses"). Unwrapped anyway so
-      # either shape reads correctly — it costs one lookup.
+      # Derives the full writable state from a GET response.
+      #
+      # BC3 answers this route with the recordable's flat JSON, and since #544
+      # the Smithy model says the same: one flat +Todolist+ structure, no
+      # +todolist+/+group+ envelope and no union. A group is a Todolist —
+      # +todolists/groups/{index,show}.json.jbuilder+ render
+      # +todolists/_todolist.json.jbuilder+ — so both projections arrive here
+      # with +name+ and +description+ at the top level and are read the same
+      # way. Nothing branches on the +type+ string; the structural
+      # discriminator (+groups_url+ for a list, +group_position_url+ for a
+      # group) is not writable state and is none of this method's business.
+      #
+      # The former arm lookup is gone with the union that motivated it: an
+      # unmodelled +todolist+/+group+ wrapper is now a malformed response, and
+      # unwrapping one would write the wrapper's contents over the record.
       def fields_from_todolist(todolist)
-        todolist = require_hash(todolist)
-        arm = %w[todolist group].find { |key| todolist.key?(key) }
-        body = arm ? require_arm(todolist[arm], arm) : todolist
+        body = require_hash(todolist)
         TodolistFields.new(
           name: writable_string(body, "name", required: true),
           description: writable_string(body, "description")
@@ -109,10 +117,22 @@ module Basecamp
 
       # The response must be a Hash before any field is read.
       #
-      # One level up from the malformed-field guards: a successful GET can return
-      # a scalar, an Array, or nil. +body["name"]+ raises TypeError on an Integer
-      # or Array, and on a String it returns a silent nil substring match — so the
-      # envelope needs checking before the fields.
+      # Level 1 of the wire-to-written-value path, one level up from the
+      # malformed-field guards. Since #544 flattened the shape the path is
+      # object -> scalar and has exactly two levels — the body and each writable
+      # field — where it used to have three. Two, not none: a flat wire shape
+      # says what the API returns, not that anything validates it. The generated
+      # +get+ returns <tt>http_get(...).json</tt>, a raw Hash with no decoder
+      # behind it, so a successful GET can still hand this method a scalar, an
+      # Array or nil.
+      #
+      # +body["name"]+ raises TypeError on an Integer or Array, and on a String
+      # it does not raise at all: it is a substring search. A body of
+      # <tt>"no name here"</tt> answers <tt>"name"</tt> for +name+ and +nil+ for
+      # +description+, so without this guard the composite would PUT the literal
+      # string "name" over the record's real name and clear its description —
+      # failing silently, which is why that defect outlived eight review passes
+      # on #574. A String has no interior, so there is no third level.
       def require_hash(body)
         unless body.is_a?(Hash)
           raise ApiError.new(
@@ -123,25 +143,6 @@ module Basecamp
         end
 
         body
-      end
-
-      # Level 2 of the wire-to-written-value path: a present arm must be a Hash.
-      #
-      # +require_hash+ checks only the outer body, so <tt>{"todolist" => nil}</tt>
-      # passes it and the arm is then read as if it were a todolist. The full path
-      # is object -> object -> scalar and has exactly three levels: the body, the
-      # arm, and each writable field. A String has no interior, so there is no
-      # fourth.
-      def require_arm(arm, arm_name)
-        unless arm.is_a?(Hash)
-          raise ApiError.new(
-            Security.truncate("GetTodolistOrGroup returned #{describe(arm)} in its #{arm_name} arm where an object was expected"),
-            hint: "The merge-safe update/edit read this record's fields before rewriting them, " \
-              "so a non-object arm cannot be used. Use replace to write the record deliberately."
-          )
-        end
-
-        arm
       end
 
       # Reads a writable string field, refusing to coerce a malformed one.
@@ -161,14 +162,25 @@ module Basecamp
       # genuinely empty — there is nothing to preserve and <tt>""</tt> is what
       # the server already holds.
       #
+      # +description+ stays optional HERE even though #544 marked it +@required+
+      # on the model. The two words mean different things: the schema says the
+      # field is always RENDERED (a group carries it too — that is the bug #544
+      # fixed), while this flag says the value is presence-VALIDATED and so can
+      # never legitimately be blank. BC3 permits a blank description — the
+      # canonical fixture ships one — so raising on <tt>""</tt> would refuse a
+      # real record.
+      #
       # A wrong type is malformed either way and must NOT be coerced: a plain
       # <tt>|| ""</tt> turns +false+ into <tt>""</tt> and passes arrays, hashes
       # and numbers straight through. This endpoint is full-replace, so either
       # outcome is written back over the real value.
       #
       # Ruby has no typed decoder between the GET and this read, unlike the Go,
-      # Swift and Kotlin composites where a wrong-typed field fails at decode.
-      # The same shape is live in the shipped Todos composite; tracked in #576.
+      # Swift and Kotlin composites where a wrong-typed field fails at decode,
+      # and flattening the shape did not add one: the generated method still
+      # returns <tt>http_get(...).json</tt> verbatim. The same shape is live in
+      # the shipped Todos composite; tracked in #576, with the generated
+      # validating layer that would retire this guard tracked in #578.
       def writable_string(body, key, required: false)
         value = body[key]
 
