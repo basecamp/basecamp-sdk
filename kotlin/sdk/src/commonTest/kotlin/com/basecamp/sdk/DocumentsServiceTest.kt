@@ -11,6 +11,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -70,6 +71,48 @@ class DocumentsServiceTest {
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
         )
+    }
+
+    // kotlinx.serialization is Kotlin's answer to the hand-written type guards
+    // the dynamic SDKs carry, and it does refuse a structurally wrong-typed
+    // field before the composite can write it back. But it reports that as a
+    // raw SerializationException, which is not the shape SPEC 6 defines for a
+    // malformed 2xx body: a caller catching BasecampException would miss it
+    // entirely. The composite normalizes it, so a malformed response looks the
+    // same in every SDK.
+    //
+    // An ARRAY, not a scalar: the client-wide `coerceInputValues`/`isLenient`
+    // settings coerce a bare JSON scalar into a String rather than rejecting
+    // it (a cross-service gap tracked out of #576). An array is refused.
+    @Test
+    fun updateNormalizesADecodeFailure() = runTest {
+        val capture = WriteCapture()
+        val client = mockClient { request ->
+            capture.methods.add(request.method.value)
+            respond(
+                content = fullDocumentJson().replace(
+                    "\"title\": \"Kickoff notes\"", "\"title\": [\"nope\"]"
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val error = assertFailsWith<BasecampException.Api> {
+            client.forAccount("12345").documents
+                .update(42, UpdateDocumentBody(content = "<p>New body.</p>"))
+        }
+
+        // Statusless and non-retryable: the transport succeeded, and
+        // re-requesting cannot repair a malformed body.
+        assertEquals(null, error.httpStatus)
+        assertEquals(false, error.retryable)
+        assertTrue(error.hint != null, "expected a hint naming the escape hatch")
+        // The ordering is what matters: no PUT. A guard that fires after the
+        // PUT has already lost the field.
+        assertEquals(listOf("GET"), capture.methods)
+
+        client.close()
     }
 
     @Test

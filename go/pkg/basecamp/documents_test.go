@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -623,5 +624,85 @@ func TestDocumentsService_EditRefusesAMissingTitleBeforeWriting(t *testing.T) {
 		if r.method == "PUT" {
 			t.Fatalf("expected no PUT before the guard fired, got %+v", r)
 		}
+	}
+}
+
+// json.Unmarshal is Go's answer to the hand-written type guards the dynamic
+// SDKs carry, and it does refuse a wrong-typed field before the composite can
+// write it back. But it reports that as a raw *json.UnmarshalTypeError, which
+// is not the shape SPEC §6 defines for a malformed 2xx body: a caller switching
+// on *Error would miss it entirely and it carries no hint. The composite
+// normalizes it the way the Swift one normalizes DecodingError, so a malformed
+// response looks the same in every SDK.
+func TestDocumentsService_UpdateWrapsADecodeFailureAsStatuslessAPIError(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	for _, tc := range []struct {
+		name  string
+		patch map[string]any
+	}{
+		{"title is a number", map[string]any{"title": 42}},
+		{"content is an object", map[string]any{"content": map[string]any{"a": 1}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			getBody := patchDocumentFixture(t, fixture, tc.patch)
+			svc, reqs := testDocumentsCaptureServer(t, getBody, fixture, nil)
+
+			_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+				Title: "Q3 Plan",
+			})
+			if err == nil {
+				t.Fatal("expected the call to fail, but it succeeded")
+			}
+			var apiErr *Error
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("expected *Error, got %T: %v", err, err)
+			}
+			if apiErr.Code != CodeAPI {
+				t.Errorf("expected code %q, got %q", CodeAPI, apiErr.Code)
+			}
+			if apiErr.HTTPStatus != 0 {
+				t.Errorf("expected a statusless error, got HTTP %d", apiErr.HTTPStatus)
+			}
+			if apiErr.Retryable {
+				t.Error("re-requesting cannot repair a malformed body")
+			}
+			if apiErr.Hint == "" {
+				t.Error("expected a hint naming the deliberate-overwrite escape hatch")
+			}
+			for _, r := range *reqs {
+				if r.method == "PUT" {
+					t.Fatalf("expected no PUT before the guard fired, got %+v", r)
+				}
+			}
+		})
+	}
+}
+
+// A transport or HTTP error must pass through untouched — the wrapper is for
+// decode failures only, and swallowing everything would hide a 404 behind a
+// "does not decode" message.
+func TestDocumentsService_UpdatePassesNonDecodeErrorsThrough(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, `{"error":"Not Found"}`)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	svc := client.ForAccount("999").Documents()
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{Title: "Q3 Plan"})
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	if apiErr.HTTPStatus != http.StatusNotFound {
+		t.Errorf("expected the 404 to survive, got HTTP %d (%s)", apiErr.HTTPStatus, apiErr.Message)
 	}
 }

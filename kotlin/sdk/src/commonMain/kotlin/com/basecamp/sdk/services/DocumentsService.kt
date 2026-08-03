@@ -1,9 +1,11 @@
 package com.basecamp.sdk.services
 
 import com.basecamp.sdk.AccountClient
+import com.basecamp.sdk.BasecampException
 import com.basecamp.sdk.generated.models.Document
 import com.basecamp.sdk.generated.services.ReplaceDocumentBody
 import com.basecamp.sdk.generated.services.UpdateDocumentBody
+import kotlinx.serialization.SerializationException
 
 /**
  * A document's full writable state, the receiver of the
@@ -53,7 +55,7 @@ class DocumentsService(client: AccountClient) :
      * Not atomic — see the class docs for the GET→PUT race.
      */
     suspend fun update(documentId: Long, body: UpdateDocumentBody): Document {
-        val fields = fieldsFromDocument(get(documentId))
+        val fields = fieldsFromDocument(fetchDocument(documentId))
         body.title?.let { fields.title = it }
         body.content?.let { fields.content = it }
         return putFields(documentId, fields)
@@ -77,10 +79,39 @@ class DocumentsService(client: AccountClient) :
      * Not atomic — see the class docs for the GET→PUT race.
      */
     suspend fun edit(documentId: Long, block: DocumentFields.() -> Unit): Document {
-        val fields = fieldsFromDocument(get(documentId))
+        val fields = fieldsFromDocument(fetchDocument(documentId))
         fields.block()
         return putFields(documentId, fields)
     }
+
+    /**
+     * GETs the document the composites read their writable state from,
+     * normalizing a decode failure into the SPEC §6 shape.
+     *
+     * kotlinx.serialization is the typed guard the dynamic SDKs write by hand,
+     * and it rejects a structurally wrong-typed field before this composite
+     * ever sees it — but it reports that as a raw [SerializationException],
+     * which is not the shape SPEC §6 defines for a malformed 2xx body: callers
+     * catching [BasecampException] would miss it entirely and it carries no
+     * hint. Wrap it, so a malformed response looks the same in every SDK.
+     *
+     * (The client-wide `coerceInputValues`/`isLenient` scalar hole means a bare
+     * JSON scalar is coerced rather than rejected. That is a cross-service gap
+     * tracked out of #576, not something this composite can close.)
+     */
+    private suspend fun fetchDocument(documentId: Long): Document =
+        try {
+            get(documentId)
+        } catch (e: SerializationException) {
+            throw BasecampException.Api(
+                message = "GetDocument returned a body that does not decode as a document: ${e.message}",
+                hint = "The merge-safe update/edit resend this record's fields verbatim, so a " +
+                    "malformed response cannot be written back safely. Use replace to write the " +
+                    "record deliberately.",
+                retryable = false,
+                cause = e,
+            )
+        }
 
     /**
      * Reads the writable state out of a fetched document.

@@ -2,6 +2,8 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -109,6 +111,37 @@ func (f *DocumentFields) fullBody() (map[string]any, error) {
 	}, nil
 }
 
+// fetchDocument GETs the document the composites read their writable state from,
+// normalizing a decode failure into the SPEC §6 shape.
+//
+// Go's json.Unmarshal is the typed guard the dynamic SDKs write by hand, and it
+// rejects a wrong-typed field before this composite ever sees it — but it
+// reports that as a raw *json.UnmarshalTypeError/*json.SyntaxError surfaced
+// through the generated parser, which is not the shape SPEC §6 defines for a
+// malformed 2xx body: callers switching on *Error would miss it entirely and it
+// carries no hint. Wrap it, so a malformed response looks the same in every SDK
+// (the Swift composite does this with DecodingError). A transport or HTTP error
+// passes through untouched.
+func (s *DocumentsService) fetchDocument(ctx context.Context, documentID int64) (*Document, error) {
+	current, getErr := s.Get(ctx, documentID)
+	if getErr == nil {
+		return current, nil
+	}
+
+	var typeErr *json.UnmarshalTypeError
+	var syntaxErr *json.SyntaxError
+	if !errors.As(getErr, &typeErr) && !errors.As(getErr, &syntaxErr) {
+		return nil, getErr
+	}
+	return nil, &Error{
+		Code:    CodeAPI,
+		Message: truncate(fmt.Sprintf("GetDocument returned a body that does not decode as a document: %v", getErr)),
+		Hint: "The merge-safe Update/Edit resend this record's fields verbatim, so a malformed " +
+			"response cannot be written back safely. Use Replace to write the record deliberately.",
+		Retryable: false,
+	}
+}
+
 // Update sets the given fields on a document and preserves everything else:
 // GETs the current document, overlays the explicitly-set request fields, and
 // PUTs the full representation back.
@@ -130,7 +163,7 @@ func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *Up
 		return nil, ErrUsage("update request is required")
 	}
 
-	current, err := s.Get(ctx, documentID)
+	current, err := s.fetchDocument(ctx, documentID)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +194,7 @@ func (s *DocumentsService) Edit(ctx context.Context, documentID int64, fn func(*
 		return nil, ErrUsage("edit callback is required")
 	}
 
-	current, err := s.Get(ctx, documentID)
+	current, err := s.fetchDocument(ctx, documentID)
 	if err != nil {
 		return nil, err
 	}
