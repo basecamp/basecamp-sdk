@@ -47,13 +47,13 @@ public final class DocumentsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func update(documentId: Int, req: UpdateDocumentRequest) async throws -> Document {
+    public func replace(documentId: Int, req: ReplaceDocumentRequest) async throws -> Document {
         return try await request(
-            OperationInfo(service: "Documents", operation: "UpdateDocument", resourceType: "document", isMutation: true, resourceId: documentId),
+            OperationInfo(service: "Documents", operation: "ReplaceDocument", resourceType: "document", isMutation: true, resourceId: documentId),
             method: "PUT",
             path: "/documents/\(documentId)",
             body: req,
-            retryConfig: Metadata.retryConfig(for: "UpdateDocument")
+            retryConfig: Metadata.retryConfig(for: "ReplaceDocument")
         )
     }
 }

@@ -19,13 +19,13 @@ class DocumentsService(BaseService):
             operation="GetDocument",
         )
 
-    def update(self, *, document_id: int, title: str | None = None, content: str | None = None) -> dict[str, Any]:
+    def replace(self, *, document_id: int, title: str | None = None, content: str | None = None) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="documents", operation="update", is_mutation=True, resource_id=document_id),
+            OperationInfo(service="documents", operation="replace", is_mutation=True, resource_id=document_id),
             "PUT",
             f"/documents/{document_id}",
             json_body=self._compact(title=title, content=content),
-            operation="UpdateDocument",
+            operation="ReplaceDocument",
         )
 
     def list(self, *, vault_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
@@ -71,13 +71,15 @@ class AsyncDocumentsService(AsyncBaseService):
             operation="GetDocument",
         )
 
-    async def update(self, *, document_id: int, title: str | None = None, content: str | None = None) -> dict[str, Any]:
+    async def replace(
+        self, *, document_id: int, title: str | None = None, content: str | None = None
+    ) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="documents", operation="update", is_mutation=True, resource_id=document_id),
+            OperationInfo(service="documents", operation="replace", is_mutation=True, resource_id=document_id),
             "PUT",
             f"/documents/{document_id}",
             json_body=self._compact(title=title, content=content),
-            operation="UpdateDocument",
+            operation="ReplaceDocument",
         )
 
     async def list(self, *, vault_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:

@@ -183,6 +183,42 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
                 name: rb.stringParam("name")))
         return DispatchResult()
 
+    // Synthetic scenario key (not a wire operation): the merge-safe composite,
+    // GET then a full PUT of {title, content}.
+    case "UpdateDocument":
+        _ = try await account.documents.update(
+            documentId: pathParams.longParam("documentId"),
+            req: UpdateDocumentRequest(
+                content: rb.optString("content"),
+                title: rb.optString("title")))
+        return DispatchResult()
+
+    // Synthetic scenario key (not a wire operation): exercises the
+    // read-modify-write edit closure by assigning each fixture key onto the
+    // corresponding DocumentFields member.
+    case "EditDocument":
+        // Read every fixture key before the call: the edit closure is
+        // non-throwing, and validating up front means a malformed parameter
+        // fails the test instead of reaching the wire half-applied.
+        let editDocumentTitle = try rb.optString("title")
+        let editDocumentContent = try rb.optString("content")
+        _ = try await account.documents.edit(documentId: pathParams.longParam("documentId")) {
+            fields in
+            if let editDocumentTitle { fields.title = editDocumentTitle }
+            if let editDocumentContent { fields.content = editDocumentContent }
+        }
+        return DispatchResult()
+
+    // Raw single PUT, no read-before-write. Neither field is required by the
+    // schema, so an omitted one stays omitted and the server clears it.
+    case "ReplaceDocument":
+        _ = try await account.documents.replace(
+            documentId: pathParams.longParam("documentId"),
+            req: ReplaceDocumentRequest(
+                content: rb.optString("content"),
+                title: rb.optString("title")))
+        return DispatchResult()
+
     // Participants are presence-bearing: an absent key must not become an
     // empty list on the wire, or BC3 clears the participants.
     case "UpdateScheduleEntry":

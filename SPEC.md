@@ -386,6 +386,42 @@ The endpoint is polymorphic, and more literally so than the name suggests: there
 
 Conformance: `conformance/tests/todolists_write.json` (`update-merge`, `update-group`, `edit-clear`, `replace-omission-clears`).
 
+### Merge-Safe Write Surface (Documents)
+
+The `PUT /{accountId}/documents/{documentId}` endpoint is **full replace, omission clears** (spec operation `ReplaceDocument`, declared via `x-basecamp-write-semantics: {mode: "replace", clearsOmitted: true}` and the `write` clause in `behavior-model.json`). BC3's `DocumentsController#update` runs `@recording.update! recording_attributes.merge(recordable: new_document)`, where `new_document` is `Document.new(params.require(:document).permit(:title, :content))` — it builds a *brand-new* `Document` from only the permitted params and swaps the recordable wholesale, so a field absent from the body is `nil` on the replacement. The public API docs say the same thing outright: "omitting a field clears its value."
+
+The writable set is exactly `{title, content}`, and **both are optional** — this is the one place Documents diverges from Todolists, and it is measured rather than assumed:
+
+- Omitting `title` returns `200` and the title becomes `"Untitled"`. `Document#title` is `super.presence || "Untitled"` (`app/models/document.rb:7-9`) and the attribute carries **no presence validation** — the model declares none, and neither `Recordable` nor `Recording` validates the recordable's title.
+- Omitting `content` returns `200` and clears it.
+- Neither is a `422`, so neither earns `@required` the way `ReplaceTodo`'s `content` or `UpdateTodolistOrGroup`'s `name` did. Modelling either as required would make the SDK reject a request the server accepts.
+
+What BC3 *does* require is the wrapping `document` object: `params.require(:document)` raises `ActionController::ParameterMissing` when absent, and Rails `wrap_parameters` synthesizes that wrapper from a flat body only when the body carries at least one `Document` attribute name. So a body naming **neither** field is a `400`, pinned upstream by `test "publishing a draft document requires the full payload and preserves it"`. Go's `Replace` refuses that body locally rather than spending a round-trip on it; the other five leave it to the server.
+
+Every SDK exposes the same three-method, two-state surface over it:
+
+- **`update`** — merge-safe. GET the current document → overlay only *explicitly-set* request fields → PUT the full representation. An omitted field is untouched, guaranteed. Set-detection is language-native: TypeScript `!== undefined`, Python/Ruby `None`/`nil` kwarg defaults, Kotlin `?.let`, Swift `if let`, Go zero-value guards.
+
+  In the five SDKs whose unset marker is distinct from the empty string, an explicitly-passed `""` is a set and therefore clears. **Go is the exception**, as for Todolists: `""` *is* its unset marker on `UpdateDocumentRequest`, so `Update` with an empty title does nothing to that field. To clear a field in Go, use `Edit` or `Replace`.
+
+  `ReplaceDocumentRequest` is the one Go request here that does **not** use zero-value guards. On a verbatim replace, absent and explicitly-empty are different requests and only one of them is legal alone: a body naming neither field is a `400`, while `{"title": "", "content": ""}` is a legal full replacement that clears both. Zero-value guards conflate those, so both fields are `*string` — nil omits, a pointer to `""` sends. Their server *effect* happens to coincide for `title` (omitted and empty both read back as `"Untitled"`), but the SDK must not collapse a distinction the wire makes.
+- **`edit`** — read-modify-write closure over the full writable state (`DocumentFields`: title, content). Clear = set empty (`""`); a closure error/throw aborts before the PUT. Python's form is a context manager (`with`/`async with`) whose `.result` holds the updated document after clean exit (RuntimeError before completion).
+- **`replace`** — the generated wire method: verbatim sparse PUT, no GET, omission clears. Renamed from nothing — the wire operation itself is `ReplaceDocument`, so the generated method is `replace` by the ordinary naming algorithm. This is the `ReplaceTodo` route (#375), not the `METHOD_NAME_OVERRIDES` route Todolists and Cards took, and it ships **without a deprecated alias**: `UpdateDocument` is gone.
+
+Full-state serialization (update/edit): both `title` and `content` are always sent, empties included, so clears survive. A field is cleared by sending `""` — never by sending null (§18), and never by omission, which would hand the clear back to the server's own rebuild and read as an accident rather than an intent.
+
+**Read-side, the two fields are not symmetric, and this is the inverse of the write side.** `Document.title` is `@required` on the *response* schema and BC3 can never render it blank (`Document#title` is `super.presence || "Untitled"`), so an absent or null `title` in a 2xx body is a **malformed response**, not an empty title — coalescing it to `""` and sending that in the full-replace PUT would blank the real title on a call that only touched `content`. All six SDKs refuse it: Kotlin and Swift get it from the decoder (`val title: String`, `public let title: String`), and Go, Python, Ruby and TypeScript check explicitly, because their reads would otherwise yield the string zero value. `content` is optional on the response schema, so absent or null there is genuinely empty and `""` is what the server already holds. Optionality on the request (both fields) and requiredness on the response (`title` only) are separate facts and are modelled separately.
+
+**Subscribers are the one field this surface must not touch, and the reason it could not ship earlier.** A full-representation PUT names neither `subscriptions` nor `notify`. BC3's `notify_param` defaults to `"custom"`, so `find_subscribers` used to run `where(id: params[:subscriptions])` → `where(id: nil)` → empty, and every sparse update to a **drafted** recording reset its subscriber list to the creator plus the updater. The list is also unreadable over the API — only `subscription_url` is emitted — so the composite could not have preserved it by resending. bc3 #12494 (`344581a379`) and #12501 (`2c0dafba13`) introduced `Recording::DraftSubscribers`, whose `update_subscribers?` is `params.key?(:subscriptions) || params.key?(:notify)`: a request addressing neither keeps the list it found. That predicate is what makes a merge-safe composite safe on a draft, and it is why this surface is pinned to a bc3 provenance at or after `2c0dafba13`.
+
+**Publishing a draft is not modeled.** Setting `status: "active"` is how a draft is published, and BC3 rejects a status-only update for the same reason it rejects an empty body — the recordable params are required alongside. `status` is on `CreateDocument` but not on `ReplaceDocument`; a caller who needs to publish sends the full payload plus `status` through the raw HTTP surface. Modelling it is deferred rather than declined.
+
+**Hook contract:** update/edit compose the public get + replace, so hooks observe the wire operations under each SDK's native identities (conceptually one `GetDocument` + one `ReplaceDocument`; one `ReplaceDocument` for replace) — never a synthetic composite.
+
+**Race:** update/edit are read-modify-write, not atomic. There is no conditional-update signal on this endpoint; a concurrent write between the GET and PUT is overwritten — last write wins for the whole representation, with a window of one round-trip. Use `replace` to overwrite deliberately.
+
+Conformance: `conformance/tests/documents_write.json` (`update-merge`, `edit-clear`, `replace-omission-clears`).
+
 ### Known Gaps (informational, not prescriptive)
 
 - Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`
@@ -1757,9 +1793,21 @@ All wire operations are generated (rubric 1A.6). One narrow exception is sanctio
 5. **Declared placement.** The composite lives in the language's designated hand-written extension point (Kotlin generator `EXTENSIBLE_SERVICES`/`HAND_WRITTEN_SERVICES`, TS `src/services/*-extensions.ts` wired in `client.ts`, Ruby zeitwerk `prepend` module, Python service subclass re-exported by the client, Swift same-module extension) so regeneration can never silently drop or fork it.
 6. **The raw operation stays reachable.** When a composite takes over the plain method name, the generated single-request method is renamed (via `METHOD_NAME_OVERRIDES`) rather than hidden, and gets its own conformance case asserting it makes exactly one request with no read-before-write. Without that second case, later generator drift could silently turn both public methods into composite behavior and nothing would notice.
 
+### Replace-Semantic Operation Naming `[static]`
+
+A wire operation is named for what the server does with the body, not for what the caller usually intends:
+
+- **`Replace*`** when the endpoint takes a complete representation and clears what the body omits — `ReplaceTodo`, `ReplaceDocument`. This holds even where the replacement carries *declared carve-outs*: `ReplaceDocument` does not touch a drafted document's subscribers, and that does not make the operation a merge. A carve-out is one named field the server excludes from the swap; a merge is the server preserving anything the body omits. The rule keys on the default, and the carve-out is documented on the operation.
+- **`Update*`** when the endpoint merges — the server preserves fields the body omits (`Recordable#changing` and friends), as Messages does — or when it is genuinely hybrid, as Cards is: merge for `title`/`content`, key-guarded for `assignee_ids`, forced-replace for `due_on` (#467).
+
+Two shipped operations are replace-semantic but still named `Update*`. `UpdateTodolistOrGroup` reached the honest *method* name through `METHOD_NAME_OVERRIDES` (rule 6) rather than a wire rename, so its SDK surface reads `replace` while the operationId does not. `UpdateScheduleEntry` has neither yet — its method is still `updateEntry` and its composite is unbuilt (#546/#547). Both are naming debt, not a second sanctioned pattern; the wave that closes them is #374. New replace-semantic operations take the wire rename.
+
+A rename is breaking and ships **without a deprecated alias** (`ReplaceTodo`, #375; `ReplaceDocument`, #543). An alias would keep the destructive method reachable under the name that misdescribes it, which is the defect the rename exists to remove.
+
 Current composites:
 - **Todos** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
 - **Todolists** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todolists)". The raw path is `replace`, renamed from `update` via `METHOD_NAME_OVERRIDES` (rule 6) rather than by renaming the wire operation.
+- **Documents** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Documents)". The raw path is `replace`, and it needs no override: the wire operation is `ReplaceDocument`, so the ordinary naming algorithm produces it.
 - **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
 - **Uploads** `download` — composes the generated `get` (GetUpload) with the client-level `downloadURL` primitive (§14), erroring when the upload carries no `download_url`; the result's filename prefers the upload metadata's `filename`.
 

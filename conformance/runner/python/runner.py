@@ -30,6 +30,7 @@ _TODO_WRITE_FIELDS = ("content", "description", "assignee_ids", "completion_subs
 # todolist group — the composite is deliberately variant-agnostic, so nothing
 # downstream branches on which shape came back from the GET.
 _TODOLIST_WRITE_FIELDS = ("name", "description")
+_DOCUMENT_WRITE_FIELDS = ("title", "content")
 _SCHEDULE_ENTRY_WRITE_FIELDS = ("summary", "starts_at", "ends_at", "description", "participant_ids", "all_day", "notify")
 _CARD_WRITE_FIELDS = ("title", "content", "due_on", "assignee_ids")
 
@@ -265,6 +266,29 @@ class OperationMapper:
                 return self._account.todolists.replace(
                     id=path_params["id"],
                     **{k: body[k] for k in _TODOLIST_WRITE_FIELDS if k in body},
+                )
+            case "UpdateDocument":
+                # Synthetic scenario key (not a wire op): the merge-safe
+                # composite, GET then PUT of the full {title, content}.
+                return self._account.documents.update(
+                    document_id=path_params["documentId"],
+                    **{k: body[k] for k in _DOCUMENT_WRITE_FIELDS if k in body},
+                )
+            case "EditDocument":
+                # Synthetic scenario key (not a wire op): drive the edit
+                # context manager, assigning each fixture requestBody key
+                # onto the same-named attribute.
+                with self._account.documents.edit(document_id=path_params["documentId"]) as doc:
+                    for key in _DOCUMENT_WRITE_FIELDS:
+                        if key in body:
+                            setattr(doc, key, body[key])
+                return doc.result
+            case "ReplaceDocument":
+                # The raw single PUT, no read-before-write: an omitted field is
+                # omitted on the wire and the server clears it.
+                return self._account.documents.replace(
+                    document_id=path_params["documentId"],
+                    **{k: body[k] for k in _DOCUMENT_WRITE_FIELDS if k in body},
                 )
             case "GetTimesheetEntry":
                 return self._account.timesheets.get(entry_id=path_params["entryId"])

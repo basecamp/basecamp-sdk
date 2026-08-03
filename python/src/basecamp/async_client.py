@@ -255,7 +255,7 @@ class AsyncAccountClient:
 
     @property
     def documents(self):
-        from basecamp.generated.services.documents import AsyncDocumentsService
+        from basecamp.services.documents import AsyncDocumentsService
 
         return self._service("documents", lambda: AsyncDocumentsService(self))
 

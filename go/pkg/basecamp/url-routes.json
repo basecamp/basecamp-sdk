@@ -871,7 +871,7 @@
       "resource": "Files",
       "operations": {
         "GET": "GetDocument",
-        "PUT": "UpdateDocument"
+        "PUT": "ReplaceDocument"
       },
       "params": {
         "accountId": {

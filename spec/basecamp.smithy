@@ -108,7 +108,7 @@ service Basecamp {
     ListDocuments,
     GetDocument,
     CreateDocument,
-    UpdateDocument,
+    ReplaceDocument,
     ListUploads,
     GetUpload,
     CreateUpload,
@@ -2432,18 +2432,40 @@ structure CreateDocumentOutput {
   document: Document
 }
 
-/// Update an existing document
+/// Replace a document with a new complete representation.
+/// The request body is the document's full writable state: any writable field
+/// omitted from the request is cleared server-side. Omitting content clears it;
+/// omitting title clears it too, and the document then reads back as
+/// "Untitled" (Document#title falls back when blank).
+/// Neither field is required. BC3 builds a brand-new Document from the
+/// permitted params and swaps the recordable wholesale, and neither attribute
+/// carries a presence validation — so an omission is a 200 that clears, not a
+/// 422. What BC3 does require is the wrapping document object, which Rails
+/// synthesizes from a flat body, so a request naming neither field is a 400.
+/// Publishing a draft (status: "active") is not modeled: the SDK sends only
+/// title and content, and BC3 rejects a status-only update for the same
+/// reason it 400s an empty body.
+/// Subscribers are the one exception to omission-clears. A drafted document
+/// keeps its current subscribers when the request addresses neither
+/// subscriptions nor notify, so a full-representation PUT that mentions
+/// neither is safe on a draft.
+/// To set some fields while preserving the rest, use the SDK's merge-safe
+/// update or edit methods, which GET the current document and PUT the full
+/// representation back. Those read-modify-write helpers are not atomic:
+/// a concurrent write between the GET and PUT is overwritten (last write
+/// wins for the whole representation; the window is one round-trip).
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
+@basecampWriteSemantics(mode: "replace", clearsOmitted: true)
 @http(method: "PUT", uri: "/{accountId}/documents/{documentId}")
-operation UpdateDocument {
-  input: UpdateDocumentInput
-  output: UpdateDocumentOutput
+operation ReplaceDocument {
+  input: ReplaceDocumentInput
+  output: ReplaceDocumentOutput
   errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
-structure UpdateDocumentInput {
+structure ReplaceDocumentInput {
   @required
   @httpLabel
   accountId: AccountId
@@ -2456,7 +2478,7 @@ structure UpdateDocumentInput {
   content: DocumentContent
 }
 
-structure UpdateDocumentOutput {
+structure ReplaceDocumentOutput {
 
   document: Document
 }

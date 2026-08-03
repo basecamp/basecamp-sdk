@@ -322,8 +322,8 @@ data class CreateCommentBody(
     val content: String
 )
 
-/** Request body for UpdateDocument. */
-data class UpdateDocumentBody(
+/** Request body for ReplaceDocument. */
+data class ReplaceDocumentBody(
     val title: String? = null,
     val content: String? = null
 )

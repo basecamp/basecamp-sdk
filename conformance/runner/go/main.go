@@ -773,6 +773,51 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todolists().Replace(ctx, todolistID, req)
 		return operationResult{err: err}
 
+	case "UpdateDocument":
+		// Synthetic scenario key (not a wire operation): drives the SDK's
+		// merge-safe composite, which GETs the current document, overlays only
+		// the explicitly-set fields, and PUTs the full representation back.
+		documentID := getInt64Param(tc.PathParams, "documentId")
+		req := &basecamp.UpdateDocumentRequest{
+			Title:   getStringParam(tc.RequestBody, "title"),
+			Content: getStringParam(tc.RequestBody, "content"),
+		}
+		_, err := account.Documents().Update(ctx, documentID, req)
+		return operationResult{err: err}
+
+	case "EditDocument":
+		// Synthetic scenario key (not a wire operation): drives the SDK's
+		// edit closure, assigning each fixture requestBody key onto the
+		// corresponding DocumentFields member (data-driven mutation). Absence
+		// stays absence, so an untouched field keeps its fetched value.
+		documentID := getInt64Param(tc.PathParams, "documentId")
+		_, err := account.Documents().Edit(ctx, documentID, func(f *basecamp.DocumentFields) error {
+			if _, ok := tc.RequestBody["title"]; ok {
+				f.Title = getStringParam(tc.RequestBody, "title")
+			}
+			if _, ok := tc.RequestBody["content"]; ok {
+				f.Content = getStringParam(tc.RequestBody, "content")
+			}
+			return nil
+		})
+		return operationResult{err: err}
+
+	case "ReplaceDocument":
+		// Presence-bearing: only keys the fixture carries become pointers, so
+		// an absent field stays absent on the wire and an explicit "" is sent.
+		documentID := getInt64Param(tc.PathParams, "documentId")
+		req := &basecamp.ReplaceDocumentRequest{}
+		if _, ok := tc.RequestBody["title"]; ok {
+			title := getStringParam(tc.RequestBody, "title")
+			req.Title = &title
+		}
+		if _, ok := tc.RequestBody["content"]; ok {
+			content := getStringParam(tc.RequestBody, "content")
+			req.Content = &content
+		}
+		_, err := account.Documents().Replace(ctx, documentID, req)
+		return operationResult{err: err}
+
 	case "GetTimesheetEntry":
 		entryID := getInt64Param(tc.PathParams, "entryId")
 		_, err := account.Timesheet().Get(ctx, entryID)

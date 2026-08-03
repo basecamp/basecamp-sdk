@@ -1002,8 +1002,31 @@ export interface paths {
         };
         /** @description Get a single document by id */
         get: operations["GetDocument"];
-        /** @description Update an existing document */
-        put: operations["UpdateDocument"];
+        /**
+         * @description Replace a document with a new complete representation.
+         *     The request body is the document's full writable state: any writable field
+         *     omitted from the request is cleared server-side. Omitting content clears it;
+         *     omitting title clears it too, and the document then reads back as
+         *     "Untitled" (Document#title falls back when blank).
+         *     Neither field is required. BC3 builds a brand-new Document from the
+         *     permitted params and swaps the recordable wholesale, and neither attribute
+         *     carries a presence validation — so an omission is a 200 that clears, not a
+         *     422. What BC3 does require is the wrapping document object, which Rails
+         *     synthesizes from a flat body, so a request naming neither field is a 400.
+         *     Publishing a draft (status: "active") is not modeled: the SDK sends only
+         *     title and content, and BC3 rejects a status-only update for the same
+         *     reason it 400s an empty body.
+         *     Subscribers are the one exception to omission-clears. A drafted document
+         *     keeps its current subscribers when the request addresses neither
+         *     subscriptions nor notify, so a full-representation PUT that mentions
+         *     neither is safe on a draft.
+         *     To set some fields while preserving the rest, use the SDK's merge-safe
+         *     update or edit methods, which GET the current document and PUT the full
+         *     representation back. Those read-modify-write helpers are not atomic:
+         *     a concurrent write between the GET and PUT is overwritten (last write
+         *     wins for the whole representation; the window is one round-trip).
+         */
+        put: operations["ReplaceDocument"];
         post?: never;
         delete?: never;
         options?: never;
@@ -5112,6 +5135,11 @@ export interface components {
              */
             position: number;
         };
+        ReplaceDocumentRequestContent: {
+            title?: string;
+            content?: string;
+        };
+        ReplaceDocumentResponseContent: components["schemas"]["Document"];
         ReplaceTodoRequestContent: {
             content: string;
             description?: string;
@@ -5814,11 +5842,6 @@ export interface components {
             content: string;
         };
         UpdateCommentResponseContent: components["schemas"]["Comment"];
-        UpdateDocumentRequestContent: {
-            title?: string;
-            content?: string;
-        };
-        UpdateDocumentResponseContent: components["schemas"]["Document"];
         UpdateFolderRequestContent: {
             /**
              * @description The folder's new name. Blank is rejected with 422 — unlike create, update
@@ -11096,7 +11119,7 @@ export interface operations {
             };
         };
     };
-    UpdateDocument: {
+    ReplaceDocument: {
         parameters: {
             query?: never;
             header?: never;
@@ -11107,17 +11130,17 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["UpdateDocumentRequestContent"];
+                "application/json": components["schemas"]["ReplaceDocumentRequestContent"];
             };
         };
         responses: {
-            /** @description UpdateDocument 200 response */
+            /** @description ReplaceDocument 200 response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UpdateDocumentResponseContent"];
+                    "application/json": components["schemas"]["ReplaceDocumentResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

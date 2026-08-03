@@ -256,7 +256,7 @@ class AccountClient:
 
     @property
     def documents(self):
-        from basecamp.generated.services.documents import DocumentsService
+        from basecamp.services.documents import DocumentsService
 
         return self._service("documents", lambda: DocumentsService(self))
 

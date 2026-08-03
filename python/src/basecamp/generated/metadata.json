@@ -2069,6 +2069,18 @@
       ]
     }
   },
+  "ReplaceDocument": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "ReplaceTodo": {
     "idempotent": true,
     "retry": {
@@ -2440,18 +2452,6 @@
     }
   },
   "UpdateComment": {
-    "idempotent": true,
-    "retry": {
-      "backoff": "exponential",
-      "base_delay_ms": 1000,
-      "max": 3,
-      "retry_on": [
-        429,
-        503
-      ]
-    }
-  },
-  "UpdateDocument": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",
