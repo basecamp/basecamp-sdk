@@ -184,14 +184,24 @@ SDKS = {
 # Deliberately file-scoped rather than a general name resolver: an import line
 # is a local, syntactic fact, where following a name through assignments and
 # re-exports is program analysis and is where this gate stops.
-PY_FROM_OS_RE = re.compile(r"^[ \t]*from[ \t]+os[ \t]+import[ \t]+([^\n#]+)", re.M)
+# The import may be continued, and both spellings are ordinary: a
+# parenthesised list runs over as many lines as it likes, and a backslash
+# continues one. Stopping at the first newline captured `(` alone, bound
+# nothing, and made every read through that import invisible.
+PY_FROM_OS_RE = re.compile(
+    r"^[ \t]*from[ \t]+os[ \t]+import[ \t]*(\([^)]*\)|(?:[^\n#\\]|\\\n)+)", re.M)
 
 
 def python_os_aliases(text: str) -> dict[str, str]:
     """Local names this file binds to `os.getenv` / `os.environ`."""
     bound: dict[str, str] = {}
     for match in PY_FROM_OS_RE.finditer(text):
-        for part in match.group(1).strip().strip("()").split(","):
+        # The continuation marker is punctuation, not part of a name. Left in,
+        # `\` and the name after it split into two words and the clause was
+        # discarded as unparseable -- so the import bound nothing and every
+        # read through it stayed invisible.
+        clause = match.group(1).replace("\\\n", " ").strip().strip("()")
+        for part in clause.split(","):
             bits = part.split()
             if len(bits) == 3 and bits[1] == "as":
                 original, local = bits[0], bits[2]
@@ -1357,19 +1367,23 @@ def prose_lines(readme: Path) -> list[tuple[int, str]]:
     # written about it anywhere. Toggling on either character independently
     # would be the mirror bug: a ``` line inside a ~~~ block would end it early
     # and hand the rest of the example back as prose.
-    fence = None
+    # The run length is part of the fence, not just its character: a closing
+    # fence must be at least as long as the one that opened it, so a ``` line
+    # inside a ```` block is content. Storing only the character closed such a
+    # block early and handed the rest of the example back as prose.
+    fence = None  # (character, opening run length)
     for lineno, line in enumerate(readme.read_text(encoding="utf-8").splitlines(), 1):
         stripped = line.lstrip()
-        marker = "```" if stripped.startswith("```") else (
-            "~~~" if stripped.startswith("~~~") else None)
-        if marker:
+        char = stripped[0] if stripped[:1] in ("`", "~") else None
+        run = len(stripped) - len(stripped.lstrip(char)) if char else 0
+        if run >= 3:
             if fence is None:
-                fence = marker
+                fence = (char, run)
                 continue
-            if marker == fence:
+            if char == fence[0] and run >= fence[1]:
                 fence = None
                 continue
-            # The other marker inside a fenced block is example content.
+            # A shorter run, or the other marker, is example content.
         if fence or line.strip().startswith("|"):
             continue
         out.append((lineno, line))

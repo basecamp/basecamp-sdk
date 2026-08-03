@@ -1680,6 +1680,37 @@ def main() -> int:
         check("a backtick line inside a tilde fence does not end it",
               run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_MIXED"])
 
+        # A closing fence must be at least as long as the one that opened it,
+        # so a ``` line inside a ```` block is content rather than its end.
+        root = tmp / "long-fence"
+        build(root, {
+            "python/README.md":
+                "intro\n\n````\n```\n# The SDK uses BASECAMP_LONG\n```\n````\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_LONG")\n',
+        })
+        check("a short fence does not close a longer one",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_LONG"])
+
+        # A parenthesised import runs over as many lines as it likes, and a
+        # backslash continues one. Both are ordinary Python.
+        root = tmp / "py-paren-import"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_PAREN"),
+            "python/src/c.py":
+                'from os import (\n    getenv,\n)\n\nv = getenv("BASECAMP_PAREN")\n',
+        })
+        check("a parenthesised os import still binds",
+              run_gate(root, PY_SDK), [])
+
+        root = tmp / "py-backslash-import"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_BSLASH"),
+            "python/src/c.py":
+                'from os import \\\n    getenv\n\nv = getenv("BASECAMP_BSLASH")\n',
+        })
+        check("a backslash-continued os import still binds",
+              run_gate(root, PY_SDK), [])
+
         # 20. The shipped entrypoint, end to end. Everything above drives the
         #     helpers `main()` drives, so until here the exit code that `make
         #     check` and the CI step branch on had no coverage at all -- a
