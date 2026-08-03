@@ -2,9 +2,8 @@ package basecamp
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/url"
+	"strings"
 	"time"
 )
 
@@ -98,7 +97,7 @@ type DocumentFields struct {
 // than an empty title. Content is optional in the spec, so empty is genuinely
 // empty and is left alone.
 func fieldsFromDocument(d *Document) (*DocumentFields, error) {
-	if d.Title == "" {
+	if strings.TrimSpace(d.Title) == "" {
 		return nil, &Error{
 			Code:    CodeAPI,
 			Message: `GetDocument returned a document with no "title", but the field is required`,
@@ -123,45 +122,24 @@ func (f *DocumentFields) fullBody() (map[string]any, error) {
 	}, nil
 }
 
-// normalizeDocumentDecodeError converts a response-decoder failure into the
-// SPEC §6 shape for a malformed 2xx body: a statusless, non-retryable api_error
-// naming the deliberate-overwrite escape hatch.
+// documentDecodeError renders a response-decoder failure in the SPEC §6 shape.
 //
 // Go's json.Unmarshal is the typed guard the dynamic SDKs write by hand, and it
 // rejects a wrong-typed field before a composite ever sees it — but it reports
 // that as a raw decoder error, which callers switching on *Error would miss and
 // which carries no hint. (The Swift composite does the same with DecodingError.)
 //
-// Classified by EXCLUSION, not by an allowlist of decoder error types. An
-// allowlist has to enumerate every shape the generated model can produce and it
-// silently leaks the ones it forgets — this had two such holes in review.
-// created_at/updated_at are time.Time, whose UnmarshalJSON returns
-// *time.ParseError rather than an encoding/json sentinel; and
-// content_attachments carries *types.FlexInt dimensions, whose UnmarshalJSON
-// rejects a non-integral value with a plain fmt.Errorf that is no named type at
-// all. There is no enumerable set on that side.
-//
-// It is applied at the ONE call site where the only possible origins are the
-// transport and the decoder — GetDocumentWithResponse — rather than around the
-// whole of Get. A gating hook returns its own sentinel error before any request
-// runs, and wrapping that would break errors.Is and misreport why nothing was
-// sent; keeping the classifier below the gate removes it from the candidate set
-// entirely rather than trying to recognize it.
-//
-// One preflight failure still reaches this call site, though, because it
-// happens INSIDE the generated client: the authEditor installed in
-// initGeneratedClient runs per request, so a token refresh or keyring failure
-// surfaces here with no HTTP response behind it. That is why *Error is excluded
-// too — an error already carrying the SDK taxonomy cannot have come from the
-// response decoder, which never produces one. Without that, an ErrAuth would be
-// reported as malformed document JSON and callers would stop recognizing it.
-func normalizeDocumentDecodeError(err error) error {
-	var sdkErr *Error
-	var urlErr *url.Error
-	if errors.As(err, &sdkErr) || errors.As(err, &urlErr) ||
-		errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return err
-	}
+// There is no classification here, deliberately. Deciding whether an error came
+// from the decoder by INSPECTING it does not work in either direction: decoder
+// errors are not enumerable (created_at/updated_at are time.Time, whose
+// UnmarshalJSON returns *time.ParseError rather than an encoding/json sentinel,
+// and content_attachments carries *types.FlexInt dimensions rejected with a
+// plain fmt.Errorf that is no named type at all), and neither are the errors
+// that precede a response — a gating hook, a token provider or a custom
+// AuthStrategy may each return any sentinel they like. So DocumentsService.Get
+// splits the request from the decode and calls this on the decode step only,
+// where the origin is known by construction rather than guessed.
+func documentDecodeError(err error) error {
 	return &Error{
 		Code:    CodeAPI,
 		Message: truncate(fmt.Sprintf("GetDocument returned a body that does not decode as a document: %v", err)),

@@ -576,6 +576,7 @@ func TestDocumentsService_UpdateRefusesAMissingTitleBeforeWriting(t *testing.T) 
 	}{
 		{"absent", map[string]any{"title": nil}},
 		{"empty", map[string]any{"title": ""}},
+		{"whitespace", map[string]any{"title": "   "}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			getBody := patchDocumentFixture(t, fixture, tc.patch)
@@ -913,6 +914,41 @@ func TestDocumentsService_UpdatePreservesAnAuthError(t *testing.T) {
 	}
 	if apiErr.Code != CodeAuth {
 		t.Fatalf("expected the auth taxonomy to survive, got code %q (message %q)", apiErr.Code, apiErr.Message)
+	}
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatalf("expected no PUT after an auth failure, got %+v", r)
+		}
+	}
+}
+
+// AuthStrategy.Authenticate permits ANY error, and BearerAuth propagates a
+// token provider's error unchanged — so an auth failure is not reliably an
+// *Error. Splitting the request from the decode is what makes this work:
+// nothing inspects the error, so an ordinary sentinel survives errors.Is.
+func TestDocumentsService_UpdatePreservesAnArbitraryAuthError(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	reqs := &[]capturedDocumentRequest{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*reqs = append(*reqs, capturedDocumentRequest{method: r.Method, path: r.URL.Path})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	}))
+	t.Cleanup(server.Close)
+
+	sentinel := errors.New("keyring locked")
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+		WithAuthStrategy(failingAuth{err: sentinel}))
+	svc := client.ForAccount("99999").Documents()
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+		Content: "<div>New body.</div>",
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("expected the auth sentinel to survive errors.Is, got %T: %v", err, err)
 	}
 	for _, r := range *reqs {
 		if r.method == "PUT" {

@@ -476,20 +476,30 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetDocumentWithResponse(ctx, s.client.accountID, documentID)
+	// Split into request and decode rather than calling GetDocumentWithResponse,
+	// so the two error origins never mix. The merge-safe composites read this
+	// body and write every field of it back, so a malformed one has to arrive as
+	// the documented statusless api_error (documentDecodeError in documents.go)
+	// — but everything BEFORE the response is a different failure with its own
+	// meaning, and no inspection of the returned error can reliably tell them
+	// apart. GetDocument covers the gate's successors: the per-request auth
+	// editor (a token provider or custom AuthStrategy may return ANY error), the
+	// transport, and context cancellation. Those return verbatim, so errors.Is
+	// keeps working; only ParseGetDocumentResponse's failure is a decode failure.
+	httpResp, err := s.client.parent.gen.GetDocument(ctx, s.client.accountID, documentID)
 	if err != nil {
-		// Transport or response-decoder failure. The merge-safe composites read
-		// this body and write every field of it back, so a malformed one has to
-		// arrive as the documented statusless api_error rather than as a raw
-		// decoder error (see normalizeDocumentDecodeError in documents.go).
-		err = normalizeDocumentDecodeError(err)
+		return nil, err
+	}
+	resp, decodeErr := generated.ParseGetDocumentResponse(httpResp)
+	if decodeErr != nil {
+		err = documentDecodeError(decodeErr)
 		return nil, err
 	}
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		err = normalizeDocumentDecodeError(fmt.Errorf("the response carried no document object"))
+		err = documentDecodeError(fmt.Errorf("the response carried no document object"))
 		return nil, err
 	}
 

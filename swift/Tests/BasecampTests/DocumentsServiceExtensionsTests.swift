@@ -121,7 +121,7 @@ final class DocumentsServiceExtensionsTests: XCTestCase {
     func testUpdate_refusesABlankTitle() async throws {
         let log = DocumentRequestLog()
         var blank = fullDocumentJSON()
-        blank["title"] = ""
+        blank["title"] = "   "
         let blankData = try JSONSerialization.data(withJSONObject: blank)
         let transport = MockTransport { request in
             log.record(request)

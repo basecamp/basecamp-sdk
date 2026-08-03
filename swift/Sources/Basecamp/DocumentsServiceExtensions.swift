@@ -38,7 +38,7 @@ public struct DocumentFields: Sendable {
     /// full-replace PUT would blank the real title on a call that only touched
     /// `content`.
     init(from document: Document) throws {
-        guard !document.title.isEmpty else {
+        guard !document.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw BasecampError.api(
                 message: "GetDocument returned a document with a blank \"title\", "
                     + "but the API never renders it blank",

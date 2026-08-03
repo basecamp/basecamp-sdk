@@ -663,6 +663,8 @@ describe("DocumentsService", () => {
       // BC3 can never render a blank title, so "" is malformed too — and it is
       // the shape a missing/null check alone would let through.
       ["blank", ""],
+      // BC3 blanks via `presence`, whose blank case includes whitespace-only.
+      ["whitespace", "   "],
     ])("update refuses a %s title before writing", async (_label, value) => {
       const requests: string[] = [];
       const body: Record<string, unknown> = sampleDocument(5001, { title: value });
@@ -677,6 +679,8 @@ describe("DocumentsService", () => {
       ["absent", undefined],
       ["null", null],
       ["blank", ""],
+      // BC3 blanks via `presence`, whose blank case includes whitespace-only.
+      ["whitespace", "   "],
     ])("edit refuses a %s title before writing", async (_label, value) => {
       const requests: string[] = [];
       const body: Record<string, unknown> = sampleDocument(5001, { title: value });

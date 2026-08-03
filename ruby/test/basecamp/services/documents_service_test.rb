@@ -409,7 +409,7 @@ class DocumentsServiceTest < Minitest::Test
   # BC3 can never render a blank title, so "" is malformed too — and it is the
   # shape a missing/nil check alone would let through.
   def test_update_refuses_a_blank_title_before_writing
-    captured = stub_document_get_and_put(document: full_document("title" => ""))
+    captured = stub_document_get_and_put(document: full_document("title" => "   "))
 
     error = assert_raises(Basecamp::ApiError) do
       @account.documents.update(document_id: 200, content: "<div>New body.</div>")
@@ -422,7 +422,7 @@ class DocumentsServiceTest < Minitest::Test
   end
 
   def test_edit_refuses_a_blank_title_before_writing
-    captured = stub_document_get_and_put(document: full_document("title" => ""))
+    captured = stub_document_get_and_put(document: full_document("title" => "   "))
 
     assert_raises(Basecamp::ApiError) do
       @account.documents.edit(document_id: 200) { |doc| doc.content = "<div>New body.</div>" }

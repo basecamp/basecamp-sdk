@@ -27,7 +27,7 @@ function requiredWritableString(
   opts: { record: string; escape: string }
 ): string {
   const value = body[key];
-  if (value === undefined || value === null || value === "") {
+  if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
     throw malformedResponse(
       `${opts.record} field "${key}" is required but the response carried ${describeValue(value)}`,
       `The merge-safe update/edit resend this field verbatim, so a missing or blank value would ` +

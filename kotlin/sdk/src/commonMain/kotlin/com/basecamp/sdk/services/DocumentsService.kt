@@ -133,7 +133,7 @@ class DocumentsService(client: AccountClient) :
      * call that only touched `content`.
      */
     private fun fieldsFromDocument(document: Document): DocumentFields {
-        if (document.title.isEmpty()) {
+        if (document.title.isBlank()) {
             throw BasecampException.Api(
                 message = "GetDocument returned a document with a blank \"title\", " +
                     "but the API never renders it blank",

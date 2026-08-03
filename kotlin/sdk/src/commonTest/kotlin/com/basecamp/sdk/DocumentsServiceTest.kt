@@ -125,7 +125,7 @@ class DocumentsServiceTest {
         val client = mockClient { request ->
             capture.methods.add(request.method.value)
             respond(
-                content = fullDocumentJson().replace("\"title\": \"Kickoff notes\"", "\"title\": \"\""),
+                content = fullDocumentJson().replace("\"title\": \"Kickoff notes\"", "\"title\": \"   \""),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )

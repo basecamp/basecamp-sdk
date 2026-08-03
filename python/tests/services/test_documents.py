@@ -454,13 +454,13 @@ class TestMalformedResponseFields:
     @respx.mock
     # BC3 can never render a blank title, so "" is malformed too — and it is
     # the shape a missing/null check alone would let through.
-    @pytest.mark.parametrize("mangle", ["absent", "null", "blank"])
+    @pytest.mark.parametrize("mangle", ["absent", "null", "blank", "whitespace"])
     def test_update_refuses_an_absent_title_before_writing(self, mangle):
         document = _document()
         if mangle == "absent":
             document.pop("title", None)
         else:
-            document["title"] = None if mangle == "null" else ""
+            document["title"] = {"null": None, "blank": "", "whitespace": "   "}[mangle]
         _, put_route = _routes(document)
 
         with pytest.raises(ApiError, match=r'field "title" is required'):
@@ -470,13 +470,13 @@ class TestMalformedResponseFields:
         assert respx.calls.call_count == 1
 
     @respx.mock
-    @pytest.mark.parametrize("mangle", ["absent", "null", "blank"])
+    @pytest.mark.parametrize("mangle", ["absent", "null", "blank", "whitespace"])
     def test_edit_refuses_an_absent_title_before_writing(self, mangle):
         document = _document()
         if mangle == "absent":
             document.pop("title", None)
         else:
-            document["title"] = None if mangle == "null" else ""
+            document["title"] = {"null": None, "blank": "", "whitespace": "   "}[mangle]
         _, put_route = _routes(document)
 
         with (
