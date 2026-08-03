@@ -93,20 +93,24 @@ COMMENT_STARTS = ("#", "//", "*", "/*")
 FILENAME_TEST_MARKERS = ("_test.", "test_", ".test.", "_spec.")
 
 
-def is_test(path: Path) -> bool:
+def is_test(rel_path: Path) -> bool:
     """Test code, by directory or by filename.
+
+    Takes a repo-relative path: matching against an absolute one would consult
+    the checkout's parent directories, so a clone living under any directory
+    named e.g. `Tests` would silently skip every file in the repo.
 
     Directory matching has to understand Kotlin/Swift source-set naming
     (`commonTest`, `jvmTest`, `Tests`) as well as the plain `test`/`tests`/`spec`
     directories the other SDKs use.
     """
-    for part in path.parts[:-1]:
+    for part in rel_path.parts[:-1]:
         lowered = part.lower()
         if lowered in ("test", "tests", "spec", "specs"):
             return True
         if part.endswith(("Test", "Tests")):
             return True
-    return any(marker in path.name for marker in FILENAME_TEST_MARKERS)
+    return any(marker in rel_path.name for marker in FILENAME_TEST_MARKERS)
 
 
 def real_reads(spec: dict) -> dict[str, list[str]]:
@@ -117,7 +121,10 @@ def real_reads(spec: dict) -> dict[str, list[str]]:
         return found
     compiled = [re.compile(p) for p in spec["patterns"]]
     for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.suffix not in spec["suffixes"] or is_test(path):
+        if not path.is_file() or path.suffix not in spec["suffixes"]:
+            continue
+        rel = path.relative_to(REPO)
+        if is_test(rel):
             continue
         for lineno, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
             if line.lstrip().startswith(COMMENT_STARTS):
@@ -125,7 +132,7 @@ def real_reads(spec: dict) -> dict[str, list[str]]:
             for pattern in compiled:
                 for name in pattern.findall(line):
                     if VAR_RE.fullmatch(name):
-                        found.setdefault(name, []).append(f"{path.relative_to(REPO)}:{lineno}")
+                        found.setdefault(name, []).append(f"{rel}:{lineno}")
     return found
 
 
