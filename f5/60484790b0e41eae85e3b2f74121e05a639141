@@ -1,0 +1,22 @@
+scripts/check-runner-test-reachability
+  s_ae792ed0be3006::t_1170a60466915d 634-644,646-647
+  s_ae792ed0be3006::t_9b9f12e6f48d82 970-980
+  s_ae792ed0be3006::t_f187a8040d85dd 1682-1789
+  s_ae792ed0be3006::t_0e356e82d9bcf1 791-842,846-856
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f560484790b0e41eae85e3b2f74121e05a639141",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
