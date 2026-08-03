@@ -101,10 +101,22 @@ pass=0
 # Basenames of every test-bearing file found on disk, for the enumeration ban.
 TEST_BASENAMES=()
 
-# Source files only. Toolchain scratch (.venv, node_modules, Gradle/SwiftPM
+# Source files only. Toolchain scratch (.venv, node_modules, SwiftPM/Gradle
 # build trees) is full of third-party test files that no discovery of OURS is
 # expected to reach, and none of it is committed.
-PRUNE=(-name .venv -o -name node_modules -o -name vendor -o -name build
+#
+# `build` is deliberately NOT here, even though Gradle's output directory is
+# called that. Pruning it globally silently outranked a per-arm exclusion:
+# `build` is in pytest's norecursedirs default, so the Python arm is supposed to
+# REPORT conformance/runner/python/build/test_stranded.py as collected-by-
+# nothing — and instead find never handed it over, the arm counted only the two
+# real files, and the check exited 0. A global prune that hides a file from the
+# arm whose job is to report it is not a prune, it is a blind spot. Gradle's own
+# tree is unaffected: the Kotlin arm scans kotlin/conformance/src, and Gradle
+# writes to kotlin/conformance/build, outside it. SwiftPM's .build stays pruned,
+# and every build/ that exists under a scan root today sits inside node_modules,
+# which is pruned before find descends into it.
+PRUNE=(-name .venv -o -name node_modules -o -name vendor
        -o -name .build -o -name .gradle -o -name .pytest_cache -o -name .git)
 
 # find_sources <dir> <ext> — committed *.<ext> under <dir>, vendored trees pruned.
@@ -430,6 +442,95 @@ check_dir_discovery() {
 }
 
 # ---------------------------------------------------------------------------
+# drop_disabled_workflow_blocks — remove steps and jobs that a statically false
+# `if:` turns off, so an invocation check reads only what CI would run.
+#
+# A step carrying `if: ${{ false }}` is skipped by GitHub Actions, but its
+# `run: make conformance-runner-tests-go` is still a line in the file, so a
+# line-wise grep reported the Go suite as invoked while CI ran none of it.
+# Disabling a step is the natural way to "temporarily" park a suite, which makes
+# it the natural way to reopen #572.
+#
+# The bound is deliberate and narrow: only a LITERALLY false condition —
+# `if: false` or `if: ${{ false }}` — disables anything here. Expressions are
+# not evaluated, because this workflow legitimately conditions runner-test steps
+# on the matrix leg (`if: matrix.ruby == '3.3'`), and a check that treated any
+# `if:` as disqualifying would fail the real workflow. Self-test 25 pins that.
+#
+# Two passes, jobs then steps, because a job block contains step blocks and one
+# buffer cannot be both. A job-level `if:` is the one that appears before the
+# job's `steps:` key.
+# ---------------------------------------------------------------------------
+drop_disabled_workflow_blocks() {
+    awk '
+        function false_if(s) {
+            return s ~ /^[[:space:]]*if:[[:space:]]*(\$\{\{[[:space:]]*)?false([[:space:]]*\}\})?[[:space:]]*$/
+        }
+        function indent(s,   n) { n = match(s, /[^ ]/); return n ? n - 1 : -1 }
+        function flush(   i) {
+            if (!disabled) for (i = 1; i <= n; i++) print buf[i]
+            n = 0; disabled = 0; injob = 0; seensteps = 0
+        }
+        /^jobs:[[:space:]]*$/ { print; injobs = 1; jobind = -1; next }
+        {
+            if (!injobs) { print; next }
+            if ($0 ~ /^[[:space:]]*$/) { if (injob) buf[++n] = $0; else print; next }
+            ind = indent($0)
+            if (jobind < 0) jobind = ind
+            if (ind <= jobind) {
+                if (injob) flush()
+                if (ind < jobind) { injobs = 0; print; next }
+                injob = 1; n = 0; disabled = 0; seensteps = 0
+                buf[++n] = $0
+                next
+            }
+            if (injob) {
+                if ($0 ~ /^[[:space:]]*steps:[[:space:]]*$/) seensteps = 1
+                else if (!seensteps && false_if($0)) disabled = 1
+                buf[++n] = $0
+                next
+            }
+            print
+        }
+        END { if (injob) flush() }
+    ' | awk '
+        function false_if(s) {
+            return s ~ /^[[:space:]]*(-[[:space:]]+)?if:[[:space:]]*(\$\{\{[[:space:]]*)?false([[:space:]]*\}\})?[[:space:]]*$/
+        }
+        function indent(s,   n) { n = match(s, /[^ ]/); return n ? n - 1 : -1 }
+        function flush(   i) {
+            if (!disabled) for (i = 1; i <= n; i++) print buf[i]
+            n = 0; disabled = 0; instep = 0
+        }
+        {
+            if ($0 ~ /^[[:space:]]*$/) { if (instep) buf[++n] = $0; else print; next }
+            ind = indent($0)
+            # A dash at or left of the current item opens a new one; a deeper
+            # dash is a nested list INSIDE this step (a `with:` value, say) and
+            # must not split it, or an `if:` above would stop guarding the
+            # `run:` below.
+            if ($0 ~ /^[[:space:]]*-[[:space:]]/ && (!instep || ind <= dashind)) {
+                if (instep) flush()
+                instep = 1; dashind = ind; n = 0; disabled = 0
+                buf[++n] = $0
+                if (false_if($0)) disabled = 1
+                next
+            }
+            if (instep) {
+                if (ind > dashind) {
+                    buf[++n] = $0
+                    if (false_if($0)) disabled = 1
+                    next
+                }
+                flush()
+            }
+            print
+        }
+        END { if (instep) flush() }
+    '
+}
+
+# ---------------------------------------------------------------------------
 # Tooth (1): no recipe names an individual test file.
 # ---------------------------------------------------------------------------
 check_no_enumeration() {
@@ -617,7 +718,10 @@ else
     # runs it. The enumeration ban above deliberately keeps scanning the RAW
     # file — a test filename left in a comment selects nothing, but it is a
     # stale reference worth surfacing rather than hiding.
-    workflow_code="$(sed 's/#.*//' "$WORKFLOW")"
+    # Comment-stripped AND disabled-block-stripped: a step commented out
+    # wholesale and a step turned off by `if: ${{ false }}` are the same fact —
+    # its text survives, and CI runs none of it.
+    workflow_code="$(sed 's/#.*//' "$WORKFLOW" | drop_disabled_workflow_blocks)"
 
     # invoked_by_workflow <command-regex> — does the workflow RUN this, as
     # opposed to merely containing its text?
@@ -778,6 +882,17 @@ fi
 #                    nothing → reported. Accepting the wrapper without reading
 #                    its recipe asserts that a name appears in a file, not that
 #                    tests run.
+# Case 22 a pytest suite under build/ → reported. `build` used to sit in the
+#                    global PRUNE, so find never handed the file to the arm whose
+#                    norecursedirs rule exists to report it — a global prune
+#                    outranking a per-arm exclusion is a blind spot, not a prune.
+# Case 23 a runner-test step carrying `if: ${{ false }}` → reported missing.
+#                    Actions skips it; the text stays in the file.
+# Case 24 the same at JOB level → reported missing.
+# Case 25 the converse of 23/24, and what bounds them: a step conditioned on
+#                    `matrix.ruby == '3.3'` — which is how the real workflow
+#                    runs the Ruby suite — must still count. Only a LITERALLY
+#                    false condition disables; expressions are not evaluated.
 # ---------------------------------------------------------------------------
 selftest_tree() {
     # selftest_tree <dir> <ruby-recipe-body>
@@ -1359,6 +1474,124 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         st_fail=1
     else
         echo "  ok: hollow TypeScript wrapper reported (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 22: a pytest suite under build/ must be reported"
+    # Same fact as case 12 (dist/), against the directory the global PRUNE used
+    # to hide. `build` is in pytest's norecursedirs default AND was in PRUNE, so
+    # find never handed the file over and the arm reported nothing — a check
+    # exiting 0 over a guaranteed-failing, collected-by-nothing test.
+    selftest_tree "$WORK/py-build" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/py-build/conformance/runner/python/build"
+    printf 'def test_real():\n    assert True\n' \
+        > "$WORK/py-build/conformance/runner/python/test_real.py"
+    printf 'def test_stranded():\n    assert False, "collected by nothing"\n' \
+        > "$WORK/py-build/conformance/runner/python/build/test_stranded.py"
+    out="$(REPO_ROOT="$WORK/py-build" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: py-build tree passed (exit 0) — build/ is pruned before the Python"
+        echo "        arm can classify it as a location pytest skips"
+        st_fail=1
+    elif ! grep -q 'build/test_stranded\.py' <<<"$out"; then
+        echo "  FAIL: a test under build/ was not reported — pytest's norecursedirs skips"
+        echo "        it and this check never saw it"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: pytest suite under build/ reported unreachable (exit $st)"
+    fi
+
+    # Cases 23-25 share a workflow shape; only the Go step's condition varies.
+    # <cond-line> is inserted into the Go step, <job-cond> into the job.
+    selftest_workflow() {
+        local dir="$1" step_cond="$2" job_cond="$3"
+        mkdir -p "$dir/.github/workflows"
+        {
+            echo 'jobs:'
+            echo '  test:'
+            [[ -n "$job_cond" ]] && echo "    $job_cond"
+            echo '    steps:'
+            echo '      - name: Go runner tests'
+            [[ -n "$step_cond" ]] && echo "        $step_cond"
+            echo '        run: make conformance-runner-tests-go'
+            local t
+            for t in python ruby kotlin swift; do
+                echo "      - run: make conformance-runner-tests-$t"
+            done
+            echo '      - run: npx vitest run'
+        } > "$dir/.github/workflows/test.yml"
+    }
+
+    echo ""
+    echo "==> Self-test 23: a runner-test step disabled by if: false is not invoked"
+    selftest_tree "$WORK/wf-step-off" "$RECURSIVE_RECIPE"
+    # shellcheck disable=SC2016  # ${{ }} is GitHub Actions syntax, not shell
+    selftest_workflow "$WORK/wf-step-off" 'if: ${{ false }}' ''
+    out="$(REPO_ROOT="$WORK/wf-step-off" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: wf-step-off tree passed (exit 0) — a disabled step counts as invoked"
+        st_fail=1
+    elif ! grep -q 'conformance-runner-tests-go' <<<"$out"; then
+        echo "  FAIL: a step carrying \`if: \${{ false }}\` was counted as an invocation"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: step disabled by if: false reported missing (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 24: a runner-test JOB disabled by if: false is not invoked"
+    selftest_tree "$WORK/wf-job-off" "$RECURSIVE_RECIPE"
+    selftest_workflow "$WORK/wf-job-off" '' 'if: false'
+    out="$(REPO_ROOT="$WORK/wf-job-off" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: wf-job-off tree passed (exit 0) — a disabled job counts as invoked"
+        st_fail=1
+    elif ! grep -q 'conformance-runner-tests-go' <<<"$out"; then
+        echo "  FAIL: a job carrying \`if: false\` was counted as invoking its steps"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: job disabled by if: false reported missing (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 25: a matrix-conditioned step must STILL count as invoked"
+    # The bound on 23/24, and not hypothetical: the real workflow runs the Ruby
+    # runner tests under `if: matrix.ruby == '3.3'`. Treating any `if:` as
+    # disqualifying would fail the workflow this check is meant to protect —
+    # broadening the step predicate to a bare `if:` drops that step and reports
+    # conformance-runner-tests-ruby missing against the real file.
+    #
+    # BOTH predicates are planted, step and job. An earlier version of this case
+    # carried only the step condition, and a mutant that broadened the JOB
+    # predicate to a bare `if:` passed the whole self-test — a quiet case that
+    # covers one of two paths is a quiet case that proves one of two things.
+    selftest_tree "$WORK/wf-matrix" "$RECURSIVE_RECIPE"
+    selftest_workflow "$WORK/wf-matrix" "if: matrix.go == '1.25'" \
+        "if: github.event_name == 'push'"
+    out="$(REPO_ROOT="$WORK/wf-matrix" "$SELF" 2>&1)"
+    if grep -q 'does not invoke every per-language runner-test target' <<<"$out"; then
+        echo "  FAIL: a matrix-conditioned step was treated as disabled — expressions are"
+        echo "        not evaluated here, and only a literally false condition disables"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    elif ! grep -q 'invokes all five conformance-runner-tests-\* targets' <<<"$out"; then
+        echo "  FAIL: the invocation check did not report ok, so its silence proves"
+        echo "        nothing about the matrix-conditioned step"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: matrix-conditioned runner-test step still counts as invoked"
     fi
 
     echo ""
