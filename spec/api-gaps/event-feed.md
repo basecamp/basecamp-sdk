@@ -164,7 +164,7 @@ operations:
    resolve, plus the cursor-page pagination mode's first consumer.
 4. **Client wiring, all six SDKs, named exactly:**
    - Go: `AccountClient` field/accessor plus a generated-client-backed service wrapper
-     (`go/pkg/basecamp/eventfeed wiring follows the bookmarks.go precedent`)
+     (wiring under `go/pkg/basecamp/` follows the `bookmarks.go` precedent)
    - TypeScript: `typescript/src/client.ts` + re-export from `typescript/src/index.ts`
    - Ruby: `ruby/lib/basecamp/client.rb`
    - Python: `python/src/basecamp/client.py` **and** `python/src/basecamp/async_client.py`
