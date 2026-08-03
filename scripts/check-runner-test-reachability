@@ -90,6 +90,12 @@ cd "$REPO_ROOT" || exit 2
 # Byte-wise collation so globs and sorts order identically everywhere.
 export LC_ALL=C
 
+# Extended globs, so a discovery pattern can be written the way its toolchain
+# documents it. vitest's default include is `**/*.{test,spec}.?(c|m)[jt]s?(x)`;
+# with extglob that transcribes to one pattern instead of the 24 it expands to,
+# and a pattern that is a transcription can be checked against the docs.
+shopt -s extglob
+
 fail=0
 pass=0
 # Basenames of every test-bearing file found on disk, for the enumeration ban.
@@ -102,8 +108,29 @@ PRUNE=(-name .venv -o -name node_modules -o -name vendor -o -name build
        -o -name .build -o -name .gradle -o -name .pytest_cache -o -name .git)
 
 # find_sources <dir> <ext> — committed *.<ext> under <dir>, vendored trees pruned.
+#
+# <ext> may be a `|`-separated list. The scanned extension set has to be the one
+# the toolchain COLLECTS, not the one the runner happens to use today: a file
+# with an unscanned extension is invisible to the content detector, the arm's
+# `found` count stays nonzero thanks to the others, and it prints `ok` — the
+# silent direction. A `stranded.tsx` importing vitest was exactly that hole
+# while this scanned `ts` alone.
 find_sources() {
-    find "$1" \( "${PRUNE[@]}" \) -prune -o -type f -name "*.$2" -print 2>/dev/null | sort
+    local dir="$1" ext="$2"
+    local names=() e first=1
+    local IFS='|'
+    # shellcheck disable=SC2206  # deliberate split on the ext separator
+    local exts=($ext)
+    IFS=' '
+    for e in "${exts[@]}"; do
+        if [[ "$first" -eq 1 ]]; then
+            names+=(-name "*.$e")
+            first=0
+        else
+            names+=(-o -name "*.$e")
+        fi
+    done
+    find "$dir" \( "${PRUNE[@]}" \) -prune -o -type f \( "${names[@]}" \) -print 2>/dev/null | sort
 }
 
 note_fail() {
@@ -285,10 +312,11 @@ check_glob_discovery() {
     if [[ "${#ignored[@]}" -gt 0 ]]; then
         note_fail "$label: test file(s) in a location the toolchain skips" \
             "${ignored[@]}" \
-            "the go tool ignores directories and files beginning with '.' or '_'," \
-            "and any directory named testdata (go help packages), so a correctly-" \
-            "named _test.go there is compiled by nothing. Move it, or rename the" \
-            "directory."
+            "the name matches a discovery glob and find reaches the file, but" \
+            "$label's own discovery excludes that location — the go tool ignores" \
+            "'.'/'_' names and testdata dirs (go help packages), pytest skips its" \
+            "norecursedirs default, vitest its default exclude — so it is compiled" \
+            "or collected by nothing. Move it, or rename the directory."
         clean=0
     fi
     if [[ "${#misplaced[@]}" -gt 0 ]]; then
@@ -303,6 +331,51 @@ check_glob_discovery() {
 
     pass=$((pass + 1))
     echo "  ok: $label — $found test file(s), all matched by ${globs[*]} ($scope discovery)"
+}
+
+# check_go_build_constraints <dir> — a runner test the go tool may EXCLUDE from
+# the build is not reachable either, however well it is named and placed.
+#
+# `go help build` gives two mechanisms: a `//go:build` line, and an implicit
+# constraint from the filename — a source file ending in `_GOOS.go`,
+# `_GOARCH.go` or `_GOOS_GOARCH.go` (the suffix sits before `_test`, so
+# `probe_windows_test.go`) is built only for that target. Either way
+# `go test ./...` on the CI runner compiles nothing in the file, while the glob
+# matches it, find reaches it, and the arm above counts it as reachable.
+#
+# This does NOT try to decide whether a constraint is satisfied — that would
+# mean modelling GOOS/GOARCH/tags for every job that runs the suite, and
+# guessing is how the Ruby scope hole opened. Any constraint on a runner test is
+# reported: reachability cannot be certified, so it must be stated deliberately.
+# There are none today, and a suite that genuinely needs one belongs behind an
+# explicit exception here rather than behind a silent skip.
+GO_TARGET_SUFFIX='(android|darwin|dragonfly|freebsd|hurd|illumos|ios|js|linux|nacl|netbsd|openbsd|plan9|solaris|wasip1|windows|zos|386|amd64|arm|arm64|loong64|mips|mips64|mips64le|mipsle|ppc64|ppc64le|riscv64|s390x|sparc64|wasm)'
+check_go_build_constraints() {
+    local dir="$1" marker="$2"
+    [[ -d "$dir" ]] || return 0
+
+    local constrained=() file base
+    while IFS= read -r file; do
+        grep -Eq "$marker" "$file" || continue
+        base="$(basename "$file")"
+        if grep -Eq '^//[[:space:]]*go:build|^//[[:space:]]*\+build' "$file"; then
+            constrained+=("$file (//go:build constraint)")
+        elif [[ "$base" =~ _${GO_TARGET_SUFFIX}(_${GO_TARGET_SUFFIX})?(_test)?\.go$ ]]; then
+            constrained+=("$file (implicit constraint from the filename)")
+        fi
+    done < <(find_sources "$dir" go)
+
+    if [[ "${#constrained[@]}" -gt 0 ]]; then
+        note_fail "Go: test file(s) the go tool may exclude from the build" \
+            "${constrained[@]}" \
+            "a build constraint decides whether \`go test ./...\` compiles the file" \
+            "at all (go help build), so a constrained runner test can be correctly" \
+            "named, correctly placed, and still assert nothing on the platform CI" \
+            "runs. Drop the constraint, or state the exception here."
+        return
+    fi
+    pass=$((pass + 1))
+    echo "  ok: Go — no runner test hides behind a build constraint"
 }
 
 # check_dir_discovery <label> <ext> <test-root> <scan-root> <content-marker-regex>
@@ -388,9 +461,11 @@ echo "==> Checking conformance-runner test reachability"
 # --- Tooth 2, per language --------------------------------------------------
 # Go, Python and TypeScript are `recursive` on their toolchains' own authority:
 # `go test ./...` walks the package tree, pytest recurses from its rootdir, and
-# vitest's default include is `**/*.test.ts`. Ruby's scope is read back out of
-# the Makefile, because Ruby's discovery is written there.
+# vitest's default include is `**/*.{test,spec}.?(c|m)[jt]s?(x)`. Ruby's scope is
+# read back out of the Makefile, because Ruby's discovery is written there.
 RUBY_SCOPE="$(ruby_discovery_scope)"
+
+GO_TEST_MARKER='^func (Test|Benchmark|Fuzz|Example)[^a-z]'
 
 # Go's rule is "the prefix, then a character that is not a lowercase letter" —
 # `go help test`: TestXxx/BenchmarkXxx/FuzzXxx where Xxx does not start with a
@@ -404,8 +479,12 @@ RUBY_SCOPE="$(ruby_discovery_scope)"
 # names that begin with '.' or '_' are ignored by the go tool, as are
 # directories named testdata".
 check_glob_discovery "Go" go conformance/runner/go \
-    '^func (Test|Benchmark|Fuzz|Example)[^a-z]' recursive \
+    "$GO_TEST_MARKER" recursive \
     '(^|/)[._]|(^|/)testdata(/|$)' '*_test.go'
+
+# Name and placement are not the whole of Go reachability — a build constraint
+# can exclude a correctly-named, correctly-placed file from the build entirely.
+check_go_build_constraints conformance/runner/go "$GO_TEST_MARKER"
 
 # The ignore pattern is pytest's `norecursedirs` default, which `pytest --help`
 # gives as `*.egg .* _darcs build CVS dist node_modules venv {arch}`: a
@@ -466,11 +545,21 @@ check_glob_discovery "Ruby" rb conformance/runner/ruby \
 # does run — the false-positive direction, and the direction that gets a gate
 # switched off by the next person it inconveniences.
 #
-# The scan is `.ts` because the runner is TypeScript throughout. The default
-# include's other extensions (.tsx/.mts/.cts/.js…) are not scanned, so a runner
-# file with one of them means widening the ext here in the same change.
-check_glob_discovery "TypeScript" ts conformance/runner/typescript \
-    "from ['\"]vitest['\"]" recursive '' '*.test.ts' '*.spec.ts'
+# The SCAN is every extension that include can match, not the `.ts` the runner
+# happens to use today. Scanning `ts` alone made a `stranded.tsx` importing
+# vitest invisible: unscanned means undetected, undetected means unreported, and
+# the six .ts suites kept `found` nonzero so the arm printed `ok` over it. The
+# glob is the documented include transcribed with extglob rather than expanded
+# by hand, so it can be diffed against the docs.
+#
+# The ignore pattern is vitest's default EXCLUDE — node_modules, dist, cypress
+# and the dot-dirs. tsconfig.json here declares `"outDir": "dist"`, so emitted
+# `*.test.js` under dist/ is a real possibility, and vitest collects none of it.
+VITEST_EXTS='ts|tsx|mts|mtsx|cts|ctsx|js|jsx|mjs|mjsx|cjs|cjsx'
+check_glob_discovery "TypeScript" "$VITEST_EXTS" conformance/runner/typescript \
+    "from ['\"]vitest['\"]" recursive \
+    '(^|/)(node_modules|dist|cypress|\.idea|\.git|\.cache|\.output|\.temp)/' \
+    '*.@(test|spec).?(c|m)@(j|t)s?(x)'
 
 # Gradle's Kotlin test source set is src/test/kotlin, NOT src/test — the whole
 # module is scanned so a .kt under src/test/anything-else is reported.
@@ -529,9 +618,26 @@ else
     # file — a test filename left in a comment selects nothing, but it is a
     # stale reference worth surfacing rather than hiding.
     workflow_code="$(sed 's/#.*//' "$WORKFLOW")"
+
+    # invoked_by_workflow <command-regex> — does the workflow RUN this, as
+    # opposed to merely containing its text?
+    #
+    # `grep -q "make <target>$"` did not ask that. It accepted the name anywhere
+    # in an uncommented line, so `run: echo make conformance-runner-tests-go`
+    # reported the Go suite as invoked while CI ran nothing — the same
+    # looks-covered-runs-nothing shape as #572, one layer out. The command has to
+    # BE the command: after an optional `- ` list dash and an optional `run:`
+    # key, the line must start with it (a `run: |` block body is the same shape
+    # without the key), or follow a `&&`/`;`/`|` that ends the previous command
+    # in a chain. `echo make …` matches neither.
+    invoked_by_workflow() {
+        grep -Eq "^[[:space:]]*(-[[:space:]]+)?(run:[[:space:]]*)?([^#]*(&&|;|\|)[[:space:]]*)?$1[[:space:]]*$" \
+            <<<"$workflow_code"
+    }
+
     missing_targets=()
     for target in go python ruby kotlin swift; do
-        grep -q "make conformance-runner-tests-$target\$" <<<"$workflow_code" \
+        invoked_by_workflow "make[[:space:]]+conformance-runner-tests-$target" \
             || missing_targets+=("conformance-runner-tests-$target")
     done
     if [[ "${#missing_targets[@]}" -gt 0 ]]; then
@@ -551,19 +657,47 @@ else
     # while every other check still reported green. Accept either the direct
     # vitest call or the make target that wraps it.
     #
-    # Both invocation checks read `workflow_code`, the comment-stripped file.
-    # The workflow explains its own choice of `npx vitest run` over `npm test`
-    # in a comment three lines above the step, so a naive grep matched the PROSE
-    # and passed with the step deleted — the first version of this very check
-    # did exactly that, and its red proof is what caught it. Match what CI would
-    # run, not what it says about it.
-    if grep -Eq '(^|[^-[:alnum:]])(npx )?vitest run|make conformance-typescript[[:space:]]*$' \
-        <<<"$workflow_code"; then
+    # Both invocation checks read `workflow_code`, the comment-stripped file, and
+    # both go through invoked_by_workflow. The workflow explains its own choice
+    # of `npx vitest run` over `npm test` in a comment three lines above the
+    # step, so a naive grep matched the PROSE and passed with the step deleted —
+    # the first version of this very check did exactly that, and its red proof is
+    # what caught it. Match what CI would run, not what it says about it.
+    #
+    # The WRAPPER form is followed rather than trusted. Accepting
+    # `make conformance-typescript` while never reading that recipe meant a
+    # recipe rewritten to `@true` left this printing `ok` over six suites that
+    # ran nowhere — the check would have been asserting that a name appears in a
+    # workflow, which is not a fact about whether tests run. So when CI takes
+    # the wrapper, the recipe must reach vitest: directly, or through the `npm
+    # test` script, which is followed one level into package.json rather than
+    # assumed to mean vitest.
+    ts_invoked=0
+    ts_detail=()
+    if invoked_by_workflow '(npx[[:space:]]+)?vitest run'; then
+        ts_invoked=1
+    elif invoked_by_workflow 'make[[:space:]]+conformance-typescript'; then
+        ts_recipe="$(make_recipes '^conformance-typescript:')"
+        ts_pkg=conformance/runner/typescript/package.json
+        if grep -Eq 'vitest run' <<<"$ts_recipe"; then
+            ts_invoked=1
+        elif grep -Eq 'npm (run )?test' <<<"$ts_recipe" \
+            && grep -Eq '"test"[[:space:]]*:[[:space:]]*"[^"]*vitest' "$ts_pkg" 2>/dev/null; then
+            ts_invoked=1
+        else
+            ts_detail=(
+                "the workflow takes the 'make conformance-typescript' wrapper, but that"
+                "recipe reaches no vitest run — neither directly nor through an npm test"
+                "script that resolves to vitest in $ts_pkg."
+            )
+        fi
+    fi
+    if [[ "$ts_invoked" -eq 1 ]]; then
         pass=$((pass + 1))
         echo "  ok: $WORKFLOW invokes the TypeScript runner suite"
     else
         note_fail "$WORKFLOW does not invoke the TypeScript runner suite" \
-            "no 'vitest run' and no 'make conformance-typescript' step" \
+            "${ts_detail[@]:-no 'vitest run' command and no 'make conformance-typescript' step}" \
             "TypeScript has no conformance-runner-tests-* target, so nothing else" \
             "here would notice its suite vanishing from CI."
     fi
@@ -631,6 +765,19 @@ fi
 # Case 17 the converse for 16: a vitest-importing .ts matching NEITHER
 #                    convention → reported. Accepting `.spec.` must not be a
 #                    blanket pass for the arm.
+# Case 18 a workflow step of `run: echo make conformance-runner-tests-go` →
+#                    reported missing. Containing the target's NAME is not
+#                    running it; the invocation check must read a command.
+# Case 19 a `//go:build windows` test, and a probe_windows_test.go → reported.
+#                    Name and placement are right and `go test ./...` on the CI
+#                    platform compiles neither.
+# Case 20 a stranded.tsx importing vitest → reported. The scan has to cover
+#                    every extension the include can match; scanning `.ts` alone
+#                    left this undetected, so the arm printed `ok` over it.
+# Case 21 a workflow that takes `make conformance-typescript` whose recipe runs
+#                    nothing → reported. Accepting the wrapper without reading
+#                    its recipe asserts that a name appears in a file, not that
+#                    tests run.
 # ---------------------------------------------------------------------------
 selftest_tree() {
     # selftest_tree <dir> <ruby-recipe-body>
@@ -1088,6 +1235,130 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         st_fail=1
     else
         echo "  ok: vitest suite matching neither convention reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 18: a runner-test target that is only ECHOED is not invoked"
+    # `run: echo make conformance-runner-tests-go` leaves the workflow valid and
+    # the target's name in an uncommented line, while CI runs no Go runner test.
+    # Containing the name is not running the command.
+    selftest_tree "$WORK/wf-echoed" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/wf-echoed/.github/workflows"
+    {
+        echo 'jobs:'
+        echo '  test:'
+        echo '    steps:'
+        echo '      - run: echo make conformance-runner-tests-go'
+        for t in python ruby kotlin swift; do
+            echo "      - run: make conformance-runner-tests-$t"
+        done
+        echo '      - run: npx vitest run'
+    } > "$WORK/wf-echoed/.github/workflows/test.yml"
+    out="$(REPO_ROOT="$WORK/wf-echoed" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: wf-echoed tree passed (exit 0) — an echoed target counts as invoked"
+        st_fail=1
+    elif ! grep -q 'does not invoke every per-language runner-test target' <<<"$out"; then
+        echo "  FAIL: \`echo make conformance-runner-tests-go\` was counted as an invocation"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: echoed-only runner-test target reported missing (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 19: a build-constrained Go test must be reported"
+    # Both mechanisms `go help build` gives: an explicit //go:build line, and the
+    # implicit constraint a _GOOS filename carries. Either one means
+    # `go test ./...` on the CI platform compiles nothing in the file, while the
+    # glob matches, find reaches it, and the discovery arm counts it reachable.
+    selftest_tree "$WORK/go-constrained" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/go-constrained/conformance/runner/go"
+    printf 'package main\n\nimport "testing"\n\nfunc TestReal(t *testing.T) {}\n' \
+        > "$WORK/go-constrained/conformance/runner/go/real_test.go"
+    printf '//go:build windows\n\npackage main\n\nimport "testing"\n\nfunc TestTagged(t *testing.T) { t.Fatal("never built on the CI runner") }\n' \
+        > "$WORK/go-constrained/conformance/runner/go/tagged_test.go"
+    printf 'package main\n\nimport "testing"\n\nfunc TestSuffixed(t *testing.T) { t.Fatal("never built on the CI runner") }\n' \
+        > "$WORK/go-constrained/conformance/runner/go/probe_windows_test.go"
+    out="$(REPO_ROOT="$WORK/go-constrained" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: go-constrained tree passed (exit 0) — constraints are being ignored"
+        st_fail=1
+    elif ! grep -q 'tagged_test\.go' <<<"$out" || ! grep -q 'probe_windows_test\.go' <<<"$out"; then
+        echo "  FAIL: a build-constrained Go test was not reported — \`go test ./...\` on"
+        echo "        the CI platform compiles it into nothing"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: both build-constraint forms reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 20: a vitest suite in another supported extension must be reported"
+    # The scan has to cover every extension vitest's include can match. Scanning
+    # `.ts` alone made this file invisible — and invisible is the silent
+    # direction: the .ts suites keep `found` nonzero, so the arm prints `ok`.
+    selftest_tree "$WORK/ts-tsx" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/ts-tsx/conformance/runner/typescript"
+    printf "import { describe, it, expect } from 'vitest';\n\ndescribe('runner', () => {\n  it('runs', () => { expect(1).toBe(1); });\n});\n" \
+        > "$WORK/ts-tsx/conformance/runner/typescript/runner.test.ts"
+    printf "import { describe, it, expect } from 'vitest';\n\ndescribe('stranded', () => {\n  it('is collected by nothing', () => { expect(1).toBe(2); });\n});\n" \
+        > "$WORK/ts-tsx/conformance/runner/typescript/stranded.tsx"
+    out="$(REPO_ROOT="$WORK/ts-tsx" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: ts-tsx tree passed (exit 0) — .tsx is outside the scanned set"
+        st_fail=1
+    elif ! grep -q 'conformance/runner/typescript/stranded\.tsx' <<<"$out"; then
+        echo "  FAIL: a vitest suite in a .tsx file was not reported — unscanned means"
+        echo "        undetected, and the arm reports \`ok\` over it"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: vitest suite in another supported extension reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 21: the accepted TypeScript wrapper must actually run the suite"
+    # CI may reach vitest through `make conformance-typescript`. Accepting that
+    # step without reading the recipe asserts only that a name appears in a
+    # workflow — a recipe rewritten to `@true` ran nothing while this printed ok.
+    selftest_tree "$WORK/ts-hollow-wrapper" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/ts-hollow-wrapper/.github/workflows"
+    {
+        echo 'conformance-typescript:'
+        printf '\t@true\n'
+        echo ''
+        echo 'conformance-runner-tests-ruby:'
+        printf '%s\n' "$RECURSIVE_RECIPE"
+    } > "$WORK/ts-hollow-wrapper/Makefile"
+    {
+        echo 'jobs:'
+        echo '  test:'
+        echo '    steps:'
+        for t in go python ruby kotlin swift; do
+            echo "      - run: make conformance-runner-tests-$t"
+        done
+        echo '      - run: make conformance-typescript'
+    } > "$WORK/ts-hollow-wrapper/.github/workflows/test.yml"
+    out="$(REPO_ROOT="$WORK/ts-hollow-wrapper" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: ts-hollow-wrapper tree passed (exit 0) — the wrapper is trusted unread"
+        st_fail=1
+    elif ! grep -q 'does not invoke the TypeScript runner suite' <<<"$out"; then
+        echo "  FAIL: a 'make conformance-typescript' step whose recipe runs nothing was"
+        echo "        counted as invoking the suite"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: hollow TypeScript wrapper reported (exit $st)"
     fi
 
     echo ""
