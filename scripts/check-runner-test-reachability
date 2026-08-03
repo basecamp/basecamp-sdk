@@ -63,8 +63,10 @@
 # DETECTOR must not miss (an unsuffixed `func Example()`, a class-based pytest
 # suite, a Jupiter @ParameterizedTest, a parameterized @Test), for locations a
 # toolchain silently skips, and for a CI workflow that stops invoking a suite.
-# Two cases assert the detectors stay QUIET where they should, so the loud ones
-# cannot be satisfied by over-matching.
+# Every loud case is paired with a QUIET one — a support module the toolchain
+# loads on its own, a filename convention it discovers, a placement it really
+# does reach — so no loud case can be satisfied by over-matching, which is the
+# failure mode that gets a gate switched off.
 #
 # The content detector is this check's weakest surface, because a miss there is
 # SILENT: the arm's `found` count stays nonzero thanks to the other files, so it
@@ -410,19 +412,42 @@ check_glob_discovery "Go" go conformance/runner/go \
 # correctly-named test under dist/ or venv/ is matched by the glob and collected
 # by nothing.
 #
-# pytest collects `test*` FUNCTIONS at module level and `test*` METHODS of
-# `Test*` classes, and a class-based suite need import nothing at all:
+# The marker keys on what pytest COLLECTS, not on what a file imports. pytest
+# collects `test*` FUNCTIONS at module level and `test*` METHODS of `Test*`
+# classes, and a class-based suite need import nothing at all:
 #
 #     class TestStranded:
 #         def test_failure(self): assert False
 #
 # has no `import pytest`, no `unittest`, and its `def test` is INDENTED, so an
-# anchored `^def test_` never saw it. The indented-def alternative is what
-# catches it. Matching on the class NAME instead would be wrong in the other
-# direction: runner.py declares TestCase/TestResult/TestRunner/TestTracker as
-# its own plumbing, and flagging those would be a false failure.
+# anchored `^def test_` never saw it. One leading-whitespace-tolerant `def test`
+# alternative covers both depths, and takes `async def` with it — asyncio suites
+# declare their tests that way. Matching on the class NAME instead would be
+# wrong in the other direction: runner.py declares TestCase/TestResult/
+# TestRunner/TestTracker as its own plumbing, and flagging those would be a
+# false failure.
+#
+# IMPORTING pytest is not declaring a test, and counting it as one made this arm
+# reject the one module pytest is guaranteed to load. A conftest.py that imports
+# pytest to define fixtures matches NEITHER collection glob, so `^import pytest`
+# reported as unreachable a file pytest imports automatically for every
+# directory it collects (pytest docs, "Fixtures: sharing across modules"). The
+# same went for any shared helper that imports the framework without declaring
+# anything runnable. Support modules are reachable by construction.
+#
+# Dropping that marker is not a weakening, because the converse still fails:
+# pytest LOADS conftest.py but does not COLLECT from it — its name matches no
+# `python_files` pattern — so a `def test_…` written there is executed by
+# nothing. That file is caught by the `def test` alternative, matches no glob,
+# and is reported. Self-tests 14 and 15 pin both directions.
+#
+# `^from unittest` is narrowed to imports that actually bring in TestCase, for
+# the same reason: `from unittest import mock` and `from unittest.mock import
+# patch` are helper imports, not suites, and the bare anchor flagged every
+# module that used them. The name has to appear in the import itself, not in a
+# trailing comment — hence `[^#]*` rather than `.*`.
 check_glob_discovery "Python" py conformance/runner/python \
-    'unittest\.TestCase|^import pytest|^from unittest|^def test|^[[:space:]]+def test' \
+    'unittest\.TestCase|^from unittest[[:alnum:]._]* import [^#]*TestCase|^[[:space:]]*(async[[:space:]]+)?def test' \
     recursive '(^|/)(\.[^/]*|[^/]*\.egg|_darcs|build|CVS|dist|node_modules|venv|\{arch\})/' \
     'test_*.py' '*_test.py'
 
@@ -430,8 +455,22 @@ check_glob_discovery "Ruby" rb conformance/runner/ruby \
     'minitest/autorun|Minitest::Test' "$RUBY_SCOPE" '' '*_test.rb'
 
 # Quote-agnostic: `from 'vitest'` is the same import and the same discovery.
+#
+# BOTH of vitest's filename conventions are accepted, because both are run. CI
+# invokes an UNCONFIGURED `vitest run` with conformance/runner/typescript as its
+# working directory, and there is no vitest config there — the SDK's own
+# typescript/vitest.config.ts belongs to a different root and does not apply. So
+# the selector is vitest's default include, `**/*.{test,spec}.?(c|m)[jt]s?(x)`
+# (`defaultInclude`, vitest 4.1.10), under which foo.spec.ts is collected
+# exactly like foo.test.ts. Accepting only `*.test.ts` reported a file vitest
+# does run — the false-positive direction, and the direction that gets a gate
+# switched off by the next person it inconveniences.
+#
+# The scan is `.ts` because the runner is TypeScript throughout. The default
+# include's other extensions (.tsx/.mts/.cts/.js…) are not scanned, so a runner
+# file with one of them means widening the ext here in the same change.
 check_glob_discovery "TypeScript" ts conformance/runner/typescript \
-    "from ['\"]vitest['\"]" recursive '' '*.test.ts'
+    "from ['\"]vitest['\"]" recursive '' '*.test.ts' '*.spec.ts'
 
 # Gradle's Kotlin test source set is src/test/kotlin, NOT src/test — the whole
 # module is scanned so a .kt under src/test/anything-else is reported.
@@ -508,9 +547,9 @@ else
     # suite are the same vitest invocation, which CI spells `npx vitest run`
     # (deliberately, not `npm test` — see the workflow's own comment about the
     # pretest rebuild). So the loop above cannot cover it, and without this the
-    # seven TypeScript test files this check counts could disappear from CI
-    # entirely while all nine checks still reported green. Accept either the
-    # direct vitest call or the make target that wraps it.
+    # TypeScript test files this check counts could disappear from CI entirely
+    # while every other check still reported green. Accept either the direct
+    # vitest call or the make target that wraps it.
     #
     # Both invocation checks read `workflow_code`, the comment-stripped file.
     # The workflow explains its own choice of `npx vitest run` over `npm test`
@@ -578,6 +617,20 @@ fi
 #                    skips it; `recursive` is the toolchain's rule, not "all".
 # Case 13 a runner-test step commented out wholesale → reported missing. Its
 #                    text survives in the file; only the YAML stops running.
+# Case 14 a fixtures-only conftest.py → NOT reported. pytest imports it for
+#                    every directory it collects, so it is reachable without
+#                    matching a collection glob; `^import pytest` made the gate
+#                    reject the one support module every pytest suite may have.
+# Case 15 the converse, and what stops 14 from being a blanket exemption: a
+#                    conftest.py that DECLARES a test → reported. pytest loads
+#                    conftest.py but collects no tests from it, so that `def
+#                    test_…` is run by nothing.
+# Case 16 a foo.spec.ts → NOT reported. CI runs an unconfigured `vitest run`,
+#                    whose default include is `**/*.{test,spec}.?(c|m)[jt]s?(x)`
+#                    — `.spec.` is discovered exactly like `.test.`.
+# Case 17 the converse for 16: a vitest-importing .ts matching NEITHER
+#                    convention → reported. Accepting `.spec.` must not be a
+#                    blanket pass for the arm.
 # ---------------------------------------------------------------------------
 selftest_tree() {
     # selftest_tree <dir> <ruby-recipe-body>
@@ -841,7 +894,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
     echo "==> Self-test 11: a workflow that stops invoking the TypeScript suite must be reported"
     # TypeScript has no conformance-runner-tests-* target, so the per-language
     # target loop cannot cover it. Drop the vitest step and nothing else here
-    # notices seven test files leaving CI.
+    # notices the whole suite leaving CI.
     selftest_tree "$WORK/ts-uninvoked" "$RECURSIVE_RECIPE"
     mkdir -p "$WORK/ts-uninvoked/.github/workflows"
     {
@@ -920,6 +973,121 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         st_fail=1
     else
         echo "  ok: commented-out runner-test step reported missing (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 14: a fixtures-only conftest.py must NOT be reported"
+    # pytest imports conftest.py automatically for every directory it collects,
+    # and its name matches neither collection glob — so counting `import pytest`
+    # as a test declaration failed the build over the one support module every
+    # pytest suite is entitled to have. Verified against pytest 9.1.1: with this
+    # exact pair, `pytest -q` collects 1 test and passes.
+    selftest_tree "$WORK/py-conftest" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/py-conftest/conformance/runner/python"
+    printf 'def test_uses_the_fixture(wire):\n    assert wire["status"] == 204\n' \
+        > "$WORK/py-conftest/conformance/runner/python/test_real.py"
+    printf 'import pytest\n\n\n@pytest.fixture\ndef wire():\n    return {"status": 204}\n' \
+        > "$WORK/py-conftest/conformance/runner/python/conftest.py"
+    out="$(REPO_ROOT="$WORK/py-conftest" "$SELF" 2>&1)"
+    if grep -q 'conformance/runner/python/conftest\.py' <<<"$out"; then
+        echo "  FAIL: a fixtures-only conftest.py was reported unreachable, but pytest"
+        echo "        loads it for every directory it collects"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    elif ! grep -q 'ok: Python' <<<"$out"; then
+        echo "  FAIL: the Python arm did not report ok, so its silence about conftest.py"
+        echo "        proves nothing — it bailed out before judging any file"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: fixtures-only conftest.py accepted (pytest imports it automatically)"
+    fi
+
+    echo ""
+    echo "==> Self-test 15: a conftest.py that DECLARES a test must still be reported"
+    # The other half of case 14, and what keeps it from being a blanket
+    # exemption. pytest LOADS conftest.py but does not COLLECT from it: the name
+    # matches no `python_files` pattern, so a `def test_…` written there is
+    # executed by nothing. Verified against pytest 9.1.1 — a deliberately
+    # failing test_declared_in_conftest() in conftest.py, and `pytest -q` still
+    # collects 1 test (the one in test_real.py) and passes.
+    selftest_tree "$WORK/py-conftest-test" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/py-conftest-test/conformance/runner/python"
+    printf 'def test_real():\n    assert True\n' \
+        > "$WORK/py-conftest-test/conformance/runner/python/test_real.py"
+    printf 'import pytest\n\n\n@pytest.fixture\ndef wire():\n    return {}\n\n\ndef test_declared_in_conftest():\n    assert False, "pytest never collects this"\n' \
+        > "$WORK/py-conftest-test/conformance/runner/python/conftest.py"
+    out="$(REPO_ROOT="$WORK/py-conftest-test" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: py-conftest-test tree passed (exit 0) — conftest.py is being exempted"
+        echo "        wholesale, so a test written there is run by nothing and reported by"
+        echo "        nothing"
+        st_fail=1
+    elif ! grep -q 'conformance/runner/python/conftest\.py' <<<"$out"; then
+        echo "  FAIL: a \`def test_…\` in conftest.py was not reported — pytest collects no"
+        echo "        tests from conftest.py, so that assertion never runs"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: test declared in conftest.py reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 16: a .spec.ts suite must NOT be reported"
+    # CI runs an unconfigured `vitest run`, whose default include is
+    # `**/*.{test,spec}.?(c|m)[jt]s?(x)`. A gate that accepts only `*.test.ts`
+    # fails a file vitest really does collect — the false-positive direction,
+    # and the one that gets a gate switched off rather than fixed.
+    selftest_tree "$WORK/ts-spec" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/ts-spec/conformance/runner/typescript"
+    printf "import { describe, it, expect } from 'vitest';\n\ndescribe('runner', () => {\n  it('runs', () => { expect(1).toBe(1); });\n});\n" \
+        > "$WORK/ts-spec/conformance/runner/typescript/runner.test.ts"
+    printf "import { describe, it, expect } from 'vitest';\n\ndescribe('probe', () => {\n  it('is collected by the default include', () => { expect(1).toBe(1); });\n});\n" \
+        > "$WORK/ts-spec/conformance/runner/typescript/probe.spec.ts"
+    out="$(REPO_ROOT="$WORK/ts-spec" "$SELF" 2>&1)"
+    if grep -q 'conformance/runner/typescript/probe\.spec\.ts' <<<"$out"; then
+        echo "  FAIL: probe.spec.ts was reported unreachable, but vitest's default include"
+        echo "        collects .spec. exactly like .test."
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    elif ! grep -q 'ok: TypeScript' <<<"$out"; then
+        echo "  FAIL: the TypeScript arm did not report ok, so its silence about"
+        echo "        probe.spec.ts proves nothing — it bailed out before judging any file"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: .spec.ts suite accepted (vitest's other default convention)"
+    fi
+
+    echo ""
+    echo "==> Self-test 17: a vitest suite matching NEITHER convention must be reported"
+    # The converse of 16: accepting `.spec.` must widen the arm by exactly one
+    # convention, not disarm it. `stranded.ts` registers tests and is collected
+    # by nothing — the #572 shape.
+    selftest_tree "$WORK/ts-misnamed" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/ts-misnamed/conformance/runner/typescript"
+    printf "import { describe, it, expect } from 'vitest';\n\ndescribe('runner', () => {\n  it('runs', () => { expect(1).toBe(1); });\n});\n" \
+        > "$WORK/ts-misnamed/conformance/runner/typescript/runner.test.ts"
+    printf "import { describe, it, expect } from 'vitest';\n\ndescribe('stranded', () => {\n  it('is collected by nothing', () => { expect(1).toBe(2); });\n});\n" \
+        > "$WORK/ts-misnamed/conformance/runner/typescript/stranded.ts"
+    out="$(REPO_ROOT="$WORK/ts-misnamed" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: ts-misnamed tree passed (exit 0) — the TypeScript arm is vacuous"
+        st_fail=1
+    elif ! grep -q 'conformance/runner/typescript/stranded\.ts' <<<"$out"; then
+        echo "  FAIL: a vitest suite named for neither convention was not reported"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: vitest suite matching neither convention reported unreachable (exit $st)"
     fi
 
     echo ""
