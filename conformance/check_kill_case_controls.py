@@ -139,6 +139,16 @@ def check_file(path: str) -> list[str]:
         for control in controls:
             if control.get("operation") != operation:
                 continue
+            control_response = consumed_response(control)
+            # The control earns its keep only by being DECODED: that is what
+            # makes it fail loudly (#555) when the model drifts, which is the
+            # entire protection the kill case borrows from it. A control that
+            # answers 500 or networkError never reaches its decoder, so it can
+            # sit green on its own HTTP/transport assertions while the drift it
+            # was supposed to catch goes unnoticed in both bodies. Same check as
+            # the kill side, for the same reason.
+            if control_response is None or not_a_success(control_response) is not None:
+                continue
             control_body = consumed_body(control)
             if control_body is None or set(control_body) != set(kill_body):
                 continue
@@ -155,8 +165,9 @@ def check_file(path: str) -> list[str]:
         else:
             failures.append(
                 f"{name}: {kill['name']!r} declares {ASSERTION} but no non-{ASSERTION} "
-                f"case for operation {operation!r} in this file has a FIRST mock response "
-                f"body with the same key set differing in exactly one field.\n"
+                f"case for operation {operation!r} in this file has a SUCCESSFUL (2xx) FIRST "
+                f"mock response whose body has the same key set differing in exactly one "
+                f"field.\n"
                 f"      Without one, a decode failure caused by unrelated model drift would "
                 f"satisfy this case and it would stop testing the field it names.\n"
                 f"      Add (or repair) the control case so the two decoded bodies differ "
