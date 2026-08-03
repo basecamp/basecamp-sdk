@@ -31798,7 +31798,7 @@ type CreateFolderResponse struct {
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -31902,7 +31902,7 @@ type UpdateFolderResponse struct {
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
 
@@ -46381,7 +46381,7 @@ func ParseCreateFolderResponse(rsp *http.Response) (*CreateFolderResponse, error
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
+		var dest FieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}
@@ -46545,7 +46545,7 @@ func ParseUpdateFolderResponse(rsp *http.Response) (*UpdateFolderResponse, error
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
+		var dest FieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}

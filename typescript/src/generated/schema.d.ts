@@ -18529,13 +18529,13 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description FieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -18676,13 +18676,13 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description FieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

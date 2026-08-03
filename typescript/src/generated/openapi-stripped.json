@@ -18010,11 +18010,11 @@
             }
           },
           "422": {
-            "description": "ValidationError 422 response",
+            "description": "FieldValidationError 422 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
                 }
               }
             }
@@ -18285,11 +18285,11 @@
             }
           },
           "422": {
-            "description": "ValidationError 422 response",
+            "description": "FieldValidationError 422 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
                 }
               }
             }

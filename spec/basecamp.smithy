@@ -10581,7 +10581,7 @@ structure GetFolderOutput {
 operation CreateFolder {
   input: CreateFolderInput
   output: CreateFolderOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [NotFoundError, FieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateFolderInput {
@@ -10614,7 +10614,7 @@ structure CreateFolderOutput {
 operation UpdateFolder {
   input: UpdateFolderInput
   output: UpdateFolderOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, FieldValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateFolderInput {
