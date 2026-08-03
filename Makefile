@@ -500,7 +500,17 @@ oauth-token-fixtures-check:
 # fail loudly on a body that no longer matches) — except where a fixture
 # declares errorRaised, which deliberately switches that policy off. The
 # control-sibling gate below is what keeps those fixtures honest.
+#
+# The metaschema pass runs FIRST because validating fixtures against a schema
+# that is not itself a valid schema proves nothing. Draft 2020-12 requires every
+# value under `properties` to be a schema object or boolean, so an annotation
+# like `$comment` placed there declares a property of that name with a string
+# for a schema — accepted silently by the fixture pass, rejected by any
+# validator that meta-validates first.
 conformance-fixtures-check:
+	@echo "==> Validating conformance schemas against the JSON Schema metaschema..."
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--check-metaschema conformance/schema.json conformance/tests.schema.json
 	@echo "==> Validating conformance fixtures against schema.json..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/tests.schema.json conformance/tests/*.json
