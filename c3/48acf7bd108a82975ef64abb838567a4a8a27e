@@ -1,0 +1,20 @@
+conformance/check_kill_case_controls.py
+  s_ae792ed0be3006::t_f06b9d6f8039b0 142-151
+  s_ae792ed0be3006::t_dd95fc839baf70 168-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c348acf7bd108a82975ef64abb838567a4a8a27e",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
