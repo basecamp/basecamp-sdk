@@ -1,0 +1,71 @@
+typescript/src/services/todolists-extensions.ts
+  s_ae792ed0be3006::t_d76f696fa97474 105-112,114-118
+  s_ae792ed0be3006::t_91dd7ca99605c6 134,137-151,160
+  s_ae792ed0be3006::t_3afd708d0dc789 283
+go/pkg/basecamp/todolists.go
+  s_ae792ed0be3006::t_baa04c75b70af9 505,510
+  s_ae792ed0be3006::t_03462ff66bd22b 167-172,184-186,193-233
+  s_ae792ed0be3006::t_42176ad2a7ee5f 4
+  s_ae792ed0be3006::t_66503a4cfec30c 385,388,392,396-399,401
+  s_ae792ed0be3006::t_1d04cf5ba81a1f 234,355-368
+  s_ae792ed0be3006::t_d3060fbb79d812 467,472
+  s_ae792ed0be3006::t_7d7c069f8b117f 235
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_ae792ed0be3006::t_6f331bd34eb1ec 548-553,561-562
+  s_ae792ed0be3006::t_023749b70e8071 317-329,332-347,349-357,361-371
+  s_ae792ed0be3006::t_0d4a29a7b007f8 372-373
+python/tests/services/test_todolists_service.py
+  s_ae792ed0be3006::t_b24329901a6910 481-483
+  s_ae792ed0be3006::t_56661db8d41ab1 439-472,475-476,480,484-502,505-506
+ruby/lib/basecamp/services/todolists_extensions.rb
+  s_ae792ed0be3006::t_a572fe0826a1a7 186-188,192
+  s_ae792ed0be3006::t_d2cd09592bc42a 98
+  s_ae792ed0be3006::t_494bd746e725a7 158-165,167-173
+  s_ae792ed0be3006::t_c5ecc0321a7af1 200,214-225
+python/src/basecamp/services/todolists.py
+  s_ae792ed0be3006::t_84815a35275755 105,116-130
+  s_ae792ed0be3006::t_6fbd3c24fd7789 100
+  s_ae792ed0be3006::t_404520a7318626 147-156,158-165
+  s_ae792ed0be3006::t_75f5f08ced32c6 175
+go/pkg/basecamp/todolists_test.go
+  s_ae792ed0be3006::t_cdd4aa5258fe21 347-364
+  s_ae792ed0be3006::t_b7886ed5a3e97b 839-982
+  s_ae792ed0be3006::t_06ea45b9a0939f 790-793
+  s_ae792ed0be3006::t_8fb653cd3d05d1 809-816
+spec/basecamp.smithy
+  s_ae792ed0be3006::t_52453a3b769561 1704-1714
+  s_ae792ed0be3006::t_0697b57e5e6976 1715-1720
+typescript/tests/services/todolists.test.ts
+  s_ae792ed0be3006::t_4f02cd5fd512d7 323
+  s_ae792ed0be3006::t_16eeb9b0b5b1d3 575-581,585,587-655,659-662,664,666,672
+go/pkg/generated/client.gen.go
+  s_ae792ed0be3006::t_65c9d520339d7c 2967-2983
+openapi.json
+  s_ae792ed0be3006::t_89221be33a9e2f 32878-32883
+python/src/basecamp/generated/types.py
+  s_ae792ed0be3006::t_323253cedbafce 1728
+ruby/lib/basecamp/generated/types.rb
+  s_ae792ed0be3006::t_272fef3d792d45 4
+spec/smithy-build.json
+  s_ae792ed0be3006::t_1eb334d9ad93d5 36-37
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_8e90fdd55dd638 30148-30153
+typescript/src/generated/schema.d.ts
+  s_ae792ed0be3006::t_0f4561ac410a36 5730-5746,5748
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b2a924e53b95c9b34f856279be2fb59dc7e84542",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

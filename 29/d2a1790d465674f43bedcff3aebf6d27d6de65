@@ -1,0 +1,193 @@
+python/tests/services/test_todolists_service.py
+  s_ae792ed0be3006::t_8729f47b476664 56-72
+  s_ae792ed0be3006::t_b4be9ac8d827aa 506-511,515-516,518-519,522-526,540,542-548,556-559
+  s_ae792ed0be3006::t_60ad1f971526b9 210-266
+  s_ae792ed0be3006::t_ba32bb99471dc4 361-371,378
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_ae792ed0be3006::t_045f31fcf9cdfd 820-855
+go/pkg/basecamp/todolists_test.go
+  s_ae792ed0be3006::t_08ddbc2bb68b11 231-326
+conformance/tests/todolists_read.json
+  s_ae792ed0be3006::t_ae9f1c9a2b915b 1-3,5-78,80-153,155-274
+  s_ae792ed0be3006::t_40a5da29aa553c 154
+  s_ae792ed0be3006::t_9f1e457fe6a4a5 79
+  s_ae792ed0be3006::t_ebd4626b3c449c 4
+conformance/runner/go/main.go
+  s_ae792ed0be3006::t_b84e4f2f447ff0 772-810
+spec/basecamp.smithy
+  s_ae792ed0be3006::t_5b32ca3f807fef 1606-1625
+  s_ae792ed0be3006::t_5791f2759bf119 1211
+  s_ae792ed0be3006::t_831dbb666b10af 1256-1257
+  s_ae792ed0be3006::t_7f614f878182f2 1179-1180
+  s_ae792ed0be3006::t_b80e0acefd0ffc 1289
+  s_ae792ed0be3006::t_2bb8de3dea2984 1316
+  s_ae792ed0be3006::t_54aad33700e377 1221
+  s_ae792ed0be3006::t_b15e4e5fbde1e5 1121-1122
+  s_ae792ed0be3006::t_ad63b3008043e4 1666-1673,1675-1678,1686-1689,1691-1696,1701-1710,1716-1717
+  s_ae792ed0be3006::t_215d3f4bd32685 1697-1698,1700
+  s_ae792ed0be3006::t_df7c6462889dd2 1144
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_84d10a4544bf88 666-680
+  s_ae792ed0be3006::t_3ed8437a9728a5 418-426
+ruby/lib/basecamp/services/todolists_extensions.rb
+  s_ae792ed0be3006::t_c3ba9398f763d5 165-172,179-183
+  s_ae792ed0be3006::t_c008a22dc2c25c 80-94,96
+  s_ae792ed0be3006::t_31e0e9b39b8af4 120-135
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_ae792ed0be3006::t_5ce735ca91d127 357-359
+go/pkg/basecamp/todolist_groups_test.go
+  s_ae792ed0be3006::t_601f7feb5b4738 206-346
+  s_ae792ed0be3006::t_5b07c199aa316b 422-426,428-434,437,459-468
+  s_ae792ed0be3006::t_8fc555a9b7570d 547-552,555,557-562,564-583,589-608,612-616
+go/pkg/basecamp/todolist_groups.go
+  s_ae792ed0be3006::t_6dd3087fa047fd 133
+  s_ae792ed0be3006::t_e403ba5563c15e 56-58
+  s_ae792ed0be3006::t_536b183f00b556 205-207
+  s_ae792ed0be3006::t_716d2129f7196b 299-302,310,315
+  s_ae792ed0be3006::t_2b0e237c3c49bc 22-39
+  s_ae792ed0be3006::t_112339b456fbca 166,170
+  s_ae792ed0be3006::t_e4531b8e66e31c 249
+  s_ae792ed0be3006::t_b34731bcf2c0d3 262-273,275-279
+go/pkg/basecamp/todolists.go
+  s_ae792ed0be3006::t_f4da486993b514 513-516,519,528,533,537,540,544,547
+  s_ae792ed0be3006::t_08671bbc22c984 76
+  s_ae792ed0be3006::t_772c4bb95e1c9e 330-334
+  s_ae792ed0be3006::t_d494d3422b54d3 74-75
+  s_ae792ed0be3006::t_ff2a1c588edf7f 648-650
+  s_ae792ed0be3006::t_1c1e1539ae6fc8 16-26
+  s_ae792ed0be3006::t_9db14919b475ce 481,491
+  s_ae792ed0be3006::t_f710860534ad76 66-73,77-83
+  s_ae792ed0be3006::t_086f363d9ed932 613-616,633,635-638,644-647
+swift/Sources/Basecamp/TodolistsServiceExtensions.swift
+  s_ae792ed0be3006::t_2bf80e9783c192 44-52
+  s_ae792ed0be3006::t_346275685b1386 35
+  s_ae792ed0be3006::t_8e1013f377b949 127,129
+  s_ae792ed0be3006::t_583103154bba3b 109,118-119
+swift/Tests/BasecampTests/TodolistsServiceExtensionsTests.swift
+  s_ae792ed0be3006::t_3f3a54b410733e 56-58
+  s_ae792ed0be3006::t_399c3a352b41ce 102-126
+  s_ae792ed0be3006::t_fe2e3cc90cb697 225-226
+  s_ae792ed0be3006::t_ccc9bcb3941289 354
+  s_ae792ed0be3006::t_a1e73627ae2768 365,367-373,379,385-390,393,395-464,473-474,486-490,500-501,510-551
+  s_ae792ed0be3006::t_93bfed1dab44e4 613-616,618-621,623-624,626-632
+  s_ae792ed0be3006::t_93bb2a5176bd59 552
+spec/fixtures/manifest.yaml
+  s_ae792ed0be3006::t_61806656ebb12f 109-117
+  s_ae792ed0be3006::t_ba0a08e9435725 218
+typescript/src/index.ts
+  s_ae792ed0be3006::t_13bf00beff3c44 463-466
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_ae792ed0be3006::t_bdae283fbbb053 155-181
+  s_ae792ed0be3006::t_8c804622b7ba76 8-11,17
+spec/overlays/examples.smithy
+  s_ae792ed0be3006::t_1fa9ccd248576f 6-9,12-13,15,18-19,25-27,30-31,33,36-37,43-45
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodolistsServiceTest.kt
+  s_ae792ed0be3006::t_62b99155ce8b65 15,17,21-33,38-46,49-55,57-110,173-272,304-314,318,320,322,327-333,342-365,370,372,376-377,379,384-393,397-403,405,407,412-421,443-452,454-455,457,459-462,464-472,477-490,506,542-546,554,563-572,574-577,579-582,584-591,656,727
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_5eba859e5b8315 360-377
+typescript/src/services/todolists-extensions.ts
+  s_ae792ed0be3006::t_13060e79a5d829 271
+  s_ae792ed0be3006::t_235073606535cb 195-203
+  s_ae792ed0be3006::t_94659f9ce9012b 107-114
+  s_ae792ed0be3006::t_4cc321ca15dc70 302-308
+  s_ae792ed0be3006::t_d190f92eb54191 25-26,28-35,37-43,45-46,48-49,51,53
+typescript/scripts/generate-services.ts
+  s_ae792ed0be3006::t_53ec63ec46881b 469-472
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_ae792ed0be3006::t_d590b68bc034a5 166-168
+  s_ae792ed0be3006::t_b20b7013277d72 28-34,36
+  s_ae792ed0be3006::t_66bc703020ffcb 362-366,368,370,372-374,378,382-388,391-407
+  s_ae792ed0be3006::t_20b7c485b1bbe6 185-192,195,197,203,205-221,223-226
+  s_ae792ed0be3006::t_f28895585f0ee7 369,371,408
+go/README.md
+  s_ae792ed0be3006::t_65f2f77664280e 415-420
+typescript/src/services/merge-safe.ts
+  s_ae792ed0be3006::t_e978d2e55a68be 28-31
+python/src/basecamp/services/todolists.py
+  s_ae792ed0be3006::t_a9e327b7b4a234 81-96,98
+  s_ae792ed0be3006::t_18b511a4200561 56-64
+  s_ae792ed0be3006::t_1ce00f05e29218 132-136
+  s_ae792ed0be3006::t_ad055dfd6852dc 19-25
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_6e082fd8805c31 505-522
+ruby/test/basecamp/services/todolist_groups_service_test.rb
+  s_ae792ed0be3006::t_f5666ea87a3f34 48-102
+typescript/tests/services/todolistGroups.test.ts
+  s_ae792ed0be3006::t_afdebbbf0bfc60 79-83
+  s_ae792ed0be3006::t_06325635246c99 75-78,87,89-92
+  s_ae792ed0be3006::t_a56bdda87666da 111-114
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodolistGroupsServiceTest.kt
+  s_ae792ed0be3006::t_3bb0bcbca715aa 1-127
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodolistsService.kt
+  s_ae792ed0be3006::t_0127c1ba743b73 5,8,32-41,62-63,85-86,92-101,103-105,107-120,123,125-129,131-136,138-147,150-151,160
+typescript/tests/services/todolists.test.ts
+  s_ae792ed0be3006::t_c387a447dd12c2 664-667
+  s_ae792ed0be3006::t_f646bb48887503 412-421,450,454-460,462-469,486
+  s_ae792ed0be3006::t_1c693f2ef05ec3 209-214
+  s_ae792ed0be3006::t_16652df45ed69d 533-541,543-547,550-556
+  s_ae792ed0be3006::t_13732add87a0d6 11-12
+  s_ae792ed0be3006::t_4e20557e1de01c 89-138
+  s_ae792ed0be3006::t_05cee26281c2f2 427-430
+python/tests/services/test_todolist_groups_service.py
+  s_ae792ed0be3006::t_7b321b41c8e3e8 1-181
+SPEC.md
+  s_ae792ed0be3006::t_b76a830ad135cf 379,381-383,1938,3222
+go/pkg/generated/client.gen.go
+  s_ae792ed0be3006::t_6f39d6ed1cce4d 768-788,797-816,1560-1580,1762,2927-2946,2948-2949,2961-2991,2993-3007,3356,3360-3380
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todolist.kt
+  s_ae792ed0be3006::t_37ade3f2f14347 29,41,43-44
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolist-groups.kt
+  s_ae792ed0be3006::t_41a8b0401ba929 41,56,70,78,92
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolists.kt
+  s_ae792ed0be3006::t_e9e573849b9a20 19,31,40,55
+openapi.json
+  s_ae792ed0be3006::t_a392236f748171 21466,21481-21482,21486-21487,21502-21503,21507-21508,21524-21525,21528-21544,21546-21560,21565-21566,21569-21585,21587-21601,21664,27554,29310,29754,32770,32843-32844,32850-32851,32867,32869,32871,32873,32875,32877-32879,32881-32883,32885,32889,32899-32900,33613,33625
+python/src/basecamp/generated/types.py
+  s_ae792ed0be3006::t_9f2d0232501526 1728-1729,1736,1738
+python/src/basecamp/services/_merge_safe.py
+  s_ae792ed0be3006::t_8f23204a6f5f1e 28-31
+ruby/lib/basecamp/generated/services/todolists_service.rb
+  s_ae792ed0be3006::t_de6e117d0a5c79 21
+ruby/lib/basecamp/generated/types.rb
+  s_ae792ed0be3006::t_b82577b89cb26a 4,4430,4434,4443,4459-4460,4465,4479,4495-4496,4501
+ruby/lib/basecamp/services/merge_safe.rb
+  s_ae792ed0be3006::t_aa2e8943809171 33-36
+spec/fixtures/todolist_groups/get.json
+  s_ae792ed0be3006::t_9a4578af801981 54-55,58-60,62-63
+spec/fixtures/todolist_groups/list.json
+  s_ae792ed0be3006::t_e2cd143ceaa4ba 55-56,59-61,63-64,119-120,123-125,127-128
+spec/fixtures/todolists/get.json
+  s_ae792ed0be3006::t_0693f915b162c6 55,59,61,63
+spec/fixtures/todolists/list.json
+  s_ae792ed0be3006::t_eccc4615f5fdac 56,60,62,64,120,124,126,128
+swift/Sources/Basecamp/Generated/Models/Todolist.swift
+  s_ae792ed0be3006::t_1f20174fa04165 10,26-27,32,44,60-61,66,77,93-94,99
+swift/Sources/Basecamp/Generated/Services/TodolistGroupsService.swift
+  s_ae792ed0be3006::t_85ea4f70262f3c 17,27
+swift/Sources/Basecamp/Generated/Services/TodolistsService.swift
+  s_ae792ed0be3006::t_4991962fd2127b 30,66
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_11cd3c7ef34bcd 19144,19157-19158,19162-19163,19179-19180,19183-19199,19201-19215,19220-19221,19224-19240,19242-19256,19319,24824,26580,27024,30040,30113-30114,30120-30121,30137,30139,30141,30143,30145,30147-30149,30151-30153,30155,30159,30169-30170,30883,30895
+typescript/src/generated/schema.d.ts
+  s_ae792ed0be3006::t_9cd7679a7435e2 2758-2759,2764-2765,3833,4415,4511,5637-5658,5690-5703,5709-5713,5715-5724,5727-5731,5733-5738,5740-5741,5976,5981
+typescript/src/generated/services/todolist-groups.ts
+  s_ae792ed0be3006::t_9b3ea12a6e418b 17-18,91,101,125,133
+typescript/src/generated/services/todolists.ts
+  s_ae792ed0be3006::t_a0724fe76ebc3e 24,73,81,104,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "29d2a1790d465674f43bedcff3aebf6d27d6de65",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
