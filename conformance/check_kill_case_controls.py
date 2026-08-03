@@ -59,13 +59,43 @@ import sys
 ASSERTION = "errorRaised"
 
 
+def consumed_response(case: dict) -> dict | None:
+    """The first mock response — the one the case under test decodes."""
+    responses = case.get("mockResponses", [])
+    return responses[0] if responses else None
+
+
 def consumed_body(case: dict) -> dict | None:
     """The first mock response body — the one the case under test decodes."""
-    responses = case.get("mockResponses", [])
-    if not responses:
+    response = consumed_response(case)
+    if response is None:
         return None
-    body = responses[0].get("body")
+    body = response.get("body")
     return body if isinstance(body, dict) else None
+
+
+def not_a_success(response: dict) -> str | None:
+    """Why this response would fail the call before the body is ever decoded.
+
+    A kill case's premise is that the malformed value arrived in a SUCCESSFUL
+    API response — that is what makes it the SDK's problem rather than the
+    server's, and it is why #576 classifies the refusal as `api_error` with no
+    status rather than as a transport or HTTP failure.
+
+    If the response were quietly changed to a 500, or to `networkError`, the
+    SDK would fail on that instead and `errorRaised` would still hold — along
+    with `requestCount`, `requestMethod` and `requestPath` — while the
+    malformed field was never decoded at all. The case would go green having
+    tested nothing. Body equality cannot see that, so it is checked here.
+    """
+    if response.get("networkError"):
+        return "declares networkError, so the call fails in transport and the body is never decoded"
+    status = response.get("status")
+    if not isinstance(status, int):
+        return f"has a non-integer status {status!r}"
+    if not 200 <= status < 300:
+        return f"has status {status}, so the call fails on the HTTP error before the body is decoded"
+    return None
 
 
 def declares_error_raised(case: dict) -> bool:
@@ -81,11 +111,26 @@ def check_file(path: str) -> list[str]:
     controls = [c for c in cases if not declares_error_raised(c)]
 
     for kill in (c for c in cases if declares_error_raised(c)):
+        kill_response = consumed_response(kill)
         kill_body = consumed_body(kill)
-        if kill_body is None:
+        if kill_response is None or kill_body is None:
             failures.append(
                 f"{name}: {kill['name']!r} declares {ASSERTION} but its first mock "
                 f"response has no object-shaped body to control against"
+            )
+            continue
+
+        # The body must actually reach a decoder for its shape to matter.
+        reason = not_a_success(kill_response)
+        if reason is not None:
+            failures.append(
+                f"{name}: {kill['name']!r} declares {ASSERTION}, but its first mock response "
+                f"{reason}.\n"
+                f"      {ASSERTION} would then be satisfied by that failure — with requestCount, "
+                f"requestMethod and requestPath still green — and the malformed field would "
+                f"never be decoded, so the case would test nothing.\n"
+                f"      A kill case must deliver its malformed value in a SUCCESSFUL (2xx) "
+                f"response."
             )
             continue
 
