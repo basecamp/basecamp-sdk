@@ -157,8 +157,9 @@ SDKS = {
 # Lexical quirks that are not implied by the comment style. Getting these wrong
 # is not academic: each was a real miss found in review.
 #
-#   triple:  Python/Ruby `"""`, and Swift/Kotlin multiline `"""` -- which are
-#            ordinary strings, not documentation.
+#   triple:  Python `"""`, and Swift/Kotlin multiline `"""` -- which are
+#            ordinary strings, not documentation. Not Ruby, which has no such
+#            literal: there `"""x"""` is three adjacent literals concatenated.
 #   nested:  Swift and Kotlin allow `/* /* */ */`; Go and TypeScript end the
 #            comment at the first `*/`, so nesting them there would swallow code.
 #   raw:     Swift `#"..."#`, whose interpolation is `\#(...)`.
@@ -190,8 +191,12 @@ LANG_FLAGS = {
         "percent": False,
         "interp": {},
     },
+    # Ruby has no triple-quoted literal. `"""x"""` is three adjacent literals
+    # concatenated -- `""`, `"x"`, `""` -- and the middle one interpolates, so
+    # treating the run as a docstring blanked executable code and lost the read
+    # inside it. Only Python's `"""` is documentation.
     "Ruby": {
-        "triple": True, "nested": False, "raw": False, "fstring": False,
+        "triple": False, "nested": False, "raw": False, "fstring": False,
         "multiline": True,
         "regex": True,
         "command_regex": True,
@@ -306,6 +311,23 @@ REGEX_KEYWORDS = {
 }
 
 
+# Methods that idiomatically take a bare regex as a first argument without
+# parentheses. Spacing alone cannot decide this: `total /x/ 2` and `puts /x/ 2`
+# are spelled identically, and Ruby itself tells them apart only by knowing
+# whether `total` is a local variable in scope -- which a lexer does not.
+#
+# So the rule is deliberately narrow rather than clever. A name on this list
+# with a regex-shaped argument is a regex; everything else stays division. That
+# keeps `total /ENV["X"].to_i / 2` arithmetic, where guessing "regex" would mask
+# the read between the two operators and let an undocumented variable ship --
+# the fail-open direction, and the one worth erring away from.
+REGEX_COMMANDS = {
+    "puts", "print", "p", "pp", "warn", "raise", "fail",
+    "match", "grep", "scan", "split", "sub", "gsub", "index",
+    "assert_match", "refute_match",
+}
+
+
 def command_argument(text: str, i: int, word: str, spaced: bool, flags: dict) -> bool:
     """Whether the `/` at `i` opens a regex passed to a call without parentheses.
 
@@ -316,20 +338,22 @@ def command_argument(text: str, i: int, word: str, spaced: bool, flags: dict) ->
     read, while `puts /#{ENV['X']}/` stays division, the `#` then opens a line
     comment, and a genuine interpolated read disappears.
 
-    Ruby's own parser settles the ambiguity by spacing and so does this: a space
-    before the slash and none after it is the argument form -- the spelling MRI
-    itself warns about as `ambiguous first argument`. Every other spacing stays
-    division, including `/=`, which is divide-and-assign.
+    Two things have to hold, because either alone is ambiguous. The call has to
+    be one this list knows takes a regex, and the spacing has to be the argument
+    form Ruby's own parser looks for -- a space before the slash and none after
+    it, the spelling MRI warns about as `ambiguous first argument`. Every other
+    spacing stays division, `/=` included.
 
     Ruby only. TypeScript has no parenthesis-less call, so `total /count/ 2`
     there is arithmetic and this reading would swallow it.
 
-    Being wrong here is bounded: the caller still requires a closing `/` on the
-    same line, so a lone slash falls back to division on its own.
+    Being wrong here is bounded twice over: the name must be on the list, and
+    the caller still requires a closing `/` on the same line, so a lone slash
+    falls back to division on its own.
     """
     if not flags.get("command_regex") or not spaced:
         return False
-    if not (word[:1].isalpha() or word[:1] == "_"):
+    if word not in REGEX_COMMANDS:
         return False
     after = text[i + 1 : i + 2]
     return bool(after) and not after.isspace() and after != "="
@@ -413,12 +437,22 @@ def percent_literal_extent(text: str, i: int, flags: dict) -> tuple[int, list[tu
     if opener.isalnum() or opener.isspace() or opener == "=":
         return i, []  # `a % b`, `%=`, and format strings are not literals
     closer = PERCENT_DELIMS.get(opener)
+    interpolates = letter.lower() in PERCENT_INTERPOLATING or letter.isupper()
     body_start = j + 1
     k = body_start
     depth = 1
     while k < n:
         if text[k] == "\\":
             k += 2
+            continue
+        # Inside `#{...}` the language's ordinary rules apply again, so a quoted
+        # brace there is a string and not the end of anything. The plain scan
+        # counted it and closed the literal early, which left the rest of the
+        # line -- and any real read in it -- to be eaten as a `#` comment.
+        # Quotes in the surrounding body stay data, which is why only the hole
+        # is handed to the language-aware matcher.
+        if interpolates and text.startswith("#{", k):
+            k = matching_delimiter(text, k + 2, "{", "}", "hash", flags) + 1
             continue
         if closer is None:
             if text[k] == opener:
@@ -433,7 +467,7 @@ def percent_literal_extent(text: str, i: int, flags: dict) -> tuple[int, list[tu
         k += 1
     body_stop = min(k, n)
     holes = []
-    if letter.lower() in PERCENT_INTERPOLATING or letter.isupper():
+    if interpolates:
         holes = brace_holes(text, body_start, body_stop, "hash", flags, "#{", "}")
     return min(body_stop + 1, n), holes
 
@@ -716,6 +750,19 @@ def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray,
                 in_string[k] = 1
             i = regex_end
             continue
+        # A percent literal is data here too. The top-level scanner knew that
+        # and this one did not, so `"#{%q{ENV['X']}}"` -- data nested one level
+        # inside an interpolation -- came back out as a read.
+        percent_end, percent_holes = percent_literal_extent(text, i, flags)
+        if percent_end > i:
+            for k in range(i, min(percent_end, hi)):
+                in_string[k] = 1
+            for hole_start, hole_end in percent_holes:
+                for k in range(hole_start, min(hole_end, hi)):
+                    in_string[k] = 0
+                mask_literals(text, hole_start, min(hole_end, hi), style, in_string, flags)
+            i = percent_end
+            continue
         if text[i] in quotes or (flags["raw"] and raw_string_hashes(text, i)):
             end, holes = scan_literal(text, i, style, flags)
             if end <= i:
@@ -972,19 +1019,41 @@ def affirmative_mentions(readme: Path) -> set[str]:
     Quick Start shows the *caller* reading BASECAMP_TOKEN from its own
     environment, which says nothing about what the SDK reads.
     """
-    found: set[str] = set()
+    tabled: set[str] = set()
     for _lineno, cells in table_rows(readme):
-        found.update(VAR_RE.findall(cells[0]))
+        tabled.update(VAR_RE.findall(cells[0]))
+    mentioned: set[str] = set()
+    denied: set[str] = set()
     for paragraph in prose_paragraphs(readme):
         text, _line_at = join_paragraph(paragraph)
         # Split on sentence enders only. A semicolon joins clauses of one
         # sentence, and splitting there detached "the SDK never looks them up"
         # from the variable it denies -- which is the exact sentence in
         # python/README.md this check exists to refuse.
+        previous: list[str] = []
         for sentence in re.split(r"(?<=[.!?])\s+", text):
-            if not NEGATION_RE.search(sentence):
-                found.update(VAR_RE.findall(sentence))
-    return found
+            named = VAR_RE.findall(sentence)
+            if NEGATION_RE.search(sentence):
+                # A denial that names nothing is denying what was just named:
+                # "`BASECAMP_TOKEN` appears in examples. The SDK never reads
+                # it." The pronoun is the whole trick, and taking the sentence
+                # in isolation missed it.
+                denied.update(named or previous)
+            else:
+                mentioned.update(named)
+            if named:
+                previous = named
+    # Absence of a denial is not an affirmation. "`BASECAMP_TOKEN` appears in
+    # examples. The SDK never reads it." passed on the strength of the first
+    # sentence, which claims nothing, while the second says the opposite of what
+    # documentation would -- so a denial anywhere in the prose withdraws a
+    # merely neutral mention.
+    #
+    # A table row survives it. The row *is* the affirmative claim, and the
+    # denial usually qualifies one code path rather than the SDK: go/README.md
+    # says `StaticTokenProvider` does not read `BASECAMP_TOKEN`, which is true,
+    # while the table documents the variable the SDK really does read.
+    return tabled | (mentioned - denied)
 
 
 def prose_paragraphs(readme: Path) -> list[list[tuple[int, str]]]:
@@ -1129,6 +1198,22 @@ def main() -> int:
                     failures.append(
                         f"{ROOT_README}:{lineno}: {sdk} reads {var} "
                         f"({reads[sdk][var][0]}) but the 'Read by' column omits it"
+                    )
+
+    # 2b. Reverse, root README: the row-by-row checks above only ever see
+    # variables that already have a row, so an SDK could start reading
+    # BASECAMP_NEW, document it in its own README, and leave the root
+    # inventory silently short. Named anywhere affirmative counts -- the XDG
+    # pair is carried in prose rather than the table on purpose, and invariant 5
+    # is what holds that sentence honest.
+    if root.is_file():
+        root_documented = affirmative_mentions(root)
+        for sdk in SDKS:
+            for var, sites in sorted(reads[sdk].items()):
+                if var not in root_documented:
+                    failures.append(
+                        f"{ROOT_README}: {sdk} reads {var} ({sites[0]}) but the root "
+                        f"README never names it"
                     )
 
     # 3. Reverse, per SDK: a real read must be documented *affirmatively*.

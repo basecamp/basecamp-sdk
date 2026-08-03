@@ -87,6 +87,14 @@ def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = (),
                         for s in sdks:
                             if var in reads[s] and s not in claimed:
                                 failures.append(f"rootomits:{s}:{var}")
+                # Invariant 2b: the row loop above only ever sees variables that
+                # already have a row, so a real read with no row at all slips
+                # past every check. Named anywhere affirmative counts.
+                root_documented = gate.affirmative_mentions(root_readme)
+                for s in sdks:
+                    for var in sorted(reads[s]):
+                        if var not in root_documented:
+                            failures.append(f"rootmissing:{s}:{var}")
         for sdk in no_env_sdks:
             if reads.get(sdk):
                 failures.append(f"noenv:{sdk}:{sorted(reads[sdk])[0]}")
@@ -250,6 +258,31 @@ def main() -> int:
         check("an affirmative sentence counts as documentation",
               run_gate(root, PY_SDK), [])
 
+        # Absence of a denial is not an affirmation. A neutral sentence claims
+        # nothing, and the denial that follows it refers back by pronoun -- so
+        # taking each sentence in isolation counted the README as documenting
+        # the very read it goes on to disclaim.
+        root = tmp / "neutral-then-denial"
+        build(root, {
+            "python/README.md":
+                "`BASECAMP_NEUTRAL` appears in examples. The SDK never reads it.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_NEUTRAL")\n',
+        })
+        check("a neutral mention beside a denial is not documentation",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_NEUTRAL"])
+
+        # ...but a table row is an affirmative claim in its own right, and the
+        # denial usually qualifies one code path rather than the SDK. This is
+        # go/README.md's real sentence about `StaticTokenProvider`.
+        root = tmp / "denial-beside-table"
+        build(root, {
+            "go/README.md": TABLE.format(var="BASECAMP_TOKEN")
+                + "\n`StaticTokenProvider` does not read `BASECAMP_TOKEN`.\n",
+            "go/pkg/c.go": 'v := os.Getenv("BASECAMP_TOKEN")\n',
+        })
+        check("a table row survives a denial elsewhere",
+              run_gate(root, GO_SDK), [])
+
         # A mention inside a fenced example is the *caller* reading its own
         # environment, which says nothing about what the SDK reads.
         root = tmp / "fenced-mention"
@@ -303,6 +336,20 @@ def main() -> int:
         check("a root row must name at least one SDK",
               run_gate(root, PY_SDK, check_root_table=True),
               ["rootnosdk:BASECAMP_ORPHAN", "rootomits:Python:BASECAMP_ORPHAN"])
+
+        # A real read with no root row at all is invisible to the row loop --
+        # it never gets a row to iterate. The root README is an inventory, so a
+        # variable documented only in its own SDK's README still fails.
+        root = tmp / "root-missing-row"
+        build(root, {
+            "README.md": "| Variable | Read by |\n|---|---|\n| `BASECAMP_OLD` | Python |\n",
+            "python/README.md": "The SDK reads `BASECAMP_OLD` and `BASECAMP_NEW`.\n",
+            "python/src/c.py":
+                'a = os.environ.get("BASECAMP_OLD")\nb = os.environ.get("BASECAMP_NEW")\n',
+        })
+        check("a real read absent from the root README is caught",
+              run_gate(root, PY_SDK, check_root_table=True),
+              ["rootmissing:Python:BASECAMP_NEW"])
 
         # Ruby percent literals are data.
         root = tmp / "ruby-percent"
@@ -425,6 +472,18 @@ def main() -> int:
         check("ruby divide-and-assign is not a command-form regex",
               run_gate(root, RB_SDK), [])
 
+        # Spacing alone cannot decide this, so the call has to be one that takes
+        # a regex. `total /x/ 2` is arithmetic after a local variable, and
+        # guessing "regex" masks everything between the two operators -- the
+        # fail-open direction, where a real read vanishes.
+        root = tmp / "ruby-lvar-division"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_LVAR"),
+            "ruby/lib/c.rb": 'total /ENV["BASECAMP_LVAR"].to_i / 2\n',
+        })
+        check("division after a local variable keeps its read visible",
+              run_gate(root, RB_SDK), [])
+
         # The rule is Ruby's, not a general one: TypeScript has no
         # parenthesis-less call, so the same spelling there is arithmetic.
         root = tmp / "ts-not-command-regex"
@@ -436,6 +495,38 @@ def main() -> int:
         check("typescript keeps the division reading",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_TSDIV"])
+
+        # Ruby has no triple-quoted literal: `"""x"""` is three adjacent
+        # literals concatenated, and the middle one interpolates. Blanking the
+        # run as a docstring lost the read inside it.
+        root = tmp / "ruby-adjacent-quotes"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_RADJ"),
+            "ruby/lib/c.rb": 'x = """#{ENV[\'BASECAMP_RADJ\']}"""\n',
+        })
+        check("ruby adjacent quotes are not a docstring",
+              run_gate(root, RB_SDK), [])
+
+        # A percent literal nested inside an interpolation is data too. Only the
+        # top-level scanner knew that, so this came back out as a read.
+        root = tmp / "ruby-percent-in-hole"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "ruby/lib/c.rb": 's = "#{%q{ENV[\'BASECAMP_FAKE\']}}"\n',
+        })
+        check("a percent literal inside an interpolation is not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_FAKE"])
+
+        # Inside `#{...}` the ordinary rules apply again, so a quoted brace there
+        # is a string. Counting it closed the literal early and let the rest of
+        # the line -- and the read in it -- be eaten as a `#` comment.
+        root = tmp / "ruby-percent-hole-quote"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_RQB"),
+            "ruby/lib/c.rb": 's = %Q{#{"}"}, #{ENV["BASECAMP_RQB"]}}\n',
+        })
+        check("a quoted brace inside a percent hole does not close it",
+              run_gate(root, RB_SDK), [])
 
         # ...and `%` as modulo must not start one.
         root = tmp / "ruby-modulo"
