@@ -3,7 +3,9 @@
 All six SDKs (Go, TypeScript, Ruby, Swift, Kotlin, Python) share one architecture:
 **Smithy spec -> OpenAPI -> generated services.** Every wire operation is generated. The
 only hand-written runtime API methods are sanctioned composites calling generated wire
-methods exclusively -- see SPEC.md §18 "Hand-Written Composite Methods".
+methods exclusively -- see SPEC.md §18 "Hand-Written Composite Methods" -- plus one
+sanctioned non-HTTP wire act: the SPEC.md §23 Event Feed connector's cable dial of the
+URL a generated `CreateStreamTicket` call returned (Hard Rule 2 below).
 
 ---
 

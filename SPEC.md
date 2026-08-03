@@ -2415,7 +2415,9 @@ Two dispatch clarifications, pinned:
   a socket failure** `[conformance]`: a frame that fails to parse as JSON, or exceeds
   `EVENT_FEED_MAX_FRAME_BYTES`, triggers full teardown through the current state's
   socket-failure edge (9/15/21/25 → Backoff; the reconnect cycle recovers), with
-  `Observer.disconnected` carrying an unparseable-frame indication. Never terminal — a
+  `Observer.disconnected` carrying an unparseable-frame indication. The size check binds
+  inside the transport (the `max_frame_bytes` dial parameter — an over-limit message is
+  rejected during the read, never materialized); the parse check is the connector's. Never terminal — a
   garbled frame is transport-level corruption, unlike the server's own
   `invalid_event_stream_command` verdict — and never silently ignored: continuing to read
   a stream that has stopped parsing invites silent divergence.
@@ -2663,7 +2665,7 @@ END
 -- unexpected shapes) → unrecoverable, carrying the generated error verbatim.
 
 INTERFACE CableTransport
-  dial(ws_url, cancellation) → CableConn
+  dial(ws_url, cancellation, max_frame_bytes) → CableConn
   -- Dials exactly one connection per call. MUST NOT auto-reconnect. MUST NOT interpret,
   -- filter, or swallow application text frames. Negotiates subprotocol
   -- "actioncable-v1-json". Refuses redirects (§23 Security Invariants).
@@ -2672,6 +2674,12 @@ INTERFACE CableTransport
   -- cancel token): the connector triggers it on handshake-deadline expiry and on
   -- close(), and a triggered dial MUST return promptly — a dial that cannot be
   -- interrupted violates this contract.
+  -- `max_frame_bytes`: the transport MUST enforce this limit WHILE reading (e.g. a
+  -- read-limit on the socket), rejecting an over-limit message without materializing it
+  -- — the security cap has to bind inside the WebSocket stack, or the allocation happens
+  -- before the connector can measure anything. The rejection surfaces from read_frame as
+  -- an error and takes the frame-violation socket-failure dispatch (Cable Protocol
+  -- Details).
   -- Dial errors carry a kind: transient | policy(reason). `policy` is a PERMANENT
   -- refusal the transport detected (a redirect encountered; a scheme the invariants
   -- forbid; an unparseable URL) → Terminal(`invalid_cable_url`), never Backoff — a
@@ -2838,8 +2846,15 @@ canonical_json = "[" T "," B "," C "]"     -- compact: no whitespace anywhere
 
 The canonical bytes are hand-built (string builder plus a minimal escape helper) — no
 language's default JSON emitter is load-bearing, because several HTML-escape by default.
-srv1's domain is the cataloged ASCII type strings and integer ids; unknown types draw the
-filter 400 before any digest is computed, so no quoted-string or non-ASCII vector exists.
+**The algorithm is total over every client-validated input, and the SDK computes it for
+any filter set that passes construction validation** — catalog membership is deliberately
+NOT client-validated (the catalog is server-owned and grows), and the checkpoint key must
+form before the first poll can answer. A syntactically valid but uncataloged type
+therefore gets a well-defined `filter_key` and its `load` runs normally; the first poll
+then draws the server's filter 400 (Terminal(`filter_invalid`)) and that lineage simply
+never advances — harmless. The *server-side* srv1 domain is the cataloged ASCII type
+strings and integer ids: the server rejects unknown types with the filter 400 before
+computing any digest, which is why bc3 publishes no quoted-string or non-ASCII vectors.
 
 Published srv1 vectors (provisional until the merge-time gate; the conformance vector
 source):
