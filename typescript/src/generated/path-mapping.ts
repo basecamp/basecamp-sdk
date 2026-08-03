@@ -81,7 +81,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/dock/tools/{toolId}": "GetTool",
   "PUT:/{accountId}/dock/tools/{toolId}": "UpdateTool",
   "GET:/{accountId}/documents/{documentId}": "GetDocument",
-  "PUT:/{accountId}/documents/{documentId}": "UpdateDocument",
+  "PUT:/{accountId}/documents/{documentId}": "ReplaceDocument",
   "GET:/{accountId}/files.json": "GetEverythingFiles",
   "GET:/{accountId}/forwards.json": "GetEverythingForwards",
   "DELETE:/{accountId}/gauge_needles/{needleId}": "DestroyGaugeNeedle",

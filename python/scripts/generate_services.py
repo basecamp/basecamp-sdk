@@ -68,7 +68,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "Attachments": ["CreateAttachment"],
         "Uploads": ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"],
         "Vaults": ["GetVault", "UpdateVault", "ListVaults", "CreateVault"],
-        "Documents": ["GetDocument", "UpdateDocument", "ListDocuments", "CreateDocument"],
+        "Documents": ["GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"],
     },
     "Automation": {
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],

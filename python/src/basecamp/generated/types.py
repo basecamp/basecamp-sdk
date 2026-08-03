@@ -1409,6 +1409,11 @@ class ReorderUpNextRequestContent(TypedDict):
     source_id: int
 
 
+class ReplaceDocumentRequestContent(TypedDict):
+    content: NotRequired[str]
+    title: NotRequired[str]
+
+
 class ReplaceTodoRequestContent(TypedDict):
     assignee_ids: NotRequired[list[int]]
     completion_subscriber_ids: NotRequired[list[int]]
@@ -1862,11 +1867,6 @@ class UpdateChatbotRequestContent(TypedDict):
 
 class UpdateCommentRequestContent(TypedDict):
     content: str
-
-
-class UpdateDocumentRequestContent(TypedDict):
-    content: NotRequired[str]
-    title: NotRequired[str]
 
 
 class UpdateFolderRequestContent(TypedDict):

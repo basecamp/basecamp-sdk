@@ -58,7 +58,7 @@ import { MyNotesService } from "./generated/services/my-notes.js";
 import { SubscriptionsService } from "./generated/services/subscriptions.js";
 import { AttachmentsService } from "./generated/services/attachments.js";
 import { VaultsService } from "./generated/services/vaults.js";
-import { DocumentsService } from "./generated/services/documents.js";
+import { DocumentsService } from "./services/documents-extensions.js";
 import { UploadsService } from "./services/uploads-extensions.js";
 import { SchedulesService } from "./generated/services/schedules.js";
 import { EventsService } from "./generated/services/events.js";

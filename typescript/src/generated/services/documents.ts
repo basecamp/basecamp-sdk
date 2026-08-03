@@ -18,9 +18,9 @@ import { Errors } from "../../errors.js";
 export type Document = components["schemas"]["Document"];
 
 /**
- * Request parameters for update.
+ * Request parameters for replace.
  */
-export interface UpdateDocumentRequest {
+export interface ReplaceDocumentRequest {
   /** Title */
   title?: string;
   /** Text content */
@@ -92,22 +92,22 @@ export class DocumentsService extends BaseService {
   }
 
   /**
-   * Update an existing document
+   * Replace a document with a new complete representation.
    * @param documentId - The document ID
-   * @param req - Document update parameters
+   * @param req - Document request parameters
    * @returns The Document
-   * @throws {BasecampError} If the resource is not found or fields are invalid
+   * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.documents.update(123, { });
+   * const result = await client.documents.replace(123, { });
    * ```
    */
-  async update(documentId: number, req: UpdateDocumentRequest): Promise<Document> {
+  async replace(documentId: number, req: ReplaceDocumentRequest): Promise<Document> {
     const response = await this.request(
       {
         service: "Documents",
-        operation: "UpdateDocument",
+        operation: "ReplaceDocument",
         resourceType: "document",
         isMutation: true,
         resourceId: documentId,

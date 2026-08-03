@@ -1,0 +1,627 @@
+package basecamp
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+// The documents write surface: the merge-safe Update, the read-modify-write
+// Edit, and the verbatim Replace. The read surface (Get/List/Create/Trash) and
+// the Document type stay tested in vaults_test.go, alongside the vault.
+//
+// PUT /documents/{id} is a FULL REPLACE — BC3 rebuilds the recordable from only
+// the permitted params — so what these tests pin is which bytes reach the wire.
+// A field the caller never mentioned is written on every one of these calls,
+// and the writable set is exactly {title, content}: both optional, neither
+// presence-validated, so an omitted title silently becomes "Untitled" and an
+// omitted content is silently erased. Both are 200s, so nothing but the request
+// body itself distinguishes a preserve from a clear.
+
+// patchDocumentFixture returns the fixture JSON with the given fields replaced.
+func patchDocumentFixture(t *testing.T, base []byte, patch map[string]any) []byte {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal(base, &m); err != nil {
+		t.Fatalf("failed to unmarshal fixture: %v", err)
+	}
+	for k, v := range patch {
+		m[k] = v
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("failed to marshal patched fixture: %v", err)
+	}
+	return b
+}
+
+// capturedDocumentRequest records one request seen by testDocumentsCaptureServer.
+type capturedDocumentRequest struct {
+	method string
+	path   string
+	body   map[string]any
+}
+
+// testDocumentsCaptureServer serves getBody for GETs and putBody for PUTs while
+// recording every request's method, path, and (for PUTs) decoded body.
+// The extra hooks, when non-nil, are installed on the client.
+func testDocumentsCaptureServer(t *testing.T, getBody, putBody []byte, hooks Hooks) (*DocumentsService, *[]capturedDocumentRequest) {
+	t.Helper()
+	reqs := &[]capturedDocumentRequest{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cr := capturedDocumentRequest{method: r.Method, path: r.URL.Path}
+		if r.Method == "PUT" {
+			cr.body = decodeRequestBody(t, r)
+		}
+		*reqs = append(*reqs, cr)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		if r.Method == "GET" {
+			w.Write(getBody)
+		} else {
+			w.Write(putBody)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	var opts []ClientOption
+	if hooks != nil {
+		opts = append(opts, WithHooks(hooks))
+	}
+	client := NewClient(cfg, token, opts...)
+	return client.ForAccount("99999").Documents(), reqs
+}
+
+// The fixture's content, which every merge-safe call must carry back out
+// untouched unless the caller says otherwise.
+const fixtureDocumentContent = "<div>This document contains the project overview and key milestones.</div>"
+
+// TestDocumentWriteRequests_WritableSetMatchesFixture pins the writable set of
+// the document write surface — exactly {title, content}, per BC3's
+// `params.require(:document).permit(:title, :content)` — against the wire
+// fixture, for both the composite input and the verbatim request.
+//
+// Moved here from vaults_test.go (TestUpdateDocumentRequest_Marshal) when the
+// write surface moved to documents.go and UpdateDocument became ReplaceDocument.
+func TestDocumentWriteRequests_WritableSetMatchesFixture(t *testing.T) {
+	data := loadDocumentsFixture(t, "update-request.json")
+
+	// The composite input: the fields a caller may set on a merge-safe update.
+	var update UpdateDocumentRequest
+	if err := json.Unmarshal(data, &update); err != nil {
+		t.Fatalf("failed to unmarshal update-request.json into UpdateDocumentRequest: %v", err)
+	}
+	if update.Title != "Updated Document Title" {
+		t.Errorf("expected title 'Updated Document Title', got %q", update.Title)
+	}
+	if update.Content == "" {
+		t.Error("expected non-empty Content")
+	}
+
+	// The verbatim request carries the same set, so the two are interchangeable
+	// at the call site and a caller can move between them without rewriting.
+	var replace ReplaceDocumentRequest
+	if err := json.Unmarshal(data, &replace); err != nil {
+		t.Fatalf("failed to unmarshal update-request.json into ReplaceDocumentRequest: %v", err)
+	}
+	if replace.Title != update.Title || replace.Content != update.Content {
+		t.Errorf("replace request %+v does not mirror update request %+v", replace, update)
+	}
+
+	// The fixture itself must not grow a third writable field without this
+	// surface growing one too.
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("failed to unmarshal update-request.json: %v", err)
+	}
+	if len(raw) != 2 {
+		t.Errorf("expected the writable set to be exactly {title, content}, got %v", raw)
+	}
+	for _, key := range []string{"title", "content"} {
+		if _, ok := raw[key]; !ok {
+			t.Errorf("expected %q in the writable set, got %v", key, raw)
+		}
+	}
+}
+
+func TestDocumentsService_UpdateMergesUnsetFields(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	// Title-only update: content must be carried over from the GET. Omitting it
+	// from the PUT would be a silent erase, not a preserve.
+	document, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+		Title: "new title",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if document.ID != 1069479300 {
+		t.Errorf("expected ID 1069479300, got %d", document.ID)
+	}
+
+	if len(*reqs) != 2 {
+		t.Fatalf("expected 2 requests (GET then PUT), got %d", len(*reqs))
+	}
+	if (*reqs)[0].method != "GET" || (*reqs)[1].method != "PUT" {
+		t.Fatalf("expected GET then PUT, got %s then %s", (*reqs)[0].method, (*reqs)[1].method)
+	}
+
+	body := (*reqs)[1].body
+	if body["title"] != "new title" {
+		t.Errorf("expected title 'new title', got %v", body["title"])
+	}
+	if body["content"] != fixtureDocumentContent {
+		t.Errorf("expected preserved content, got %v", body["content"])
+	}
+	// The writable set is exactly {title, content}; nothing else rides along.
+	if len(body) != 2 {
+		t.Errorf("expected exactly {title, content} in the body, got %v", body)
+	}
+}
+
+func TestDocumentsService_UpdateMergesContentOnly(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	// The mirror case: a content-only update must preserve the title, which the
+	// server would otherwise reset to "Untitled".
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+		Content: "<div>new body</div>",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	if body["content"] != "<div>new body</div>" {
+		t.Errorf("expected content '<div>new body</div>', got %v", body["content"])
+	}
+	if body["title"] != "Project Overview" {
+		t.Errorf("expected preserved title 'Project Overview', got %v", body["title"])
+	}
+}
+
+// TestDocumentsService_UpdateCannotClearWithEmptyString pins the Go zero-value
+// guard: set-detection here is by zero value, as everywhere else in this SDK,
+// so "" reads as "unaddressed", never as "clear". The fetched value has to go
+// back out — a caller who wants the clear reaches for Edit or Replace.
+func TestDocumentsService_UpdateCannotClearWithEmptyString(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+		Title:   "new title",
+		Content: "",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	content, ok := body["content"]
+	if !ok {
+		t.Fatal("expected content present in the PUT body, but it was omitted")
+	}
+	if content != fixtureDocumentContent {
+		t.Errorf("expected the fetched content to be resent (\"\" is unset, not a clear), got %v", content)
+	}
+
+	// And the same in the other direction: an empty Title leaves the current
+	// title alone rather than letting the server reset it to "Untitled".
+	svc2, reqs2 := testDocumentsCaptureServer(t, fixture, fixture, nil)
+	if _, err := svc2.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+		Content: "<div>new body</div>",
+		Title:   "",
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if title := (*reqs2)[len(*reqs2)-1].body["title"]; title != "Project Overview" {
+		t.Errorf("expected the fetched title to be resent, got %v", title)
+	}
+}
+
+func TestDocumentsService_UpdateNilRequestIsUsageError(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479300, nil)
+	if err == nil {
+		t.Fatal("expected usage error for a nil update request")
+	}
+	usageErr, ok := errors.AsType[*Error](err)
+	if !ok || usageErr.Code != CodeUsage {
+		t.Fatalf("expected CodeUsage, got %T %v", err, err)
+	}
+	// Refused before the read-before-write, so not even the GET is spent.
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+func TestDocumentsService_UpdateHooksObserveGetAndReplace(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, _ := testDocumentsCaptureServer(t, fixture, fixture, recorder)
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{Title: "x"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Update composes the public Get and Replace paths, so hooks see the two
+	// wire operations rather than one synthetic composite.
+	ops := make([]string, 0, len(recorder.opStartCalls))
+	for _, op := range recorder.opStartCalls {
+		ops = append(ops, op.Service+"."+op.Operation)
+	}
+	if len(ops) != 2 || ops[0] != "Documents.Get" || ops[1] != "Documents.Replace" {
+		t.Errorf("expected operations [Documents.Get Documents.Replace], got %v", ops)
+	}
+	if len(recorder.opEndCalls) != 2 {
+		t.Errorf("expected 2 OnOperationEnd calls, got %d", len(recorder.opEndCalls))
+	}
+}
+
+func TestDocumentsService_Edit(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	document, err := svc.Edit(context.Background(), 1069479300, func(f *DocumentFields) error {
+		if f.Title != "Project Overview" {
+			t.Errorf("expected Title from the GET, got %q", f.Title)
+		}
+		if f.Content != fixtureDocumentContent {
+			t.Errorf("expected Content from the GET, got %q", f.Content)
+		}
+		f.Title = "🚨 " + f.Title
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if document.ID != 1069479300 {
+		t.Errorf("expected ID 1069479300, got %d", document.ID)
+	}
+
+	if len(*reqs) != 2 || (*reqs)[0].method != "GET" || (*reqs)[1].method != "PUT" {
+		t.Fatalf("expected GET then PUT, got %+v", *reqs)
+	}
+	// The full state goes back, not just the field the callback touched.
+	body := (*reqs)[1].body
+	if body["title"] != "🚨 Project Overview" {
+		t.Errorf("expected prefixed title, got %v", body["title"])
+	}
+	if body["content"] != fixtureDocumentContent {
+		t.Errorf("expected preserved content, got %v", body["content"])
+	}
+}
+
+// TestDocumentsService_EditClearsContentPresentAndEmpty is the clear that
+// Update cannot express. On a full-replace endpoint "" is how a clear is
+// stated, and it has to REACH THE WIRE as a present key: omitting it would
+// hand the clear back to the server's own rebuild — the same 200, but as an
+// accident rather than an intent — and JSON null is out (SPEC §18).
+func TestDocumentsService_EditClearsContentPresentAndEmpty(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479300, func(f *DocumentFields) error {
+		f.Content = ""
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	content, ok := body["content"]
+	if !ok {
+		t.Fatal("expected content present in the PUT body, but it was omitted")
+	}
+	if content != "" {
+		t.Errorf("expected content \"\", got %v", content)
+	}
+	if content == nil {
+		t.Error("expected content \"\", got JSON null")
+	}
+	// The untouched field still rides along in full.
+	if body["title"] != "Project Overview" {
+		t.Errorf("expected preserved title, got %v", body["title"])
+	}
+}
+
+// TestDocumentsService_EditClearsTitlePresentAndEmpty is the same rule for the
+// other field. BC3 presence-validates neither, so this is a 200 and the
+// document reads back as "Untitled" — the clear is only visible in the body.
+func TestDocumentsService_EditClearsTitlePresentAndEmpty(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479300, func(f *DocumentFields) error {
+		f.Title = ""
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	title, ok := body["title"]
+	if !ok {
+		t.Fatal("expected title present in the PUT body, but it was omitted")
+	}
+	if title != "" {
+		t.Errorf("expected title \"\", got %v", title)
+	}
+	if body["content"] != fixtureDocumentContent {
+		t.Errorf("expected preserved content, got %v", body["content"])
+	}
+}
+
+// TestDocumentsService_EditCarriesAMissingFieldAsEmpty covers the GET that
+// omits a writable field: Go's typed decode leaves it the zero value, and the
+// full-replace body still states it rather than dropping the key.
+func TestDocumentsService_EditCarriesAMissingFieldAsEmpty(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	getBody := patchDocumentFixture(t, fixture, map[string]any{"content": nil})
+	svc, reqs := testDocumentsCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479300, func(f *DocumentFields) error {
+		if f.Content != "" {
+			t.Errorf("expected empty Content for a null field, got %q", f.Content)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	content, ok := body["content"]
+	if !ok || content != "" {
+		t.Errorf("expected content \"\" present in the body, got %v (present=%v)", content, ok)
+	}
+}
+
+func TestDocumentsService_EditCallbackErrorAbortsWithoutPUT(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	wantErr := errors.New("nope")
+	_, err := svc.Edit(context.Background(), 1069479300, func(f *DocumentFields) error {
+		f.Title = "should never be written"
+		f.Content = ""
+		return wantErr
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected callback error, got %v", err)
+	}
+
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatalf("expected no PUT after a callback error, got %+v", r)
+		}
+	}
+}
+
+func TestDocumentsService_EditNilCallbackIsUsageError(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479300, nil)
+	if err == nil {
+		t.Fatal("expected usage error for a nil edit callback")
+	}
+	usageErr, ok := errors.AsType[*Error](err)
+	if !ok || usageErr.Code != CodeUsage {
+		t.Fatalf("expected CodeUsage, got %T %v", err, err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+func TestDocumentsService_EditHooksObserveGetAndReplace(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, _ := testDocumentsCaptureServer(t, fixture, fixture, recorder)
+
+	_, err := svc.Edit(context.Background(), 1069479300, func(f *DocumentFields) error { return nil })
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ops := make([]string, 0, len(recorder.opStartCalls))
+	for _, op := range recorder.opStartCalls {
+		ops = append(ops, op.Service+"."+op.Operation)
+	}
+	if len(ops) != 2 || ops[0] != "Documents.Get" || ops[1] != "Documents.Replace" {
+		t.Errorf("expected operations [Documents.Get Documents.Replace], got %v", ops)
+	}
+}
+
+func TestDocumentsService_ReplaceSendsSparseVerbatim(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, recorder)
+
+	document, err := svc.Replace(context.Background(), 1069479300, &ReplaceDocumentRequest{
+		Title: "the whole new document",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if document.ID != 1069479300 {
+		t.Errorf("expected ID 1069479300, got %d", document.ID)
+	}
+
+	// No GET: replace is the server-native verbatim PUT.
+	if len(*reqs) != 1 || (*reqs)[0].method != "PUT" {
+		t.Fatalf("expected exactly one PUT, got %+v", *reqs)
+	}
+	body := (*reqs)[0].body
+	if body["title"] != "the whole new document" {
+		t.Errorf("expected title in body, got %v", body["title"])
+	}
+	// The unnamed field is omitted, and the server clears it. That is the sharp
+	// edge Update and Edit exist to blunt.
+	if _, ok := body["content"]; ok {
+		t.Errorf("expected content omitted from a sparse replace, got %v", body["content"])
+	}
+	if len(body) != 1 {
+		t.Errorf("expected exactly {title} in the body, got %v", body)
+	}
+
+	// Hooks observe a single Documents.Replace operation.
+	if len(recorder.opStartCalls) != 1 ||
+		recorder.opStartCalls[0].Service != "Documents" || recorder.opStartCalls[0].Operation != "Replace" {
+		t.Errorf("expected single Documents.Replace operation, got %+v", recorder.opStartCalls)
+	}
+}
+
+// TestDocumentsService_ReplaceEmptyRequestIsUsageError covers the one shape BC3
+// rejects outright: `params.require(:document)` is synthesized from a flat body,
+// so a body naming neither field carries no document object and is a 400. The
+// SDK refuses it locally rather than spending a round-trip to learn that.
+func TestDocumentsService_ReplaceEmptyRequestIsUsageError(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, recorder)
+
+	_, err := svc.Replace(context.Background(), 1069479300, &ReplaceDocumentRequest{})
+	if err == nil {
+		t.Fatal("expected usage error for a replace request naming neither field")
+	}
+	usageErr, ok := errors.AsType[*Error](err)
+	if !ok || usageErr.Code != CodeUsage {
+		t.Fatalf("expected CodeUsage, got %T %v", err, err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+	// The body is built inside the hook envelope, so the refusal is observable.
+	if len(recorder.opStartCalls) != 1 || len(recorder.opEndCalls) != 1 {
+		t.Errorf("expected the usage error to be observable to hooks, got %d starts / %d ends",
+			len(recorder.opStartCalls), len(recorder.opEndCalls))
+	}
+}
+
+func TestDocumentsService_ReplaceNilRequestIsUsageError(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Replace(context.Background(), 1069479300, nil)
+	if err == nil {
+		t.Fatal("expected usage error for a nil replace request")
+	}
+	usageErr, ok := errors.AsType[*Error](err)
+	if !ok || usageErr.Code != CodeUsage {
+		t.Fatalf("expected CodeUsage, got %T %v", err, err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+// TestDocumentsService_ReplaceSendsBothFieldsWhenBothSet is the shape Update
+// and Edit always produce, exercised through the verbatim path.
+func TestDocumentsService_ReplaceSendsBothFieldsWhenBothSet(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Replace(context.Background(), 1069479300, &ReplaceDocumentRequest{
+		Title:   "Both",
+		Content: "<div>set</div>",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[0].body
+	if body["title"] != "Both" || body["content"] != "<div>set</div>" {
+		t.Errorf("expected both fields sent verbatim, got %v", body)
+	}
+}
+
+// Document.title is @required in the spec, and BC3 can never render it blank
+// (Document#title is super.presence || "Untitled"). encoding/json does not
+// enforce required-ness, though: an absent "title" decodes to the string zero
+// value, and the full-replace PUT would then send title:"" — blanking the real
+// title on a call that only touched Content. That is #576's defect in the one
+// shape a typed decoder does not catch, so the composite refuses it explicitly.
+//
+// The assertion that matters is the ORDERING: no PUT. A guard that fires after
+// the PUT has already lost the field.
+func TestDocumentsService_UpdateRefusesAMissingTitleBeforeWriting(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	for _, tc := range []struct {
+		name  string
+		patch map[string]any
+	}{
+		{"absent", map[string]any{"title": nil}},
+		{"empty", map[string]any{"title": ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			getBody := patchDocumentFixture(t, fixture, tc.patch)
+			svc, reqs := testDocumentsCaptureServer(t, getBody, fixture, nil)
+
+			_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+				Content: "<div>New body.</div>",
+			})
+			if err == nil {
+				t.Fatal("expected the call to fail, but it succeeded")
+			}
+			var apiErr *Error
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("expected *Error, got %T: %v", err, err)
+			}
+			// api_error, not usage: the value arrived in a successful API
+			// response, so nothing the caller passed is at fault.
+			if apiErr.Code != CodeAPI {
+				t.Errorf("expected code %q, got %q", CodeAPI, apiErr.Code)
+			}
+			if apiErr.HTTPStatus != 0 {
+				t.Errorf("expected a statusless error, got HTTP %d", apiErr.HTTPStatus)
+			}
+			if apiErr.Retryable {
+				t.Error("re-requesting cannot repair a malformed body")
+			}
+			for _, r := range *reqs {
+				if r.method == "PUT" {
+					t.Fatalf("expected no PUT before the guard fired, got %+v", r)
+				}
+			}
+		})
+	}
+}
+
+func TestDocumentsService_EditRefusesAMissingTitleBeforeWriting(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	getBody := patchDocumentFixture(t, fixture, map[string]any{"title": nil})
+	svc, reqs := testDocumentsCaptureServer(t, getBody, fixture, nil)
+
+	called := false
+	_, err := svc.Edit(context.Background(), 1069479300, func(f *DocumentFields) error {
+		called = true
+		f.Content = "<div>New body.</div>"
+		return nil
+	})
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+	if called {
+		t.Error("the callback must not run on a malformed read")
+	}
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatalf("expected no PUT before the guard fired, got %+v", r)
+		}
+	}
+}

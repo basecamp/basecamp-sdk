@@ -45,4 +45,24 @@ class ZeitwerkTest < Minitest::Test
     assert_equal Basecamp::Services::TodolistsService, \
                  Basecamp::Services::TodolistsService.instance_method(:replace).owner
   end
+
+  # And for documents, the same shape as todolists: PUT /documents/{id} is a
+  # full replace, so the generated class owns `replace` and the prepended
+  # module contributes the merge-safe `update`/`edit`.
+  def test_documents_extensions_prepended
+    assert_includes Basecamp::Services::DocumentsService.ancestors, \
+                    Basecamp::Services::DocumentsExtensions
+    assert Basecamp::Services::DocumentsService.ancestors.index(Basecamp::Services::DocumentsExtensions) <
+           Basecamp::Services::DocumentsService.ancestors.index(Basecamp::Services::DocumentsService),
+           "extensions must be prepended (before the class in the ancestor chain)"
+  end
+
+  def test_documents_composite_surface_is_reachable
+    assert_equal Basecamp::Services::DocumentsExtensions, \
+                 Basecamp::Services::DocumentsService.instance_method(:update).owner
+    assert_equal Basecamp::Services::DocumentsExtensions, \
+                 Basecamp::Services::DocumentsService.instance_method(:edit).owner
+    assert_equal Basecamp::Services::DocumentsService, \
+                 Basecamp::Services::DocumentsService.instance_method(:replace).owner
+  end
 end

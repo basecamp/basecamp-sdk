@@ -1,7 +1,7 @@
 // @generated from OpenAPI spec — do not edit directly
 import Foundation
 
-public struct UpdateDocumentRequest: Codable, Sendable {
+public struct ReplaceDocumentRequest: Codable, Sendable {
     public var content: String?
     public var title: String?
 

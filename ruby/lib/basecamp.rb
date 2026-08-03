@@ -20,6 +20,11 @@ end
 loader.on_load("Basecamp::Services::TodolistsService") do |klass, _abspath|
   klass.prepend(Basecamp::Services::TodolistsExtensions)
 end
+# And for documents: PUT /documents/{id} is a full replace, so the generated
+# class owns `replace` and the merge-safe update/edit surface is prepended.
+loader.on_load("Basecamp::Services::DocumentsService") do |klass, _abspath|
+  klass.prepend(Basecamp::Services::DocumentsExtensions)
+end
 loader.setup
 
 # Load generated types if available

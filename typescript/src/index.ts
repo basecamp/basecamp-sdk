@@ -359,9 +359,13 @@ export {
 
 export {
   DocumentsService,
+  type UpdateDocumentRequest,
+  type DocumentFields,
+} from "./services/documents-extensions.js";
+export {
   type Document,
   type CreateDocumentRequest,
-  type UpdateDocumentRequest,
+  type ReplaceDocumentRequest,
 } from "./generated/services/documents.js";
 
 export { UploadsService } from "./services/uploads-extensions.js";

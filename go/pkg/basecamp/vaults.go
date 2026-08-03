@@ -208,14 +208,6 @@ type CreateDocumentRequest struct {
 	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
-// UpdateDocumentRequest specifies the parameters for updating a document.
-type UpdateDocumentRequest struct {
-	// Title is the document title.
-	Title string `json:"title,omitempty"`
-	// Content is the document body in HTML.
-	Content string `json:"content,omitempty"`
-}
-
 // UpdateUploadRequest specifies the parameters for updating an upload.
 type UpdateUploadRequest struct {
 	// Description is the upload description.
@@ -634,51 +626,8 @@ func (s *DocumentsService) Create(ctx context.Context, vaultID int64, req *Creat
 	return &document, nil
 }
 
-// Update updates an existing document.
-// Returns the updated document.
-func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *UpdateDocumentRequest) (result *Document, err error) {
-	op := OperationInfo{
-		Service: "Documents", Operation: "Update",
-		ResourceType: "document", IsMutation: true,
-		ResourceID: documentID,
-	}
-	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
-		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return
-		}
-	}
-	start := time.Now()
-	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if req == nil {
-		err = ErrUsage("update request is required")
-		return nil, err
-	}
-
-	body := generated.UpdateDocumentJSONRequestBody{}
-	if req.Title != "" {
-		body.Title = &req.Title
-	}
-	if req.Content != "" {
-		body.Content = &req.Content
-	}
-
-	resp, err := s.client.parent.gen.UpdateDocumentWithResponse(ctx, s.client.accountID, documentID, body)
-	if err != nil {
-		return nil, err
-	}
-	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
-		return nil, err
-	}
-
-	document := documentFromGenerated(*resp.JSON200)
-	return &document, nil
-}
+// The Documents write surface — the merge-safe Update, the read-modify-write
+// Edit, and the verbatim Replace — lives in documents.go.
 
 // Trash moves a document to the trash.
 // Trashed documents can be recovered from the trash.

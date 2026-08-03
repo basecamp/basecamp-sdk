@@ -2329,6 +2329,15 @@ type ReorderUpNextRequestContent struct {
 	SourceId int64 `json:"source_id"`
 }
 
+// ReplaceDocumentRequestContent defines model for ReplaceDocumentRequestContent.
+type ReplaceDocumentRequestContent struct {
+	Content *string `json:"content,omitempty"`
+	Title   *string `json:"title,omitempty"`
+}
+
+// ReplaceDocumentResponseContent defines model for ReplaceDocumentResponseContent.
+type ReplaceDocumentResponseContent = Document
+
 // ReplaceTodoRequestContent defines model for ReplaceTodoRequestContent.
 type ReplaceTodoRequestContent struct {
 	AssigneeIds             *[]int64    `json:"assignee_ids,omitempty"`
@@ -3091,15 +3100,6 @@ type UpdateCommentRequestContent struct {
 
 // UpdateCommentResponseContent defines model for UpdateCommentResponseContent.
 type UpdateCommentResponseContent = Comment
-
-// UpdateDocumentRequestContent defines model for UpdateDocumentRequestContent.
-type UpdateDocumentRequestContent struct {
-	Content *string `json:"content,omitempty"`
-	Title   *string `json:"title,omitempty"`
-}
-
-// UpdateDocumentResponseContent defines model for UpdateDocumentResponseContent.
-type UpdateDocumentResponseContent = Document
 
 // UpdateFolderRequestContent defines model for UpdateFolderRequestContent.
 type UpdateFolderRequestContent struct {
@@ -4234,8 +4234,8 @@ type UpdateCommentJSONRequestBody = UpdateCommentRequestContent
 // UpdateToolJSONRequestBody defines body for UpdateTool for application/json ContentType.
 type UpdateToolJSONRequestBody = UpdateToolRequestContent
 
-// UpdateDocumentJSONRequestBody defines body for UpdateDocument for application/json ContentType.
-type UpdateDocumentJSONRequestBody = UpdateDocumentRequestContent
+// ReplaceDocumentJSONRequestBody defines body for ReplaceDocument for application/json ContentType.
+type ReplaceDocumentJSONRequestBody = ReplaceDocumentRequestContent
 
 // UpdateGaugeNeedleJSONRequestBody defines body for UpdateGaugeNeedle for application/json ContentType.
 type UpdateGaugeNeedleJSONRequestBody = UpdateGaugeNeedleRequestContent
@@ -5219,10 +5219,10 @@ type ClientInterface interface {
 	// GetDocument request
 	GetDocument(ctx context.Context, accountId string, documentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateDocumentWithBody request with any body
-	UpdateDocumentWithBody(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// ReplaceDocumentWithBody request with any body
+	ReplaceDocumentWithBody(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateDocument(ctx context.Context, accountId string, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ReplaceDocument(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetEverythingFiles request
 	GetEverythingFiles(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6967,21 +6967,21 @@ func (c *Client) GetDocument(ctx context.Context, accountId string, documentId i
 
 }
 
-// UpdateDocumentWithBody is marked as idempotent and will be retried on transient failures.
+// ReplaceDocumentWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateDocumentWithBody(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ReplaceDocumentWithBody(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateDocumentRequestWithBody(c.Server, accountId, documentId, contentType, body)
-	}, true, "UpdateDocument", reqEditors...)
+		return NewReplaceDocumentRequestWithBody(c.Server, accountId, documentId, contentType, body)
+	}, true, "ReplaceDocument", reqEditors...)
 
 }
 
-func (c *Client) UpdateDocument(ctx context.Context, accountId string, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ReplaceDocument(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateDocumentRequest(c.Server, accountId, documentId, body)
-	}, true, "UpdateDocument", reqEditors...)
+		return NewReplaceDocumentRequest(c.Server, accountId, documentId, body)
+	}, true, "ReplaceDocument", reqEditors...)
 
 }
 
@@ -13495,19 +13495,19 @@ func NewGetDocumentRequest(server string, accountId string, documentId int64) (*
 	return req, nil
 }
 
-// NewUpdateDocumentRequest calls the generic UpdateDocument builder with application/json body
-func NewUpdateDocumentRequest(server string, accountId string, documentId int64, body UpdateDocumentJSONRequestBody) (*http.Request, error) {
+// NewReplaceDocumentRequest calls the generic ReplaceDocument builder with application/json body
+func NewReplaceDocumentRequest(server string, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateDocumentRequestWithBody(server, accountId, documentId, "application/json", bodyReader)
+	return NewReplaceDocumentRequestWithBody(server, accountId, documentId, "application/json", bodyReader)
 }
 
-// NewUpdateDocumentRequestWithBody generates requests for UpdateDocument with any type of body
-func NewUpdateDocumentRequestWithBody(server string, accountId string, documentId int64, contentType string, body io.Reader) (*http.Request, error) {
+// NewReplaceDocumentRequestWithBody generates requests for ReplaceDocument with any type of body
+func NewReplaceDocumentRequestWithBody(server string, accountId string, documentId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -22694,7 +22694,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetTool":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
-	"UpdateDocument":                     {Idempotent: true, HasSensitiveParams: false},
+	"ReplaceDocument":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingFiles":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingForwards":              {Idempotent: true, HasSensitiveParams: false},
 	"DestroyGaugeNeedle":                 {Idempotent: true, HasSensitiveParams: false},
@@ -22946,7 +22946,7 @@ var operationRetryMax = map[string]int{
 	"GetTool":                            3,
 	"UpdateTool":                         3,
 	"GetDocument":                        3,
-	"UpdateDocument":                     3,
+	"ReplaceDocument":                    3,
 	"GetEverythingFiles":                 3,
 	"GetEverythingForwards":              3,
 	"DestroyGaugeNeedle":                 2,
@@ -23196,7 +23196,7 @@ var operationRetryOn = map[string][]int{
 	"GetTool":                            {429, 503},
 	"UpdateTool":                         {429, 503},
 	"GetDocument":                        {429, 503},
-	"UpdateDocument":                     {429, 503},
+	"ReplaceDocument":                    {429, 503},
 	"GetEverythingFiles":                 {429, 503},
 	"GetEverythingForwards":              {429, 503},
 	"DestroyGaugeNeedle":                 {429, 503},
@@ -24018,12 +24018,12 @@ func (s *DocumentsService) Get(ctx context.Context, accountId string, documentId
 	return s.client.GetDocument(ctx, accountId, documentId, reqEditors...)
 }
 
-func (s *DocumentsService) UpdateWithBody(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateDocumentWithBody(ctx, accountId, documentId, contentType, body, reqEditors...)
+func (s *DocumentsService) ReplaceWithBody(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ReplaceDocumentWithBody(ctx, accountId, documentId, contentType, body, reqEditors...)
 }
 
-func (s *DocumentsService) Update(ctx context.Context, accountId string, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateDocument(ctx, accountId, documentId, body, reqEditors...)
+func (s *DocumentsService) Replace(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ReplaceDocument(ctx, accountId, documentId, body, reqEditors...)
 }
 
 func (s *MessagesService) List(ctx context.Context, accountId string, boardId int64, params *ListMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -24603,10 +24603,10 @@ type ClientWithResponsesInterface interface {
 	// GetDocumentWithResponse request
 	GetDocumentWithResponse(ctx context.Context, accountId string, documentId int64, reqEditors ...RequestEditorFn) (*GetDocumentResponse, error)
 
-	// UpdateDocumentWithBodyWithResponse request with any body
-	UpdateDocumentWithBodyWithResponse(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
+	// ReplaceDocumentWithBodyWithResponse request with any body
+	ReplaceDocumentWithBodyWithResponse(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceDocumentResponse, error)
 
-	UpdateDocumentWithResponse(ctx context.Context, accountId string, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
+	ReplaceDocumentWithResponse(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceDocumentResponse, error)
 
 	// GetEverythingFilesWithResponse request
 	GetEverythingFilesWithResponse(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*GetEverythingFilesResponse, error)
@@ -27822,10 +27822,10 @@ func (r GetDocumentResponse) ContentType() string {
 	return ""
 }
 
-type UpdateDocumentResponse struct {
+type ReplaceDocumentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *UpdateDocumentResponseContent
+	JSON200      *ReplaceDocumentResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -27834,7 +27834,7 @@ type UpdateDocumentResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r UpdateDocumentResponse) Status() string {
+func (r ReplaceDocumentResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -27842,7 +27842,7 @@ func (r UpdateDocumentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpdateDocumentResponse) StatusCode() int {
+func (r ReplaceDocumentResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -27850,7 +27850,7 @@ func (r UpdateDocumentResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateDocumentResponse) ContentType() string {
+func (r ReplaceDocumentResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -34433,21 +34433,21 @@ func (c *ClientWithResponses) GetDocumentWithResponse(ctx context.Context, accou
 	return ParseGetDocumentResponse(rsp)
 }
 
-// UpdateDocumentWithBodyWithResponse request with arbitrary body returning *UpdateDocumentResponse
-func (c *ClientWithResponses) UpdateDocumentWithBodyWithResponse(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
-	rsp, err := c.UpdateDocumentWithBody(ctx, accountId, documentId, contentType, body, reqEditors...)
+// ReplaceDocumentWithBodyWithResponse request with arbitrary body returning *ReplaceDocumentResponse
+func (c *ClientWithResponses) ReplaceDocumentWithBodyWithResponse(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceDocumentResponse, error) {
+	rsp, err := c.ReplaceDocumentWithBody(ctx, accountId, documentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateDocumentResponse(rsp)
+	return ParseReplaceDocumentResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateDocumentWithResponse(ctx context.Context, accountId string, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error) {
-	rsp, err := c.UpdateDocument(ctx, accountId, documentId, body, reqEditors...)
+func (c *ClientWithResponses) ReplaceDocumentWithResponse(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceDocumentResponse, error) {
+	rsp, err := c.ReplaceDocument(ctx, accountId, documentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateDocumentResponse(rsp)
+	return ParseReplaceDocumentResponse(rsp)
 }
 
 // GetEverythingFilesWithResponse request returning *GetEverythingFilesResponse
@@ -40342,22 +40342,22 @@ func ParseGetDocumentResponse(rsp *http.Response) (*GetDocumentResponse, error) 
 	return response, nil
 }
 
-// ParseUpdateDocumentResponse parses an HTTP response from a UpdateDocumentWithResponse call
-func ParseUpdateDocumentResponse(rsp *http.Response) (*UpdateDocumentResponse, error) {
+// ParseReplaceDocumentResponse parses an HTTP response from a ReplaceDocumentWithResponse call
+func ParseReplaceDocumentResponse(rsp *http.Response) (*ReplaceDocumentResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpdateDocumentResponse{
+	response := &ReplaceDocumentResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateDocumentResponseContent
+		var dest ReplaceDocumentResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

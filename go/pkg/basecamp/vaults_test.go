@@ -421,21 +421,12 @@ func TestCreateDocumentRequest_SubscriptionsNil(t *testing.T) {
 	}
 }
 
-func TestUpdateDocumentRequest_Marshal(t *testing.T) {
-	data := loadDocumentsFixture(t, "update-request.json")
-
-	var req UpdateDocumentRequest
-	if err := json.Unmarshal(data, &req); err != nil {
-		t.Fatalf("failed to unmarshal update-request.json: %v", err)
-	}
-
-	if req.Title != "Updated Document Title" {
-		t.Errorf("expected title 'Updated Document Title', got %q", req.Title)
-	}
-	if req.Content == "" {
-		t.Error("expected non-empty Content")
-	}
-}
+// The document WRITE surface — UpdateDocumentRequest, ReplaceDocumentRequest,
+// and the Update/Edit/Replace triad — moved to documents.go when
+// UpdateDocument became the full-replace ReplaceDocument. Its tests, including
+// the writable-set fixture check that used to live here as
+// TestUpdateDocumentRequest_Marshal, moved with it to documents_test.go. What
+// stays here is the read surface the write surface hangs off.
 
 func TestDocument_TimestampParsing(t *testing.T) {
 	data := loadDocumentsFixture(t, "get.json")

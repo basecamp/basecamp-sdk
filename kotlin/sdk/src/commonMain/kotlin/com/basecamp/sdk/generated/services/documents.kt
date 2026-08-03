@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class DocumentsService(client: AccountClient) : BaseService(client) {
+open class DocumentsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single document by id
@@ -33,14 +33,14 @@ class DocumentsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Update an existing document
+     * Replace a document with a new complete representation.
      * @param documentId The document ID
      * @param body Request body
      */
-    suspend fun update(documentId: Long, body: UpdateDocumentBody): Document {
+    suspend fun replace(documentId: Long, body: ReplaceDocumentBody): Document {
         val info = OperationInfo(
             service = "Documents",
-            operation = "UpdateDocument",
+            operation = "ReplaceDocument",
             resourceType = "document",
             isMutation = true,
             projectId = null,
