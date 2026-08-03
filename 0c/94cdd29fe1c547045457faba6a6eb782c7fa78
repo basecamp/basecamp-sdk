@@ -1,0 +1,36 @@
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_15a2d4eca5bf94 171-174
+  s_ae792ed0be3006::t_936f6b9b324180 175-177
+typescript/package-lock.json
+  s_ae792ed0be3006::t_19e6fece150f5e 1116-1132
+conformance/runner/typescript/package.json
+  s_ae792ed0be3006::t_3b0232f1e58785 9
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_97f4d8249d2b8b 1-7,13,19-22,28,30-54,57-61,65-76,92-93,95-97
+  s_ae792ed0be3006::t_b173d16117f0b4 8-12,14-18,23-27,29,77-91,94
+  s_ae792ed0be3006::t_fa95c13f763ae9 55-56,62-64
+Makefile
+  s_ae792ed0be3006::t_40ad52282f4664 1110-1118
+  s_ae792ed0be3006::t_afe0919dcb78a6 1010,1144
+  s_ae792ed0be3006::t_42417e5295a5d8 1108-1109,1119-1121
+typescript/package.json
+  s_ae792ed0be3006::t_6081a02fbcc37f 71
+CONTRIBUTING.md
+  s_ae792ed0be3006::t_6de5622240a7bd 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0c94cdd29fe1c547045457faba6a6eb782c7fa78",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
