@@ -172,6 +172,10 @@ SDKS = {
 #   regex:   TypeScript `/.../` literals, whose contents are data. Enabled only
 #            there: `/` is division far more often than not, and the two are
 #            told apart by the preceding token, so this stays conservative.
+#   command_regex: Ruby only, where a call may omit its parentheses -- so the
+#            token before the slash in `puts /re/` is an identifier and it is
+#            still a regex. TypeScript has no such form, and reading one there
+#            would swallow the arithmetic it is actually looking at.
 #   multiline: Ruby, where an ordinary quoted literal may span physical lines.
 #            Everywhere else a newline ends it, which is what bounds the damage
 #            from an unbalanced quote.
@@ -180,6 +184,7 @@ LANG_FLAGS = {
         "triple": False, "nested": False, "raw": False, "fstring": False,
         "multiline": False,
         "regex": False,
+        "command_regex": False,
         "backtick_raw": True,
         "triple_raw": False,
         "percent": False,
@@ -189,6 +194,7 @@ LANG_FLAGS = {
         "triple": True, "nested": False, "raw": False, "fstring": False,
         "multiline": True,
         "regex": True,
+        "command_regex": True,
         "backtick_raw": False,
         "triple_raw": False,
         "percent": True,
@@ -198,6 +204,7 @@ LANG_FLAGS = {
         "triple": True, "nested": False, "raw": False, "fstring": True,
         "multiline": False,
         "regex": False,
+        "command_regex": False,
         "backtick_raw": False,
         "triple_raw": False,
         "percent": False,
@@ -207,6 +214,7 @@ LANG_FLAGS = {
         "triple": False, "nested": False, "raw": False, "fstring": False,
         "multiline": False,
         "regex": True,
+        "command_regex": False,
         "backtick_raw": False,
         "triple_raw": False,
         "percent": False,
@@ -216,6 +224,7 @@ LANG_FLAGS = {
         "triple": True, "nested": True, "raw": True, "fstring": False,
         "multiline": False,
         "regex": False,
+        "command_regex": False,
         "backtick_raw": False,
         "triple_raw": False,
         "percent": False,
@@ -225,6 +234,7 @@ LANG_FLAGS = {
         "triple": True, "nested": True, "raw": False, "fstring": False,
         "multiline": False,
         "regex": False,
+        "command_regex": False,
         "backtick_raw": False,
         "triple_raw": True,
         "percent": False,
@@ -233,7 +243,7 @@ LANG_FLAGS = {
 }
 # Permissive union, used only when no language is supplied.
 DEFAULT_FLAGS = {
-    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "backtick_raw": False, "triple_raw": False, "percent": True,
+    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "command_regex": True, "backtick_raw": False, "triple_raw": False, "percent": True,
     "interp": {"`": [("${", "}")], '"': [("${", "}"), ("\\(", ")"), ("#{", "}")]},
 }
 
@@ -296,6 +306,35 @@ REGEX_KEYWORDS = {
 }
 
 
+def command_argument(text: str, i: int, word: str, spaced: bool, flags: dict) -> bool:
+    """Whether the `/` at `i` opens a regex passed to a call without parentheses.
+
+    Ruby lets a method drop its parentheses, so `puts /re/` passes a regex whose
+    preceding token is an ordinary identifier -- which the rule above reads as
+    division. Both directions of that are wrong, and the second is the worse:
+    `puts /ENV['X']/` hands the regex body to the read patterns and invents a
+    read, while `puts /#{ENV['X']}/` stays division, the `#` then opens a line
+    comment, and a genuine interpolated read disappears.
+
+    Ruby's own parser settles the ambiguity by spacing and so does this: a space
+    before the slash and none after it is the argument form -- the spelling MRI
+    itself warns about as `ambiguous first argument`. Every other spacing stays
+    division, including `/=`, which is divide-and-assign.
+
+    Ruby only. TypeScript has no parenthesis-less call, so `total /count/ 2`
+    there is arithmetic and this reading would swallow it.
+
+    Being wrong here is bounded: the caller still requires a closing `/` on the
+    same line, so a lone slash falls back to division on its own.
+    """
+    if not flags.get("command_regex") or not spaced:
+        return False
+    if not (word[:1].isalpha() or word[:1] == "_"):
+        return False
+    after = text[i + 1 : i + 2]
+    return bool(after) and not after.isspace() and after != "="
+
+
 def regex_extent(text: str, i: int, flags: dict) -> int:
     """End of a regex literal starting at `i`, else `i`.
 
@@ -309,15 +348,20 @@ def regex_extent(text: str, i: int, flags: dict) -> int:
     if text.startswith("//", i) or text.startswith("/*", i):
         return i
     k = i - 1
+    # Whether anything separated the slash from the token before it. Ruby needs
+    # this to tell a command-form argument from division, and the scan below
+    # discards it.
+    spaced = k >= 0 and text[k] in " \t"
     while k >= 0 and text[k] in " \t":
         k -= 1
     if k >= 0 and text[k] not in REGEX_PRECEDERS and text[k] != "\n":
-        if not (text[k].isalpha() or text[k] == "_"):
+        if not (text[k].isalnum() or text[k] == "_"):
             return i
         word_end = k + 1
         while k >= 0 and (text[k].isalnum() or text[k] == "_"):
             k -= 1
-        if text[k + 1 : word_end] not in REGEX_KEYWORDS:
+        word = text[k + 1 : word_end]
+        if word not in REGEX_KEYWORDS and not command_argument(text, i, word, spaced, flags):
             return i
     j = i + 1
     in_class = False

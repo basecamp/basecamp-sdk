@@ -63,6 +63,11 @@ def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = (),
                 for var in named:
                     if var not in reads.get(claimed_sdk, {}):
                         failures.append(f"prose:{claimed_sdk}:{var}")
+        # Invariant 2, in the order main() reports it: a row must name an SDK,
+        # every SDK it names must really read the variable, and every SDK that
+        # really reads it must be named. Reproducing only the last of the three
+        # left the first two with no coverage at all -- and the root table is
+        # what the READMEs get wrong most often.
         if check_root_table:
             root_readme = root / gate.ROOT_README
             if root_readme.is_file():
@@ -70,8 +75,15 @@ def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = (),
                     if len(cells) < 2:
                         continue
                     row_vars = gate.VAR_RE.findall(cells[0])
+                    if not row_vars:
+                        continue
                     claimed = [s for s in sdks if gate.re.search(rf"\b{s}\b", cells[1])]
+                    if not claimed:
+                        failures.append(f"rootnosdk:{','.join(row_vars)}")
                     for var in row_vars:
+                        for s in claimed:
+                            if var not in reads[s]:
+                                failures.append(f"rootcredits:{s}:{var}")
                         for s in sdks:
                             if var in reads[s] and s not in claimed:
                                 failures.append(f"rootomits:{s}:{var}")
@@ -262,6 +274,36 @@ def main() -> int:
               run_gate(root, PY_RB, check_root_table=True),
               ["rootomits:Python:BASECAMP_SHARED"])
 
+        # ...and the forward direction of the same invariant: a 'Read by' column
+        # may not credit an SDK that does not read the variable. This is the
+        # half the root table gets wrong in practice -- it is how Ruby came to be
+        # credited with XDG_CACHE_HOME -- so it needs its own case.
+        root = tmp / "root-credits-nonreader"
+        build(root, {
+            "README.md":
+                "| Variable | Read by |\n|---|---|\n| `BASECAMP_PHANTOM` | Python, Ruby |\n",
+            "python/README.md": "The SDK reads `BASECAMP_PHANTOM` from the environment.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_PHANTOM")\n',
+            "ruby/README.md": "no table here\n",
+            "ruby/lib/c.rb": "v = 1\n",
+        })
+        check("the root table may not credit a non-reader",
+              run_gate(root, PY_RB, check_root_table=True),
+              ["rootcredits:Ruby:BASECAMP_PHANTOM"])
+
+        # A row that names no SDK at all is the same defect wearing a disguise:
+        # nothing to check against, so every other invariant passes it.
+        root = tmp / "root-names-no-sdk"
+        build(root, {
+            "README.md":
+                "| Variable | Read by |\n|---|---|\n| `BASECAMP_ORPHAN` | the CLI |\n",
+            "python/README.md": "The SDK reads `BASECAMP_ORPHAN` from the environment.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_ORPHAN")\n',
+        })
+        check("a root row must name at least one SDK",
+              run_gate(root, PY_SDK, check_root_table=True),
+              ["rootnosdk:BASECAMP_ORPHAN", "rootomits:Python:BASECAMP_ORPHAN"])
+
         # Ruby percent literals are data.
         root = tmp / "ruby-percent"
         build(root, {
@@ -325,6 +367,16 @@ def main() -> int:
         check("an escaped ruby interpolation marker is not a read",
               run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_ESC"])
 
+        # ...and the same escape inside a regex literal, which reaches
+        # brace_holes by a different path in strip_noncode.
+        root = tmp / "ruby-regex-escaped-interp"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_RESC"),
+            "ruby/lib/c.rb": "r = /\\#{ENV['BASECAMP_RESC']}/\n",
+        })
+        check("an escaped marker in a ruby regex is not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_RESC"])
+
         root = tmp / "ruby-regex-data"
         build(root, {
             "ruby/README.md": TABLE.format(var="BASECAMP_RXD"),
@@ -332,6 +384,58 @@ def main() -> int:
         })
         check("ruby regex contents are not a read",
               run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_RXD"])
+
+        # Ruby calls may omit their parentheses, so the argument to `puts` is a
+        # regex even though the preceding token is an identifier. Reading it as
+        # division hands the regex body to the read patterns as code.
+        root = tmp / "ruby-command-regex"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "ruby/lib/c.rb": "puts /ENV['BASECAMP_FAKE']/\n",
+        })
+        check("a regex argument to a parenthesis-less call is not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_FAKE"])
+
+        # The inverse costs more than a phantom row: misread as division, the
+        # `#` opens a line comment and a genuine interpolated read vanishes.
+        root = tmp / "ruby-command-regex-interp"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_CMDI"),
+            "ruby/lib/c.rb": "puts /#{ENV['BASECAMP_CMDI']}/\n",
+        })
+        check("an interpolated read in a command-form regex is still a read",
+              run_gate(root, RB_SDK), [])
+
+        # Spacing is what tells the two apart, so symmetric spacing stays
+        # division: `a / b / c` must not swallow the read that follows it.
+        root = tmp / "ruby-spaced-division"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_DIV"),
+            "ruby/lib/c.rb": "n = total / count / 2\nv = ENV['BASECAMP_DIV']\n",
+        })
+        check("a spaced ruby division is not a command-form regex",
+              run_gate(root, RB_SDK), [])
+
+        # ...and so does divide-and-assign, whose `=` follows the slash.
+        root = tmp / "ruby-divide-assign"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_DIVA"),
+            "ruby/lib/c.rb": "n /= 2\nv = ENV['BASECAMP_DIVA']\n",
+        })
+        check("ruby divide-and-assign is not a command-form regex",
+              run_gate(root, RB_SDK), [])
+
+        # The rule is Ruby's, not a general one: TypeScript has no
+        # parenthesis-less call, so the same spelling there is arithmetic.
+        root = tmp / "ts-not-command-regex"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_TSDIV\n",
+            "typescript/src/c.ts":
+                "const n = total /count/ 2;\nconst v = process.env.BASECAMP_TSDIV;\n",
+        })
+        check("typescript keeps the division reading",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_TSDIV"])
 
         # ...and `%` as modulo must not start one.
         root = tmp / "ruby-modulo"
