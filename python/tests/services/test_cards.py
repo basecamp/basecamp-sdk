@@ -15,6 +15,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
+from basecamp.errors import ApiError
 
 BASE = "https://3.basecampapi.com/12345"
 
@@ -146,3 +147,90 @@ class TestAsyncUpdate:
 
         assert not get_route.called
         assert put_route.call_count == 1
+
+
+# --- #576: a malformed GET due_on must never reach the replacement PUT -------
+#
+# `update` reads the card only to resend its due date, so that one value is the
+# whole reason the composite exists. Before the guard it was forwarded
+# unvalidated: `_compact` strips only `None`, so `False`, `0`, `[]`, `{}`, `42`,
+# `True` and `["x"]` all reached the wire and were written to the card. Python
+# has no typed decoder between the GET and the read — the generated `get`
+# returns `dict[str, Any]`.
+#
+# The assertion that matters is the ORDERING: `put_route.called` must be False.
+
+_MALFORMED_DUE_ON = [
+    pytest.param(False, id="false"),
+    pytest.param(0, id="zero"),
+    pytest.param([], id="empty-list"),
+    pytest.param({}, id="empty-dict"),
+    pytest.param(42, id="number"),
+    pytest.param(True, id="true"),
+    pytest.param(["x"], id="list"),
+    pytest.param({"a": 1}, id="dict"),
+]
+
+
+class TestMalformedDueOn:
+    @respx.mock
+    @pytest.mark.parametrize("value", _MALFORMED_DUE_ON)
+    def test_update_refuses_a_non_string_due_on_before_writing(self, value):
+        get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(
+            return_value=httpx.Response(200, json=_card(due_on=value))
+        )
+        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_cards().update(card_id=42, title="Renamed")
+
+        assert "Card field 'due_on' is not a string" in str(excinfo.value)
+        # api_error, not usage: the value arrived in a successful response.
+        assert excinfo.value.code == "api_error"
+        assert get_route.called
+        assert not put_route.called, "the guard must fire BEFORE the replacement PUT"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_update_refuses_a_non_string_due_on_before_writing(self):
+        get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(
+            return_value=httpx.Response(200, json=_card(due_on=42))
+        )
+        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+
+        with pytest.raises(ApiError):
+            await _async_cards().update(card_id=42, title="Renamed")
+
+        assert get_route.called
+        assert not put_route.called
+
+    @respx.mock
+    @pytest.mark.parametrize("value", [None, "absent"])
+    def test_absent_and_null_stay_genuinely_empty(self, value):
+        # The other half of the rule: a card with no due date is not malformed.
+        card = _card()
+        if value is None:
+            card["due_on"] = None
+        else:
+            card.pop("due_on")
+        respx.get(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=card))
+        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+
+        _sync_cards().update(card_id=42, title="Renamed")
+
+        assert "due_on" not in _put_body(put_route)
+
+    @respx.mock
+    @pytest.mark.parametrize("raw", [b"[]", b'"card"', b"42", b"null", b"true"])
+    def test_update_refuses_a_non_object_response_before_writing(self, raw):
+        get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(
+            return_value=httpx.Response(200, content=raw, headers={"Content-Type": "application/json"})
+        )
+        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_cards().update(card_id=42, title="Renamed")
+
+        assert "GetCard returned" in str(excinfo.value)
+        assert get_route.called
+        assert not put_route.called

@@ -187,6 +187,19 @@ struct Runner {
         var httpStatus: Int?
         var dispatch = DispatchResult()
 
+        // Set when the dispatch failed by ANY mechanism, including a decoder
+        // rejection that never becomes a BasecampError. Only `errorRaised`
+        // reads it; errorType, errorCode and errorMessage still read
+        // caughtError, so a fixture pinning a canonical code cannot be
+        // satisfied by a raw DecodingError.
+        var dispatchFailed = false
+        // A fixture declaring errorRaised is asserting that the body is
+        // DELIBERATELY malformed and that refusing it is the behaviour under
+        // test (#576). That flips the usual reading of a decoder rejection
+        // below: it is the point of the case, not an under-specified mock body
+        // to repair.
+        let expectsFailure = tc.allAssertions.contains { $0.type == "errorRaised" }
+
         if requiresHTTPSCrashProbe(baseURL) {
             // The SDK enforces HTTPS with preconditionFailure — a trap, not a
             // thrown error — so it can only be observed from outside the
@@ -196,6 +209,12 @@ struct Runner {
             switch runHTTPSProbe(baseURL) {
             case .enforced:
                 caughtError = .usage(message: "Base URL must use HTTPS: \(baseURL)", hint: nil)
+                // The child died as required, so the dispatch DID fail — by a
+                // trap rather than a throw. Recording only caughtError left
+                // this the one failure path that did not flag itself, and an
+                // errorRaised fixture with an http:// configOverrides.baseUrl
+                // would have read it as a call that succeeded.
+                dispatchFailed = true
             case .constructionSucceeded:
                 return .fail("client construction with non-HTTPS base URL unexpectedly succeeded")
             case .probeFailure(let message):
@@ -218,6 +237,7 @@ struct Runner {
                 httpStatus = transport.lastConsumedIndex.flatMap { tc.responses[$0].status }
             } catch let error as BasecampError {
                 caughtError = error
+                dispatchFailed = true
                 httpStatus = error.httpStatusCode
             } catch let error as RunnerError {
                 // A fixture the dispatch table cannot honor as written: an
@@ -231,7 +251,16 @@ struct Runner {
                 // gets fixed (canonical bodies live in spec/fixtures/) instead
                 // of silently degrading coverage. Kotlin's #555 policy, adopted
                 // from day one.
-                return .fail("Mock body lacks required Swift model fields: \(describeDecodingError(error))")
+                //
+                // Unless the fixture declares errorRaised: then the body is
+                // deliberately malformed and Codable refusing it IS the
+                // behaviour under test. That is how Swift satisfies the #576
+                // kill cases — the decoder is its guard, where TypeScript,
+                // Python and Ruby need a hand-written one.
+                guard expectsFailure else {
+                    return .fail("Mock body lacks required Swift model fields: \(describeDecodingError(error))")
+                }
+                dispatchFailed = true
             } catch {
                 return .fail("Unexpected exception: \(type(of: error)): \(error)")
             }
@@ -241,6 +270,7 @@ struct Runner {
             tc,
             transport: transport,
             caughtError: caughtError,
+            dispatchFailed: dispatchFailed,
             httpStatus: httpStatus,
             dispatch: dispatch
         )

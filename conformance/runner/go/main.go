@@ -1092,6 +1092,15 @@ func checkAssertion(
 			return fail(tc, fmt.Sprintf("Expected no error, got: %v", sdkErr))
 		}
 
+	// The inverse of noError, and deliberately code-agnostic. See
+	// errorRaisedFailure (error_raised.go) for the contract and for why the
+	// branch lives there rather than inline: no committed fixture can reach
+	// its failing side, so it is unit-tested instead.
+	case "errorRaised":
+		if msg := errorRaisedFailure(sdkErr != nil); msg != "" {
+			return fail(tc, msg)
+		}
+
 	case "errorType":
 		if sdkErr == nil {
 			return fail(tc, fmt.Sprintf("Expected error type %v, but got no error", assertion.Expected))

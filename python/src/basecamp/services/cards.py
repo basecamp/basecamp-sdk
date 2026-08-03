@@ -19,6 +19,9 @@ from typing import Any
 
 from basecamp.generated.services.cards import AsyncCardsService as _GeneratedAsyncCardsService
 from basecamp.generated.services.cards import CardsService as _GeneratedCardsService
+from basecamp.services._merge_safe import require_mapping, writable_string
+
+_ESCAPE = "update_verbatim()"
 
 _UPDATE_DOC = """Update a card without disturbing fields you did not mention.
 
@@ -44,9 +47,20 @@ def _resolve_due_on(due_on: str | None, current: dict[str, Any] | None) -> str |
     ``_compact`` strips ``None``, and BC3 nils an omitted due date. Sending an
     explicit null would violate body compaction (SPEC §18), and sending ``""``
     risks a date-format error.
+
+    The fetched value is validated before it is resent, because this composite
+    exists precisely to stop an omitted ``due_on`` from erasing the date and
+    resending an unvalidated one defeats that. The bare ``or None`` this
+    replaced failed in both directions: a falsey non-string (``False``, ``0``,
+    ``[]``, ``{}``) collapsed to ``None``, which ``_compact`` then stripped —
+    so the PUT went out with ``due_on`` absent and BC3 erased the date — while
+    a truthy one (``42``, ``True``, ``["x"]``) rode through verbatim and was
+    written to the card. ``get`` returns ``dict[str, Any]``, so nothing below
+    this validates it (#576).
     """
     if due_on is None:
-        return (current or {}).get("due_on") or None
+        body = require_mapping(current, record="Card", operation="GetCard", escape=_ESCAPE)
+        return writable_string(body, "due_on", record="Card", escape=_ESCAPE) or None
     if due_on == "":
         return None
     return due_on

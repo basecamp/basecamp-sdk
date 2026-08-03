@@ -92,6 +92,11 @@ func evaluateAssertions(
     _ tc: TestCase,
     transport: ScriptedTransport,
     caughtError: BasecampError?,
+    // No default. The one call site is required to say whether the dispatch
+    // failed, because a defaulted `false` fails CLOSED: a future call site that
+    // omitted it would report "the call succeeded" on a call that did not, and
+    // every errorRaised fixture would go red for a reason nowhere near the bug.
+    dispatchFailed: Bool,
     httpStatus: Int?,
     dispatch: DispatchResult
 ) -> TestResult {
@@ -257,6 +262,20 @@ func evaluateAssertions(
         case "noError":
             if let caughtError {
                 return .fail("Expected no error, got: \(caughtError.message)")
+            }
+
+        // The inverse of noError, and deliberately code-agnostic. See
+        // errorRaisedFailure (ConformanceSupport/ErrorRaised.swift) for the
+        // contract and for why the branch lives there rather than inline: no
+        // committed fixture can reach its failing side, so it is unit-tested
+        // instead.
+        //
+        // Read from BOTH signals: every path that records caughtError also sets
+        // dispatchFailed, and the union keeps that true by construction rather
+        // than by call-site discipline.
+        case "errorRaised":
+            if let message = errorRaisedFailure(dispatchFailed: dispatchFailed || caughtError != nil) {
+                return .fail(message)
             }
 
         case "requestPath":

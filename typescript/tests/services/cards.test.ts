@@ -189,4 +189,107 @@ describe("CardsService", () => {
       ).resolves.toBeUndefined();
     });
   });
+
+  // --- #576: a malformed GET due_on must never reach the replacement PUT ----
+  //
+  // `update` reads the card only to resend its due date, so that one value is
+  // the whole reason the composite exists -- and `if (current.due_on)` failed
+  // in both directions at once. A falsey non-string was DROPPED, and an
+  // omitted `due_on` is exactly how BC3 erases a card's due date
+  // (`{ due_on: nil }.merge(card_params)`), the behaviour this composite
+  // exists to prevent. A truthy non-string was forwarded VERBATIM and written
+  // to the card.
+  //
+  // TypeScript has no runtime decoder to catch either -- `schema.d.ts` is
+  // erased at build time, so `Card` is a compile-time claim nothing validates.
+  //
+  // The assertion that matters is the ORDERING: `requests` must be ["GET"].
+  describe("malformed due_on (#576)", () => {
+    const malformed: [string, unknown][] = [
+      ["false", false],
+      ["zero", 0],
+      ["empty array", []],
+      ["empty object", {}],
+      ["number", 42],
+      ["true", true],
+      ["array", ["x"]],
+      ["object", { a: 1 }],
+    ];
+
+    const serve = (body: unknown, requests: string[]) => {
+      server.use(
+        http.get(`${BASE_URL}/card_tables/cards/42`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/card_tables/cards/42`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(sampleCard(42));
+        })
+      );
+    };
+
+    const rejection = async (promise: Promise<unknown>): Promise<unknown> =>
+      promise.then(
+        () => {
+          throw new Error("expected the call to reject, but it resolved");
+        },
+        (error: unknown) => error
+      );
+
+    it.each(malformed)("update refuses a %s due_on before writing", async (_label, value) => {
+      const requests: string[] = [];
+      serve({ ...sampleCard(42), due_on: value }, requests);
+
+      const error = await rejection(client.cards.update(42, { title: "Renamed" }));
+
+      expect(error).toBeInstanceOf(BasecampError);
+      // api_error, not usage: the value arrived in a successful response.
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/Card field "due_on" is not a string/);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The other half of the rule: a card with no due date is not malformed.
+    it.each([
+      ["absent", undefined],
+      ["null", null],
+    ])("treats a %s due_on as genuinely empty", async (_label, value) => {
+      let putBody: Record<string, unknown> = {};
+      const body: Record<string, unknown> = { ...sampleCard(42), due_on: value };
+      if (value === undefined) delete body.due_on;
+      server.use(
+        http.get(`${BASE_URL}/card_tables/cards/42`, () => HttpResponse.json(body)),
+        http.put(`${BASE_URL}/card_tables/cards/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleCard(42));
+        })
+      );
+
+      await client.cards.update(42, { title: "Renamed" });
+
+      expect(putBody).not.toHaveProperty("due_on");
+    });
+
+    // One level up from the field guard: a successful GET can return a scalar,
+    // an array or null, and reading `current.due_on` off null throws a raw
+    // TypeError instead of the documented statusless api_error.
+    it.each([
+      ["array", []],
+      ["string", "card"],
+      ["number", 42],
+      ["null", null],
+      ["boolean", true],
+    ])("update refuses a %s response body before writing", async (_label, body) => {
+      const requests: string[] = [];
+      serve(body, requests);
+
+      const error = await rejection(client.cards.update(42, { title: "Renamed" }));
+
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/GetCard returned/);
+      expect(requests).toEqual(["GET"]);
+    });
+  });
 });
