@@ -1,0 +1,43 @@
+scripts/check-bc3-route-parity
+  s_ae792ed0be3006::t_738f94cf6e70d5 118
+  s_ae792ed0be3006::t_f4884b615ebf49 183-199,202,210-212
+  s_ae792ed0be3006::t_13cbd7cdb3c165 27-32
+  s_ae792ed0be3006::t_ea85cfc48e35b1 200-201,203-209
+  s_ae792ed0be3006::t_7bf4fdab9a4868 225-232
+  s_ae792ed0be3006::t_b4a1c14f44bd24 260-262
+Makefile
+  s_ae792ed0be3006::t_d26c681cc41f64 1139
+  s_ae792ed0be3006::t_cb452e916955be 87
+  s_ae792ed0be3006::t_0a68f813672818 106-114
+scripts/test-check-bc3-route-parity.rb
+  s_ae792ed0be3006::t_b74cf5fc59faa4 228
+  s_ae792ed0be3006::t_7972be2f418e8a 1-20,47-54,60-172,174-187,189,217-221,223-227,229-234
+  s_ae792ed0be3006::t_0b9ccfa2a67282 55-59
+  s_ae792ed0be3006::t_6cf99be178179e 21-46
+  s_ae792ed0be3006::t_6222d55136e3a5 188,190-216,222
+  s_ae792ed0be3006::t_95c68d51a51bf1 173
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_939ebb506ed8d2 155-161
+spec/bc3-route-allowlist.yml
+  s_ae792ed0be3006::t_6a02f9153ef74d 281
+  s_ae792ed0be3006::t_b0ff27e93d3646 251,255,259
+  s_ae792ed0be3006::t_363a4f5881f49b 277
+  s_ae792ed0be3006::t_b4cc37b0e9d682 167-171
+  s_ae792ed0be3006::t_77dea4dc1d8d08 172-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "643b3cccdcc2bd879a953dbfb84315e20cf24899",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
