@@ -50,12 +50,24 @@ type UpdateDocumentRequest struct {
 // field is required — BC3 presence-validates neither — but a request that
 // carries neither is rejected with a 400, because BC3 requires the wrapping
 // document object.
+//
+// Both fields are presence-bearing pointers rather than plain strings, because
+// on a verbatim replace "absent" and "explicitly empty" are different requests
+// and only one of them is legal on its own. A nil field is omitted from the
+// body; a pointer to "" is SENT as "", which is the only way to say "clear both
+// fields" — the all-nil body is the 400. (Their server EFFECT happens to
+// coincide, since an omitted title and an empty one both read back as
+// "Untitled", but the SDK must not collapse a distinction the wire makes.)
+//
+//	empty := ""
+//	svc.Replace(ctx, id, &ReplaceDocumentRequest{Title: &empty, Content: &empty})
 type ReplaceDocumentRequest struct {
-	// Title is the document title. Omitted (empty) clears it, and the document
-	// then reads back as "Untitled".
-	Title string `json:"title,omitempty"`
-	// Content is the document body in HTML. Omitted (empty) clears it.
-	Content string `json:"content,omitempty"`
+	// Title is the document title. Nil omits it — the server clears it and the
+	// document reads back as "Untitled". A pointer to "" sends it explicitly.
+	Title *string `json:"title,omitempty"`
+	// Content is the document body in HTML. Nil omits it — the server clears
+	// it. A pointer to "" sends it explicitly.
+	Content *string `json:"content,omitempty"`
 }
 
 // DocumentFields is a document's full writable state, handed to the Edit
@@ -222,18 +234,18 @@ func (s *DocumentsService) Replace(ctx context.Context, documentID int64, req *R
 			return nil, ErrUsage("replace request is required")
 		}
 		body := map[string]any{}
-		if req.Title != "" {
-			body["title"] = req.Title
+		if req.Title != nil {
+			body["title"] = *req.Title
 		}
-		if req.Content != "" {
-			body["content"] = req.Content
+		if req.Content != nil {
+			body["content"] = *req.Content
 		}
 		if len(body) == 0 {
 			// BC3 does params.require(:document), which Rails wrap_parameters
 			// synthesizes from a flat body — so a body naming neither field
 			// carries no document object at all and is a 400. Refuse it here
 			// rather than spend a round-trip discovering that.
-			return nil, ErrUsage("replace request must set title or content; a body with neither is rejected by the server")
+			return nil, ErrUsage("replace request must set title or content; a body naming neither is rejected by the server with a 400")
 		}
 		return body, nil
 	})

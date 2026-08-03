@@ -111,8 +111,14 @@ func TestDocumentWriteRequests_WritableSetMatchesFixture(t *testing.T) {
 	if err := json.Unmarshal(data, &replace); err != nil {
 		t.Fatalf("failed to unmarshal update-request.json into ReplaceDocumentRequest: %v", err)
 	}
-	if replace.Title != update.Title || replace.Content != update.Content {
-		t.Errorf("replace request %+v does not mirror update request %+v", replace, update)
+	// Replace's fields are presence-bearing pointers — on a verbatim replace,
+	// absent and explicitly-empty are different requests — so the mirror check
+	// dereferences rather than comparing the two shapes directly.
+	if replace.Title == nil || *replace.Title != update.Title {
+		t.Errorf("replace title %v does not mirror update title %q", replace.Title, update.Title)
+	}
+	if replace.Content == nil || *replace.Content != update.Content {
+		t.Errorf("replace content %v does not mirror update content %q", replace.Content, update.Content)
 	}
 
 	// The fixture itself must not grow a third writable field without this
@@ -453,8 +459,9 @@ func TestDocumentsService_ReplaceSendsSparseVerbatim(t *testing.T) {
 	recorder := &recordingHooks{}
 	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, recorder)
 
+	replaceTitle := "the whole new document"
 	document, err := svc.Replace(context.Background(), 1069479300, &ReplaceDocumentRequest{
-		Title: "the whole new document",
+		Title: &replaceTitle,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -537,9 +544,10 @@ func TestDocumentsService_ReplaceSendsBothFieldsWhenBothSet(t *testing.T) {
 	fixture := loadDocumentsFixture(t, "get.json")
 	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
 
+	bothTitle, bothContent := "Both", "<div>set</div>"
 	_, err := svc.Replace(context.Background(), 1069479300, &ReplaceDocumentRequest{
-		Title:   "Both",
-		Content: "<div>set</div>",
+		Title:   &bothTitle,
+		Content: &bothContent,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -704,5 +712,37 @@ func TestDocumentsService_UpdatePassesNonDecodeErrorsThrough(t *testing.T) {
 	}
 	if apiErr.HTTPStatus != http.StatusNotFound {
 		t.Errorf("expected the 404 to survive, got HTTP %d (%s)", apiErr.HTTPStatus, apiErr.Message)
+	}
+}
+
+// An all-nil request is the 400 (BC3 requires the wrapping document object), but
+// a request naming both fields as "" is a legal full replacement that clears
+// both. Zero-value guards conflated the two and made the clear unreachable from
+// Go's raw path; presence-bearing pointers keep them distinct. Raised by Codex
+// review on #601.
+func TestDocumentsService_ReplaceSendsExplicitEmptyStrings(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, nil)
+
+	empty := ""
+	if _, err := svc.Replace(context.Background(), 1069479300, &ReplaceDocumentRequest{
+		Title:   &empty,
+		Content: &empty,
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(*reqs) != 1 {
+		t.Fatalf("expected exactly 1 request, got %d", len(*reqs))
+	}
+	body := (*reqs)[0].body
+	for _, key := range []string{"title", "content"} {
+		value, ok := body[key]
+		if !ok {
+			t.Fatalf("expected %q present-and-empty in the body, got %+v", key, body)
+		}
+		if value != "" {
+			t.Errorf("expected %q to be the empty string, got %#v", key, value)
+		}
 	}
 }

@@ -803,10 +803,17 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		return operationResult{err: err}
 
 	case "ReplaceDocument":
+		// Presence-bearing: only keys the fixture carries become pointers, so
+		// an absent field stays absent on the wire and an explicit "" is sent.
 		documentID := getInt64Param(tc.PathParams, "documentId")
-		req := &basecamp.ReplaceDocumentRequest{
-			Title:   getStringParam(tc.RequestBody, "title"),
-			Content: getStringParam(tc.RequestBody, "content"),
+		req := &basecamp.ReplaceDocumentRequest{}
+		if _, ok := tc.RequestBody["title"]; ok {
+			title := getStringParam(tc.RequestBody, "title")
+			req.Title = &title
+		}
+		if _, ok := tc.RequestBody["content"]; ok {
+			content := getStringParam(tc.RequestBody, "content")
+			req.Content = &content
 		}
 		_, err := account.Documents().Replace(ctx, documentID, req)
 		return operationResult{err: err}
