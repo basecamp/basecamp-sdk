@@ -121,6 +121,11 @@ SDKS = {
             # reported as nonexistent.
             rf"process\.env\??\.{NAME}",
             rf"process\.env(?:\?\.)?\[\s*{Q}{NAME}{ENDQ}",
+            # `const { BASECAMP_TOKEN } = process.env` is a read too. The name
+            # comes *before* process.env, so this is a zero-width lookahead:
+            # a consuming pattern would bind only one name per brace group,
+            # which is the "looks like coverage" failure all over again.
+            rf"\b{NAME}\b(?=[^{{}}]*\}}\s*=\s*process\.env)",
         ],
     },
     "Swift": {
@@ -344,6 +349,11 @@ def brace_holes(text: str, start: int, stop: int, style: str, flags: dict,
         # A doubled opener is an escape -- literal text, not an expression.
         if text.startswith(opener * 2, j):
             j += 2 * len(opener)
+            continue
+        # `\\(` is an escaped backslash followed by a paren, not Swift's `\(`.
+        # Skipping the pair keeps the example text masked.
+        if opener.startswith("\\") and text.startswith("\\\\", j):
+            j += 2
             continue
         if text.startswith(opener, j):
             close = matching_delimiter(text, j + len(opener), opener[-1], closer, style, flags)

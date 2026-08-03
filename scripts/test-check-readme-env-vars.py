@@ -147,6 +147,35 @@ def main() -> int:
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_OPTB"])
 
+        # Destructuring is a read, and every name in the pattern is one.
+        root = tmp / "destructured"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_DA and BASECAMP_DB\n",
+            "typescript/src/c.ts": "const { BASECAMP_DA, BASECAMP_DB } = process.env;\n",
+        })
+        check("destructured reads are seen, all of them",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_DA"])
+
+        # ...but destructuring something else is not an environment read.
+        root = tmp / "destructured-other"
+        build(root, {
+            "typescript/README.md": TABLE.format(var="BASECAMP_NOTENV"),
+            "typescript/src/c.ts": "const { BASECAMP_NOTENV } = someOtherObject;\n",
+        })
+        check("destructuring a non-env object is not a read",
+              run_gate(root, TS_SDK), ["forward:TypeScript:BASECAMP_NOTENV"])
+
+        # An escaped backslash is not Swift's interpolation marker.
+        root = tmp / "swift-escaped-interp"
+        build(root, {
+            "swift/README.md": "no tables\n",
+            "swift/Sources/c.swift":
+                'let s = """\n\\\\(ProcessInfo.processInfo.environment["BASECAMP_FAKE"])\n"""\n',
+        })
+        check("an escaped backslash is not a swift interpolation",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)), [])
+
         # A Ruby quoted literal may span physical lines. Ending it at the newline
         # left the rest of the string executable.
         root = tmp / "ruby-multiline-literal"
