@@ -17,7 +17,7 @@ type HillChart struct {
 	// from a real value: a value-typed time.Time would read as
 	// 0001-01-01T00:00:00Z, and `,omitempty` cannot hide that because
 	// encoding/json never treats a struct as empty. Mirrors the *time.Time
-	// convention used for Card.CompletedAt and TimelineEvent.UpdatedAt.
+	// convention used for Card.CompletedAt and EverythingFile.UpdatedAt.
 	UpdatedAt      *time.Time     `json:"updated_at,omitempty"`
 	AppUpdateURL   string         `json:"app_update_url,omitempty"`
 	AppVersionsURL string         `json:"app_versions_url,omitempty"`
