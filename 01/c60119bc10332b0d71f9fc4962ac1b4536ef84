@@ -1,0 +1,53 @@
+.github/workflows/test.yml
+  s_ee36af3a7711b9::t_6b54b1dd721876 148-154
+CONTRIBUTING.md
+  s_ee36af3a7711b9::t_7682bdb2ba7bd3 393-402
+Makefile
+  s_ee36af3a7711b9::t_a90c7df373e0d3 649-654,656,968,1042-1049,1072,1156
+SPEC.md
+  s_ae792ed0be3006::t_a62fef3eeefc78 2044
+conformance/runner/go/replay_runner.go
+  s_ee36af3a7711b9::t_d01da1062b91b8 35-43,89-169
+conformance/runner/go/replay_runner_test.go
+  s_ee36af3a7711b9::t_6ef1b8e844f354 20,23,29-97
+conformance/runner/python/replay_runner.py
+  s_ee36af3a7711b9::t_3b04f7053be82e 60-66,79-99
+conformance/runner/python/test_replay_runner.py
+  s_ee36af3a7711b9::t_b7f475082c618f 30-70
+conformance/runner/ruby/replay-runner.rb
+  s_ee36af3a7711b9::t_df8b86987ac3a6 43-48,50-81
+conformance/runner/ruby/replay_runner_test.rb
+  s_ee36af3a7711b9::t_ec19258c277395 31-71
+kotlin/conformance/build.gradle.kts
+  s_ee36af3a7711b9::t_72c4bd7562d137 44-47,50
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_ee36af3a7711b9::t_601be22cbb9c35 3-4,6-8,11-12,50-56,83-95,97,109-131
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/ReplayDecodersTest.kt
+  s_ee36af3a7711b9::t_55b2ff8f1d9c92 1-134
+scripts/check-replay-decoder-parity
+  s_ee36af3a7711b9::t_2cbd07ebb377a9 1-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "01c60119bc10332b0d71f9fc4962ac1b4536ef84",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_ee36af3a7711b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fd1-322e-7880-85cc-ab6c3e75c537",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
