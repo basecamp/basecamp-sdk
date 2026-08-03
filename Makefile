@@ -494,10 +494,18 @@ oauth-token-fixtures-check:
 # {status:204, networkError:false}) would only be caught, if at all, by each
 # runner's looser runtime backstop. tests.schema.json wraps schema.json as an
 # array so check-jsonschema validates each element of the array-shaped files.
+#
+# Schema validation checks the fixture FORMAT, not that a mock body still
+# decodes into the generated models. The runners enforce that (Kotlin/Swift
+# fail loudly on a body that no longer matches) — except where a fixture
+# declares errorRaised, which deliberately switches that policy off. The
+# control-sibling gate below is what keeps those fixtures honest.
 conformance-fixtures-check:
 	@echo "==> Validating conformance fixtures against schema.json..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/tests.schema.json conformance/tests/*.json
+	@echo "==> Checking errorRaised fixtures have body-pinning control siblings..."
+	python3 conformance/check_kill_case_controls.py
 
 # Unit-test the runners' own assertion helpers.
 #
