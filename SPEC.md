@@ -1784,7 +1784,7 @@ The generated service method must pass its operation name to the HTTP transport 
 
 ### Hand-Written Composite Methods `[manual]`
 
-All wire operations are generated (rubric 1A.6). One narrow exception is sanctioned: a hand-written **composite convenience method** may be added on top of a generated service when the generator cannot express a safety-critical surface. A composite is permitted only when all of the following hold:
+All wire operations are generated (rubric 1A.6). One narrow exception is sanctioned here: a hand-written **composite convenience method** may be added on top of a generated service when the generator cannot express a safety-critical surface. (A second, non-HTTP carve-out lives in §23: the Event Feed connector's cable dial of the URL a generated `CreateStreamTicket` call returned — see §23 "Classification: Infrastructure, Not a Composite".) A composite is permitted only when all of the following hold:
 
 1. **No hand-written wire I/O.** Every request flows through public generated wire methods (Go: through the shared generated-client transport). No manual path construction or verb selection. Bodies use the generated request types, with one Go-specific carve-out: where zero-value + `omitempty` request structs cannot express always-send-empty semantics, the composite's private transport MAY marshal an explicit body map and call the operation's generated `*WithBody` variant — the generated wrapper still owns path, verb, content type, and response decoding, and the operation identity still reaches hooks and retry. This is the only sanctioned use of hand-marshaled bodies; sparse public methods keep using the generated request types.
 2. **Composition, not substitution.** It composes existing generated operations (e.g. GET → overlay → full PUT); it never introduces a wire operation the spec lacks — fix the spec and regenerate instead.
@@ -1997,7 +1997,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | 6 | 2C.5 | Cross-origin pagination Link header rejected | §8 | `[conformance]` |
 | 7 | 3C.1 | HTTPS enforcement for non-localhost | §9 | `[conformance]` |
 | 8 | 1C.3 | No manual path construction | §3, §18 | `[manual]` |
-| 9 | 1A.6 | No hand-written wire methods (multi-language only; Go uses hand-written service wrappers around generated client — see Appendix F). Conformance-tested composites over generated operations are permitted per §18 "Hand-Written Composite Methods" | §18 | `[manual]` |
+| 9 | 1A.6 | No hand-written wire methods (multi-language only; Go uses hand-written service wrappers around generated client — see Appendix F). Conformance-tested composites over generated operations are permitted per §18 "Hand-Written Composite Methods", and the §23 Event Feed connector's cable dial (verbatim, of a generated mint's URL) is the one sanctioned non-HTTP wire act | §18, §23 | `[manual]` |
 | 10 | 4A.1 | Smithy → OpenAPI freshness check | §21 | `[static]` |
 
 ---
@@ -2353,7 +2353,11 @@ it has no failure edge of its own: a staleness expiry or socket failure observed
 draining is consumed at the Streaming boundary (transition 23 completes the drain, then
 transition 25 handles the failure). This is the one deliberate deferred-consumption case;
 everywhere else a socket-open state's failure edge (9/15/21/25) fires directly, and
-staleness expiry is among each of those edges' triggers.
+staleness expiry is among each of those edges' triggers. **The protocol-fatal disconnect
+is carved out of this deferral**: a raw `invalid_event_stream_command` observed during
+Draining is Terminal(`protocol_fatal`) immediately (the state-generic rule under
+Disconnect Dispatch) — the drain is not completed, the held entry position is NOT saved,
+and no `caught_up` is announced; only recoverable failures defer.
 
 ### Disconnect Dispatch `[conformance]`
 
@@ -2424,7 +2428,11 @@ Two dispatch clarifications, pinned:
 - **Every** inbound frame, of any kind, resets the `staleness` timer
   (`EVENT_FEED_STALE_AFTER = 7500ms`: two missed 3-second server heartbeats plus 25% grace —
   the server contract leaves detection policy to the SDK; the SDK pins and publishes this
-  one).
+  one). **The reset happens pump-side, at frame receipt** — not at state-machine dequeue —
+  so frame-vs-deadline ordering is well-defined at the transport boundary regardless of
+  queue depth or consumer latency: a fired staleness deadline observed on return from a
+  slow delivery is authoritative (no frame arrived within the window), and frames still
+  queued at that moment were received before the firing and already reset the timer then.
 - **The frame pump's hand-off queue is bounded and never drops.** The pump reads frames
   from the transport and hands them to the state machine over a queue of small fixed depth
   (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
@@ -3020,7 +3028,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 |-----------|-------------|---------|
 | 1A.1 | §18, §21 | Smithy model validates |
 | 1A.2 | §18, §21 | OpenAPI derived from Smithy |
-| 1A.6 | §18 | No hand-written wire methods; conformance-tested composites permitted |
+| 1A.6 | §18, §23 | No hand-written wire methods; conformance-tested composites permitted; the §23 cable dial is the one sanctioned non-HTTP wire act |
 | 1B.2 | §18 | Types generated from OpenAPI schema |
 | 1B.4 | §10 | Optional fields use language optionals |
 | 1B.5 | §10 | Date fields use ISO 8601 / native types |
