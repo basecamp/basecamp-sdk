@@ -185,9 +185,10 @@ The Smithy service version is derived from the shared provenance date. Run `make
 `spec/api-gaps/README.md` each name the current pin in narrative, and both sat
 two repins stale before `make doc-constants-check` existed. A sentence that
 states the *current* pin carries an `<!-- @bc3-pin -->` marker at the end of its
-line; `make sync-api-version` rewrites every marked span from
-`spec/api-provenance.json` (SHA abbreviation length preserved) and the gate
-fails on any that drifted. Prose about *past* pins — "the pin has since advanced
+line and names both the revision and the sync date; `make sync-api-version`
+rewrites every marked span from `spec/api-provenance.json` (SHA abbreviation
+length preserved) and the gate fails on any that drifted — or on a span that
+dropped its SHA or its date, since the writer can only rewrite what it can see. Prose about *past* pins — "the pin has since advanced
 to X", "the `A..B` range contains…" — stays unmarked and is never rewritten:
 `spec/api-gaps/` cites ~30 historical SHAs on purpose, and a gate that rewrote
 them would convert settled triage into a claim nobody made. The same convention

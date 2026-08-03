@@ -59,8 +59,11 @@ sedi "s/^API_VERSION = \".*\"/API_VERSION = \"$API_VERSION\"/" \
 # cited in spec/api-gaps/ narrative are left alone. Assertion-type table drift
 # is reported by `make doc-constants-check`, not fixed here — a new row needs a
 # human-written description, and failing here would break every `make generate`.
+# $OPENAPI is forwarded, not re-defaulted: a caller who passes their own spec
+# file must get the SDK constants AND the prose from that same file, or one
+# sync leaves the two disagreeing.
 if command -v ruby >/dev/null 2>&1; then
-  ruby "$SCRIPT_DIR/sync-doc-constants.rb" --write
+  ruby "$SCRIPT_DIR/sync-doc-constants.rb" --write --openapi "$OPENAPI"
 else
   echo "WARNING: ruby not found; skipped prose doc-constant sync (make doc-constants-check will fail)" >&2
 fi

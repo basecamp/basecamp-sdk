@@ -29,6 +29,12 @@
 # Modes
 #   --check (default)  Report drift; exit 1 on any error.
 #   --write            Rewrite marked spans in place from the sources.
+#
+#   --openapi PATH     Read the API version from PATH instead of ./openapi.json.
+#                      sync-api-version.sh forwards its own documented
+#                      [openapi.json] argument here; without that, one sync
+#                      could set the SDK constants from a caller-supplied file
+#                      and the prose from the repo's, leaving them disagreeing.
 #                      Only the two scalar constants are writable — an
 #                      assertion-type row needs a human-written description,
 #                      so --write never touches @assertion-types and never
@@ -55,13 +61,24 @@ BACKTICKED_RE = /`[^`]*`/
 
 class Failure < StandardError; end
 
-def read_json(relative)
-  path = File.join(ROOT, relative)
-  raise Failure, "missing #{relative}" unless File.exist?(path)
+def read_json_at(path, label)
+  raise Failure, "missing #{label}" unless File.exist?(path)
 
   JSON.parse(File.read(path))
 rescue JSON::ParserError => e
-  raise Failure, "#{relative} is not valid JSON: #{e.message}"
+  raise Failure, "#{label} is not valid JSON: #{e.message}"
+end
+
+# Repo-owned inputs: always resolved against the repo root, never the cwd.
+def read_json(relative)
+  read_json_at(File.join(ROOT, relative), relative)
+end
+
+# The one caller-supplied input. Resolved against the cwd so the same string
+# means the same file to this script as it did to the shell that passed it,
+# absolute or relative.
+def read_openapi(path)
+  read_json_at(File.expand_path(path, Dir.pwd), path)
 end
 
 def dig!(doc, relative, *path)
@@ -167,12 +184,12 @@ end
 
 # --- per-kind checkers -------------------------------------------------------
 
-def check_api_version(span, api_version)
+def check_api_version(span, api_version, source)
   dates = span.text.scan(ISO_DATE_RE)
   return ["#{span.location}: @api-version span states no YYYY-MM-DD version"] if dates.empty?
 
   dates.uniq.reject { |d| d == api_version }.map do |bad|
-    "#{span.location}: @api-version says #{bad}, openapi.json .info.version is #{api_version}"
+    "#{span.location}: @api-version says #{bad}, #{source} .info.version is #{api_version}"
   end
 end
 
@@ -197,9 +214,18 @@ def check_bc3_pin(span, revision, date)
               "so `make sync-api-version` can rewrite it"
   end
 
-  text.scan(ISO_DATE_RE).uniq.reject { |d| d == date }.each do |bad|
-    errors << "#{span.location}: @bc3-pin says #{bad}, spec/api-provenance.json " \
-              ".bc3.date is #{date}"
+  # A span that states no date is not "nothing to check" — the sync date is
+  # half the pin claim, and the writer can only substitute dates it can see, so
+  # a dropped date would never come back. Same rule as the missing-SHA case.
+  dates = text.scan(ISO_DATE_RE)
+  if dates.empty?
+    errors << "#{span.location}: @bc3-pin span states no YYYY-MM-DD sync date; " \
+              "a pin claim names both the revision and #{date}"
+  else
+    dates.uniq.reject { |d| d == date }.each do |bad|
+      errors << "#{span.location}: @bc3-pin says #{bad}, spec/api-provenance.json " \
+                ".bc3.date is #{date}"
+    end
   end
 
   errors
@@ -254,8 +280,8 @@ end
 
 # --- main --------------------------------------------------------------------
 
-def run(mode)
-  api_version = dig!(read_json("openapi.json"), "openapi.json", "info", "version")
+def run(mode, openapi)
+  api_version = dig!(read_openapi(openapi), openapi, "info", "version")
 
   provenance = read_json("spec/api-provenance.json")
   revision = dig!(provenance, "spec/api-provenance.json", "bc3", "revision")
@@ -340,7 +366,7 @@ def run(mode)
   spans.each do |span|
     errors.concat(
       case span.kind
-      when "api-version"     then check_api_version(span, api_version)
+      when "api-version"     then check_api_version(span, api_version, openapi)
       when "bc3-pin"         then check_bc3_pin(span, revision, date)
       when "assertion-types" then check_assertion_types(span, schema_types)
       else []
@@ -366,17 +392,27 @@ def run(mode)
   end
 end
 
-mode = if ARGV.empty? || ARGV == ["--check"]
-         :check
-       elsif ARGV == ["--write"]
-         :write
-       else
-         warn "usage: #{$PROGRAM_NAME} [--check|--write]"
-         exit 2
-       end
+mode = :check
+openapi = "openapi.json"
+args = ARGV.dup
+until args.empty?
+  case args.shift
+  when "--check" then mode = :check
+  when "--write" then mode = :write
+  when "--openapi"
+    openapi = args.shift
+    if openapi.nil? || openapi.empty?
+      warn "ERROR: --openapi needs a path"
+      exit 2
+    end
+  else
+    warn "usage: #{$PROGRAM_NAME} [--check|--write] [--openapi PATH]"
+    exit 2
+  end
+end
 
 begin
-  exit run(mode)
+  exit run(mode, openapi)
 rescue Failure => e
   warn "ERROR: #{e.message}"
   exit 2
