@@ -65,12 +65,14 @@ from basecamp import Client
 client = Client(access_token=os.environ["BASECAMP_TOKEN"])
 
 info = client.authorization.get()
-for a in info["accounts"]:
-    # "bc3" is Basecamp; the same response also carries "hey" and other products
-    if a["product"] == "bc3":
-        print(f"{a['id']}: {a['name']}")
+# "bc3" is Basecamp; the same response also carries "hey" and other products,
+# and they are not ordered — filter before you pick, or you may scope the
+# client to a HEY account.
+basecamp_accounts = [a for a in info["accounts"] if a["product"] == "bc3"]
+for a in basecamp_accounts:
+    print(f"{a['id']}: {a['name']}")
 
-account = client.for_account(info["accounts"][0]["id"])
+account = client.for_account(basecamp_accounts[0]["id"])
 ```
 
 The response is a plain `dict` of parsed JSON. `info["expires_at"]` tells you how long the token has left, which is the quickest way to confirm a static token has not lapsed. On `AsyncClient`, the same call is `await client.authorization.get()`.
@@ -110,11 +112,15 @@ asyncio.run(main())
 
 ### Environment Variables
 
+Nothing here is read automatically. These apply only when you call `Config.from_env()`; a plain `Config()` reads no environment at all. They are also the only three environment variables the SDK reads anywhere — `from_env` does not consult `base_delay`, `max_jitter`, or `max_pages`, so those keep their defaults unless you pass them.
+
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `BASECAMP_BASE_URL` | API base URL | `https://3.basecampapi.com` |
 | `BASECAMP_TIMEOUT` | Request timeout (seconds) | `30` |
 | `BASECAMP_MAX_RETRIES` | Total attempts including the initial request | `3` |
+
+`BASECAMP_TOKEN` and `BASECAMP_ACCOUNT_ID` appear in the examples above only because the caller reads them and passes the values in; the SDK never looks them up. Pass the token to `Client(access_token=...)` and the account ID to `for_account`.
 
 ### Programmatic Configuration
 

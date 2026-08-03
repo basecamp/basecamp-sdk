@@ -46,12 +46,15 @@ Every API path is scoped to an account — `https://3.basecampapi.com/{accountId
 client = Basecamp.client(access_token: ENV["BASECAMP_TOKEN"])
 
 info = client.authorization.get
-info["accounts"].each do |a|
-  # "bc3" is Basecamp; the same response also carries "hey" and other products
-  puts "#{a["id"]}: #{a["name"]} (#{a["product"]})" if a["product"] == "bc3"
+# "bc3" is Basecamp; the same response also carries "hey" and other products,
+# and they are not ordered — filter before you pick, or you may scope the
+# client to a HEY account.
+basecamp_accounts = info["accounts"].select { |a| a["product"] == "bc3" }
+basecamp_accounts.each do |a|
+  puts "#{a["id"]}: #{a["name"]}"
 end
 
-account = client.for_account(info["accounts"].first["id"])
+account = client.for_account(basecamp_accounts.first["id"])
 ```
 
 The response is parsed JSON with **string** keys, not symbols. `info["expires_at"]` tells you how long the token has left, which is the quickest way to confirm a static token has not lapsed.

@@ -240,7 +240,7 @@ See the [spec README](spec/README.md) for details on the model structure.
 
 ## Environment Variables
 
-There is no environment variable every SDK honours. The Quick Start snippets above call `getenv` themselves — that is the *caller* reading its own environment, not an SDK convention. What the SDKs read on their own, and only when you ask them to (`XDG_CACHE_HOME` / `XDG_CONFIG_HOME`, which Go and Ruby use to site their cache and config directories, aside):
+There is no environment variable every SDK honours. The Quick Start snippets above call `getenv` themselves — that is the *caller* reading its own environment, not an SDK convention. What the SDKs read on their own, and only when you ask them to (the XDG directory variables aside: Go reads `XDG_CACHE_HOME` in `DefaultConfig` and `XDG_CONFIG_HOME` for its config directory, and Ruby reads `XDG_CONFIG_HOME` in `Config.global_config_dir`):
 
 | Variable | Read by | Only when |
 |----------|---------|-----------|
@@ -250,7 +250,7 @@ There is no environment variable every SDK honours. The Quick Start snippets abo
 | `BASECAMP_CACHE_ENABLED`, `BASECAMP_CACHE_DIR` | Go | `cfg.LoadConfigFromEnv()` |
 | `BASECAMP_PROJECT_ID`, `BASECAMP_TODOLIST_ID` | Go | `cfg.LoadConfigFromEnv()` |
 | `BASECAMP_TOKEN` | Go | you authenticate through `AuthManager`, which prefers it over the stored OAuth credentials |
-| `BASECAMP_NO_KEYRING` | Go | `AuthManager` chooses credential storage |
+| `BASECAMP_NO_KEYRING` | Go | you construct a `CredentialStore` via `NewCredentialStore` — which `NewAuthManager` does for you, but `NewAuthManagerWithStore` does not |
 
 TypeScript, Swift, and Kotlin read no environment variables at all — configure them entirely through their options objects.
 

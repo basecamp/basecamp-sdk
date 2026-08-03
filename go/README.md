@@ -348,7 +348,7 @@ the hop-1 binding and silently soft-falls back to Launchpad.
 
 ### Environment Variables
 
-Nothing here is read automatically. The five `Config` variables apply only when you call `cfg.LoadConfigFromEnv()`, and the two auth variables only when you authenticate through `AuthManager`. (`DefaultConfig` does consult `XDG_CACHE_HOME` and `XDG_CONFIG_HOME` to site its cache and config directories.)
+Nothing here is read automatically. The five `Config` variables apply only when you call `cfg.LoadConfigFromEnv()`. `BASECAMP_TOKEN` is read by `AuthManager.AccessToken` and `AuthManager.IsAuthenticated`; `BASECAMP_NO_KEYRING` is read one level down, by `NewCredentialStore`. (Separately, `DefaultConfig` consults `XDG_CACHE_HOME` to site the cache directory, and `globalConfigDir` consults `XDG_CONFIG_HOME` to site the config directory.)
 
 | Variable | Read by | Description |
 |----------|---------|-------------|
@@ -358,7 +358,7 @@ Nothing here is read automatically. The five `Config` variables apply only when 
 | `BASECAMP_CACHE_DIR` | `cfg.LoadConfigFromEnv()` | Cache directory path (default: `~/.cache/basecamp`) |
 | `BASECAMP_CACHE_ENABLED` | `cfg.LoadConfigFromEnv()` | Enable HTTP caching (default: `false`) |
 | `BASECAMP_TOKEN` | `AuthManager` | Access token. Consulted **first**, ahead of any stored OAuth credentials, so setting it short-circuits the OAuth flow — handy for scripts and CI |
-| `BASECAMP_NO_KEYRING` | `AuthManager` | Store credentials in a file instead of the system keyring |
+| `BASECAMP_NO_KEYRING` | `NewCredentialStore` | Store credentials in a file instead of the system keyring. Read when the store is constructed, so `NewAuthManager` picks it up but `NewAuthManagerWithStore` does not — pass a store you built yourself and this variable has already been applied, or not, by that call |
 
 `StaticTokenProvider` does **not** read `BASECAMP_TOKEN`; it uses whatever string you put in its `Token` field. The Quick Start above reads the variable itself, at the call site.
 
