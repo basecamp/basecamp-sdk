@@ -1,0 +1,126 @@
+spec/overlays/tags.smithy
+  s_ae792ed0be3006::t_4bdf3ca60af001 81
+ruby/lib/basecamp/generated/metadata.json
+  s_ae792ed0be3006::t_93af994b67b8d0 4,2684-2697
+python/scripts/generate_services.py
+  s_ae792ed0be3006::t_befc462428e27b 114,186
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_071feeb1e819be 280-283
+ruby/scripts/generate-services.rb
+  s_ae792ed0be3006::t_fc6d109ff8f86e 110,181
+openapi.json
+  s_ae792ed0be3006::t_55587367c0f39c 21153-21248
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  s_ae792ed0be3006::t_81f337659d9828 86
+AGENTS.md
+  s_ae792ed0be3006::t_ee208f059cad75 29,93
+SPEC.md
+  s_ae792ed0be3006::t_fc89fbf4dd6516 113
+  s_ae792ed0be3006::t_24064f49f99a3e 114
+  s_ae792ed0be3006::t_d66e71247552bd 111
+  s_ae792ed0be3006::t_ea6a3e7cea64cf 772,1256,3267-3268
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_ae792ed0be3006::t_332546bbc150d3 88
+conformance/runner/go/main.go
+  s_ae792ed0be3006::t_29c9e71475060a 831-835
+behavior-model.json
+  s_ae792ed0be3006::t_dd0e6f3cdd4ca4 550-561
+ruby/lib/basecamp/generated/services/timesheets_service.rb
+  s_ae792ed0be3006::t_4b6a66955eec68 85-94
+typescript/src/generated/schema.d.ts
+  s_ae792ed0be3006::t_96edc0b212b4e0 2726-2727,19201-19265
+ruby/test/basecamp/services/timesheet_service_test.rb
+  s_ae792ed0be3006::t_724a7926d27b22 83
+  s_ae792ed0be3006::t_637aa569458200 67-82,84-95
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_ae792ed0be3006::t_c4d43849e4f38d 54,270
+go/pkg/basecamp/url-routes.json
+  s_ae792ed0be3006::t_6fbfb05c163fb6 2279
+typescript/scripts/generate-services.ts
+  s_ae792ed0be3006::t_99bd314fed1b3d 246,379
+  s_ae792ed0be3006::t_325e3f2498baa9 315-318
+spec/bc3-route-allowlist.yml
+  s_ae792ed0be3006::t_eb01bcf4d7d63a 217-230,234,237,240,242-253,257,260
+  s_ae792ed0be3006::t_939ea5a3157c51 150-166
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/timesheets.kt
+  s_ae792ed0be3006::t_62f228488dd87d 165-182
+scripts/check-bc3-route-parity
+  s_ae792ed0be3006::t_d919e5ad972ccb 161,163-176,182-185
+  s_ae792ed0be3006::t_a1e724d78e267f 143-149,177,187-212,227-229
+  s_ae792ed0be3006::t_40a13339a745f0 214,217
+  s_ae792ed0be3006::t_af248944ddccd4 178-180
+  s_ae792ed0be3006::t_07bd8878f5475b 349-354
+  s_ae792ed0be3006::t_a520b3b5d6280e 249-250
+  s_ae792ed0be3006::t_6c4f71d5accb63 213,215-216,218-226
+  s_ae792ed0be3006::t_98442c91242b03 150-160,162,181,186
+SECURITY.md
+  s_ae792ed0be3006::t_b2f25ab532eaae 187-188
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_add0cd848a5334 18864-18948
+swift/Sources/Basecamp/Generated/Services/TimesheetsService.swift
+  s_ae792ed0be3006::t_83f36a4eaca310 74-82
+typescript/tests/services/timesheets.test.ts
+  s_ae792ed0be3006::t_2c1ff5e043d52d 1-97,99-122
+  s_ae792ed0be3006::t_a59bc20246bbb3 98
+python/src/basecamp/generated/metadata.json
+  s_ae792ed0be3006::t_74b7fcd531464c 546-557
+spec/basecamp.smithy
+  s_ae792ed0be3006::t_032bc7e63a091e 3082-3105
+  s_ae792ed0be3006::t_091fc129f69a77 132
+  s_ae792ed0be3006::t_6cee03dd00a49c 3081
+typescript/src/generated/metadata.ts
+  s_ae792ed0be3006::t_c10a02b1bcbc92 40,2721-2734
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_4f55746a25e446 448-451
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_2174f7394482bf 383-384
+typescript/src/generated/path-mapping.ts
+  s_ae792ed0be3006::t_b0328ac73e04ec 161
+python/tests/services/test_timesheets_service.py
+  s_ae792ed0be3006::t_38d89464eddeda 1-34,36-65,67-75
+  s_ae792ed0be3006::t_a599443a110534 35,66
+conformance/tests/paths.json
+  s_ae792ed0be3006::t_9ffe42ebd6f0d2 240-271
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_ae792ed0be3006::t_cea6352ccf90f5 71
+scripts/check-idempotency-parity
+  s_ae792ed0be3006::t_62ad62b05a1219 116-119
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_ae792ed0be3006::t_d480088d2b2ac9 87,221
+  s_ae792ed0be3006::t_2c772728d70791 296-299
+go/pkg/basecamp/timesheet_test.go
+  s_ae792ed0be3006::t_c4c5cba60b75ad 550
+  s_ae792ed0be3006::t_d08db32ee467ab 4,6-8,14-31
+  s_ae792ed0be3006::t_6989cc40b9328c 32
+  s_ae792ed0be3006::t_97e4364598f0f6 526-549,551-577
+go/pkg/basecamp/timesheet.go
+  s_ae792ed0be3006::t_ab29124ec31f3b 457-482
+swift/Sources/BasecampGenerator/Utilities.swift
+  s_ae792ed0be3006::t_76a65e124c11a3 157-160
+python/src/basecamp/generated/services/timesheets.py
+  s_ae792ed0be3006::t_37843566877df6 102-109,201-208
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_ae792ed0be3006::t_01480cb2e9ac21 1031-1037
+typescript/src/generated/services/timesheets.ts
+  s_ae792ed0be3006::t_bfb2d0ca2433bb 297-325
+go/pkg/generated/client.gen.go
+  s_ae792ed0be3006::t_f1b02d83bc30b4 5659-5661,8706-8715,20254-20294,22728,22978,23226,24949-24951,31988-32021,35681-35689,46602-46653
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_ae792ed0be3006::t_054c76997c8b52 410-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "e75d69de1c1f78ac8d8b312ed8345a0752bba33e",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
