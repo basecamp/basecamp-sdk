@@ -311,18 +311,25 @@ end
 # shallow clones CI uses. So this catches the claim as it is made, and AGENTS.md
 # governs the ones already settled.
 #
-# Backticked and bare occurrences both count. Requiring backticks here would
-# leave "the provenance pin is d0edc128" as a one-character way around the
-# rule, and unlike the generic bare-SHA heuristic this match is the live
-# revision's own prefix, so it cannot collide with an ordinary number.
+# Every occurrence counts, wherever it sits. This match is built from the live
+# revision's own prefix, so unlike the generic bare-SHA heuristic it cannot
+# collide with an ordinary number, and that is what lets it read the raw line
+# instead of a filtered one.
+#
+# It got there in two steps, both of which were holes:
+#
+#   - Backticks-only missed "the provenance pin is d0edc128", a one-character
+#     way around the rule.
+#   - Masking code spans before the bare scan then missed the pin inside a
+#     COMPOUND span. `d0edc1283b..2c0dafba13` is not a lone SHA, so the
+#     backticked pattern skipped it, and blanking the span hid it from the
+#     bare pass too. Range notation is the single most common way this file
+#     names a revision, so that blind spot sat exactly where the traffic is.
+#
+# Scanning the raw line subsumes both. A marked span's line never reaches here
+# (scan_file drops it from prose), and neither does anything fenced.
 def cites_current_pin?(line, revision)
-  ticked = line.scan(TICKED_HEX_RE).flatten.select { |h| revision.start_with?(h) }
-
-  if ticked.empty?
-    line.gsub(BACKTICKED_RE, " ")[/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/]
-  else
-    ticked.first
-  end
+  line[/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/]
 end
 
 # A grant is bounded by a COUNT, for the same reason markerFloors became

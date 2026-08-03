@@ -251,6 +251,23 @@ out, status = gate lambda { |f|
 expect_fail(failures, "unmarked BARE current-pin restatement", out, status,
             "is the current provenance pin, restated outside a @bc3-pin span")
 
+# ...and neither must a COMPOUND code span. `A..B` is not a lone SHA, so the
+# backticked pattern skips it; blanking code spans before the bare scan used to
+# hide it from that pass too, which put the blind spot precisely on range
+# notation — the most common way these files name a revision.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = "# An entry\n\nThe `dffa7e11b3..#{SHORT}` range is current.\n"
+}
+expect_fail(failures, "current pin inside a compound code span", out, status,
+            "is the current provenance pin, restated outside a @bc3-pin span")
+
+# The other endpoint of that range is NOT the current pin and must stay silent —
+# reading inside compound spans must not turn settled history into a finding.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = "# An entry\n\nThe `dffa7e11b3..e83b2733` range was triaged.\n"
+}
+expect_pass(failures, "historical range is left alone", out, status)
+
 grant = lambda { |f, entry|
   cfg = JSON.parse(f["spec/doc-constants.json"])
   cfg["unmarkedPinCitations"] = { "spec/api-gaps/entry.md" => entry }

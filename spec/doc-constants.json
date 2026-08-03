@@ -47,8 +47,8 @@
   },
   "unmarkedPinCitations": {
     "spec/api-gaps/README.md": {
-      "count": 1,
-      "reason": "the range triage names each range's endpoint, which is by definition the pin that repin set — here BC3 #12501, cited as the commit that shipped the draft-subscribers fix. The pin sentence itself is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file"
+      "count": 2,
+      "reason": "the two ways a range triage names its own endpoint, which is by definition the pin that repin set: the d0edc1283b..2c0dafba13 range itself, and BC3 #12501 cited as the commit that shipped the draft-subscribers fix. Both are bound to that triage and stay true after the next repin. The pin sentence is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file"
     },
     "spec/api-gaps/folders-api.md": {
       "count": 1,
