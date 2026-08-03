@@ -37,14 +37,30 @@ grep "^func (c \*ClientWithResponses)" "$GENERATED_FILE" 2>/dev/null \
 
 # Extract service layer calls to gen.*WithResponse (excluding test files)
 # Normalize WithBodyWithResponse calls to base operation name
+#
+# A wrapper may also call the two stages separately — gen.<Op>(...) for the
+# request, then generated.Parse<Op>Response(...) for the decode — when it has to
+# tell a preflight or transport failure apart from a malformed body, which the
+# combined <Op>WithResponse conflates into one error (DocumentsService.Get does
+# this; see documentDecodeError). Parse<Op>Response names the operation exactly
+# and appears nowhere else, so it is counted as a wrapper too.
 for f in "$SERVICE_DIR"/*.go; do
   case "$f" in
     *_test.go) continue ;;
   esac
   grep "\.gen\.[A-Za-z]*WithResponse" "$f" 2>/dev/null || true
 done | sed 's/.*\.gen\.\([A-Za-z]*\)WithResponse.*/\1/' \
-  | sed 's/WithBody$//' \
-  | sort -u > "$SVC_OPS"
+  | sed 's/WithBody$//' > "$SVC_OPS.raw"
+
+for f in "$SERVICE_DIR"/*.go; do
+  case "$f" in
+    *_test.go) continue ;;
+  esac
+  grep -o "generated\.Parse[A-Za-z]*Response" "$f" 2>/dev/null || true
+done | sed 's/generated\.Parse\([A-Za-z]*\)Response/\1/' >> "$SVC_OPS.raw"
+
+sort -u "$SVC_OPS.raw" > "$SVC_OPS"
+rm -f "$SVC_OPS.raw"
 
 # Count operations
 GEN_COUNT=$(wc -l < "$GEN_OPS" | tr -d ' ')

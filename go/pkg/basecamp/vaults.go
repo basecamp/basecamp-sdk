@@ -486,6 +486,8 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 	// editor (a token provider or custom AuthStrategy may return ANY error), the
 	// transport, and context cancellation. Those return verbatim, so errors.Is
 	// keeps working; only ParseGetDocumentResponse's failure is a decode failure.
+	//nolint:bodyclose // ParseGetDocumentResponse below closes the body (it defers
+	// rsp.Body.Close()), and it is called unconditionally on the next line.
 	httpResp, err := s.client.parent.gen.GetDocument(ctx, s.client.accountID, documentID)
 	if err != nil {
 		return nil, err
