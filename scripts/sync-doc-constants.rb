@@ -322,19 +322,89 @@ def cites_current_pin?(line, revision)
   line.gsub(BACKTICKED_RE, " ")[/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/]
 end
 
+# A grant is bounded by a COUNT, for the same reason markerFloors became
+# markerCounts. spec/api-gaps/README.md has to be granted — its job is
+# recording ranges, and a range's endpoint is by definition the pin that repin
+# set, so it names today's pin every time. But it is also the single likeliest
+# place for a genuine class-A sentence ("the provenance pin is X") to be
+# written, and an unbounded file grant would wave that through forever. The
+# count says "this file carries exactly N as-of citations of today's pin, all
+# reviewed"; the N+1th fails until someone looks at it and re-states the number.
 def check_unmarked_pin(file, prose, revision, allowed)
-  return [] if allowed.key?(file)
-
-  prose.filter_map do |line_no, line|
+  hits = prose.filter_map do |line_no, line|
     hit = cites_current_pin?(line, revision)
-    next if hit.nil?
-
-    "#{file}:#{line_no}: `#{hit}` is the current provenance pin, restated outside a " \
-      "@bc3-pin span. Either mark the line <!-- @bc3-pin --> (and name the sync date) so " \
-      "`make sync-api-version` keeps it current, or bind the SHA to what makes it permanently " \
-      "true — the PR that shipped it, the verification it backs — and record the file in " \
-      "spec/doc-constants.json .unmarkedPinCitations with that reason."
+    hit && [line_no, hit]
   end
+
+  grant = allowed[file]
+  if grant.nil?
+    return hits.map do |line_no, hit|
+      "#{file}:#{line_no}: `#{hit}` is the current provenance pin, restated outside a " \
+        "@bc3-pin span. Either mark the line <!-- @bc3-pin --> (and name the sync date) so " \
+        "`make sync-api-version` keeps it current, or bind the SHA to what makes it permanently " \
+        "true — the PR that shipped it, the verification it backs — and record the file in " \
+        "spec/doc-constants.json .unmarkedPinCitations with that reason and a count."
+    end
+  end
+
+  return [] if hits.length == grant["count"]
+
+  if hits.length > grant["count"]
+    lines = hits.map { |line_no, _| line_no }.join(", ")
+    ["#{file}: spec/doc-constants.json grants #{grant['count']} unmarked citation(s) of the " \
+     "current pin, found #{hits.length} (lines #{lines}). The grant covers reviewed as-of " \
+     "facts, not whatever the file grows next — read the new one, confirm it binds the SHA to " \
+     "a fixed observation rather than claiming today's pin, and raise the count in the same " \
+     "commit."]
+  else
+    # Fewer than granted: the entry has outlived what it described. Left alone
+    # it is a standing permission nobody reviewed, pre-authorising the next
+    # unmarked restatement in this file.
+    ["#{file}: spec/doc-constants.json grants #{grant['count']} unmarked citation(s) of the " \
+     "current pin, found #{hits.length} — the entry no longer describes the file. Lower the " \
+     "count, or drop the entry."]
+  end
+end
+
+# The grant shape is load-bearing: a bare string (the shape before counts) or a
+# missing count would otherwise read as "grant everything" — a silent hole in
+# exactly the check this list exists to bound.
+#
+# Returns [errors, well_formed_grants]. A malformed grant is reported and then
+# dropped rather than being handed to check_unmarked_pin, which would compare
+# a count against nil and die with a backtrace instead of the message that says
+# what to fix. Its file is skipped for the citation scan too: the shape error is
+# the actionable one, and also listing every citation in the file as unmarked
+# would bury it.
+def validate_citation_grants(allowed)
+  errors = []
+  valid = {}
+
+  allowed.each do |file, grant|
+    unless grant.is_a?(Hash)
+      errors << "spec/doc-constants.json: .unmarkedPinCitations[#{file.inspect}] must be an " \
+                "object with \"count\" and \"reason\", got #{grant.class}"
+      next
+    end
+
+    count = grant["count"]
+    unless count.is_a?(Integer) && count.positive?
+      errors << "spec/doc-constants.json: .unmarkedPinCitations[#{file.inspect}].count must be " \
+                "a positive integer, got #{count.inspect}"
+      next
+    end
+
+    reason = grant["reason"]
+    unless reason.is_a?(String) && !reason.strip.empty?
+      errors << "spec/doc-constants.json: .unmarkedPinCitations[#{file.inspect}] needs a " \
+                "non-empty \"reason\" — the reason is what a reviewer checks the citation against"
+      next
+    end
+
+    valid[file] = grant
+  end
+
+  [errors, valid]
 end
 
 def check_assertion_types(span, schema_types)
@@ -530,20 +600,15 @@ def run(mode, openapi)
     )
   end
 
-  prose_by_file.each do |file, prose|
-    errors.concat(check_unmarked_pin(file, prose, revision, pin_citations))
-  end
+  grant_errors, grants = validate_citation_grants(pin_citations)
+  errors.concat(grant_errors)
+  malformed = pin_citations.keys - grants.keys
 
-  # A citation exemption is a claim about a file, and claims rot. If the named
-  # file no longer cites the pin at all, the entry is dead weight that would
-  # silently pre-authorize the next author to write an unmarked restatement
-  # there.
-  pin_citations.each_key do |file|
-    cited = prose_by_file.fetch(file, []).any? { |_, line| cites_current_pin?(line, revision) }
-    next if cited
-
-    errors << "spec/doc-constants.json: .unmarkedPinCitations lists #{file}, but it no longer " \
-              "names the current pin outside a marked span — drop the entry."
+  # Every granted file is checked even if git no longer tracks it: a grant for
+  # a deleted file is dead weight that would spring back to life, unreviewed,
+  # the day someone recreates the path.
+  ((prose_by_file.keys | grants.keys) - malformed).each do |file|
+    errors.concat(check_unmarked_pin(file, prose_by_file.fetch(file, []), revision, grants))
   end
 
   if errors.empty?

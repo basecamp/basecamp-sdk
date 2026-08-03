@@ -251,24 +251,62 @@ out, status = gate lambda { |f|
 expect_fail(failures, "unmarked BARE current-pin restatement", out, status,
             "is the current provenance pin, restated outside a @bc3-pin span")
 
+grant = lambda { |f, entry|
+  cfg = JSON.parse(f["spec/doc-constants.json"])
+  cfg["unmarkedPinCitations"] = { "spec/api-gaps/entry.md" => entry }
+  f["spec/doc-constants.json"] = JSON.pretty_generate(cfg)
+}
+
 out, status = gate lambda { |f|
   f["spec/api-gaps/entry.md"] = "# An entry\n\nSDK #528 repinned to `#{SHORT}`.\n"
-  cfg = JSON.parse(f["spec/doc-constants.json"])
-  cfg["unmarkedPinCitations"] = { "spec/api-gaps/entry.md" => "as-of fact about SDK #528" }
-  f["spec/doc-constants.json"] = JSON.pretty_generate(cfg)
+  grant.call(f, "count" => 1, "reason" => "as-of fact about SDK #528")
 }
-expect_pass(failures, "allowlisted pin citation passes", out, status)
+expect_pass(failures, "granted pin citation passes", out, status)
 
-# An allowlist entry that no longer describes anything is a standing permission
-# nobody reviewed — the file-level grant would silently cover a future unmarked
-# restatement in the same file.
+# The grant is bounded. A SECOND unmarked citation appearing in an already-
+# granted file is the hole an unbounded file grant leaves open, and it is
+# widest in exactly the files that need granting.
 out, status = gate lambda { |f|
-  cfg = JSON.parse(f["spec/doc-constants.json"])
-  cfg["unmarkedPinCitations"] = { "spec/api-gaps/entry.md" => "stale grant" }
-  f["spec/doc-constants.json"] = JSON.pretty_generate(cfg)
+  f["spec/api-gaps/entry.md"] =
+    "# An entry\n\nSDK #528 repinned to `#{SHORT}`.\n\nThe provenance pin is `#{SHORT}`.\n"
+  grant.call(f, "count" => 1, "reason" => "as-of fact about SDK #528")
 }
-expect_fail(failures, "dead pin-citation exemption", out, status,
-            "no longer names the current pin outside a marked span")
+expect_fail(failures, "granted file grows an extra citation", out, status,
+            "grants 1 unmarked citation(s) of the current pin, found 2 (lines 3, 5)")
+
+# An entry that no longer describes anything is a standing permission nobody
+# reviewed — it would silently cover the next unmarked restatement in the file.
+out, status = gate ->(f) { grant.call(f, "count" => 1, "reason" => "stale grant") }
+expect_fail(failures, "dead pin-citation grant", out, status,
+            "found 0 — the entry no longer describes the file")
+
+# ...including when the granted file is gone entirely: a grant that outlives
+# its path springs back unreviewed the day someone recreates it.
+out, status = gate lambda { |f|
+  f.delete("spec/api-gaps/entry.md")
+  grant.call(f, "count" => 1, "reason" => "grant for a deleted file")
+}
+expect_fail(failures, "grant for a deleted file", out, status,
+            "spec/api-gaps/entry.md: spec/doc-constants.json grants 1 unmarked citation(s)")
+
+# The grant SHAPE is load-bearing. The pre-count spelling was a bare string;
+# accepting one now would read as "grant everything" in the one list whose
+# whole job is to be bounded.
+out, status = gate ->(f) { grant.call(f, "as-of fact about SDK #528") }
+expect_fail(failures, "bare-string grant rejected", out, status,
+            "must be an object with \"count\" and \"reason\"")
+
+out, status = gate ->(f) { grant.call(f, "count" => 0, "reason" => "zero") }
+expect_fail(failures, "zero count rejected", out, status,
+            ".count must be a positive integer, got 0")
+
+out, status = gate ->(f) { grant.call(f, "count" => "1", "reason" => "stringly typed") }
+expect_fail(failures, "non-integer count rejected", out, status,
+            ".count must be a positive integer, got \"1\"")
+
+out, status = gate ->(f) { grant.call(f, "count" => 1, "reason" => "   ") }
+expect_fail(failures, "blank reason rejected", out, status,
+            "needs a non-empty \"reason\"")
 
 # A historical SHA must NOT trip it: that is the whole point of the marker
 # convention, and a gate that flagged settled triage would be unusable.

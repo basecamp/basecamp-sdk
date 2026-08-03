@@ -22,9 +22,13 @@
     "unmarkedPinCitations — files allowed to name the CURRENT bc3 revision in",
     "prose without a <!-- @bc3-pin --> marker. The default is to reject that,",
     "because an unmarked sentence stating today's pin is how every stale pin",
-    "restatement in spec/api-gaps/ was born. Listing a file asserts its SHA is an",
-    "as-of fact bound to something fixed (a PR, a verification), not a claim about",
-    "the pin."
+    "restatement in spec/api-gaps/ was born. An entry asserts those SHAs are",
+    "as-of facts bound to something fixed (a PR, a verification), not claims",
+    "about the pin — and is bounded by an exact count for the same reason",
+    "markerCounts is: an unbounded file grant would wave through whatever the",
+    "file grows next, in the files likeliest to grow a real class-A sentence.",
+    "The N+1th citation fails until someone reads it and restates the number;",
+    "fewer than N means the entry has outlived what it described."
   ],
   "markerCounts": {
     "api-version": {
@@ -42,6 +46,13 @@
     "spec/api-gaps/README.md": "the pin sentence heads a triage narrative — advancing the SHA without adding the new range's triage would make the one document whose job is recording that triage assert a range nobody triaged"
   },
   "unmarkedPinCitations": {
-    "spec/api-gaps/my-assignments-priorities.md": "names the revision SDK #528 repinned to, an as-of fact about that PR — it stays true after the next repin"
+    "spec/api-gaps/README.md": {
+      "count": 1,
+      "reason": "the range triage names each range's endpoint, which is by definition the pin that repin set — here BC3 #12501, cited as the commit that shipped the draft-subscribers fix. The pin sentence itself is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file"
+    },
+    "spec/api-gaps/folders-api.md": {
+      "count": 1,
+      "reason": "names the d0edc1283b -> 2c0dafba13 repin as the event that first brought doc/api/sections/folders.md into range — an as-of fact about that repin, still true after the next one"
+    }
   }
 }

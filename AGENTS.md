@@ -200,6 +200,13 @@ everything else:
   `spec/api-gaps/` cites ~30 historical SHAs on purpose, and rewriting one
   would convert settled triage into a claim nobody made.
 
+There is a third form, and it is usually the right answer: **name the pin by
+reference instead of by value** — "the revision `spec/api-provenance.json`
+currently pins", "already inside the current pin". It means today's pin, stays
+true across every repin, and restates no constant, so nothing can drift and
+nothing needs marking. Reach for a literal SHA only when the sentence is
+genuinely about *which* revision.
+
 The failure to avoid is writing the second in the grammar of the first — "at
 the pinned revision", "the provenance pin (`X`)" — which is true the day it is
 written and silently false at the next repin. Name what binds the revision:
@@ -207,10 +214,13 @@ the PR that shipped it, or the verification it backs. `make
 doc-constants-check` enforces the boundary at the one moment it can see it
 without guessing at tense: an unmarked sentence naming **today's** pin fails,
 because that is the day such a sentence is born. If it is genuinely an as-of
-fact that happens to name the current pin, record the file in
-`spec/doc-constants.json` `.unmarkedPinCitations` with the reason. A SHA that
-is not the current pin is not checked at all — sorting those needs the pin's
-whole history, which CI's shallow clones do not have.
+fact that happens to name the current pin — a repin cites the commit it moved
+to, so `spec/api-gaps/README.md` hits this on every sync — record the file in
+`spec/doc-constants.json` `.unmarkedPinCitations` with a reason and an exact
+count. The count is what keeps the grant honest: the next unmarked citation in
+that file still fails until someone reads it and restates the number. A SHA
+that is not the current pin is not checked at all — sorting those needs the
+pin's whole history, which CI's shallow clones do not have.
 
 The same marker convention covers `<!-- @api-version -->` (from `openapi.json`
 `info.version`) and SPEC §19's `<!-- @assertion-types:begin/end -->` table
