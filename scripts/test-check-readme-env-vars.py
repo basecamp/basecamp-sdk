@@ -127,6 +127,45 @@ def main() -> int:
         })
         check("typescript single-quoted read is seen", run_gate(root, TS_SDK), [])
 
+        # Optional chaining is valid TypeScript and a real read; both spellings
+        # were invisible to patterns that demanded the dot or bracket directly.
+        root = tmp / "optional-chaining"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_OPT\n",
+            "typescript/src/c.ts": "const v = process.env?.BASECAMP_OPT;\n",
+        })
+        check("typescript optional-chained read is seen",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_OPT"])
+
+        root = tmp / "optional-chaining-bracket"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_OPTB\n",
+            "typescript/src/c.ts": 'const v = process.env?.["BASECAMP_OPTB"];\n',
+        })
+        check("typescript optional-chained bracket read is seen",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_OPTB"])
+
+        # A Ruby quoted literal may span physical lines. Ending it at the newline
+        # left the rest of the string executable.
+        root = tmp / "ruby-multiline-literal"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "ruby/lib/c.rb": 's = "line one\nENV[\'BASECAMP_FAKE\']\nline three"\n',
+        })
+        check("a ruby literal spanning lines is not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_FAKE"])
+
+        # ...and code after it is still code.
+        root = tmp / "ruby-multiline-then-read"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_REAL"),
+            "ruby/lib/c.rb": 's = "a\nb"\nv = ENV[\'BASECAMP_REAL\']\n',
+        })
+        check("a read after a multiline literal still counts",
+              run_gate(root, RB_SDK), [])
+
         # 2. A mismatched quote pair is not a string literal and must not match.
         root = tmp / "mismatched"
         build(root, {

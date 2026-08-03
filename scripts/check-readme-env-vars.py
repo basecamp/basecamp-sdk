@@ -117,8 +117,10 @@ SDKS = {
         "comments": "slash",
         "suffixes": (".ts",),
         "patterns": [
-            rf"process\.env\.{NAME}",
-            rf"process\.env\[\s*{Q}{NAME}{ENDQ}",
+            # `?.` is valid optional chaining, and a read the plain patterns
+            # reported as nonexistent.
+            rf"process\.env\??\.{NAME}",
+            rf"process\.env(?:\?\.)?\[\s*{Q}{NAME}{ENDQ}",
         ],
     },
     "Swift": {
@@ -156,35 +158,44 @@ SDKS = {
 #            interpolates in backticks only, so `"${x}"` is plain text, and Go
 #            interpolates nowhere at all.
 #   fstring: Python only, where the `f` prefix decides whether braces are code.
+#   multiline: Ruby, where an ordinary quoted literal may span physical lines.
+#            Everywhere else a newline ends it, which is what bounds the damage
+#            from an unbalanced quote.
 LANG_FLAGS = {
     "Go": {
         "triple": False, "nested": False, "raw": False, "fstring": False,
+        "multiline": False,
         "interp": {},
     },
     "Ruby": {
         "triple": True, "nested": False, "raw": False, "fstring": False,
+        "multiline": True,
         "interp": {'"': [("#{", "}")]},
     },
     "Python": {
         "triple": True, "nested": False, "raw": False, "fstring": True,
+        "multiline": False,
         "interp": {},
     },
     "TypeScript": {
         "triple": False, "nested": False, "raw": False, "fstring": False,
+        "multiline": False,
         "interp": {"`": [("${", "}")]},
     },
     "Swift": {
         "triple": True, "nested": True, "raw": True, "fstring": False,
+        "multiline": False,
         "interp": {'"': [("\\(", ")")]},
     },
     "Kotlin": {
         "triple": True, "nested": True, "raw": False, "fstring": False,
+        "multiline": False,
         "interp": {'"': [("${", "}")]},
     },
 }
 # Permissive union, used only when no language is supplied.
 DEFAULT_FLAGS = {
-    "triple": True, "nested": True, "raw": True, "fstring": True,
+    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True,
     "interp": {"`": [("${", "}")], '"': [("${", "}"), ("\\(", ")"), ("#{", "}")]},
 }
 
@@ -418,7 +429,7 @@ def scan_literal(text: str, i: int, style: str,
             break
         # An unterminated single-line literal ends at the newline; Go and
         # TypeScript backtick literals legitimately span lines.
-        if text[j] == "\n" and quote != "`":
+        if text[j] == "\n" and quote != "`" and not flags["multiline"]:
             break
         opened = False
         for opener, closer in openers:

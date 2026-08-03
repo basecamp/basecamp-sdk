@@ -61,7 +61,10 @@ const token = process.env.BASECAMP_TOKEN!;
 // for the bootstrap call.
 const bootstrap = createBasecampClient({ accountId: "0", accessToken: token });
 
-// "bc3" is Basecamp; the unfiltered response also carries "hey" and other products
+// "bc3" is Basecamp; the unfiltered response also carries "hey" and other products.
+// endpoint defaults to Launchpad, which is right for a Launchpad-issued token.
+// For a device-flow token, pass the discovered issuer:
+//   { filterProduct: "bc3", endpoint: `${issuer}/authorization.json` }
 const info = await bootstrap.authorization.getInfo({ filterProduct: "bc3" });
 for (const account of info.accounts) {
   console.log(`${account.id}: ${account.name}`);
