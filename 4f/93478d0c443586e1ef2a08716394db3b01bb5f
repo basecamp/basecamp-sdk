@@ -1,0 +1,95 @@
+COORDINATION.md
+  s_ae792ed0be3006::t_d98e5f922fd8a0 27,30-31,48,50-52,91-114
+Makefile
+  s_ae792ed0be3006::t_c24c2e0a11f43d 497-515,517-519,523-526,536-539
+SPEC.md
+  s_ae792ed0be3006::t_a6b3fda273728c 1849
+conformance/check_kill_case_controls.py
+  s_ae792ed0be3006::t_e3e291d2b518a0 1-266
+conformance/runner/go/error_raised.go
+  s_ae792ed0be3006::t_f0a21d66c62bb4 1-28
+conformance/runner/go/error_raised_test.go
+  s_ae792ed0be3006::t_35f2ddbaa578d4 1-45
+conformance/runner/go/main.go
+  s_ae792ed0be3006::t_a13ca2c0f6d523 1095-1103
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_7d5c3e617eb472 41-64,598-606
+conformance/runner/python/test_error_raised.py
+  s_ae792ed0be3006::t_8d7f71fcf080bf 1-26
+conformance/runner/ruby/error_raised_test.rb
+  s_ae792ed0be3006::t_63f7f3b58c50bf 1-29
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_bb44fe330e27a3 18-45,689-696
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_ae792ed0be3006::t_6d1218a1f7a46b 95-99,267-280
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_ae792ed0be3006::t_63fe2145353c73 190-202,212-217,240,254-263,273
+conformance/runner/swift/Sources/ConformanceSupport/ErrorRaised.swift
+  s_ae792ed0be3006::t_7239732d4dc82a 1-28
+conformance/runner/swift/Tests/ConformanceSupportTests/ErrorRaisedTests.swift
+  s_ae792ed0be3006::t_9b8047404a4286 1-25
+conformance/runner/typescript/error-raised.test.ts
+  s_ae792ed0be3006::t_0a2d8e1313cafa 1-26
+conformance/runner/typescript/error-raised.ts
+  s_ae792ed0be3006::t_d8f6d6e3d17b04 1-30
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_b301bc53aafaf7 19,937-946
+conformance/schema.json
+  s_ae792ed0be3006::t_8fb936ef243658 118,133
+conformance/test_check_kill_case_controls.py
+  s_ae792ed0be3006::t_fdbf8b4b54326e 1-335
+conformance/tests/cards_write.json
+  s_ae792ed0be3006::t_c083b5d7c4f591 1129-2152
+conformance/tests/todos_write.json
+  s_ae792ed0be3006::t_7bd0c032f5b94f 550-875
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ErrorRaised.kt
+  s_ae792ed0be3006::t_06ae8d57c8d581 1-31
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_ae792ed0be3006::t_30ccd5ca498a5a 12,260-271,294,301-316,327,399-412
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/ErrorRaisedTest.kt
+  s_ae792ed0be3006::t_2f40a7073771ff 1-35
+python/src/basecamp/services/cards.py
+  s_ae792ed0be3006::t_e494d80f450357 22-24,50-59,62-63
+python/src/basecamp/services/todos.py
+  s_ae792ed0be3006::t_60639b8df3fa8b 20-22,26-37,39-44
+python/tests/services/test_cards.py
+  s_ae792ed0be3006::t_bc7fcdaab173c3 18,150-236
+python/tests/services/test_todos.py
+  s_ae792ed0be3006::t_526198150ad46f 13,415-575
+ruby/lib/basecamp/services/cards_extensions.rb
+  s_ae792ed0be3006::t_c48139f27c11f0 22-25,50,69-89
+ruby/lib/basecamp/services/todos_extensions.rb
+  s_ae792ed0be3006::t_d91928fa7a846d 29-32,92-100,102,104-111
+ruby/test/basecamp/services/cards_service_test.rb
+  s_ae792ed0be3006::t_99b56f55cba278 112-171
+ruby/test/basecamp/services/todos_service_test.rb
+  s_ae792ed0be3006::t_41cac9da1fc573 336-480
+spec/api-gaps/README.md
+  s_ae792ed0be3006::t_4ba058efb94a36 69
+spec/api-gaps/event-feed.md
+  s_ae792ed0be3006::t_1fe3f305d5e67a 1-185
+typescript/src/services/cards-extensions.ts
+  s_ae792ed0be3006::t_55dc8add8c25c6 3-6,94-107,109-112
+typescript/src/services/todos-extensions.ts
+  s_ae792ed0be3006::t_0741aea4edfa79 3-6,133-144,146-151,153-158
+typescript/tests/services/cards.test.ts
+  s_ae792ed0be3006::t_b7de7594a5bec0 192-294
+typescript/tests/services/todos.test.ts
+  s_ae792ed0be3006::t_1ba0e5b6e463c1 520-709
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4f93478d0c443586e1ef2a08716394db3b01bb5f",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
