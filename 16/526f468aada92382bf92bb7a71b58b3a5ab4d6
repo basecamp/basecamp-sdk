@@ -1,0 +1,37 @@
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_5d018644af3f80 116-118
+spec/doc-constants.json
+  s_ae792ed0be3006::t_4ee9927a36ab1d 5-12
+  s_ae792ed0be3006::t_960add601b34c9 29
+scripts/sync-doc-constants.rb
+  s_ae792ed0be3006::t_a49172be6b4e72 542
+  s_ae792ed0be3006::t_cdb5c9e29a4a5d 43-46
+  s_ae792ed0be3006::t_cd273c651c3b46 415-425,428-430,432,435-436,438,440-449,453-457
+  s_ae792ed0be3006::t_6f0a39dd9bd630 313-324,329-336
+  s_ae792ed0be3006::t_2631b831d843d1 401
+  s_ae792ed0be3006::t_84db49bc15eb25 326,328,458-459
+scripts/test-doc-constants.rb
+  s_ae792ed0be3006::t_156ba27aebc4a6 327,330-357,359-360,365-366,369,373-374,378,381-382
+  s_ae792ed0be3006::t_4e326b687b9b95 247-253
+  s_ae792ed0be3006::t_48454dc1288347 80
+Makefile
+  s_ae792ed0be3006::t_63b2a2dcf7c30c 247-248
+AGENTS.md
+  s_ae792ed0be3006::t_519c15f66e0337 217-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "16526f468aada92382bf92bb7a71b58b3a5ab4d6",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

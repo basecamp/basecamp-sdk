@@ -1,0 +1,56 @@
+spec/api-gaps/README.md
+  s_ae792ed0be3006::t_81cd3eee13c70a 102
+scripts/check-doc-constants.sh
+  s_ae792ed0be3006::t_eff908aa249d6e 1-13
+AGENTS.md
+  s_ae792ed0be3006::t_ab572312b4ebe0 184-198
+  s_ae792ed0be3006::t_822fe36841107f 216-219
+Makefile
+  s_ae792ed0be3006::t_84ceaea4827cfc 1004
+  s_ae792ed0be3006::t_b563d143ca4455 244-251
+  s_ae792ed0be3006::t_4de66d63365cf9 1115
+  s_ae792ed0be3006::t_046a72f247192c 5
+SPEC.md
+  s_ae792ed0be3006::t_a834112abc3092 1740-1741
+  s_ae792ed0be3006::t_e4f6566f180f9f 1714-1718
+  s_ae792ed0be3006::t_31229727318c6c 1859
+  s_ae792ed0be3006::t_70c8ec6b77b980 1061,1917
+spec/doc-constants.json
+  s_ae792ed0be3006::t_ac5113d05e3b73 1-21
+scripts/sync-doc-constants.rb
+  s_ae792ed0be3006::t_3a819ffa81a522 213-216
+  s_ae792ed0be3006::t_5c7cd7d3f6450f 101,106-117
+  s_ae792ed0be3006::t_3cf2adc37be0f0 369-372
+  s_ae792ed0be3006::t_c51e39c3e1f9aa 1-100,102-105,118-212,217-368,373-383
+scripts/sync-api-version.sh
+  s_ae792ed0be3006::t_e09ff565c4e4b7 57-67
+  s_ae792ed0be3006::t_9923d429af234d 2-4,8
+  s_9443efc68aafc4::t_6ff1077e047c46 9
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_4fcdb283452751 114-119
+  s_ae792ed0be3006::t_eaddf56e85314e 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f0ae5eb1b6c8fbee4e9b93a332e8b573053d7638",
+  "prompts": {},
+  "sessions": {
+    "s_9443efc68aafc4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019faa4d-defc-7190-a2f2-964b53a0161d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

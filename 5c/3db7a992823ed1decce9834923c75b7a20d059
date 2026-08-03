@@ -1,0 +1,25 @@
+SPEC.md
+  s_ae792ed0be3006::t_f838f85bd0f996 1728
+  s_ae792ed0be3006::t_d543b1181affec 1733-1735
+  s_ae792ed0be3006::t_43764c2ea2719d 1746-1751
+  s_ae792ed0be3006::t_7448ba5299b242 1061,1927
+spec/api-gaps/README.md
+  s_ae792ed0be3006::t_fcd3463ca1f997 129-131
+  s_ae792ed0be3006::t_394fa1afad67fa 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5c3db7a992823ed1decce9834923c75b7a20d059",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
