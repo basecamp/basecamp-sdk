@@ -1,0 +1,66 @@
+{
+  "name": "06-protocol-fatal-disconnect",
+  "description": "Raw-frame interception: an Action Cable disconnect TEXT frame with reason invalid_event_stream_command (reconnect: false) lands in AwaitingConfirmation (transition 13) and is the server's own protocol verdict — Terminal(protocol_fatal), never retried into. The connector explicitly closes the still-open socket; mintCount 1 plus the empty exact timer set make zero further mints structural.",
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "disconnect",
+        "reason": "invalid_event_stream_command",
+        "reconnect": false
+      }
+    },
+    {
+      "expectClientClose": {}
+    },
+    {
+      "expectError": {
+        "reason": "protocol_fatal"
+      }
+    }
+  ],
+  "finally": {
+    "state": "terminal",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": []
+    },
+    "timers": {
+      "exact": {}
+    },
+    "socket": "closed",
+    "error": {
+      "reason": "protocol_fatal"
+    }
+  }
+}

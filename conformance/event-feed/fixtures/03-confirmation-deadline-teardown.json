@@ -1,0 +1,106 @@
+{
+  "name": "03-confirmation-deadline-teardown",
+  "description": "Acceptance test (c): the confirmation deadline lapses without a confirm; the connector closes the socket and the disposed attempt leaves exactly {backoff} outstanding — the old deadline timer is gone and no ghost watchdog survives teardown. The retry then mints a FRESH ticket and dials the NEW cable URL ({{CABLE_URL:2}}, harness-guaranteed distinct from {{CABLE_URL:1}}), ending back in awaiting_confirmation.",
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "confirmation-deadline",
+        "assertDelayMs": {
+          "min": 10000,
+          "max": 10000
+        }
+      }
+    },
+    {
+      "expectClientClose": {}
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "backoff": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "backoff",
+        "assertDelayMs": {
+          "min": 0,
+          "max": 1000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:2}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:2}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    }
+  ],
+  "finally": {
+    "state": "awaiting_confirmation",
+    "mintCount": 2,
+    "connectCount": 2,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": []
+    },
+    "timers": {
+      "exact": {
+        "confirmation-deadline": 1,
+        "staleness": 1
+      }
+    },
+    "socket": "open"
+  }
+}

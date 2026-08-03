@@ -1,0 +1,119 @@
+{
+  "name": "16-gap-410-accepted-resume",
+  "description": "A 410 epoch gap with an accepting feedGap handler: Observer.gap fires, the handler is invoked exactly once with {feedGap, accept}, the provided resume URL is followed verbatim (a present-class re-entry at since=now preserving the canonical filter set), and the stream continues. The accept complement of fixture 23; with 24/25's records it corners bypass-configured-handler from the accept side. Wire pins: 410 body keys epoch_after_id/resume (class 1) and resume-follows-verbatim (class 2).",
+  "config": {
+    "position": "{{POS:0}}",
+    "signalDisposition": {
+      "feedGap": "accept"
+    }
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 410,
+          "body": {
+            "error": "position expired",
+            "epoch_after_id": 100,
+            "resume": "{{API_ORIGIN}}/events.json?since=now"
+          }
+        }
+      }
+    },
+    {
+      "expectGap": {
+        "epochAfterId": 100
+      }
+    },
+    {
+      "expectHandlerInvocations": {
+        "exact": [
+          {
+            "kind": "feedGap",
+            "disposition": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "expectPoll": {
+        "url": "{{API_ORIGIN}}/events.json?since=now",
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": [
+        "{{POS:1}}"
+      ]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open",
+    "handlerInvocations": {
+      "exact": [
+        {
+          "kind": "feedGap",
+          "disposition": "accept"
+        }
+      ]
+    }
+  }
+}

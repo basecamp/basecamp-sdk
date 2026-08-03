@@ -1,0 +1,1530 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basecamp.com/schemas/event-feed-scenario.json",
+  "title": "Event Feed Connector Tier-2 Scenario",
+  "description": "One strictly-ordered interleaved script driving the SPEC §23 connector over its five seams: HTTP exchanges (mint/poll), cable frames, time directives, and observations, in one `steps` array. Strict-matched actions (mint, connect, poll, outbound frame, client close, checkpoint save) must each match their expect step under the per-action-class rules in this family's README ('Strictness semantics, per action class': saves and outbound frames are arrival-strict; mint/poll seam calls are parked and matched in order); observation directives (delivered, buffered, timers, state, signals, handler invocations) are rendezvous assertions evaluated cumulatively under a small wall-clock watchdog while virtual time is frozen. All counts (mintCount, connectCount) count SEAM CALLS — one fully-governed generated call each, with SPEC §7 retries inside — never wire attempts. Time flows only through the injected Clock seam; the virtual-advance algorithm and the ownership-cut/dequeued-frames semantics are normative prose in this family's README and SPEC §23. Validated by `make event-feed-fixtures-check`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "description",
+    "steps",
+    "finally"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case fixture identifier, matching the file's NN-kebab.json basename."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the scenario proves. Load-bearing where a contract boundary is documented in prose (e.g. fixture 20's crash-window boundary)."
+    },
+    "config": {
+      "$ref": "#/$defs/config"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    },
+    "finally": {
+      "$ref": "#/$defs/finally"
+    }
+  },
+  "allOf": [
+    {
+      "description": "A configured signal disposition installs a recording handler, so the fixture MUST pin the exact invocation record — handler-Terminate is otherwise indistinguishable from no-handler-terminal.",
+      "if": {
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "required": [
+              "signalDisposition"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "finally": {
+            "required": [
+              "handlerInvocations"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "description": "A default-terminal semantic-signal fixture (terminal reason buffer_overflow or feed_gap with NO signalDisposition configured) MUST assert ZERO handler invocations — the exact-empty record is what proves the default path was taken rather than a skipped handler.",
+      "if": {
+        "required": [
+          "finally"
+        ],
+        "properties": {
+          "config": {
+            "not": {
+              "required": [
+                "signalDisposition"
+              ]
+            }
+          },
+          "finally": {
+            "required": [
+              "error"
+            ],
+            "properties": {
+              "error": {
+                "required": [
+                  "reason"
+                ],
+                "properties": {
+                  "reason": {
+                    "enum": [
+                      "buffer_overflow",
+                      "feed_gap"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "finally": {
+            "required": [
+              "handlerInvocations"
+            ],
+            "properties": {
+              "handlerInvocations": {
+                "properties": {
+                  "exact": {
+                    "const": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Forbidden-side pin: with NO signalDisposition configured no handler exists, so a finally.handlerInvocations record, when present, must be exactly empty — a non-empty record without a handler is unsatisfiable at runtime and invalid at load.",
+      "if": {
+        "properties": {
+          "config": {
+            "not": {
+              "required": [
+                "signalDisposition"
+              ]
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "finally": {
+            "properties": {
+              "handlerInvocations": {
+                "properties": {
+                  "exact": {
+                    "const": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "not": {
+        "description": "position and checkpointStore are mutually exclusive — an explicit start position and a stored-cursor load cannot both claim the entry.",
+        "required": [
+          "position",
+          "checkpointStore"
+        ]
+      },
+      "description": "Connector construction options for this scenario, mapped per-SDK to the §23 options table. Interval overrides exist so unrelated timers stay out of a script's advance window; the defaults are themselves pinned by dedicated fixtures (13/14, PR 4), so overrides cannot mask them. All values must pass §23 construction validation — tier-2 scenarios never exercise construction errors (those are language-native, zero-iteration, tier 3). position and checkpointStore are mutually exclusive (the `not` guard).",
+      "properties": {
+        "types": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^,\\s\"']+$"
+          },
+          "description": "Filter: event type strings (no commas, whitespace, or quotes — pattern-enforced, protecting the comma-joined subscribe identifier)."
+        },
+        "buckets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Filter: bucket ids, ≤ 100, positive."
+        },
+        "creators": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Filter: creator ids, ≤ 100, positive."
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Start at-position entry (position-resume class: unamended per-page saves). Absent, with no checkpointStore load, the entry is the bare present (the zero Cursor — present-class, held entry save)."
+        },
+        "confirmationDeadlineMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default 10000."
+        },
+        "repairPollBaseMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Repair interval base. Default 60000, ±20% jitter per cycle. Override large to keep repair-poll out of an advance window."
+        },
+        "backoffBaseMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Reconnect/poll-retry full-jitter base. Default 1000."
+        },
+        "backoffCapMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Local jitter-draw cap. Default 60000. Server-directed Retry-After is exempt per §7."
+        },
+        "stalenessMs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default 7500. Override large when a scenario advances virtual time without scripting frames."
+        },
+        "liveBufferCapacity": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default 10000 events. Overflow fixtures set a small value so overflow is reachable in a handful of frames."
+        },
+        "dedupeCapacity": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default 10000 delivered ids. Deliberately decoupled from liveBufferCapacity."
+        },
+        "signalDisposition": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "description": "Per-signal recording handler the driver installs, returning the named disposition. An ABSENT key means NO handler is installed for that signal (the default-terminal path) — absence is load-bearing, never a default.",
+          "properties": {
+            "bufferOverflow": {
+              "enum": [
+                "accept",
+                "terminate"
+              ]
+            },
+            "feedGap": {
+              "enum": [
+                "accept",
+                "terminate"
+              ]
+            }
+          }
+        },
+        "checkpointStore": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "load"
+          ],
+          "description": "Scripted CheckpointStore the driver configures (with a fixed consumer namespace). Store calls are strict-matched: a save with no matching expectCheckpoint step, or scripted save outcomes left unconsumed at `finally`, fail the scenario.",
+          "properties": {
+            "load": {
+              "type": "string",
+              "pattern": "^(loaded:.+|missing|failed)$",
+              "description": "Outcome of the single load call (before the first mint): `loaded:<position>` resumes there; `missing` proceeds to a present entry; `failed` is Terminal(checkpoint_load) with ZERO wire attempts. The tri-state is the point — collapsing failed into missing is a named mutant."
+            },
+            "save": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "saved",
+                  "failed"
+                ]
+              },
+              "description": "Per-call outcomes for save, in order. Absent: every save succeeds. Present: a save beyond the script, or an unconsumed scripted outcome at `finally`, fails the scenario — the exact store-call script is what proves a subsequent save is attempted after a failure (no save circuit breaker)."
+            }
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "description": "Exactly one directive per step.",
+      "properties": {
+        "expectMint": {
+          "$ref": "#/$defs/expectMint"
+        },
+        "expectConnect": {
+          "$ref": "#/$defs/expectConnect"
+        },
+        "serve": {
+          "$ref": "#/$defs/serveFrame"
+        },
+        "serverClose": {
+          "$ref": "#/$defs/serverClose"
+        },
+        "sever": {
+          "const": true,
+          "description": "Abrupt TCP drop of the cable connection — no close frame, no disconnect frame. Only `true` is valid; a falsy value would assert nothing."
+        },
+        "expectSubscribe": {
+          "$ref": "#/$defs/expectSubscribe"
+        },
+        "expectPoll": {
+          "$ref": "#/$defs/expectPoll"
+        },
+        "expectClientClose": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The connector must close the cable socket (client-initiated close observed at the loopback server). The directive key itself is the assertion; it takes no parameters."
+        },
+        "advance": {
+          "$ref": "#/$defs/advance"
+        },
+        "fireTimer": {
+          "$ref": "#/$defs/fireTimer"
+        },
+        "expectDelivered": {
+          "$ref": "#/$defs/exactIds"
+        },
+        "expectCheckpoint": {
+          "$ref": "#/$defs/expectCheckpoint"
+        },
+        "expectTimers": {
+          "$ref": "#/$defs/timerSet"
+        },
+        "expectState": {
+          "$ref": "#/$defs/expectState"
+        },
+        "expectError": {
+          "$ref": "#/$defs/errorExpect"
+        },
+        "expectGap": {
+          "$ref": "#/$defs/expectGap"
+        },
+        "expectBuffered": {
+          "$ref": "#/$defs/expectBuffered"
+        },
+        "expectSignal": {
+          "$ref": "#/$defs/expectSignal"
+        },
+        "expectHandlerInvocations": {
+          "$ref": "#/$defs/exactInvocations"
+        },
+        "expectSaveFailed": {
+          "const": true,
+          "description": "Rendezvous: Observer.checkpoint_save_failed has fired (the observer notification of a scripted `failed` save outcome). Only `true` is valid — a falsy value would assert nothing."
+        },
+        "expectPositionRejected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "description": "Rendezvous: Observer.position_rejected fired with exactly this kind (the 400-position / 409 re-entry observability of state-table rows 18/19).",
+          "properties": {
+            "kind": {
+              "enum": [
+                "position_invalid",
+                "filter_changed"
+              ]
+            }
+          }
+        },
+        "expectDisconnectedInvalidFrame": {
+          "const": true,
+          "description": "Rendezvous: Observer.disconnected fired carrying the invalid-frame indication. Only `true` is valid — a falsy value would assert nothing."
+        }
+      }
+    },
+    "expectMint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "respond"
+      ],
+      "description": "The connector must make its next mint seam call (one governed CreateStreamTicket); the harness responds as scripted. A fresh ticket is minted on every reconnect pass — a reused mint URL fails the later expectConnect identity check.",
+      "properties": {
+        "respond": {
+          "$ref": "#/$defs/mintRespond"
+        }
+      }
+    },
+    "mintRespond": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "body"
+          ],
+          "description": "Successful mint. The three-key body is a class-1 wire literal (README dependency table).",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ticket",
+                "expires_in",
+                "url"
+              ],
+              "properties": {
+                "ticket": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Opaque; use {{TICKET:n}}."
+                },
+                "expires_in": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Server-owned (~120); NEVER used for client scheduling."
+                },
+                "url": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Use {{CABLE_URL:n}}; the connector dials it verbatim."
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "description": "Mint error. 401/403 increment the shared authorization counter; 429/5xx are transient/throttled (Retry-After floors the next backoff delay); 404/422 are unrecoverable → Terminal(mint_failed).",
+          "properties": {
+            "status": {
+              "enum": [
+                401,
+                403,
+                404,
+                422,
+                429,
+                500,
+                502,
+                503,
+                504
+              ]
+            },
+            "headers": {
+              "$ref": "#/$defs/retryAfterHeaders"
+            },
+            "body": {
+              "type": "object"
+            }
+          }
+        }
+      ]
+    },
+    "expectConnect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "description": "The connector must dial exactly this URL (the mint's url, verbatim — query string included). Harnesses guarantee {{CABLE_URL:n}} distinctness across indices, which is what gives fresh-ticket assertions teeth. `outcome` scripts how the dial is answered; absent means accept.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "description": "How the loopback answers the dial. Absent means accept (the upgrade succeeds and the cable session opens).",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "accept"
+              ],
+              "description": "Explicit accept — identical to omitting `outcome`.",
+              "properties": {
+                "accept": {
+                  "const": true
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "refuse"
+              ],
+              "description": "The HTTP upgrade is refused / the dial fails — a dial transient → state-table transition 7, Backoff.",
+              "properties": {
+                "refuse": {
+                  "const": "upgrade-failure"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "redirectTo"
+              ],
+              "description": "The dial answers a redirect to this URL — the transport-detected cable-URL policy violation → Terminal(invalid_cable_url); the redirect target is never dialed.",
+              "properties": {
+                "redirectTo": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "serveFrame": {
+      "description": "The loopback cable server sends one frame. Pings are always scripted, never automatic — staleness scenarios depend on ping timing, and auto-pinging under virtual time is circular. confirm/reject/message auto-echo the captured subscribe identifier unless `identifier` overrides it (mismatch cases).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame"
+          ],
+          "properties": {
+            "frame": {
+              "const": "welcome"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame"
+          ],
+          "properties": {
+            "frame": {
+              "const": "ping"
+            },
+            "message": {
+              "type": "integer",
+              "description": "Optional epoch payload — both wire ping forms are legal."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame"
+          ],
+          "properties": {
+            "frame": {
+              "const": "confirm"
+            },
+            "identifier": {
+              "type": "string",
+              "description": "Override the auto-echoed identifier (uncorrelated-frame cases)."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame"
+          ],
+          "properties": {
+            "frame": {
+              "const": "reject"
+            },
+            "identifier": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame",
+            "reason",
+            "reconnect"
+          ],
+          "description": "Action Cable disconnect TEXT frame (not a WebSocket close). Reason strings are class-1 wire literals: unauthorized, remote, invalid_event_stream_command; other strings exercise the unknown-reason socket-drop rule.",
+          "properties": {
+            "frame": {
+              "const": "disconnect"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reconnect": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame",
+            "event"
+          ],
+          "description": "Correlated broadcast carrying one push-payload event. All 9 payload keys required — push rows carry visible_to_clients; strict decoders must never trip on fixture data.",
+          "properties": {
+            "frame": {
+              "const": "message"
+            },
+            "event": {
+              "$ref": "#/$defs/pushEvent"
+            },
+            "identifier": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frame",
+            "text"
+          ],
+          "description": "Escape hatch: raw text sent verbatim (malformed-frame and unknown-type cases).",
+          "properties": {
+            "frame": {
+              "const": "raw"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "serverClose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code"
+      ],
+      "description": "Server-initiated WebSocket close (with a close frame; contrast `sever`).",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "expectSubscribe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel"
+      ],
+      "description": "The connector's subscribe command, compared STRUCTURALLY (parsed identifier JSON) — key order may differ per language. `params` is the exact expected filter param set; absent params means the identifier carries only the channel key.",
+      "properties": {
+        "channel": {
+          "const": "EventsChannel"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "description": "Comma-joined filter values as identifier params (class-1 spellings: types/buckets/creators).",
+          "properties": {
+            "types": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buckets": {
+              "type": "string",
+              "minLength": 1
+            },
+            "creators": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "identicalToPrevious": {
+          "const": true,
+          "description": "Additionally requires BYTE-identity with the previous subscribe on this connection (the retransmit-absorption case). Only `true` is valid — a false would assert nothing."
+        }
+      }
+    },
+    "expectPoll": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "respond"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "url"
+          ]
+        },
+        {
+          "required": [
+            "query"
+          ]
+        }
+      ],
+      "description": "The connector must make its next poll seam call (one governed PollEvents); the harness responds as scripted. At least one of url/query must pin the request — a poll expectation that pins nothing is invalid.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The poll must target exactly this absolute URL — a followed {{NEXT:n}} continuation or a 410 resume URL, verbatim."
+        },
+        "query": {
+          "$ref": "#/$defs/pollQuery"
+        },
+        "respond": {
+          "$ref": "#/$defs/pollRespond"
+        }
+      }
+    },
+    "pollQuery": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "description": "Subset pin: each named param must appear with exactly this value; unnamed params are unconstrained.",
+          "properties": {
+            "position": {
+              "type": "string",
+              "minLength": 1
+            },
+            "since": {
+              "type": "string",
+              "minLength": 1
+            },
+            "types": {
+              "type": "string",
+              "minLength": 1
+            },
+            "buckets": {
+              "type": "string",
+              "minLength": 1
+            },
+            "creators": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exact"
+          ],
+          "description": "Exact pin: the request's full query must equal this param set. {\"exact\": {}} pins the bare-entry no-params form non-vacuously.",
+          "properties": {
+            "exact": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "position": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "since": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "types": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "buckets": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "creators": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "pollRespond": {
+      "description": "The BODY ENVELOPE {events, position, next} is the contract — never response headers; `headers` exists only for Retry-After (throttle/transient forms) and Location (the 302 redirect form).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "body"
+          ],
+          "description": "Successful page. Absent `next` means the walk reached its frozen head.",
+          "properties": {
+            "status": {
+              "const": 200
+            },
+            "body": {
+              "$ref": "#/$defs/pollEnvelope"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "headers"
+          ],
+          "description": "Redirect on a continuation (fixture 30): the seam suppresses automatic following; a cross-origin/downgraded Location is Terminal(invalid_continuation) with zero egress. Harness obligation: the fixture's foreign origin is bound to a sentinel listener — any request reaching it fails the scenario.",
+          "properties": {
+            "status": {
+              "const": 302
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "Location"
+              ],
+              "properties": {
+                "Location": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "body"
+          ],
+          "description": "400: the body must mirror bc3's transcript-captured position-vs-filter discriminating shapes VERBATIM (class-1; README dependency table, PROVISIONAL). Position-400 re-enters since=; filter-400 is Terminal(filter_invalid).",
+          "properties": {
+            "status": {
+              "const": 400
+            },
+            "body": {
+              "type": "object",
+              "minProperties": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "body"
+          ],
+          "description": "409 filter conflict. All three body keys are required on the wire (C-R4; events_controller renders error alongside both digests). Digests are bare 16-hex srv1 (the server never emits the srv1- prefix); only the digest VALUES are class-1-pinned — error content is unconstrained prose.",
+          "properties": {
+            "status": {
+              "const": 409
+            },
+            "body": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "error",
+                "position_digest",
+                "filters_digest"
+              ],
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "position_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{16}$"
+                },
+                "filters_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{16}$"
+                }
+              },
+              "description": "BC3's enriched 409: all three keys are required on the wire (events_controller renders error alongside both digests — C-R4). Only the digest VALUES are class-1-pinned (bare 16-hex srv1); error content is unconstrained prose."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "body"
+          ],
+          "description": "410 epoch gap. `resume` re-enters at since=now with the canonical filter set preserved (class-2 semantics).",
+          "properties": {
+            "status": {
+              "const": 410
+            },
+            "body": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "epoch_after_id",
+                "resume"
+              ],
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "epoch_after_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "resume": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "description": "Transient/throttled poll outcome: retried inside CatchingUp on the poll-retry timer; Retry-After is waited exactly, cap-exempt per §7.",
+          "properties": {
+            "status": {
+              "enum": [
+                429,
+                500,
+                502,
+                503,
+                504
+              ]
+            },
+            "headers": {
+              "$ref": "#/$defs/retryAfterHeaders"
+            },
+            "body": {
+              "type": "object"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "description": "Unauthorized poll — rides the reconnect cycle, increments the shared authorization counter (SPEC §23); counter-behavior fixtures live in the PR-4 authorization block.",
+          "properties": {
+            "status": {
+              "enum": [
+                401,
+                403
+              ]
+            },
+            "body": {
+              "type": "object",
+              "minProperties": 1
+            }
+          }
+        }
+      ]
+    },
+    "pollEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "events",
+        "position"
+      ],
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pollEvent"
+          }
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The only thing that ever advances the checkpoint. Use {{POS:n}}."
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Continuation URL, bound to this walk, never persisted. Use {{NEXT:n}} for same-origin; hostile fixtures use literal foreign origins."
+        }
+      }
+    },
+    "pollEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "event_type",
+        "action",
+        "created_at",
+        "bucket_id",
+        "creator_id",
+        "recording_id"
+      ],
+      "description": "Poll-lane event row: 8 keys, and visible_to_clients MUST be absent — additionalProperties:false enforces the push/poll presence asymmetry (class-2).",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bucket_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "creator_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recording_id": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "pushEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "event_type",
+        "action",
+        "created_at",
+        "bucket_id",
+        "creator_id",
+        "recording_id",
+        "visible_to_clients"
+      ],
+      "description": "Push-payload event: all 9 keys required, including visible_to_clients (presence-bearing; absent ≠ false).",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bucket_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "creator_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recording_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "visible_to_clients": {
+          "type": "boolean"
+        }
+      }
+    },
+    "retryAfterHeaders": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "Retry-After": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "advance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ms"
+      ],
+      "description": "Advance virtual now by ms, firing due timers in deadline order per the normative virtual-advance algorithm (README): re-evaluate after each fire; timers scheduled during the advance whose deadlines land inside the window also fire; ties break by creation order.",
+      "properties": {
+        "ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "fireTimer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "description": "Fire the earliest outstanding timer of this kind WITHOUT advancing the clock; fails hard if no such timer exists (never vacuous). assertDelayMs pins the fired timer's scheduled delay against a {min,max} envelope — how jitter is asserted without a cross-language RNG seam.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/timerKind"
+        },
+        "assertDelayMs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "description": "Inclusive envelope for the fired timer's scheduled delay. min ≤ max is a harness-load invariant (the schema cannot express it; drivers fail the fixture at load).",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "timerKind": {
+      "enum": [
+        "handshake-deadline",
+        "confirmation-deadline",
+        "backoff",
+        "staleness",
+        "repair-poll",
+        "poll-retry"
+      ],
+      "description": "The six kebab-case timer kinds of SPEC §23 — a closed set."
+    },
+    "timerSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact"
+      ],
+      "description": "EXACT-set comparison of outstanding (unfired, unstopped) timers by kind, via the Clock seam's enumerable registry. {\"exact\": {}} asserts none — a leaked deadline timer, ghost watchdog, or duplicated backoff each break exactness.",
+      "properties": {
+        "exact": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/timerKind"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "expectCheckpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "position"
+      ],
+      "description": "The next observed CheckpointStore save call must carry exactly this position. Saves are STRICT-matched: a save observed while the current step is anything else fails the scenario — that ordering is the teeth of checkpoint-after-delivery and of the conjunctive save-ordering invariant. The step matches the CALL; a scripted `failed` outcome still matches (Observer.checkpoint_save_failed fires; the feed continues).",
+      "properties": {
+        "position": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "expectState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "is"
+      ],
+      "properties": {
+        "is": {
+          "$ref": "#/$defs/stateName"
+        }
+      }
+    },
+    "stateName": {
+      "enum": [
+        "idle",
+        "backoff",
+        "minting",
+        "connecting",
+        "awaiting_welcome",
+        "awaiting_confirmation",
+        "catching_up",
+        "draining",
+        "streaming",
+        "terminal",
+        "closed"
+      ],
+      "description": "SPEC §23's 11-state inventory, snake_case."
+    },
+    "errorExpect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "description": "The typed terminal error element ending iteration (exactly one). `category` is optional and asserted only where the §6 mapping is unambiguous cross-SDK.",
+      "properties": {
+        "reason": {
+          "$ref": "#/$defs/terminalReason"
+        },
+        "category": {
+          "enum": [
+            "usage",
+            "validation",
+            "auth_required",
+            "api_error",
+            "network"
+          ]
+        }
+      }
+    },
+    "terminalReason": {
+      "enum": [
+        "subscription_rejected",
+        "protocol_fatal",
+        "filter_invalid",
+        "authorization_failed",
+        "checkpoint_load",
+        "usage",
+        "buffer_overflow",
+        "feed_gap",
+        "invalid_continuation",
+        "poll_failed",
+        "mint_failed",
+        "invalid_cable_url"
+      ],
+      "description": "SPEC §23's terminal taxonomy — a closed set. auth_revoked is deliberately reserved, not used."
+    },
+    "expectGap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "epochAfterId"
+      ],
+      "description": "Observer.gap observability notification (fires on every 410, whatever the disposition). Distinct from expectSignal, which asserts the semantic signal record.",
+      "properties": {
+        "epochAfterId": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "expectBuffered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "count"
+      ],
+      "description": "Rendezvous: waits under the wall-clock watchdog until the state-machine-owned live buffer's CURRENT OCCUPANCY — events admitted minus events dropped — equals exactly `count`, then proceeds. Admission is the ownership-cut's 'observed' definition. Never vacuous — fails if the count is not reached. This is how a fixture proves an event entered the buffer BEFORE a later step serves its poll response.",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "expectSignal": {
+      "description": "The semantic-signal record, distinct from the epoch-shaped expectGap: dropped is unambiguous (exact ids + count).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "droppedIds",
+            "droppedCount"
+          ],
+          "properties": {
+            "kind": {
+              "const": "bufferOverflow"
+            },
+            "droppedIds": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "droppedCount": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The harness asserts droppedCount == droppedIds.length at load — a disagreement fails the fixture, never passes silently."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "epochAfterId"
+          ],
+          "properties": {
+            "kind": {
+              "const": "feedGap"
+            },
+            "epochAfterId": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "exactIds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact"
+      ],
+      "description": "Cumulative, exact, ordered delivered-id assertion. The driver waits until the delivered sequence equals `exact`; a sequence that can no longer equal it (overshoot, wrong order, a duplicate delivery) fails. {\"exact\": []} is the non-vacuous nothing-delivered-yet assertion.",
+      "properties": {
+        "exact": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "exactPositions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact"
+      ],
+      "description": "The exact ordered sequence of positions passed to CheckpointStore.save (calls, regardless of scripted outcome).",
+      "properties": {
+        "exact": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "exactInvocations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact"
+      ],
+      "description": "The exact ordered record of semantic-handler invocations {kind, disposition} — a registered handler is invoked exactly once per signal, synchronously, before its disposition takes effect. {\"exact\": []} asserts zero invocations (the default-terminal proof).",
+      "properties": {
+        "exact": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "disposition"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "bufferOverflow",
+                  "feedGap"
+                ]
+              },
+              "disposition": {
+                "enum": [
+                  "accept",
+                  "terminate"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "finally": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state"
+      ],
+      "description": "End-of-scenario assertions, evaluated after the last step under the wall-clock watchdog. mintCount/connectCount count SEAM CALLS, never wire attempts.",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/stateName"
+        },
+        "mintCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "connectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pollCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Poll SEAM calls — one fully-governed generated PollEvents call each, with SPEC §7 retries inside — never wire attempts."
+        },
+        "timers": {
+          "$ref": "#/$defs/timerSet"
+        },
+        "socket": {
+          "enum": [
+            "none",
+            "open",
+            "closed"
+          ],
+          "description": "none: no dial ever happened; closed: a socket existed and is closed."
+        },
+        "delivered": {
+          "$ref": "#/$defs/exactIds"
+        },
+        "checkpoints": {
+          "$ref": "#/$defs/exactPositions"
+        },
+        "error": {
+          "$ref": "#/$defs/errorExpect"
+        },
+        "handlerInvocations": {
+          "$ref": "#/$defs/exactInvocations"
+        }
+      },
+      "allOf": [
+        {
+          "description": "A Terminal fixture MUST state its zero-further-reconnect evidence: seam-observed connect count, exact timer set (no armed backoff that would fire later), socket disposition, and the typed reason. A terminal-failure fixture that forgot these is invalid, not silently weaker.",
+          "if": {
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "state": {
+                "const": "terminal"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "connectCount",
+              "timers",
+              "socket",
+              "error"
+            ]
+          }
+        },
+        {
+          "description": "A streaming end-state must pin what was delivered.",
+          "if": {
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "state": {
+                "const": "streaming"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "delivered"
+            ]
+          }
+        },
+        {
+          "description": "Only a Terminal end-state carries an error element — Closed is a clean stop by contract, and no other state has surfaced one.",
+          "if": {
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "terminal"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

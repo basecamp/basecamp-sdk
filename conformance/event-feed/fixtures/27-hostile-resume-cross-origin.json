@@ -1,0 +1,60 @@
+{
+  "name": "27-hostile-resume-cross-origin",
+  "description": "The resume-side twin of fixture 26: a 410 epoch gap whose resume URL points at a foreign origin. The registered feedGap handler ACCEPTS the gap — reaching the resume-follow path requires acceptance; with no handler this would be Terminal(feed_gap) before any URL use — and the cross-origin resume URL then fails validation between URL validation and the poll call: Terminal(invalid_continuation), with zero requests to the foreign origin (structural: the hostile origin is a LITERAL, never substituted; no step ever serves it, and the harness's servers own only their own origins). The terminal reason is invalid_continuation, NOT feed_gap — the handler accepted; the URL failed. Kills follow-cross-origin-continuation (with 26).",
+  "config": {
+    "position": "{{POS:0}}",
+    "signalDisposition": { "feedGap": "accept" }
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    { "expectConnect": { "url": "{{CABLE_URL:1}}" } },
+    { "serve": { "frame": "welcome" } },
+    { "expectSubscribe": { "channel": "EventsChannel" } },
+    { "serve": { "frame": "confirm" } },
+    {
+      "expectPoll": {
+        "query": { "position": "{{POS:0}}" },
+        "respond": {
+          "status": 410,
+          "body": {
+            "error": "position expired",
+            "epoch_after_id": 100,
+            "resume": "https://attacker.example.com/events.json?since=now"
+          }
+        }
+      }
+    },
+    { "expectGap": { "epochAfterId": 100 } },
+    {
+      "expectHandlerInvocations": {
+        "exact": [{ "kind": "feedGap", "disposition": "accept" }]
+      }
+    },
+    { "expectClientClose": {} },
+    { "expectError": { "reason": "invalid_continuation" } }
+  ],
+  "finally": {
+    "state": "terminal",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": { "exact": [] },
+    "checkpoints": { "exact": [] },
+    "timers": { "exact": {} },
+    "socket": "closed",
+    "error": { "reason": "invalid_continuation" },
+    "handlerInvocations": {
+      "exact": [{ "kind": "feedGap", "disposition": "accept" }]
+    }
+  }
+}

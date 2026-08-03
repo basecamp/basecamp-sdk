@@ -1,0 +1,23 @@
+{
+  "name": "04-terminal-rejection",
+  "description": "Acceptance test (d), this family's half of the split of duty: on reject_subscription the connector cancels the confirmation deadline, explicitly closes the still-open socket (expectClientClose), and surfaces Terminal(subscription_rejected) — rejection is always terminal. Zero further mint/connect seam calls (connectCount 1) and the empty exact timer set prove no armed backoff would ever fire a reconnect; a reconnect mint or dial is an unmatched action. bc3's half (rejection residue server-side) lives in its own suite; neither asserts the other's.",
+  "steps": [
+    {"expectMint": {"respond": {"status": 200, "body": {"ticket": "{{TICKET:1}}", "expires_in": 120, "url": "{{CABLE_URL:1}}"}}}},
+    {"expectConnect": {"url": "{{CABLE_URL:1}}"}},
+    {"serve": {"frame": "welcome"}},
+    {"expectSubscribe": {"channel": "EventsChannel"}},
+    {"serve": {"frame": "reject"}},
+    {"expectClientClose": {}},
+    {"expectError": {"reason": "subscription_rejected"}}
+  ],
+  "finally": {
+    "state": "terminal",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {"exact": []},
+    "checkpoints": {"exact": []},
+    "timers": {"exact": {}},
+    "socket": "closed",
+    "error": {"reason": "subscription_rejected"}
+  }
+}

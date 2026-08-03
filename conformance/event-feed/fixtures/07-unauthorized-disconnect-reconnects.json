@@ -1,0 +1,120 @@
+{
+  "name": "07-unauthorized-disconnect-reconnects",
+  "description": "The contrast case to fixture 06: the same reconnect:false flag, the opposite response — dispatch is on the REASON string, not the reconnect flag. An `unauthorized` disconnect arrives pre-welcome (no welcome frame is served before it) and is retriable: the connector closes the socket, arms backoff, and retries with a FRESH ticket and the second mint's cable URL. A mutant treating `unauthorized` as terminal fails the post-disconnect backoff expectation. Wire-literal pin (class 1): the `unauthorized` reason string plus its pre-welcome arrival timing. Entry is the bare present (the zero Cursor); the poll's exact-empty query pins the no-params form, and the present-class hold-then-save on an empty snapshot collapses to an ordinary save. PR-4 deferral: the counter-reset-on-first-successful-poll-page rule is NOT provable here — no auth failure ever follows the successful page — so its kill lives in the PR-4 authorization-threshold fixtures.",
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "disconnect",
+        "reason": "unauthorized",
+        "reconnect": false
+      }
+    },
+    {
+      "expectClientClose": {}
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "backoff": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "backoff",
+        "assertDelayMs": {
+          "min": 0,
+          "max": 1000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:2}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:2}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "exact": {}
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 2,
+    "connectCount": 2,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": [
+        "{{POS:1}}"
+      ]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open"
+  }
+}

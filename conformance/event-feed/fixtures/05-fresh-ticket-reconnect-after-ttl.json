@@ -1,0 +1,163 @@
+{
+  "name": "05-fresh-ticket-reconnect-after-ttl",
+  "description": "Acceptance test (a): stream established, then 121s of virtual silence (staleness and repair-poll overridden out of the window) exceeds the first ticket's server-owned expires_in (120) — which must schedule nothing client-side — before an abrupt sever. The reconnect pass mints a FRESH ticket and the second connect must bear the SECOND mint's URL ({{CABLE_URL:2}}, distinct by harness guarantee), and one catch-up poll from the durable position ({{POS:1}}) precedes any trusted live delivery. The timer exact-set after the sever also proves the repair-poll timer did not survive teardown. Kills: reuse-old-url.",
+  "config": {
+    "position": "{{POS:0}}",
+    "stalenessMs": 999999000,
+    "repairPollBaseMs": 999999000
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "advance": {
+        "ms": 121000
+      }
+    },
+    {
+      "sever": true
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "backoff": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "backoff",
+        "assertDelayMs": {
+          "min": 0,
+          "max": 1000
+        }
+      }
+    },
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:2}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:2}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:1}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:2}}"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 2,
+    "connectCount": 2,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": [
+        "{{POS:1}}",
+        "{{POS:2}}"
+      ]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open"
+  }
+}

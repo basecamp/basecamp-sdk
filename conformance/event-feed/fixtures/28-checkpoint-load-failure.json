@@ -1,0 +1,35 @@
+{
+  "name": "28-checkpoint-load-failure",
+  "description": "Store load scripted Failed: Terminal(checkpoint_load) on the first iteration with ZERO wire attempts — before the first mint. Distinct-from-Missing is the point: Missing proceeds to a present entry (and would mint — an unmatched action here). mintCount 0 + pollCount 0 + socket \"none\" plus strict interleave (any mint is unmatched → red) kill collapse-load-error-to-missing.",
+  "config": {
+    "checkpointStore": {
+      "load": "failed"
+    }
+  },
+  "steps": [
+    {
+      "expectError": {
+        "reason": "checkpoint_load"
+      }
+    }
+  ],
+  "finally": {
+    "state": "terminal",
+    "mintCount": 0,
+    "connectCount": 0,
+    "pollCount": 0,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": []
+    },
+    "timers": {
+      "exact": {}
+    },
+    "socket": "none",
+    "error": {
+      "reason": "checkpoint_load"
+    }
+  }
+}
