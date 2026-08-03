@@ -1,0 +1,80 @@
+scripts/check-runner-test-reachability
+  s_ae792ed0be3006::t_ab441a3db14db0 1-16,21-22,29,55,59,64-65,68-82,85,97-106,155-157,167-168,171-172,180-185,188-191,193-194,196-200,211-212,214-217,223,233-234,236-238,242-252,258-268,270-286,292,295-303,312,316,319,322-324,326-328,330-331,333-340,345-353,355-366,384,397,399-400,408-410,439,456,465-474
+  s_ae792ed0be3006::t_98cd21d4d91656 17-20,23-28,52,56-58,60,63,66-67,83-84,192,195,213,220,239-241,253-256,287-291,293-294,310,313-314,317,320,325,329,341-344,354,405,452
+  s_ae792ed0be3006::t_6972e7b2dc9b58 451
+  s_ae792ed0be3006::t_52735a2051ca65 86-96
+  s_ae792ed0be3006::t_85276801082c6c 210,257,269
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_e96749d2b1c4c5 541-543
+  s_ae792ed0be3006::t_c48d53c7a6f6c5 361,363-364
+  s_ae792ed0be3006::t_fe71915a961006 139-147
+  s_ae792ed0be3006::t_4df2bf5bc0ac8e 230-237
+  s_ae792ed0be3006::t_346d52445f2624 441-443,445-448
+  s_ae792ed0be3006::t_688415ab9ac821 482
+  s_ae792ed0be3006::t_e5356132bc0894 148-154
+Makefile
+  s_ae792ed0be3006::t_0dc53bdb49bfae 454
+  s_ae792ed0be3006::t_88e391dcbbf917 1034-1041
+  s_ae792ed0be3006::t_0c564e66aa47fc 1155
+  s_ae792ed0be3006::t_d6b79801e04837 1149-1150
+  s_ae792ed0be3006::t_cbcaf8c78ea831 452
+  s_ae792ed0be3006::t_e2c67c17a893ed 853-855,860
+  s_ae792ed0be3006::t_d60b549c8cb808 497-514,516-522,539-542,550-551,553-555
+  s_ae792ed0be3006::t_edf901f929b719 968
+  s_ae792ed0be3006::t_994a4638705186 1072,1156
+  s_ae792ed0be3006::t_b09a1e79b7771e 649-654,656
+  s_ae792ed0be3006::t_9e027367675394 1042-1049
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_ae792ed0be3006::t_170c777d52e53d 83-95,97,109-131
+  s_ae792ed0be3006::t_c1982e4e99ae22 3-4,6-8,11-12
+  s_ae792ed0be3006::t_e2a15d26983ce9 50-56
+conformance/runner/ruby/replay_runner_test.rb
+  s_ae792ed0be3006::t_e5ce9c77aec874 31-71
+scripts/check-replay-decoder-parity
+  s_ae792ed0be3006::t_13e15fca337848 1-169
+conformance/runner/ruby/replay-runner.rb
+  s_ae792ed0be3006::t_fadc99416d8e71 43-48,50-81
+conformance/runner/python/replay_runner.py
+  s_ae792ed0be3006::t_786e7436d6a41a 60-66,79-99
+SPEC.md
+  s_ae792ed0be3006::t_706638b8e2bc34 2044
+CONTRIBUTING.md
+  s_ae792ed0be3006::t_33c230160a01cd 393-402
+conformance/runner/go/replay_runner_test.go
+  s_ae792ed0be3006::t_c7c4624bd3e784 20,23,29-96
+  s_aa51b271595ece::t_ba2ef06f6d6153 97
+kotlin/conformance/build.gradle.kts
+  s_ae792ed0be3006::t_ea34f519b33887 44-47,50
+conformance/runner/python/test_replay_runner.py
+  s_ae792ed0be3006::t_ab272b5d15e565 30-70
+conformance/runner/go/replay_runner.go
+  s_ae792ed0be3006::t_8acd1b184c9589 35-43
+  s_ae792ed0be3006::t_f4f755eae95f8c 89-169
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/ReplayDecodersTest.kt
+  s_ae792ed0be3006::t_97506b94c6e3e7 1-58,82,87,97,114-119,121-123,132-134
+  s_ae792ed0be3006::t_9984fc914cc423 59-81,83-86,88-96,98-113,120,124-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "77988e8ef2aa50967f5408bc8c5a7eae22239779",
+  "prompts": {},
+  "sessions": {
+    "s_aa51b271595ece": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2071d47e-5e94-418a-a1c2-3061ce10cf12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
