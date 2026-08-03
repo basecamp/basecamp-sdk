@@ -142,27 +142,64 @@ And put the credentials in `~/.m2/settings.xml`, where `<id>` must match the rep
 | `Username must not be null!` | Neither `gpr.user` nor `GITHUB_USER` is set. |
 | `Received status code 401 from server: Unauthorized` | The token is wrong, expired, fine-grained rather than classic, or missing the `read:packages` scope. |
 
+## Getting a token
+
+The access token in the snippets below is a **Basecamp API** token. It is unrelated to the GitHub token above, which only downloads the artifact.
+
+Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
+
+1. Register your integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+2. Choose the grant that matches how your code runs:
+
+| Your integration | Grant | Who refreshes the token |
+|---|---|---|
+| already holds a token you obtained elsewhere | **static token** — `accessToken("…")` | you do |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`Authorization Flow`](#authorization-flow) | you, calling the SDK's `refreshToken()` from `accessToken { … }` |
+| has no browser at all (CLI, daemon, CI job, device) | **device flow** — [`Device Authorization Flow`](#device-authorization-flow-rfc-8628) | you, calling the SDK's `refreshToken()` from `accessToken { … }` |
+
+The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+
+`accessToken("…")` hands back that exact string forever and never refreshes, so once the token expires every call fails with `401`. The lambda form, `accessToken { fetchFreshToken() }`, is re-invoked per request — that is where a refresh belongs.
+
+## Finding your account ID
+
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `forAccount` needs that number before your first call. One token can reach several accounts.
+
+This SDK has no `authorization` service, because that endpoint lives on Launchpad rather than on the Basecamp API. Fetch it once yourself:
+
+```bash
+curl -s https://launchpad.37signals.com/authorization.json \
+  -H "Authorization: Bearer $BASECAMP_TOKEN" \
+  -H "User-Agent: MyApp/1.0 (you@example.com)"
+```
+
+Take `accounts[].id` for an entry whose `product` is `"bc3"` — that is Basecamp; the same response also carries `"hey"` and other 37signals products. `expires_at` tells you how long the token has left. A `User-Agent` identifying your app is required on every Basecamp request, including this one.
+
 ## Quick Start
+
+Service accessors are extension properties, so `account.projects` needs the `com.basecamp.sdk.generated` import as well as the client's. Every service method is `suspend`, so the calls need a coroutine.
 
 ```kotlin
 import com.basecamp.sdk.BasecampClient
 import com.basecamp.sdk.generated.projects
 
-val client = BasecampClient {
-    accessToken("your-token")
-    userAgent = "MyApp/1.0 (you@example.com)"
+suspend fun main() {
+    val client = BasecampClient {
+        accessToken("your-token")
+        userAgent = "MyApp/1.0 (you@example.com)"
+    }
+
+    val account = client.forAccount("12345")
+
+    // List all projects
+    val projects = account.projects.list()
+    for (project in projects) {
+        println("${project.id}: ${project.name}")
+    }
+
+    // Clean up when done
+    client.close()
 }
-
-val account = client.forAccount("12345")
-
-// List all projects
-val projects = account.projects.list()
-for (project in projects) {
-    println("${project.id}: ${project.name}")
-}
-
-// Clean up when done
-client.close()
 ```
 
 ## Configuration

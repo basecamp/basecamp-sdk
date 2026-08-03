@@ -37,6 +37,44 @@ Or with [uv](https://docs.astral.sh/uv/):
 uv add basecamp-sdk
 ```
 
+## Getting a token
+
+Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
+
+1. Register your integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+2. Choose the grant that matches how your code runs:
+
+| Your integration | Grant | Who refreshes the token |
+|---|---|---|
+| already holds a token you obtained elsewhere | **static token** — [`Static Token`](#static-token) | you do |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`PKCE and Authorization URL`](#pkce-and-authorization-url) | `OAuthTokenProvider` |
+| has no browser at all (CLI, daemon, CI job, device) | **device flow** — [`Device Authorization Grant`](#device-authorization-grant-rfc-8628) | `OAuthTokenProvider` |
+
+The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+
+`Client(access_token=...)` wraps the string in a `StaticTokenProvider`, which never refreshes — once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to `OAuthTokenProvider` before you ship.
+
+## Finding your account ID
+
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* `Client` because the endpoint lives on Launchpad, not on the Basecamp API, and so takes no account context:
+
+```python
+import os
+from basecamp import Client
+
+client = Client(access_token=os.environ["BASECAMP_TOKEN"])
+
+info = client.authorization.get()
+for a in info["accounts"]:
+    # "bc3" is Basecamp; the same response also carries "hey" and other products
+    if a["product"] == "bc3":
+        print(f"{a['id']}: {a['name']}")
+
+account = client.for_account(info["accounts"][0]["id"])
+```
+
+The response is a plain `dict` of parsed JSON. `info["expires_at"]` tells you how long the token has left, which is the quickest way to confirm a static token has not lapsed. On `AsyncClient`, the same call is `await client.authorization.get()`.
+
 ## Quick Start
 
 ```python

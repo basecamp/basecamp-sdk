@@ -11,7 +11,7 @@ Official Go SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 - Full coverage of 30+ Basecamp API services
 - OAuth 2.0 authentication with automatic token refresh
 - Static token authentication for simple integrations
-- ETag-based HTTP caching for efficient API usage
+- ETag-based HTTP caching for efficient API usage (opt-in)
 - Automatic retry with exponential backoff
 - Pagination handling with `GetAll()`
 - Structured errors with CLI-friendly exit codes
@@ -24,6 +24,43 @@ go get github.com/basecamp/basecamp-sdk/go
 ```
 
 Requires Go 1.26 or later.
+
+## Getting a token
+
+Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
+
+1. Register your integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+2. Choose the grant that matches how your code runs:
+
+| Your integration | Grant | Who refreshes the token |
+|---|---|---|
+| already holds a token you obtained elsewhere | **static token** — [below](#using-a-static-token) | you do |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [below](#using-oauth-20) | `AuthManager` |
+| has no browser at all (CLI, daemon, CI job, device) | **device flow** — [below](#oauth-device-authorization-grant-rfc-8628) | `AuthManager` |
+
+The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+
+`StaticTokenProvider` hands back the string you gave it and nothing more — it never refreshes, so once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to `AuthManager` before you ship.
+
+## Finding your account ID
+
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `ForAccount` needs that number before your first call. One token can reach several accounts, so ask the token which. `Authorization()` hangs off the *top-level* client because the endpoint lives on Launchpad, not on the Basecamp API, and so takes no account context:
+
+```go
+info, err := client.Authorization().GetInfo(context.Background(), &basecamp.GetInfoOptions{
+    FilterProduct: "bc3", // Basecamp; the same response also carries "hey" and other products
+})
+if err != nil {
+    log.Fatal(err)
+}
+for _, a := range info.Accounts {
+    fmt.Printf("%d: %s\n", a.ID, a.Name)
+}
+
+account := client.ForAccount(fmt.Sprint(info.Accounts[0].ID))
+```
+
+`info.ExpiresAt` tells you how long the token has left, which is the quickest way to confirm a static token has not lapsed.
 
 ## Quick Start
 
@@ -311,17 +348,21 @@ the hop-1 binding and silently soft-falls back to Launchpad.
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `BASECAMP_TOKEN` | Static API token or OAuth access token | Yes (unless using OAuth flow) |
-| `BASECAMP_PROJECT_ID` | Default project ID | No |
-| `BASECAMP_TODOLIST_ID` | Default todolist ID | No |
-| `BASECAMP_BASE_URL` | API base URL | No (default: `https://3.basecampapi.com`) |
-| `BASECAMP_CACHE_DIR` | Cache directory path | No (default: `~/.cache/basecamp`) |
-| `BASECAMP_CACHE_ENABLED` | Enable HTTP caching | No (default: `false`) |
-| `BASECAMP_NO_KEYRING` | Disable system keyring | No |
+Nothing here is read automatically. The five `Config` variables apply only when you call `cfg.LoadConfigFromEnv()`, and the two auth variables only when you authenticate through `AuthManager`. (`DefaultConfig` does consult `XDG_CACHE_HOME` and `XDG_CONFIG_HOME` to site its cache and config directories.)
 
-Note: Account ID is specified via `client.ForAccount(accountID)` rather than configuration.
+| Variable | Read by | Description |
+|----------|---------|-------------|
+| `BASECAMP_BASE_URL` | `cfg.LoadConfigFromEnv()` | API base URL (default: `https://3.basecampapi.com`) |
+| `BASECAMP_PROJECT_ID` | `cfg.LoadConfigFromEnv()` | Default project ID |
+| `BASECAMP_TODOLIST_ID` | `cfg.LoadConfigFromEnv()` | Default todolist ID |
+| `BASECAMP_CACHE_DIR` | `cfg.LoadConfigFromEnv()` | Cache directory path (default: `~/.cache/basecamp`) |
+| `BASECAMP_CACHE_ENABLED` | `cfg.LoadConfigFromEnv()` | Enable HTTP caching (default: `false`) |
+| `BASECAMP_TOKEN` | `AuthManager` | Access token. Consulted **first**, ahead of any stored OAuth credentials, so setting it short-circuits the OAuth flow — handy for scripts and CI |
+| `BASECAMP_NO_KEYRING` | `AuthManager` | Store credentials in a file instead of the system keyring |
+
+`StaticTokenProvider` does **not** read `BASECAMP_TOKEN`; it uses whatever string you put in its `Token` field. The Quick Start above reads the variable itself, at the call site.
+
+Note: account ID is specified via `client.ForAccount(accountID)` rather than configuration. `BASECAMP_ACCOUNT_ID` is a convention used by this repository's examples and tooling — no SDK reads it.
 
 ### Programmatic Configuration
 

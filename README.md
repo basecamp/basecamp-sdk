@@ -29,12 +29,54 @@ OpenAPI 3.1 spec included.
 † Ruby SDK uses Faraday - add caching via [faraday-http-cache](https://github.com/sourcelevel/faraday-http-cache)
 
 **Note:** HTTP caching is disabled by default. Enable explicitly via configuration:
-- **Go:** `cfg.CacheEnabled = true` or `BASECAMP_CACHE_ENABLED=true`
+- **Go:** `cfg.CacheEnabled = true`, or `BASECAMP_CACHE_ENABLED=true` plus a `cfg.LoadConfigFromEnv()` call
 - **TypeScript:** `enableCache: true` in client options
 - **Swift:** `BasecampConfig(enableCache: true)`
 - **Kotlin:** `enableCache = true` in builder DSL
 
 All SDKs are generated from a single [Smithy](https://smithy.io/) specification, ensuring consistent behavior and API coverage across languages.
+
+## Getting a token
+
+Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
+
+1. Register your integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+2. Choose the grant that matches how your code runs:
+
+| Your integration | Grant | Who refreshes the token |
+|---|---|---|
+| already holds a token you obtained elsewhere | **static token** | you do |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** | a refreshing token provider (built in for Go, Ruby, Python; wire it yourself in TypeScript and Kotlin) |
+| has no browser at all (CLI, daemon, CI job, device) | **device flow** ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)) | a refreshing token provider (built in for Go, Ruby, Python; wire it yourself in TypeScript and Kotlin) |
+
+The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+
+A static token is the shortest path to a first successful call, and it is the one option the SDK will never refresh for you — once it expires, every request fails with `401` until you supply a new one. The Quick Start snippets below all use static tokens for brevity; move to one of the other two grants before you ship. OAuth is available in every SDK except Swift, and the device flow in Go, Ruby, TypeScript, Kotlin, and Python — see the per-language docs linked under [Documentation](#documentation).
+
+## Finding your account ID
+
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so you need that number before your first call, and the Quick Start snippets below assume you already have it. One token can reach several accounts, so ask the token which:
+
+| Language | Call |
+|---|---|
+| Go | `client.Authorization().GetInfo(ctx, nil)` |
+| Ruby | `client.authorization.get` |
+| TypeScript | `await client.authorization.getInfo()` |
+| Python | `client.authorization.get()` |
+
+The response lists every account the token can reach; take `accounts[].id` for an entry whose `product` is `"bc3"` (that is Basecamp — the same response also carries `"hey"` and other 37signals products). The same response carries the token's expiry — `expires_at` on the wire, `expiresAt` on the TypeScript type — which is the quickest way to confirm a static token has not lapsed.
+
+This endpoint lives on Launchpad rather than on the Basecamp API, so it is account-independent: call it on the *top-level* client, before `ForAccount`/`for_account`. TypeScript is the exception — `createBasecampClient` requires an `accountId` up front, so pass a placeholder for the bootstrap call and rebuild the client once you know the real one.
+
+Swift and Kotlin ship no `authorization` service. Fetch it once with any HTTP client:
+
+```bash
+curl -s https://launchpad.37signals.com/authorization.json \
+  -H "Authorization: Bearer $BASECAMP_TOKEN" \
+  -H "User-Agent: my-app/1.0 (you@example.com)"
+```
+
+A `User-Agent` identifying your app is required on every Basecamp request, including this one.
 
 ## Quick Start
 
@@ -115,15 +157,23 @@ for project in projects {
 
 ### Kotlin
 
-```kotlin
-val client = BasecampClient {
-    accessToken(System.getenv("BASECAMP_TOKEN"))
-    userAgent = "my-app/1.0 (you@example.com)"
-}
+Service accessors are extension properties, so `account.projects` needs the `com.basecamp.sdk.generated` import as well as the client's. Every service method is `suspend`, so the calls need a coroutine.
 
-val account = client.forAccount(System.getenv("BASECAMP_ACCOUNT_ID"))
-val projects = account.projects.list()
-projects.forEach { println("${it.id}: ${it.name}") }
+```kotlin
+import com.basecamp.sdk.BasecampClient
+import com.basecamp.sdk.generated.projects
+
+suspend fun main() {
+    val client = BasecampClient {
+        accessToken(System.getenv("BASECAMP_TOKEN"))
+        userAgent = "my-app/1.0 (you@example.com)"
+    }
+
+    val account = client.forAccount(System.getenv("BASECAMP_ACCOUNT_ID"))
+    account.projects.list().forEach { println("${it.id}: ${it.name}") }
+
+    client.close()
+}
 ```
 
 ### Python
@@ -148,7 +198,7 @@ All SDKs provide:
 - **OAuth 2.0 authentication** - Token refresh, PKCE support (Go, TypeScript, Ruby, Kotlin, Python), and static token options
 - **Automatic retry** - Exponential backoff with jitter, respects `Retry-After` headers
 - **Pagination** - Link header–based pagination support (high-level handling may vary by SDK; see language docs)
-- **ETag caching** - Built-in HTTP caching for efficient API usage (Go, TypeScript, Ruby†, Swift, Kotlin)
+- **ETag caching** - Opt-in HTTP caching for efficient API usage (Go, TypeScript, Ruby†, Swift, Kotlin); off by default everywhere
 - **Structured errors** - Typed errors with helpful hints, CLI-friendly exit codes, and per-field validation detail you can bind straight to a form
 - **Observability hooks** - Integration points for logging, metrics, and tracing
 
@@ -190,13 +240,21 @@ See the [spec README](spec/README.md) for details on the model structure.
 
 ## Environment Variables
 
-All SDKs support common environment variables:
+There is no environment variable every SDK honours. The Quick Start snippets above call `getenv` themselves — that is the *caller* reading its own environment, not an SDK convention. What the SDKs read on their own, and only when you ask them to (`XDG_CACHE_HOME` / `XDG_CONFIG_HOME`, which Go and Ruby use to site their cache and config directories, aside):
 
-| Variable | Description |
-|----------|-------------|
-| `BASECAMP_TOKEN` | OAuth access token |
-| `BASECAMP_ACCOUNT_ID` | Basecamp account ID |
-| `BASECAMP_BASE_URL` | API base URL (default: `https://3.basecampapi.com`) |
+| Variable | Read by | Only when |
+|----------|---------|-----------|
+| `BASECAMP_BASE_URL` | Go, Ruby, Python | `cfg.LoadConfigFromEnv()` / `Config.from_env` |
+| `BASECAMP_TIMEOUT` | Ruby, Python | `Config.from_env` |
+| `BASECAMP_MAX_RETRIES` | Ruby, Python | `Config.from_env` |
+| `BASECAMP_CACHE_ENABLED`, `BASECAMP_CACHE_DIR` | Go | `cfg.LoadConfigFromEnv()` |
+| `BASECAMP_PROJECT_ID`, `BASECAMP_TODOLIST_ID` | Go | `cfg.LoadConfigFromEnv()` |
+| `BASECAMP_TOKEN` | Go | you authenticate through `AuthManager`, which prefers it over the stored OAuth credentials |
+| `BASECAMP_NO_KEYRING` | Go | `AuthManager` chooses credential storage |
+
+TypeScript, Swift, and Kotlin read no environment variables at all — configure them entirely through their options objects.
+
+**`BASECAMP_ACCOUNT_ID` is not an SDK variable.** No SDK reads it; it is a convention shared by this repository's examples, `make conformance-*-live`, and the nightly canary. Pass the account ID explicitly to `ForAccount` / `for_account` / `forAccount` / `accountId`.
 
 See individual SDK documentation for language-specific options.
 

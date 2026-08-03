@@ -21,6 +21,41 @@ Or install directly:
 gem install basecamp-sdk
 ```
 
+## Getting a token
+
+Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
+
+1. Register your integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+2. Choose the grant that matches how your code runs:
+
+| Your integration | Grant | Who refreshes the token |
+|---|---|---|
+| already holds a token you obtained elsewhere | **static token** — [`Token Providers`](#token-providers) | you do |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`OAuth Flow Helpers`](#oauth-flow-helpers) | `OauthTokenProvider` |
+| has no browser at all (CLI, daemon, CI job, device) | **device flow** — [`Device Authorization Grant`](#device-authorization-grant-rfc-8628) | `OauthTokenProvider` |
+
+The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+
+`StaticTokenProvider` hands back the string you gave it and nothing more — it never refreshes, so once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to an OAuth provider before you ship.
+
+## Finding your account ID
+
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* client because the endpoint lives on Launchpad, not on the Basecamp API, and so takes no account context:
+
+```ruby
+client = Basecamp.client(access_token: ENV["BASECAMP_TOKEN"])
+
+info = client.authorization.get
+info["accounts"].each do |a|
+  # "bc3" is Basecamp; the same response also carries "hey" and other products
+  puts "#{a["id"]}: #{a["name"]} (#{a["product"]})" if a["product"] == "bc3"
+end
+
+account = client.for_account(info["accounts"].first["id"])
+```
+
+The response is parsed JSON with **string** keys, not symbols. `info["expires_at"]` tells you how long the token has left, which is the quickest way to confirm a static token has not lapsed.
+
 ## Quick Start
 
 ```ruby
@@ -491,13 +526,20 @@ client = Basecamp::Client.new(
 
 ## Environment Variables
 
+`Basecamp::Config.from_env` (and `#load_from_env` on an existing config) reads these three. They are the only `BASECAMP_*` variables the SDK reads anywhere; the sole other environment read is `XDG_CONFIG_HOME`, for `Config.global_config_dir`.
+
 | Variable | Description |
 |----------|-------------|
-| `BASECAMP_TOKEN` | OAuth access token |
-| `BASECAMP_ACCOUNT_ID` | Account ID |
 | `BASECAMP_BASE_URL` | API base URL (default: `https://3.basecampapi.com`) |
 | `BASECAMP_TIMEOUT` | Request timeout in seconds (default: `30`) |
 | `BASECAMP_MAX_RETRIES` | Total request attempts for GET requests, including the initial request (default: `3`) |
+
+```ruby
+config = Basecamp::Config.from_env
+client = Basecamp::Client.new(config: config, token_provider: token_provider)
+```
+
+Credentials are **not** among them. `BASECAMP_TOKEN` and `BASECAMP_ACCOUNT_ID` appear in the examples above only because the caller reads them and passes the values in; the SDK never looks them up. Pass the token to `Basecamp.client(access_token:)` or `StaticTokenProvider`, and the account ID to `#for_account`.
 
 ## Development
 

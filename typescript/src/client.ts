@@ -268,7 +268,7 @@ const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
  * Creates a type-safe Basecamp API client with built-in middleware for:
  * - Authentication (Bearer token)
  * - Retry with exponential backoff (respects Retry-After header)
- * - ETag-based HTTP caching
+ * - ETag-based HTTP caching, opt-in via `enableCache` (defaults to false)
  *
  * @example
  * ```ts
