@@ -35,7 +35,8 @@ end
 ```
 
 Sitting in that block makes them *look* like siblings of the JSON aggregates.
-They are not. At the pinned `dffa7e11b3` both controllers are HTML-only:
+They are not. At `dffa7e11b3` — the provenance pin when this was verified —
+both controllers were HTML-only:
 
 ```ruby
 class Everything::AssignmentsController < ApplicationController

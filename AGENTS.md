@@ -183,19 +183,44 @@ The Smithy service version is derived from the shared provenance date. Run `make
 
 **Prose restates the pin, and prose drifts.** `COORDINATION.md` and
 `spec/api-gaps/README.md` each name the current pin in narrative, and both sat
-two repins stale before `make doc-constants-check` existed. A sentence that
-states the *current* pin carries an `<!-- @bc3-pin -->` marker at the end of its
-line and names both the revision and the sync date; `make sync-api-version`
-rewrites every marked span from `spec/api-provenance.json` (SHA abbreviation
-length preserved) and the gate fails on any that drifted — or on a span that
-dropped its SHA or its date, since the writer can only rewrite what it can see. Prose about *past* pins — "the pin has since advanced
-to X", "the `A..B` range contains…" — stays unmarked and is never rewritten:
-`spec/api-gaps/` cites ~30 historical SHAs on purpose, and a gate that rewrote
-them would convert settled triage into a claim nobody made. The same convention
-covers `<!-- @api-version -->` (from `openapi.json` `info.version`) and SPEC §19's
-`<!-- @assertion-types:begin/end -->` table (from `conformance/schema.json`).
-`spec/doc-constants.json` commits a per-file floor on how many markers each file
-must carry, so deleting a marker fails the gate instead of silencing it.
+two repins stale before `make doc-constants-check` existed. Every bc3 revision
+you write into prose is one of exactly two things, and which one decides
+everything else:
+
+- **A current-value claim** — "the provenance pin is `X`". True only right now.
+  It carries an `<!-- @bc3-pin -->` marker at the end of its line and names
+  both the revision and the sync date. `make sync-api-version` rewrites every
+  marked span from `spec/api-provenance.json` (SHA abbreviation length
+  preserved), and the gate fails on any that drifted — or on a span that
+  dropped its SHA or its date, since the writer can only rewrite what it can
+  see.
+- **An as-of fact** — "verified against `X`", "shipped in BC3 #12380 (`X`)",
+  "the `A..B` range contains…". True forever, because the revision is bound to
+  a fixed observation. It stays unmarked and is never rewritten:
+  `spec/api-gaps/` cites ~30 historical SHAs on purpose, and rewriting one
+  would convert settled triage into a claim nobody made.
+
+The failure to avoid is writing the second in the grammar of the first — "at
+the pinned revision", "the provenance pin (`X`)" — which is true the day it is
+written and silently false at the next repin. Name what binds the revision:
+the PR that shipped it, or the verification it backs. `make
+doc-constants-check` enforces the boundary at the one moment it can see it
+without guessing at tense: an unmarked sentence naming **today's** pin fails,
+because that is the day such a sentence is born. If it is genuinely an as-of
+fact that happens to name the current pin, record the file in
+`spec/doc-constants.json` `.unmarkedPinCitations` with the reason. A SHA that
+is not the current pin is not checked at all — sorting those needs the pin's
+whole history, which CI's shallow clones do not have.
+
+The same marker convention covers `<!-- @api-version -->` (from `openapi.json`
+`info.version`) and SPEC §19's `<!-- @assertion-types:begin/end -->` table
+(from `conformance/schema.json`). `spec/doc-constants.json` commits a per-file
+floor on how many markers each file must carry, so deleting a marker fails the
+gate instead of silencing it, and a `.writerExcludes` list of files the writer
+must never touch — `spec/api-gaps/README.md` is on it, because its pin sentence
+heads the range triage and cannot advance without that triage advancing too.
+`scripts/test-doc-constants.rb` (run by `make doc-constants-check`) asserts the
+gate rejects each of these failure modes.
 
 **Pin semantics.** The pin is the conformance baseline as of the last sync — it asserts that all upstream drift up to that revision has been *triaged*, not that every contract in it has been *absorbed*. Upstream contracts shipped past the SDK's modeled surface are tracked in `spec/api-gaps/` (status `addressed-in-bc3-pr-N`) until an absorption PR lands. A repin is valid exactly when every drift item in `pin..HEAD` is either absorbed into the spec or registered in `spec/api-gaps/`; it is not blocked on absorption itself. The pin never moves backward. The `compatibility.*` pins mark the last **verified API-surface state** of their branch, not a last-glanced timestamp — refresh one only when re-verifying that branch's API surface, and record verification dates in the PR that did the checking.
 

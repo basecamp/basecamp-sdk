@@ -34,7 +34,7 @@ SDK registration only — the contract shipped to `master` via BC3 **#12383**
 ("Add My Bookmarks JSON API", `640389c2`, 2026-07-25).
 `doc/api/sections/my_bookmarks.md` on `master` is the contract of record. The
 SDK does not yet model any of the four operations; this entry registers the
-surface so the provenance pin (`640389c2`) is not carrying an unrecorded API
+surface so the pin that absorbed `640389c2` is not carrying an unrecorded API
 change.
 
 A bookmark is a **personal** link between the current user and a single

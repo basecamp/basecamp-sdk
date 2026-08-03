@@ -17,6 +17,22 @@
 # history into a claim nobody verified. A marker means "this is a claim about
 # the CURRENT value" and nothing else.
 #
+# The two classes, stated once because everything below follows from them:
+#
+#   (A) A current-value claim — "the pin is X". True only right now. Carries a
+#       marker; the writer keeps it current.
+#   (B) An as-of fact — "verified at X", "shipped in X", "the A..B range".
+#       True forever, because the revision is bound to a fixed observation.
+#       Never marked; rewriting one would fabricate an observation.
+#
+# The gate cannot read tense, so it cannot sort an arbitrary sentence into A or
+# B. It enforces the one boundary it can see without guessing: a sentence
+# naming the CURRENT pin, unmarked, is rejected (see check_unmarked_pin
+# below). That is where every stale restatement in spec/api-gaps/ came from —
+# each was written when its SHA was current and correct. A SHA that was never
+# the pin, or that stopped being it before this gate existed, is out of reach
+# of any cheap check and is governed by the convention in AGENTS.md instead.
+#
 # Marker syntax
 #   Line span:   <!-- @api-version -->  or  <!-- @bc3-pin -->
 #                anywhere on the line; the span is exactly that line.
@@ -35,6 +51,15 @@
 #                      fails on it. `make doc-constants-check` is what catches
 #                      that one; keeping it out of the writer keeps a schema
 #                      edit from breaking every `make generate`.
+#                      Files listed in spec/doc-constants.json .writerExcludes
+#                      are never rewritten either: this script runs inside
+#                      `make generate`, and a document whose marked value is
+#                      the heading of a narrative cannot have that value
+#                      advanced without the narrative advancing too. Silently
+#                      doing it anyway would be the same unreviewed prose
+#                      rewrite this gate exists to prevent. The writer warns
+#                      and leaves them; --check then fails until a human
+#                      answers.
 #   --openapi PATH     Read the API version from PATH instead of ./openapi.json.
 #                      sync-api-version.sh forwards its own documented
 #                      [openapi.json] argument here; without that, one sync
@@ -46,8 +71,12 @@
 # CONTRIBUTING.md. Add a marked table there first if that changes.
 
 require "json"
+require "set"
 
-ROOT = File.expand_path("..", __dir__)
+# The repo this gate reads. DOC_CONSTANTS_ROOT exists so
+# scripts/test-doc-constants.rb can point the gate at a crafted tiny repo and
+# assert it rejects each failure mode; nothing in normal operation sets it.
+ROOT = File.expand_path(ENV["DOC_CONSTANTS_ROOT"] || File.expand_path("..", __dir__))
 
 # Every input here is UTF-8 by construction — openapi.json, the tracked
 # Markdown, and this script's own messages all contain non-ASCII. Ruby
@@ -66,6 +95,20 @@ MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
 ISO_DATE_RE = /\b\d{4}-\d{2}-\d{2}\b/
 TICKED_HEX_RE = /`([0-9a-f]{7,40})`/
 BACKTICKED_RE = /`[^`]*`/
+
+# Bare (un-backticked) SHA detection, used only INSIDE a @bc3-pin span. A plain
+# /\b[0-9a-f]{7,40}\b/ also matches any run of 7+ digits, so a recording id or
+# an issue number sitting in a pin sentence was reported as a "bare SHA" —
+# fail-loud, never a false green, but a false alarm a human then has to
+# disprove. Requiring at least one a-f digit costs nothing real: an
+# abbreviation is only all-decimal by chance, and the one all-decimal
+# abbreviation that would actually matter is the pin's own, which is caught by
+# the second alternative built from the live revision.
+BARE_HEX_WITH_LETTER_RE = /\b(?=[0-9a-f]{7,40}\b)[0-9a-f]*[a-f][0-9a-f]*\b/
+
+def bare_sha_re(revision)
+  Regexp.union(BARE_HEX_WITH_LETTER_RE, /\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/)
+end
 
 class Failure < StandardError; end
 
@@ -116,11 +159,14 @@ Span = Struct.new(:kind, :file, :line_no, :lines, :block, keyword_init: true) do
   end
 end
 
-# Returns [spans, errors]. Line markers yield a one-line span; block markers
-# yield the lines strictly between :begin and :end.
+# Returns [spans, errors, prose_lines]. Line markers yield a one-line span;
+# block markers yield the lines strictly between :begin and :end. prose_lines
+# is every [line_no, text] pair that is neither fenced code nor inside a marked
+# span — i.e. the text check_unmarked_pin is entitled to judge.
 def scan_file(file)
   spans = []
   errors = []
+  prose = []
   lines = File.readlines(File.join(ROOT, file), chomp: true, encoding: UTF8)
   open_block = nil
   in_fence = false
@@ -133,6 +179,8 @@ def scan_file(file)
       next
     end
     next if in_fence
+
+    prose << [line_no, line]
 
     # A marker inside an inline code span (or a fenced block) is documentation
     # OF the convention — AGENTS.md explains it — not a use of it. Markdown
@@ -187,7 +235,11 @@ def scan_file(file)
     errors << "#{file}:#{open_block[:line_no]}: @#{open_block[:kind]}:begin never closed"
   end
 
-  [spans, errors]
+  covered = Set.new
+  spans.each { |s| (s.line_no...(s.line_no + s.lines.length)).each { |n| covered << n } }
+  prose.reject! { |line_no, _| covered.include?(line_no) }
+
+  [spans, errors, prose]
 end
 
 # --- per-kind checkers -------------------------------------------------------
@@ -215,11 +267,12 @@ def check_bc3_pin(span, revision, date)
     end
   end
 
-  # A SHA that lost its backticks is invisible to the writer's rewrite, so it
-  # would sit stale forever while the gate reported green. Reject it outright.
-  text.gsub(BACKTICKED_RE, " ").scan(/\b[0-9a-f]{7,40}\b/).uniq.each do |bare|
+  # A SHA that lost its backticks is invisible to both the check above and the
+  # writer's rewrite, so it would sit stale forever while the gate reported
+  # green. Reject it outright.
+  text.gsub(BACKTICKED_RE, " ").scan(bare_sha_re(revision)).flatten.compact.uniq.each do |bare|
     errors << "#{span.location}: bare SHA #{bare} in a @bc3-pin span — backtick it " \
-              "so `make sync-api-version` can rewrite it"
+              "so the gate can read it as part of the pin claim"
   end
 
   # A span that states no date is not "nothing to check" — the sync date is
@@ -237,6 +290,38 @@ def check_bc3_pin(span, revision, date)
   end
 
   errors
+end
+
+# Unmarked prose must not restate TODAY's pin.
+#
+# This is the birth-time half of the A/B rule at the top of the file. Every
+# stale pin restatement in spec/api-gaps/ — "the provenance pin (`c3086931`)",
+# "at the pinned `dffa7e11b3`" — was written on the day its SHA was the pin,
+# was true that day, and rotted at the next repin with nothing to notice. This
+# fires on exactly that sentence, on the day it is written, while the author is
+# still in the file and can say which kind of claim they meant.
+#
+# It deliberately does NOT fire on a SHA that is not the current pin. Deciding
+# whether an arbitrary revision is a stale class-A claim or a legitimate
+# class-B citation needs the pin's whole history, and reading that means
+# walking git log of spec/api-provenance.json — slow, and wrong under the
+# shallow clones CI uses. So this catches the claim as it is made, and AGENTS.md
+# governs the ones already settled.
+def check_unmarked_pin(file, prose, revision, allowed)
+  prose.filter_map do |line_no, line|
+    hits = line.scan(TICKED_HEX_RE).flatten.select { |h| revision.start_with?(h) }
+    next if hits.empty?
+
+    if allowed.key?(file)
+      nil
+    else
+      "#{file}:#{line_no}: `#{hits.first}` is the current provenance pin, restated outside a " \
+        "@bc3-pin span. Either mark the line <!-- @bc3-pin --> (and name the sync date) so " \
+        "`make sync-api-version` keeps it current, or bind the SHA to what makes it permanently " \
+        "true — the PR that shipped it, the verification it backs — and record the file in " \
+        "spec/doc-constants.json .unmarkedPinCitations with that reason."
+    end
+  end
 end
 
 def check_assertion_types(span, schema_types)
@@ -301,13 +386,17 @@ def run(mode, openapi)
 
   config = read_json("spec/doc-constants.json")
   floors = dig!(config, "spec/doc-constants.json", "markerFloors")
+  writer_excludes = config.fetch("writerExcludes", {})
+  pin_citations   = config.fetch("unmarkedPinCitations", {})
 
   errors = []
   spans = []
+  prose_by_file = {}
   tracked_markdown.each do |file|
-    file_spans, file_errors = scan_file(file)
+    file_spans, file_errors, file_prose = scan_file(file)
     spans.concat(file_spans)
     errors.concat(file_errors)
+    prose_by_file[file] = file_prose
   end
 
   # Marker-count floor: deleting a marked claim to silence the gate fails here.
@@ -330,6 +419,7 @@ def run(mode, openapi)
 
   if mode == :write
     written = []
+    declined = []
     spans.group_by(&:file).each do |file, file_spans|
       writable = file_spans.reject(&:block).select { |s| LINE_KINDS.include?(s.kind) }
       next if writable.empty?
@@ -347,6 +437,15 @@ def run(mode, openapi)
       updated = lines.join
       next if updated == original
 
+      # Excluded files are diffed but never written. Reaching here means the
+      # file IS stale, so say so loudly — this runs inside `make generate`, and
+      # a silent skip would read as "nothing to do" right up until `make check`
+      # failed for reasons the generate output never mentioned.
+      if writer_excludes.key?(file)
+        declined << file
+        next
+      end
+
       File.write(path, updated, encoding: UTF8)
       written << file
     end
@@ -355,6 +454,15 @@ def run(mode, openapi)
       puts "Doc constants already in sync (#{spans.count { |s| LINE_KINDS.include?(s.kind) }} marked spans)."
     else
       written.each { |file| puts "Rewrote marked doc constants in #{file}" }
+    end
+
+    declined.each do |file|
+      warn ""
+      warn "NOTE: #{file} has stale marked doc constants and was NOT rewritten."
+      warn "      Reason it is in spec/doc-constants.json .writerExcludes:"
+      warn "        #{writer_excludes[file]}"
+      warn "      Update it by hand, along with the prose that depends on it."
+      warn "      `make doc-constants-check` stays red until you do."
     end
 
     # Structural marker problems are still fatal in --write: they mean the
@@ -382,6 +490,24 @@ def run(mode, openapi)
     )
   end
 
+  prose_by_file.each do |file, prose|
+    errors.concat(check_unmarked_pin(file, prose, revision, pin_citations))
+  end
+
+  # A citation exemption is a claim about a file, and claims rot. If the named
+  # file no longer cites the pin at all, the entry is dead weight that would
+  # silently pre-authorize the next author to write an unmarked restatement
+  # there.
+  pin_citations.each_key do |file|
+    cited = prose_by_file.fetch(file, []).any? do |_, line|
+      line.scan(TICKED_HEX_RE).flatten.any? { |h| revision.start_with?(h) }
+    end
+    next if cited
+
+    errors << "spec/doc-constants.json: .unmarkedPinCitations lists #{file}, but it no longer " \
+              "names the current pin outside a marked span — drop the entry."
+  end
+
   if errors.empty?
     puts "Doc constants match their sources (#{spans.length} marked spans across " \
          "#{spans.map(&:file).uniq.length} files)."
@@ -394,8 +520,16 @@ def run(mode, openapi)
     errors.each { |e| warn "  #{e}" }
     warn ""
     warn "  Scalar constants: run `make sync-api-version` to rewrite marked spans."
+    # Naming the excluded files here matters: for those, "run make
+    # sync-api-version" is advice that silently does nothing, and a developer
+    # who follows it and sees no diff learns to distrust the gate.
+    writer_excludes.each do |file, reason|
+      warn "    — except #{file}, which the writer never edits (#{reason});"
+      warn "      fix it by hand."
+    end
     warn "  Assertion types:  edit SPEC.md §19's marked table by hand — a new row " \
          "needs a description only a human can write."
+    warn "  Unmarked pin:     see the A/B rule in AGENTS.md §Provenance is Mandatory."
     1
   end
 end

@@ -30,7 +30,8 @@ SDK registration only — the contract shipped to `master` via BC3 **#12381**
 ("Add My Drafts API and document the draft publication lifecycle", `123b2320`,
 2026-07-26). `doc/api/sections/drafts.md` on `master` is the contract of record.
 The SDK does not yet model the operation; this entry registers the surface so
-the provenance pin (`c3086931`) is not carrying an unrecorded API change.
+the pin it was filed against (`c3086931`, 2026-07-26) was not carrying an
+unrecorded API change.
 
 A draft is a message, document, upload, or client approval/correspondence that
 has been saved but not yet published. One operation:

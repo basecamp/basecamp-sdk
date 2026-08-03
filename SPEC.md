@@ -1910,6 +1910,8 @@ The following are explicitly NOT part of this specification:
 
 All magic numbers in one place, derived from shipping SDK code (not `rubric-audit.json`).
 
+Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 13 rows are hand-maintained and were verified against the cited sources on 2026-08-03 — all 13 matched. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. If one of these starts moving, gate that row rather than the appendix.
+
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
 | `MAX_RESPONSE_BODY_BYTES` | 52,428,800 (50 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`; Go/Ruby enforce; TS/Kotlin/Swift do not |
