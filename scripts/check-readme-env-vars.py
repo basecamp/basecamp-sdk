@@ -126,7 +126,10 @@ SDKS = {
         "source": "swift/Sources",
         "comments": "slash",
         "suffixes": (".swift",),
-        "patterns": [rf"ProcessInfo\.processInfo\.environment\[\s*{DQ}{NAME}{ENDQ}"],
+        # `#*` around the quotes: a raw string is a valid dictionary key, so
+        # environment[#"BASECAMP_TOKEN"#] is a real read that a bare-quote
+        # pattern reports as nonexistent.
+        "patterns": [rf"ProcessInfo\.processInfo\.environment\[\s*#*{DQ}{NAME}{ENDQ}#*"],
     },
     # kotlin/sdk/src, not just commonMain: jvmMain ships in the same artifact, so
     # scoping to commonMain would let a platform-specific read bypass this gate.
@@ -443,6 +446,15 @@ def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray,
     quotes = STRING_QUOTES[style]
     i = lo
     while i < hi:
+        # A comment inside the expression is not code either. The hole was
+        # un-masked wholesale, so without this `${foo(/* process.env.X */ 1)}`
+        # counts as a read. The mask means "not executable", not "in a string".
+        comment_end = comment_extent(text, i, style, flags)
+        if comment_end > i:
+            for k in range(i, min(comment_end, hi)):
+                in_string[k] = 1
+            i = comment_end
+            continue
         if text[i] in quotes or (flags["raw"] and raw_string_hashes(text, i)):
             end, holes = scan_literal(text, i, style, flags)
             if end <= i:

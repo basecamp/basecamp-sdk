@@ -353,6 +353,37 @@ def main() -> int:
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_SECRET"])
 
+        # A comment inside an interpolation is not code. The hole is un-masked
+        # wholesale, so without blanking it the example text counts as a read.
+        root = tmp / "comment-inside-hole"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                'const x = `${foo(/* process.env.BASECAMP_FAKE */ 1)}`;\n',
+        })
+        check("a comment inside an interpolation is not a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        root = tmp / "comment-inside-hole-rb"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "ruby/lib/c.rb": 'v = "#{foo( # ENV[\'BASECAMP_FAKE\']\n 1)}"\n',
+        })
+        check("a ruby comment inside an interpolation is not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_FAKE"])
+
+        # A Swift raw string is a valid dictionary key, so the read pattern has
+        # to accept the fences the lexer already understands.
+        root = tmp / "swift-raw-key"
+        build(root, {
+            "swift/README.md": "mentions BASECAMP_RAWKEY\n",
+            "swift/Sources/c.swift":
+                'let v = ProcessInfo.processInfo.environment[#"BASECAMP_RAWKEY"#]\n',
+        })
+        check("a swift raw-string environment key is a read",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)),
+              ["noenv:Swift:BASECAMP_RAWKEY"])
+
         # Interpolation is per language *and* per quote: TypeScript interpolates
         # in backticks only, so this is ordinary text and not a read.
         root = tmp / "ts-dq-not-interp"
