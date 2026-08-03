@@ -53,6 +53,10 @@
     "spec/api-gaps/folders-api.md": {
       "count": 1,
       "reason": "names the d0edc1283b -> 2c0dafba13 repin as the event that first brought doc/api/sections/folders.md into range — an as-of fact about that repin, still true after the next one"
+    },
+    "SPEC.md": {
+      "count": 2,
+      "reason": "the documents merge-safe composite (§18, added by #601) binds its draft-subscribers safety to a fixed bc3 observation twice on one line: BC3 #12501 cited as the commit that shipped Recording::DraftSubscribers, and the resulting 'at or after 2c0dafba13' floor for this surface. Both are bound to that PR and stay true after the next repin. #601 and #590 (which added this gate) merged green independently and only conflicted composed on main"
     }
   }
 }
