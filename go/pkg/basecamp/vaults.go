@@ -208,14 +208,6 @@ type CreateDocumentRequest struct {
 	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
-// UpdateDocumentRequest specifies the parameters for updating a document.
-type UpdateDocumentRequest struct {
-	// Title is the document title.
-	Title string `json:"title,omitempty"`
-	// Content is the document body in HTML.
-	Content string `json:"content,omitempty"`
-}
-
 // UpdateUploadRequest specifies the parameters for updating an upload.
 type UpdateUploadRequest struct {
 	// Description is the upload description.
@@ -484,15 +476,32 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetDocumentWithResponse(ctx, s.client.accountID, documentID)
+	// Split into request and decode rather than calling GetDocumentWithResponse,
+	// so the two error origins never mix. The merge-safe composites read this
+	// body and write every field of it back, so a malformed one has to arrive as
+	// the documented statusless api_error (documentDecodeError in documents.go)
+	// — but everything BEFORE the response is a different failure with its own
+	// meaning, and no inspection of the returned error can reliably tell them
+	// apart. GetDocument covers the gate's successors: the per-request auth
+	// editor (a token provider or custom AuthStrategy may return ANY error), the
+	// transport, and context cancellation. Those return verbatim, so errors.Is
+	// keeps working; only ParseGetDocumentResponse's failure is a decode failure.
+	//nolint:bodyclose // ParseGetDocumentResponse below closes the body (it defers
+	// rsp.Body.Close()), and it is called unconditionally on the next line.
+	httpResp, err := s.client.parent.gen.GetDocument(ctx, s.client.accountID, documentID)
 	if err != nil {
+		return nil, err
+	}
+	resp, decodeErr := generated.ParseGetDocumentResponse(httpResp)
+	if decodeErr != nil {
+		err = documentDecodeError(decodeErr)
 		return nil, err
 	}
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
+		err = documentDecodeError(fmt.Errorf("the response carried no document object"))
 		return nil, err
 	}
 
@@ -634,51 +643,8 @@ func (s *DocumentsService) Create(ctx context.Context, vaultID int64, req *Creat
 	return &document, nil
 }
 
-// Update updates an existing document.
-// Returns the updated document.
-func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *UpdateDocumentRequest) (result *Document, err error) {
-	op := OperationInfo{
-		Service: "Documents", Operation: "Update",
-		ResourceType: "document", IsMutation: true,
-		ResourceID: documentID,
-	}
-	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
-		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return
-		}
-	}
-	start := time.Now()
-	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if req == nil {
-		err = ErrUsage("update request is required")
-		return nil, err
-	}
-
-	body := generated.UpdateDocumentJSONRequestBody{}
-	if req.Title != "" {
-		body.Title = &req.Title
-	}
-	if req.Content != "" {
-		body.Content = &req.Content
-	}
-
-	resp, err := s.client.parent.gen.UpdateDocumentWithResponse(ctx, s.client.accountID, documentID, body)
-	if err != nil {
-		return nil, err
-	}
-	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
-		return nil, err
-	}
-
-	document := documentFromGenerated(*resp.JSON200)
-	return &document, nil
-}
+// The Documents write surface — the merge-safe Update, the read-modify-write
+// Edit, and the verbatim Replace — lives in documents.go.
 
 // Trash moves a document to the trash.
 // Trashed documents can be recovered from the trash.

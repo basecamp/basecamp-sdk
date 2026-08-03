@@ -160,6 +160,17 @@
         ]
       }
     },
+    "CreateFolder": {
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateForwardReply": {
       "retry": {
         "max": 2,
@@ -428,6 +439,18 @@
       }
     },
     "DeleteChatbot": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "DeleteFolder": {
       "idempotent": true,
       "retry": {
         "max": 3,
@@ -1091,6 +1114,18 @@
         "style": "link",
         "maxPageSize": 5
       },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetFolder": {
+      "readonly": true,
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -1885,6 +1920,18 @@
         ]
       }
     },
+    "ListFolders": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "ListForwardReplies": {
       "readonly": true,
       "pagination": {
@@ -2389,6 +2436,22 @@
         ]
       }
     },
+    "ReplaceDocument": {
+      "idempotent": true,
+      "write": {
+        "mode": "replace",
+        "clearsOmitted": true
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "ReplaceTodo": {
       "idempotent": true,
       "write": {
@@ -2780,7 +2843,7 @@
         ]
       }
     },
-    "UpdateDocument": {
+    "UpdateFolder": {
       "idempotent": true,
       "retry": {
         "max": 3,

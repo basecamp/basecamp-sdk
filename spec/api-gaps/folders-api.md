@@ -1,9 +1,17 @@
 ---
 gap: folders-api
-status: addressed-in-bc3-pr-12384
+status: absorbed-in-sdk
 bc3_pr: 12384
 sdk_demand: medium
 detected: 2026-07-31
+smithy_refs:
+  - "ListFolders operation"
+  - "GetFolder operation"
+  - "CreateFolder operation"
+  - "UpdateFolder operation"
+  - "DeleteFolder operation"
+  - "Folder structure"
+  - "FolderWithProjects structure"
 bc3_refs:
   introduced_in: master
   routes:
@@ -30,6 +38,10 @@ bc3_refs:
 > named this successor path itself and stays in place as the historical record.
 
 ## What's missing
+
+**Nothing — absorbed.** See the absorption section at the foot of this entry.
+What follows is the brief as written before absorption, kept because it is the
+reasoning the modelling was done against.
 
 SDK registration and absorption. The server contract exists and is documented;
 the SDK models no `FoldersService` and the canary does not expect folder
@@ -170,6 +182,24 @@ Two things the SDK should **not** ask BC3 for as part of absorption:
   separate ask for BC3 to document and test it, filed as its own brief.
 
 ## SDK absorption plan when this lands
+
+**Absorbed** (v0.13.0 program, lane B1+B3), coupled with the provenance repin
+`d0edc1283b` → `2c0dafba13` that first brings `doc/api/sections/folders.md`
+into range. `FoldersService` models all five operations; the `Folders` tag
+resolves through every generator's **default fallback**, as predicted — zero
+service-group overrides, and `ListFolders` needed no resource-type override
+either (it infers `folder` cleanly). The one deliberate generator addition is a
+`GetFolder` → `getFolder` method-name override in TS/Kotlin/Swift: without it
+the get collapses to `folder(id)`, a noun with no verb, while Ruby and Python
+already emit `get_folder`. Same shape as the `GetBookmark` override.
+
+`Folder` and `FolderWithProjects` are two distinct structures, per the warning
+below. `gauges_url`, `color` and `image_url` are modelled **required-and-nullable**
+(`@required` in Smithy, `type: ["string","null"]` via `smithy-build.json`
+`jsonAdd`) — the keys are always emitted and the values are often `null`, which
+is SPEC §"A third wire state", not optionality.
+
+The plan as written before absorption follows.
 
 The eight requirements in [`AGENTS.md`](../../AGENTS.md) §"SDK Change
 Completeness Bar" → "Every New Operation Requires", applied to all five

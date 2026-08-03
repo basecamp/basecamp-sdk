@@ -23,6 +23,7 @@ extension AccountClient {
     public var drafts: DraftsService { service("drafts") { DraftsService(accountClient: self) } }
     public var events: EventsService { service("events") { EventsService(accountClient: self) } }
     public var everything: EverythingService { service("everything") { EverythingService(accountClient: self) } }
+    public var folders: FoldersService { service("folders") { FoldersService(accountClient: self) } }
     public var forwards: ForwardsService { service("forwards") { ForwardsService(accountClient: self) } }
     public var gauges: GaugesService { service("gauges") { GaugesService(accountClient: self) } }
     public var hillCharts: HillChartsService { service("hillCharts") { HillChartsService(accountClient: self) } }

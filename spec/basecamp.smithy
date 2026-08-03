@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-07-31"
+  version: "2026-08-02"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -108,7 +108,7 @@ service Basecamp {
     ListDocuments,
     GetDocument,
     CreateDocument,
-    UpdateDocument,
+    ReplaceDocument,
     ListUploads,
     GetUpload,
     CreateUpload,
@@ -335,7 +335,14 @@ service Basecamp {
     // Batch 18 - People (Profile & Preferences)
     UpdateMyProfile,
     GetMyPreferences,
-    UpdateMyPreferences
+    UpdateMyPreferences,
+
+    // Batch 19 - Folders (wire type "Stack")
+    ListFolders,
+    GetFolder,
+    CreateFolder,
+    UpdateFolder,
+    DeleteFolder
   ]
 }
 
@@ -2425,18 +2432,40 @@ structure CreateDocumentOutput {
   document: Document
 }
 
-/// Update an existing document
+/// Replace a document with a new complete representation.
+/// The request body is the document's full writable state: any writable field
+/// omitted from the request is cleared server-side. Omitting content clears it;
+/// omitting title clears it too, and the document then reads back as
+/// "Untitled" (Document#title falls back when blank).
+/// Neither field is required. BC3 builds a brand-new Document from the
+/// permitted params and swaps the recordable wholesale, and neither attribute
+/// carries a presence validation — so an omission is a 200 that clears, not a
+/// 422. What BC3 does require is the wrapping document object, which Rails
+/// synthesizes from a flat body, so a request naming neither field is a 400.
+/// Publishing a draft (status: "active") is not modeled: the SDK sends only
+/// title and content, and BC3 rejects a status-only update for the same
+/// reason it 400s an empty body.
+/// Subscribers are the one exception to omission-clears. A drafted document
+/// keeps its current subscribers when the request addresses neither
+/// subscriptions nor notify, so a full-representation PUT that mentions
+/// neither is safe on a draft.
+/// To set some fields while preserving the rest, use the SDK's merge-safe
+/// update or edit methods, which GET the current document and PUT the full
+/// representation back. Those read-modify-write helpers are not atomic:
+/// a concurrent write between the GET and PUT is overwritten (last write
+/// wins for the whole representation; the window is one round-trip).
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
+@basecampWriteSemantics(mode: "replace", clearsOmitted: true)
 @http(method: "PUT", uri: "/{accountId}/documents/{documentId}")
-operation UpdateDocument {
-  input: UpdateDocumentInput
-  output: UpdateDocumentOutput
+operation ReplaceDocument {
+  input: ReplaceDocumentInput
+  output: ReplaceDocumentOutput
   errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
-structure UpdateDocumentInput {
+structure ReplaceDocumentInput {
   @required
   @httpLabel
   accountId: AccountId
@@ -2449,7 +2478,7 @@ structure UpdateDocumentInput {
   content: DocumentContent
 }
 
-structure UpdateDocumentOutput {
+structure ReplaceDocumentOutput {
 
   document: Document
 }
@@ -10500,3 +10529,281 @@ structure Preferences {
   time_format: String
 }
 
+
+// ===== Folders Operations =====
+//
+// Product noun vs. wire noun: the product calls these **folders**, the wire
+// still says **stack**. Both spellings are load-bearing and neither is a typo —
+// the operations, structures and generated methods use `Folder`, while the URI
+// segment (`/stacks.json`) and the `type` discriminator (`"Stack"`) keep the
+// original name. Anything matching on `type` must match `"Stack"`.
+//
+// Folders are per-user: they group projects on one person's home screen, and
+// filing a project away for yourself changes nothing for anyone else. There is
+// no account-wide folder, which is why the collection is flat rather than
+// bucket-scoped.
+
+/// List the authenticated user's folders in home-screen order.
+///
+/// Returns a bare array with no pagination envelope. Items are the base folder
+/// shape: they carry `bucket_ids` but **not** the expanded `projects`, which
+/// only the single-folder operations return.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/stacks.json")
+operation ListFolders {
+  input: ListFoldersInput
+  output: ListFoldersOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListFoldersInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure ListFoldersOutput {
+  folders: FolderList
+}
+
+/// Get one folder, with the projects grouped inside it expanded under `projects`.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/stacks/{folderId}")
+operation GetFolder {
+  input: GetFolderInput
+  output: GetFolderOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetFolderInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  folderId: FolderId
+}
+
+structure GetFolderOutput {
+  folder: FolderWithProjects
+}
+
+/// Create a folder for the authenticated user and file the given projects into it.
+///
+/// Returns 201 with the new folder and its expanded `projects`, placed at the
+/// top of the home screen. Filing an all-access project the user has not joined
+/// **grants** them access to it. Every id is preflighted: if any is archived,
+/// trashed, or an invitation-only project the user is not on, the whole request
+/// fails with 404 and nothing is created — there is no partial success.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/stacks.json", code: 201)
+operation CreateFolder {
+  input: CreateFolderInput
+  output: CreateFolderOutput
+  errors: [NotFoundError, FieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateFolderInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// The folder's name. Defaults to `New folder` when blank, null, or omitted.
+  name: String
+
+  /// IDs of the projects to file into the folder — the same ids the folder
+  /// reports back as `bucket_ids` and expands as `projects`. This does not
+  /// round-trip under its own name. Omit it, or send null or an empty array,
+  /// for an empty folder.
+  project_ids: ProjectIdList
+}
+
+structure CreateFolderOutput {
+  folder: FolderWithProjects
+}
+
+/// Rename a folder.
+///
+/// `name` is the only writable attribute; a folder's projects, ordering, and
+/// image are managed elsewhere and an image parameter sent here is ignored.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/stacks/{folderId}")
+operation UpdateFolder {
+  input: UpdateFolderInput
+  output: UpdateFolderOutput
+  errors: [NotFoundError, FieldValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateFolderInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  folderId: FolderId
+
+  /// The folder's new name. Blank is rejected with 422 — unlike create, update
+  /// does not fall back to a default name.
+  @required
+  name: String
+}
+
+structure UpdateFolderOutput {
+  folder: FolderWithProjects
+}
+
+/// Delete a folder and unpin its projects from the home screen (returns 204 No Content).
+///
+/// The projects themselves are not deleted and are not moved back out onto the
+/// home screen; they simply stop appearing there until pinned again.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/stacks/{folderId}", code: 204)
+operation DeleteFolder {
+  input: DeleteFolderInput
+  output: DeleteFolderOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure DeleteFolderInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  folderId: FolderId
+}
+
+structure DeleteFolderOutput {}
+
+// ===== Folder Shapes =====
+
+long FolderId
+
+list ProjectIdList {
+  member: ProjectId
+}
+
+list FolderList {
+  member: Folder
+}
+
+/// A folder as the list returns it: the base shape, without expanded projects.
+///
+/// Deliberately distinct from FolderWithProjects. A single shape with an
+/// optional `projects` member would make every list item declare a field the
+/// list response never populates.
+structure Folder {
+  @required
+  id: FolderId
+
+  @required
+  name: String
+
+  /// Always the string `Stack` — the wire type kept its pre-rename name.
+  @required
+  type: String
+
+  @required
+  created_at: ISO8601Timestamp
+
+  @required
+  updated_at: ISO8601Timestamp
+
+  /// IDs of the projects filed into this folder. Same ids as `project_ids` on
+  /// create, and the ids FolderWithProjects expands under `projects`.
+  @required
+  bucket_ids: ProjectIdList
+
+  @required
+  is_emoji_only_name: Boolean
+
+  @required
+  star_url: String
+
+  /// Gauges URL covering this folder's projects; always emitted, `null` when
+  /// none of them is gauged. `@required` models the presence — the nullability
+  /// is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:
+  /// ["string","null"]), so Go types it *string because the value is nullable,
+  /// not because the key is optional.
+  @required
+  gauges_url: String
+
+  /// The viewer's colour customization for this folder; always emitted, `null`
+  /// when unset. Required-and-nullable, like gauges_url.
+  @required
+  color: String
+
+  /// The viewer's folder image; always emitted, `null` when unset. Read-only:
+  /// there is no image create or update in v1. Required-and-nullable, like
+  /// gauges_url.
+  @required
+  image_url: String
+
+  @required
+  url: String
+}
+
+/// One folder plus the projects grouped inside it, as get/create/update return it.
+///
+/// The `projects` entries are the shared project projection, minus the
+/// `bookmarked` flag that only the projects index adds.
+structure FolderWithProjects {
+  @required
+  id: FolderId
+
+  @required
+  name: String
+
+  /// Always the string `Stack` — the wire type kept its pre-rename name.
+  @required
+  type: String
+
+  @required
+  created_at: ISO8601Timestamp
+
+  @required
+  updated_at: ISO8601Timestamp
+
+  /// IDs of the projects filed into this folder — the same set `projects`
+  /// expands.
+  @required
+  bucket_ids: ProjectIdList
+
+  @required
+  is_emoji_only_name: Boolean
+
+  @required
+  star_url: String
+
+  /// Gauges URL covering this folder's projects; always emitted, `null` when
+  /// none of them is gauged. Required-and-nullable (see Folder.gauges_url).
+  @required
+  gauges_url: String
+
+  /// The viewer's colour customization for this folder; always emitted, `null`
+  /// when unset. Required-and-nullable.
+  @required
+  color: String
+
+  /// The viewer's folder image; always emitted, `null` when unset. Read-only.
+  /// Required-and-nullable.
+  @required
+  image_url: String
+
+  @required
+  url: String
+
+  /// The projects filed into this folder, expanded. Always emitted; empty for
+  /// an empty folder.
+  @required
+  projects: ProjectList
+}

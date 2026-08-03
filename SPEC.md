@@ -108,10 +108,10 @@ END
 
 **Naming note:** `max_retries` means total attempts (including the initial request), not the number of retries after the first attempt. With `max_retries = 3`, the transport makes at most 3 attempts total (1 initial + 2 retries). This name is inherited from the shipping Ruby SDK; the behavior-model.json uses `retry.max` with identical semantics.
 
-**Per-operation retry ceiling.** Each operation carries a per-op `retry.max` in behavior-model.json (195 ops at `3`, 43 at `2`). **TypeScript and Swift** drive their retry loops directly from this per-op value, which is unambiguous there because neither exposes a numeric client-wide cap — only an on/off (`enableRetry`). Generated Go, Python, Kotlin (`BasecampConfig.maxRetries`), and Ruby's governed GET path (`config.max_retries`) expose a numeric client cap *and* honor the per-op value as a **ceiling**: `effective_attempts = min(client_cap, op_max)`. The ceiling can only reduce attempts below the client cap, never raise them, so a client that lowered its cap (e.g. to `1` to disable retries) is still honored; governed paths coerce the cap to at least one attempt (`min(max(1, cap), op_max)`), so `0` yields a single attempt rather than none. Because every op's `max` is ≤ the default cap of `3`, a default or raised client makes exactly the per-op number of attempts in every capped SDK — matching TS/Swift. Observable changes from the former client-wide behavior, by client configuration:
+**Per-operation retry ceiling.** Each operation carries a per-op `retry.max` in behavior-model.json (200 ops at `3`, 43 at `2`). **TypeScript and Swift** drive their retry loops directly from this per-op value, which is unambiguous there because neither exposes a numeric client-wide cap — only an on/off (`enableRetry`). Generated Go, Python, Kotlin (`BasecampConfig.maxRetries`), and Ruby's governed GET path (`config.max_retries`) expose a numeric client cap *and* honor the per-op value as a **ceiling**: `effective_attempts = min(client_cap, op_max)`. The ceiling can only reduce attempts below the client cap, never raise them, so a client that lowered its cap (e.g. to `1` to disable retries) is still honored; governed paths coerce the cap to at least one attempt (`min(max(1, cap), op_max)`), so `0` yields a single attempt rather than none. Because every op's `max` is ≤ the default cap of `3`, a default or raised client makes exactly the per-op number of attempts in every capped SDK — matching TS/Swift. Observable changes from the former client-wide behavior, by client configuration:
 
-- **Default client (`max_retries = 3`):** only the **11 idempotent `max:2` operations** (account/gauge/preference writes plus two subscription-style POSTs: `UpdateAccountName`, `UpdateAccountLogo`, `RemoveAccountLogo`, `UpdateMyPreferences`, `DisableOutOfOffice`, `MarkAsRead`, `ToggleGauge`, `UpdateGaugeNeedle`, `DestroyGaugeNeedle`, `Subscribe`, `EnableCardColumnOnHold`) change — they now retry at most twice instead of three times. The other 188 retry-eligible ops are unaffected (`min(3, 3) = 3`).
-- **Client that raised its cap above 3:** **all 199 retry-eligible operations** are now clamped to their per-op `max` (188 to `3`, 11 to `2`) instead of retrying up to the raised cap. This is the intended meaning of a per-op ceiling and brings Go/Python into line with TS/Swift/Kotlin, which never retry beyond the per-op `max`. Go, Python, Kotlin, and Ruby's governed path all equally honor a caller who wants *fewer* attempts than the operation declares.
+- **Default client (`max_retries = 3`):** only the **11 idempotent `max:2` operations** (account/gauge/preference writes plus two subscription-style POSTs: `UpdateAccountName`, `UpdateAccountLogo`, `RemoveAccountLogo`, `UpdateMyPreferences`, `DisableOutOfOffice`, `MarkAsRead`, `ToggleGauge`, `UpdateGaugeNeedle`, `DestroyGaugeNeedle`, `Subscribe`, `EnableCardColumnOnHold`) change — they now retry at most twice instead of three times. The other 192 retry-eligible ops are unaffected (`min(3, 3) = 3`).
+- **Client that raised its cap above 3:** **all 203 retry-eligible operations** are now clamped to their per-op `max` (192 to `3`, 11 to `2`) instead of retrying up to the raised cap. This is the intended meaning of a per-op ceiling and brings Go/Python into line with TS/Swift/Kotlin, which never retry beyond the per-op `max`. Go, Python, Kotlin, and Ruby's governed path all equally honor a caller who wants *fewer* attempts than the operation declares.
 - **Client that lowered its cap to `1`:** unchanged — the cap still wins (`min(cap, op_max) = cap`). A cap of `0` is coerced to one attempt on governed paths (see the `max_retries = 0` divergence note in §2). Go, Python, and Ruby's governed GET path consume `max` **and** `retry_on` (the declared status gate); only the emitted `base_delay_ms`/`backoff` remain inert per-op metadata for them (retained for parity — see `scripts/check-retry-metadata-parity.py`). Ruby remains GET-only: mutations never retry there, so per-op metadata governs only its reads.
 
 **Recommended default:** A connect timeout of 10 seconds is recommended but not a required config field. Only Ruby exposes this (Faraday `open_timeout = 10`); other SDKs use their HTTP library's default.
@@ -386,6 +386,42 @@ The endpoint is polymorphic, and more literally so than the name suggests: there
 
 Conformance: `conformance/tests/todolists_write.json` (`update-merge`, `update-group`, `edit-clear`, `replace-omission-clears`).
 
+### Merge-Safe Write Surface (Documents)
+
+The `PUT /{accountId}/documents/{documentId}` endpoint is **full replace, omission clears** (spec operation `ReplaceDocument`, declared via `x-basecamp-write-semantics: {mode: "replace", clearsOmitted: true}` and the `write` clause in `behavior-model.json`). BC3's `DocumentsController#update` runs `@recording.update! recording_attributes.merge(recordable: new_document)`, where `new_document` is `Document.new(params.require(:document).permit(:title, :content))` — it builds a *brand-new* `Document` from only the permitted params and swaps the recordable wholesale, so a field absent from the body is `nil` on the replacement. The public API docs say the same thing outright: "omitting a field clears its value."
+
+The writable set is exactly `{title, content}`, and **both are optional** — this is the one place Documents diverges from Todolists, and it is measured rather than assumed:
+
+- Omitting `title` returns `200` and the title becomes `"Untitled"`. `Document#title` is `super.presence || "Untitled"` (`app/models/document.rb:7-9`) and the attribute carries **no presence validation** — the model declares none, and neither `Recordable` nor `Recording` validates the recordable's title.
+- Omitting `content` returns `200` and clears it.
+- Neither is a `422`, so neither earns `@required` the way `ReplaceTodo`'s `content` or `UpdateTodolistOrGroup`'s `name` did. Modelling either as required would make the SDK reject a request the server accepts.
+
+What BC3 *does* require is the wrapping `document` object: `params.require(:document)` raises `ActionController::ParameterMissing` when absent, and Rails `wrap_parameters` synthesizes that wrapper from a flat body only when the body carries at least one `Document` attribute name. So a body naming **neither** field is a `400`, pinned upstream by `test "publishing a draft document requires the full payload and preserves it"`. Go's `Replace` refuses that body locally rather than spending a round-trip on it; the other five leave it to the server.
+
+Every SDK exposes the same three-method, two-state surface over it:
+
+- **`update`** — merge-safe. GET the current document → overlay only *explicitly-set* request fields → PUT the full representation. An omitted field is untouched, guaranteed. Set-detection is language-native: TypeScript `!== undefined`, Python/Ruby `None`/`nil` kwarg defaults, Kotlin `?.let`, Swift `if let`, Go zero-value guards.
+
+  In the five SDKs whose unset marker is distinct from the empty string, an explicitly-passed `""` is a set and therefore clears. **Go is the exception**, as for Todolists: `""` *is* its unset marker on `UpdateDocumentRequest`, so `Update` with an empty title does nothing to that field. To clear a field in Go, use `Edit` or `Replace`.
+
+  `ReplaceDocumentRequest` is the one Go request here that does **not** use zero-value guards. On a verbatim replace, absent and explicitly-empty are different requests and only one of them is legal alone: a body naming neither field is a `400`, while `{"title": "", "content": ""}` is a legal full replacement that clears both. Zero-value guards conflate those, so both fields are `*string` — nil omits, a pointer to `""` sends. Their server *effect* happens to coincide for `title` (omitted and empty both read back as `"Untitled"`), but the SDK must not collapse a distinction the wire makes.
+- **`edit`** — read-modify-write closure over the full writable state (`DocumentFields`: title, content). Clear = set empty (`""`); a closure error/throw aborts before the PUT. Python's form is a context manager (`with`/`async with`) whose `.result` holds the updated document after clean exit (RuntimeError before completion).
+- **`replace`** — the generated wire method: verbatim sparse PUT, no GET, omission clears. Renamed from nothing — the wire operation itself is `ReplaceDocument`, so the generated method is `replace` by the ordinary naming algorithm. This is the `ReplaceTodo` route (#375), not the `METHOD_NAME_OVERRIDES` route Todolists and Cards took, and it ships **without a deprecated alias**: `UpdateDocument` is gone.
+
+Full-state serialization (update/edit): both `title` and `content` are always sent, empties included, so clears survive. A field is cleared by sending `""` — never by sending null (§18), and never by omission, which would hand the clear back to the server's own rebuild and read as an accident rather than an intent.
+
+**Read-side, the two fields are not symmetric, and this is the inverse of the write side.** `Document.title` is `@required` on the *response* schema and BC3 can never render it blank (`Document#title` is `super.presence || "Untitled"`), so an absent or null `title` in a 2xx body is a **malformed response**, not an empty title — coalescing it to `""` and sending that in the full-replace PUT would blank the real title on a call that only touched `content`. All six SDKs refuse it: Kotlin and Swift get it from the decoder (`val title: String`, `public let title: String`), and Go, Python, Ruby and TypeScript check explicitly, because their reads would otherwise yield the string zero value. `content` is optional on the response schema, so absent or null there is genuinely empty and `""` is what the server already holds. Optionality on the request (both fields) and requiredness on the response (`title` only) are separate facts and are modelled separately.
+
+**Subscribers are the one field this surface must not touch, and the reason it could not ship earlier.** A full-representation PUT names neither `subscriptions` nor `notify`. BC3's `notify_param` defaults to `"custom"`, so `find_subscribers` used to run `where(id: params[:subscriptions])` → `where(id: nil)` → empty, and every sparse update to a **drafted** recording reset its subscriber list to the creator plus the updater. The list is also unreadable over the API — only `subscription_url` is emitted — so the composite could not have preserved it by resending. bc3 #12494 (`344581a379`) and #12501 (`2c0dafba13`) introduced `Recording::DraftSubscribers`, whose `update_subscribers?` is `params.key?(:subscriptions) || params.key?(:notify)`: a request addressing neither keeps the list it found. That predicate is what makes a merge-safe composite safe on a draft, and it is why this surface is pinned to a bc3 provenance at or after `2c0dafba13`.
+
+**Publishing a draft is not modeled.** Setting `status: "active"` is how a draft is published, and BC3 rejects a status-only update for the same reason it rejects an empty body — the recordable params are required alongside. `status` is on `CreateDocument` but not on `ReplaceDocument`; a caller who needs to publish sends the full payload plus `status` through the raw HTTP surface. Modelling it is deferred rather than declined.
+
+**Hook contract:** update/edit compose the public get + replace, so hooks observe the wire operations under each SDK's native identities (conceptually one `GetDocument` + one `ReplaceDocument`; one `ReplaceDocument` for replace) — never a synthetic composite.
+
+**Race:** update/edit are read-modify-write, not atomic. There is no conditional-update signal on this endpoint; a concurrent write between the GET and PUT is overwritten — last write wins for the whole representation, with a window of one round-trip. Use `replace` to overwrite deliberately.
+
+Conformance: `conformance/tests/documents_write.json` (`update-merge`, `edit-clear`, `replace-omission-clears`).
+
 ### Known Gaps (informational, not prescriptive)
 
 - Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`
@@ -572,7 +608,7 @@ Kotlin, and Ruby.
 - **TypeScript** implements the three-gate algorithm with the retry loop beneath the openapi-fetch middleware chain (the client's custom `fetch`), so attempts run to each operation's declared `retry.max` and network errors retry under the same idempotency gate; caller aborts and request timeouts are terminal. **Kotlin** implements the three-gate algorithm for both HTTP status and network-error retries (POST retries only when `idempotent: true`, full exponential backoff): one eligibility gate covers both failure shapes, with the whole-request timeout (Ktor's `HttpRequestTimeoutException`) deliberately not retried and auth headers re-attached per attempt.
 - **Go** implements the three-gate on its generated operation path: it retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (the naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and the flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Governed GETs (those carrying their canonical operation ID) are bounded by the per-op ceiling and status-gated on the declared `retryOn`; ungoverned GETs (`get_absolute`, OAuth discovery) keep the taxonomy-driven pre-metadata contract. Ruby is acceptably conservative.
-- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the seven idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors but only for retry-eligible operations. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
+- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the seven idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors but only for retry-eligible operations. A network error is classified by *meaning*, not by type: a `Transport` that reports connectivity failure as the SDK's own `BasecampError.network` reaches the retry branch exactly as a raw `URLError` does (#567). `Transport` is `public`, so that normalization is the natural implementation and must not be the one that disables retry. Any other `BasecampError` out of the transport (`.auth`, `.usage`, `.api`, …) stays terminal on sight, and the non-HTTP-response guard raises a distinct internal error so a deterministic programming fault is never mistaken for a transport blip. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
 - The spec prescribes the three-gate algorithm.
 
 ### Retry Algorithm
@@ -635,14 +671,83 @@ The loop always terminates via step 3e (raise on network error), 3f (return non-
 ### Backoff Formula
 
 ```
-delay = base_delay_ms * 2^(retry_index) + random(0, max_jitter)
+delay = min(base_delay_ms * 2^(retry_index), MAX_BACKOFF_DELAY_MS) + random(0, max_jitter)
 ```
 
 Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt` — when the initial request (attempt=0) fails and reaches step 3h, it computes the delay for the first retry using `2^0 = 1×base_delay_ms`. Default constants (from `retry_config` or Config):
 - `base_delay_ms` = 1000 (from `retry_config.base_delay_ms`)
 - `max_jitter` = 100ms (from Config; not part of `retry_config` — sourced from the client's Config RECORD)
+- `MAX_BACKOFF_DELAY_MS` = 30,000 (30s) — the ceiling on the backoff term, below
 
 Retry-After header value takes precedence when present and valid.
+
+### Backoff Ceiling `[CONFLICT]`
+
+The backoff term is **saturating**: it grows exponentially up to `MAX_BACKOFF_DELAY_MS`
+and then stops. This is a correctness requirement, not a politeness one — an unbounded
+`2^n` is not merely a long sleep, it is a different failure in every host language, and
+each of the six SDKs demonstrated one before #577:
+
+| Overflow shape | SDKs | What actually happens |
+|---|---|---|
+| Signed 64-bit wrap | Kotlin (`1L shl`), Go (`1<<`) | The product goes negative and the sleep primitive treats a non-positive delay as "no delay" — the client tight-loops against a server that is already answering 429/503, which is the exact traffic pattern backoff exists to prevent |
+| Trap on overflow | Swift (`UInt64` multiply) | The process **crashes**. Swift's `<<` is a smart shift, so an over-shift silently yields `0` (tight loop), but at `1 << 63` the multiply overflows `UInt64` and traps |
+| Saturate to infinity | TypeScript (`Math.pow`) | `Infinity` reaches `setTimeout`, which clamps an out-of-range delay to **1ms** — a tight loop again |
+| Unbounded integer | Python (`2 **`), Ruby (`2**`) | No wrap: the multiplier becomes an arbitrary-precision bignum. Python raises `OverflowError` converting it to a float; Ruby coerces to `Float::INFINITY` and `sleep` never returns |
+
+Requirements:
+
+1. **Saturate, never wrap, never diverge.** An implementation must not evaluate an
+   unbounded `2^retry_index`. Compare against `MAX_BACKOFF_DELAY_MS / base_delay_ms`
+   *before* multiplying — either the multiplier itself, or, where the power is the
+   thing that overflows, the exponent against the point at which the term first
+   reaches the ceiling. That keeps every intermediate inside the host's numeric range
+   **and** lands the term on the ceiling.
+
+   A **fixed** exponent cap followed by `min(base × 2^capped, MAX_BACKOFF_DELAY_MS)`
+   is not an acceptable substitute, however generous the cap looks. It bounds the
+   intermediate but not the *outcome*: for a base delay small enough that
+   `base × 2^cap < MAX_BACKOFF_DELAY_MS`, the term plateaus below the ceiling for
+   every subsequent attempt instead of saturating at it. At `base_delay_ms = 1e-30`
+   a cap of 64 pins every attempt from the 65th onward at ~1.84e-11s — which is
+   requirement 1's tight loop, not a fix for it.
+
+   The bound must be derived from the base **without overflowing its own
+   arithmetic**. `MAX_BACKOFF_DELAY_MS / base_delay_ms` is itself infinite once
+   `base_delay_ms` drops below `MAX_BACKOFF_DELAY_MS / MAX_FLOAT`, and falling back
+   to a fixed exponent there fails in the mirror direction: the term saturates
+   **early**, returning the ceiling at an attempt whose specified value is still far
+   below it. Compute the crossing in the log domain (`log2(ceiling) - log2(base)`)
+   and scale the term directly — `ldexp`, or repeated bounded multiplication where
+   the host has no `ldexp` — so no fixed exponent cap is needed at all. Saturating
+   early is as much a deviation as plateauing: the term must track
+   `base × 2^retry_index` at every attempt below the ceiling and equal the ceiling
+   at every attempt at or above it.
+2. **The ceiling bounds the backoff term, not the total sleep.** Jitter is added after
+   clamping, so the longest single backoff sleep is `MAX_BACKOFF_DELAY_MS + max_jitter`.
+   This matches Go's generated client, which has capped at `RetryConfig.MaxDelay = 30s`
+   since it was first templated; 30s is adopted as the cross-SDK constant because it is
+   the one value already shipping.
+3. **The ceiling applies to `linear` and `constant` backoff too**, and therefore to
+   `base_delay_ms` itself: a caller configuring a base delay above the ceiling gets the
+   ceiling. The rule is "no single computed backoff sleep exceeds `MAX_BACKOFF_DELAY_MS`",
+   with no carve-out for the first one. No shipped configuration approaches it —
+   `behavior-model.json` tops out at `base_delay_ms: 2000`, and the default three
+   attempts never compute past `2000 × 2 = 4000ms`, so the ceiling is unreachable on
+   default paths and changes no shipped behavior.
+4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h;
+   the ceiling governs the locally-computed formula only. Implementations may still
+   bound it against host limits — Swift clamps its seconds→nanoseconds conversion to
+   86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap.
+
+**Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
+validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects
+`n < 1`, and Python/Ruby take a caller cap that is intersected with — never raised
+above — the per-operation max, so a caller who *lowers* the cap is fine but the
+operation ceiling itself is whatever `behavior-model.json` says. Reaching the overflow
+needs a long genuine failure streak, so this is a robustness gap rather than a live
+incident; the consequences (crash, tight loop, infinite sleep) are severe enough that
+the gate belongs in the spec rather than in six independent judgment calls.
 
 ### Default and No-Retry Configs
 
@@ -664,7 +769,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All 238 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
+All 243 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -1058,7 +1163,7 @@ Every JSON API request must include all four headers below. Download requests (�
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
 - `{VERSION}` is the SDK version (e.g., `0.6.0`)
-- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-03-23`), derived from the shared date in `spec/api-provenance.json`
+- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-02`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
 
 ### Redirect Handling
 
@@ -1100,7 +1205,7 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all 238 operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. Backoff is exponential from a 1-second base with jitter; `Retry-After` is honored on 429. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all 243 operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. Backoff is exponential from a 1-second base with jitter; `Retry-After` is honored on 429. The second hop is exempt: no retry, no auth.
 
 "Network error" means a transport failure, with one carve-out that SDKs inherit from their main GET loop rather than restate: an attempt that exhausted the caller's entire per-attempt time budget (a request timeout) is not retried. The timeout is per attempt, so a retry spends another full budget on the same slowness rather than riding out a blip. Kotlin implements this explicitly; SDKs whose transports surface timeouts indistinguishably from other connection failures retry them.
 
@@ -1688,9 +1793,21 @@ All wire operations are generated (rubric 1A.6). One narrow exception is sanctio
 5. **Declared placement.** The composite lives in the language's designated hand-written extension point (Kotlin generator `EXTENSIBLE_SERVICES`/`HAND_WRITTEN_SERVICES`, TS `src/services/*-extensions.ts` wired in `client.ts`, Ruby zeitwerk `prepend` module, Python service subclass re-exported by the client, Swift same-module extension) so regeneration can never silently drop or fork it.
 6. **The raw operation stays reachable.** When a composite takes over the plain method name, the generated single-request method is renamed (via `METHOD_NAME_OVERRIDES`) rather than hidden, and gets its own conformance case asserting it makes exactly one request with no read-before-write. Without that second case, later generator drift could silently turn both public methods into composite behavior and nothing would notice.
 
+### Replace-Semantic Operation Naming `[static]`
+
+A wire operation is named for what the server does with the body, not for what the caller usually intends:
+
+- **`Replace*`** when the endpoint takes a complete representation and clears what the body omits — `ReplaceTodo`, `ReplaceDocument`. This holds even where the replacement carries *declared carve-outs*: `ReplaceDocument` does not touch a drafted document's subscribers, and that does not make the operation a merge. A carve-out is one named field the server excludes from the swap; a merge is the server preserving anything the body omits. The rule keys on the default, and the carve-out is documented on the operation.
+- **`Update*`** when the endpoint merges — the server preserves fields the body omits (`Recordable#changing` and friends), as Messages does — or when it is genuinely hybrid, as Cards is: merge for `title`/`content`, key-guarded for `assignee_ids`, forced-replace for `due_on` (#467).
+
+Two shipped operations are replace-semantic but still named `Update*`. `UpdateTodolistOrGroup` reached the honest *method* name through `METHOD_NAME_OVERRIDES` (rule 6) rather than a wire rename, so its SDK surface reads `replace` while the operationId does not. `UpdateScheduleEntry` has neither yet — its method is still `updateEntry` and its composite is unbuilt (#546/#547). Both are naming debt, not a second sanctioned pattern; the wave that closes them is #374. New replace-semantic operations take the wire rename.
+
+A rename is breaking and ships **without a deprecated alias** (`ReplaceTodo`, #375; `ReplaceDocument`, #543). An alias would keep the destructive method reachable under the name that misdescribes it, which is the defect the rename exists to remove.
+
 Current composites:
 - **Todos** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
 - **Todolists** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todolists)". The raw path is `replace`, renamed from `update` via `METHOD_NAME_OVERRIDES` (rule 6) rather than by renaming the wire operation.
+- **Documents** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Documents)". The raw path is `replace`, and it needs no override: the wire operation is `ReplaceDocument`, so the ordinary naming algorithm produces it.
 - **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
 - **Uploads** `download` — composes the generated `get` (GetUpload) with the client-level `downloadURL` primitive (§14), erroring when the upload carries no `download_url`; the result's filename prefers the upload metadata's `filename`.
 
@@ -1711,7 +1828,11 @@ Test cases conform to `conformance/schema.json`. Each test specifies:
 
 ### Assertion Types
 
-Enumerated from `conformance/schema.json`:
+Enumerated from `conformance/schema.json` — the table below is gated against
+that enum by `make doc-constants-check`, so a new assertion type cannot ship
+undocumented:
+
+<!-- @assertion-types:begin -->
 
 | Type | Description |
 |------|-------------|
@@ -1721,10 +1842,14 @@ Enumerated from `conformance/schema.json`:
 | `responseStatus` | Response status category |
 | `responseBody` | Specific value in response body (by path) |
 | `headerPresent` | Named header exists on request |
+| `headerAbsent` | Named header does **not** exist on the request. Absence is decided on the header's value list, not a `get` that returns the empty string for both "missing" and "present but empty" — a present-but-empty header fails this assertion. |
 | `headerValue` | Named header has specific value |
 | `errorType` | Error type classification |
 | `noError` | Operation completed without error |
 | `requestPath` | URL path of the outgoing request |
+| `requestMethod` | HTTP method of the outgoing request |
+| `requestBody` | Value at `path` (dot-notation key) inside the captured JSON request body. A request that sent no JSON body fails, as does a body that omits the key. |
+| `requestBodyAbsent` | The `path` key is **not** present in the captured JSON request body — the assertion that pins omission-as-clear and body compaction (§18). A request with no JSON body at all satisfies it. |
 | `errorCode` | Error code in structured error |
 | `errorMessage` | Error message text |
 | `errorField` | Specific field value on the error object |
@@ -1732,6 +1857,14 @@ Enumerated from `conformance/schema.json`:
 | `requestScheme` | URL scheme (http/https) of request |
 | `urlOrigin` | Origin validation result (accepted/rejected) |
 | `responseMeta` | Metadata on paginated response (totalCount, truncated) |
+
+<!-- @assertion-types:end -->
+
+The per-request assertions — `headerPresent`, `headerAbsent`, `headerInjected`,
+`requestPath`, `requestMethod`, `requestBody`, `requestBodyAbsent` — take an
+optional `index` naming which recorded request to inspect (0-based; negative
+counts from the end, so `-1` is the last request). It defaults to `0`, and an
+index past the number of recorded requests fails rather than passing vacuously.
 
 ### Test Categories and Owning Sections
 
@@ -1850,6 +1983,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | `provenance-check` | Embedded provenance matches `spec/api-provenance.json` |
 | `sync-spec-version-check` | Smithy service version matches the shared date in `spec/api-provenance.json` |
 | `sync-api-version-check` | `API_VERSION` constants match `openapi.json` `info.version` across all SDKs |
+| `doc-constants-check` | Constants restated in prose match their sources: `@api-version`-marked spans vs. `openapi.json` `info.version`, `@bc3-pin`-marked spans vs. `spec/api-provenance.json`, and §19's `@assertion-types` table vs. `conformance/schema.json`. Only marked spans are checked — `spec/api-gaps/` cites historical bc3 SHAs on purpose — and `spec/doc-constants.json` commits the exact per-file marker count, so neither deleting a marker nor adding an unrecorded one can silence the gate. It also bounds, by count and with a reason, the files allowed to name today's pin unmarked. `make sync-api-version` rewrites the two scalar constants, except in files listed `.writerExcludes` |
 | `url-routes-check` | `go/pkg/basecamp/url-routes.json` (embedded via `//go:embed`) matches regeneration from `openapi.json` |
 | `go-check-drift` | Go generated services match current OpenAPI spec |
 | `kt-check-drift` | Kotlin generated services match current OpenAPI spec (operation-level coverage) |
@@ -1893,6 +2027,8 @@ The following are explicitly NOT part of this specification:
 
 All magic numbers in one place, derived from shipping SDK code (not `rubric-audit.json`).
 
+Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 13 rows are hand-maintained and were read against their cited sources on 2026-08-03 — all 13 matched. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
+
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
 | `MAX_RESPONSE_BODY_BYTES` | 52,428,800 (50 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`; Go/Ruby enforce; TS/Kotlin/Swift do not |
@@ -1904,10 +2040,11 @@ All magic numbers in one place, derived from shipping SDK code (not `rubric-audi
 | `DEFAULT_MAX_RETRIES` | 3 | — | All six SDKs |
 | `DEFAULT_BASE_DELAY` | 1000 | milliseconds | All six SDKs |
 | `DEFAULT_MAX_JITTER` | 100 | milliseconds | All six SDKs |
+| `MAX_BACKOFF_DELAY` | 30,000 (30s) | milliseconds | All six SDKs; ceiling on the §7 backoff term, jitter added on top. Was Go's generated `RetryConfig.MaxDelay` before #577 generalized it |
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
-| `API_VERSION` | `2026-03-23` | — | `openapi.json` `info.version` |
+| `API_VERSION` | `2026-08-02` | — | `openapi.json` `info.version` <!-- @api-version --> |
 | `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
 
 ---
@@ -2087,9 +2224,9 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: 238
-- Idempotent: 77 (flagged with `idempotent: true`)
-- Non-idempotent: 161 (no `idempotent` field, or not present)
+- Total operations: 243
+- Idempotent: 79 (flagged with `idempotent: true`)
+- Non-idempotent: 164 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
 ---

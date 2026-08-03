@@ -322,8 +322,8 @@ data class CreateCommentBody(
     val content: String
 )
 
-/** Request body for UpdateDocument. */
-data class UpdateDocumentBody(
+/** Request body for ReplaceDocument. */
+data class ReplaceDocumentBody(
     val title: String? = null,
     val content: String? = null
 )
@@ -547,6 +547,17 @@ data class GetEverythingUnassignedTodosOptions(
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
+
+/** Request body for CreateFolder. */
+data class CreateFolderBody(
+    val name: String? = null,
+    val projectIds: List<Long>? = null
+)
+
+/** Request body for UpdateFolder. */
+data class UpdateFolderBody(
+    val name: String
+)
 
 /** Options for ListForwardReplies. */
 data class ListForwardRepliesOptions(

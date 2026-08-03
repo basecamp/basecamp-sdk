@@ -255,7 +255,7 @@ class AsyncAccountClient:
 
     @property
     def documents(self):
-        from basecamp.generated.services.documents import AsyncDocumentsService
+        from basecamp.services.documents import AsyncDocumentsService
 
         return self._service("documents", lambda: AsyncDocumentsService(self))
 
@@ -378,6 +378,12 @@ class AsyncAccountClient:
         from basecamp.generated.services.bookmarks import AsyncBookmarksService
 
         return self._service("bookmarks", lambda: AsyncBookmarksService(self))
+
+    @property
+    def folders(self):
+        from basecamp.generated.services.folders import AsyncFoldersService
+
+        return self._service("folders", lambda: AsyncFoldersService(self))
 
     @property
     def drafts(self):

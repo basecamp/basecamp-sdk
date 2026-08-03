@@ -9,9 +9,13 @@ live BC5 by the #11629 tooling. The historical server-side audit lived on the
 
 The SDK's conformance baseline is the pin in
 [`spec/api-provenance.json`](spec/api-provenance.json) — `bc3` `master`
-`338b7a11` as of the 2026-07-23 sync. Contracts documented past the SDK's
-modeled surface are registered in [`spec/api-gaps/`](spec/api-gaps/) until
-absorbed (see AGENTS.md §Provenance is Mandatory for the pin semantics).
+`2c0dafba13` as of the 2026-08-02 sync. <!-- @bc3-pin -->
+That file is the only authority; quote it here rather than a remembered SHA.
+`make sync-api-version` now rewrites the marked line above from it, and
+`make doc-constants-check` fails if the two disagree — this sentence sat two
+repins stale before that existed. Contracts documented past the SDK's modeled
+surface are registered in [`spec/api-gaps/`](spec/api-gaps/) until absorbed
+(see AGENTS.md §Provenance is Mandatory for the pin semantics).
 The `compatibility.bc3-four` pin stays at `9d73959a` (2026-06-12): the
 `four` branch was re-verified on 2026-07-22 with **zero API drift** since —
 no changes under `doc/api/` or the API controllers/views.

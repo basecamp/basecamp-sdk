@@ -16,13 +16,13 @@ module Basecamp
         end
       end
 
-      # Update an existing document
+      # Replace a document with a new complete representation.
       # @param document_id [Integer] document id ID
       # @param title [String, nil] title
       # @param content [String, nil] content
       # @return [Hash] response data
-      def update(document_id:, title: nil, content: nil)
-        with_operation(service: "documents", operation: "update", is_mutation: true, resource_id: document_id) do
+      def replace(document_id:, title: nil, content: nil)
+        with_operation(service: "documents", operation: "replace", is_mutation: true, resource_id: document_id) do
           http_put("/documents/#{document_id}", body: compact_params(title: title, content: content)).json
         end
       end

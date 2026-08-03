@@ -65,7 +65,7 @@ making the absorption journey publicly auditable.
 | [bubble-ups-surface](bubble-ups-surface.md) | absorbed-in-sdk | launch | high |
 | [everything-boosts-withdrawn](everything-boosts-withdrawn.md) | no-json-contract | post-train | medium |
 | [everything-todo-card-filters](everything-todo-card-filters.md) | absorbed-in-sdk | post-train | medium |
-| [folders-api](folders-api.md) | addressed-in-bc3-pr-12384 | master | medium |
+| [folders-api](folders-api.md) | absorbed-in-sdk | master | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -82,14 +82,56 @@ making the absorption journey publicly auditable.
 > **#12384** (`dc6cd10714`) has since shipped full CRUD JSON on `master`
 > (`GET`/`POST /stacks.json`, `GET`/`PUT`/`DELETE /stacks/{id}.json`), live in
 > production with public docs at `basecamp/bc-api` #420 (`401c8ebcc9`). Read
-> `folders-api.md`, not the superseded entry, for the contract.
+> `folders-api.md`, not the superseded entry, for the contract. All five
+> routes are now modelled (`FoldersService`), so `folders-api` is
+> `absorbed-in-sdk`; `stack-doc-and-smithy` keeps its
+> `confirmed-not-api-resource` status deliberately — it records a decision that
+> was correct when made, and rewriting it would destroy the history the
+> supersession note exists to preserve.
 > `everything-boosts-withdrawn` is likewise *subtractive*: it records BC5
 > withdrawing the account-wide `/boosts.json` feed (BC3 #12464, reintroduction
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `e83b2733` (2026-07-30). The `dffa7e11..e83b2733`
-> range (96 commits) contains exactly two API-contract changes, both handled:
+> The provenance pin is `2c0dafba13` (2026-08-02). <!-- @bc3-pin -->
+> That line is checked by `make doc-constants-check` and deliberately *not*
+> rewritten by `make sync-api-version`: this file is in
+> `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
+> the range triage below and cannot advance without that triage advancing too.
+> The ranges themselves are settled history and stay unmarked.
+>
+> The `d0edc1283b..2c0dafba13` range (11 commits) contains exactly **one**
+> API-contract change: BC3 **#12384** (`dc6cd10714`, the Folders API),
+> absorbed here as `FoldersService` and recorded in
+> [`folders-api.md`](folders-api.md). BC3 **#12494** (`344581a379`) and
+> **#12501** (`2c0dafba13`) preserve a draft's subscribers when an update does
+> not address them — behaviour fixes to already-modelled endpoints that add
+> prose to five `doc/api` sections without adding a route or changing a payload
+> shape, confirmed by regenerating `spec/bc3-routes.json`, whose only delta is
+> the five `/stacks` routes. BC3 **#12488** (`19956c5579`) reads alarming
+> because it deletes a `request.format.json?` branch, but it moves the **web**
+> deprioritize path onto the exact-target contract the JSON API has had since
+> bc3#12483 (absorbed in SDK #528): the removed branch returned `nil` for JSON,
+> and the replacement returns the same recording's own assignment, so
+> `DELETE /my/priorities/{id}.json` still targets exactly the id in the URL and
+> still answers `204`. The remaining seven commits are four dev-tooling, two
+> Turbo-morph web-only, and one push-notification backend swap.
+>
+> Earlier pins, kept as the triage record. Each names the pin it was written
+> against, in the past tense, because that is what it is — a range triaged
+> once, at the repin that set its end. Only the sentence above is a claim
+> about today.
+>
+> The pin was `d0edc128` (2026-07-31). The `e83b2733..d0edc128` range was
+> triaged at the Up Next priority-writes repin (SDK #528): the only `doc/api`
+> or routes change in it is `my_assignments.md`'s exact-target Deprioritize
+> contract (BC3 **#12483**), absorbed by that PR and recorded in
+> [`my-assignments-priorities.md`](my-assignments-priorities.md); everything
+> else (BC3 #12478/#12479/#12480/#12481/#12444, a completion-lock race fix and
+> relay-revocation ops tooling) is wire-neutral internals.
+>
+> The pin was `e83b2733` (2026-07-30); the `dffa7e11..e83b2733` range (96
+> commits) contains exactly two API-contract changes, both handled:
 > BC3 **#12464** (`b06acfac1`, boosts-feed withdrawal — absorbed by the SDK's
 > removal, recorded in `everything-boosts-withdrawn.md`) and BC3 **#12442**
 > (`b238a0743`, `assignee_ids[]`/`due` filters on the everything to-do/card

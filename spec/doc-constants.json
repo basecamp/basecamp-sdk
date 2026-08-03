@@ -1,0 +1,58 @@
+{
+  "$comment": [
+    "Policy for scripts/sync-doc-constants.rb (make doc-constants-check).",
+    "",
+    "markerCounts — the EXACT number of spans each file carries for a given HTML",
+    "comment. Any deviation fails: too few means a claim was deleted or unmarked,",
+    "too many means one was added without being recorded here (and so would not be",
+    "missed if it later went), and a marked file absent from this list is not",
+    "protected at all. Adding or moving a claim is a one-line edit in the same",
+    "commit. This was a minimum until review pointed out that a minimum protects",
+    "only the first N claims in a file — a later addition could be deleted again",
+    "with the count still satisfied.",
+    "",
+    "writerExcludes — files whose marked spans the WRITER (--write, reached from",
+    "`make generate` via sync-api-version) must never rewrite. The gate still",
+    "checks them; it just refuses to fix them silently, so drift surfaces as a",
+    "failed `make check` a human has to answer instead of a line that moved on its",
+    "own inside a generated commit. The value is the reason, and the reason is the",
+    "test: exclude a file only when the marked value cannot move without prose",
+    "around it moving too.",
+    "",
+    "unmarkedPinCitations — files allowed to name the CURRENT bc3 revision in",
+    "prose without a <!-- @bc3-pin --> marker. The default is to reject that,",
+    "because an unmarked sentence stating today's pin is how every stale pin",
+    "restatement in spec/api-gaps/ was born. An entry asserts those SHAs are",
+    "as-of facts bound to something fixed (a PR, a verification), not claims",
+    "about the pin — and is bounded by an exact count for the same reason",
+    "markerCounts is: an unbounded file grant would wave through whatever the",
+    "file grows next, in the files likeliest to grow a real class-A sentence.",
+    "The N+1th citation fails until someone reads it and restates the number;",
+    "fewer than N means the entry has outlived what it described."
+  ],
+  "markerCounts": {
+    "api-version": {
+      "SPEC.md": 2
+    },
+    "bc3-pin": {
+      "COORDINATION.md": 1,
+      "spec/api-gaps/README.md": 1
+    },
+    "assertion-types": {
+      "SPEC.md": 1
+    }
+  },
+  "writerExcludes": {
+    "spec/api-gaps/README.md": "the pin sentence heads a triage narrative — advancing the SHA without adding the new range's triage would make the one document whose job is recording that triage assert a range nobody triaged"
+  },
+  "unmarkedPinCitations": {
+    "spec/api-gaps/README.md": {
+      "count": 2,
+      "reason": "the two ways a range triage names its own endpoint, which is by definition the pin that repin set: the d0edc1283b..2c0dafba13 range itself, and BC3 #12501 cited as the commit that shipped the draft-subscribers fix. Both are bound to that triage and stay true after the next repin. The pin sentence is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file"
+    },
+    "spec/api-gaps/folders-api.md": {
+      "count": 1,
+      "reason": "names the d0edc1283b -> 2c0dafba13 repin as the event that first brought doc/api/sections/folders.md into range — an as-of fact about that repin, still true after the next one"
+    }
+  }
+}

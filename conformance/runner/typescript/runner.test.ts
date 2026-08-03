@@ -300,6 +300,29 @@ async function executeOperation(
         await client.bookmarks.deleteBookmark(Number(params.recordingId));
         break;
 
+      case "ListFolders":
+        await client.folders.listFolders();
+        break;
+
+      case "GetFolder":
+        await client.folders.getFolder(Number(params.folderId));
+        break;
+
+      case "CreateFolder":
+        await client.folders.createFolder({
+          name: body.name as string | undefined,
+          projectIds: body.project_ids as number[] | undefined,
+        });
+        break;
+
+      case "UpdateFolder":
+        await client.folders.updateFolder(Number(params.folderId), { name: body.name as string });
+        break;
+
+      case "DeleteFolder":
+        await client.folders.deleteFolder(Number(params.folderId));
+        break;
+
       case "UpdateTodo":
         // Merge-safe update: GET then full PUT; only fixture-present keys are passed.
         await client.todos.update(Number(params.todoId), mapTodoWireFields(body));
@@ -387,6 +410,33 @@ async function executeOperation(
           Number(params.id),
           mapTodolistWireFields(body) as { name: string },
         );
+        break;
+
+      case "UpdateDocument":
+        // Synthetic scenario key: the merge-safe composite, not a wire
+        // operation. GET then full PUT; only fixture-present keys are passed.
+        await client.documents.update(Number(params.documentId), {
+          ...(body.title !== undefined ? { title: String(body.title) } : {}),
+          ...(body.content !== undefined ? { content: String(body.content) } : {}),
+        });
+        break;
+
+      case "EditDocument":
+        // Synthetic scenario key: read-modify-write via the edit callback,
+        // assigning each fixture-present key onto the DocumentFields member.
+        await client.documents.edit(Number(params.documentId), (d) => {
+          if (body.title !== undefined) d.title = String(body.title);
+          if (body.content !== undefined) d.content = String(body.content);
+        });
+        break;
+
+      case "ReplaceDocument":
+        // Verbatim sparse PUT — no GET. Neither field is required server-side,
+        // so an omitted one stays omitted and the server clears it.
+        await client.documents.replace(Number(params.documentId), {
+          ...(body.title !== undefined ? { title: String(body.title) } : {}),
+          ...(body.content !== undefined ? { content: String(body.content) } : {}),
+        });
         break;
 
       case "GetTimesheetEntry":

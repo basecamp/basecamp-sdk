@@ -461,6 +461,11 @@ class CreateEventBoostRequestContent(TypedDict):
     content: str
 
 
+class CreateFolderRequestContent(TypedDict):
+    name: NotRequired[str]
+    project_ids: NotRequired[list[int]]
+
+
 class CreateForwardReplyRequestContent(TypedDict):
     content: str
 
@@ -724,6 +729,37 @@ class EverythingFile(TypedDict):
 
 class FieldKeyedErrors(TypedDict):
     errors: FieldErrorMap
+
+
+class Folder(TypedDict):
+    bucket_ids: list[int]
+    color: str | None
+    created_at: str
+    gauges_url: str | None
+    id: int
+    image_url: str | None
+    is_emoji_only_name: bool
+    name: str
+    star_url: str
+    type: str
+    updated_at: str
+    url: str
+
+
+class FolderWithProjects(TypedDict):
+    bucket_ids: list[int]
+    color: str | None
+    created_at: str
+    gauges_url: str | None
+    id: int
+    image_url: str | None
+    is_emoji_only_name: bool
+    name: str
+    projects: list[Project]
+    star_url: str
+    type: str
+    updated_at: str
+    url: str
 
 
 class ForbiddenErrorResponseContent(TypedDict):
@@ -1373,6 +1409,11 @@ class ReorderUpNextRequestContent(TypedDict):
     source_id: int
 
 
+class ReplaceDocumentRequestContent(TypedDict):
+    content: NotRequired[str]
+    title: NotRequired[str]
+
+
 class ReplaceTodoRequestContent(TypedDict):
     assignee_ids: NotRequired[list[int]]
     completion_subscriber_ids: NotRequired[list[int]]
@@ -1828,9 +1869,8 @@ class UpdateCommentRequestContent(TypedDict):
     content: str
 
 
-class UpdateDocumentRequestContent(TypedDict):
-    content: NotRequired[str]
-    title: NotRequired[str]
+class UpdateFolderRequestContent(TypedDict):
+    name: str
 
 
 class UpdateGaugeNeedleRequestContent(TypedDict):

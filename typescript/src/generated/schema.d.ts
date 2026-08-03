@@ -1002,8 +1002,31 @@ export interface paths {
         };
         /** @description Get a single document by id */
         get: operations["GetDocument"];
-        /** @description Update an existing document */
-        put: operations["UpdateDocument"];
+        /**
+         * @description Replace a document with a new complete representation.
+         *     The request body is the document's full writable state: any writable field
+         *     omitted from the request is cleared server-side. Omitting content clears it;
+         *     omitting title clears it too, and the document then reads back as
+         *     "Untitled" (Document#title falls back when blank).
+         *     Neither field is required. BC3 builds a brand-new Document from the
+         *     permitted params and swaps the recordable wholesale, and neither attribute
+         *     carries a presence validation — so an omission is a 200 that clears, not a
+         *     422. What BC3 does require is the wrapping document object, which Rails
+         *     synthesizes from a flat body, so a request naming neither field is a 400.
+         *     Publishing a draft (status: "active") is not modeled: the SDK sends only
+         *     title and content, and BC3 rejects a status-only update for the same
+         *     reason it 400s an empty body.
+         *     Subscribers are the one exception to omission-clears. A drafted document
+         *     keeps its current subscribers when the request addresses neither
+         *     subscriptions nor notify, so a full-representation PUT that mentions
+         *     neither is safe on a draft.
+         *     To set some fields while preserving the rest, use the SDK's merge-safe
+         *     update or edit methods, which GET the current document and PUT the full
+         *     representation back. Those read-modify-write helpers are not atomic:
+         *     a concurrent write between the GET and PUT is overwritten (last write
+         *     wins for the whole representation; the window is one round-trip).
+         */
+        put: operations["ReplaceDocument"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2569,6 +2592,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stacks.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List the authenticated user's folders in home-screen order.
+         *
+         *     Returns a bare array with no pagination envelope. Items are the base folder
+         *     shape: they carry `bucket_ids` but **not** the expanded `projects`, which
+         *     only the single-folder operations return.
+         */
+        get: operations["ListFolders"];
+        put?: never;
+        /**
+         * @description Create a folder for the authenticated user and file the given projects into it.
+         *
+         *     Returns 201 with the new folder and its expanded `projects`, placed at the
+         *     top of the home screen. Filing an all-access project the user has not joined
+         *     **grants** them access to it. Every id is preflighted: if any is archived,
+         *     trashed, or an invitation-only project the user is not on, the whole request
+         *     fails with 404 and nothing is created — there is no partial success.
+         */
+        post: operations["CreateFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/stacks/{folderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get one folder, with the projects grouped inside it expanded under `projects`. */
+        get: operations["GetFolder"];
+        /**
+         * @description Rename a folder.
+         *
+         *     `name` is the only writable attribute; a folder's projects, ordering, and
+         *     image are managed elsewhere and an image parameter sent here is ignored.
+         */
+        put: operations["UpdateFolder"];
+        post?: never;
+        /**
+         * @description Delete a folder and unpin its projects from the home screen (returns 204 No Content).
+         *
+         *     The projects themselves are not deleted and are not moved back out onto the
+         *     home screen; they simply stop appearing there until pinned again.
+         */
+        delete: operations["DeleteFolder"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/templates.json": {
         parameters: {
             query?: never;
@@ -3656,6 +3740,18 @@ export interface components {
             content: string;
         };
         CreateEventBoostResponseContent: components["schemas"]["Boost"];
+        CreateFolderRequestContent: {
+            /** @description The folder's name. Defaults to `New folder` when blank, null, or omitted. */
+            name?: string;
+            /**
+             * @description IDs of the projects to file into the folder — the same ids the folder
+             *     reports back as `bucket_ids` and expands as `projects`. This does not
+             *     round-trip under its own name. Omit it, or send null or an empty array,
+             *     for an empty folder.
+             */
+            project_ids?: number[];
+        };
+        CreateFolderResponseContent: components["schemas"]["FolderWithProjects"];
         CreateForwardReplyRequestContent: {
             content: string;
         };
@@ -4000,6 +4096,92 @@ export interface components {
         FieldValidationErrorResponseContent: components["schemas"]["FieldKeyedErrors"];
         /** @enum {string} */
         FirstWeekDay: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
+        /**
+         * @description A folder as the list returns it: the base shape, without expanded projects.
+         *
+         *     Deliberately distinct from FolderWithProjects. A single shape with an
+         *     optional `projects` member would make every list item declare a field the
+         *     list response never populates.
+         */
+        Folder: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** @description Always the string `Stack` — the wire type kept its pre-rename name. */
+            type: string;
+            created_at: string;
+            updated_at: string;
+            /**
+             * @description IDs of the projects filed into this folder. Same ids as `project_ids` on
+             *     create, and the ids FolderWithProjects expands under `projects`.
+             */
+            bucket_ids: number[];
+            is_emoji_only_name: boolean;
+            star_url: string;
+            /**
+             * @description Gauges URL covering this folder's projects; always emitted, `null` when
+             *     none of them is gauged. `@required` models the presence — the nullability
+             *     is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:
+             *     ["string","null"]), so Go types it *string because the value is nullable,
+             *     not because the key is optional.
+             */
+            gauges_url: string | null;
+            /**
+             * @description The viewer's colour customization for this folder; always emitted, `null`
+             *     when unset. Required-and-nullable, like gauges_url.
+             */
+            color: string | null;
+            /**
+             * @description The viewer's folder image; always emitted, `null` when unset. Read-only:
+             *     there is no image create or update in v1. Required-and-nullable, like
+             *     gauges_url.
+             */
+            image_url: string | null;
+            url: string;
+        };
+        /**
+         * @description One folder plus the projects grouped inside it, as get/create/update return it.
+         *
+         *     The `projects` entries are the shared project projection, minus the
+         *     `bookmarked` flag that only the projects index adds.
+         */
+        FolderWithProjects: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** @description Always the string `Stack` — the wire type kept its pre-rename name. */
+            type: string;
+            created_at: string;
+            updated_at: string;
+            /**
+             * @description IDs of the projects filed into this folder — the same set `projects`
+             *     expands.
+             */
+            bucket_ids: number[];
+            is_emoji_only_name: boolean;
+            star_url: string;
+            /**
+             * @description Gauges URL covering this folder's projects; always emitted, `null` when
+             *     none of them is gauged. Required-and-nullable (see Folder.gauges_url).
+             */
+            gauges_url: string | null;
+            /**
+             * @description The viewer's colour customization for this folder; always emitted, `null`
+             *     when unset. Required-and-nullable.
+             */
+            color: string | null;
+            /**
+             * @description The viewer's folder image; always emitted, `null` when unset. Read-only.
+             *     Required-and-nullable.
+             */
+            image_url: string | null;
+            url: string;
+            /**
+             * @description The projects filed into this folder, expanded. Always emitted; empty for
+             *     an empty folder.
+             */
+            projects: components["schemas"]["Project"][];
+        };
         ForbiddenErrorResponseContent: {
             error: string;
             message?: string;
@@ -4168,6 +4350,7 @@ export interface components {
         GetEverythingOverdueTodosResponseContent: components["schemas"]["Todo"][];
         GetEverythingUnassignedCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
         GetEverythingUnassignedTodosResponseContent: components["schemas"]["BucketTodosGroup"][];
+        GetFolderResponseContent: components["schemas"]["FolderWithProjects"];
         GetForwardReplyResponseContent: components["schemas"]["ForwardReply"];
         GetForwardResponseContent: components["schemas"]["Forward"];
         GetGaugeNeedleResponseContent: components["schemas"]["GaugeNeedle"];
@@ -4327,6 +4510,7 @@ export interface components {
         ListDocumentsResponseContent: components["schemas"]["Document"][];
         ListEventBoostsResponseContent: components["schemas"]["Boost"][];
         ListEventsResponseContent: components["schemas"]["Event"][];
+        ListFoldersResponseContent: components["schemas"]["Folder"][];
         ListForwardRepliesResponseContent: components["schemas"]["ForwardReply"][];
         ListForwardsResponseContent: components["schemas"]["Forward"][];
         ListGaugeNeedlesResponseContent: components["schemas"]["GaugeNeedle"][];
@@ -4951,6 +5135,11 @@ export interface components {
              */
             position: number;
         };
+        ReplaceDocumentRequestContent: {
+            title?: string;
+            content?: string;
+        };
+        ReplaceDocumentResponseContent: components["schemas"]["Document"];
         ReplaceTodoRequestContent: {
             content: string;
             description?: string;
@@ -5653,11 +5842,14 @@ export interface components {
             content: string;
         };
         UpdateCommentResponseContent: components["schemas"]["Comment"];
-        UpdateDocumentRequestContent: {
-            title?: string;
-            content?: string;
+        UpdateFolderRequestContent: {
+            /**
+             * @description The folder's new name. Blank is rejected with 422 — unlike create, update
+             *     does not fall back to a default name.
+             */
+            name: string;
         };
-        UpdateDocumentResponseContent: components["schemas"]["Document"];
+        UpdateFolderResponseContent: components["schemas"]["FolderWithProjects"];
         UpdateGaugeNeedleRequestContent: {
             gauge_needle?: components["schemas"]["GaugeNeedleUpdatePayload"];
         };
@@ -10927,7 +11119,7 @@ export interface operations {
             };
         };
     };
-    UpdateDocument: {
+    ReplaceDocument: {
         parameters: {
             query?: never;
             header?: never;
@@ -10938,17 +11130,17 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["UpdateDocumentRequestContent"];
+                "application/json": components["schemas"]["ReplaceDocumentRequestContent"];
             };
         };
         responses: {
-            /** @description UpdateDocument 200 response */
+            /** @description ReplaceDocument 200 response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UpdateDocumentResponseContent"];
+                    "application/json": components["schemas"]["ReplaceDocumentResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
@@ -18216,6 +18408,334 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GetSearchMetadataResponseContent"];
                 };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListFolders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListFolders 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListFoldersResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateFolderRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateFolder 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateFolderResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetFolder 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetFolderResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFolderRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateFolder 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateFolderResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteFolder 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description UnauthorizedError 401 response */
             401: {

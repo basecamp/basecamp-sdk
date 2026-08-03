@@ -818,6 +818,43 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        // Synthetic scenario key (not a wire operation): the merge-safe
+        // composite, GET then a full PUT of {title, content}.
+        "UpdateDocument" -> {
+            val documentId = tc.pathParams.longParam("documentId")
+            val rb = tc.requestBody
+            account.documents.update(documentId, UpdateDocumentBody(
+                title = rb?.get("title")?.jsonPrimitive?.contentOrNull,
+                content = rb?.get("content")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
+        // Synthetic scenario key (not a wire operation): exercises the
+        // read-modify-write edit closure by assigning each fixture key onto
+        // the corresponding DocumentFields member.
+        "EditDocument" -> {
+            val documentId = tc.pathParams.longParam("documentId")
+            val rb = tc.requestBody
+            account.documents.edit(documentId) {
+                rb?.get("title")?.jsonPrimitive?.content?.let { title = it }
+                rb?.get("content")?.jsonPrimitive?.content?.let { content = it }
+            }
+            DispatchResult()
+        }
+
+        // Raw single PUT, no read-before-write: neither field is required, and
+        // an omitted one is omitted on the wire (the server clears it).
+        "ReplaceDocument" -> {
+            val documentId = tc.pathParams.longParam("documentId")
+            val rb = tc.requestBody
+            account.documents.replace(documentId, ReplaceDocumentBody(
+                title = rb?.get("title")?.jsonPrimitive?.contentOrNull,
+                content = rb?.get("content")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
         "CreateTodo" -> {
             val todolistId = tc.pathParams.longParam("todolistId")
             val content = tc.requestBody.stringParam("content")
@@ -907,6 +944,40 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
 
         "DeleteBookmark" -> {
             account.bookmarks.deleteBookmark(tc.pathParams.longParam("recordingId"))
+            DispatchResult()
+        }
+
+        "ListFolders" -> {
+            account.folders.listFolders()
+            DispatchResult()
+        }
+
+        "GetFolder" -> {
+            account.folders.getFolder(tc.pathParams.longParam("folderId"))
+            DispatchResult()
+        }
+
+        "CreateFolder" -> {
+            val rb = tc.requestBody
+            account.folders.createFolder(
+                CreateFolderBody(
+                    name = rb?.get("name")?.jsonPrimitive?.contentOrNull,
+                    projectIds = rb?.get("project_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                )
+            )
+            DispatchResult()
+        }
+
+        "UpdateFolder" -> {
+            account.folders.updateFolder(
+                tc.pathParams.longParam("folderId"),
+                UpdateFolderBody(name = tc.requestBody.stringParam("name")),
+            )
+            DispatchResult()
+        }
+
+        "DeleteFolder" -> {
+            account.folders.deleteFolder(tc.pathParams.longParam("folderId"))
             DispatchResult()
         }
 

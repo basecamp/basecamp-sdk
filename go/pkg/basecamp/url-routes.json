@@ -871,7 +871,7 @@
       "resource": "Files",
       "operations": {
         "GET": "GetDocument",
-        "PUT": "UpdateDocument"
+        "PUT": "ReplaceDocument"
       },
       "params": {
         "accountId": {
@@ -2159,6 +2159,39 @@
         "accountId": {
           "role": "account",
           "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/stacks",
+      "resource": "Folders",
+      "operations": {
+        "GET": "ListFolders",
+        "POST": "CreateFolder"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/stacks/{folderId}",
+      "resource": "Folders",
+      "operations": {
+        "DELETE": "DeleteFolder",
+        "GET": "GetFolder",
+        "PUT": "UpdateFolder"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "folderId": {
+          "role": "recording",
+          "type": "int64"
         }
       }
     },

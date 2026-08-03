@@ -1,4 +1,10 @@
 from basecamp.services.authorization import AsyncAuthorizationService, AuthorizationService
+from basecamp.services.documents import (
+    AsyncDocumentEdit,
+    AsyncDocumentsService,
+    DocumentEdit,
+    DocumentsService,
+)
 from basecamp.services.todolists import (
     AsyncTodolistEdit,
     AsyncTodolistsService,
@@ -11,6 +17,10 @@ from basecamp.services.uploads import AsyncUploadsService, UploadsService
 __all__ = [
     "AuthorizationService",
     "AsyncAuthorizationService",
+    "DocumentsService",
+    "AsyncDocumentsService",
+    "DocumentEdit",
+    "AsyncDocumentEdit",
     "TodolistsService",
     "AsyncTodolistsService",
     "TodolistEdit",

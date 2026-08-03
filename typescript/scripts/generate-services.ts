@@ -210,7 +210,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
     Attachments: ["CreateAttachment"],
     Uploads: ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"],
     Vaults: ["GetVault", "UpdateVault", "ListVaults", "CreateVault"],
-    Documents: ["GetDocument", "UpdateDocument", "ListDocuments", "CreateDocument"],
+    Documents: ["GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"],
   },
   Automation: {
     Tools: ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
@@ -318,6 +318,10 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   GetMyProfile: "me",
   // "bookmark(id)" reads as the action; keep the getter explicit.
   GetBookmark: "getBookmark",
+  // "folder(id)" reads as a noun with no verb; the rest of the family is
+  // listFolders/createFolder/updateFolder/deleteFolder, and Ruby and Python
+  // already emit get_folder. Keep all six SDKs on one name.
+  GetFolder: "getFolder",
   // "myNote()" reads oddly; keep the getter explicit.
   GetMyNote: "getMyNote",
   // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.
@@ -472,6 +476,8 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Subscription: ["Subscription", "entity"],
   Bookmark: ["Bookmark", "entity"],
   BookmarkStatus: ["BookmarkStatus", "entity"],
+  Folder: ["Folder", "entity"],
+  FolderWithProjects: ["FolderWithProjects", "entity"],
   Draft: ["Draft", "entity"],
   MyNote: ["MyNote", "entity"],
   Calendar: ["Calendar", "entity"],

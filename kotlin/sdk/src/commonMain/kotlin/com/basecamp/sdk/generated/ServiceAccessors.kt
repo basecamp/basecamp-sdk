@@ -80,8 +80,8 @@ val AccountClient.comments: CommentsService
     get() = service("Comments") { CommentsService(this) }
 
 /** Documents operations. */
-val AccountClient.documents: DocumentsService
-    get() = service("Documents") { DocumentsService(this) }
+val AccountClient.documents: com.basecamp.sdk.services.DocumentsService
+    get() = service("Documents") { com.basecamp.sdk.services.DocumentsService(this) }
 
 /** Drafts operations. */
 val AccountClient.drafts: DraftsService
@@ -94,6 +94,10 @@ val AccountClient.events: EventsService
 /** Everything operations. */
 val AccountClient.everything: EverythingService
     get() = service("Everything") { EverythingService(this) }
+
+/** Folders operations. */
+val AccountClient.folders: FoldersService
+    get() = service("Folders") { FoldersService(this) }
 
 /** Forwards operations. */
 val AccountClient.forwards: ForwardsService

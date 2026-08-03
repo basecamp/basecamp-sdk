@@ -51,7 +51,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "Attachments" to listOf("CreateAttachment"),
         "Uploads" to listOf("GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"),
         "Vaults" to listOf("GetVault", "UpdateVault", "ListVaults", "CreateVault"),
-        "Documents" to listOf("GetDocument", "UpdateDocument", "ListDocuments", "CreateDocument"),
+        "Documents" to listOf("GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"),
     ),
     "Automation" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),
@@ -117,7 +117,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
  * com.basecamp.sdk.services can add convenience methods (e.g. Todos
  * gains merge-safe update/edit on top of the generated replace).
  */
-val EXTENSIBLE_SERVICES = setOf("Todos", "Todolists", "Cards", "Uploads")
+val EXTENSIBLE_SERVICES = setOf("Todos", "Todolists", "Cards", "Uploads", "Documents")
 
 /**
  * Services whose accessor constructs and declares a hand-written subclass
@@ -130,6 +130,7 @@ val HAND_WRITTEN_SERVICES = mapOf(
     "Todolists" to "com.basecamp.sdk.services.TodolistsService",
     "Cards" to "com.basecamp.sdk.services.CardsService",
     "Uploads" to "com.basecamp.sdk.services.UploadsService",
+    "Documents" to "com.basecamp.sdk.services.DocumentsService",
 )
 
 /**
@@ -169,6 +170,10 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "GetMyProfile" to "me",
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark" to "getBookmark",
+    // "folder(id)" reads as a noun with no verb; the rest of the family is
+    // listFolders/createFolder/updateFolder/deleteFolder, and Ruby and Python
+    // already emit get_folder. Keep all six SDKs on one name.
+    "GetFolder" to "getFolder",
     // "myNote()" reads oddly; keep the getter explicit.
     "GetMyNote" to "getMyNote",
     // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.
@@ -324,6 +329,8 @@ val TYPE_ALIASES = mapOf(
     "Subscription" to "Subscription",
     "Bookmark" to "Bookmark",
     "BookmarkStatus" to "BookmarkStatus",
+    "Folder" to "Folder",
+    "FolderWithProjects" to "FolderWithProjects",
     "Draft" to "Draft",
     "MyNote" to "MyNote",
     "Calendar" to "Calendar",

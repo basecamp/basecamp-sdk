@@ -666,10 +666,12 @@ module Basecamp
     end
 
     def calculate_delay(attempt, server_retry_after)
+      # Retry-After is server-directed and exempt from the ceiling (SPEC §7);
+      # only the locally-computed term saturates.
       return server_retry_after if server_retry_after&.positive?
 
-      # Exponential backoff: base_delay * 2^(attempt-1) + jitter
-      base = @config.base_delay * (2**(attempt - 1))
+      # Exponential backoff: min(base_delay * 2^(attempt-1), ceiling) + jitter
+      base = Config.saturating_backoff(@config.base_delay, attempt)
       jitter = rand * @config.max_jitter
       base + jitter
     end

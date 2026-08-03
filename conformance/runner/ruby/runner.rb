@@ -173,6 +173,16 @@ class OperationMapper
       @account.bookmarks.create_bookmark(recording_id: path_params["recordingId"])
     when "DeleteBookmark"
       @account.bookmarks.delete_bookmark(recording_id: path_params["recordingId"])
+    when "ListFolders"
+      @account.folders.list_folders
+    when "GetFolder"
+      @account.folders.get_folder(folder_id: path_params["folderId"])
+    when "CreateFolder"
+      @account.folders.create_folder(name: body["name"], project_ids: body["project_ids"])
+    when "UpdateFolder"
+      @account.folders.update_folder(folder_id: path_params["folderId"], name: body["name"])
+    when "DeleteFolder"
+      @account.folders.delete_folder(folder_id: path_params["folderId"])
     when "CreateTodosetTodo"
       @account.todos.create_todoset_todo(
         bucket_id: path_params["bucketId"],
@@ -279,6 +289,16 @@ class OperationMapper
     when "ReplaceTodolist"
       # Raw single PUT, no read-before-write: omitted fields stay omitted.
       @account.todolists.replace(id: path_params["id"], **todolist_write_kwargs(body))
+    when "UpdateDocument"
+      # Merge-safe composite: GET then PUT of the full {title, content}.
+      @account.documents.update(document_id: path_params["documentId"], **document_write_kwargs(body))
+    when "EditDocument"
+      @account.documents.edit(document_id: path_params["documentId"]) do |doc|
+        (body || {}).each { |key, value| doc.public_send("#{key}=", value) }
+      end
+    when "ReplaceDocument"
+      # Raw single PUT, no read-before-write: omitted fields stay omitted.
+      @account.documents.replace(document_id: path_params["documentId"], **document_write_kwargs(body))
     when "GetEverythingMessages"
       @account.everything.get_everything_messages.to_a
     when "GetEverythingComments"
@@ -356,9 +376,15 @@ class OperationMapper
   # signal and compact_params strips it on the raw path, so an absent key must
   # stay absent rather than arriving as an explicit nil.
   TODOLIST_WRITE_KEYS = %w[name description].freeze
+  DOCUMENT_WRITE_KEYS = %w[title content].freeze
 
   def todolist_write_kwargs(body)
     TODOLIST_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
+      .to_h { |key| [key.to_sym, body[key]] }
+  end
+
+  def document_write_kwargs(body)
+    DOCUMENT_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
       .to_h { |key| [key.to_sym, body[key]] }
   end
 end

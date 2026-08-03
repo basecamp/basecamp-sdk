@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 
@@ -11,6 +12,67 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_BASE_DELAY = 1.0
 DEFAULT_MAX_JITTER = 0.1
 DEFAULT_MAX_PAGES = 10_000
+
+# Ceiling on the backoff term (SPEC section 7, "Backoff Ceiling"), in seconds.
+# Jitter is added after the clamp, so the longest single backoff sleep is this
+# plus max_jitter.
+MAX_BACKOFF_DELAY = 30.0
+
+
+def _saturating_exponent(base_delay: float) -> int:
+    """Smallest exponent ``e`` with ``base_delay * 2**e >= MAX_BACKOFF_DELAY``.
+
+    Derived from the *configured* base rather than assumed. A fixed exponent cap
+    plus a trailing ``min(..., MAX_BACKOFF_DELAY)`` looks equivalent and is not:
+    for a small enough base the capped product never reaches the ceiling, so the
+    delay plateaus below it forever. At ``base_delay=1e-30`` a cap of 64 pins
+    every attempt from 65 on at ~1.84e-11s — a tight retry loop, which is the
+    failure SPEC section 7's ceiling exists to prevent, not an instance of it.
+
+    Computed in the LOG domain rather than as ``MAX_BACKOFF_DELAY / base_delay``.
+    That ratio overflows to infinity for any base below ~1.67e-307, and falling
+    back to a fixed 1023 then saturates *early*: ``base_delay=1e-307`` reaches
+    only ~8.99s at exponent 1023, so returning the 30s ceiling there overstates
+    the specified term instead of tracking it. The log form has no such cliff, so
+    the numeric backstop is gone entirely rather than merely made rarer.
+    """
+    # log2 is correctly rounded but the subtraction is not, so the estimate can
+    # land one either side of the true boundary. Both corrections are bounded and
+    # evaluate the term with ldexp, which scales directly and never forms 2**e.
+    exponent = max(math.ceil(math.log2(MAX_BACKOFF_DELAY) - math.log2(base_delay)), 0)
+    while exponent > 0 and math.ldexp(base_delay, exponent - 1) >= MAX_BACKOFF_DELAY:
+        exponent -= 1
+    while math.ldexp(base_delay, exponent) < MAX_BACKOFF_DELAY:
+        exponent += 1
+    return exponent
+
+
+def saturating_backoff(base_delay: float, attempt: int) -> float:
+    """Exponential backoff for a 1-based attempt, saturating at MAX_BACKOFF_DELAY.
+
+    The clamp is load-bearing rather than defensive. Python's ``**`` does not
+    overflow — it promotes — so ``base_delay * (2 ** (attempt - 1))`` for a long
+    failure streak either raises ``OverflowError`` converting an arbitrary-
+    precision integer to a float, or hands ``time.sleep`` a delay measured in
+    geological time. Neither is a retry.
+
+    The exponent is compared against the point where the term reaches the
+    ceiling *before* the power is evaluated, so no intermediate leaves the float
+    range and the term saturates AT the ceiling for every positive base — the
+    same contract Go, Kotlin and Swift get from comparing their multiplier
+    against ``MAX_BACKOFF_DELAY / base`` before multiplying.
+
+    Below that point the term is scaled with ``math.ldexp``, which computes
+    ``base * 2**e`` directly. ``2**e`` would be an arbitrary-precision integer
+    that raises OverflowError on conversion long before the *product* leaves the
+    float range, which is what forced the fixed cap this replaces.
+    """
+    if base_delay <= 0:
+        return 0.0
+    exponent = max(attempt - 1, 0)
+    if exponent >= _saturating_exponent(base_delay):
+        return MAX_BACKOFF_DELAY
+    return min(math.ldexp(base_delay, exponent), MAX_BACKOFF_DELAY)
 
 
 @dataclass(frozen=True)

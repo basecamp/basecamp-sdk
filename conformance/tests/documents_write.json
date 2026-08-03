@@ -1,0 +1,385 @@
+[
+  {
+    "name": "update-merge: title-only update preserves the content",
+    "description": "The merge-safe update GETs the current document, overlays only the explicitly-set fields, and PUTs the full representation back to the canonical flat route. A title-only update must carry the existing content over: BC3 rebuilds the recordable from the permitted params alone, so a sparse PUT that omits content clears it.",
+    "operation": "UpdateDocument",
+    "method": "PUT",
+    "path": "/documents/{documentId}",
+    "pathParams": {
+      "documentId": 456
+    },
+    "requestBody": {
+      "title": "Q3 Plan"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Project Overview",
+          "inherits_status": true,
+          "type": "Document",
+          "url": "https://3.basecampapi.com/999/buckets/1/documents/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/documents/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999/buckets/1/vaults/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/vaults/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "content": "<div>Milestones and owners.</div>",
+          "content_attachments": []
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:05:00Z",
+          "title": "Q3 Plan",
+          "inherits_status": true,
+          "type": "Document",
+          "url": "https://3.basecampapi.com/999/buckets/1/documents/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/documents/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999/buckets/1/vaults/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/vaults/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "content": "<div>Milestones and owners.</div>",
+          "content_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/documents/456",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/documents/456",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "title",
+        "expected": "Q3 Plan",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "content",
+        "expected": "<div>Milestones and owners.</div>",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "documents",
+      "write",
+      "merge"
+    ]
+  },
+  {
+    "name": "edit-clear: setting content empty clears it while the title is preserved",
+    "description": "The edit closure receives the document's full writable state; the runner assigns each requestBody key onto the corresponding field. Clearing content (set empty) must arrive present-and-empty in the PUT body — never as JSON null (SPEC 18 body compaction) — while the untouched title is carried over from the GET.",
+    "operation": "EditDocument",
+    "method": "PUT",
+    "path": "/documents/{documentId}",
+    "pathParams": {
+      "documentId": 456
+    },
+    "requestBody": {
+      "content": ""
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Project Overview",
+          "inherits_status": true,
+          "type": "Document",
+          "url": "https://3.basecampapi.com/999/buckets/1/documents/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/documents/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999/buckets/1/vaults/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/vaults/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "content": "<div>Milestones and owners.</div>",
+          "content_attachments": []
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:05:00Z",
+          "title": "Project Overview",
+          "inherits_status": true,
+          "type": "Document",
+          "url": "https://3.basecampapi.com/999/buckets/1/documents/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/documents/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999/buckets/1/vaults/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/vaults/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "content": "",
+          "content_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/documents/456",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "content",
+        "expected": "",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "title",
+        "expected": "Project Overview",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "documents",
+      "write",
+      "edit",
+      "clear"
+    ]
+  },
+  {
+    "name": "replace-omission-clears: sparse replace sends the request verbatim with no GET",
+    "description": "Replace is the server-native verbatim PUT: exactly one request, no read-before-write, and any field omitted from the request is omitted from the body. BC3 clears what it does not receive, so this single request silently empties the content — that is the whole reason the raw path is named replace and kept separately covered (SPEC 18 rule 6). Neither title nor content is required: BC3 presence-validates neither, so a title-only body is a 200, not a 422.",
+    "operation": "ReplaceDocument",
+    "method": "PUT",
+    "path": "/documents/{documentId}",
+    "pathParams": {
+      "documentId": 456
+    },
+    "requestBody": {
+      "title": "The whole new document"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:05:00Z",
+          "title": "The whole new document",
+          "inherits_status": true,
+          "type": "Document",
+          "url": "https://3.basecampapi.com/999/buckets/1/documents/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/documents/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/456/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999/buckets/1/vaults/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/vaults/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "content": "",
+          "content_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/documents/456",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "title",
+        "expected": "The whole new document",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "content",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "documents",
+      "write",
+      "replace"
+    ]
+  }
+]
