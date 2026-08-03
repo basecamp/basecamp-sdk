@@ -37,7 +37,8 @@ def build(root: Path, files: dict[str, str]) -> None:
         path.write_text(body, encoding="utf-8")
 
 
-def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = ()) -> list[str]:
+def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = (),
+             check_root_table: bool = False) -> list[str]:
     """Run the gate against a synthetic repo, returning its failure list."""
     old_repo, old_sdks, old_no_env = gate.REPO, gate.SDKS, gate.NO_ENV_SDKS
     gate.REPO, gate.SDKS, gate.NO_ENV_SDKS = root, sdks, no_env_sdks
@@ -54,14 +55,26 @@ def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = ()) -> list[str]:
                 for var in gate.VAR_RE.findall(cells[0]):
                     if var not in reads[sdk]:
                         failures.append(f"forward:{sdk}:{var}")
-            text = readme.read_text(encoding="utf-8")
+            documented = gate.affirmative_mentions(readme)
             for var in sorted(reads[sdk]):
-                if var not in text:
+                if var not in documented:
                     failures.append(f"reverse:{sdk}:{var}")
             for _, claimed_sdk, named in gate.prose_claims(readme):
                 for var in named:
                     if var not in reads.get(claimed_sdk, {}):
                         failures.append(f"prose:{claimed_sdk}:{var}")
+        if check_root_table:
+            root_readme = root / gate.ROOT_README
+            if root_readme.is_file():
+                for _lineno, cells in gate.table_rows(root_readme):
+                    if len(cells) < 2:
+                        continue
+                    row_vars = gate.VAR_RE.findall(cells[0])
+                    claimed = [s for s in sdks if gate.re.search(rf"\b{s}\b", cells[1])]
+                    for var in row_vars:
+                        for s in sdks:
+                            if var in reads[s] and s not in claimed:
+                                failures.append(f"rootomits:{s}:{var}")
         for sdk in no_env_sdks:
             if reads.get(sdk):
                 failures.append(f"noenv:{sdk}:{sorted(reads[sdk])[0]}")
@@ -201,6 +214,54 @@ def main() -> int:
               run_gate(root, KT_SDK, no_env_sdks=("Kotlin",)),
               ["noenv:Kotlin:BASECAMP_KA"])
 
+        # A denial is not documentation. python/README.md really does say the
+        # SDK never reads BASECAMP_TOKEN, so a substring test would bless it the
+        # day the SDK started to.
+        root = tmp / "negative-mention"
+        build(root, {
+            "python/README.md":
+                "`BASECAMP_TOKEN` appears in the examples only because the caller "
+                "reads it; the SDK never looks it up.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_TOKEN")\n',
+        })
+        check("a denial does not count as documentation",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_TOKEN"])
+
+        # ...and an affirmative sentence still does, since that is how the XDG
+        # variables are documented in go/README.md and ruby/README.md.
+        root = tmp / "affirmative-mention"
+        build(root, {
+            "python/README.md":
+                "The sole other environment read is `BASECAMP_AFFIRM`, for the cache.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_AFFIRM")\n',
+        })
+        check("an affirmative sentence counts as documentation",
+              run_gate(root, PY_SDK), [])
+
+        # A mention inside a fenced example is the *caller* reading its own
+        # environment, which says nothing about what the SDK reads.
+        root = tmp / "fenced-mention"
+        build(root, {
+            "python/README.md": "intro\n\n```python\nos.environ['BASECAMP_FENCED']\n```\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_FENCED")\n',
+        })
+        check("a fenced example does not document a read",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_FENCED"])
+
+        # The root table must name every SDK that really reads the variable, not
+        # just the ones already listed.
+        root = tmp / "root-omits-reader"
+        build(root, {
+            "README.md": "| Variable | Read by |\n|---|---|\n| `BASECAMP_SHARED` | Ruby |\n",
+            "python/README.md": "The SDK reads `BASECAMP_SHARED` from the environment.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_SHARED")\n',
+            "ruby/README.md": "The SDK reads `BASECAMP_SHARED` from the environment.\n",
+            "ruby/lib/c.rb": 'v = ENV["BASECAMP_SHARED"]\n',
+        })
+        check("the root table must name every reader",
+              run_gate(root, PY_RB, check_root_table=True),
+              ["rootomits:Python:BASECAMP_SHARED"])
+
         # Ruby percent literals are data.
         root = tmp / "ruby-percent"
         build(root, {
@@ -209,6 +270,14 @@ def main() -> int:
         })
         check("a ruby percent literal is not a read",
               run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_FAKE"])
+
+        # ...but the uppercase forms interpolate, so a call inside one is real.
+        root = tmp / "ruby-percent-interp"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_QINT"),
+            "ruby/lib/c.rb": 'x = %Q{#{ENV["BASECAMP_QINT"]}}\n',
+        })
+        check("a %Q interpolation is a read", run_gate(root, RB_SDK), [])
 
         # ...and `%` as modulo must not start one.
         root = tmp / "ruby-modulo"

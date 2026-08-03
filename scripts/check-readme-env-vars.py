@@ -336,21 +336,33 @@ def regex_extent(text: str, i: int, flags: dict) -> int:
 PERCENT_DELIMS = {"{": "}", "[": "]", "(": ")", "<": ">"}
 
 
-def percent_literal_extent(text: str, i: int, flags: dict) -> int:
-    """End of a Ruby percent literal starting at `i`, else `i`."""
+def percent_literal_extent(text: str, i: int, flags: dict) -> tuple[int, list[tuple[int, int]]]:
+    """End of a Ruby percent literal starting at `i` (else `i`), plus its holes.
+
+    The uppercase forms interpolate and the lowercase ones do not: `%q{...}` is
+    data throughout, while `%Q{#{ENV[...]}}` contains a real call. Masking the
+    whole literal either way hid that call.
+    """
     if not flags or not flags.get("percent") or text[i] != "%":
-        return i
+        return i, []
     j = i + 1
+    letter = ""
     if j < len(text) and text[j].isalpha():
+        letter = text[j]
         j += 1
     if j >= len(text):
-        return i
+        return i, []
     opener = text[j]
     closer = PERCENT_DELIMS.get(opener)
     if closer is None:
-        return i
-    end = matching_delimiter(text, j + 1, opener, closer, "hash", flags)
-    return min(end + 1, len(text))
+        return i, []
+    body_start = j + 1
+    end = matching_delimiter(text, body_start, opener, closer, "hash", flags)
+    interpolates = letter == "" or letter.isupper() or letter == "r"
+    holes = []
+    if interpolates:
+        holes = brace_holes(text, body_start, min(end, len(text)), "hash", flags, "#{", "}")
+    return min(end + 1, len(text)), holes
 
 
 def comment_extent(text: str, i: int, style: str | None, flags: dict | None = None) -> int:
@@ -737,10 +749,14 @@ def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str
             blank(i, comment_end)
             i = comment_end
             continue
-        percent_end = percent_literal_extent(text, i, flags)
+        percent_end, percent_holes = percent_literal_extent(text, i, flags)
         if percent_end > i:
             for k in range(i, min(percent_end, n)):
                 in_string[k] = 1
+            for hole_start, hole_end in percent_holes:
+                for k in range(hole_start, min(hole_end, n)):
+                    in_string[k] = 0
+                mask_literals(text, hole_start, min(hole_end, n), style, in_string, flags)
             i = percent_end
             continue
         # A regex literal is data, like a string: its contents are not calls.
@@ -856,6 +872,35 @@ def prose_lines(readme: Path) -> list[tuple[int, str]]:
             continue
         out.append((lineno, line))
     return out
+
+
+# Words that turn a mention into a denial. A bare substring test counted
+# "the SDK never looks them up" as documentation, so a variable an SDK started
+# reading could ship undocumented behind a sentence saying it does not.
+NEGATION_RE = re.compile(r"\b(never|not|no|none|nothing|cannot|n't)\b", re.I)
+
+
+def affirmative_mentions(readme: Path) -> set[str]:
+    """Variables this README positively documents.
+
+    A table row counts. Prose counts only when the sentence carrying the
+    variable is not a denial. Fenced code blocks never count -- every SDK's
+    Quick Start shows the *caller* reading BASECAMP_TOKEN from its own
+    environment, which says nothing about what the SDK reads.
+    """
+    found: set[str] = set()
+    for _lineno, cells in table_rows(readme):
+        found.update(VAR_RE.findall(cells[0]))
+    for paragraph in prose_paragraphs(readme):
+        text, _line_at = join_paragraph(paragraph)
+        # Split on sentence enders only. A semicolon joins clauses of one
+        # sentence, and splitting there detached "the SDK never looks them up"
+        # from the variable it denies -- which is the exact sentence in
+        # python/README.md this check exists to refuse.
+        for sentence in re.split(r"(?<=[.!?])\s+", text):
+            if not NEGATION_RE.search(sentence):
+                found.update(VAR_RE.findall(sentence))
+    return found
 
 
 def prose_paragraphs(readme: Path) -> list[list[tuple[int, str]]]:
@@ -992,18 +1037,28 @@ def main() -> int:
                         f"{ROOT_README}:{lineno}: credits {var} to {sdk}, but no read "
                         f"of it exists in {SDKS[sdk]['source']}/"
                     )
+            # ...and the other direction: a reader the column leaves out. Without
+            # this, a second SDK could start reading a variable that already has
+            # a row and every check would still pass.
+            for sdk in SDKS:
+                if var in reads[sdk] and sdk not in claimed:
+                    failures.append(
+                        f"{ROOT_README}:{lineno}: {sdk} reads {var} "
+                        f"({reads[sdk][var][0]}) but the 'Read by' column omits it"
+                    )
 
-    # 3. Reverse, per SDK: a real read must be documented.
+    # 3. Reverse, per SDK: a real read must be documented *affirmatively*.
     for sdk, spec in SDKS.items():
         readme = REPO / spec["readme"]
         if not readme.is_file():
             continue
-        text = readme.read_text(encoding="utf-8")
+        documented = affirmative_mentions(readme)
         for var, sites in sorted(reads[sdk].items()):
-            if var not in text:
+            if var not in documented:
                 failures.append(
                     f"{spec['readme']}: {sdk} reads {var} ({sites[0]}) but the README "
-                    f"never mentions it"
+                    f"does not document it (a mention inside a code example, or in a "
+                    f"sentence saying it is *not* read, does not count)"
                 )
 
     # 4. The root README's "read no environment variables at all" sentence.
