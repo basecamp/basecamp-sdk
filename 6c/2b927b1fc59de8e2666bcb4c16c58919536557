@@ -1,0 +1,21 @@
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_fa95c13f763ae9 50-51,57-59
+Makefile
+  s_ae792ed0be3006::t_4d19bea45f01e0 1116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6c2b927b1fc59de8e2666bcb4c16c58919536557",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
