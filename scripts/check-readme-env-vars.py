@@ -531,15 +531,17 @@ def brace_holes(text: str, start: int, stop: int, style: str, flags: dict,
         if text.startswith(opener * 2, j):
             j += 2 * len(opener)
             continue
-        # `\\(` is an escaped backslash followed by a paren, not Swift's `\(`.
-        # Skipping the pair keeps the example text masked.
-        if opener.startswith("\\") and text.startswith("\\\\", j):
-            j += 2
-            continue
         if text.startswith(opener, j):
             close = matching_delimiter(text, j + len(opener), opener[-1], closer, style, flags)
             holes.append((j + len(opener), min(close, stop)))
             j = close + 1
+            continue
+        # A backslash escapes what follows, so `\#{...}` in Ruby is literal text.
+        # This has to be tested *after* the opener, because Swift's opener is
+        # itself `\(` -- checking the escape first would eat it and lose every
+        # Swift interpolation.
+        if text[j] == "\\":
+            j += 2
             continue
         j += 1
     return holes

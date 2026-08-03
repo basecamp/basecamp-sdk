@@ -314,6 +314,17 @@ def main() -> int:
         })
         check("a ruby regex interpolation is a read", run_gate(root, RB_SDK), [])
 
+        # An escaped interpolation marker is literal text. The escape test has to
+        # run after the opener test, because Swift's opener is itself a backslash
+        # sequence and checking the escape first eats it.
+        root = tmp / "ruby-escaped-interp"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_ESC"),
+            "ruby/lib/c.rb": 'x = %Q{\\#{ENV["BASECAMP_ESC"]}}\n',
+        })
+        check("an escaped ruby interpolation marker is not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_ESC"])
+
         root = tmp / "ruby-regex-data"
         build(root, {
             "ruby/README.md": TABLE.format(var="BASECAMP_RXD"),
