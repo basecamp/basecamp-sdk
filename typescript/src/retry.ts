@@ -183,22 +183,41 @@ export async function executeWithRetry(
 }
 
 /**
- * Hard ceiling on the exponent, past which the term saturates without being
- * computed. It exists only to keep `Math.pow(2, index)` finite — 1023 is the
- * largest exponent whose power is a finite double.
+ * `base * 2**exponent`, computed without ever forming `2**exponent`.
  *
- * It is deliberately NOT the operative bound: {@link saturatingExponent}
- * derives the real one from the configured base, so this only binds for a base
- * below ~1e-304 ms, which is not a duration.
+ * JS has no `ldexp`, and `Math.pow(2, e)` is `Infinity` for `e > 1023` — so for
+ * a denormal-small base the *product* is still an ordinary number long after the
+ * multiplier has overflowed. Scaling in bounded steps keeps every intermediate
+ * finite, which is what lets the exponent bound come from the base alone.
  */
-const MAX_BACKOFF_EXPONENT = 1023;
+function scaleByPowerOfTwo(base: number, exponent: number): number {
+  let result = base;
+  for (let remaining = exponent; remaining > 0; ) {
+    const step = Math.min(remaining, 1000);
+    result *= Math.pow(2, step);
+    if (!Number.isFinite(result)) return Infinity;
+    remaining -= step;
+  }
+  return result;
+}
 
-/** Smallest exponent `e` with `base * 2**e >= MAX_BACKOFF_DELAY_MS`. */
+/**
+ * Smallest exponent `e` with `base * 2**e >= MAX_BACKOFF_DELAY_MS`.
+ *
+ * Computed in the LOG domain rather than as `MAX_BACKOFF_DELAY_MS / base`. That
+ * ratio is `Infinity` for any base below ~1.67e-304 ms, and falling back to a
+ * fixed 1023 then saturates *early*: such a base reaches only a fraction of the
+ * ceiling at exponent 1023, so returning the ceiling there overstates the
+ * specified term instead of tracking it. The log form has no such cliff, so the
+ * numeric backstop is gone entirely rather than merely made rarer.
+ */
 function saturatingExponent(base: number): number {
-  const ratio = MAX_BACKOFF_DELAY_MS / base;
-  // A denormal-small base makes the ratio Infinity: no finite power gets there.
-  if (!Number.isFinite(ratio)) return MAX_BACKOFF_EXPONENT;
-  return Math.min(Math.ceil(Math.log2(ratio)), MAX_BACKOFF_EXPONENT);
+  // log2 is not correctly rounded here, so the estimate can land one either side
+  // of the true boundary. Both corrections are bounded.
+  let exponent = Math.max(Math.ceil(Math.log2(MAX_BACKOFF_DELAY_MS) - Math.log2(base)), 0);
+  while (exponent > 0 && scaleByPowerOfTwo(base, exponent - 1) >= MAX_BACKOFF_DELAY_MS) exponent--;
+  while (scaleByPowerOfTwo(base, exponent) < MAX_BACKOFF_DELAY_MS) exponent++;
+  return exponent;
 }
 
 /**
@@ -238,7 +257,7 @@ export function saturatingBackoff(
   switch (backoff) {
     case "exponential":
       if (index >= saturatingExponent(base)) return MAX_BACKOFF_DELAY_MS;
-      delay = base * Math.pow(2, index);
+      delay = scaleByPowerOfTwo(base, index);
       break;
     case "linear": {
       // Compared before multiplying, so `Infinity * 0`-shaped intermediates

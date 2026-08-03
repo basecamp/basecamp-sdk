@@ -126,3 +126,23 @@ def test_saturating_backoff_is_monotonic_up_to_the_ceiling(base_delay: float) ->
         previous = delay
 
     assert previous == MAX_BACKOFF_DELAY
+
+
+def test_saturating_backoff_tracks_the_term_for_a_denormal_adjacent_base() -> None:
+    """The last attempts before the ceiling are the specified term, not the ceiling.
+
+    Monotonicity and eventual saturation both hold for a formula that saturates
+    EARLY, so neither catches this. ``MAX_BACKOFF_DELAY / 1e-307`` overflows to
+    infinity, and the fixed-1023 fallback that used to backstop it returned 30.0
+    for attempt 1024 when the specified term is ~8.99s — a sleep more than three
+    times longer than the formula asks for, with the numeric backstop rather than
+    the ceiling deciding it.
+    """
+    base_delay = 1e-307
+
+    # Exact: these are the products the exponential term is defined to produce.
+    assert saturating_backoff(base_delay, 1_024) == 8.988465674311579
+    assert saturating_backoff(base_delay, 1_025) == 17.976931348623157
+    # And only then does it reach the ceiling.
+    assert saturating_backoff(base_delay, 1_026) == MAX_BACKOFF_DELAY
+    assert saturating_backoff(base_delay, 2**31) == MAX_BACKOFF_DELAY

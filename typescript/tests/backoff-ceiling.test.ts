@@ -87,9 +87,15 @@ describe("backoff ceiling", () => {
    */
   const tinyBaseDelays = [1e-3, 1e-9, 1e-30, 1e-100, 1e-300, 5e-324];
 
+  /**
+   * 1089 is the exact saturating exponent of the smallest denormal, and so of
+   * every base here. Probing at 1023 instead would assert the ceiling at an
+   * attempt where `5e-324 * 2**1023` is genuinely only ~4.4e-16ms — a bound the
+   * old fixed-1023 fallback met by saturating early, which is its own defect.
+   */
   it("saturates at the ceiling for any positive base, never plateaus below it", () => {
     const violations = tinyBaseDelays.flatMap((base) =>
-      [1023, 1100, 5000, Number.MAX_SAFE_INTEGER]
+      [1089, 1100, 5000, Number.MAX_SAFE_INTEGER]
         .map((attempt) => [base, attempt, saturatingBackoff(base, "exponential", attempt)] as const)
         .filter(([, , delay]) => delay !== MAX_BACKOFF_DELAY_MS)
         .map(([b, attempt, delay]) => `base=${b} attempt=${attempt} -> ${delay}ms`),
@@ -111,6 +117,28 @@ describe("backoff ceiling", () => {
       }
       expect(previous, `base=${base} never reached the ceiling`).toBe(MAX_BACKOFF_DELAY_MS);
     }
+  });
+
+  /**
+   * The last attempts before the ceiling are the specified term, not the ceiling.
+   *
+   * Monotonicity and eventual saturation both hold for a formula that saturates
+   * EARLY, so neither catches this. `MAX_BACKOFF_DELAY_MS / 1e-305` is
+   * `Infinity`, and the fixed-1023 fallback that used to backstop it returned
+   * 30000 for attempt 1023 when the specified term is ~899ms — a sleep 33x
+   * longer than the formula asks for, with the numeric backstop rather than the
+   * ceiling deciding it.
+   */
+  it("tracks the exponential term for a denormal-adjacent base", () => {
+    const base = 1e-305;
+
+    // Exact: these are the products the exponential term is defined to produce.
+    expect(saturatingBackoff(base, "exponential", 1023)).toBe(898.846567431158);
+    expect(saturatingBackoff(base, "exponential", 1024)).toBe(1797.693134862316);
+    expect(saturatingBackoff(base, "exponential", 1028)).toBe(28763.090157797054);
+    // And only then does it reach the ceiling.
+    expect(saturatingBackoff(base, "exponential", 1029)).toBe(MAX_BACKOFF_DELAY_MS);
+    expect(saturatingBackoff(base, "exponential", Number.MAX_SAFE_INTEGER)).toBe(MAX_BACKOFF_DELAY_MS);
   });
 
   /**

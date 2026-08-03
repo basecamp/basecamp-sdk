@@ -674,9 +674,19 @@ Requirements:
    `base × 2^cap < MAX_BACKOFF_DELAY_MS`, the term plateaus below the ceiling for
    every subsequent attempt instead of saturating at it. At `base_delay_ms = 1e-30`
    a cap of 64 pins every attempt from the 65th onward at ~1.84e-11s — which is
-   requirement 1's tight loop, not a fix for it. Any cap that remains must be a
-   pure numeric-range backstop (the largest exponent the host can represent),
-   provably never the operative bound for a base delay expressible as a duration.
+   requirement 1's tight loop, not a fix for it.
+
+   The bound must be derived from the base **without overflowing its own
+   arithmetic**. `MAX_BACKOFF_DELAY_MS / base_delay_ms` is itself infinite once
+   `base_delay_ms` drops below `MAX_BACKOFF_DELAY_MS / MAX_FLOAT`, and falling back
+   to a fixed exponent there fails in the mirror direction: the term saturates
+   **early**, returning the ceiling at an attempt whose specified value is still far
+   below it. Compute the crossing in the log domain (`log2(ceiling) - log2(base)`)
+   and scale the term directly — `ldexp`, or repeated bounded multiplication where
+   the host has no `ldexp` — so no fixed exponent cap is needed at all. Saturating
+   early is as much a deviation as plateauing: the term must track
+   `base × 2^retry_index` at every attempt below the ceiling and equal the ceiling
+   at every attempt at or above it.
 2. **The ceiling bounds the backoff term, not the total sleep.** Jitter is added after
    clamping, so the longest single backoff sleep is `MAX_BACKOFF_DELAY_MS + max_jitter`.
    This matches Go's generated client, which has capped at `RetryConfig.MaxDelay = 30s`

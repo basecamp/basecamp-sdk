@@ -106,4 +106,23 @@ class BackoffCeilingTest < Minitest::Test
       assert_equal ceiling, previous, "base_delay=#{base_delay} never reached the ceiling"
     end
   end
+
+  # The last attempts before the ceiling are the specified term, not the ceiling.
+  #
+  # Monotonicity and eventual saturation both hold for a formula that saturates
+  # EARLY, so neither catches this. +MAX_BACKOFF_DELAY / 1e-307+ coerces to
+  # Float::INFINITY, and the fixed-1023 fallback that used to backstop it
+  # returned 30.0 for attempt 1024 when the specified term is ~8.99s — a sleep
+  # more than three times longer than the formula asks for, with the numeric
+  # backstop rather than the ceiling deciding it.
+  def test_saturating_backoff_tracks_the_term_for_a_denormal_adjacent_base
+    base_delay = 1e-307
+
+    # Exact: these are the products the exponential term is defined to produce.
+    assert_equal 8.988465674311579, Basecamp::Config.saturating_backoff(base_delay, 1_024)
+    assert_equal 17.976931348623157, Basecamp::Config.saturating_backoff(base_delay, 1_025)
+    # And only then does it reach the ceiling.
+    assert_equal Basecamp::Config::MAX_BACKOFF_DELAY, Basecamp::Config.saturating_backoff(base_delay, 1_026)
+    assert_equal Basecamp::Config::MAX_BACKOFF_DELAY, Basecamp::Config.saturating_backoff(base_delay, 2**31)
+  end
 end
