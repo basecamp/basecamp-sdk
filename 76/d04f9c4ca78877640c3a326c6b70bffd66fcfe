@@ -1,0 +1,122 @@
+Makefile
+  s_ae792ed0be3006::t_e2c67c17a893ed 853-854
+  s_ae792ed0be3006::t_88e391dcbbf917 1034-1039
+  s_ae792ed0be3006::t_805301bdd63701 523-538,543-549,552
+  s_ae792ed0be3006::t_cbcaf8c78ea831 452
+  s_ae792ed0be3006::t_0dc53bdb49bfae 454
+  s_ae792ed0be3006::t_d60b549c8cb808 497-514,516-522,539-542,550-551,553-555
+  s_ae792ed0be3006::t_f250d76bcfc163 855,860,1040-1041,1149-1150,1155
+  s_ae792ed0be3006::t_7a193b6ce3de57 649-654,656,968,1042-1049,1072,1156
+scripts/check-runner-test-reachability
+  s_ae792ed0be3006::t_1d070f5e4190d6 62-65
+  s_ae792ed0be3006::t_fd85d930b85e71 381
+  s_ae792ed0be3006::t_98cd21d4d91656 17-20,23-28,52,56-58,60,66,69-70,86-87,197,200,218,241,260-262,274-277,308,317-320,322-323,347,361,365,369,374,378,390-393,403,467,514
+  s_ae792ed0be3006::t_8c0268c704e00a 109,184
+  s_ae792ed0be3006::t_5e3f037ac0b15f 108,416-432,447-458,460,463-466,468-469,473-500,502-512,515-518,543,593-598
+  s_ae792ed0be3006::t_214a5b96b3e94e 161-169,181-182,192,206-209,211,214,239-240,242-253,256
+  s_ae792ed0be3006::t_e282059680e726 309-316
+  s_ae792ed0be3006::t_52735a2051ca65 89-99
+  s_ae792ed0be3006::t_01a8729194ffe4 136-144
+  s_ae792ed0be3006::t_a27e9c28bbff6d 339-346,348
+  s_ae792ed0be3006::t_8b2c0007a7ba60 230-233,235-237
+  s_ae792ed0be3006::t_46441cec6aef2c 433-438
+  s_ae792ed0be3006::t_6972e7b2dc9b58 513
+  s_ae792ed0be3006::t_1995b6bf5ccdd1 519
+  s_ae792ed0be3006::t_26fb5a03ebe4bc 30-51,53-54
+  s_ae792ed0be3006::t_c96f633efb5f74 111-135,145-158
+  s_ae792ed0be3006::t_3c38f1d6a2121a 333-338,363,366
+  s_ae792ed0be3006::t_390490f81f92b8 545-592
+  s_ae792ed0be3006::t_62f6e21eb2c39d 170-178,191,210,212-213,222-229,234
+  s_ae792ed0be3006::t_ab441a3db14db0 1-16,21-22,29,55,59,67-68,71-85,88,100-107,110,159-160,179-180,183,185-190,193-196,198-199,201-205,216-217,219-221,219-222,238,254-255,257-259,263-273,279-289,291-307,321,324-332,349,364,367,371-373,375-377,379-380,382-389,394-402,404-415,446,459,461-462,470-472,501,599-608
+  s_ae792ed0be3006::t_85276801082c6c 215,278,290
+  s_ae792ed0be3006::t_d3ca4fc7d71fb5 520-542,520-544,592
+  s_ae792ed0be3006::t_9b7a0c3b7ac054 61
+  s_ae792ed0be3006::t_d3721760fb45e1 350-360,362,368,370
+  s_ae792ed0be3006::t_0aa556ca587d78 439-445,544
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_c48d53c7a6f6c5 361,363-364
+  s_ae792ed0be3006::t_688415ab9ac821 482
+  s_ae792ed0be3006::t_e96749d2b1c4c5 541-543
+  s_ae792ed0be3006::t_fe71915a961006 139-147
+  s_ae792ed0be3006::t_346d52445f2624 441-443,445-448
+  s_ae792ed0be3006::t_4df2bf5bc0ac8e 230-237
+  s_ae792ed0be3006::t_b0da0335eecccf 148-154
+CONTRIBUTING.md
+  s_ae792ed0be3006::t_5525a383e91e2d 393-402
+SPEC.md
+  s_ae792ed0be3006::t_a699dd65ca973f 2073
+  s_ae792ed0be3006::t_a733cebd78efbf 1796-1807
+  s_ae792ed0be3006::t_b1f3e9aceedbff 1780-1795,1808,1814-1816,1834-1835,1837-1838
+conformance/runner/go/replay_runner.go
+  s_ae792ed0be3006::t_f57cf70029d9d4 35-43,89-169
+conformance/runner/go/replay_runner_test.go
+  s_ae792ed0be3006::t_f9e75348068002 20,23,29-97
+conformance/runner/python/replay_runner.py
+  s_ae792ed0be3006::t_ea1d9be195c957 60-66,79-99
+conformance/runner/python/test_replay_runner.py
+  s_ae792ed0be3006::t_8f2b47f8059aec 30-70
+conformance/runner/ruby/replay-runner.rb
+  s_ae792ed0be3006::t_5e3714fcbfd2cc 43-48,50-81
+conformance/runner/ruby/replay_runner_test.rb
+  s_ae792ed0be3006::t_b5da16cf887b41 31-71
+kotlin/conformance/build.gradle.kts
+  s_ae792ed0be3006::t_b48a762aa4c272 44-47,50
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_fe679e9320c10f::t_ef91b782cdbc4d 3-4,6-8,11-12,50-56,83-95,97,109-131
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/ReplayDecodersTest.kt
+  s_ae792ed0be3006::t_46633a46b50725 1-134
+scripts/check-replay-decoder-parity
+  s_ae792ed0be3006::t_1e8bf8dd7f340a 1-194
+conformance/runner/go/main.go
+  s_ae792ed0be3006::t_afb486318643bf 989-996
+conformance/runner/go/request_count.go
+  s_ae792ed0be3006::t_c197e8d5414bf9 1-60
+conformance/runner/go/request_count_test.go
+  s_ae792ed0be3006::t_a1d29515304cb5 1-106
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_4fae00f412f58e 88-138,556-566
+conformance/runner/python/test_request_count.py
+  s_ae792ed0be3006::t_22ec105fffbacf 1-77
+conformance/runner/ruby/request_count_test.rb
+  s_ae792ed0be3006::t_5f3e8ed387b58e 1-80
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_b44679949e18b9 71-121,656-661
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_ae792ed0be3006::t_865a6fff9eba7b 230-239
+conformance/runner/typescript/request-count.test.ts
+  s_ae792ed0be3006::t_0c068b1e6abd06 1-81
+conformance/runner/typescript/request-count.ts
+  s_ae792ed0be3006::t_d23ff3a40db553 1-58
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_97521ac81befc9 19,842-847
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_ae792ed0be3006::t_2755b70651c93a 321
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/RequestCount.kt
+  s_ae792ed0be3006::t_091b383e0565e9 1-43
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/RequestCountTest.kt
+  s_ae792ed0be3006::t_a63412e4a073ff 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "76d04f9c4ca78877640c3a326c6b70bffd66fcfe",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_fe679e9320c10f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0d7e9b3-61f7-45c3-932b-ac2006ada4df",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
