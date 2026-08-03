@@ -351,9 +351,7 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         _ = try await account.folders.createFolder(
             req: CreateFolderRequest(
                 name: try rb.optString("name"),
-                projectIds: rb?["project_ids"]?.arrayValue?.compactMap {
-                    $0.intValue.flatMap { Int(exactly: $0) }
-                }))
+                projectIds: try rb.intArray("project_ids")))
         return DispatchResult()
 
     case "UpdateFolder":
