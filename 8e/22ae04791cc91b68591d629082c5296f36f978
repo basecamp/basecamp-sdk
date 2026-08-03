@@ -1,0 +1,37 @@
+scripts/test-check-readme-env-vars.py
+  s_ae792ed0be3006::t_ab16fb6c410d2c 87
+  s_ae792ed0be3006::t_831373d0afe6f7 219-262
+scripts/check-readme-env-vars.py
+  s_ae792ed0be3006::t_b1d4bde5bb1fa3 250-251,253,256-262,272-281,285-290
+  s_ae792ed0be3006::t_8fe2aa3d957276 161-207
+README.md
+  s_ae792ed0be3006::t_0a779203c6f3f3 49,51
+go/README.md
+  s_ae792ed0be3006::t_24f58bd742b149 38,40
+kotlin/README.md
+  s_ae792ed0be3006::t_13eca90eff6fdf 157,159
+python/README.md
+  s_ae792ed0be3006::t_6c112c9f3c489c 50,52
+ruby/README.md
+  s_ae792ed0be3006::t_3a6b08d54987e3 34,36
+swift/README.md
+  s_ae792ed0be3006::t_3da45d6c9b9c38 58,60
+typescript/README.md
+  s_ae792ed0be3006::t_8b76dcdbe6dbe6 38,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "8e22ae04791cc91b68591d629082c5296f36f978",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

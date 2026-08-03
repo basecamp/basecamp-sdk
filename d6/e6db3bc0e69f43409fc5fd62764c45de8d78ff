@@ -1,0 +1,35 @@
+scripts/check-readme-env-vars.py
+  s_ae792ed0be3006::t_e80c6ac7a08f0f 279-281,286-292
+  s_ae792ed0be3006::t_ff412700ba2a30 207-208
+  s_ae792ed0be3006::t_ee5bbd8b18b653 152,155-157,161-169,173
+  s_ae792ed0be3006::t_98b30ca8cd14fb 10,20-27
+  s_ae792ed0be3006::t_3e62c912a7cd26 134-145
+  s_ae792ed0be3006::t_a355199b1d097e 239
+  s_ae792ed0be3006::t_592b28860e1caf 411-422
+  s_ae792ed0be3006::t_3edc9c0753ffee 314-347
+  s_ae792ed0be3006::t_750d1d5590bbc9 348-349,423
+scripts/test-check-readme-env-vars.py
+  s_ae792ed0be3006::t_0b5aed703f1c95 292-357
+  s_ae792ed0be3006::t_f83fa1800f3a4c 61-64
+  s_ae792ed0be3006::t_53d5d8406dbb97 86
+  s_ae792ed0be3006::t_106a56953e9030 188-217
+  s_ae792ed0be3006::t_0f158da6007536 358
+.gitignore
+  s_ae792ed0be3006::t_c9848e57c3ab86 51-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d6e6db3bc0e69f43409fc5fd62764c45de8d78ff",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

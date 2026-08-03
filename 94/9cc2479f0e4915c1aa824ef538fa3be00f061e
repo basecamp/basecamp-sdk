@@ -1,0 +1,35 @@
+Makefile
+  s_ae792ed0be3006::t_6ab69090023c4e 1092-1099
+go/README.md
+  s_ae792ed0be3006::t_bd82898204ee06 351
+  s_ae792ed0be3006::t_c1110add159ae9 361
+python/README.md
+  s_ae792ed0be3006::t_c81da4f7ccb9c8 68-75
+  s_ae792ed0be3006::t_0a7e1953904518 115-116,123
+  s_ae792ed0be3006::t_0e444e77628ce5 124
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_83e3e64fa585eb 142-144
+README.md
+  s_ae792ed0be3006::t_36017e58d6ed24 253
+  s_ae792ed0be3006::t_39d10bfca3aa69 243
+scripts/check-readme-env-vars.py
+  s_ae792ed0be3006::t_fe56f9c364f000 1-210
+ruby/README.md
+  s_ae792ed0be3006::t_1872aaa0ec078e 49-54,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "949cc2479f0e4915c1aa824ef538fa3be00f061e",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

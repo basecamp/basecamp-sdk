@@ -1,0 +1,50 @@
+swift/README.md
+  s_ae792ed0be3006::t_b4f3ccec2abfde 48-78
+typescript/README.md
+  s_ae792ed0be3006::t_eb59904d83998c 691
+  s_ae792ed0be3006::t_fb7e6900fcaa60 28-51,54-73
+  s_ae792ed0be3006::t_f86567d970aea3 52-53
+  s_ae792ed0be3006::t_0359254f1caa95 675,681,683-688
+  s_ae792ed0be3006::t_932d3bf16da373 14,692
+ruby/README.md
+  s_ae792ed0be3006::t_18e299843c7002 24-58
+  s_ae792ed0be3006::t_75f01ac96440ea 529
+  s_ae792ed0be3006::t_322bda3789534d 530,537-542
+  s_ae792ed0be3006::t_80a5c24fdec358 543
+typescript/src/client.ts
+  s_ae792ed0be3006::t_f2a3a4bac54bd8 271
+go/README.md
+  s_ae792ed0be3006::t_a781df618c63fe 28-64
+  s_ae792ed0be3006::t_ae610ac4280e83 351
+  s_ae792ed0be3006::t_d8ce70a3fbec0d 353-365
+  s_ae792ed0be3006::t_398a2ffcb8996a 14,352
+README.md
+  s_ae792ed0be3006::t_4d47afb18d0e77 60-65
+  s_ae792ed0be3006::t_2e531462ec382b 160-161,163-164,166-176
+  s_ae792ed0be3006::t_7b9f62e53352f9 243
+  s_ae792ed0be3006::t_f70dc8b7fc1cd6 39-59,66-80
+  s_ae792ed0be3006::t_14042a82fcb435 244-255,257
+  s_ae792ed0be3006::t_8b1be3cb338e01 32,201
+kotlin/README.md
+  s_ae792ed0be3006::t_2045b4055b03ac 186-190,192,194-198,200-202
+  s_ae792ed0be3006::t_1c2246fd9d0213 145-177,180
+  s_ae792ed0be3006::t_7382c10c7fe22d 181
+python/README.md
+  s_ae792ed0be3006::t_460eb68941f5db 40-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9858b167b2b01179fd4568b73dfb0da468f4f802",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+scripts/test-check-readme-env-vars.py
+  s_ae792ed0be3006::t_db00a7ed3e3f34 317-327
+scripts/check-readme-env-vars.py
+  s_ae792ed0be3006::t_2dc46ccb925d8c 539-544
+  s_ae792ed0be3006::t_69e1be0dd0aa05 545
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "cf24b0a7d6cc5953391cf3b936a771855fff441c",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

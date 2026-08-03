@@ -1,0 +1,21 @@
+README.md
+  s_ae792ed0be3006::t_3c55438cd4bd32 78
+  s_ae792ed0be3006::t_797fe6878e2a5c 76,83-84
+  s_ae792ed0be3006::t_7848fd9e587119 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "3470722c73820205b78f90eb9e61a62528f949c7",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
