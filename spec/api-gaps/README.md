@@ -66,6 +66,7 @@ making the absorption journey publicly auditable.
 | [everything-boosts-withdrawn](everything-boosts-withdrawn.md) | no-json-contract | post-train | medium |
 | [everything-todo-card-filters](everything-todo-card-filters.md) | absorbed-in-sdk | post-train | medium |
 | [folders-api](folders-api.md) | absorbed-in-sdk | master | medium |
+| [event-feed](event-feed.md) | no-json-contract | n/a | high |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
