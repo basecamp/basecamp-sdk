@@ -147,6 +147,46 @@ def main() -> int:
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_OPTB"])
 
+        # A regex literal is data. Its braces must not close an interpolation,
+        # and its contents must not read as calls.
+        root = tmp / "regex-in-hole"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_SECRET\n",
+            "typescript/src/c.ts":
+                'const x = `${(/}/, process.env.BASECAMP_SECRET)}`;\n',
+        })
+        check("a regex brace does not truncate the interpolation",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_SECRET"])
+
+        root = tmp / "regex-content"
+        build(root, {
+            "typescript/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "typescript/src/c.ts": "const re = /process.env.BASECAMP_FAKE/;\n",
+        })
+        check("regex contents are not a read",
+              run_gate(root, TS_SDK), ["forward:TypeScript:BASECAMP_FAKE"])
+
+        # ...but `/` after a value is division, not a regex. Getting this wrong
+        # would swallow code up to the next slash and hide the read.
+        root = tmp / "division-not-regex"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_DIV\n",
+            "typescript/src/c.ts": "const r = total / process.env.BASECAMP_DIV;\n",
+        })
+        check("a division slash is not a regex",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_DIV"])
+
+        # In a raw f-string the backslash is literal, so it must not eat the
+        # brace that opens the expression.
+        root = tmp / "raw-fstring"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_RAWF"),
+            "python/src/c.py": 'v = fr"\\{os.getenv(\'BASECAMP_RAWF\')}"\n',
+        })
+        check("a raw f-string interpolation is a read", run_gate(root, PY_SDK), [])
+
         # Destructuring is a read, and every name in the pattern is one.
         root = tmp / "destructured"
         build(root, {

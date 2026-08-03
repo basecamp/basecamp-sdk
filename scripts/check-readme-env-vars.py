@@ -163,6 +163,9 @@ SDKS = {
 #            interpolates in backticks only, so `"${x}"` is plain text, and Go
 #            interpolates nowhere at all.
 #   fstring: Python only, where the `f` prefix decides whether braces are code.
+#   regex:   TypeScript `/.../` literals, whose contents are data. Enabled only
+#            there: `/` is division far more often than not, and the two are
+#            told apart by the preceding token, so this stays conservative.
 #   multiline: Ruby, where an ordinary quoted literal may span physical lines.
 #            Everywhere else a newline ends it, which is what bounds the damage
 #            from an unbalanced quote.
@@ -170,37 +173,43 @@ LANG_FLAGS = {
     "Go": {
         "triple": False, "nested": False, "raw": False, "fstring": False,
         "multiline": False,
+        "regex": False,
         "interp": {},
     },
     "Ruby": {
         "triple": True, "nested": False, "raw": False, "fstring": False,
         "multiline": True,
+        "regex": False,
         "interp": {'"': [("#{", "}")]},
     },
     "Python": {
         "triple": True, "nested": False, "raw": False, "fstring": True,
         "multiline": False,
+        "regex": False,
         "interp": {},
     },
     "TypeScript": {
         "triple": False, "nested": False, "raw": False, "fstring": False,
         "multiline": False,
+        "regex": True,
         "interp": {"`": [("${", "}")]},
     },
     "Swift": {
         "triple": True, "nested": True, "raw": True, "fstring": False,
         "multiline": False,
+        "regex": False,
         "interp": {'"': [("\\(", ")")]},
     },
     "Kotlin": {
         "triple": True, "nested": True, "raw": False, "fstring": False,
         "multiline": False,
+        "regex": False,
         "interp": {'"': [("${", "}")]},
     },
 }
 # Permissive union, used only when no language is supplied.
 DEFAULT_FLAGS = {
-    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True,
+    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True,
     "interp": {"`": [("${", "}")], '"': [("${", "}"), ("\\(", ")"), ("#{", "}")]},
 }
 
@@ -246,6 +255,44 @@ CLAIM_END_RE = re.compile(r"\.\s|\n")
 STRING_QUOTES = {"hash": "\"'", "slash": "\"'`"}
 
 
+
+
+# A `/` starts a regex only where an operand is expected. After a value -- an
+# identifier, literal, or closing bracket -- it is division. Testing the
+# preceding token is the standard heuristic and errs toward division, which is
+# the safe way round: mistaking division for a regex would swallow code.
+REGEX_PRECEDERS = set("=(,:[!&|?{};+-*%<>~^")
+
+
+def regex_extent(text: str, i: int, flags: dict) -> int:
+    """End of a TypeScript regex literal starting at `i`, else `i`."""
+    if not flags.get("regex") or text[i] != "/":
+        return i
+    if text.startswith("//", i) or text.startswith("/*", i):
+        return i
+    k = i - 1
+    while k >= 0 and text[k] in " \t":
+        k -= 1
+    if k >= 0 and text[k] not in REGEX_PRECEDERS and text[k] != "\n":
+        return i
+    j = i + 1
+    in_class = False
+    n = len(text)
+    while j < n:
+        c = text[j]
+        if c == "\\":
+            j += 2
+            continue
+        if c == "\n":
+            return i  # unterminated on its line: not a regex after all
+        if c == "[":
+            in_class = True
+        elif c == "]":
+            in_class = False
+        elif c == "/" and not in_class:
+            return j + 1
+        j += 1
+    return i
 
 
 def comment_extent(text: str, i: int, style: str | None, flags: dict | None = None) -> int:
@@ -314,6 +361,10 @@ def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str,
         if comment_end > k:
             k = comment_end
             continue
+        regex_end = regex_extent(text, k, flags)
+        if regex_end > k:
+            k = regex_end
+            continue
         if text[k] == open_ch:
             depth += 1
         elif text[k] == close_ch:
@@ -322,6 +373,19 @@ def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str,
                 return k
         k += 1
     return n
+
+
+def has_raw_prefix(text: str, i: int) -> bool:
+    """Whether the literal opening at `i` carries a Python `r` prefix.
+
+    In a raw string a backslash is an ordinary character, so `fr"\\{x}"` still
+    interpolates -- consuming the backslash as an escape swallowed the brace and
+    hid the expression.
+    """
+    start = i
+    while start > 0 and text[start - 1].isalpha():
+        start -= 1
+    return "r" in text[start:i].lower()
 
 
 def has_fstring_prefix(text: str, i: int) -> bool:
@@ -421,6 +485,7 @@ def scan_literal(text: str, i: int, style: str,
     quote = text[i]
     openers = interpolation_openers(text, i, quote, style, flags)
     swift_interp = ("\\(", ")") in openers
+    raw = style == "hash" and has_raw_prefix(text, i)
     j = i + 1
     holes = []
     while j < n:
@@ -431,6 +496,9 @@ def scan_literal(text: str, i: int, style: str,
                 end = matching_delimiter(text, j + 2, "(", ")", style, flags)
                 holes.append((j + 2, end))
                 j = end + 1
+                continue
+            if raw:
+                j += 1
                 continue
             j += 2
             continue
@@ -475,6 +543,12 @@ def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray,
             for k in range(i, min(comment_end, hi)):
                 in_string[k] = 1
             i = comment_end
+            continue
+        regex_end = regex_extent(text, i, flags)
+        if regex_end > i:
+            for k in range(i, min(regex_end, hi)):
+                in_string[k] = 1
+            i = regex_end
             continue
         if text[i] in quotes or (flags["raw"] and raw_string_hashes(text, i)):
             end, holes = scan_literal(text, i, style, flags)
@@ -583,6 +657,13 @@ def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str
         if comment_end > i:
             blank(i, comment_end)
             i = comment_end
+            continue
+        # A regex literal is data, like a string: its contents are not calls.
+        regex_end = regex_extent(text, i, flags)
+        if regex_end > i:
+            for k in range(i, min(regex_end, n)):
+                in_string[k] = 1
+            i = regex_end
             continue
         # Ruby block comment: =begin/=end, each at column 0.
         if style == "hash" and text.startswith("=begin", i) and (i == 0 or text[i - 1] == "\n"):
