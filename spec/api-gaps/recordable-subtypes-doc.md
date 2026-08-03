@@ -17,7 +17,7 @@ bc3_refs:
     - app/controllers/journals_controller.rb
     - app/controllers/journals/entries_controller.rb
   related_existing_api:
-    - GetRecording (polymorphic by recording_type)
+    - ListRecordings (polymorphic by recording_type)
 ---
 
 # Recordable subtypes — doc + Smithy ops + create

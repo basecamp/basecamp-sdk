@@ -102,15 +102,6 @@ public final class TodosService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func trash(todoId: Int) async throws {
-        try await requestVoid(
-            OperationInfo(service: "Todos", operation: "TrashTodo", resourceType: "todo", isMutation: true, resourceId: todoId),
-            method: "DELETE",
-            path: "/todos/\(todoId)",
-            retryConfig: Metadata.retryConfig(for: "TrashTodo")
-        )
-    }
-
     public func uncomplete(todoId: Int) async throws {
         try await requestVoid(
             OperationInfo(service: "Todos", operation: "UncompleteTodo", resourceType: "todo", isMutation: true, resourceId: todoId),

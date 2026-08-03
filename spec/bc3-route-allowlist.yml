@@ -120,19 +120,6 @@ sdk_routes_absent_from_bc3_docs:
       test/api/schedules/entries/occurrences_controller_api_test.rb has a
       "show occurrence via flat route" test plus a flat/scoped parity test.
 
-  - method: DELETE
-    path: /todos/:id
-    reason: >-
-      bc3 draws it at config/routes.rb:58 (resources :todos, only: %i[show edit
-      update destroy]) and covers it at
-      test/api/todos_controller_api_test.rb:279, which asserts 204. Undocumented
-      because the docs steer clients to
-      PUT /buckets/:id/recordings/:id/status/trashed.json (recordings.md:79)
-      instead. NOTE the route is fine but the SEMANTICS are not — this endpoint
-      archives rather than trashes, tracked in #585. That is a behaviour defect,
-      not a routing one, so it is not waivable here and this entry only attests
-      that the path exists.
-
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #
@@ -140,95 +127,13 @@ sdk_routes_absent_from_bc3_docs:
 # gate can go green on everything else without pretending they are fine. Each
 # needs a numeric `issue:` (the gate enforces it) and a breaking-change decision.
 # Anything here is a live 404. Treat the list as a countdown.
+#
+# The countdown reached zero in the v0.13.0 breaking window: #583 (CreateForwardReply,
+# removed), #584 (GetRecording, removed) and #588's nine flat spellings (fixed to their
+# bucket-scoped form) were the last entries. Keep it empty — a route that belongs here
+# is a shipped 404, and the right move is to fix or remove the operation, not to log it.
 # ---------------------------------------------------------------------------
-sdk_routes_known_defective:
-  - method: POST
-    path: /inbox_forwards/:id/replies
-    issue: 583
-    reason: >-
-      Flat create was never drawn — config/routes.rb:150 is
-      `resources :replies, only: %i[index show]`. Create exists only
-      bucket-scoped at config/routes.rb:1262. bc3 has no flat-create test at any
-      path and the docs list only the two GETs. Correct route is
-      POST /{accountId}/buckets/{bucketId}/inbox_forwards/{forwardId}/replies.json,
-      which adds a path label and so breaks the generated signature in six SDKs.
-      Removing the operation is a legitimate alternative — the bucket-scoped
-      route is undocumented with zero test/api coverage.
-
-  # -- #588: nine flat spellings bc3 only draws bucket-scoped. All 404 today;
-  #    the spec ships no bucket-scoped alternative for any of them. Each fix adds
-  #    a required bucketId label, so all nine are breaking and want one window.
-  #    NOTE GetClientApproval (spec:5713) and GetClientCorrespondence (spec:5775)
-  #    are CORRECT as flat and must not be swept along — only the lists are wrong.
-
-  - method: GET
-    path: /chats/:id/integrations
-    issue: 588
-    reason: >-
-      ListChatbots. The only `integrations` resource is bucket-scoped
-      (config/routes.rb:956, inside :954 resources :chats inside :887 resources
-      :buckets). The flat `chats` draw (:180) nests only lines and uploads. All 6
-      tests in test/api/chats/integrations_controller_api_test.rb are
-      bucket-scoped; the flat URL helper does not exist in bc3.
-  - method: POST
-    path: /chats/:id/integrations
-    issue: 588
-    reason: CreateChatbot. Same missing flat draw as ListChatbots.
-  - method: GET
-    path: /chats/:id/integrations/:id
-    issue: 588
-    reason: GetChatbot. Same missing flat draw.
-  - method: PUT
-    path: /chats/:id/integrations/:id
-    issue: 588
-    reason: UpdateChatbot. Same missing flat draw.
-  - method: DELETE
-    path: /chats/:id/integrations/:id
-    issue: 588
-    reason: DeleteChatbot. Same missing flat draw.
-
-  - method: GET
-    path: /client/approvals
-    issue: 588
-    reason: >-
-      ListClientApprovals. Drawn-but-wrong-action: the flat draw is
-      config/routes.rb:194 `resources :approvals, only: %i[show]`, so there is no
-      collection path. index lives bucket-scoped at :1278. A flat index is also
-      semantically impossible — Clients::ApprovalsController#index resolves
-      @bucket.project.client_board_recording, and the client board is per-project.
-  - method: GET
-    path: /client/correspondences
-    issue: 588
-    reason: >-
-      ListClientCorrespondences. Same shape: flat draw is config/routes.rb:193
-      `only: %i[show]`. test/api/clients/correspondences_controller_api_test.rb:49
-      asserts RecordNotFound for a bucket with no client board, confirming the
-      index requires one.
-  - method: GET
-    path: /client/recordings/:id/replies
-    issue: 588
-    reason: >-
-      ListClientReplies. Worse than a wrong `only:` — the flat `client` namespace
-      (config/routes.rb:190-195) has neither `replies` nor `recordings`. Bucket
-      form at :1285. Clients::RepliesController includes only BucketScoped, so
-      @bucket is never assigned on a flat route.
-  - method: GET
-    path: /client/recordings/:id/replies/:id
-    issue: 588
-    reason: GetClientReply. Same absent flat namespace members as ListClientReplies.
-
-  - method: GET
-    path: /recordings/:id
-    issue: 584
-    reason: >-
-      No correct path exists. config/routes.rb:258 is
-      `resources :recordings, only: []`, so the flat show is not drawn, and the
-      bucket-scoped show at :888 cannot render on the API host:
-      app/views/api/recordings/ holds only partials — no show.json.jbuilder, no
-      application/ fallback, no engine tree. There is no
-      test/api/recordings_controller_api_test.rb at all. Recommend REMOVING the
-      operation, as #504 did for GetEverythingBoosts; ListRecordings already
-      covers bc3's only recordings read endpoint.
+sdk_routes_known_defective: []
 
 # ---------------------------------------------------------------------------
 # Direction 2 — bc3 documents a route the SDK models no operation for.

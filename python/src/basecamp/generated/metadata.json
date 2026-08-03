@@ -167,17 +167,6 @@
       ]
     }
   },
-  "CreateForwardReply": {
-    "retry": {
-      "backoff": "exponential",
-      "base_delay_ms": 1000,
-      "max": 2,
-      "retry_on": [
-        429,
-        503
-      ]
-    }
-  },
   "CreateGaugeNeedle": {
     "retry": {
       "backoff": "exponential",
@@ -1328,17 +1317,6 @@
       ]
     }
   },
-  "GetRecording": {
-    "retry": {
-      "backoff": "exponential",
-      "base_delay_ms": 1000,
-      "max": 3,
-      "retry_on": [
-        429,
-        503
-      ]
-    }
-  },
   "GetRecordingTimesheet": {
     "retry": {
       "backoff": "exponential",
@@ -2260,18 +2238,6 @@
     }
   },
   "TrashRecording": {
-    "idempotent": true,
-    "retry": {
-      "backoff": "exponential",
-      "base_delay_ms": 1000,
-      "max": 3,
-      "retry_on": [
-        429,
-        503
-      ]
-    }
-  },
-  "TrashTodo": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",

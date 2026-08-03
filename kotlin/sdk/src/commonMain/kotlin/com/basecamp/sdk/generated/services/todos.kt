@@ -147,24 +147,6 @@ open class TodosService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Trash a todo. Trashed items can be recovered.
-     * @param todoId The todo ID
-     */
-    suspend fun trash(todoId: Long): Unit {
-        val info = OperationInfo(
-            service = "Todos",
-            operation = "TrashTodo",
-            resourceType = "todo",
-            isMutation = true,
-            projectId = null,
-            resourceId = todoId,
-        )
-        request(info, {
-            httpDelete("/todos/${todoId}", operationName = info.operation)
-        }) { Unit }
-    }
-
-    /**
      * Mark a todo as complete
      * @param todoId The todo ID
      */

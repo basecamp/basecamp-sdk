@@ -806,30 +806,6 @@ func (s *TodosService) replaceTodo(ctx context.Context, todoID int64, buildBody 
 	return &todo, nil
 }
 
-// Trash moves a todo to the trash.
-// Trashed todos can be recovered from the trash.
-func (s *TodosService) Trash(ctx context.Context, todoID int64) (err error) {
-	op := OperationInfo{
-		Service: "Todos", Operation: "Trash",
-		ResourceType: "todo", IsMutation: true,
-		ResourceID: todoID,
-	}
-	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
-		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return
-		}
-	}
-	start := time.Now()
-	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	resp, err := s.client.parent.gen.TrashTodoWithResponse(ctx, s.client.accountID, todoID)
-	if err != nil {
-		return err
-	}
-	return checkResponse(resp.HTTPResponse, resp.Body)
-}
-
 // Complete marks a todo as completed.
 func (s *TodosService) Complete(ctx context.Context, todoID int64) (err error) {
 	op := OperationInfo{

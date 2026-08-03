@@ -323,35 +323,6 @@ export class TodosService extends BaseService {
   }
 
   /**
-   * Trash a todo. Trashed items can be recovered.
-   * @param todoId - The todo ID
-   * @returns void
-   * @throws {BasecampError} If the request fails
-   *
-   * @example
-   * ```ts
-   * await client.todos.trash(123);
-   * ```
-   */
-  async trash(todoId: number): Promise<void> {
-    await this.request(
-      {
-        service: "Todos",
-        operation: "TrashTodo",
-        resourceType: "todo",
-        isMutation: true,
-        resourceId: todoId,
-      },
-      () =>
-        this.client.DELETE("/todos/{todoId}", {
-          params: {
-            path: { todoId },
-          },
-        })
-    );
-  }
-
-  /**
    * Mark a todo as complete
    * @param todoId - The todo ID
    * @returns void

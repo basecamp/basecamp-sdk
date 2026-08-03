@@ -20,10 +20,10 @@ class ClientApprovalsServiceTest < Minitest::Test
   end
 
   def test_list_approvals
-    stub_get("/12345/client/approvals.json",
+    stub_get("/12345/buckets/100/client/approvals.json",
              response_body: [ sample_approval, sample_approval(id: 2, subject: "Budget Approval") ])
 
-    approvals = @account.client_approvals.list.to_a
+    approvals = @account.client_approvals.list(bucket_id: 100).to_a
 
     assert_equal 2, approvals.length
     assert_equal "New logo for the website", approvals[0]["subject"]

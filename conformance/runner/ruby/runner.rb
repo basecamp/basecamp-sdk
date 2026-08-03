@@ -414,6 +414,56 @@ class OperationMapper
       # .to_a is load-bearing: paginate is lazy, so an unconsumed enumerator
       # never reaches the wire and requestPath/requestCount would see nothing.
       @account.forwards.list(inbox_id: path_params["inboxId"]).to_a
+    # #588: nine flat spellings bc3 only draws bucket-scoped. Each pins the
+    # bucketId segment on the wire — the segment whose absence made them 404.
+    # .to_a on the list operations is load-bearing (lazy paginate).
+    when "ListChatbots"
+      @account.campfires.list_chatbots(
+        bucket_id: path_params["bucketId"],
+        campfire_id: path_params["campfireId"]
+      ).to_a
+    when "GetChatbot"
+      @account.campfires.get_chatbot(
+        bucket_id: path_params["bucketId"],
+        campfire_id: path_params["campfireId"],
+        chatbot_id: path_params["chatbotId"]
+      )
+    when "CreateChatbot"
+      @account.campfires.create_chatbot(
+        bucket_id: path_params["bucketId"],
+        campfire_id: path_params["campfireId"],
+        service_name: body["service_name"],
+        command_url: body["command_url"]
+      )
+    when "UpdateChatbot"
+      @account.campfires.update_chatbot(
+        bucket_id: path_params["bucketId"],
+        campfire_id: path_params["campfireId"],
+        chatbot_id: path_params["chatbotId"],
+        service_name: body["service_name"],
+        command_url: body["command_url"]
+      )
+    when "DeleteChatbot"
+      @account.campfires.delete_chatbot(
+        bucket_id: path_params["bucketId"],
+        campfire_id: path_params["campfireId"],
+        chatbot_id: path_params["chatbotId"]
+      )
+    when "ListClientApprovals"
+      @account.client_approvals.list(bucket_id: path_params["bucketId"]).to_a
+    when "ListClientCorrespondences"
+      @account.client_correspondences.list(bucket_id: path_params["bucketId"]).to_a
+    when "ListClientReplies"
+      @account.client_replies.list(
+        bucket_id: path_params["bucketId"],
+        recording_id: path_params["recordingId"]
+      ).to_a
+    when "GetClientReply"
+      @account.client_replies.get(
+        bucket_id: path_params["bucketId"],
+        recording_id: path_params["recordingId"],
+        reply_id: path_params["replyId"]
+      )
     when "RepositionTodolistGroup"
       @account.todolist_groups.reposition(
         group_id: path_params["groupId"],

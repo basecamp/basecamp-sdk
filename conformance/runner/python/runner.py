@@ -436,6 +436,55 @@ class OperationMapper:
                 return self._account.everything.get_everything_not_now_cards()
             case "ListForwards":
                 return self._account.forwards.list(inbox_id=path_params["inboxId"])
+            # #588: nine flat spellings bc3 only draws bucket-scoped. Each pins
+            # the bucketId segment on the wire — the segment whose absence 404'd.
+            case "ListChatbots":
+                return self._account.campfires.list_chatbots(
+                    bucket_id=path_params["bucketId"],
+                    campfire_id=path_params["campfireId"],
+                )
+            case "GetChatbot":
+                return self._account.campfires.get_chatbot(
+                    bucket_id=path_params["bucketId"],
+                    campfire_id=path_params["campfireId"],
+                    chatbot_id=path_params["chatbotId"],
+                )
+            case "CreateChatbot":
+                return self._account.campfires.create_chatbot(
+                    bucket_id=path_params["bucketId"],
+                    campfire_id=path_params["campfireId"],
+                    service_name=body["service_name"],
+                    command_url=body["command_url"],
+                )
+            case "UpdateChatbot":
+                return self._account.campfires.update_chatbot(
+                    bucket_id=path_params["bucketId"],
+                    campfire_id=path_params["campfireId"],
+                    chatbot_id=path_params["chatbotId"],
+                    service_name=body["service_name"],
+                    command_url=body["command_url"],
+                )
+            case "DeleteChatbot":
+                return self._account.campfires.delete_chatbot(
+                    bucket_id=path_params["bucketId"],
+                    campfire_id=path_params["campfireId"],
+                    chatbot_id=path_params["chatbotId"],
+                )
+            case "ListClientApprovals":
+                return self._account.client_approvals.list(bucket_id=path_params["bucketId"])
+            case "ListClientCorrespondences":
+                return self._account.client_correspondences.list(bucket_id=path_params["bucketId"])
+            case "ListClientReplies":
+                return self._account.client_replies.list(
+                    bucket_id=path_params["bucketId"],
+                    recording_id=path_params["recordingId"],
+                )
+            case "GetClientReply":
+                return self._account.client_replies.get(
+                    bucket_id=path_params["bucketId"],
+                    recording_id=path_params["recordingId"],
+                    reply_id=path_params["replyId"],
+                )
             case "RepositionTodolistGroup":
                 return self._account.todolist_groups.reposition(
                     group_id=path_params["groupId"], position=body["position"]

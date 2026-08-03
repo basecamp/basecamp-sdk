@@ -42,26 +42,6 @@ class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get a single recording by id
-     * @param recordingId The recording ID
-     */
-    suspend fun get(recordingId: Long): Recording {
-        val info = OperationInfo(
-            service = "Recordings",
-            operation = "GetRecording",
-            resourceType = "recording",
-            isMutation = false,
-            projectId = null,
-            resourceId = recordingId,
-        )
-        return request(info, {
-            httpGet("/recordings/${recordingId}", operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<Recording>(body)
-        }
-    }
-
-    /**
      * Unarchive a recording (restore to active status)
      * @param recordingId The recording ID
      */

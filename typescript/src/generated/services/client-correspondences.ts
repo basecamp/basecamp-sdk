@@ -40,28 +40,31 @@ export class ClientCorrespondencesService extends BaseService {
 
   /**
    * List all client correspondences in a project
+   * @param bucketId - The bucket ID
    * @param options - Optional query parameters
    * @returns All ClientCorrespondence across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.clientCorrespondences.list();
+   * const result = await client.clientCorrespondences.list(123);
    *
    * // With options
-   * const filtered = await client.clientCorrespondences.list({ sort: "created_at" });
+   * const filtered = await client.clientCorrespondences.list(123, { sort: "created_at" });
    * ```
    */
-  async list(options?: ListClientCorrespondenceOptions): Promise<ListResult<ClientCorrespondence>> {
+  async list(bucketId: number, options?: ListClientCorrespondenceOptions): Promise<ListResult<ClientCorrespondence>> {
     return this.requestPaginated(
       {
         service: "ClientCorrespondences",
         operation: "ListClientCorrespondences",
         resourceType: "client_correspondence",
         isMutation: false,
+        projectId: bucketId,
       },
       () =>
-        this.client.GET("/client/correspondences.json", {
+        this.client.GET("/buckets/{bucketId}/client/correspondences.json", {
           params: {
+            path: { bucketId },
             query: { sort: options?.sort, direction: options?.direction, page: options?.page },
           },
         })

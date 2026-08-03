@@ -49,12 +49,12 @@ class RecordingsServiceTest {
         // A webhook-sourced recording omits the companion arrays entirely.
         val client = mockClient { _ ->
             respond(
-                content = recordingJson(1, ""),
+                content = "[" + recordingJson(1, "") + "]",
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
         }
-        val recording = client.forAccount("12345").recordings.get(recordingId = 1)
+        val recording = client.forAccount("12345").recordings.list(type = "Message").single()
         assertNull(recording.contentAttachments, "absent content_attachments should decode to null")
         assertNull(recording.descriptionAttachments, "absent description_attachments should decode to null")
         client.close()
@@ -66,12 +66,12 @@ class RecordingsServiceTest {
         // stay distinct from absent — a non-null empty list, not null.
         val client = mockClient { _ ->
             respond(
-                content = recordingJson(2, ""","content_attachments": []"""),
+                content = "[" + recordingJson(2, ""","content_attachments": []""") + "]",
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
         }
-        val recording = client.forAccount("12345").recordings.get(recordingId = 2)
+        val recording = client.forAccount("12345").recordings.list(type = "Message").single()
         val attachments = assertNotNull(recording.contentAttachments, "present-empty content_attachments must not be null")
         assertEquals(0, attachments.size)
         client.close()
@@ -89,12 +89,12 @@ class RecordingsServiceTest {
         }"""
         val client = mockClient { _ ->
             respond(
-                content = recordingJson(3, ""","content_attachments": [$attachment]"""),
+                content = "[" + recordingJson(3, ""","content_attachments": [$attachment]""") + "]",
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
         }
-        val recording = client.forAccount("12345").recordings.get(recordingId = 3)
+        val recording = client.forAccount("12345").recordings.list(type = "Message").single()
         val attachments = assertNotNull(recording.contentAttachments)
         assertEquals(1, attachments.size)
         // Float-spelled 1024.0 decodes to the integer 1024 via FlexibleIntSerializer.

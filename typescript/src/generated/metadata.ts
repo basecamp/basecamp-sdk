@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-08-03T07:11:02.911Z",
+  "generated": "2026-08-03T17:39:27.814Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -273,6 +273,131 @@ const metadata: MetadataOutput = {
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "ListChatbots": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "CreateChatbot": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetChatbot": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateChatbot": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "DeleteChatbot": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "ListClientApprovals": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "ListClientCorrespondences": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "ListClientReplies": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "GetClientReply": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "CreateTool": {
@@ -677,72 +802,6 @@ const metadata: MetadataOutput = {
         ]
       }
     },
-    "ListChatbots": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "pagination": {
-        "style": "link",
-        "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
-      }
-    },
-    "CreateChatbot": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "GetChatbot": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "UpdateChatbot": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "DeleteChatbot": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
     "ListCampfireLines": {
       "retry": {
         "maxAttempts": 3,
@@ -868,22 +927,6 @@ const metadata: MetadataOutput = {
         "maxPageSize": 50
       }
     },
-    "ListClientApprovals": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "pagination": {
-        "style": "link",
-        "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
-      }
-    },
     "GetClientApproval": {
       "retry": {
         "maxAttempts": 3,
@@ -895,50 +938,7 @@ const metadata: MetadataOutput = {
         ]
       }
     },
-    "ListClientCorrespondences": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "pagination": {
-        "style": "link",
-        "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
-      }
-    },
     "GetClientCorrespondence": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "ListClientReplies": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "pagination": {
-        "style": "link",
-        "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
-      }
-    },
-    "GetClientReply": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,
@@ -1150,17 +1150,6 @@ const metadata: MetadataOutput = {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
         "maxPageSize": 50
-      }
-    },
-    "CreateForwardReply": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
       }
     },
     "GetForwardReply": {
@@ -2023,17 +2012,6 @@ const metadata: MetadataOutput = {
       },
       "idempotent": {
         "natural": true
-      }
-    },
-    "GetRecording": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
       }
     },
     "GetBookmark": {
@@ -2920,20 +2898,6 @@ const metadata: MetadataOutput = {
       }
     },
     "ReplaceTodo": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "TrashTodo": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,

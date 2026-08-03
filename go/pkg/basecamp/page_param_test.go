@@ -37,15 +37,15 @@ func TestPageParamReachesWire(t *testing.T) {
 			return err
 		}},
 		{"client_approvals.List", `[]`, func(ctx context.Context, ac *AccountClient) error {
-			_, err := ac.ClientApprovals().List(ctx, &ClientApprovalListOptions{Page: 3})
+			_, err := ac.ClientApprovals().List(ctx, 1, &ClientApprovalListOptions{Page: 3})
 			return err
 		}},
 		{"client_correspondences.List", `[]`, func(ctx context.Context, ac *AccountClient) error {
-			_, err := ac.ClientCorrespondences().List(ctx, &ClientCorrespondenceListOptions{Page: 3})
+			_, err := ac.ClientCorrespondences().List(ctx, 1, &ClientCorrespondenceListOptions{Page: 3})
 			return err
 		}},
 		{"client_replies.List", `[]`, func(ctx context.Context, ac *AccountClient) error {
-			_, err := ac.ClientReplies().List(ctx, 1, &ClientReplyListOptions{Page: 3})
+			_, err := ac.ClientReplies().List(ctx, 1, 2, &ClientReplyListOptions{Page: 3})
 			return err
 		}},
 		{"comments.List", `[]`, func(ctx context.Context, ac *AccountClient) error {

@@ -419,7 +419,7 @@ The SDK provides typed services for the complete Basecamp API:
 
 | Service | Methods |
 |---------|---------|
-| `todos` | list, get, create, update, trash, complete, uncomplete, reposition |
+| `todos` | list, get, create, update, complete, uncomplete, reposition |
 | `todolists` | list, get, create, update, trash, reposition |
 | `todosets` | get |
 | `todolistGroups` | list, get, create, reposition |
@@ -492,7 +492,7 @@ The SDK provides typed services for the complete Basecamp API:
 
 | Service | Methods |
 |---------|---------|
-| `forwards` | list, get, createReply |
+| `forwards` | list, get, listReplies, getReply |
 
 ## Downloading Files
 

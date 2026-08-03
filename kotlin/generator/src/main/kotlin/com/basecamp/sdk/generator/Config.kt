@@ -55,7 +55,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     ),
     "Automation" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),
-        "Recordings" to listOf("GetRecording", "ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"),
+        "Recordings" to listOf("ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"),
         "Webhooks" to listOf("ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"),
         "Events" to listOf("ListEvents"),
         "Lineup" to listOf("CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"),
@@ -93,7 +93,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "ClientVisibility" to listOf("SetClientVisibility"),
     ),
     "Todos" to mapOf(
-        "Todos" to listOf("ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"),
+        "Todos" to listOf("ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo"),
         "Todolists" to listOf("GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"),
         "Todosets" to listOf("GetTodoset"),
         "HillCharts" to listOf("GetHillChart", "UpdateHillChartSettings"),
@@ -248,7 +248,6 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "ListForwards" to "list",
     "GetForwardReply" to "getReply",
     "ListForwardReplies" to "listReplies",
-    "CreateForwardReply" to "createReply",
     "GetInbox" to "getInbox",
     "GetUpload" to "get",
     "UpdateUpload" to "update",

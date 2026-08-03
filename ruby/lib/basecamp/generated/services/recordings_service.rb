@@ -23,15 +23,6 @@ module Basecamp
         end
       end
 
-      # Get a single recording by id
-      # @param recording_id [Integer] recording id ID
-      # @return [Hash] response data
-      def get(recording_id:)
-        with_operation(service: "recordings", operation: "get", is_mutation: false, resource_id: recording_id) do
-          http_get("/recordings/#{recording_id}", operation: "GetRecording").json
-        end
-      end
-
       # Unarchive a recording (restore to active status)
       # @param recording_id [Integer] recording id ID
       # @return [void]

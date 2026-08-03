@@ -162,25 +162,6 @@ class TodosServiceTest {
     }
 
     @Test
-    fun trashTodoReturnsUnit() = runTest {
-        val client = mockClient { request ->
-            assertEquals(HttpMethod.Delete, request.method)
-            assertTrue(request.url.encodedPath.contains("/todos/100"))
-
-            respond(
-                content = "",
-                status = HttpStatusCode.NoContent,
-            )
-        }
-
-        val account = client.forAccount("12345")
-        account.todos.trash(todoId = 100)
-        // No exception = success
-
-        client.close()
-    }
-
-    @Test
     fun todoNotFoundThrows() = runTest {
         val client = mockClient { _ ->
             respond(

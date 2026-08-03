@@ -28,15 +28,6 @@ class ForwardsService(BaseService):
             operation="ListForwardReplies",
         )
 
-    def create_reply(self, *, forward_id: int, content: str) -> dict[str, Any]:
-        return self._request(
-            OperationInfo(service="forwards", operation="create_reply", is_mutation=True, resource_id=forward_id),
-            "POST",
-            f"/inbox_forwards/{forward_id}/replies.json",
-            json_body=self._compact(content=content),
-            operation="CreateForwardReply",
-        )
-
     def get_reply(self, *, forward_id: int, reply_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="forwards", operation="get_reply", is_mutation=False, resource_id=reply_id),
@@ -89,15 +80,6 @@ class AsyncForwardsService(AsyncBaseService):
             params=self._compact(page=page),
             max_items=max_items,
             operation="ListForwardReplies",
-        )
-
-    async def create_reply(self, *, forward_id: int, content: str) -> dict[str, Any]:
-        return await self._request(
-            OperationInfo(service="forwards", operation="create_reply", is_mutation=True, resource_id=forward_id),
-            "POST",
-            f"/inbox_forwards/{forward_id}/replies.json",
-            json_body=self._compact(content=content),
-            operation="CreateForwardReply",
         )
 
     async def get_reply(self, *, forward_id: int, reply_id: int) -> dict[str, Any]:

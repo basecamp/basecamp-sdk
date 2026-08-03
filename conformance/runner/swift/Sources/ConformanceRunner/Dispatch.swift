@@ -547,6 +547,71 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         let forwards = try await account.forwards.list(inboxId: pathParams.longParam("inboxId"))
         return DispatchResult(totalCount: forwards.meta.totalCount, truncated: forwards.meta.truncated)
 
+    // #588: nine flat spellings bc3 only draws bucket-scoped. Each of the
+    // following pins the bucketId segment on the wire — the segment whose
+    // absence made every one of them a live 404.
+    case "ListChatbots":
+        let chatbots = try await account.campfires.listChatbots(
+            bucketId: pathParams.longParam("bucketId"),
+            campfireId: pathParams.longParam("campfireId"))
+        return DispatchResult(totalCount: chatbots.meta.totalCount, truncated: chatbots.meta.truncated)
+
+    case "GetChatbot":
+        _ = try await account.campfires.getChatbot(
+            bucketId: pathParams.longParam("bucketId"),
+            campfireId: pathParams.longParam("campfireId"),
+            chatbotId: pathParams.longParam("chatbotId"))
+        return DispatchResult()
+
+    case "CreateChatbot":
+        _ = try await account.campfires.createChatbot(
+            bucketId: pathParams.longParam("bucketId"),
+            campfireId: pathParams.longParam("campfireId"),
+            req: CreateChatbotRequest(
+                commandUrl: try rb.stringParam("command_url"),
+                serviceName: try rb.stringParam("service_name")))
+        return DispatchResult()
+
+    case "UpdateChatbot":
+        _ = try await account.campfires.updateChatbot(
+            bucketId: pathParams.longParam("bucketId"),
+            campfireId: pathParams.longParam("campfireId"),
+            chatbotId: pathParams.longParam("chatbotId"),
+            req: UpdateChatbotRequest(
+                commandUrl: try rb.stringParam("command_url"),
+                serviceName: try rb.stringParam("service_name")))
+        return DispatchResult()
+
+    case "DeleteChatbot":
+        try await account.campfires.deleteChatbot(
+            bucketId: pathParams.longParam("bucketId"),
+            campfireId: pathParams.longParam("campfireId"),
+            chatbotId: pathParams.longParam("chatbotId"))
+        return DispatchResult()
+
+    case "ListClientApprovals":
+        let approvals = try await account.clientApprovals.list(
+            bucketId: pathParams.longParam("bucketId"))
+        return DispatchResult(totalCount: approvals.meta.totalCount, truncated: approvals.meta.truncated)
+
+    case "ListClientCorrespondences":
+        let correspondences = try await account.clientCorrespondences.list(
+            bucketId: pathParams.longParam("bucketId"))
+        return DispatchResult(totalCount: correspondences.meta.totalCount, truncated: correspondences.meta.truncated)
+
+    case "ListClientReplies":
+        let replies = try await account.clientReplies.list(
+            bucketId: pathParams.longParam("bucketId"),
+            recordingId: pathParams.longParam("recordingId"))
+        return DispatchResult(totalCount: replies.meta.totalCount, truncated: replies.meta.truncated)
+
+    case "GetClientReply":
+        _ = try await account.clientReplies.get(
+            bucketId: pathParams.longParam("bucketId"),
+            recordingId: pathParams.longParam("recordingId"),
+            replyId: pathParams.longParam("replyId"))
+        return DispatchResult()
+
     // Pins the `todolists/groups` segment: a group repositions through its own
     // collection, not through `/todolists/{id}`. 204-shaped (requestVoid), so
     // there is no result to report.

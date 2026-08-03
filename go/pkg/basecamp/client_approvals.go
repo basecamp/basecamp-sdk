@@ -105,10 +105,11 @@ func NewClientApprovalsService(client *AccountClient) *ClientApprovalsService {
 //
 // The returned ClientApprovalListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientApprovalsService) List(ctx context.Context, opts *ClientApprovalListOptions) (result *ClientApprovalListResult, err error) {
+func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64, opts *ClientApprovalListOptions) (result *ClientApprovalListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientApprovals", Operation: "List",
 		ResourceType: "client_approval", IsMutation: false,
+		ProjectID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -133,7 +134,7 @@ func (s *ClientApprovalsService) List(ctx context.Context, opts *ClientApprovalL
 			params.Page = page
 		}
 	}
-	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, params)
+	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, bucketID, params)
 	if err != nil {
 		return nil, err
 	}

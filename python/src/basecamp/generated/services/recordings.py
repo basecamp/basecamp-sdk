@@ -30,14 +30,6 @@ class RecordingsService(BaseService):
             operation="ListRecordings",
         )
 
-    def get(self, *, recording_id: int) -> dict[str, Any]:
-        return self._request(
-            OperationInfo(service="recordings", operation="get", is_mutation=False, resource_id=recording_id),
-            "GET",
-            f"/recordings/{recording_id}",
-            operation="GetRecording",
-        )
-
     def unarchive(self, *, recording_id: int) -> None:
         self._request_void(
             OperationInfo(service="recordings", operation="unarchive", is_mutation=True, resource_id=recording_id),
@@ -81,14 +73,6 @@ class AsyncRecordingsService(AsyncBaseService):
             params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListRecordings",
-        )
-
-    async def get(self, *, recording_id: int) -> dict[str, Any]:
-        return await self._request(
-            OperationInfo(service="recordings", operation="get", is_mutation=False, resource_id=recording_id),
-            "GET",
-            f"/recordings/{recording_id}",
-            operation="GetRecording",
         )
 
     async def unarchive(self, *, recording_id: int) -> None:

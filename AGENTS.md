@@ -24,7 +24,7 @@ Paths are from the repository root, since that is where you will be working.
 | **Kotlin** | Ktor via `BaseService` | `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/*.kt` |
 | **Python** | httpx via `HttpClient` | `python/src/basecamp/generated/services/*.py` |
 
-All 243 operations across the ~50-service per-SDK layer are generated. Hand-written code is limited to infrastructure:
+All 240 operations across the ~50-service per-SDK layer are generated. Hand-written code is limited to infrastructure:
 
 | Purpose | Location |
 |---------|----------|
@@ -88,7 +88,7 @@ Pull the andon cord when you see:
 
 All new API coverage starts in `spec/basecamp.smithy`. Before writing SDK code, add operations and shapes to the spec.
 
-`spec/basecamp.smithy` holds 243 worked operations. Copy the nearest one rather than
+`spec/basecamp.smithy` holds 240 worked operations. Copy the nearest one rather than
 working from a skeleton here: it shows the live conventions for naming, `@http` URIs,
 pagination traits and shape reuse, and it cannot drift from itself.
 

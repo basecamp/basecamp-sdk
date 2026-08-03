@@ -582,6 +582,77 @@ async function executeOperation(
         await client.forwards.list(Number(params.inboxId));
         break;
 
+      // #588: nine flat spellings bc3 only draws bucket-scoped. Each pins the
+      // bucketId segment on the wire — the segment whose absence made them 404.
+      case "ListChatbots":
+        await client.campfires.listChatbots(
+          Number(params.bucketId),
+          Number(params.campfireId),
+        );
+        break;
+
+      case "GetChatbot":
+        await client.campfires.getChatbot(
+          Number(params.bucketId),
+          Number(params.campfireId),
+          Number(params.chatbotId),
+        );
+        break;
+
+      case "CreateChatbot":
+        await client.campfires.createChatbot(
+          Number(params.bucketId),
+          Number(params.campfireId),
+          {
+            serviceName: String(body.service_name),
+            commandUrl: String(body.command_url),
+          },
+        );
+        break;
+
+      case "UpdateChatbot":
+        await client.campfires.updateChatbot(
+          Number(params.bucketId),
+          Number(params.campfireId),
+          Number(params.chatbotId),
+          {
+            serviceName: String(body.service_name),
+            commandUrl: String(body.command_url),
+          },
+        );
+        break;
+
+      case "DeleteChatbot":
+        await client.campfires.deleteChatbot(
+          Number(params.bucketId),
+          Number(params.campfireId),
+          Number(params.chatbotId),
+        );
+        break;
+
+      case "ListClientApprovals":
+        await client.clientApprovals.list(Number(params.bucketId));
+        break;
+
+      case "ListClientCorrespondences":
+        await client.clientCorrespondences.list(Number(params.bucketId));
+        break;
+
+      case "ListClientReplies":
+        await client.clientReplies.list(
+          Number(params.bucketId),
+          Number(params.recordingId),
+        );
+        break;
+
+      case "GetClientReply":
+        await client.clientReplies.get(
+          Number(params.bucketId),
+          Number(params.recordingId),
+          Number(params.replyId),
+        );
+        break;
+
       case "RepositionTodolistGroup":
         await client.todolistGroups.reposition(Number(params.groupId), {
           position: Number(body.position),

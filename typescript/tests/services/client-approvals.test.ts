@@ -51,7 +51,7 @@ describe("ClientApprovalsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/client/approvals.json`, () => {
+        http.get(`${BASE_URL}/buckets/1/client/approvals.json`, () => {
           return HttpResponse.json(mockApprovals);
         }),
       );
@@ -66,7 +66,7 @@ describe("ClientApprovalsService", () => {
 
     it("should return empty array when no approvals exist", async () => {
       server.use(
-        http.get(`${BASE_URL}/client/approvals.json`, () => {
+        http.get(`${BASE_URL}/buckets/1/client/approvals.json`, () => {
           return HttpResponse.json([]);
         }),
       );

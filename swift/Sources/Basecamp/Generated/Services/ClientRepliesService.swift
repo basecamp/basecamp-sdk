@@ -14,23 +14,23 @@ public struct ListClientReplyOptions: Sendable {
 
 
 public final class ClientRepliesService: BaseService, @unchecked Sendable {
-    public func get(recordingId: Int, replyId: Int) async throws -> ClientReply {
+    public func get(bucketId: Int, recordingId: Int, replyId: Int) async throws -> ClientReply {
         return try await request(
-            OperationInfo(service: "ClientReplies", operation: "GetClientReply", resourceType: "client_reply", isMutation: false, resourceId: replyId),
+            OperationInfo(service: "ClientReplies", operation: "GetClientReply", resourceType: "client_reply", isMutation: false, projectId: bucketId, resourceId: replyId),
             method: "GET",
-            path: "/client/recordings/\(recordingId)/replies/\(replyId)",
+            path: "/buckets/\(bucketId)/client/recordings/\(recordingId)/replies/\(replyId)",
             retryConfig: Metadata.retryConfig(for: "GetClientReply")
         )
     }
 
-    public func list(recordingId: Int, options: ListClientReplyOptions? = nil) async throws -> ListResult<ClientReply> {
+    public func list(bucketId: Int, recordingId: Int, options: ListClientReplyOptions? = nil) async throws -> ListResult<ClientReply> {
         var queryItems: [URLQueryItem] = []
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
-            OperationInfo(service: "ClientReplies", operation: "ListClientReplies", resourceType: "client_reply", isMutation: false, resourceId: recordingId),
-            path: "/client/recordings/\(recordingId)/replies.json",
+            OperationInfo(service: "ClientReplies", operation: "ListClientReplies", resourceType: "client_reply", isMutation: false, projectId: bucketId, resourceId: recordingId),
+            path: "/buckets/\(bucketId)/client/recordings/\(recordingId)/replies.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListClientReplies")

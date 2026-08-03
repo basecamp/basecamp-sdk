@@ -73,7 +73,7 @@ describe("ClientCorrespondencesService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/client/correspondences.json`, () => {
+        http.get(`${BASE_URL}/buckets/1/client/correspondences.json`, () => {
           return HttpResponse.json(mockCorrespondences);
         }),
       );
@@ -88,7 +88,7 @@ describe("ClientCorrespondencesService", () => {
 
     it("should return empty array when no correspondences exist", async () => {
       server.use(
-        http.get(`${BASE_URL}/client/correspondences.json`, () => {
+        http.get(`${BASE_URL}/buckets/1/client/correspondences.json`, () => {
           return HttpResponse.json([]);
         }),
       );

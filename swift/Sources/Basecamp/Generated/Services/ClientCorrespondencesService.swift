@@ -34,7 +34,7 @@ public final class ClientCorrespondencesService: BaseService, @unchecked Sendabl
         )
     }
 
-    public func list(options: ListClientCorrespondenceOptions? = nil) async throws -> ListResult<ClientCorrespondence> {
+    public func list(bucketId: Int, options: ListClientCorrespondenceOptions? = nil) async throws -> ListResult<ClientCorrespondence> {
         var queryItems: [URLQueryItem] = []
         if let sort = options?.sort {
             queryItems.append(URLQueryItem(name: "sort", value: sort))
@@ -46,8 +46,8 @@ public final class ClientCorrespondencesService: BaseService, @unchecked Sendabl
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
-            OperationInfo(service: "ClientCorrespondences", operation: "ListClientCorrespondences", resourceType: "client_correspondence", isMutation: false),
-            path: "/client/correspondences.json",
+            OperationInfo(service: "ClientCorrespondences", operation: "ListClientCorrespondences", resourceType: "client_correspondence", isMutation: false, projectId: bucketId),
+            path: "/buckets/\(bucketId)/client/correspondences.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListClientCorrespondences")

@@ -281,15 +281,6 @@ class TodosServiceTest < Minitest::Test
     assert_nil result
   end
 
-  def test_trash_todo
-    # Generated service: /todos/{id} without .json
-    stub_delete("/12345/todos/456")
-
-    result = @account.todos.trash(todo_id: 456)
-
-    assert_nil result
-  end
-
   # The typed decode (Basecamp::Types::Todo → RichTextAttachment) carries the
   # rich-text description's inline files. Pixel dimensions arrive float-spelled
   # (1024.0) for images and null for non-image blobs; parse_integer decodes

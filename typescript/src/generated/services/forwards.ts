@@ -8,7 +8,6 @@ import { BaseService } from "../../services/base.js";
 import type { components } from "../schema.js";
 import { ListResult } from "../../pagination.js";
 import type { PaginationOptions } from "../../pagination.js";
-import { Errors } from "../../errors.js";
 
 // =============================================================================
 // Types
@@ -27,14 +26,6 @@ export type Inbox = components["schemas"]["Inbox"];
 export interface ListRepliesForwardOptions extends PaginationOptions {
   /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
   page?: number;
-}
-
-/**
- * Request parameters for createReply.
- */
-export interface CreateReplyForwardRequest {
-  /** Text content */
-  content: string;
 }
 
 /**
@@ -121,43 +112,6 @@ export class ForwardsService extends BaseService {
         })
       , options
     );
-  }
-
-  /**
-   * Create a reply to a forward
-   * @param forwardId - The forward ID
-   * @param req - Forward_reply creation parameters
-   * @returns The ForwardReply
-   * @throws {BasecampError} If required fields are missing or invalid
-   *
-   * @example
-   * ```ts
-   * const result = await client.forwards.createReply(123, { content: "Hello world" });
-   * ```
-   */
-  async createReply(forwardId: number, req: CreateReplyForwardRequest): Promise<ForwardReply> {
-    if (!req.content) {
-      throw Errors.validation("Content is required");
-    }
-    const response = await this.request(
-      {
-        service: "Forwards",
-        operation: "CreateForwardReply",
-        resourceType: "forward_reply",
-        isMutation: true,
-        resourceId: forwardId,
-      },
-      () =>
-        this.client.POST("/inbox_forwards/{forwardId}/replies.json", {
-          params: {
-            path: { forwardId },
-          },
-          body: {
-            content: req.content,
-          },
-        })
-    );
-    return response;
   }
 
   /**

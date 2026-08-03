@@ -1205,6 +1205,86 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
         }
 
+        // #588: nine flat spellings bc3 only draws bucket-scoped. Each pins the
+        // bucketId segment on the wire — the segment whose absence made them 404.
+        "ListChatbots" -> {
+            val result = account.campfires.listChatbots(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("campfireId"),
+            )
+            DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
+        }
+
+        "GetChatbot" -> {
+            account.campfires.getChatbot(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("campfireId"),
+                tc.pathParams.longParam("chatbotId"),
+            )
+            DispatchResult()
+        }
+
+        "CreateChatbot" -> {
+            account.campfires.createChatbot(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("campfireId"),
+                CreateChatbotBody(
+                    serviceName = tc.requestBody.stringParam("service_name"),
+                    commandUrl = tc.requestBody.stringParam("command_url"),
+                ),
+            )
+            DispatchResult()
+        }
+
+        "UpdateChatbot" -> {
+            account.campfires.updateChatbot(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("campfireId"),
+                tc.pathParams.longParam("chatbotId"),
+                UpdateChatbotBody(
+                    serviceName = tc.requestBody.stringParam("service_name"),
+                    commandUrl = tc.requestBody.stringParam("command_url"),
+                ),
+            )
+            DispatchResult()
+        }
+
+        "DeleteChatbot" -> {
+            account.campfires.deleteChatbot(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("campfireId"),
+                tc.pathParams.longParam("chatbotId"),
+            )
+            DispatchResult()
+        }
+
+        "ListClientApprovals" -> {
+            val result = account.clientApprovals.list(tc.pathParams.longParam("bucketId"))
+            DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
+        }
+
+        "ListClientCorrespondences" -> {
+            val result = account.clientCorrespondences.list(tc.pathParams.longParam("bucketId"))
+            DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
+        }
+
+        "ListClientReplies" -> {
+            val result = account.clientReplies.list(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("recordingId"),
+            )
+            DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
+        }
+
+        "GetClientReply" -> {
+            account.clientReplies.get(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("recordingId"),
+                tc.pathParams.longParam("replyId"),
+            )
+            DispatchResult()
+        }
+
         "RepositionTodolistGroup" -> {
             val groupId = tc.pathParams.longParam("groupId")
             account.todolistGroups.reposition(

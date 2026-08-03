@@ -127,14 +127,6 @@ class TodosService(BaseService):
             operation="ReplaceTodo",
         )
 
-    def trash(self, *, todo_id: int) -> None:
-        self._request_void(
-            OperationInfo(service="todos", operation="trash", is_mutation=True, resource_id=todo_id),
-            "DELETE",
-            f"/todos/{todo_id}",
-            operation="TrashTodo",
-        )
-
     def complete(self, *, todo_id: int) -> None:
         self._request_void(
             OperationInfo(service="todos", operation="complete", is_mutation=True, resource_id=todo_id),
@@ -276,14 +268,6 @@ class AsyncTodosService(AsyncBaseService):
                 starts_on=starts_on,
             ),
             operation="ReplaceTodo",
-        )
-
-    async def trash(self, *, todo_id: int) -> None:
-        await self._request_void(
-            OperationInfo(service="todos", operation="trash", is_mutation=True, resource_id=todo_id),
-            "DELETE",
-            f"/todos/{todo_id}",
-            operation="TrashTodo",
         )
 
     async def complete(self, *, todo_id: int) -> None:

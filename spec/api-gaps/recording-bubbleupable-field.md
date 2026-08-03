@@ -10,7 +10,7 @@ bc3_refs:
     - "(no new routes — additive field on existing Recording-shaped responses)"
   controllers: []
   related_existing_api:
-    - "Recording (polymorphic shape used by GetRecording, search results, activity feeds)"
+    - "Recording (polymorphic shape used by ListRecordings, search results, activity feeds)"
 ---
 
 # Recording#bubbleupable? field

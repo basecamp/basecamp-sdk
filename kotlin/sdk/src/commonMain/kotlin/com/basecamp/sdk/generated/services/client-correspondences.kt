@@ -14,15 +14,16 @@ class ClientCorrespondencesService(client: AccountClient) : BaseService(client) 
 
     /**
      * List all client correspondences in a project
+     * @param bucketId The bucket ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(options: ListClientCorrespondencesOptions? = null): ListResult<ClientCorrespondence> {
+    suspend fun list(bucketId: Long, options: ListClientCorrespondencesOptions? = null): ListResult<ClientCorrespondence> {
         val info = OperationInfo(
             service = "ClientCorrespondences",
             operation = "ListClientCorrespondences",
             resourceType = "client_correspondence",
             isMutation = false,
-            projectId = null,
+            projectId = bucketId,
             resourceId = null,
         )
         val qs = buildQueryString(
@@ -31,7 +32,7 @@ class ClientCorrespondencesService(client: AccountClient) : BaseService(client) 
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
-            httpGet("/client/correspondences.json" + qs, operationName = info.operation)
+            httpGet("/buckets/${bucketId}/client/correspondences.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<ClientCorrespondence>>(body)
         }

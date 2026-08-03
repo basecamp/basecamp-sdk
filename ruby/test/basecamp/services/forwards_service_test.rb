@@ -83,17 +83,4 @@ class ForwardsServiceTest < Minitest::Test
     assert_equal 300, reply["id"]
     assert_equal load_fixture("forwards/reply_get.json")["content"], reply["content"]
   end
-
-  def test_create_reply
-    new_reply = sample_reply(id: 999, content: "<p>Here is my response.</p>")
-    stub_post("/12345/inbox_forwards/200/replies.json", response_body: new_reply)
-
-    reply = @account.forwards.create_reply(
-      forward_id: 200,
-      content: "<p>Here is my response.</p>"
-    )
-
-    assert_equal 999, reply["id"]
-    assert_equal "<p>Here is my response.</p>", reply["content"]
-  end
 end

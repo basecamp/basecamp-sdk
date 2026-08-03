@@ -66,7 +66,6 @@ service Basecamp {
     CreateTodo,
     CreateTodosetTodo,
     ReplaceTodo,
-    TrashTodo,
     CompleteTodo,
     UncompleteTodo,
     RepositionTodo,
@@ -151,7 +150,6 @@ service Basecamp {
     GetForward,
     ListForwardReplies,
     GetForwardReply,
-    CreateForwardReply,
 
     // Batch 5 - CardTables, Cards, CardColumns, CardSteps (Kanban)
     GetCardTable,
@@ -208,7 +206,6 @@ service Basecamp {
     DeleteWebhook,
     ListEvents,
     ListRecordings,
-    GetRecording,
     TrashRecording,
     ArchiveRecording,
     UnarchiveRecording,
@@ -880,29 +877,6 @@ structure ReplaceTodoOutput {
 
   todo: Todo
 }
-
-/// Trash a todo (returns 204 No Content)
-@idempotent
-@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/todos/{todoId}", code: 204)
-operation TrashTodo {
-  input: TrashTodoInput
-  output: TrashTodoOutput
-  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
-}
-
-structure TrashTodoInput {
-  @required
-  @httpLabel
-  accountId: AccountId
-
-  @required
-  @httpLabel
-  todoId: TodoId
-}
-
-structure TrashTodoOutput {}
 
 /// Mark a todo as complete
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
@@ -3863,7 +3837,7 @@ structure CreateCampfireUploadOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/chats/{campfireId}/integrations.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/chats/{campfireId}/integrations.json")
 operation ListChatbots {
   input: ListChatbotsInput
   output: ListChatbotsOutput
@@ -3874,6 +3848,10 @@ structure ListChatbotsInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -3888,7 +3866,7 @@ structure ListChatbotsOutput {
 /// Get a chatbot by ID
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/chats/{campfireId}/integrations/{chatbotId}")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}")
 operation GetChatbot {
   input: GetChatbotInput
   output: GetChatbotOutput
@@ -3899,6 +3877,10 @@ structure GetChatbotInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -3916,7 +3898,7 @@ structure GetChatbotOutput {
 
 /// Create a new chatbot for a campfire
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/chats/{campfireId}/integrations.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/chats/{campfireId}/integrations.json", code: 201)
 operation CreateChatbot {
   input: CreateChatbotInput
   output: CreateChatbotOutput
@@ -3927,6 +3909,10 @@ structure CreateChatbotInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -3947,7 +3933,7 @@ structure CreateChatbotOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/chats/{campfireId}/integrations/{chatbotId}")
+@http(method: "PUT", uri: "/{accountId}/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}")
 operation UpdateChatbot {
   input: UpdateChatbotInput
   output: UpdateChatbotOutput
@@ -3958,6 +3944,10 @@ structure UpdateChatbotInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -3982,7 +3972,7 @@ structure UpdateChatbotOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/chats/{campfireId}/integrations/{chatbotId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}", code: 204)
 operation DeleteChatbot {
   input: DeleteChatbotInput
   output: DeleteChatbotOutput
@@ -3993,6 +3983,10 @@ structure DeleteChatbotInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -4156,33 +4150,6 @@ structure GetForwardReplyInput {
 }
 
 structure GetForwardReplyOutput {
-
-  reply: ForwardReply
-}
-
-/// Create a reply to a forward
-@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/inbox_forwards/{forwardId}/replies.json", code: 201)
-operation CreateForwardReply {
-  input: CreateForwardReplyInput
-  output: CreateForwardReplyOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
-}
-
-structure CreateForwardReplyInput {
-  @required
-  @httpLabel
-  accountId: AccountId
-
-  @required
-  @httpLabel
-  forwardId: ForwardId
-
-  @required
-  content: String
-}
-
-structure CreateForwardReplyOutput {
 
   reply: ForwardReply
 }
@@ -5708,7 +5675,7 @@ structure Subscription {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/client/approvals.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/client/approvals.json")
 operation ListClientApprovals {
   input: ListClientApprovalsInput
   output: ListClientApprovalsOutput
@@ -5719,6 +5686,10 @@ structure ListClientApprovalsInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @httpQuery("sort")
   sort: RecordingSortField
@@ -5770,7 +5741,7 @@ structure GetClientApprovalOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/client/correspondences.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/client/correspondences.json")
 operation ListClientCorrespondences {
   input: ListClientCorrespondencesInput
   output: ListClientCorrespondencesOutput
@@ -5781,6 +5752,10 @@ structure ListClientCorrespondencesInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @httpQuery("sort")
   sort: RecordingSortField
@@ -5832,7 +5807,7 @@ structure GetClientCorrespondenceOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/client/recordings/{recordingId}/replies.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/client/recordings/{recordingId}/replies.json")
 operation ListClientReplies {
   input: ListClientRepliesInput
   output: ListClientRepliesOutput
@@ -5843,6 +5818,10 @@ structure ListClientRepliesInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -5861,7 +5840,7 @@ structure ListClientRepliesOutput {
 /// Get a single client reply by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/client/recordings/{recordingId}/replies/{replyId}")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/client/recordings/{recordingId}/replies/{replyId}")
 operation GetClientReply {
   input: GetClientReplyInput
   output: GetClientReplyOutput
@@ -5872,6 +5851,10 @@ structure GetClientReplyInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -6274,31 +6257,6 @@ structure ListRecordingsInput {
 structure ListRecordingsOutput {
 
   recordings: RecordingList
-}
-
-/// Get a single recording by id
-@readonly
-@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}")
-operation GetRecording {
-  input: GetRecordingInput
-  output: GetRecordingOutput
-  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
-}
-
-structure GetRecordingInput {
-  @required
-  @httpLabel
-  accountId: AccountId
-
-  @required
-  @httpLabel
-  recordingId: RecordingId
-}
-
-structure GetRecordingOutput {
-
-  recording: Recording
 }
 
 /// Trash a recording

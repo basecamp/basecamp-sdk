@@ -20,10 +20,10 @@ class ClientCorrespondencesServiceTest < Minitest::Test
   end
 
   def test_list_correspondences
-    stub_get("/12345/client/correspondences.json",
+    stub_get("/12345/buckets/100/client/correspondences.json",
              response_body: [ sample_correspondence, sample_correspondence(id: 2, subject: "Invoice Query") ])
 
-    correspondences = @account.client_correspondences.list.to_a
+    correspondences = @account.client_correspondences.list(bucket_id: 100).to_a
 
     assert_equal 2, correspondences.length
     assert_equal "Project kickoff!", correspondences[0]["subject"]

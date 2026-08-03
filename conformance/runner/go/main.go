@@ -1033,6 +1033,105 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			},
 		}
 
+	// #588: nine flat spellings bc3 only draws bucket-scoped. Each of these
+	// pins the bucketId segment on the wire — the thing that was missing when
+	// they 404'd.
+	case "ListChatbots":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		campfireID := getInt64Param(tc.PathParams, "campfireId")
+		result, err := account.Campfires().ListChatbots(ctx, bucketID, campfireID, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
+		}
+
+	case "GetChatbot":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		campfireID := getInt64Param(tc.PathParams, "campfireId")
+		chatbotID := getInt64Param(tc.PathParams, "chatbotId")
+		_, err := account.Campfires().GetChatbot(ctx, bucketID, campfireID, chatbotID)
+		return operationResult{err: err}
+
+	case "CreateChatbot":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		campfireID := getInt64Param(tc.PathParams, "campfireId")
+		req := &basecamp.CreateChatbotRequest{
+			ServiceName: getStringParam(tc.RequestBody, "service_name"),
+			CommandURL:  getStringParam(tc.RequestBody, "command_url"),
+		}
+		_, err := account.Campfires().CreateChatbot(ctx, bucketID, campfireID, req)
+		return operationResult{err: err}
+
+	case "UpdateChatbot":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		campfireID := getInt64Param(tc.PathParams, "campfireId")
+		chatbotID := getInt64Param(tc.PathParams, "chatbotId")
+		req := &basecamp.UpdateChatbotRequest{
+			ServiceName: getStringParam(tc.RequestBody, "service_name"),
+			CommandURL:  getStringParam(tc.RequestBody, "command_url"),
+		}
+		_, err := account.Campfires().UpdateChatbot(ctx, bucketID, campfireID, chatbotID, req)
+		return operationResult{err: err}
+
+	case "DeleteChatbot":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		campfireID := getInt64Param(tc.PathParams, "campfireId")
+		chatbotID := getInt64Param(tc.PathParams, "chatbotId")
+		err := account.Campfires().DeleteChatbot(ctx, bucketID, campfireID, chatbotID)
+		return operationResult{err: err}
+
+	case "ListClientApprovals":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		result, err := account.ClientApprovals().List(ctx, bucketID, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
+		}
+
+	case "ListClientCorrespondences":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		result, err := account.ClientCorrespondences().List(ctx, bucketID, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
+		}
+
+	case "ListClientReplies":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		result, err := account.ClientReplies().List(ctx, bucketID, recordingID, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
+		}
+
+	case "GetClientReply":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		replyID := getInt64Param(tc.PathParams, "replyId")
+		_, err := account.ClientReplies().Get(ctx, bucketID, recordingID, replyID)
+		return operationResult{err: err}
+
 	case "RepositionTodolistGroup":
 		groupID := getInt64Param(tc.PathParams, "groupId")
 		position := getInt64Param(tc.RequestBody, "position")

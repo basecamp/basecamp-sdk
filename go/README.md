@@ -402,7 +402,7 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 
 | Service | Methods |
 |---------|---------|
-| `Todos()` | List, Get, Create, Update, Edit, Replace, Trash, Complete, Uncomplete, Reposition |
+| `Todos()` | List, Get, Create, Update, Edit, Replace, Complete, Uncomplete, Reposition |
 | `Todosets()` | Get |
 | `Todolists()` | List, Get, Create, Update, Edit, Replace, Trash, Reposition |
 | `TodolistGroups()` | List, Get, Create, Replace, Reposition |

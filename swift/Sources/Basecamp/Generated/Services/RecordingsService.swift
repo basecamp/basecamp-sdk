@@ -41,15 +41,6 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func get(recordingId: Int) async throws -> Recording {
-        return try await request(
-            OperationInfo(service: "Recordings", operation: "GetRecording", resourceType: "recording", isMutation: false, resourceId: recordingId),
-            method: "GET",
-            path: "/recordings/\(recordingId)",
-            retryConfig: Metadata.retryConfig(for: "GetRecording")
-        )
-    }
-
     public func list(type: String, options: ListRecordingOptions? = nil) async throws -> ListResult<Recording> {
         var queryItems: [URLQueryItem] = []
         queryItems.append(URLQueryItem(name: "type", value: type))

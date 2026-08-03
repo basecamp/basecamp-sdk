@@ -134,12 +134,6 @@ type ForwardReply struct {
 	Creator            *Person              `json:"creator,omitempty"`
 }
 
-// CreateForwardReplyRequest specifies the parameters for creating a reply to a forward.
-type CreateForwardReplyRequest struct {
-	// Content is the reply body in HTML (required).
-	Content string `json:"content"`
-}
-
 // ForwardsService handles email forward operations.
 type ForwardsService struct {
 	client *AccountClient
@@ -424,48 +418,6 @@ func (s *ForwardsService) GetReply(ctx context.Context, forwardID, replyID int64
 	}
 
 	reply := forwardReplyFromGenerated(*resp.JSON200)
-	return &reply, nil
-}
-
-// CreateReply creates a new reply to a forwarded email.
-// Returns the created reply.
-func (s *ForwardsService) CreateReply(ctx context.Context, forwardID int64, req *CreateForwardReplyRequest) (result *ForwardReply, err error) {
-	op := OperationInfo{
-		Service: "Forwards", Operation: "CreateReply",
-		ResourceType: "forward_reply", IsMutation: true,
-		ResourceID: forwardID,
-	}
-	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
-		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return
-		}
-	}
-	start := time.Now()
-	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	if req == nil || req.Content == "" {
-		err = ErrUsage("reply content is required")
-		return nil, err
-	}
-
-	body := generated.CreateForwardReplyJSONRequestBody{
-		Content: req.Content,
-	}
-
-	resp, err := s.client.parent.gen.CreateForwardReplyWithResponse(ctx, s.client.accountID, forwardID, body)
-	if err != nil {
-		return nil, err
-	}
-	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON201 == nil {
-		err = fmt.Errorf("unexpected empty response")
-		return nil, err
-	}
-
-	reply := forwardReplyFromGenerated(*resp.JSON201)
 	return &reply, nil
 }
 

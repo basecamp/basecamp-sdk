@@ -9,6 +9,65 @@ module Basecamp
     # @generated from OpenAPI spec
     class CampfiresService < BaseService
 
+      # List all chatbots for a campfire
+      # @param bucket_id [Integer] bucket id ID
+      # @param campfire_id [Integer] campfire id ID
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_chatbots(bucket_id:, campfire_id:, max_items: nil)
+        wrap_paginated(service: "campfires", operation: "list_chatbots", is_mutation: false, project_id: bucket_id, resource_id: campfire_id) do
+          paginate("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations.json", operation: "ListChatbots", max_items: max_items)
+        end
+      end
+
+      # Create a new chatbot for a campfire
+      # @param bucket_id [Integer] bucket id ID
+      # @param campfire_id [Integer] campfire id ID
+      # @param service_name [String] service name
+      # @param command_url [String, nil] command url
+      # @return [Hash] response data
+      def create_chatbot(bucket_id:, campfire_id:, service_name:, command_url: nil)
+        with_operation(service: "campfires", operation: "create_chatbot", is_mutation: true, project_id: bucket_id, resource_id: campfire_id) do
+          http_post("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations.json", body: compact_params(service_name: service_name, command_url: command_url)).json
+        end
+      end
+
+      # Get a chatbot by ID
+      # @param bucket_id [Integer] bucket id ID
+      # @param campfire_id [Integer] campfire id ID
+      # @param chatbot_id [Integer] chatbot id ID
+      # @return [Hash] response data
+      def get_chatbot(bucket_id:, campfire_id:, chatbot_id:)
+        with_operation(service: "campfires", operation: "get_chatbot", is_mutation: false, project_id: bucket_id, resource_id: chatbot_id) do
+          http_get("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations/#{chatbot_id}", operation: "GetChatbot").json
+        end
+      end
+
+      # Update an existing chatbot
+      # @param bucket_id [Integer] bucket id ID
+      # @param campfire_id [Integer] campfire id ID
+      # @param chatbot_id [Integer] chatbot id ID
+      # @param service_name [String] service name
+      # @param command_url [String, nil] command url
+      # @return [Hash] response data
+      def update_chatbot(bucket_id:, campfire_id:, chatbot_id:, service_name:, command_url: nil)
+        with_operation(service: "campfires", operation: "update_chatbot", is_mutation: true, project_id: bucket_id, resource_id: chatbot_id) do
+          http_put("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations/#{chatbot_id}", body: compact_params(service_name: service_name, command_url: command_url)).json
+        end
+      end
+
+      # Delete a chatbot
+      # @param bucket_id [Integer] bucket id ID
+      # @param campfire_id [Integer] campfire id ID
+      # @param chatbot_id [Integer] chatbot id ID
+      # @return [void]
+      def delete_chatbot(bucket_id:, campfire_id:, chatbot_id:)
+        with_operation(service: "campfires", operation: "delete_chatbot", is_mutation: true, project_id: bucket_id, resource_id: chatbot_id) do
+          http_delete("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations/#{chatbot_id}")
+          nil
+        end
+      end
+
       # List all campfires across the account
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
@@ -26,60 +85,6 @@ module Basecamp
       def get(campfire_id:)
         with_operation(service: "campfires", operation: "get", is_mutation: false, resource_id: campfire_id) do
           http_get("/chats/#{campfire_id}", operation: "GetCampfire").json
-        end
-      end
-
-      # List all chatbots for a campfire
-      # @param campfire_id [Integer] campfire id ID
-      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
-      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list_chatbots(campfire_id:, max_items: nil)
-        wrap_paginated(service: "campfires", operation: "list_chatbots", is_mutation: false, resource_id: campfire_id) do
-          paginate("/chats/#{campfire_id}/integrations.json", operation: "ListChatbots", max_items: max_items)
-        end
-      end
-
-      # Create a new chatbot for a campfire
-      # @param campfire_id [Integer] campfire id ID
-      # @param service_name [String] service name
-      # @param command_url [String, nil] command url
-      # @return [Hash] response data
-      def create_chatbot(campfire_id:, service_name:, command_url: nil)
-        with_operation(service: "campfires", operation: "create_chatbot", is_mutation: true, resource_id: campfire_id) do
-          http_post("/chats/#{campfire_id}/integrations.json", body: compact_params(service_name: service_name, command_url: command_url)).json
-        end
-      end
-
-      # Get a chatbot by ID
-      # @param campfire_id [Integer] campfire id ID
-      # @param chatbot_id [Integer] chatbot id ID
-      # @return [Hash] response data
-      def get_chatbot(campfire_id:, chatbot_id:)
-        with_operation(service: "campfires", operation: "get_chatbot", is_mutation: false, resource_id: chatbot_id) do
-          http_get("/chats/#{campfire_id}/integrations/#{chatbot_id}", operation: "GetChatbot").json
-        end
-      end
-
-      # Update an existing chatbot
-      # @param campfire_id [Integer] campfire id ID
-      # @param chatbot_id [Integer] chatbot id ID
-      # @param service_name [String] service name
-      # @param command_url [String, nil] command url
-      # @return [Hash] response data
-      def update_chatbot(campfire_id:, chatbot_id:, service_name:, command_url: nil)
-        with_operation(service: "campfires", operation: "update_chatbot", is_mutation: true, resource_id: chatbot_id) do
-          http_put("/chats/#{campfire_id}/integrations/#{chatbot_id}", body: compact_params(service_name: service_name, command_url: command_url)).json
-        end
-      end
-
-      # Delete a chatbot
-      # @param campfire_id [Integer] campfire id ID
-      # @param chatbot_id [Integer] chatbot id ID
-      # @return [void]
-      def delete_chatbot(campfire_id:, chatbot_id:)
-        with_operation(service: "campfires", operation: "delete_chatbot", is_mutation: true, resource_id: chatbot_id) do
-          http_delete("/chats/#{campfire_id}/integrations/#{chatbot_id}")
-          nil
         end
       end
 
