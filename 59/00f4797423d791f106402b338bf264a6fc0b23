@@ -114,6 +114,7 @@ kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
   s_ae792ed0be3006::t_a7c6da89a52b6e 125-126,691-693
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
   s_ae792ed0be3006::t_36f943ab5d4659 24,33,47,91,115,187,204,219,242,257,276,289,298,317,337,355,364,377,390,403,416,438,447,456,469,478,487,500,513,526,548,568,581,600,618,661,720,751,765,783,813,822,845,872,914,931,957,969,981,1019,1046,1076,1136,1159
+  s_ae792ed0be3006::t_954bade5b3a864 78
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
   s_ae792ed0be3006::t_c2d5da7610b4fd 244-257,357-370
 python/README.md
