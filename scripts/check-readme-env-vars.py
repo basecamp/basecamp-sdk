@@ -538,8 +538,16 @@ def main() -> int:
         )
         return 1
 
-    total = sum(len(r) for r in reads.values())
-    print(f"README env-var check passed ({total} real read sites across {len(SDKS)} SDKs).")
+    # Count both, and name them accurately. `len(r)` is distinct variables, not
+    # call sites -- reporting it as "read sites" understated the scan by a third
+    # (16 vs 23), which is the same species of not-quite-true claim this gate
+    # exists to catch.
+    variables = sum(len(r) for r in reads.values())
+    sites = sum(len(s) for r in reads.values() for s in r.values())
+    print(
+        f"README env-var check passed ({variables} variable/SDK pairs, "
+        f"{sites} read sites, across {len(SDKS)} SDKs)."
+    )
     return 0
 
 
