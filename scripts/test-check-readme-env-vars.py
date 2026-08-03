@@ -1492,6 +1492,25 @@ def main() -> int:
         check("a negated regex after a keyword is still a regex",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
 
+        # Ruby spells both meanings too, and the word lists separate them there
+        # as well: a bang method ends a value, a command-form call negates what
+        # follows it.
+        root = tmp / "ruby-bang-method-division"
+        build(root, {
+            "ruby/README.md": "no tables\n",
+            "ruby/lib/c.rb": "n = save! / ENV['BASECAMP_REAL'].to_i / 2\n",
+        })
+        check("a ruby bang method ends a value",
+              run_gate(root, RB_SDK), ["reverse:Ruby:BASECAMP_REAL"])
+
+        root = tmp / "ruby-command-negated-regex"
+        build(root, {
+            "ruby/README.md": "no tables\n",
+            "ruby/lib/c.rb": "puts !/ENV['BASECAMP_FAKE']/.match(s)\n",
+        })
+        check("a negated regex after a ruby command is still a regex",
+              run_gate(root, RB_SDK), [])
+
         # 16. `process["env"]` is the same object as `process.env`. Node does not
         #     care which spelling reaches it, so neither may the gate -- in the
         #     named-read patterns and in the whole-environment detector both.

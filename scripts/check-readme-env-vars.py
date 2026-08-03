@@ -526,11 +526,19 @@ def operand_position(text: str, i: int, flags: dict) -> bool:
     # postfix one and always division.
     if text[k] in "+-" and k > 0 and text[k - 1] == text[k]:
         return False
-    # `!` is both TypeScript's postfix non-null assertion, which ends a value so
-    # `value! / x / 2` is division, and prefix negation, where `!/re/.test(s)` is
-    # a genuine regex. What precedes the `!` decides, and it has to be the whole
-    # preceding *word* rather than its last character: `return !/re/.test(s)`
-    # ends in `n`, which would otherwise read as a value and mask the regex.
+    # `!` runs both ways in both languages that spell a regex `/.../`. It is
+    # TypeScript's postfix non-null assertion and the tail of a Ruby bang
+    # method, both of which end a value -- so `value! / x / 2` and
+    # `save! / x / 2` are division. It is also prefix negation, where
+    # `!/re/.test(s)` and `puts !/re/.match(s)` are genuine regexes whose
+    # bodies are data.
+    #
+    # What precedes the `!` decides, and it has to be the whole preceding
+    # *word* rather than its last character: `return !/re/.test(s)` ends in
+    # `n`, which as a bare character reads as a value and would mask the regex.
+    # The two word lists this file already keeps are exactly the right ones --
+    # a keyword, or a Ruby command-form call, means the `!` negates what
+    # follows rather than terminating what came before.
     if text[k] == "!" and k > 0:
         j = k - 1
         while j >= 0 and text[j] in " \t":
@@ -539,7 +547,10 @@ def operand_position(text: str, i: int, flags: dict) -> bool:
             word_end = j + 1
             while j >= 0 and (text[j].isalnum() or text[j] == "_"):
                 j -= 1
-            if text[j + 1 : word_end] not in REGEX_KEYWORDS:
+            word = text[j + 1 : word_end]
+            negating = word in REGEX_KEYWORDS or (
+                flags.get("command_regex") and word in REGEX_COMMANDS)
+            if not negating:
                 return False
         elif j >= 0 and text[j] in ")]\"'`":
             return False
