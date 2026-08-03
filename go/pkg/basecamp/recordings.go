@@ -293,38 +293,6 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 	return &RecordingListResult{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
-// Get returns a recording by ID.
-func (s *RecordingsService) Get(ctx context.Context, recordingID int64) (result *Recording, err error) {
-	op := OperationInfo{
-		Service: "Recordings", Operation: "Get",
-		ResourceType: "recording", IsMutation: false,
-		ResourceID: recordingID,
-	}
-	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
-		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return
-		}
-	}
-	start := time.Now()
-	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
-	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
-
-	resp, err := s.client.parent.gen.GetRecordingWithResponse(ctx, s.client.accountID, recordingID)
-	if err != nil {
-		return nil, err
-	}
-	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
-		return nil, err
-	}
-
-	recording := recordingFromGenerated(*resp.JSON200)
-	return &recording, nil
-}
-
 // Trash moves a recording to the trash.
 // Trashed recordings can be recovered from the trash.
 func (s *RecordingsService) Trash(ctx context.Context, recordingID int64) (err error) {

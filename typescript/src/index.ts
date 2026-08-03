@@ -236,7 +236,6 @@ export {
   type Inbox,
   type Forward,
   type ForwardReply,
-  type CreateReplyForwardRequest,
 } from "./generated/services/forwards.js";
 
 // Checkins service - generated

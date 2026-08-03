@@ -70,29 +70,6 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
         listReplies(forwardId, ListForwardRepliesOptions(maxItems = options?.maxItems))
 
     /**
-     * Create a reply to a forward
-     * @param forwardId The forward ID
-     * @param body Request body
-     */
-    suspend fun createReply(forwardId: Long, body: CreateForwardReplyBody): ForwardReply {
-        val info = OperationInfo(
-            service = "Forwards",
-            operation = "CreateForwardReply",
-            resourceType = "forward_reply",
-            isMutation = true,
-            projectId = null,
-            resourceId = forwardId,
-        )
-        return request(info, {
-            httpPost("/inbox_forwards/${forwardId}/replies.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
-            }), operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<ForwardReply>(body)
-        }
-    }
-
-    /**
      * Get a forward reply by ID
      * @param forwardId The forward ID
      * @param replyId The reply ID

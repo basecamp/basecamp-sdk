@@ -115,7 +115,6 @@ let methodNameOverrides: [String: String] = [
     "ListForwards": "list",
     "GetForwardReply": "getReply",
     "ListForwardReplies": "listReplies",
-    "CreateForwardReply": "createReply",
     "GetInbox": "getInbox",
     "GetUpload": "get",
     "UpdateUpload": "update",

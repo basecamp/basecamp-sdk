@@ -118,47 +118,6 @@ describe("RecordingsService", () => {
     });
   });
 
-  describe("get", () => {
-    it("should return a recording by ID", async () => {
-      const recording = {
-        id: 3001,
-        type: "Message",
-        title: "Welcome Message",
-        status: "active",
-        visible_to_clients: false,
-        creator: { id: 1001, name: "Alice" },
-      };
-
-      server.use(
-        http.get(`${BASE_URL}/recordings/3001`, () => {
-          return HttpResponse.json(recording);
-        }),
-      );
-
-      const result = await service.get(3001);
-
-      expect(result.id).toBe(3001);
-      expect(result.type).toBe("Message");
-      expect(result.title).toBe("Welcome Message");
-    });
-
-    it("should throw not_found error for 404 response", async () => {
-      server.use(
-        http.get(`${BASE_URL}/recordings/9999`, () => {
-          return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        }),
-      );
-
-      await expect(service.get(9999)).rejects.toThrow(BasecampError);
-
-      try {
-        await service.get(9999);
-      } catch (err) {
-        expect((err as BasecampError).code).toBe("not_found");
-      }
-    });
-  });
-
   describe("trash", () => {
     it("should move a recording to trash", async () => {
       server.use(

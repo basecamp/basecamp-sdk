@@ -202,6 +202,135 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/chats/{campfireId}/integrations",
+      "resource": "Campfire",
+      "operations": {
+        "GET": "ListChatbots",
+        "POST": "CreateChatbot"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "campfireId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}",
+      "resource": "Campfire",
+      "operations": {
+        "DELETE": "DeleteChatbot",
+        "GET": "GetChatbot",
+        "PUT": "UpdateChatbot"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "campfireId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "chatbotId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/client/approvals",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "ListClientApprovals"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/client/correspondences",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "ListClientCorrespondences"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/client/recordings/{recordingId}/replies",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "ListClientReplies"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/client/recordings/{recordingId}/replies/{replyId}",
+      "resource": "ClientFeatures",
+      "operations": {
+        "GET": "GetClientReply"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "replyId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/dock/tools",
       "resource": "Automation",
       "operations": {
@@ -593,47 +722,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/chats/{campfireId}/integrations",
-      "resource": "Campfire",
-      "operations": {
-        "GET": "ListChatbots",
-        "POST": "CreateChatbot"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "campfireId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/chats/{campfireId}/integrations/{chatbotId}",
-      "resource": "Campfire",
-      "operations": {
-        "DELETE": "DeleteChatbot",
-        "GET": "GetChatbot",
-        "PUT": "UpdateChatbot"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "campfireId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "chatbotId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/chats/{campfireId}/lines",
       "resource": "Campfire",
       "operations": {
@@ -719,19 +807,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/client/approvals",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "ListClientApprovals"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/client/approvals/{approvalId}",
       "resource": "ClientFeatures",
       "operations": {
@@ -749,19 +824,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/client/correspondences",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "ListClientCorrespondences"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/client/correspondences/{correspondenceId}",
       "resource": "ClientFeatures",
       "operations": {
@@ -773,44 +835,6 @@
           "type": "string"
         },
         "correspondenceId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/client/recordings/{recordingId}/replies",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "ListClientReplies"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/client/recordings/{recordingId}/replies/{replyId}",
-      "resource": "ClientFeatures",
-      "operations": {
-        "GET": "GetClientReply"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "recordingId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "replyId": {
           "role": "recording",
           "type": "int64"
         }
@@ -950,8 +974,7 @@
       "pattern": "/{accountId}/inbox_forwards/{forwardId}/replies",
       "resource": "Forwards",
       "operations": {
-        "GET": "ListForwardReplies",
-        "POST": "CreateForwardReply"
+        "GET": "ListForwardReplies"
       },
       "params": {
         "accountId": {
@@ -1698,23 +1721,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/recordings/{recordingId}",
-      "resource": "Automation",
-      "operations": {
-        "GET": "GetRecording"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "recordingId": {
-          "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/recordings/{recordingId}/bookmark",
       "resource": "Bookmarks",
       "operations": {
@@ -2424,7 +2430,6 @@
       "pattern": "/{accountId}/todos/{todoId}",
       "resource": "Todos",
       "operations": {
-        "DELETE": "TrashTodo",
         "GET": "GetTodo",
         "PUT": "ReplaceTodo"
       },

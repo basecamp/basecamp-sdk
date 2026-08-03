@@ -28,16 +28,6 @@ module Basecamp
         end
       end
 
-      # Create a reply to a forward
-      # @param forward_id [Integer] forward id ID
-      # @param content [String] content
-      # @return [Hash] response data
-      def create_reply(forward_id:, content:)
-        with_operation(service: "forwards", operation: "create_reply", is_mutation: true, resource_id: forward_id) do
-          http_post("/inbox_forwards/#{forward_id}/replies.json", body: compact_params(content: content)).json
-        end
-      end
-
       # Get a forward reply by ID
       # @param forward_id [Integer] forward id ID
       # @param reply_id [Integer] reply id ID

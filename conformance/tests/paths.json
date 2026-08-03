@@ -1516,7 +1516,7 @@
   },
   {
     "name": "ListForwards uses the inbox_forwards segment, not forwards",
-    "description": "The SDK shipped GET /{accountId}/inboxes/{inboxId}/forwards.json, which bc3 does not route — it serves /inboxes/{id}/inbox_forwards.json (doc/api/sections/forwards.md, corroborated by a live-response example marker). Every other forwards operation already used inbox_forwards, so this was a typo that 404'd in production. Pins the corrected segment on the wire.",
+    "description": "The SDK shipped GET /{accountId}/inboxes/{inboxId}/forwards.json, which bc3 does not route \u2014 it serves /inboxes/{id}/inbox_forwards.json (doc/api/sections/forwards.md, corroborated by a live-response example marker). Every other forwards operation already used inbox_forwards, so this was a typo that 404'd in production. Pins the corrected segment on the wire.",
     "operation": "ListForwards",
     "method": "GET",
     "path": "/inboxes/{inboxId}/inbox_forwards.json",
@@ -1556,7 +1556,7 @@
   },
   {
     "name": "RepositionTodolistGroup uses the todolists/groups segment",
-    "description": "The SDK shipped PUT /{accountId}/todolists/{groupId}/position.json, which bc3 does not route — it serves /todolists/groups/{id}/position.json (doc/api/sections/todolist_groups.md, corroborated by the group_position_url field in its own response payloads). Pins the corrected segment on the wire.",
+    "description": "The SDK shipped PUT /{accountId}/todolists/{groupId}/position.json, which bc3 does not route \u2014 it serves /todolists/groups/{id}/position.json (doc/api/sections/todolist_groups.md, corroborated by the group_position_url field in its own response payloads). Pins the corrected segment on the wire.",
     "operation": "RepositionTodolistGroup",
     "method": "PUT",
     "path": "/todolists/groups/{groupId}/position.json",
@@ -1840,6 +1840,458 @@
     "tags": [
       "path",
       "folders"
+    ]
+  },
+  {
+    "name": "ListChatbots is bucket-scoped, not flat /chats/{id}/integrations",
+    "description": "bc3 draws `integrations` only inside `resources :buckets` -> `resources :chats` (config/routes.rb:956); the flat `chats` draw (:180) nests only lines and uploads. The SDK shipped the flat spelling, which 404'd for every caller (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "ListChatbots",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/chats/{campfireId}/integrations.json",
+    "pathParams": {
+      "bucketId": 2085958497,
+      "campfireId": 1069478933
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958497/chats/1069478933/integrations.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "chatbots"
+    ]
+  },
+  {
+    "name": "GetChatbot is bucket-scoped, not flat /chats/{id}/integrations/{id}",
+    "description": "bc3 draws `integrations` only inside `resources :buckets` -> `resources :chats` (config/routes.rb:956); the flat `chats` draw (:180) nests only lines and uploads. The SDK shipped the flat spelling, which 404'd for every caller (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "GetChatbot",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}",
+    "pathParams": {
+      "bucketId": 2085958497,
+      "campfireId": 1069478933,
+      "chatbotId": 1049715958
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1049715958,
+          "created_at": "2022-11-22T08:25:04.466Z",
+          "updated_at": "2022-11-22T08:25:04.466Z",
+          "service_name": "Capistrano",
+          "command_url": "https://example.com/command",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958",
+          "lines_url": "https://3.basecampapi.com/195539477/integrations/B5JQYvHsNWCoDvYGZfH1xNR9/buckets/2085958497/chats/1069478933/lines"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958497/chats/1069478933/integrations/1049715958"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "chatbots"
+    ]
+  },
+  {
+    "name": "CreateChatbot is bucket-scoped, not flat /chats/{id}/integrations",
+    "description": "bc3 draws `integrations` only inside `resources :buckets` -> `resources :chats` (config/routes.rb:956); the flat `chats` draw (:180) nests only lines and uploads. The SDK shipped the flat spelling, which 404'd for every caller (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "CreateChatbot",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/chats/{campfireId}/integrations.json",
+    "pathParams": {
+      "bucketId": 2085958497,
+      "campfireId": 1069478933
+    },
+    "requestBody": {
+      "service_name": "Capistrano",
+      "command_url": "https://example.com/command"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1049715958,
+          "created_at": "2022-11-22T08:25:04.466Z",
+          "updated_at": "2022-11-22T08:25:04.466Z",
+          "service_name": "Capistrano",
+          "command_url": "https://example.com/command",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958",
+          "lines_url": "https://3.basecampapi.com/195539477/integrations/B5JQYvHsNWCoDvYGZfH1xNR9/buckets/2085958497/chats/1069478933/lines"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958497/chats/1069478933/integrations.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "chatbots"
+    ]
+  },
+  {
+    "name": "UpdateChatbot is bucket-scoped, not flat /chats/{id}/integrations/{id}",
+    "description": "bc3 draws `integrations` only inside `resources :buckets` -> `resources :chats` (config/routes.rb:956); the flat `chats` draw (:180) nests only lines and uploads. The SDK shipped the flat spelling, which 404'd for every caller (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "UpdateChatbot",
+    "method": "PUT",
+    "path": "/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}",
+    "pathParams": {
+      "bucketId": 2085958497,
+      "campfireId": 1069478933,
+      "chatbotId": 1049715958
+    },
+    "requestBody": {
+      "service_name": "Capistrano",
+      "command_url": "https://example.com/command"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1049715958,
+          "created_at": "2022-11-22T08:25:04.466Z",
+          "updated_at": "2022-11-22T08:25:04.466Z",
+          "service_name": "Capistrano",
+          "command_url": "https://example.com/command",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958497/chats/1069478933/integrations/1049715958",
+          "lines_url": "https://3.basecampapi.com/195539477/integrations/B5JQYvHsNWCoDvYGZfH1xNR9/buckets/2085958497/chats/1069478933/lines"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958497/chats/1069478933/integrations/1049715958"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "chatbots"
+    ]
+  },
+  {
+    "name": "DeleteChatbot is bucket-scoped, not flat /chats/{id}/integrations/{id}",
+    "description": "bc3 draws `integrations` only inside `resources :buckets` -> `resources :chats` (config/routes.rb:956); the flat `chats` draw (:180) nests only lines and uploads. The SDK shipped the flat spelling, which 404'd for every caller (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "DeleteChatbot",
+    "method": "DELETE",
+    "path": "/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}",
+    "pathParams": {
+      "bucketId": 2085958497,
+      "campfireId": 1069478933,
+      "chatbotId": 1049715958
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958497/chats/1069478933/integrations/1049715958"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "DELETE"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "chatbots"
+    ]
+  },
+  {
+    "name": "ListClientApprovals is bucket-scoped, not flat /client/approvals",
+    "description": "bc3's flat `client` namespace draws show-only members (config/routes.rb:190-195); `index` exists only bucket-scoped (:1277/:1278) because Clients::{Approvals,Correspondences}Controller#index resolves @bucket.project.client_board_recording, which is per-project. The SDK shipped a flat collection path that 404'd (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "ListClientApprovals",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/client/approvals.json",
+    "pathParams": {
+      "bucketId": 2085958500
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958500/client/approvals.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "client-approvals"
+    ]
+  },
+  {
+    "name": "ListClientCorrespondences is bucket-scoped, not flat /client/correspondences",
+    "description": "bc3's flat `client` namespace draws show-only members (config/routes.rb:190-195); `index` exists only bucket-scoped (:1277/:1278) because Clients::{Approvals,Correspondences}Controller#index resolves @bucket.project.client_board_recording, which is per-project. The SDK shipped a flat collection path that 404'd (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "ListClientCorrespondences",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/client/correspondences.json",
+    "pathParams": {
+      "bucketId": 2085958500
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958500/client/correspondences.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "client-correspondences"
+    ]
+  },
+  {
+    "name": "ListClientReplies is bucket-scoped, not flat /client/recordings/{id}/replies",
+    "description": "The flat `client` namespace has neither `replies` nor `recordings` (config/routes.rb:190-195); the replies collection lives only at :1284-1285 inside `resources :buckets`. Clients::RepliesController includes BucketScoped, so @bucket is never assigned on a flat route. The SDK shipped the flat spelling and 404'd (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "ListClientReplies",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/client/recordings/{recordingId}/replies.json",
+    "pathParams": {
+      "bucketId": 2085958500,
+      "recordingId": 1069479566
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958500/client/recordings/1069479566/replies.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "client-replies"
+    ]
+  },
+  {
+    "name": "GetClientReply is bucket-scoped, not flat /client/recordings/{id}/replies/{id}",
+    "description": "The flat `client` namespace has neither `replies` nor `recordings` (config/routes.rb:190-195); the replies collection lives only at :1284-1285 inside `resources :buckets`. Clients::RepliesController includes BucketScoped, so @bucket is never assigned on a flat route. The SDK shipped the flat spelling and 404'd (#588). Pins the bucket-scoped path on the wire.",
+    "operation": "GetClientReply",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/client/recordings/{recordingId}/replies/{replyId}",
+    "pathParams": {
+      "bucketId": 2085958500,
+      "recordingId": 1069479566,
+      "replyId": 1069479571
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479571,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-09T09:20:14.049Z",
+          "updated_at": "2022-10-09T09:20:14.049Z",
+          "title": "Re: Project kickoff!",
+          "inherits_status": true,
+          "type": "Client::Reply",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/replies/1069479571.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/client/correspondences/1069479566#__recording_1069479571",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NTcxP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--c711ae715330c9d458072698256fec0d86abd15e.json",
+          "parent": {
+            "id": 1069479566,
+            "title": "Project kickoff!",
+            "type": "Client::Correspondence",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/correspondences/1069479566.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/client/correspondences/1069479566"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Locator",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56",
+            "name": "Annie Bryan",
+            "email_address": "annie@honchodesign.com",
+            "personable_type": "User",
+            "title": "Central Markets Manager",
+            "bio": "To open a store is easy, to keep it open is an art",
+            "location": null,
+            "created_at": "2022-11-22T08:23:21.911Z",
+            "updated_at": "2022-11-22T08:23:21.911Z",
+            "admin": false,
+            "owner": false,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--9927c47a4cbee30a7f9aea667882496aba799149/avatar?v=1",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "content": "<div>Hi Leto team, this it's Annie. I'll be your day to day contact for the project, so keep me on your speed dial (or speed email, perhaps more accurately!) Feel free to reach out to me with any questions at all, and I'll be posting up some outlines, timelines, etc. very shortly.</div>",
+          "content_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/2085958500/client/recordings/1069479566/replies/1069479571"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "client-replies"
     ]
   }
 ]

@@ -1,8 +1,7 @@
 /**
  * Tests for the ForwardsService class (generated from OpenAPI spec)
  *
- * Note: Generated services are spec-conformant:
- * - Client-side check: createReply() rejects missing content; the API validates the rest
+ * Note: Generated services are spec-conformant — the API validates request bodies.
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -178,48 +177,6 @@ describe("ForwardsService", () => {
 
       expect(reply.id).toBe(10);
       expect(reply.content).toBe("<p>Thanks for the update!</p>");
-    });
-  });
-
-  describe("createReply", () => {
-    it("should create a reply to a forward", async () => {
-      const mockReply = {
-        id: 11,
-        status: "active",
-        created_at: "2024-01-01T00:00:00Z",
-        updated_at: "2024-01-01T00:00:00Z",
-        content: "<p>New reply content</p>",
-        content_attachments: [],
-        type: "Inbox::Reply",
-        url: "https://3.basecampapi.com/12345/inbox_replies/11.json",
-        app_url: "https://3.basecamp.com/12345/inbox_replies/11",
-      };
-
-      server.use(
-        http.post(
-          `${BASE_URL}/inbox_forwards/1/replies.json`,
-          async ({ request }) => {
-            const body = (await request.json()) as { content: string };
-            expect(body.content).toBe("<p>New reply content</p>");
-            return HttpResponse.json(mockReply);
-          },
-        ),
-      );
-
-      const reply = await client.forwards.createReply(1, {
-        content: "<p>New reply content</p>",
-      });
-
-      expect(reply.id).toBe(11);
-      expect(reply.content).toBe("<p>New reply content</p>");
-    });
-
-    // Client-side validation short-circuits before any HTTP call. No MSW handler
-    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
-    it("rejects missing content", async () => {
-      await expect(
-        client.forwards.createReply(1, { content: "" })
-      ).rejects.toMatchObject({ code: "validation", message: "Content is required" });
     });
   });
 });

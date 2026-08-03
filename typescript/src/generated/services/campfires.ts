@@ -14,20 +14,12 @@ import { Errors } from "../../errors.js";
 // Types
 // =============================================================================
 
-/** Campfire entity from the Basecamp API. */
-export type Campfire = components["schemas"]["Campfire"];
 /** Chatbot entity from the Basecamp API. */
 export type Chatbot = components["schemas"]["Chatbot"];
+/** Campfire entity from the Basecamp API. */
+export type Campfire = components["schemas"]["Campfire"];
 /** CampfireLine entity from the Basecamp API. */
 export type CampfireLine = components["schemas"]["CampfireLine"];
-
-/**
- * Options for list.
- */
-export interface ListCampfireOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-  page?: number;
-}
 
 /**
  * Options for listChatbots.
@@ -53,6 +45,14 @@ export interface UpdateChatbotCampfireRequest {
   serviceName: string;
   /** Command url */
   commandUrl?: string;
+}
+
+/**
+ * Options for list.
+ */
+export interface ListCampfireOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  page?: number;
 }
 
 /**
@@ -106,6 +106,184 @@ export interface ListUploadsCampfireOptions extends PaginationOptions {
  * Service for Campfires operations.
  */
 export class CampfiresService extends BaseService {
+
+  /**
+   * List all chatbots for a campfire
+   * @param bucketId - The bucket ID
+   * @param campfireId - The campfire ID
+   * @param options - Optional query parameters
+   * @returns All Chatbot across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.listChatbots(123, 123);
+   * ```
+   */
+  async listChatbots(bucketId: number, campfireId: number, options?: ListChatbotsCampfireOptions): Promise<ListResult<Chatbot>> {
+    return this.requestPaginated(
+      {
+        service: "Campfires",
+        operation: "ListChatbots",
+        resourceType: "chatbot",
+        isMutation: false,
+        projectId: bucketId,
+        resourceId: campfireId,
+      },
+      () =>
+        this.client.GET("/buckets/{bucketId}/chats/{campfireId}/integrations.json", {
+          params: {
+            path: { bucketId, campfireId },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
+   * Create a new chatbot for a campfire
+   * @param bucketId - The bucket ID
+   * @param campfireId - The campfire ID
+   * @param req - Chatbot creation parameters
+   * @returns The Chatbot
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.createChatbot(123, 123, { serviceName: "example" });
+   * ```
+   */
+  async createChatbot(bucketId: number, campfireId: number, req: CreateChatbotCampfireRequest): Promise<Chatbot> {
+    if (!req.serviceName) {
+      throw Errors.validation("Service name is required");
+    }
+    const response = await this.request(
+      {
+        service: "Campfires",
+        operation: "CreateChatbot",
+        resourceType: "chatbot",
+        isMutation: true,
+        projectId: bucketId,
+        resourceId: campfireId,
+      },
+      () =>
+        this.client.POST("/buckets/{bucketId}/chats/{campfireId}/integrations.json", {
+          params: {
+            path: { bucketId, campfireId },
+          },
+          body: {
+            service_name: req.serviceName,
+            command_url: req.commandUrl,
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Get a chatbot by ID
+   * @param bucketId - The bucket ID
+   * @param campfireId - The campfire ID
+   * @param chatbotId - The chatbot ID
+   * @returns The Chatbot
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.getChatbot(123, 123, 123);
+   * ```
+   */
+  async getChatbot(bucketId: number, campfireId: number, chatbotId: number): Promise<Chatbot> {
+    const response = await this.request(
+      {
+        service: "Campfires",
+        operation: "GetChatbot",
+        resourceType: "chatbot",
+        isMutation: false,
+        projectId: bucketId,
+        resourceId: chatbotId,
+      },
+      () =>
+        this.client.GET("/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}", {
+          params: {
+            path: { bucketId, campfireId, chatbotId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Update an existing chatbot
+   * @param bucketId - The bucket ID
+   * @param campfireId - The campfire ID
+   * @param chatbotId - The chatbot ID
+   * @param req - Chatbot update parameters
+   * @returns The Chatbot
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.campfires.updateChatbot(123, 123, 123, { serviceName: "example" });
+   * ```
+   */
+  async updateChatbot(bucketId: number, campfireId: number, chatbotId: number, req: UpdateChatbotCampfireRequest): Promise<Chatbot> {
+    if (!req.serviceName) {
+      throw Errors.validation("Service name is required");
+    }
+    const response = await this.request(
+      {
+        service: "Campfires",
+        operation: "UpdateChatbot",
+        resourceType: "chatbot",
+        isMutation: true,
+        projectId: bucketId,
+        resourceId: chatbotId,
+      },
+      () =>
+        this.client.PUT("/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}", {
+          params: {
+            path: { bucketId, campfireId, chatbotId },
+          },
+          body: {
+            service_name: req.serviceName,
+            command_url: req.commandUrl,
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Delete a chatbot
+   * @param bucketId - The bucket ID
+   * @param campfireId - The campfire ID
+   * @param chatbotId - The chatbot ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.campfires.deleteChatbot(123, 123, 123);
+   * ```
+   */
+  async deleteChatbot(bucketId: number, campfireId: number, chatbotId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Campfires",
+        operation: "DeleteChatbot",
+        resourceType: "chatbot",
+        isMutation: true,
+        projectId: bucketId,
+        resourceId: chatbotId,
+      },
+      () =>
+        this.client.DELETE("/buckets/{bucketId}/chats/{campfireId}/integrations/{chatbotId}", {
+          params: {
+            path: { bucketId, campfireId, chatbotId },
+          },
+        })
+    );
+  }
 
   /**
    * List all campfires across the account
@@ -166,174 +344,6 @@ export class CampfiresService extends BaseService {
         })
     );
     return response;
-  }
-
-  /**
-   * List all chatbots for a campfire
-   * @param campfireId - The campfire ID
-   * @param options - Optional query parameters
-   * @returns All Chatbot across all pages, with .meta.totalCount
-   *
-   * @example
-   * ```ts
-   * const result = await client.campfires.listChatbots(123);
-   * ```
-   */
-  async listChatbots(campfireId: number, options?: ListChatbotsCampfireOptions): Promise<ListResult<Chatbot>> {
-    return this.requestPaginated(
-      {
-        service: "Campfires",
-        operation: "ListChatbots",
-        resourceType: "chatbot",
-        isMutation: false,
-        resourceId: campfireId,
-      },
-      () =>
-        this.client.GET("/chats/{campfireId}/integrations.json", {
-          params: {
-            path: { campfireId },
-          },
-        })
-      , options
-    );
-  }
-
-  /**
-   * Create a new chatbot for a campfire
-   * @param campfireId - The campfire ID
-   * @param req - Chatbot creation parameters
-   * @returns The Chatbot
-   * @throws {BasecampError} If required fields are missing or invalid
-   *
-   * @example
-   * ```ts
-   * const result = await client.campfires.createChatbot(123, { serviceName: "example" });
-   * ```
-   */
-  async createChatbot(campfireId: number, req: CreateChatbotCampfireRequest): Promise<Chatbot> {
-    if (!req.serviceName) {
-      throw Errors.validation("Service name is required");
-    }
-    const response = await this.request(
-      {
-        service: "Campfires",
-        operation: "CreateChatbot",
-        resourceType: "chatbot",
-        isMutation: true,
-        resourceId: campfireId,
-      },
-      () =>
-        this.client.POST("/chats/{campfireId}/integrations.json", {
-          params: {
-            path: { campfireId },
-          },
-          body: {
-            service_name: req.serviceName,
-            command_url: req.commandUrl,
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
-   * Get a chatbot by ID
-   * @param campfireId - The campfire ID
-   * @param chatbotId - The chatbot ID
-   * @returns The Chatbot
-   * @throws {BasecampError} If the resource is not found
-   *
-   * @example
-   * ```ts
-   * const result = await client.campfires.getChatbot(123, 123);
-   * ```
-   */
-  async getChatbot(campfireId: number, chatbotId: number): Promise<Chatbot> {
-    const response = await this.request(
-      {
-        service: "Campfires",
-        operation: "GetChatbot",
-        resourceType: "chatbot",
-        isMutation: false,
-        resourceId: chatbotId,
-      },
-      () =>
-        this.client.GET("/chats/{campfireId}/integrations/{chatbotId}", {
-          params: {
-            path: { campfireId, chatbotId },
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
-   * Update an existing chatbot
-   * @param campfireId - The campfire ID
-   * @param chatbotId - The chatbot ID
-   * @param req - Chatbot update parameters
-   * @returns The Chatbot
-   * @throws {BasecampError} If the resource is not found or fields are invalid
-   *
-   * @example
-   * ```ts
-   * const result = await client.campfires.updateChatbot(123, 123, { serviceName: "example" });
-   * ```
-   */
-  async updateChatbot(campfireId: number, chatbotId: number, req: UpdateChatbotCampfireRequest): Promise<Chatbot> {
-    if (!req.serviceName) {
-      throw Errors.validation("Service name is required");
-    }
-    const response = await this.request(
-      {
-        service: "Campfires",
-        operation: "UpdateChatbot",
-        resourceType: "chatbot",
-        isMutation: true,
-        resourceId: chatbotId,
-      },
-      () =>
-        this.client.PUT("/chats/{campfireId}/integrations/{chatbotId}", {
-          params: {
-            path: { campfireId, chatbotId },
-          },
-          body: {
-            service_name: req.serviceName,
-            command_url: req.commandUrl,
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
-   * Delete a chatbot
-   * @param campfireId - The campfire ID
-   * @param chatbotId - The chatbot ID
-   * @returns void
-   * @throws {BasecampError} If the request fails
-   *
-   * @example
-   * ```ts
-   * await client.campfires.deleteChatbot(123, 123);
-   * ```
-   */
-  async deleteChatbot(campfireId: number, chatbotId: number): Promise<void> {
-    await this.request(
-      {
-        service: "Campfires",
-        operation: "DeleteChatbot",
-        resourceType: "chatbot",
-        isMutation: true,
-        resourceId: chatbotId,
-      },
-      () =>
-        this.client.DELETE("/chats/{campfireId}/integrations/{chatbotId}", {
-          params: {
-            path: { campfireId, chatbotId },
-          },
-        })
-    );
   }
 
   /**

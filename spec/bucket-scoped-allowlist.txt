@@ -10,3 +10,12 @@
 # Message categories are defined per project in BC3 — there is no account-wide
 # categories collection. The former flat route was a modeling error that 404'd.
 /{accountId}/buckets/{bucketId}/categories.json
+
+# Client approvals and correspondences live on a project's client board, which is
+# per-project by construction: Clients::{Approvals,Correspondences}Controller#index
+# resolves @bucket.project.client_board_recording. bc3 draws no flat index (only a
+# flat show, config/routes.rb:193-194), and its own test asserts RecordNotFound for
+# a bucket with no client board. The flat spellings the SDK used to declare were
+# live 404s (#588).
+/{accountId}/buckets/{bucketId}/client/approvals.json
+/{accountId}/buckets/{bucketId}/client/correspondences.json

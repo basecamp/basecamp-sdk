@@ -466,10 +466,6 @@ class CreateFolderRequestContent(TypedDict):
     project_ids: NotRequired[list[int]]
 
 
-class CreateForwardReplyRequestContent(TypedDict):
-    content: str
-
-
 class CreateGaugeNeedleRequestContent(TypedDict):
     gauge_needle: GaugeNeedlePayload
     notify: NotRequired[str]

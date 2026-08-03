@@ -71,7 +71,7 @@ class ServiceGenerator
     },
     'Automation' => {
       'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool],
-      'Recordings' => %w[GetRecording ArchiveRecording UnarchiveRecording TrashRecording ListRecordings],
+      'Recordings' => %w[ArchiveRecording UnarchiveRecording TrashRecording ListRecordings],
       'Webhooks' => %w[ListWebhooks CreateWebhook GetWebhook UpdateWebhook DeleteWebhook],
       'Events' => %w[ListEvents],
       'Lineup' => %w[CreateLineupMarker UpdateLineupMarker DeleteLineupMarker],
@@ -116,7 +116,7 @@ class ServiceGenerator
       'ClientVisibility' => %w[SetClientVisibility]
     },
     'Todos' => {
-      'Todos' => %w[ListTodos CreateTodo CreateTodosetTodo GetTodo ReplaceTodo CompleteTodo UncompleteTodo TrashTodo],
+      'Todos' => %w[ListTodos CreateTodo CreateTodosetTodo GetTodo ReplaceTodo CompleteTodo UncompleteTodo],
       'Todolists' => %w[GetTodolistOrGroup UpdateTodolistOrGroup ListTodolists CreateTodolist RepositionTodolist],
       'Todosets' => %w[GetTodoset],
       'HillCharts' => %w[GetHillChart UpdateHillChartSettings],
@@ -206,7 +206,6 @@ class ServiceGenerator
     'ListForwards' => 'list',
     'GetForwardReply' => 'get_reply',
     'ListForwardReplies' => 'list_replies',
-    'CreateForwardReply' => 'create_reply',
     'GetInbox' => 'get_inbox',
     # Uploads - use specific names to avoid conflicts with versions
     'GetUpload' => 'get',

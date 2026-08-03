@@ -79,16 +79,6 @@ module Basecamp
         end
       end
 
-      # Trash a todo (returns 204 No Content)
-      # @param todo_id [Integer] todo id ID
-      # @return [void]
-      def trash(todo_id:)
-        with_operation(service: "todos", operation: "trash", is_mutation: true, resource_id: todo_id) do
-          http_delete("/todos/#{todo_id}")
-          nil
-        end
-      end
-
       # Mark a todo as complete
       # @param todo_id [Integer] todo id ID
       # @return [void]

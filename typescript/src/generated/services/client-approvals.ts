@@ -40,28 +40,31 @@ export class ClientApprovalsService extends BaseService {
 
   /**
    * List all client approvals in a project
+   * @param bucketId - The bucket ID
    * @param options - Optional query parameters
    * @returns All ClientApproval across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.clientApprovals.list();
+   * const result = await client.clientApprovals.list(123);
    *
    * // With options
-   * const filtered = await client.clientApprovals.list({ sort: "created_at" });
+   * const filtered = await client.clientApprovals.list(123, { sort: "created_at" });
    * ```
    */
-  async list(options?: ListClientApprovalOptions): Promise<ListResult<ClientApproval>> {
+  async list(bucketId: number, options?: ListClientApprovalOptions): Promise<ListResult<ClientApproval>> {
     return this.requestPaginated(
       {
         service: "ClientApprovals",
         operation: "ListClientApprovals",
         resourceType: "client_approval",
         isMutation: false,
+        projectId: bucketId,
       },
       () =>
-        this.client.GET("/client/approvals.json", {
+        this.client.GET("/buckets/{bucketId}/client/approvals.json", {
           params: {
+            path: { bucketId },
             query: { sort: options?.sort, direction: options?.direction, page: options?.page },
           },
         })

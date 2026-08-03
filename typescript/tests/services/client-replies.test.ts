@@ -61,12 +61,12 @@ describe("ClientRepliesService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/client/recordings/100/replies.json`, () => {
+        http.get(`${BASE_URL}/buckets/1/client/recordings/100/replies.json`, () => {
           return HttpResponse.json(mockReplies);
         }),
       );
 
-      const replies = await client.clientReplies.list(100);
+      const replies = await client.clientReplies.list(1, 100);
 
       expect(replies).toHaveLength(2);
       expect(replies[0].content).toBe("<p>Thanks for the update!</p>");
@@ -78,12 +78,12 @@ describe("ClientRepliesService", () => {
 
     it("should return empty array when no replies exist", async () => {
       server.use(
-        http.get(`${BASE_URL}/client/recordings/100/replies.json`, () => {
+        http.get(`${BASE_URL}/buckets/1/client/recordings/100/replies.json`, () => {
           return HttpResponse.json([]);
         }),
       );
 
-      const replies = await client.clientReplies.list(100);
+      const replies = await client.clientReplies.list(1, 100);
       expect(replies).toHaveLength(0);
     });
   });
@@ -120,12 +120,12 @@ describe("ClientRepliesService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/client/recordings/100/replies/10`, () => {
+        http.get(`${BASE_URL}/buckets/1/client/recordings/100/replies/10`, () => {
           return HttpResponse.json(mockReply);
         }),
       );
 
-      const reply = await client.clientReplies.get(100, 10);
+      const reply = await client.clientReplies.get(1, 100, 10);
 
       expect(reply.id).toBe(10);
       expect(reply.content).toBe(
@@ -137,13 +137,13 @@ describe("ClientRepliesService", () => {
 
     it("should throw not_found for non-existent reply", async () => {
       server.use(
-        http.get(`${BASE_URL}/client/recordings/100/replies/999`, () => {
+        http.get(`${BASE_URL}/buckets/1/client/recordings/100/replies/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
         }),
       );
 
       try {
-        await client.clientReplies.get(100, 999);
+        await client.clientReplies.get(1, 100, 999);
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);

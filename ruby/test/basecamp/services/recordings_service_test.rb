@@ -52,20 +52,6 @@ class RecordingsServiceTest < Minitest::Test
     assert_equal 1, result.length
   end
 
-  def test_get
-    # Generated service: /recordings/{id} without .json
-    stub_get("/12345/recordings/456", response_body: sample_recording(id: 456))
-
-    result = @account.recordings.get(recording_id: 456)
-
-    assert_equal 456, result["id"]
-    assert_equal "We won Leto!", result["title"]
-    # This Message recording surfaces content_attachments (one inline file); the
-    # description_attachments projection is absent for this type.
-    assert_equal 1, result["content_attachments"].length
-    assert_nil result["description_attachments"]
-  end
-
   def test_archive
     stub_put("/12345/recordings/456/status/archived.json", response_body: {})
 

@@ -13,6 +13,121 @@ import kotlinx.serialization.json.JsonElement
 class CampfiresService(client: AccountClient) : BaseService(client) {
 
     /**
+     * List all chatbots for a campfire
+     * @param bucketId The bucket ID
+     * @param campfireId The campfire ID
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun listChatbots(bucketId: Long, campfireId: Long, options: PaginationOptions? = null): ListResult<Chatbot> {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "ListChatbots",
+            resourceType = "chatbot",
+            isMutation = false,
+            projectId = bucketId,
+            resourceId = campfireId,
+        )
+        return requestPaginated(info, options, {
+            httpGet("/buckets/${bucketId}/chats/${campfireId}/integrations.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<Chatbot>>(body)
+        }
+    }
+
+    /**
+     * Create a new chatbot for a campfire
+     * @param bucketId The bucket ID
+     * @param campfireId The campfire ID
+     * @param body Request body
+     */
+    suspend fun createChatbot(bucketId: Long, campfireId: Long, body: CreateChatbotBody): Chatbot {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "CreateChatbot",
+            resourceType = "chatbot",
+            isMutation = true,
+            projectId = bucketId,
+            resourceId = campfireId,
+        )
+        return request(info, {
+            httpPost("/buckets/${bucketId}/chats/${campfireId}/integrations.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("service_name", kotlinx.serialization.json.JsonPrimitive(body.serviceName))
+                body.commandUrl?.let { put("command_url", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Chatbot>(body)
+        }
+    }
+
+    /**
+     * Get a chatbot by ID
+     * @param bucketId The bucket ID
+     * @param campfireId The campfire ID
+     * @param chatbotId The chatbot ID
+     */
+    suspend fun getChatbot(bucketId: Long, campfireId: Long, chatbotId: Long): Chatbot {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "GetChatbot",
+            resourceType = "chatbot",
+            isMutation = false,
+            projectId = bucketId,
+            resourceId = chatbotId,
+        )
+        return request(info, {
+            httpGet("/buckets/${bucketId}/chats/${campfireId}/integrations/${chatbotId}", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Chatbot>(body)
+        }
+    }
+
+    /**
+     * Update an existing chatbot
+     * @param bucketId The bucket ID
+     * @param campfireId The campfire ID
+     * @param chatbotId The chatbot ID
+     * @param body Request body
+     */
+    suspend fun updateChatbot(bucketId: Long, campfireId: Long, chatbotId: Long, body: UpdateChatbotBody): Chatbot {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "UpdateChatbot",
+            resourceType = "chatbot",
+            isMutation = true,
+            projectId = bucketId,
+            resourceId = chatbotId,
+        )
+        return request(info, {
+            httpPut("/buckets/${bucketId}/chats/${campfireId}/integrations/${chatbotId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("service_name", kotlinx.serialization.json.JsonPrimitive(body.serviceName))
+                body.commandUrl?.let { put("command_url", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Chatbot>(body)
+        }
+    }
+
+    /**
+     * Delete a chatbot
+     * @param bucketId The bucket ID
+     * @param campfireId The campfire ID
+     * @param chatbotId The chatbot ID
+     */
+    suspend fun deleteChatbot(bucketId: Long, campfireId: Long, chatbotId: Long): Unit {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "DeleteChatbot",
+            resourceType = "chatbot",
+            isMutation = true,
+            projectId = bucketId,
+            resourceId = chatbotId,
+        )
+        request(info, {
+            httpDelete("/buckets/${bucketId}/chats/${campfireId}/integrations/${chatbotId}", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
      * List all campfires across the account
      * @param options Optional query parameters and pagination control
      */
@@ -66,116 +181,6 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
         }) { body ->
             json.decodeFromString<Campfire>(body)
         }
-    }
-
-    /**
-     * List all chatbots for a campfire
-     * @param campfireId The campfire ID
-     * @param options Optional query parameters and pagination control
-     */
-    suspend fun listChatbots(campfireId: Long, options: PaginationOptions? = null): ListResult<Chatbot> {
-        val info = OperationInfo(
-            service = "Campfires",
-            operation = "ListChatbots",
-            resourceType = "chatbot",
-            isMutation = false,
-            projectId = null,
-            resourceId = campfireId,
-        )
-        return requestPaginated(info, options, {
-            httpGet("/chats/${campfireId}/integrations.json", operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<List<Chatbot>>(body)
-        }
-    }
-
-    /**
-     * Create a new chatbot for a campfire
-     * @param campfireId The campfire ID
-     * @param body Request body
-     */
-    suspend fun createChatbot(campfireId: Long, body: CreateChatbotBody): Chatbot {
-        val info = OperationInfo(
-            service = "Campfires",
-            operation = "CreateChatbot",
-            resourceType = "chatbot",
-            isMutation = true,
-            projectId = null,
-            resourceId = campfireId,
-        )
-        return request(info, {
-            httpPost("/chats/${campfireId}/integrations.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                put("service_name", kotlinx.serialization.json.JsonPrimitive(body.serviceName))
-                body.commandUrl?.let { put("command_url", kotlinx.serialization.json.JsonPrimitive(it)) }
-            }), operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<Chatbot>(body)
-        }
-    }
-
-    /**
-     * Get a chatbot by ID
-     * @param campfireId The campfire ID
-     * @param chatbotId The chatbot ID
-     */
-    suspend fun getChatbot(campfireId: Long, chatbotId: Long): Chatbot {
-        val info = OperationInfo(
-            service = "Campfires",
-            operation = "GetChatbot",
-            resourceType = "chatbot",
-            isMutation = false,
-            projectId = null,
-            resourceId = chatbotId,
-        )
-        return request(info, {
-            httpGet("/chats/${campfireId}/integrations/${chatbotId}", operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<Chatbot>(body)
-        }
-    }
-
-    /**
-     * Update an existing chatbot
-     * @param campfireId The campfire ID
-     * @param chatbotId The chatbot ID
-     * @param body Request body
-     */
-    suspend fun updateChatbot(campfireId: Long, chatbotId: Long, body: UpdateChatbotBody): Chatbot {
-        val info = OperationInfo(
-            service = "Campfires",
-            operation = "UpdateChatbot",
-            resourceType = "chatbot",
-            isMutation = true,
-            projectId = null,
-            resourceId = chatbotId,
-        )
-        return request(info, {
-            httpPut("/chats/${campfireId}/integrations/${chatbotId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                put("service_name", kotlinx.serialization.json.JsonPrimitive(body.serviceName))
-                body.commandUrl?.let { put("command_url", kotlinx.serialization.json.JsonPrimitive(it)) }
-            }), operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<Chatbot>(body)
-        }
-    }
-
-    /**
-     * Delete a chatbot
-     * @param campfireId The campfire ID
-     * @param chatbotId The chatbot ID
-     */
-    suspend fun deleteChatbot(campfireId: Long, chatbotId: Long): Unit {
-        val info = OperationInfo(
-            service = "Campfires",
-            operation = "DeleteChatbot",
-            resourceType = "chatbot",
-            isMutation = true,
-            projectId = null,
-            resourceId = chatbotId,
-        )
-        request(info, {
-            httpDelete("/chats/${campfireId}/integrations/${chatbotId}", operationName = info.operation)
-        }) { Unit }
     }
 
     /**

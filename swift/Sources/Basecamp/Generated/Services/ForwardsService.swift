@@ -36,16 +36,6 @@ public struct ListForwardOptions: Sendable {
 
 
 public final class ForwardsService: BaseService, @unchecked Sendable {
-    public func createReply(forwardId: Int, req: CreateForwardReplyRequest) async throws -> ForwardReply {
-        return try await request(
-            OperationInfo(service: "Forwards", operation: "CreateForwardReply", resourceType: "forward_reply", isMutation: true, resourceId: forwardId),
-            method: "POST",
-            path: "/inbox_forwards/\(forwardId)/replies.json",
-            body: req,
-            retryConfig: Metadata.retryConfig(for: "CreateForwardReply")
-        )
-    }
-
     public func get(forwardId: Int) async throws -> Forward {
         return try await request(
             OperationInfo(service: "Forwards", operation: "GetForward", resourceType: "forward", isMutation: false, resourceId: forwardId),

@@ -57,15 +57,6 @@ data class UpdateCalendarBody(
     val calendar: JsonObject
 )
 
-/** Options for ListCampfires. */
-data class ListCampfiresOptions(
-    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
-) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
-}
-
 /** Request body for CreateChatbot. */
 data class CreateChatbotBody(
     val serviceName: String,
@@ -77,6 +68,15 @@ data class UpdateChatbotBody(
     val serviceName: String,
     val commandUrl: String? = null
 )
+
+/** Options for ListCampfires. */
+data class ListCampfiresOptions(
+    /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Options for ListCampfireLines. */
 data class ListCampfireLinesOptions(
@@ -567,11 +567,6 @@ data class ListForwardRepliesOptions(
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
-
-/** Request body for CreateForwardReply. */
-data class CreateForwardReplyBody(
-    val content: String
-)
 
 /** Options for ListForwards. */
 data class ListForwardsOptions(

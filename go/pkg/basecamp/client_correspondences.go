@@ -82,10 +82,11 @@ func NewClientCorrespondencesService(client *AccountClient) *ClientCorrespondenc
 //
 // The returned ClientCorrespondenceListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *ClientCorrespondencesService) List(ctx context.Context, opts *ClientCorrespondenceListOptions) (result *ClientCorrespondenceListResult, err error) {
+func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64, opts *ClientCorrespondenceListOptions) (result *ClientCorrespondenceListResult, err error) {
 	op := OperationInfo{
 		Service: "ClientCorrespondences", Operation: "List",
 		ResourceType: "client_correspondence", IsMutation: false,
+		ProjectID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -110,7 +111,7 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, opts *ClientCor
 			params.Page = page
 		}
 	}
-	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, params)
+	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, bucketID, params)
 	if err != nil {
 		return nil, err
 	}

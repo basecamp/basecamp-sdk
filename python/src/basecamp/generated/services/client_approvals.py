@@ -14,14 +14,15 @@ class ClientApprovalsService(BaseService):
     def list(
         self,
         *,
+        bucket_id: int,
         sort: str | None = None,
         direction: str | None = None,
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="clientapprovals", operation="list", is_mutation=False),
-            "/client/approvals.json",
+            OperationInfo(service="clientapprovals", operation="list", is_mutation=False, project_id=bucket_id),
+            f"/buckets/{bucket_id}/client/approvals.json",
             params=self._compact(sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListClientApprovals",
@@ -40,14 +41,15 @@ class AsyncClientApprovalsService(AsyncBaseService):
     async def list(
         self,
         *,
+        bucket_id: int,
         sort: str | None = None,
         direction: str | None = None,
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="clientapprovals", operation="list", is_mutation=False),
-            "/client/approvals.json",
+            OperationInfo(service="clientapprovals", operation="list", is_mutation=False, project_id=bucket_id),
+            f"/buckets/{bucket_id}/client/approvals.json",
             params=self._compact(sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListClientApprovals",

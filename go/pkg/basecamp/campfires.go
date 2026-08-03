@@ -738,8 +738,8 @@ type ChatbotListResult struct {
 	Meta ListMeta
 }
 
-// ListChatbots returns all chatbots for a campfire.
-// Note: Chatbots are account-wide but with basecamp-specific callback URLs.
+// ListChatbots returns all chatbots for a campfire in the given project.
+// Note: the endpoint is project-scoped — bucketID is the project that owns the campfire.
 //
 // Pagination options:
 //   - Limit: maximum number of chatbots to return (0 = all)
@@ -749,11 +749,12 @@ type ChatbotListResult struct {
 //
 // The returned ChatbotListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64, opts *ChatbotListOptions) (result *ChatbotListResult, err error) {
+func (s *CampfiresService) ListChatbots(ctx context.Context, bucketID, campfireID int64, opts *ChatbotListOptions) (result *ChatbotListResult, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "ListChatbots",
 		ResourceType: "chatbot", IsMutation: false,
 		ResourceID: campfireID,
+		ProjectID:  bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -765,7 +766,7 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64, o
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListChatbotsWithResponse(ctx, s.client.accountID, campfireID)
+	resp, err := s.client.parent.gen.ListChatbotsWithResponse(ctx, s.client.accountID, bucketID, campfireID)
 	if err != nil {
 		return nil, err
 	}
@@ -823,11 +824,12 @@ func (s *CampfiresService) ListChatbots(ctx context.Context, campfireID int64, o
 }
 
 // GetChatbot returns a chatbot by ID.
-func (s *CampfiresService) GetChatbot(ctx context.Context, campfireID, chatbotID int64) (result *Chatbot, err error) {
+func (s *CampfiresService) GetChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) (result *Chatbot, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "GetChatbot",
 		ResourceType: "chatbot", IsMutation: false,
 		ResourceID: chatbotID,
+		ProjectID:  bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -838,7 +840,7 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, campfireID, chatbotID
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetChatbotWithResponse(ctx, s.client.accountID, campfireID, chatbotID)
+	resp, err := s.client.parent.gen.GetChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
 	if err != nil {
 		return nil, err
 	}
@@ -854,14 +856,16 @@ func (s *CampfiresService) GetChatbot(ctx context.Context, campfireID, chatbotID
 	return &chatbot, nil
 }
 
-// CreateChatbot creates a new chatbot for a campfire.
-// Note: Chatbots are account-wide and can only be managed by administrators.
+// CreateChatbot creates a new chatbot for a campfire in the given project.
+// Note: only administrators can manage chatbots. bucketID is the project that
+// owns the campfire.
 // Returns the created chatbot with its lines_url for posting.
-func (s *CampfiresService) CreateChatbot(ctx context.Context, campfireID int64, req *CreateChatbotRequest) (result *Chatbot, err error) {
+func (s *CampfiresService) CreateChatbot(ctx context.Context, bucketID, campfireID int64, req *CreateChatbotRequest) (result *Chatbot, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "CreateChatbot",
 		ResourceType: "chatbot", IsMutation: true,
 		ResourceID: campfireID,
+		ProjectID:  bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -884,7 +888,7 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, campfireID int64, 
 		body.CommandUrl = &req.CommandURL
 	}
 
-	resp, err := s.client.parent.gen.CreateChatbotWithResponse(ctx, s.client.accountID, campfireID, body)
+	resp, err := s.client.parent.gen.CreateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -901,13 +905,14 @@ func (s *CampfiresService) CreateChatbot(ctx context.Context, campfireID int64, 
 }
 
 // UpdateChatbot updates an existing chatbot.
-// Note: Updates to chatbots are account-wide.
+// Note: bucketID is the project that owns the campfire.
 // Returns the updated chatbot.
-func (s *CampfiresService) UpdateChatbot(ctx context.Context, campfireID, chatbotID int64, req *UpdateChatbotRequest) (result *Chatbot, err error) {
+func (s *CampfiresService) UpdateChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64, req *UpdateChatbotRequest) (result *Chatbot, err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "UpdateChatbot",
 		ResourceType: "chatbot", IsMutation: true,
 		ResourceID: chatbotID,
+		ProjectID:  bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -930,7 +935,7 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, campfireID, chatbo
 		body.CommandUrl = &req.CommandURL
 	}
 
-	resp, err := s.client.parent.gen.UpdateChatbotWithResponse(ctx, s.client.accountID, campfireID, chatbotID, body)
+	resp, err := s.client.parent.gen.UpdateChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -947,12 +952,13 @@ func (s *CampfiresService) UpdateChatbot(ctx context.Context, campfireID, chatbo
 }
 
 // DeleteChatbot deletes a chatbot.
-// Note: Deleting a chatbot removes it from the entire account.
-func (s *CampfiresService) DeleteChatbot(ctx context.Context, campfireID, chatbotID int64) (err error) {
+// Note: bucketID is the project that owns the campfire.
+func (s *CampfiresService) DeleteChatbot(ctx context.Context, bucketID, campfireID, chatbotID int64) (err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "DeleteChatbot",
 		ResourceType: "chatbot", IsMutation: true,
 		ResourceID: chatbotID,
+		ProjectID:  bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -963,7 +969,7 @@ func (s *CampfiresService) DeleteChatbot(ctx context.Context, campfireID, chatbo
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteChatbotWithResponse(ctx, s.client.accountID, campfireID, chatbotID)
+	resp, err := s.client.parent.gen.DeleteChatbotWithResponse(ctx, s.client.accountID, bucketID, campfireID, chatbotID)
 	if err != nil {
 		return err
 	}

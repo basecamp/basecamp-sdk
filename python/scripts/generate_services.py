@@ -72,7 +72,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
     },
     "Automation": {
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
-        "Recordings": ["GetRecording", "ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"],
+        "Recordings": ["ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"],
         "Webhooks": ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
         "Events": ["ListEvents"],
         "Lineup": ["CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"],
@@ -120,7 +120,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "ClientVisibility": ["SetClientVisibility"],
     },
     "Todos": {
-        "Todos": ["ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
+        "Todos": ["ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo"],
         "Todolists": ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"],
         "Todosets": ["GetTodoset"],
         "TodolistGroups": ["ListTodolistGroups", "CreateTodolistGroup", "RepositionTodolistGroup"],
@@ -210,7 +210,6 @@ METHOD_NAME_OVERRIDES = {
     "ListForwards": "list",
     "GetForwardReply": "get_reply",
     "ListForwardReplies": "list_replies",
-    "CreateForwardReply": "create_reply",
     "GetInbox": "get_inbox",
     # Uploads
     "GetUpload": "get",

@@ -75,36 +75,6 @@ export class RecordingsService extends BaseService {
   }
 
   /**
-   * Get a single recording by id
-   * @param recordingId - The recording ID
-   * @returns The Recording
-   * @throws {BasecampError} If the resource is not found
-   *
-   * @example
-   * ```ts
-   * const result = await client.recordings.get(123);
-   * ```
-   */
-  async get(recordingId: number): Promise<Recording> {
-    const response = await this.request(
-      {
-        service: "Recordings",
-        operation: "GetRecording",
-        resourceType: "recording",
-        isMutation: false,
-        resourceId: recordingId,
-      },
-      () =>
-        this.client.GET("/recordings/{recordingId}", {
-          params: {
-            path: { recordingId },
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
    * Unarchive a recording (restore to active status)
    * @param recordingId - The recording ID
    * @returns void

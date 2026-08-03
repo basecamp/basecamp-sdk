@@ -54,7 +54,7 @@ let serviceSplits: [String: [String: [String]]] = [
     ],
     "Automation": [
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
-        "Recordings": ["GetRecording", "ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"],
+        "Recordings": ["ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"],
         "Webhooks": ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
         "Events": ["ListEvents"],
         "Lineup": ["CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"],
@@ -92,7 +92,7 @@ let serviceSplits: [String: [String: [String]]] = [
         "ClientVisibility": ["SetClientVisibility"],
     ],
     "Todos": [
-        "Todos": ["ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
+        "Todos": ["ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo"],
         "Todolists": ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"],
         "Todosets": ["GetTodoset"],
         "HillCharts": ["GetHillChart", "UpdateHillChartSettings"],

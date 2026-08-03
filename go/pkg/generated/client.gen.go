@@ -623,14 +623,6 @@ type CreateFolderRequestContent struct {
 // `bookmarked` flag that only the projects index adds.
 type CreateFolderResponseContent = FolderWithProjects
 
-// CreateForwardReplyRequestContent defines model for CreateForwardReplyRequestContent.
-type CreateForwardReplyRequestContent struct {
-	Content string `json:"content"`
-}
-
-// CreateForwardReplyResponseContent defines model for CreateForwardReplyResponseContent.
-type CreateForwardReplyResponseContent = ForwardReply
-
 // CreateGaugeNeedleRequestContent defines model for CreateGaugeNeedleRequestContent.
 type CreateGaugeNeedleRequestContent struct {
 	GaugeNeedle GaugeNeedlePayload `json:"gauge_needle"`
@@ -1496,9 +1488,6 @@ type GetQuestionResponseContent = Question
 
 // GetQuestionnaireResponseContent defines model for GetQuestionnaireResponseContent.
 type GetQuestionnaireResponseContent = Questionnaire
-
-// GetRecordingResponseContent defines model for GetRecordingResponseContent.
-type GetRecordingResponseContent = Recording
 
 // GetRecordingTimesheetResponseContent defines model for GetRecordingTimesheetResponseContent.
 type GetRecordingTimesheetResponseContent = []TimesheetEntry
@@ -3571,6 +3560,36 @@ type CreateAttachmentParams struct {
 	Name string `form:"name" json:"name"`
 }
 
+// ListClientApprovalsParams defines parameters for ListClientApprovals.
+type ListClientApprovalsParams struct {
+	// Sort created_at|updated_at
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// Direction asc|desc
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListClientCorrespondencesParams defines parameters for ListClientCorrespondences.
+type ListClientCorrespondencesParams struct {
+	// Sort created_at|updated_at
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// Direction asc|desc
+	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// ListClientRepliesParams defines parameters for ListClientReplies.
+type ListClientRepliesParams struct {
+	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // ListCardsParams defines parameters for ListCards.
 type ListCardsParams struct {
 	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
@@ -3690,36 +3709,6 @@ type CreateCampfireUploadParams struct {
 
 // GetEverythingCheckinsParams defines parameters for GetEverythingCheckins.
 type GetEverythingCheckinsParams struct {
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
-	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
-}
-
-// ListClientApprovalsParams defines parameters for ListClientApprovals.
-type ListClientApprovalsParams struct {
-	// Sort created_at|updated_at
-	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
-
-	// Direction asc|desc
-	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
-
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
-	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
-}
-
-// ListClientCorrespondencesParams defines parameters for ListClientCorrespondences.
-type ListClientCorrespondencesParams struct {
-	// Sort created_at|updated_at
-	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
-
-	// Direction asc|desc
-	Direction *string `form:"direction,omitempty" json:"direction,omitempty"`
-
-	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
-	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
-}
-
-// ListClientRepliesParams defines parameters for ListClientReplies.
-type ListClientRepliesParams struct {
 	// Page Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
@@ -4174,6 +4163,12 @@ type CreateMessageTypeJSONRequestBody = CreateMessageTypeRequestContent
 // UpdateMessageTypeJSONRequestBody defines body for UpdateMessageType for application/json ContentType.
 type UpdateMessageTypeJSONRequestBody = UpdateMessageTypeRequestContent
 
+// CreateChatbotJSONRequestBody defines body for CreateChatbot for application/json ContentType.
+type CreateChatbotJSONRequestBody = CreateChatbotRequestContent
+
+// UpdateChatbotJSONRequestBody defines body for UpdateChatbot for application/json ContentType.
+type UpdateChatbotJSONRequestBody = UpdateChatbotRequestContent
+
 // CreateToolJSONRequestBody defines body for CreateTool for application/json ContentType.
 type CreateToolJSONRequestBody = CreateToolRequestContent
 
@@ -4216,12 +4211,6 @@ type CreateCardColumnJSONRequestBody = CreateCardColumnRequestContent
 // MoveCardColumnJSONRequestBody defines body for MoveCardColumn for application/json ContentType.
 type MoveCardColumnJSONRequestBody = MoveCardColumnRequestContent
 
-// CreateChatbotJSONRequestBody defines body for CreateChatbot for application/json ContentType.
-type CreateChatbotJSONRequestBody = CreateChatbotRequestContent
-
-// UpdateChatbotJSONRequestBody defines body for UpdateChatbot for application/json ContentType.
-type UpdateChatbotJSONRequestBody = UpdateChatbotRequestContent
-
 // CreateCampfireLineJSONRequestBody defines body for CreateCampfireLine for application/json ContentType.
 type CreateCampfireLineJSONRequestBody = CreateCampfireLineRequestContent
 
@@ -4239,9 +4228,6 @@ type ReplaceDocumentJSONRequestBody = ReplaceDocumentRequestContent
 
 // UpdateGaugeNeedleJSONRequestBody defines body for UpdateGaugeNeedle for application/json ContentType.
 type UpdateGaugeNeedleJSONRequestBody = UpdateGaugeNeedleRequestContent
-
-// CreateForwardReplyJSONRequestBody defines body for CreateForwardReply for application/json ContentType.
-type CreateForwardReplyJSONRequestBody = CreateForwardReplyRequestContent
 
 // CreateLineupMarkerJSONRequestBody defines body for CreateLineupMarker for application/json ContentType.
 type CreateLineupMarkerJSONRequestBody = CreateLineupMarkerRequestContent
@@ -5005,6 +4991,37 @@ type ClientInterface interface {
 
 	UpdateMessageType(ctx context.Context, accountId string, bucketId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListChatbots request
+	ListChatbots(ctx context.Context, accountId string, bucketId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateChatbotWithBody request with any body
+	CreateChatbotWithBody(ctx context.Context, accountId string, bucketId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateChatbot(ctx context.Context, accountId string, bucketId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteChatbot request
+	DeleteChatbot(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetChatbot request
+	GetChatbot(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateChatbotWithBody request with any body
+	UpdateChatbotWithBody(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateChatbot(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListClientApprovals request
+	ListClientApprovals(ctx context.Context, accountId string, bucketId int64, params *ListClientApprovalsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListClientCorrespondences request
+	ListClientCorrespondences(ctx context.Context, accountId string, bucketId int64, params *ListClientCorrespondencesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListClientReplies request
+	ListClientReplies(ctx context.Context, accountId string, bucketId int64, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetClientReply request
+	GetClientReply(ctx context.Context, accountId string, bucketId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateToolWithBody request with any body
 	CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5126,25 +5143,6 @@ type ClientInterface interface {
 	// GetCampfire request
 	GetCampfire(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListChatbots request
-	ListChatbots(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateChatbotWithBody request with any body
-	CreateChatbotWithBody(ctx context.Context, accountId string, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateChatbot(ctx context.Context, accountId string, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteChatbot request
-	DeleteChatbot(ctx context.Context, accountId string, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetChatbot request
-	GetChatbot(ctx context.Context, accountId string, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateChatbotWithBody request with any body
-	UpdateChatbotWithBody(ctx context.Context, accountId string, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateChatbot(ctx context.Context, accountId string, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListCampfireLines request
 	ListCampfireLines(ctx context.Context, accountId string, campfireId int64, params *ListCampfireLinesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5176,23 +5174,11 @@ type ClientInterface interface {
 	// ListPingablePeople request
 	ListPingablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListClientApprovals request
-	ListClientApprovals(ctx context.Context, accountId string, params *ListClientApprovalsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetClientApproval request
 	GetClientApproval(ctx context.Context, accountId string, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListClientCorrespondences request
-	ListClientCorrespondences(ctx context.Context, accountId string, params *ListClientCorrespondencesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetClientCorrespondence request
 	GetClientCorrespondence(ctx context.Context, accountId string, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// ListClientReplies request
-	ListClientReplies(ctx context.Context, accountId string, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetClientReply request
-	GetClientReply(ctx context.Context, accountId string, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetEverythingComments request
 	GetEverythingComments(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5246,11 +5232,6 @@ type ClientInterface interface {
 
 	// ListForwardReplies request
 	ListForwardReplies(ctx context.Context, accountId string, forwardId int64, params *ListForwardRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateForwardReplyWithBody request with any body
-	CreateForwardReplyWithBody(ctx context.Context, accountId string, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateForwardReply(ctx context.Context, accountId string, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetForwardReply request
 	GetForwardReply(ctx context.Context, accountId string, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5489,9 +5470,6 @@ type ClientInterface interface {
 	// PinMessage request
 	PinMessage(ctx context.Context, accountId string, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetRecording request
-	GetRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeleteBookmark request
 	DeleteBookmark(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5729,9 +5707,6 @@ type ClientInterface interface {
 
 	// GetEverythingUnassignedTodos request
 	GetEverythingUnassignedTodos(ctx context.Context, accountId string, params *GetEverythingUnassignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// TrashTodo request
-	TrashTodo(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodo request
 	GetTodo(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6086,6 +6061,124 @@ func (c *Client) UpdateMessageType(ctx context.Context, accountId string, bucket
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMessageTypeRequest(c.Server, accountId, bucketId, typeId, body)
 	}, true, "UpdateMessageType", reqEditors...)
+
+}
+
+// ListChatbots is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListChatbots(ctx context.Context, accountId string, bucketId int64, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListChatbotsRequest(c.Server, accountId, bucketId, campfireId)
+	}, true, "ListChatbots", reqEditors...)
+
+}
+
+// CreateChatbotWithBody executes the CreateChatbot operation.
+
+func (c *Client) CreateChatbotWithBody(ctx context.Context, accountId string, bucketId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateChatbotRequestWithBody(c.Server, accountId, bucketId, campfireId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateChatbot(ctx context.Context, accountId string, bucketId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateChatbotRequest(c.Server, accountId, bucketId, campfireId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// DeleteChatbot is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteChatbot(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteChatbotRequest(c.Server, accountId, bucketId, campfireId, chatbotId)
+	}, true, "DeleteChatbot", reqEditors...)
+
+}
+
+// GetChatbot is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetChatbot(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetChatbotRequest(c.Server, accountId, bucketId, campfireId, chatbotId)
+	}, true, "GetChatbot", reqEditors...)
+
+}
+
+// UpdateChatbotWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateChatbotWithBody(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateChatbotRequestWithBody(c.Server, accountId, bucketId, campfireId, chatbotId, contentType, body)
+	}, true, "UpdateChatbot", reqEditors...)
+
+}
+
+func (c *Client) UpdateChatbot(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateChatbotRequest(c.Server, accountId, bucketId, campfireId, chatbotId, body)
+	}, true, "UpdateChatbot", reqEditors...)
+
+}
+
+// ListClientApprovals is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListClientApprovals(ctx context.Context, accountId string, bucketId int64, params *ListClientApprovalsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListClientApprovalsRequest(c.Server, accountId, bucketId, params)
+	}, true, "ListClientApprovals", reqEditors...)
+
+}
+
+// ListClientCorrespondences is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListClientCorrespondences(ctx context.Context, accountId string, bucketId int64, params *ListClientCorrespondencesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListClientCorrespondencesRequest(c.Server, accountId, bucketId, params)
+	}, true, "ListClientCorrespondences", reqEditors...)
+
+}
+
+// ListClientReplies is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListClientReplies(ctx context.Context, accountId string, bucketId int64, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListClientRepliesRequest(c.Server, accountId, bucketId, recordingId, params)
+	}, true, "ListClientReplies", reqEditors...)
+
+}
+
+// GetClientReply is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetClientReply(ctx context.Context, accountId string, bucketId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetClientReplyRequest(c.Server, accountId, bucketId, recordingId, replyId)
+	}, true, "GetClientReply", reqEditors...)
 
 }
 
@@ -6619,84 +6712,6 @@ func (c *Client) GetCampfire(ctx context.Context, accountId string, campfireId i
 
 }
 
-// ListChatbots is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) ListChatbots(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListChatbotsRequest(c.Server, accountId, campfireId)
-	}, true, "ListChatbots", reqEditors...)
-
-}
-
-// CreateChatbotWithBody executes the CreateChatbot operation.
-
-func (c *Client) CreateChatbotWithBody(ctx context.Context, accountId string, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateChatbotRequestWithBody(c.Server, accountId, campfireId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-func (c *Client) CreateChatbot(ctx context.Context, accountId string, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateChatbotRequest(c.Server, accountId, campfireId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-// DeleteChatbot is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) DeleteChatbot(ctx context.Context, accountId string, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteChatbotRequest(c.Server, accountId, campfireId, chatbotId)
-	}, true, "DeleteChatbot", reqEditors...)
-
-}
-
-// GetChatbot is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetChatbot(ctx context.Context, accountId string, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetChatbotRequest(c.Server, accountId, campfireId, chatbotId)
-	}, true, "GetChatbot", reqEditors...)
-
-}
-
-// UpdateChatbotWithBody is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) UpdateChatbotWithBody(ctx context.Context, accountId string, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateChatbotRequestWithBody(c.Server, accountId, campfireId, chatbotId, contentType, body)
-	}, true, "UpdateChatbot", reqEditors...)
-
-}
-
-func (c *Client) UpdateChatbot(ctx context.Context, accountId string, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateChatbotRequest(c.Server, accountId, campfireId, chatbotId, body)
-	}, true, "UpdateChatbot", reqEditors...)
-
-}
-
 // ListCampfireLines is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListCampfireLines(ctx context.Context, accountId string, campfireId int64, params *ListCampfireLinesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6821,16 +6836,6 @@ func (c *Client) ListPingablePeople(ctx context.Context, accountId string, reqEd
 
 }
 
-// ListClientApprovals is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) ListClientApprovals(ctx context.Context, accountId string, params *ListClientApprovalsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListClientApprovalsRequest(c.Server, accountId, params)
-	}, true, "ListClientApprovals", reqEditors...)
-
-}
-
 // GetClientApproval is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetClientApproval(ctx context.Context, accountId string, approvalId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6841,16 +6846,6 @@ func (c *Client) GetClientApproval(ctx context.Context, accountId string, approv
 
 }
 
-// ListClientCorrespondences is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) ListClientCorrespondences(ctx context.Context, accountId string, params *ListClientCorrespondencesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListClientCorrespondencesRequest(c.Server, accountId, params)
-	}, true, "ListClientCorrespondences", reqEditors...)
-
-}
-
 // GetClientCorrespondence is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetClientCorrespondence(ctx context.Context, accountId string, correspondenceId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6858,26 +6853,6 @@ func (c *Client) GetClientCorrespondence(ctx context.Context, accountId string, 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetClientCorrespondenceRequest(c.Server, accountId, correspondenceId)
 	}, true, "GetClientCorrespondence", reqEditors...)
-
-}
-
-// ListClientReplies is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) ListClientReplies(ctx context.Context, accountId string, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListClientRepliesRequest(c.Server, accountId, recordingId, params)
-	}, true, "ListClientReplies", reqEditors...)
-
-}
-
-// GetClientReply is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetClientReply(ctx context.Context, accountId string, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetClientReplyRequest(c.Server, accountId, recordingId, replyId)
-	}, true, "GetClientReply", reqEditors...)
 
 }
 
@@ -7060,36 +7035,6 @@ func (c *Client) ListForwardReplies(ctx context.Context, accountId string, forwa
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListForwardRepliesRequest(c.Server, accountId, forwardId, params)
 	}, true, "ListForwardReplies", reqEditors...)
-
-}
-
-// CreateForwardReplyWithBody executes the CreateForwardReply operation.
-
-func (c *Client) CreateForwardReplyWithBody(ctx context.Context, accountId string, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateForwardReplyRequestWithBody(c.Server, accountId, forwardId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-func (c *Client) CreateForwardReply(ctx context.Context, accountId string, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateForwardReplyRequest(c.Server, accountId, forwardId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
 
 }
 
@@ -8010,16 +7955,6 @@ func (c *Client) PinMessage(ctx context.Context, accountId string, messageId int
 		return nil, err
 	}
 	return c.Client.Do(req)
-
-}
-
-// GetRecording is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetRecordingRequest(c.Server, accountId, recordingId)
-	}, true, "GetRecording", reqEditors...)
 
 }
 
@@ -8966,16 +8901,6 @@ func (c *Client) GetEverythingUnassignedTodos(ctx context.Context, accountId str
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetEverythingUnassignedTodosRequest(c.Server, accountId, params)
 	}, true, "GetEverythingUnassignedTodos", reqEditors...)
-
-}
-
-// TrashTodo is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) TrashTodo(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewTrashTodoRequest(c.Server, accountId, todoId)
-	}, true, "TrashTodo", reqEditors...)
 
 }
 
@@ -10227,6 +10152,608 @@ func NewUpdateMessageTypeRequestWithBody(server string, accountId string, bucket
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListChatbotsRequest generates requests for ListChatbots
+func NewListChatbotsRequest(server string, accountId string, bucketId int64, campfireId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateChatbotRequest calls the generic CreateChatbot builder with application/json body
+func NewCreateChatbotRequest(server string, accountId string, bucketId int64, campfireId int64, body CreateChatbotJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateChatbotRequestWithBody(server, accountId, bucketId, campfireId, "application/json", bodyReader)
+}
+
+// NewCreateChatbotRequestWithBody generates requests for CreateChatbot with any type of body
+func NewCreateChatbotRequestWithBody(server string, accountId string, bucketId int64, campfireId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteChatbotRequest generates requests for DeleteChatbot
+func NewDeleteChatbotRequest(server string, accountId string, bucketId int64, campfireId int64, chatbotId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetChatbotRequest generates requests for GetChatbot
+func NewGetChatbotRequest(server string, accountId string, bucketId int64, campfireId int64, chatbotId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateChatbotRequest calls the generic UpdateChatbot builder with application/json body
+func NewUpdateChatbotRequest(server string, accountId string, bucketId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateChatbotRequestWithBody(server, accountId, bucketId, campfireId, chatbotId, "application/json", bodyReader)
+}
+
+// NewUpdateChatbotRequestWithBody generates requests for UpdateChatbot with any type of body
+func NewUpdateChatbotRequestWithBody(server string, accountId string, bucketId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListClientApprovalsRequest generates requests for ListClientApprovals
+func NewListClientApprovalsRequest(server string, accountId string, bucketId int64, params *ListClientApprovalsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/approvals.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListClientCorrespondencesRequest generates requests for ListClientCorrespondences
+func NewListClientCorrespondencesRequest(server string, accountId string, bucketId int64, params *ListClientCorrespondencesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/correspondences.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListClientRepliesRequest generates requests for ListClientReplies
+func NewListClientRepliesRequest(server string, accountId string, bucketId int64, recordingId int64, params *ListClientRepliesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/recordings/%s/replies.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClientReplyRequest generates requests for GetClientReply
+func NewGetClientReplyRequest(server string, accountId string, bucketId int64, recordingId int64, replyId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "replyId", runtime.ParamLocationPath, replyId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/client/recordings/%s/replies/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -11994,258 +12521,6 @@ func NewGetCampfireRequest(server string, accountId string, campfireId int64) (*
 	return req, nil
 }
 
-// NewListChatbotsRequest generates requests for ListChatbots
-func NewListChatbotsRequest(server string, accountId string, campfireId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/chats/%s/integrations.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewCreateChatbotRequest calls the generic CreateChatbot builder with application/json body
-func NewCreateChatbotRequest(server string, accountId string, campfireId int64, body CreateChatbotJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateChatbotRequestWithBody(server, accountId, campfireId, "application/json", bodyReader)
-}
-
-// NewCreateChatbotRequestWithBody generates requests for CreateChatbot with any type of body
-func NewCreateChatbotRequestWithBody(server string, accountId string, campfireId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/chats/%s/integrations.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteChatbotRequest generates requests for DeleteChatbot
-func NewDeleteChatbotRequest(server string, accountId string, campfireId int64, chatbotId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetChatbotRequest generates requests for GetChatbot
-func NewGetChatbotRequest(server string, accountId string, campfireId int64, chatbotId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateChatbotRequest calls the generic UpdateChatbot builder with application/json body
-func NewUpdateChatbotRequest(server string, accountId string, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateChatbotRequestWithBody(server, accountId, campfireId, chatbotId, "application/json", bodyReader)
-}
-
-// NewUpdateChatbotRequestWithBody generates requests for UpdateChatbot with any type of body
-func NewUpdateChatbotRequestWithBody(server string, accountId string, campfireId int64, chatbotId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "chatbotId", runtime.ParamLocationPath, chatbotId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/chats/%s/integrations/%s", pathParam0, pathParam1, pathParam2)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewListCampfireLinesRequest generates requests for ListCampfireLines
 func NewListCampfireLinesRequest(server string, accountId string, campfireId int64, params *ListCampfireLinesParams) (*http.Request, error) {
 	var err error
@@ -12798,94 +13073,6 @@ func NewListPingablePeopleRequest(server string, accountId string) (*http.Reques
 	return req, nil
 }
 
-// NewListClientApprovalsRequest generates requests for ListClientApprovals
-func NewListClientApprovalsRequest(server string, accountId string, params *ListClientApprovalsParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/client/approvals.json", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Sort != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Direction != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Page != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetClientApprovalRequest generates requests for GetClientApproval
 func NewGetClientApprovalRequest(server string, accountId string, approvalId int64) (*http.Request, error) {
 	var err error
@@ -12927,94 +13114,6 @@ func NewGetClientApprovalRequest(server string, accountId string, approvalId int
 	return req, nil
 }
 
-// NewListClientCorrespondencesRequest generates requests for ListClientCorrespondences
-func NewListClientCorrespondencesRequest(server string, accountId string, params *ListClientCorrespondencesParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/client/correspondences.json", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Sort != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Direction != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, *params.Direction); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.Page != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetClientCorrespondenceRequest generates requests for GetClientCorrespondence
 func NewGetClientCorrespondenceRequest(server string, accountId string, correspondenceId int64) (*http.Request, error) {
 	var err error
@@ -13039,117 +13138,6 @@ func NewGetClientCorrespondenceRequest(server string, accountId string, correspo
 	}
 
 	operationPath := fmt.Sprintf("/%s/client/correspondences/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewListClientRepliesRequest generates requests for ListClientReplies
-func NewListClientRepliesRequest(server string, accountId string, recordingId int64, params *ListClientRepliesParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/client/recordings/%s/replies.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Page != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetClientReplyRequest generates requests for GetClientReply
-func NewGetClientReplyRequest(server string, accountId string, recordingId int64, replyId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam2 string
-
-	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "replyId", runtime.ParamLocationPath, replyId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/client/recordings/%s/replies/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -13929,60 +13917,6 @@ func NewListForwardRepliesRequest(server string, accountId string, forwardId int
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewCreateForwardReplyRequest calls the generic CreateForwardReply builder with application/json body
-func NewCreateForwardReplyRequest(server string, accountId string, forwardId int64, body CreateForwardReplyJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateForwardReplyRequestWithBody(server, accountId, forwardId, "application/json", bodyReader)
-}
-
-// NewCreateForwardReplyRequestWithBody generates requests for CreateForwardReply with any type of body
-func NewCreateForwardReplyRequestWithBody(server string, accountId string, forwardId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "forwardId", runtime.ParamLocationPath, forwardId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/inbox_forwards/%s/replies.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -17402,47 +17336,6 @@ func NewPinMessageRequest(server string, accountId string, messageId int64) (*ht
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetRecordingRequest generates requests for GetRecording
-func NewGetRecordingRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/recordings/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -21279,47 +21172,6 @@ func NewGetEverythingUnassignedTodosRequest(server string, accountId string, par
 	return req, nil
 }
 
-// NewTrashTodoRequest generates requests for TrashTodo
-func NewTrashTodoRequest(server string, accountId string, todoId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todoId", runtime.ParamLocationPath, todoId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/todos/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetTodoRequest generates requests for GetTodo
 func NewGetTodoRequest(server string, accountId string, todoId int64) (*http.Request, error) {
 	var err error
@@ -22636,6 +22488,15 @@ var operationMetadata = map[string]OperationMetadata{
 	"DeleteMessageType":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetMessageType":                     {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMessageType":                  {Idempotent: true, HasSensitiveParams: false},
+	"ListChatbots":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateChatbot":                      {Idempotent: false, HasSensitiveParams: false},
+	"DeleteChatbot":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetChatbot":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateChatbot":                      {Idempotent: true, HasSensitiveParams: false},
+	"ListClientApprovals":                {Idempotent: true, HasSensitiveParams: false},
+	"ListClientCorrespondences":          {Idempotent: true, HasSensitiveParams: false},
+	"ListClientReplies":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
 	"CreateTool":                         {Idempotent: false, HasSensitiveParams: false},
 	"CreateTodosetTodo":                  {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
@@ -22667,11 +22528,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetEverythingUnassignedCards":       {Idempotent: true, HasSensitiveParams: false},
 	"ListCampfires":                      {Idempotent: true, HasSensitiveParams: false},
 	"GetCampfire":                        {Idempotent: true, HasSensitiveParams: false},
-	"ListChatbots":                       {Idempotent: true, HasSensitiveParams: false},
-	"CreateChatbot":                      {Idempotent: false, HasSensitiveParams: false},
-	"DeleteChatbot":                      {Idempotent: true, HasSensitiveParams: false},
-	"GetChatbot":                         {Idempotent: true, HasSensitiveParams: false},
-	"UpdateChatbot":                      {Idempotent: true, HasSensitiveParams: false},
 	"ListCampfireLines":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateCampfireLine":                 {Idempotent: false, HasSensitiveParams: false},
 	"DeleteCampfireLine":                 {Idempotent: true, HasSensitiveParams: false},
@@ -22681,12 +22537,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateCampfireUpload":               {Idempotent: false, HasSensitiveParams: false},
 	"GetEverythingCheckins":              {Idempotent: true, HasSensitiveParams: false},
 	"ListPingablePeople":                 {Idempotent: true, HasSensitiveParams: false},
-	"ListClientApprovals":                {Idempotent: true, HasSensitiveParams: false},
 	"GetClientApproval":                  {Idempotent: true, HasSensitiveParams: false},
-	"ListClientCorrespondences":          {Idempotent: true, HasSensitiveParams: false},
 	"GetClientCorrespondence":            {Idempotent: true, HasSensitiveParams: false},
-	"ListClientReplies":                  {Idempotent: true, HasSensitiveParams: false},
-	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingComments":              {Idempotent: true, HasSensitiveParams: false},
 	"GetComment":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateComment":                      {Idempotent: true, HasSensitiveParams: false},
@@ -22702,7 +22554,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateGaugeNeedle":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetForward":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListForwardReplies":                 {Idempotent: true, HasSensitiveParams: false},
-	"CreateForwardReply":                 {Idempotent: false, HasSensitiveParams: false},
 	"GetForwardReply":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetInbox":                           {Idempotent: true, HasSensitiveParams: false},
 	"ListForwards":                       {Idempotent: true, HasSensitiveParams: false},
@@ -22768,7 +22619,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"PauseQuestion":                      {Idempotent: true, HasSensitiveParams: false},
 	"UnpinMessage":                       {Idempotent: true, HasSensitiveParams: false},
 	"PinMessage":                         {Idempotent: false, HasSensitiveParams: false},
-	"GetRecording":                       {Idempotent: true, HasSensitiveParams: false},
 	"DeleteBookmark":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetBookmark":                        {Idempotent: true, HasSensitiveParams: false},
 	"CreateBookmark":                     {Idempotent: true, HasSensitiveParams: false},
@@ -22835,7 +22685,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetEverythingOpenTodos":             {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingOverdueTodos":          {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingUnassignedTodos":       {Idempotent: true, HasSensitiveParams: false},
-	"TrashTodo":                          {Idempotent: true, HasSensitiveParams: false},
 	"GetTodo":                            {Idempotent: true, HasSensitiveParams: false},
 	"ReplaceTodo":                        {Idempotent: true, HasSensitiveParams: false},
 	"UncompleteTodo":                     {Idempotent: true, HasSensitiveParams: false},
@@ -22888,6 +22737,15 @@ var operationRetryMax = map[string]int{
 	"DeleteMessageType":                  3,
 	"GetMessageType":                     3,
 	"UpdateMessageType":                  3,
+	"ListChatbots":                       3,
+	"CreateChatbot":                      2,
+	"DeleteChatbot":                      3,
+	"GetChatbot":                         3,
+	"UpdateChatbot":                      3,
+	"ListClientApprovals":                3,
+	"ListClientCorrespondences":          3,
+	"ListClientReplies":                  3,
+	"GetClientReply":                     3,
 	"CreateTool":                         2,
 	"CreateTodosetTodo":                  3,
 	"ListWebhooks":                       3,
@@ -22919,11 +22777,6 @@ var operationRetryMax = map[string]int{
 	"GetEverythingUnassignedCards":       3,
 	"ListCampfires":                      3,
 	"GetCampfire":                        3,
-	"ListChatbots":                       3,
-	"CreateChatbot":                      2,
-	"DeleteChatbot":                      3,
-	"GetChatbot":                         3,
-	"UpdateChatbot":                      3,
 	"ListCampfireLines":                  3,
 	"CreateCampfireLine":                 2,
 	"DeleteCampfireLine":                 3,
@@ -22933,12 +22786,8 @@ var operationRetryMax = map[string]int{
 	"CreateCampfireUpload":               3,
 	"GetEverythingCheckins":              3,
 	"ListPingablePeople":                 3,
-	"ListClientApprovals":                3,
 	"GetClientApproval":                  3,
-	"ListClientCorrespondences":          3,
 	"GetClientCorrespondence":            3,
-	"ListClientReplies":                  3,
-	"GetClientReply":                     3,
 	"GetEverythingComments":              3,
 	"GetComment":                         3,
 	"UpdateComment":                      3,
@@ -22954,7 +22803,6 @@ var operationRetryMax = map[string]int{
 	"UpdateGaugeNeedle":                  2,
 	"GetForward":                         3,
 	"ListForwardReplies":                 3,
-	"CreateForwardReply":                 2,
 	"GetForwardReply":                    3,
 	"GetInbox":                           3,
 	"ListForwards":                       3,
@@ -23020,7 +22868,6 @@ var operationRetryMax = map[string]int{
 	"PauseQuestion":                      3,
 	"UnpinMessage":                       3,
 	"PinMessage":                         2,
-	"GetRecording":                       3,
 	"DeleteBookmark":                     3,
 	"GetBookmark":                        3,
 	"CreateBookmark":                     3,
@@ -23087,7 +22934,6 @@ var operationRetryMax = map[string]int{
 	"GetEverythingOpenTodos":             3,
 	"GetEverythingOverdueTodos":          3,
 	"GetEverythingUnassignedTodos":       3,
-	"TrashTodo":                          3,
 	"GetTodo":                            3,
 	"ReplaceTodo":                        3,
 	"UncompleteTodo":                     3,
@@ -23138,6 +22984,15 @@ var operationRetryOn = map[string][]int{
 	"DeleteMessageType":                  {429, 503},
 	"GetMessageType":                     {429, 503},
 	"UpdateMessageType":                  {429, 503},
+	"ListChatbots":                       {429, 503},
+	"CreateChatbot":                      {429, 503},
+	"DeleteChatbot":                      {429, 503},
+	"GetChatbot":                         {429, 503},
+	"UpdateChatbot":                      {429, 503},
+	"ListClientApprovals":                {429, 503},
+	"ListClientCorrespondences":          {429, 503},
+	"ListClientReplies":                  {429, 503},
+	"GetClientReply":                     {429, 503},
 	"CreateTool":                         {429, 503},
 	"CreateTodosetTodo":                  {429, 503},
 	"ListWebhooks":                       {429, 503},
@@ -23169,11 +23024,6 @@ var operationRetryOn = map[string][]int{
 	"GetEverythingUnassignedCards":       {429, 503},
 	"ListCampfires":                      {429, 503},
 	"GetCampfire":                        {429, 503},
-	"ListChatbots":                       {429, 503},
-	"CreateChatbot":                      {429, 503},
-	"DeleteChatbot":                      {429, 503},
-	"GetChatbot":                         {429, 503},
-	"UpdateChatbot":                      {429, 503},
 	"ListCampfireLines":                  {429, 503},
 	"CreateCampfireLine":                 {429, 503},
 	"DeleteCampfireLine":                 {429, 503},
@@ -23183,12 +23033,8 @@ var operationRetryOn = map[string][]int{
 	"CreateCampfireUpload":               {429, 503},
 	"GetEverythingCheckins":              {429, 503},
 	"ListPingablePeople":                 {429, 503},
-	"ListClientApprovals":                {429, 503},
 	"GetClientApproval":                  {429, 503},
-	"ListClientCorrespondences":          {429, 503},
 	"GetClientCorrespondence":            {429, 503},
-	"ListClientReplies":                  {429, 503},
-	"GetClientReply":                     {429, 503},
 	"GetEverythingComments":              {429, 503},
 	"GetComment":                         {429, 503},
 	"UpdateComment":                      {429, 503},
@@ -23204,7 +23050,6 @@ var operationRetryOn = map[string][]int{
 	"UpdateGaugeNeedle":                  {429, 503},
 	"GetForward":                         {429, 503},
 	"ListForwardReplies":                 {429, 503},
-	"CreateForwardReply":                 {429, 503},
 	"GetForwardReply":                    {429, 503},
 	"GetInbox":                           {429, 503},
 	"ListForwards":                       {429, 503},
@@ -23270,7 +23115,6 @@ var operationRetryOn = map[string][]int{
 	"PauseQuestion":                      {429, 503},
 	"UnpinMessage":                       {429, 503},
 	"PinMessage":                         {429, 503},
-	"GetRecording":                       {429, 503},
 	"DeleteBookmark":                     {429, 503},
 	"GetBookmark":                        {429, 503},
 	"CreateBookmark":                     {429, 503},
@@ -23337,7 +23181,6 @@ var operationRetryOn = map[string][]int{
 	"GetEverythingOpenTodos":             {429, 503},
 	"GetEverythingOverdueTodos":          {429, 503},
 	"GetEverythingUnassignedTodos":       {429, 503},
-	"TrashTodo":                          {429, 503},
 	"GetTodo":                            {429, 503},
 	"ReplaceTodo":                        {429, 503},
 	"UncompleteTodo":                     {429, 503},
@@ -24094,10 +23937,6 @@ func (s *ProjectsService) Update(ctx context.Context, accountId string, projectI
 	return s.client.UpdateProject(ctx, accountId, projectId, body, reqEditors...)
 }
 
-func (s *RecordingsService) Get(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetRecording(ctx, accountId, recordingId, reqEditors...)
-}
-
 func (s *CommentsService) List(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.ListComments(ctx, accountId, recordingId, params, reqEditors...)
 }
@@ -24192,10 +24031,6 @@ func (s *TodosService) CreateWithBody(ctx context.Context, accountId string, tod
 
 func (s *TodosService) Create(ctx context.Context, accountId string, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.CreateTodo(ctx, accountId, todolistId, body, reqEditors...)
-}
-
-func (s *TodosService) Trash(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.TrashTodo(ctx, accountId, todoId, reqEditors...)
 }
 
 func (s *TodosService) Get(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -24389,6 +24224,37 @@ type ClientWithResponsesInterface interface {
 
 	UpdateMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
 
+	// ListChatbotsWithResponse request
+	ListChatbotsWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error)
+
+	// CreateChatbotWithBodyWithResponse request with any body
+	CreateChatbotWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
+
+	CreateChatbotWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
+
+	// DeleteChatbotWithResponse request
+	DeleteChatbotWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error)
+
+	// GetChatbotWithResponse request
+	GetChatbotWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error)
+
+	// UpdateChatbotWithBodyWithResponse request with any body
+	UpdateChatbotWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
+
+	UpdateChatbotWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
+
+	// ListClientApprovalsWithResponse request
+	ListClientApprovalsWithResponse(ctx context.Context, accountId string, bucketId int64, params *ListClientApprovalsParams, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error)
+
+	// ListClientCorrespondencesWithResponse request
+	ListClientCorrespondencesWithResponse(ctx context.Context, accountId string, bucketId int64, params *ListClientCorrespondencesParams, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error)
+
+	// ListClientRepliesWithResponse request
+	ListClientRepliesWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error)
+
+	// GetClientReplyWithResponse request
+	GetClientReplyWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
+
 	// CreateToolWithBodyWithResponse request with any body
 	CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
 
@@ -24510,25 +24376,6 @@ type ClientWithResponsesInterface interface {
 	// GetCampfireWithResponse request
 	GetCampfireWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*GetCampfireResponse, error)
 
-	// ListChatbotsWithResponse request
-	ListChatbotsWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error)
-
-	// CreateChatbotWithBodyWithResponse request with any body
-	CreateChatbotWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
-
-	CreateChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error)
-
-	// DeleteChatbotWithResponse request
-	DeleteChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error)
-
-	// GetChatbotWithResponse request
-	GetChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error)
-
-	// UpdateChatbotWithBodyWithResponse request with any body
-	UpdateChatbotWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
-
-	UpdateChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
-
 	// ListCampfireLinesWithResponse request
 	ListCampfireLinesWithResponse(ctx context.Context, accountId string, campfireId int64, params *ListCampfireLinesParams, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error)
 
@@ -24560,23 +24407,11 @@ type ClientWithResponsesInterface interface {
 	// ListPingablePeopleWithResponse request
 	ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error)
 
-	// ListClientApprovalsWithResponse request
-	ListClientApprovalsWithResponse(ctx context.Context, accountId string, params *ListClientApprovalsParams, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error)
-
 	// GetClientApprovalWithResponse request
 	GetClientApprovalWithResponse(ctx context.Context, accountId string, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error)
 
-	// ListClientCorrespondencesWithResponse request
-	ListClientCorrespondencesWithResponse(ctx context.Context, accountId string, params *ListClientCorrespondencesParams, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error)
-
 	// GetClientCorrespondenceWithResponse request
 	GetClientCorrespondenceWithResponse(ctx context.Context, accountId string, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error)
-
-	// ListClientRepliesWithResponse request
-	ListClientRepliesWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error)
-
-	// GetClientReplyWithResponse request
-	GetClientReplyWithResponse(ctx context.Context, accountId string, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
 
 	// GetEverythingCommentsWithResponse request
 	GetEverythingCommentsWithResponse(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*GetEverythingCommentsResponse, error)
@@ -24630,11 +24465,6 @@ type ClientWithResponsesInterface interface {
 
 	// ListForwardRepliesWithResponse request
 	ListForwardRepliesWithResponse(ctx context.Context, accountId string, forwardId int64, params *ListForwardRepliesParams, reqEditors ...RequestEditorFn) (*ListForwardRepliesResponse, error)
-
-	// CreateForwardReplyWithBodyWithResponse request with any body
-	CreateForwardReplyWithBodyWithResponse(ctx context.Context, accountId string, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
-
-	CreateForwardReplyWithResponse(ctx context.Context, accountId string, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error)
 
 	// GetForwardReplyWithResponse request
 	GetForwardReplyWithResponse(ctx context.Context, accountId string, forwardId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetForwardReplyResponse, error)
@@ -24873,9 +24703,6 @@ type ClientWithResponsesInterface interface {
 	// PinMessageWithResponse request
 	PinMessageWithResponse(ctx context.Context, accountId string, messageId int64, reqEditors ...RequestEditorFn) (*PinMessageResponse, error)
 
-	// GetRecordingWithResponse request
-	GetRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error)
-
 	// DeleteBookmarkWithResponse request
 	DeleteBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*DeleteBookmarkResponse, error)
 
@@ -25113,9 +24940,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetEverythingUnassignedTodosWithResponse request
 	GetEverythingUnassignedTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingUnassignedTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingUnassignedTodosResponse, error)
-
-	// TrashTodoWithResponse request
-	TrashTodoWithResponse(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error)
 
 	// GetTodoWithResponse request
 	GetTodoWithResponse(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*GetTodoResponse, error)
@@ -25827,6 +25651,313 @@ func (r UpdateMessageTypeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListChatbotsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListChatbotsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListChatbotsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListChatbotsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListChatbotsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateChatbotResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateChatbotResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateChatbotResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateChatbotResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateChatbotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteChatbotResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteChatbotResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteChatbotResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteChatbotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetChatbotResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetChatbotResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetChatbotResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetChatbotResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetChatbotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateChatbotResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateChatbotResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateChatbotResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateChatbotResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateChatbotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListClientApprovalsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListClientApprovalsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListClientApprovalsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListClientApprovalsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListClientApprovalsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListClientCorrespondencesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListClientCorrespondencesResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListClientCorrespondencesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListClientCorrespondencesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListClientCorrespondencesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListClientRepliesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListClientRepliesResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListClientRepliesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListClientRepliesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListClientRepliesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetClientReplyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetClientReplyResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClientReplyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClientReplyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetClientReplyResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26900,177 +27031,6 @@ func (r GetCampfireResponse) ContentType() string {
 	return ""
 }
 
-type ListChatbotsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ListChatbotsResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r ListChatbotsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListChatbotsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListChatbotsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type CreateChatbotResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *CreateChatbotResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateChatbotResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateChatbotResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateChatbotResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type DeleteChatbotResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteChatbotResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteChatbotResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteChatbotResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetChatbotResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetChatbotResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetChatbotResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetChatbotResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetChatbotResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type UpdateChatbotResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *UpdateChatbotResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateChatbotResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateChatbotResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateChatbotResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type ListCampfireLinesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -27379,40 +27339,6 @@ func (r ListPingablePeopleResponse) ContentType() string {
 	return ""
 }
 
-type ListClientApprovalsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ListClientApprovalsResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r ListClientApprovalsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListClientApprovalsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListClientApprovalsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type GetClientApprovalResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -27447,40 +27373,6 @@ func (r GetClientApprovalResponse) ContentType() string {
 	return ""
 }
 
-type ListClientCorrespondencesResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ListClientCorrespondencesResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r ListClientCorrespondencesResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListClientCorrespondencesResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListClientCorrespondencesResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type GetClientCorrespondenceResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -27509,74 +27401,6 @@ func (r GetClientCorrespondenceResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetClientCorrespondenceResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type ListClientRepliesResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ListClientRepliesResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r ListClientRepliesResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListClientRepliesResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListClientRepliesResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetClientReplyResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetClientReplyResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetClientReplyResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetClientReplyResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetClientReplyResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -28091,41 +27915,6 @@ func (r ListForwardRepliesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListForwardRepliesResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type CreateForwardReplyResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *CreateForwardReplyResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateForwardReplyResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateForwardReplyResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateForwardReplyResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -30345,40 +30134,6 @@ func (r PinMessageResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PinMessageResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetRecordingResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetRecordingResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetRecordingResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetRecordingResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetRecordingResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -32650,39 +32405,6 @@ func (r GetEverythingUnassignedTodosResponse) ContentType() string {
 	return ""
 }
 
-type TrashTodoResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r TrashTodoResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r TrashTodoResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r TrashTodoResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type GetTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -33751,6 +33473,103 @@ func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context,
 	return ParseUpdateMessageTypeResponse(rsp)
 }
 
+// ListChatbotsWithResponse request returning *ListChatbotsResponse
+func (c *ClientWithResponses) ListChatbotsWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error) {
+	rsp, err := c.ListChatbots(ctx, accountId, bucketId, campfireId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListChatbotsResponse(rsp)
+}
+
+// CreateChatbotWithBodyWithResponse request with arbitrary body returning *CreateChatbotResponse
+func (c *ClientWithResponses) CreateChatbotWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
+	rsp, err := c.CreateChatbotWithBody(ctx, accountId, bucketId, campfireId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateChatbotResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateChatbotWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
+	rsp, err := c.CreateChatbot(ctx, accountId, bucketId, campfireId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateChatbotResponse(rsp)
+}
+
+// DeleteChatbotWithResponse request returning *DeleteChatbotResponse
+func (c *ClientWithResponses) DeleteChatbotWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error) {
+	rsp, err := c.DeleteChatbot(ctx, accountId, bucketId, campfireId, chatbotId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteChatbotResponse(rsp)
+}
+
+// GetChatbotWithResponse request returning *GetChatbotResponse
+func (c *ClientWithResponses) GetChatbotWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error) {
+	rsp, err := c.GetChatbot(ctx, accountId, bucketId, campfireId, chatbotId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetChatbotResponse(rsp)
+}
+
+// UpdateChatbotWithBodyWithResponse request with arbitrary body returning *UpdateChatbotResponse
+func (c *ClientWithResponses) UpdateChatbotWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
+	rsp, err := c.UpdateChatbotWithBody(ctx, accountId, bucketId, campfireId, chatbotId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateChatbotResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, accountId string, bucketId int64, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
+	rsp, err := c.UpdateChatbot(ctx, accountId, bucketId, campfireId, chatbotId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateChatbotResponse(rsp)
+}
+
+// ListClientApprovalsWithResponse request returning *ListClientApprovalsResponse
+func (c *ClientWithResponses) ListClientApprovalsWithResponse(ctx context.Context, accountId string, bucketId int64, params *ListClientApprovalsParams, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error) {
+	rsp, err := c.ListClientApprovals(ctx, accountId, bucketId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListClientApprovalsResponse(rsp)
+}
+
+// ListClientCorrespondencesWithResponse request returning *ListClientCorrespondencesResponse
+func (c *ClientWithResponses) ListClientCorrespondencesWithResponse(ctx context.Context, accountId string, bucketId int64, params *ListClientCorrespondencesParams, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error) {
+	rsp, err := c.ListClientCorrespondences(ctx, accountId, bucketId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListClientCorrespondencesResponse(rsp)
+}
+
+// ListClientRepliesWithResponse request returning *ListClientRepliesResponse
+func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error) {
+	rsp, err := c.ListClientReplies(ctx, accountId, bucketId, recordingId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListClientRepliesResponse(rsp)
+}
+
+// GetClientReplyWithResponse request returning *GetClientReplyResponse
+func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error) {
+	rsp, err := c.GetClientReply(ctx, accountId, bucketId, recordingId, replyId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClientReplyResponse(rsp)
+}
+
 // CreateToolWithBodyWithResponse request with arbitrary body returning *CreateToolResponse
 func (c *ClientWithResponses) CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error) {
 	rsp, err := c.CreateToolWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
@@ -34142,67 +33961,6 @@ func (c *ClientWithResponses) GetCampfireWithResponse(ctx context.Context, accou
 	return ParseGetCampfireResponse(rsp)
 }
 
-// ListChatbotsWithResponse request returning *ListChatbotsResponse
-func (c *ClientWithResponses) ListChatbotsWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*ListChatbotsResponse, error) {
-	rsp, err := c.ListChatbots(ctx, accountId, campfireId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListChatbotsResponse(rsp)
-}
-
-// CreateChatbotWithBodyWithResponse request with arbitrary body returning *CreateChatbotResponse
-func (c *ClientWithResponses) CreateChatbotWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
-	rsp, err := c.CreateChatbotWithBody(ctx, accountId, campfireId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateChatbotResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, body CreateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateChatbotResponse, error) {
-	rsp, err := c.CreateChatbot(ctx, accountId, campfireId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateChatbotResponse(rsp)
-}
-
-// DeleteChatbotWithResponse request returning *DeleteChatbotResponse
-func (c *ClientWithResponses) DeleteChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*DeleteChatbotResponse, error) {
-	rsp, err := c.DeleteChatbot(ctx, accountId, campfireId, chatbotId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteChatbotResponse(rsp)
-}
-
-// GetChatbotWithResponse request returning *GetChatbotResponse
-func (c *ClientWithResponses) GetChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, reqEditors ...RequestEditorFn) (*GetChatbotResponse, error) {
-	rsp, err := c.GetChatbot(ctx, accountId, campfireId, chatbotId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetChatbotResponse(rsp)
-}
-
-// UpdateChatbotWithBodyWithResponse request with arbitrary body returning *UpdateChatbotResponse
-func (c *ClientWithResponses) UpdateChatbotWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
-	rsp, err := c.UpdateChatbotWithBody(ctx, accountId, campfireId, chatbotId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateChatbotResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error) {
-	rsp, err := c.UpdateChatbot(ctx, accountId, campfireId, chatbotId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateChatbotResponse(rsp)
-}
-
 // ListCampfireLinesWithResponse request returning *ListCampfireLinesResponse
 func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context, accountId string, campfireId int64, params *ListCampfireLinesParams, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error) {
 	rsp, err := c.ListCampfireLines(ctx, accountId, campfireId, params, reqEditors...)
@@ -34300,15 +34058,6 @@ func (c *ClientWithResponses) ListPingablePeopleWithResponse(ctx context.Context
 	return ParseListPingablePeopleResponse(rsp)
 }
 
-// ListClientApprovalsWithResponse request returning *ListClientApprovalsResponse
-func (c *ClientWithResponses) ListClientApprovalsWithResponse(ctx context.Context, accountId string, params *ListClientApprovalsParams, reqEditors ...RequestEditorFn) (*ListClientApprovalsResponse, error) {
-	rsp, err := c.ListClientApprovals(ctx, accountId, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListClientApprovalsResponse(rsp)
-}
-
 // GetClientApprovalWithResponse request returning *GetClientApprovalResponse
 func (c *ClientWithResponses) GetClientApprovalWithResponse(ctx context.Context, accountId string, approvalId int64, reqEditors ...RequestEditorFn) (*GetClientApprovalResponse, error) {
 	rsp, err := c.GetClientApproval(ctx, accountId, approvalId, reqEditors...)
@@ -34318,15 +34067,6 @@ func (c *ClientWithResponses) GetClientApprovalWithResponse(ctx context.Context,
 	return ParseGetClientApprovalResponse(rsp)
 }
 
-// ListClientCorrespondencesWithResponse request returning *ListClientCorrespondencesResponse
-func (c *ClientWithResponses) ListClientCorrespondencesWithResponse(ctx context.Context, accountId string, params *ListClientCorrespondencesParams, reqEditors ...RequestEditorFn) (*ListClientCorrespondencesResponse, error) {
-	rsp, err := c.ListClientCorrespondences(ctx, accountId, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListClientCorrespondencesResponse(rsp)
-}
-
 // GetClientCorrespondenceWithResponse request returning *GetClientCorrespondenceResponse
 func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Context, accountId string, correspondenceId int64, reqEditors ...RequestEditorFn) (*GetClientCorrespondenceResponse, error) {
 	rsp, err := c.GetClientCorrespondence(ctx, accountId, correspondenceId, reqEditors...)
@@ -34334,24 +34074,6 @@ func (c *ClientWithResponses) GetClientCorrespondenceWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseGetClientCorrespondenceResponse(rsp)
-}
-
-// ListClientRepliesWithResponse request returning *ListClientRepliesResponse
-func (c *ClientWithResponses) ListClientRepliesWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListClientRepliesParams, reqEditors ...RequestEditorFn) (*ListClientRepliesResponse, error) {
-	rsp, err := c.ListClientReplies(ctx, accountId, recordingId, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListClientRepliesResponse(rsp)
-}
-
-// GetClientReplyWithResponse request returning *GetClientReplyResponse
-func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, accountId string, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error) {
-	rsp, err := c.GetClientReply(ctx, accountId, recordingId, replyId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetClientReplyResponse(rsp)
 }
 
 // GetEverythingCommentsWithResponse request returning *GetEverythingCommentsResponse
@@ -34519,23 +34241,6 @@ func (c *ClientWithResponses) ListForwardRepliesWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseListForwardRepliesResponse(rsp)
-}
-
-// CreateForwardReplyWithBodyWithResponse request with arbitrary body returning *CreateForwardReplyResponse
-func (c *ClientWithResponses) CreateForwardReplyWithBodyWithResponse(ctx context.Context, accountId string, forwardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
-	rsp, err := c.CreateForwardReplyWithBody(ctx, accountId, forwardId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateForwardReplyResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateForwardReplyWithResponse(ctx context.Context, accountId string, forwardId int64, body CreateForwardReplyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateForwardReplyResponse, error) {
-	rsp, err := c.CreateForwardReply(ctx, accountId, forwardId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateForwardReplyResponse(rsp)
 }
 
 // GetForwardReplyWithResponse request returning *GetForwardReplyResponse
@@ -35291,15 +34996,6 @@ func (c *ClientWithResponses) PinMessageWithResponse(ctx context.Context, accoun
 	return ParsePinMessageResponse(rsp)
 }
 
-// GetRecordingWithResponse request returning *GetRecordingResponse
-func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error) {
-	rsp, err := c.GetRecording(ctx, accountId, recordingId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetRecordingResponse(rsp)
-}
-
 // DeleteBookmarkWithResponse request returning *DeleteBookmarkResponse
 func (c *ClientWithResponses) DeleteBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*DeleteBookmarkResponse, error) {
 	rsp, err := c.DeleteBookmark(ctx, accountId, recordingId, reqEditors...)
@@ -36052,15 +35748,6 @@ func (c *ClientWithResponses) GetEverythingUnassignedTodosWithResponse(ctx conte
 		return nil, err
 	}
 	return ParseGetEverythingUnassignedTodosResponse(rsp)
-}
-
-// TrashTodoWithResponse request returning *TrashTodoResponse
-func (c *ClientWithResponses) TrashTodoWithResponse(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error) {
-	rsp, err := c.TrashTodo(ctx, accountId, todoId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseTrashTodoResponse(rsp)
 }
 
 // GetTodoWithResponse request returning *GetTodoResponse
@@ -37309,6 +36996,464 @@ func ParseUpdateMessageTypeResponse(rsp *http.Response) (*UpdateMessageTypeRespo
 		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseListChatbotsResponse parses an HTTP response from a ListChatbotsWithResponse call
+func ParseListChatbotsResponse(rsp *http.Response) (*ListChatbotsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListChatbotsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListChatbotsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateChatbotResponse parses an HTTP response from a CreateChatbotWithResponse call
+func ParseCreateChatbotResponse(rsp *http.Response) (*CreateChatbotResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateChatbotResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateChatbotResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteChatbotResponse parses an HTTP response from a DeleteChatbotWithResponse call
+func ParseDeleteChatbotResponse(rsp *http.Response) (*DeleteChatbotResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteChatbotResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetChatbotResponse parses an HTTP response from a GetChatbotWithResponse call
+func ParseGetChatbotResponse(rsp *http.Response) (*GetChatbotResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetChatbotResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetChatbotResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateChatbotResponse parses an HTTP response from a UpdateChatbotWithResponse call
+func ParseUpdateChatbotResponse(rsp *http.Response) (*UpdateChatbotResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateChatbotResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateChatbotResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseListClientApprovalsResponse parses an HTTP response from a ListClientApprovalsWithResponse call
+func ParseListClientApprovalsResponse(rsp *http.Response) (*ListClientApprovalsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListClientApprovalsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListClientApprovalsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseListClientCorrespondencesResponse parses an HTTP response from a ListClientCorrespondencesWithResponse call
+func ParseListClientCorrespondencesResponse(rsp *http.Response) (*ListClientCorrespondencesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListClientCorrespondencesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListClientCorrespondencesResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseListClientRepliesResponse parses an HTTP response from a ListClientRepliesWithResponse call
+func ParseListClientRepliesResponse(rsp *http.Response) (*ListClientRepliesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListClientRepliesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListClientRepliesResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClientReplyResponse parses an HTTP response from a GetClientReplyWithResponse call
+func ParseGetClientReplyResponse(rsp *http.Response) (*GetClientReplyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClientReplyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetClientReplyResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
@@ -38960,264 +39105,6 @@ func ParseGetCampfireResponse(rsp *http.Response) (*GetCampfireResponse, error) 
 	return response, nil
 }
 
-// ParseListChatbotsResponse parses an HTTP response from a ListChatbotsWithResponse call
-func ParseListChatbotsResponse(rsp *http.Response) (*ListChatbotsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListChatbotsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ListChatbotsResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON429 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateChatbotResponse parses an HTTP response from a CreateChatbotWithResponse call
-func ParseCreateChatbotResponse(rsp *http.Response) (*CreateChatbotResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateChatbotResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CreateChatbotResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON422 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON429 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteChatbotResponse parses an HTTP response from a DeleteChatbotWithResponse call
-func ParseDeleteChatbotResponse(rsp *http.Response) (*DeleteChatbotResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteChatbotResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		break // No content-type
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON404 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseGetChatbotResponse parses an HTTP response from a GetChatbotWithResponse call
-func ParseGetChatbotResponse(rsp *http.Response) (*GetChatbotResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetChatbotResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetChatbotResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON404 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateChatbotResponse parses an HTTP response from a UpdateChatbotWithResponse call
-func ParseUpdateChatbotResponse(rsp *http.Response) (*UpdateChatbotResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateChatbotResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateChatbotResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON404 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON422 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
 // ParseListCampfireLinesResponse parses an HTTP response from a ListCampfireLinesWithResponse call
 func ParseListCampfireLinesResponse(rsp *http.Response) (*ListCampfireLinesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -39684,56 +39571,6 @@ func ParseListPingablePeopleResponse(rsp *http.Response) (*ListPingablePeopleRes
 	return response, nil
 }
 
-// ParseListClientApprovalsResponse parses an HTTP response from a ListClientApprovalsWithResponse call
-func ParseListClientApprovalsResponse(rsp *http.Response) (*ListClientApprovalsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListClientApprovalsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ListClientApprovalsResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON429 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
 // ParseGetClientApprovalResponse parses an HTTP response from a GetClientApprovalWithResponse call
 func ParseGetClientApprovalResponse(rsp *http.Response) (*GetClientApprovalResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -39784,56 +39621,6 @@ func ParseGetClientApprovalResponse(rsp *http.Response) (*GetClientApprovalRespo
 	return response, nil
 }
 
-// ParseListClientCorrespondencesResponse parses an HTTP response from a ListClientCorrespondencesWithResponse call
-func ParseListClientCorrespondencesResponse(rsp *http.Response) (*ListClientCorrespondencesResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListClientCorrespondencesResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ListClientCorrespondencesResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON429 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
 // ParseGetClientCorrespondenceResponse parses an HTTP response from a GetClientCorrespondenceWithResponse call
 func ParseGetClientCorrespondenceResponse(rsp *http.Response) (*GetClientCorrespondenceResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -39850,106 +39637,6 @@ func ParseGetClientCorrespondenceResponse(rsp *http.Response) (*GetClientCorresp
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest GetClientCorrespondenceResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON404 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseListClientRepliesResponse parses an HTTP response from a ListClientRepliesWithResponse call
-func ParseListClientRepliesResponse(rsp *http.Response) (*ListClientRepliesResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListClientRepliesResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ListClientRepliesResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON429 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseGetClientReplyResponse parses an HTTP response from a GetClientReplyWithResponse call
-func ParseGetClientReplyResponse(rsp *http.Response) (*GetClientReplyResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetClientReplyResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetClientReplyResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -40743,62 +40430,6 @@ func ParseListForwardRepliesResponse(rsp *http.Response) (*ListForwardRepliesRes
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON429 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateForwardReplyResponse parses an HTTP response from a CreateForwardReplyWithResponse call
-func ParseCreateForwardReplyResponse(rsp *http.Response) (*CreateForwardReplyResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateForwardReplyResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CreateForwardReplyResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON422 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
@@ -44140,56 +43771,6 @@ func ParsePinMessageResponse(rsp *http.Response) (*PinMessageResponse, error) {
 		var dest RateLimitErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON429 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseGetRecordingResponse parses an HTTP response from a GetRecordingWithResponse call
-func ParseGetRecordingResponse(rsp *http.Response) (*GetRecordingResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetRecordingResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetRecordingResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
@@ -47638,52 +47219,6 @@ func ParseGetEverythingUnassignedTodosResponse(rsp *http.Response) (*GetEverythi
 		var dest RateLimitErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON429 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON500 = &dest
-		}
-
-	}
-
-	return response, nil
-}
-
-// ParseTrashTodoResponse parses an HTTP response from a TrashTodoWithResponse call
-func ParseTrashTodoResponse(rsp *http.Response) (*TrashTodoResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &TrashTodoResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		break // No content-type
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON401 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

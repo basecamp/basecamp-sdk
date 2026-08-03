@@ -34,7 +34,7 @@ public final class ClientApprovalsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func list(options: ListClientApprovalOptions? = nil) async throws -> ListResult<ClientApproval> {
+    public func list(bucketId: Int, options: ListClientApprovalOptions? = nil) async throws -> ListResult<ClientApproval> {
         var queryItems: [URLQueryItem] = []
         if let sort = options?.sort {
             queryItems.append(URLQueryItem(name: "sort", value: sort))
@@ -46,8 +46,8 @@ public final class ClientApprovalsService: BaseService, @unchecked Sendable {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
-            OperationInfo(service: "ClientApprovals", operation: "ListClientApprovals", resourceType: "client_approval", isMutation: false),
-            path: "/client/approvals.json",
+            OperationInfo(service: "ClientApprovals", operation: "ListClientApprovals", resourceType: "client_approval", isMutation: false, projectId: bucketId),
+            path: "/buckets/\(bucketId)/client/approvals.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListClientApprovals")
