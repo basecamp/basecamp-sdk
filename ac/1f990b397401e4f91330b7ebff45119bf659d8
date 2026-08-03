@@ -1,0 +1,30 @@
+scripts/check-runner-test-reachability
+  s_ae792ed0be3006::t_261db3b3df26b3 718
+  s_ae792ed0be3006::t_b167a20e9b173b 1964-1991
+  s_ae792ed0be3006::t_2295c91d413d93 684-694
+  s_e18599af828faf::t_316377b30e3b7d 1070-1073,1963
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ac1f990b397401e4f91330b7ebff45119bf659d8",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e18599af828faf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b184a68c-543c-44e0-b3fd-ea263a30901d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
