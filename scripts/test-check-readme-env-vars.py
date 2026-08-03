@@ -1458,7 +1458,90 @@ def main() -> int:
         check("a documented environment API is not a touch",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
 
-        # 15. The shipped entrypoint, end to end. Everything above drives the
+        # 15. `!` is postfix in TypeScript's non-null assertion, so `value! / x`
+        #     is division -- and prefix in negation, so `!/re/.test(s)` is a
+        #     regex. Same character, opposite answers, decided by what is in
+        #     front of it.
+        root = tmp / "ts-nonnull-division"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts":
+                "const n = value! / process.env.BASECAMP_REAL / 2;\n",
+        })
+        check("division after a non-null assertion keeps its read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        root = tmp / "ts-negated-regex"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                "const bad = !/process.env.BASECAMP_FAKE/.test(s);\n",
+        })
+        check("a negated regex is still a regex",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # ...and the word matters, not its last letter: `return` ends in `n`,
+        # which as a bare character would read as a value and mask the regex.
+        root = tmp / "ts-return-negated-regex"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                "function f(s: string) { return !/process.env.BASECAMP_FAKE/.test(s); }\n",
+        })
+        check("a negated regex after a keyword is still a regex",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # 16. `process["env"]` is the same object as `process.env`. Node does not
+        #     care which spelling reaches it, so neither may the gate -- in the
+        #     named-read patterns and in the whole-environment detector both.
+        root = tmp / "ts-bracket-env-named"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts": 'const t = process["env"].BASECAMP_REAL;\n',
+        })
+        check("a bracket-spelled env property is a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        root = tmp / "ts-bracket-env-subscript"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts": 'const t = process["env"]["BASECAMP_REAL"];\n',
+        })
+        check("a fully bracket-spelled env read is a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        root = tmp / "ts-bracket-env-destructured"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts": 'const { BASECAMP_REAL } = process["env"];\n',
+        })
+        check("destructuring a bracket-spelled env is a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        root = tmp / "ts-bracket-env-wholesale"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts": 'const all = process["env"];\n',
+        })
+        check("a bracket-spelled whole environment breaks the claim",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), ["envapi:TypeScript"])
+
+        # ...but `process` has other properties, and none of them are the
+        # environment. Matching them would invent reads out of ordinary code.
+        root = tmp / "ts-other-process-property"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                'const v = process["version"];\nconst e = process.envelope;\n',
+        })
+        check("other process properties are not the environment",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # 17. The shipped entrypoint, end to end. Everything above drives the
         #     helpers `main()` drives, so until here the exit code that `make
         #     check` and the CI step branch on had no coverage at all -- a
         #     `main()` that collected every failure and then returned 0 would

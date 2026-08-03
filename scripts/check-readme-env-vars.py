@@ -75,6 +75,13 @@ GO_Q = r"(?P<q>[\"`])"  # Go has interpreted and raw string literals, no single 
 DQ = r"(?P<q>\")"  # Swift and Kotlin have only double-quoted strings
 ENDQ = r"(?P=q)"
 
+# `process.env` and `process["env"]` are the same object -- Node does not care
+# which spelling reaches it, so neither may this. Spelled once and shared by the
+# named-read patterns and the whole-environment detector below, because a form
+# only one of them knows about is a hole in whichever one forgot it. No named
+# group, so it can be embedded in patterns that already bind `q`.
+TS_ENV = r"process(?:\.env\b|\[\s*[\"']env[\"']\s*\])"
+
 # Where each SDK's shipping source lives, and how that language reads an env var.
 SDKS = {
     "Go": {
@@ -119,8 +126,8 @@ SDKS = {
         "patterns": [
             # `?.` is valid optional chaining, and a read the plain patterns
             # reported as nonexistent.
-            rf"process\.env\??\.{NAME}",
-            rf"process\.env(?:\?\.)?\[\s*{Q}{NAME}{ENDQ}",
+            rf"{TS_ENV}\??\.{NAME}",
+            rf"{TS_ENV}(?:\?\.)?\[\s*{Q}{NAME}{ENDQ}",
             # `const { BASECAMP_TOKEN } = process.env` is a read too. The name
             # comes *before* process.env, so this is a zero-width lookahead:
             # a consuming pattern would bind only one name per brace group,
@@ -131,11 +138,11 @@ SDKS = {
             # `const { OTHER: BASECAMP_TOKEN } = process.env`, where the key --
             # the variable actually read -- is OTHER and BASECAMP_TOKEN is just
             # what it was renamed to.
-            rf"[{{,]\s*{NAME}\b(?=[^{{}}]*\}}\s*=\s*process\.env)",
+            rf"[{{,]\s*{NAME}\b(?=[^{{}}]*\}}\s*=\s*{TS_ENV})",
             # ...and the quoted-key form, `{ "BASECAMP_TOKEN": token }`. The
             # match has to start on the brace or comma, because the name is
             # inside a literal and would be rejected as string data.
-            rf"[{{,]\s*{Q}{NAME}{ENDQ}\s*:(?=[^{{}}]*\}}\s*=\s*process\.env)",
+            rf"[{{,]\s*{Q}{NAME}{ENDQ}\s*:(?=[^{{}}]*\}}\s*=\s*{TS_ENV})",
         ],
     },
     "Swift": {
@@ -519,6 +526,23 @@ def operand_position(text: str, i: int, flags: dict) -> bool:
     # postfix one and always division.
     if text[k] in "+-" and k > 0 and text[k - 1] == text[k]:
         return False
+    # `!` is both TypeScript's postfix non-null assertion, which ends a value so
+    # `value! / x / 2` is division, and prefix negation, where `!/re/.test(s)` is
+    # a genuine regex. What precedes the `!` decides, and it has to be the whole
+    # preceding *word* rather than its last character: `return !/re/.test(s)`
+    # ends in `n`, which would otherwise read as a value and mask the regex.
+    if text[k] == "!" and k > 0:
+        j = k - 1
+        while j >= 0 and text[j] in " \t":
+            j -= 1
+        if j >= 0 and (text[j].isalnum() or text[j] == "_"):
+            word_end = j + 1
+            while j >= 0 and (text[j].isalnum() or text[j] == "_"):
+                j -= 1
+            if text[j + 1 : word_end] not in REGEX_KEYWORDS:
+                return False
+        elif j >= 0 and text[j] in ")]\"'`":
+            return False
     if text[k] in REGEX_PRECEDERS:
         return True
     if text[k] == ")":
@@ -1184,7 +1208,7 @@ def real_reads(spec: dict, scoped: bool = True) -> dict[str, list[str]]:
 # question is simpler than name resolution: touching the environment API at all
 # is the violation. That is a fixed, tiny pattern set rather than more lexer.
 ENV_API = {
-    "TypeScript": [r"process\.env\b"],
+    "TypeScript": [TS_ENV],
     "Swift": [r"ProcessInfo\.processInfo\.environment\b"],
     "Kotlin": [r"System\.getenv\b"],
 }
