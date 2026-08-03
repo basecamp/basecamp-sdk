@@ -1,0 +1,97 @@
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_346d52445f2624 441-443,445-448
+  s_ae792ed0be3006::t_4df2bf5bc0ac8e 230-237
+  s_ae792ed0be3006::t_fe71915a961006 139-147
+  s_ae792ed0be3006::t_688415ab9ac821 482
+  s_ae792ed0be3006::t_e96749d2b1c4c5 541-543
+  s_ae792ed0be3006::t_c48d53c7a6f6c5 361,363-364
+  s_ee36af3a7711b9::t_6b54b1dd721876 148-154
+Makefile
+  s_ae792ed0be3006::t_e2c67c17a893ed 853-854
+  s_ae792ed0be3006::t_f250d76bcfc163 855,860,1040-1041,1149-1150,1155
+  s_ae792ed0be3006::t_88e391dcbbf917 1034-1039
+  s_ae792ed0be3006::t_d60b549c8cb808 497-514,516-522,539-542,550-551,553-555
+  s_ae792ed0be3006::t_cbcaf8c78ea831 452
+  s_ae792ed0be3006::t_0dc53bdb49bfae 454
+  s_ae792ed0be3006::t_805301bdd63701 523-538,543-549,552
+  s_ee36af3a7711b9::t_a90c7df373e0d3 649-654,656,968,1042-1049,1072,1156
+scripts/check-runner-test-reachability
+  s_ae792ed0be3006::t_390490f81f92b8 620-664,620-666,751
+  s_ae792ed0be3006::t_98cd21d4d91656 17-20,23-28,52,56-58,60,67,70-71,87-88,219,233,250,273,301,326-327,330,356,365-368,370-371,398,413,417,421,457-460,470,542,589
+  s_ae792ed0be3006::t_52735a2051ca65 90-100
+  s_ae792ed0be3006::t_3c38f1d6a2121a 381-386
+  s_ae792ed0be3006::t_d3ca4fc7d71fb5 595-617
+  s_ae792ed0be3006::t_8c0268c704e00a 110,207
+  s_ae792ed0be3006::t_26fb5a03ebe4bc 30-51,53-54
+  s_ae792ed0be3006::t_0aa556ca587d78 506-512,619
+  s_ae792ed0be3006::t_46441cec6aef2c 500-505
+  s_ae792ed0be3006::t_e282059680e726 357-364
+  s_ae792ed0be3006::t_85276801082c6c 247
+  s_ae792ed0be3006::t_1995b6bf5ccdd1 594
+  s_ae792ed0be3006::t_b05e8ea292ed84 424-430,432-445
+  s_ae792ed0be3006::t_a27e9c28bbff6d 387-394
+  s_ae792ed0be3006::t_5e3f037ac0b15f 109,483-499,522-533,535,538-541,543-544,548-575,577-587,590-593,618,752-757
+  s_ae792ed0be3006::t_1d070f5e4190d6 62-63
+  s_ae792ed0be3006::t_8b2c0007a7ba60 262-265,267-269
+  s_ae792ed0be3006::t_aba612ce703389 668-723,751
+  s_ae792ed0be3006::t_214a5b96b3e94e 184-192,215,239-242,246,271-272,274-276,286-294,297
+  s_ae792ed0be3006::t_62f6e21eb2c39d 193-201,243,244-245,254-261,266
+  s_ae792ed0be3006::t_045f7e179c26eb 300,302-312,314,322,324-325,328-329,331,340-343
+  s_ae792ed0be3006::t_01a8729194ffe4 137-145
+  s_ae792ed0be3006::t_ab441a3db14db0 1-16,21-22,29,55,59,68-69,72-86,89,101-108,111,182-183,202-203,206,208-213,216-217,218,231-232,234-238,248-249,251-253,270,295-296,298-299,313,315-321,323,332-339,332-338,339,344-355,369,372-380,401,416,419,423,431,446-447,449-456,461-469,471-482,513,521,534,536-537,545-547,576,758-767
+  s_ae792ed0be3006::t_d3721760fb45e1 402-412,414,420
+  s_ae792ed0be3006::t_fd85d930b85e71 448
+  s_ae792ed0be3006::t_87a137dba4b8ba 159-180
+  s_ae792ed0be3006::t_6972e7b2dc9b58 588
+  s_ae792ed0be3006::t_9b7a0c3b7ac054 61
+  s_ae792ed0be3006::t_c96f633efb5f74 112-136,146-158,181
+  s_ae792ed0be3006::t_d422456ca30609 514-517,665-667
+CONTRIBUTING.md
+  s_ee36af3a7711b9::t_7682bdb2ba7bd3 393-402
+SPEC.md
+  s_ae792ed0be3006::t_a62fef3eeefc78 2044
+conformance/runner/go/replay_runner.go
+  s_ee36af3a7711b9::t_d01da1062b91b8 35-43,89-169
+conformance/runner/go/replay_runner_test.go
+  s_ee36af3a7711b9::t_6ef1b8e844f354 20,23,29-97
+conformance/runner/python/replay_runner.py
+  s_ee36af3a7711b9::t_3b04f7053be82e 60-66,79-99
+conformance/runner/python/test_replay_runner.py
+  s_ee36af3a7711b9::t_b7f475082c618f 30-70
+conformance/runner/ruby/replay-runner.rb
+  s_ee36af3a7711b9::t_df8b86987ac3a6 43-48,50-81
+conformance/runner/ruby/replay_runner_test.rb
+  s_ee36af3a7711b9::t_ec19258c277395 31-71
+kotlin/conformance/build.gradle.kts
+  s_ee36af3a7711b9::t_72c4bd7562d137 44-47,50
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_ee36af3a7711b9::t_601be22cbb9c35 3-4,6-8,11-12,50-56,83-95,97,109-131
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/ReplayDecodersTest.kt
+  s_ee36af3a7711b9::t_55b2ff8f1d9c92 1-134
+scripts/check-replay-decoder-parity
+  s_ee36af3a7711b9::t_2cbd07ebb377a9 1-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1ff2025da8b914f69b73ccf74cf63609a4db6e9b",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_ee36af3a7711b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fd1-322e-7880-85cc-ab6c3e75c537",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
