@@ -1607,7 +1607,50 @@ def main() -> int:
         })
         check("a lookalike helper is not an env read", run_gate(root, PY_SDK), [])
 
-        # 18. The shipped entrypoint, end to end. Everything above drives the
+        # 18. `const { env } = process` aliases the whole environment without
+        #     ever spelling `process.env`.
+        root = tmp / "ts-destructured-env-alias"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                "const { env } = process;\nconst t = env.BASECAMP_TOKEN;\n",
+        })
+        check("destructuring env off process breaks the claim",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), ["envapi:TypeScript"])
+
+        # ...but destructuring something else off it is not the environment.
+        root = tmp / "ts-destructured-other"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts": "const { argv, pid } = process;\n",
+        })
+        check("destructuring other process fields is not the environment",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # 19. Tilde fences are code blocks too, and a comment inside one is not
+        #     documentation. Left in prose, `# The SDK uses BASECAMP_TILDE`
+        #     satisfied the reverse check for a read nothing else described.
+        root = tmp / "tilde-fence"
+        build(root, {
+            "python/README.md":
+                "intro\n\n~~~python\n# The SDK uses BASECAMP_TILDE\n~~~\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_TILDE")\n',
+        })
+        check("a tilde-fenced example is not documentation",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_TILDE"])
+
+        # ...and the fence closes only on its own character, so a ``` line
+        # inside a ~~~ block must not end it and hand back the rest as prose.
+        root = tmp / "tilde-fence-mixed"
+        build(root, {
+            "python/README.md":
+                "intro\n\n~~~\n```\n# The SDK uses BASECAMP_MIXED\n```\n~~~\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_MIXED")\n',
+        })
+        check("a backtick line inside a tilde fence does not end it",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_MIXED"])
+
+        # 20. The shipped entrypoint, end to end. Everything above drives the
         #     helpers `main()` drives, so until here the exit code that `make
         #     check` and the CI step branch on had no coverage at all -- a
         #     `main()` that collected every failure and then returned 0 would

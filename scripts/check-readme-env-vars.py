@@ -1228,7 +1228,11 @@ def real_reads(spec: dict, scoped: bool = True) -> dict[str, list[str]]:
 # question is simpler than name resolution: touching the environment API at all
 # is the violation. That is a fixed, tiny pattern set rather than more lexer.
 ENV_API = {
-    "TypeScript": [TS_ENV],
+    # ...plus `const { env } = process`, which aliases the whole environment
+    # without ever spelling `process.env`. Resolving the alias afterwards would
+    # need name binding, but for this invariant it does not have to be
+    # resolved -- destructuring `env` off `process` is itself the touch.
+    "TypeScript": [TS_ENV, r"[{,]\s*env\b(?=[^{}]*\}\s*=\s*process\b)"],
     "Swift": [r"ProcessInfo\.processInfo\.environment\b"],
     "Kotlin": [r"System\.getenv\b"],
 }
@@ -1290,12 +1294,27 @@ def prose_lines(readme: Path) -> list[tuple[int, str]]:
     and 2, and scanning them here would double-report the same defect.
     """
     out = []
-    fenced = False
+    # CommonMark fences open with ``` or ~~~ and close only on the *same*
+    # character. Toggling on backticks alone left a `~~~python` example in
+    # prose, where a `# The SDK uses BASECAMP_NEW` comment inside it counted as
+    # documentation -- so a real read could pass the reverse check with nothing
+    # written about it anywhere. Toggling on either character independently
+    # would be the mirror bug: a ``` line inside a ~~~ block would end it early
+    # and hand the rest of the example back as prose.
+    fence = None
     for lineno, line in enumerate(readme.read_text(encoding="utf-8").splitlines(), 1):
-        if line.lstrip().startswith("```"):
-            fenced = not fenced
-            continue
-        if fenced or line.strip().startswith("|"):
+        stripped = line.lstrip()
+        marker = "```" if stripped.startswith("```") else (
+            "~~~" if stripped.startswith("~~~") else None)
+        if marker:
+            if fence is None:
+                fence = marker
+                continue
+            if marker == fence:
+                fence = None
+                continue
+            # The other marker inside a fenced block is example content.
+        if fence or line.strip().startswith("|"):
             continue
         out.append((lineno, line))
     return out
