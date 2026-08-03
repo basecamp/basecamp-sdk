@@ -232,6 +232,16 @@ func evaluateAssertions(
             // every page. The first-page-only fixture, the one case where the
             // count genuinely does not apply to an auto-paginating SDK, is
             // excluded by its own `link-header` tag before it reaches here.
+            //
+            // Swift excludes the whole CASE where Go, Python, Ruby and
+            // TypeScript exclude only this ASSERTION (#573). Deliberate, not
+            // drift: `httpStatus` is the status of the last mock response the
+            // SDK consumed, and an auto-paginating SDK walks past the end of a
+            // one-response queue, so the fixture's `statusCode: 200` cannot be
+            // satisfied. Narrowing this arm was tried and reverted — `make
+            // conformance-swift` then reports `Expected status code 200, but
+            // got no response` and exits 2. Do not "align" it with the other
+            // four without widening the status model first.
             if requestCount != expected {
                 return .fail("Expected \(expected) requests, got \(requestCount)")
             }

@@ -17,6 +17,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkDelayGaps } from "./delay-gaps.js";
 import { errorRaisedFailure } from "./error-raised.js";
+import { checkRequestCount, requestCountApplies } from "./request-count.js";
 
 // =============================================================================
 // Types mirroring conformance/schema.json
@@ -842,12 +843,6 @@ function checkAssertions(
   tracker: ReturnType<typeof installMockHandlers>,
   result: { error?: BasecampError | Error; httpStatus?: number; meta?: Record<string, unknown> },
 ): void {
-  // Detect if any mock response includes a Link header with rel="next".
-  // The TS SDK auto-paginates (follows all Link next headers), so the
-  // actual requestCount will be higher than what the conformance test
-  // expects. In this case, assert >= instead of strict equality.
-  const hasLinkNextHeader = suiteHasLinkNext(tc);
-
   // DownloadURL implicit invariant: hop 1 must hit the test case path.
   // The MSW handler is origin-wide so hop 2's relative-resolved URL is
   // served, but a regression that misroutes hop 1 to a different path on
@@ -895,19 +890,12 @@ function checkAssertions(
   for (const assertion of tc.assertions) {
     switch (assertion.type) {
       case "requestCount": {
-        const expected = Number(assertion.expected);
-        if (hasLinkNextHeader) {
-          // TS SDK auto-paginates: expect at least the specified count
-          expect(
-            tracker.requestCount(),
-            `[${tc.name}] expected >= ${expected} requests (SDK auto-paginates), got ${tracker.requestCount()}`,
-          ).toBeGreaterThanOrEqual(expected);
-        } else {
-          expect(
-            tracker.requestCount(),
-            `[${tc.name}] expected ${expected} requests, got ${tracker.requestCount()}`,
-          ).toBe(expected);
-        }
+        // The TS SDK auto-paginates list operations, so a fixture that counts
+        // first-page requests only is inapplicable — but ONLY its count is.
+        // The rest of the case still runs. See requestCountApplies (#573).
+        if (!requestCountApplies(tc.tags)) break;
+        const failure = checkRequestCount(tracker.requestCount(), Number(assertion.expected));
+        if (failure) throw new Error(`[${tc.name}] ${failure}`);
         break;
       }
 

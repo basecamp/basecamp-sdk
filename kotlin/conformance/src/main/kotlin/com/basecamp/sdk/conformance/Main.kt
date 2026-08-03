@@ -347,13 +347,7 @@ private fun runTest(tc: TestCase): TestResult {
             "requestCount" -> {
                 val expected = assertion.expected?.asInt()
                     ?: return TestResult(false, "requestCount assertion missing expected value")
-                if (autoPaginates) {
-                    if (requestCount < expected) {
-                        return TestResult(false, "Expected >= $expected requests (SDK auto-paginates), got $requestCount")
-                    }
-                } else if (requestCount != expected) {
-                    return TestResult(false, "Expected $expected requests, got $requestCount")
-                }
+                checkRequestCount(requestCount, expected)?.let { return TestResult(false, it) }
             }
 
             "statusCode" -> {
