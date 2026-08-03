@@ -349,6 +349,69 @@ out, status = gate lambda { |f|
 }
 expect_pass(failures, "fenced pin restatement is not prose", out, status)
 
+# ...but the fence must CLOSE. A ````-fence may quote a ```-fence, which is how
+# you write a Markdown example about Markdown. Toggling on every fence line left
+# an odd number of inner fences flipping the flag on for good, so everything
+# after the block read as code — a restatement there was never even looked at,
+# and the gate reported success. Fail-open, so this case must FAIL.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    ````
+    ```
+    ````
+
+    The provenance pin is `#{SHORT}`.
+  MD
+}
+expect_fail(failures, "prose after a nested fence is still prose", out, status,
+            "is the current provenance pin, restated outside a @bc3-pin span")
+
+# The same, one delimiter swapped: a ``` line inside a ~~~ block is content,
+# not a close, because closing requires the same character.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    ~~~
+    ```
+    ~~~
+
+    The provenance pin is `#{SHORT}`.
+  MD
+}
+expect_fail(failures, "a mismatched delimiter does not close a fence", out, status,
+            "is the current provenance pin, restated outside a @bc3-pin span")
+
+# And the inner fence really is inside: a restatement between ```` and ```` is
+# code even though a bare ``` sits between them.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    ````
+    ```
+    The provenance pin is `#{SHORT}`.
+    ```
+    ````
+  MD
+}
+expect_pass(failures, "a nested fence keeps its contents fenced", out, status)
+
+# An info string closes nothing — ```ruby inside a ``` block is content.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    ```
+    ```ruby
+    The provenance pin is `#{SHORT}`.
+    ```
+  MD
+}
+expect_pass(failures, "a fence with an info string does not close", out, status)
+
 # --- @assertion-types ----------------------------------------------------------
 
 out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("| `jsonPath` | a JSON path |\n", "") }

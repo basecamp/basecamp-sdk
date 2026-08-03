@@ -95,6 +95,9 @@ BLOCK_KINDS = %w[assertion-types].freeze
 KNOWN_KINDS = (LINE_KINDS + BLOCK_KINDS).freeze
 
 MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
+# A fenced-code delimiter: 3+ backticks or 3+ tildes, optional leading space,
+# with whatever follows captured as the info string (a close must have none).
+FENCE_RE    = /\A\s*(?<delimiter>`{3,}|~{3,})(?<info>.*)\z/
 ISO_DATE_RE = /\b\d{4}-\d{2}-\d{2}\b/
 TICKED_HEX_RE = /`([0-9a-f]{7,40})`/
 BACKTICKED_RE = /`[^`]*`/
@@ -172,16 +175,34 @@ def scan_file(file)
   prose = []
   lines = File.readlines(File.join(ROOT, file), chomp: true, encoding: UTF8)
   open_block = nil
-  in_fence = false
+  open_fence = nil
 
   lines.each_with_index do |line, index|
     line_no = index + 1
 
-    if line.lstrip.start_with?("```", "~~~")
-      in_fence = !in_fence
+    # Fences are matched, not toggled. A fence closes only on the same
+    # character, at least as long, with nothing after it (CommonMark), so a
+    # ````-fence may quote a ```-fence — which is how you write a Markdown
+    # example about Markdown, and how AGENTS.md documents this convention.
+    #
+    # Toggling got this wrong in the direction that matters. Each inner fence
+    # flipped the flag, so a block containing an odd number of them ended with
+    # the flag still set and every following line silently treated as code —
+    # including an unmarked restatement of the pin, which the gate would then
+    # never see. Fail-open, and invisible: the check would report success.
+    if (fence = line.match(FENCE_RE))
+      delimiter = fence[:delimiter]
+
+      if open_fence.nil?
+        open_fence = [delimiter[0], delimiter.length]
+      elsif delimiter[0] == open_fence[0] &&
+            delimiter.length >= open_fence[1] &&
+            fence[:info].strip.empty?
+        open_fence = nil
+      end
       next
     end
-    next if in_fence
+    next if open_fence
 
     prose << [line_no, line]
 
