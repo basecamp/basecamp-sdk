@@ -2755,12 +2755,14 @@ export interface paths {
         };
         /**
          * @description Get a single todolist or todolist group by id
-         *     The endpoint is polymorphic - the same URI returns either a Todolist or TodolistGroup
+         *     The endpoint is polymorphic, but it answers with one shape: BC3 has no group
+         *     model, so both variants come back as a flat Todolist (see the Todolist shape).
          */
         get: operations["GetTodolistOrGroup"];
         /**
          * @description Replace a todolist (or todolist group) with a new complete representation.
-         *     The endpoint is polymorphic - it addresses either a Todolist or a TodolistGroup.
+         *     The endpoint is polymorphic - it addresses a to-do list or a group, and answers
+         *     with the same flat Todolist shape either way.
          *     The request body is the recordable's full writable state: TodolistsController#update
          *     builds a brand-new Todolist from the permitted params and swaps it in, so any
          *     writable field omitted from the request is cleared server-side (a request that
@@ -3828,7 +3830,7 @@ export interface components {
         CreateTodolistGroupRequestContent: {
             name: string;
         };
-        CreateTodolistGroupResponseContent: components["schemas"]["TodolistGroup"];
+        CreateTodolistGroupResponseContent: components["schemas"]["Todolist"];
         CreateTodolistRequestContent: {
             name: string;
             description?: string;
@@ -4410,7 +4412,7 @@ export interface components {
         GetTimesheetEntryResponseContent: components["schemas"]["TimesheetEntry"];
         GetTimesheetReportResponseContent: components["schemas"]["TimesheetEntry"][];
         GetTodoResponseContent: components["schemas"]["Todo"];
-        GetTodolistOrGroupResponseContent: components["schemas"]["TodolistOrGroup"];
+        GetTodolistOrGroupResponseContent: components["schemas"]["Todolist"];
         GetTodosetResponseContent: components["schemas"]["Todoset"];
         GetToolResponseContent: components["schemas"]["Tool"];
         GetUpcomingScheduleResponseContent: {
@@ -4506,7 +4508,7 @@ export interface components {
         ListRecordingsResponseContent: components["schemas"]["Recording"][];
         ListScheduleEntriesResponseContent: components["schemas"]["ScheduleEntry"][];
         ListTemplatesResponseContent: components["schemas"]["Template"][];
-        ListTodolistGroupsResponseContent: components["schemas"]["TodolistGroup"][];
+        ListTodolistGroupsResponseContent: components["schemas"]["Todolist"][];
         ListTodolistsResponseContent: components["schemas"]["Todolist"][];
         ListTodosResponseContent: components["schemas"]["Todo"][];
         ListUploadVersionsResponseContent: components["schemas"]["Upload"][];
@@ -5632,6 +5634,28 @@ export interface components {
             url: string;
             app_url: string;
         };
+        /**
+         * @description A to-do list, or a group inside one. There is only this shape.
+         *
+         *     BC3 has no group model: a "group" is a `Todolist` whose parent is another
+         *     `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+         *     `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+         *     `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+         *     So a group reports `"type": "Todolist"` (the shared recording partial emits
+         *     `recordable_type`) and carries `description`/`description_attachments` like
+         *     any other list. Every operation that returns a list or a group returns this
+         *     structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+         *     group list, group create and group get.
+         *
+         *     Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+         *     both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+         *     and emits exactly one of:
+         *
+         *     - `groups_url` — a to-do list; its `parent` is a Todoset.
+         *     - `group_position_url` — a group; its `parent` is a Todolist.
+         *
+         *     The two are mutually exclusive and exactly one is always present.
+         */
         Todolist: {
             /** Format: int64 */
             id: number;
@@ -5663,59 +5687,73 @@ export interface components {
             parent: components["schemas"]["TodoParent"];
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
-            description?: string;
+            /**
+             * @description Rich text description (HTML). Required and never null: the shared rich-text
+             *     partial emits the key unconditionally, and `format_api_content` funnels a
+             *     blank or absent rich text through `call_pipeline`, which returns `""` rather
+             *     than nil. A list with no description carries `""`, not `null`, and a group
+             *     carries it too — `todolists/groups/{index,show}.json.jbuilder` render the
+             *     same partial.
+             */
+            description: string;
+            /**
+             * @description Downloadable files embedded in `description`. Required and never null:
+             *     the partial emits `rich_text&.downloadable_attachments.to_a`, so the value
+             *     is `[]` when there is no description and when there are no attachments.
+             */
             description_attachments: components["schemas"]["RichTextAttachment"][];
             completed?: boolean;
             completed_ratio?: string;
             name: string;
             todos_url?: string;
+            /**
+             * @description API URL for this list's groups. The to-do-list half of the structural
+             *     discriminator: emitted only when `parent` is a Todoset, and mutually
+             *     exclusive with `group_position_url`.
+             */
             groups_url?: string;
+            /**
+             * @description API URL for repositioning this group within its parent list. The group half
+             *     of the structural discriminator: emitted only when `parent` is a Todolist,
+             *     and mutually exclusive with `groups_url`.
+             */
+            group_position_url?: string;
+            /**
+             * @description In-app (non-API) URL for this record's to-dos, alongside the API-host
+             *     `todos_url`.
+             */
             app_todos_url?: string;
+            /**
+             * @description Color of the list or group, one of BC3's `Colored` enum values
+             *     (`white red orange yellow green blue aqua purple gray pink brown`). For a
+             *     top-level list a hill-chart dot color takes precedence over the recording's
+             *     own.
+             *
+             *     **Nullable.** `recordings.color` is a nullable integer column, so the value is
+             *     JSON `null` whenever it is unset — which, for a group, is the ordinary case.
+             *     Smithy has no native nullable scalar, so the `["string", "null"]` union is
+             *     applied to the OpenAPI projection through `jsonAdd` in `spec/smithy-build.json`,
+             *     the same treatment `SearchResult.content` and `SearchType.key` get. Without it
+             *     the published schema and the generated static types would be non-nullable and
+             *     every uncolored list and group would violate them.
+             *
+             *     Modelled optional rather than `@required` even though
+             *     `_todolist.json.jbuilder` calls `json.color` in both branches of its
+             *     `todolist_group?` conditional and so always emits the key. Optional is the
+             *     weaker, safer claim: it accepts both an explicit `null` and an absent key,
+             *     where `@required` would additionally oblige every captured body and inline
+             *     test stub in the typed SDKs to carry a field that is cosmetic. Tightening it
+             *     is a clean follow-up; publishing a non-nullable type was the actual defect.
+             */
+            color?: string | null;
+            /**
+             * @description In-app (non-API) URL for this recording's comments, alongside the API-host
+             *     `comments_url`.
+             */
+            comments_app_url?: string;
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
-        };
-        TodolistGroup: {
-            /** Format: int64 */
-            id: number;
-            status: string;
-            visible_to_clients: boolean;
-            created_at: string;
-            updated_at: string;
-            title: string;
-            inherits_status: boolean;
-            type: string;
-            url: string;
-            app_url: string;
-            bookmark_url?: string;
-            subscription_url?: string;
-            /**
-             * @description URL of the Bubble Up record for this recording (BC5 addition). Required:
-             *     `todolists/_todolist.json.jbuilder` renders the shared recording partial
-             *     with `bubbleupable: true` unconditionally, and every list, show, and group
-             *     path renders that partial — so the key is present on every projection of
-             *     this shape.
-             */
-            bubble_up_url: string;
-            /** Format: int32 */
-            comments_count?: number;
-            comments_url?: string;
-            /** Format: int32 */
-            position?: number;
-            parent: components["schemas"]["TodoParent"];
-            bucket: components["schemas"]["TodoBucket"];
-            creator: components["schemas"]["Person"];
-            name: string;
-            completed?: boolean;
-            completed_ratio?: string;
-            todos_url?: string;
-            app_todos_url?: string;
-        };
-        /** @description Union type for polymorphic todolist endpoint */
-        TodolistOrGroup: {
-            todolist: components["schemas"]["Todolist"];
-        } | {
-            group: components["schemas"]["TodolistGroup"];
         };
         Todoset: {
             /** Format: int64 */
@@ -5950,12 +5988,12 @@ export interface components {
         };
         UpdateTimesheetEntryResponseContent: components["schemas"]["TimesheetEntry"];
         UpdateTodolistOrGroupRequestContent: {
-            /** @description Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve */
+            /** @description Name (required for a to-do list and for a group alike) - presence-validated server-side, so omitting it is a 422, not a preserve */
             name: string;
             /** @description Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way */
             description?: string;
         };
-        UpdateTodolistOrGroupResponseContent: components["schemas"]["TodolistOrGroup"];
+        UpdateTodolistOrGroupResponseContent: components["schemas"]["Todolist"];
         UpdateToolRequestContent: {
             title: string;
         };

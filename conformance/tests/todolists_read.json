@@ -1,0 +1,274 @@
+[
+  {
+    "name": "list-read: a flat to-do list body decodes into the todolist shape",
+    "description": "GET /todolists/{id} answers with the recordable's flat JSON. Before #544 the spec modelled the response as a oneOf envelope, and every SDK worked around it: Go and TypeScript re-decoded the raw body by hand, Kotlin received an untyped JsonElement, and Swift's SYNTHESISED two-arm Codable decoded the flat body into two nil members and reported success — #574 later replaced that with a hand-written flat-body fallback plus an arm-masking guard, so the nil-members failure is the origin of this work rather than the state it lands on. What survived to this change is narrower and still lossy: the todolist arm modelled no group_position_url, color or comments_app_url at all, so a group read silently dropped its group-position URL. This case pins the decode through the SDK's own model: the responseBody assertions read the re-serialized result, so a decoder that yields nothing fails here rather than silently returning it. groups_url is present because this recording's parent is a Todoset.",
+    "operation": "GetTodolistOrGroup",
+    "method": "GET",
+    "path": "/todolists/{id}",
+    "pathParams": {
+      "id": 2
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Hardware",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/2/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 3,
+            "title": "To-dos",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/999/buckets/1/todosets/3.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todosets/3"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "<div>Ship the hardware</div>",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "0/3",
+          "name": "Hardware",
+          "color": "blue",
+          "groups_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/groups.json",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/2/todos.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/2/todos",
+          "comments_app_url": "https://3.basecamp.com/999/buckets/1/recordings/2/comments"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/todolists/2" },
+      { "type": "responseBody", "path": "name", "expected": "Hardware" },
+      { "type": "responseBody", "path": "description", "expected": "<div>Ship the hardware</div>" },
+      { "type": "responseBody", "path": "type", "expected": "Todolist" },
+      { "type": "responseBody", "path": "groups_url", "expected": "https://3.basecampapi.com/999/buckets/1/todolists/2/groups.json" }
+    ],
+    "tags": ["todolists", "decode"]
+  },
+  {
+    "name": "group-read: a flat group body decodes into the same todolist shape",
+    "description": "BC3 has no group model: todolists/groups/{index,show}.json.jbuilder render todolists/_todolist.json.jbuilder, so a group is a Todolist whose parent is a Todolist. It reports \"type\": \"Todolist\" and carries description/description_attachments like any list. The structural discriminator is group_position_url in place of groups_url — never the type string. This is the group-GET decode this issue exists for: the shape that used to answer here modelled no group_position_url at all.",
+    "operation": "GetTodolistOrGroup",
+    "method": "GET",
+    "path": "/todolists/{id}",
+    "pathParams": {
+      "id": 7
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 7,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Phase 1",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/buckets/1/todolists/7.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todolists/7",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/def456.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/7/subscription.json",
+          "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/7/bubble_up.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/7/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Hardware",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "description": "<div>Phase one hardware work</div>",
+          "description_attachments": [],
+          "completed": false,
+          "completed_ratio": "1/3",
+          "name": "Phase 1",
+          "color": null,
+          "group_position_url": "https://3.basecampapi.com/999/buckets/1/todolists/groups/7/position.json",
+          "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/7/todos.json",
+          "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/7/todos",
+          "comments_app_url": "https://3.basecamp.com/999/buckets/1/recordings/7/comments"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/todolists/7" },
+      { "type": "responseBody", "path": "name", "expected": "Phase 1" },
+      { "type": "responseBody", "path": "description", "expected": "<div>Phase one hardware work</div>" },
+      { "type": "responseBody", "path": "type", "expected": "Todolist" },
+      { "type": "responseBody", "path": "group_position_url", "expected": "https://3.basecampapi.com/999/buckets/1/todolists/groups/7/position.json" }
+    ],
+    "tags": ["todolists", "todolist-groups", "decode"]
+  },
+  {
+    "name": "group-list-read: the group list decodes into an array of the todolist shape",
+    "description": "GET /todolists/{todolistId}/groups.json returns an array of the same flat shape, which is why ListTodolistGroups now carries Todolist rather than the group-only projection that modelled no description at all — every group in a list used to come back with its description dropped, and that is the loss this case pins. Dispatch convention for this case: the runner returns the FIRST decoded element as the result, so the responseBody assertions below read element 0 — a list that decodes to nothing, or to an element missing the description the group projection used to drop, fails here.",
+    "operation": "ListTodolistGroups",
+    "method": "GET",
+    "path": "/todolists/{todolistId}/groups.json",
+    "pathParams": {
+      "todolistId": 2
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 7,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2024-01-15T10:00:00Z",
+            "updated_at": "2024-01-15T10:00:00Z",
+            "title": "Phase 1",
+            "inherits_status": true,
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/7.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/7",
+            "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/def456.json",
+            "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/7/subscription.json",
+            "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/7/bubble_up.json",
+            "comments_count": 0,
+            "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/7/comments.json",
+            "position": 1,
+            "parent": {
+              "id": 2,
+              "title": "Hardware",
+              "type": "Todolist",
+              "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+              "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+            },
+            "bucket": {
+              "id": 1,
+              "name": "Project",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1,
+              "name": "Test User",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            },
+            "description": "<div>Phase one hardware work</div>",
+            "description_attachments": [],
+            "completed": false,
+            "completed_ratio": "1/3",
+            "name": "Phase 1",
+            "color": null,
+            "group_position_url": "https://3.basecampapi.com/999/buckets/1/todolists/groups/7/position.json",
+            "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/7/todos.json",
+            "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/7/todos",
+            "comments_app_url": "https://3.basecamp.com/999/buckets/1/recordings/7/comments"
+          },
+          {
+            "id": 8,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2024-01-15T10:00:00Z",
+            "updated_at": "2024-01-15T10:00:00Z",
+            "title": "Phase 2",
+            "inherits_status": true,
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/8.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/8",
+            "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/ghi789.json",
+            "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/8/subscription.json",
+            "bubble_up_url": "https://3.basecampapi.com/999/buckets/1/recordings/8/bubble_up.json",
+            "comments_count": 0,
+            "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/8/comments.json",
+            "position": 2,
+            "parent": {
+              "id": 2,
+              "title": "Hardware",
+              "type": "Todolist",
+              "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+              "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+            },
+            "bucket": {
+              "id": 1,
+              "name": "Project",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1,
+              "name": "Test User",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            },
+            "description": "",
+            "description_attachments": [],
+            "completed": false,
+            "completed_ratio": "0/2",
+            "name": "Phase 2",
+            "color": null,
+            "group_position_url": "https://3.basecampapi.com/999/buckets/1/todolists/groups/8/position.json",
+            "todos_url": "https://3.basecampapi.com/999/buckets/1/todolists/8/todos.json",
+            "app_todos_url": "https://3.basecamp.com/999/buckets/1/todolists/8/todos",
+            "comments_app_url": "https://3.basecamp.com/999/buckets/1/recordings/8/comments"
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/todolists/2/groups.json" },
+      { "type": "responseBody", "path": "name", "expected": "Phase 1" },
+      { "type": "responseBody", "path": "description", "expected": "<div>Phase one hardware work</div>" },
+      { "type": "responseBody", "path": "group_position_url", "expected": "https://3.basecampapi.com/999/buckets/1/todolists/groups/7/position.json" }
+    ],
+    "tags": ["todolist-groups", "decode", "pagination"]
+  }
+]

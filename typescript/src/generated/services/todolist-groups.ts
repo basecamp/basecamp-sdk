@@ -14,8 +14,8 @@ import { Errors } from "../../errors.js";
 // Types
 // =============================================================================
 
-/** TodolistGroup entity from the Basecamp API. */
-export type TodolistGroup = components["schemas"]["TodolistGroup"];
+/** Todolist entity from the Basecamp API. */
+export type Todolist = components["schemas"]["Todolist"];
 
 /**
  * Request parameters for reposition.
@@ -88,7 +88,7 @@ export class TodolistGroupsService extends BaseService {
    * List groups in a todolist
    * @param todolistId - The todolist ID
    * @param options - Optional query parameters
-   * @returns All TodolistGroup across all pages, with .meta.totalCount
+   * @returns All Todolist across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -98,7 +98,7 @@ export class TodolistGroupsService extends BaseService {
    * const filtered = await client.todolistGroups.list(123, { page: 1 });
    * ```
    */
-  async list(todolistId: number, options?: ListTodolistGroupOptions): Promise<ListResult<TodolistGroup>> {
+  async list(todolistId: number, options?: ListTodolistGroupOptions): Promise<ListResult<Todolist>> {
     return this.requestPaginated(
       {
         service: "TodolistGroups",
@@ -122,7 +122,7 @@ export class TodolistGroupsService extends BaseService {
    * Create a new group in a todolist
    * @param todolistId - The todolist ID
    * @param req - Todolist_group creation parameters
-   * @returns The TodolistGroup
+   * @returns The Todolist
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
@@ -130,7 +130,7 @@ export class TodolistGroupsService extends BaseService {
    * const result = await client.todolistGroups.create(123, { name: "My example" });
    * ```
    */
-  async create(todolistId: number, req: CreateTodolistGroupRequest): Promise<TodolistGroup> {
+  async create(todolistId: number, req: CreateTodolistGroupRequest): Promise<Todolist> {
     if (!req.name) {
       throw Errors.validation("Name is required");
     }

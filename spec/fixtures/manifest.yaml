@@ -106,6 +106,15 @@ targets:
     fixture: todolists/get.json
     pointer: ""
     schema: Todolist
+  # A group is a Todolist (#544): todolists/groups/{index,show}.json.jbuilder
+  # both render todolists/_todolist.json.jbuilder, so a group is the same schema
+  # with group_position_url where a list carries groups_url. This is the
+  # representative for that half of the structural discriminator, for a group
+  # carrying a real description, and for the nullable color.
+  - id: todolist-group-get
+    fixture: todolist_groups/get.json
+    pointer: ""
+    schema: Todolist
   - id: upload-get
     fixture: uploads/get.json
     pointer: ""
@@ -206,7 +215,7 @@ covered_schemas:
   Message: [message-get]
   Document: [document-get]
   Card: [card-get]
-  Todolist: [todolist-get]
+  Todolist: [todolist-get, todolist-group-get]
   Upload: [upload-get]
   ScheduleEntry: [schedule-entry-get]
   Forward: [forward-get]

@@ -77,17 +77,25 @@ module Basecamp
 
       private
 
-      # Derives the full writable state from a GET response. BC3 answers this
-      # route with the recordable's flat JSON; the +todolist+/+group+ envelope
-      # in the Smithy model is a spec convention, not the wire shape (see
-      # AGENTS.md, "Smithy Spec vs Actual API Responses"). Unwrapped anyway so
-      # either shape reads correctly — it costs one lookup.
+      # Derives the full writable state from a GET response.
+      #
+      # BC3 answers this route with the recordable's flat JSON, and since #544
+      # the Smithy model says the same: one flat +Todolist+ structure, no
+      # +todolist+/+group+ envelope and no union. A group is a Todolist —
+      # +todolists/groups/{index,show}.json.jbuilder+ render
+      # +todolists/_todolist.json.jbuilder+ — so both projections arrive here
+      # with +name+ and +description+ at the top level and are read the same
+      # way. Nothing branches on the +type+ string; the structural
+      # discriminator (+groups_url+ for a list, +group_position_url+ for a
+      # group) is not writable state and is none of this method's business.
+      #
+      # The former arm lookup is gone with the union that motivated it: an
+      # unmodelled +todolist+/+group+ wrapper is now a malformed response, and
+      # unwrapping one would write the wrapper's contents over the record.
       def fields_from_todolist(todolist)
-        todolist = require_hash(todolist)
-        arm = %w[todolist group].find { |key| todolist.key?(key) }
-        body = arm ? require_arm(todolist[arm], arm) : todolist
+        body = require_hash(todolist)
         TodolistFields.new(
-          name: writable_string(body, "name", required: true),
+          name: writable_string(body, "name", non_empty: true),
           description: writable_string(body, "description")
         )
       end
@@ -109,10 +117,22 @@ module Basecamp
 
       # The response must be a Hash before any field is read.
       #
-      # One level up from the malformed-field guards: a successful GET can return
-      # a scalar, an Array, or nil. +body["name"]+ raises TypeError on an Integer
-      # or Array, and on a String it returns a silent nil substring match — so the
-      # envelope needs checking before the fields.
+      # Level 1 of the wire-to-written-value path, one level up from the
+      # malformed-field guards. Since #544 flattened the shape the path is
+      # object -> scalar and has exactly two levels — the body and each writable
+      # field — where it used to have three. Two, not none: a flat wire shape
+      # says what the API returns, not that anything validates it. The generated
+      # +get+ returns <tt>http_get(...).json</tt>, a raw Hash with no decoder
+      # behind it, so a successful GET can still hand this method a scalar, an
+      # Array or nil.
+      #
+      # +body["name"]+ raises TypeError on an Integer or Array, and on a String
+      # it does not raise at all: it is a substring search. A body of
+      # <tt>"no name here"</tt> answers <tt>"name"</tt> for +name+ and +nil+ for
+      # +description+, so without this guard the composite would PUT the literal
+      # string "name" over the record's real name and clear its description —
+      # failing silently, which is why that defect outlived eight review passes
+      # on #574. A String has no interior, so there is no third level.
       def require_hash(body)
         unless body.is_a?(Hash)
           raise ApiError.new(
@@ -125,25 +145,6 @@ module Basecamp
         body
       end
 
-      # Level 2 of the wire-to-written-value path: a present arm must be a Hash.
-      #
-      # +require_hash+ checks only the outer body, so <tt>{"todolist" => nil}</tt>
-      # passes it and the arm is then read as if it were a todolist. The full path
-      # is object -> object -> scalar and has exactly three levels: the body, the
-      # arm, and each writable field. A String has no interior, so there is no
-      # fourth.
-      def require_arm(arm, arm_name)
-        unless arm.is_a?(Hash)
-          raise ApiError.new(
-            Security.truncate("GetTodolistOrGroup returned #{describe(arm)} in its #{arm_name} arm where an object was expected"),
-            hint: "The merge-safe update/edit read this record's fields before rewriting them, " \
-              "so a non-object arm cannot be used. Use replace to write the record deliberately."
-          )
-        end
-
-        arm
-      end
-
       # Reads a writable string field, refusing to coerce a malformed one.
       #
       # *Classification is by origin, not by value.* The same empty string is a
@@ -154,12 +155,22 @@ module Basecamp
       # +name+ the caller supplied raises UsageError — same value, different
       # origin, different fault.
       #
-      # A +required+ field (one the schema marks non-nullable, as +name+ is)
-      # must arrive as a non-empty String: missing, +nil+ and <tt>""</tt> are all
-      # malformed, because BC3 presence-validates +name+ so no real todolist has
-      # one. An optional field (+description+) treats missing and +nil+ as
-      # genuinely empty — there is nothing to preserve and <tt>""</tt> is what
-      # the server already holds.
+      # *Presence and non-emptiness are two different claims, and only one of
+      # them is per-field.* Since #544 +name+ and +description+ are both
+      # +@required+ and never null on this shape — +format_api_content+ funnels
+      # a blank rich text through +call_pipeline+, which returns <tt>""</tt>
+      # rather than nil — so for BOTH a missing key and an explicit +nil+ are
+      # malformed and are refused here, before any PUT. Reading either as
+      # <tt>""</tt> would put that <tt>""</tt> in the full-replace body and
+      # erase the record's real value on a call that never mentioned the field.
+      #
+      # +non_empty+ is the OTHER claim and holds for +name+ alone: BC3
+      # presence-validates the attribute, so no real todolist carries an empty
+      # one and <tt>""</tt> off the wire is malformed too. +description+ has no
+      # such validation — a description-less list carries <tt>""</tt>, which is
+      # the ordinary case, and the canonical group fixture ships one — so an
+      # empty description is a real value, preserved and resent verbatim.
+      # Conflating the two flags would refuse every description-less record.
       #
       # A wrong type is malformed either way and must NOT be coerced: a plain
       # <tt>|| ""</tt> turns +false+ into <tt>""</tt> and passes arrays, hashes
@@ -167,14 +178,18 @@ module Basecamp
       # outcome is written back over the real value.
       #
       # Ruby has no typed decoder between the GET and this read, unlike the Go,
-      # Swift and Kotlin composites where a wrong-typed field fails at decode.
-      # The same shape is live in the shipped Todos composite; tracked in #576.
-      def writable_string(body, key, required: false)
+      # Swift and Kotlin composites where a wrong-typed field fails at decode,
+      # and flattening the shape did not add one: the generated method still
+      # returns <tt>http_get(...).json</tt> verbatim. The same shape is live in
+      # the shipped Todos composite; tracked in #576, with the generated
+      # validating layer that would retire this guard tracked in #578.
+      def writable_string(body, key, non_empty: false)
+        raise_missing_field(key) unless body.key?(key)
+
         value = body[key]
 
         if value.nil?
-          raise_missing_field(key) if required
-          ""
+          raise_null_field(key)
         elsif !value.is_a?(String)
           raise ApiError.new(
             Security.truncate("Todolist field #{key.inspect} is not a string: #{describe(value)}"),
@@ -182,7 +197,7 @@ module Basecamp
               "empty value would overwrite the current one. Use replace to write the record " \
               "deliberately."
           )
-        elsif required && value.empty?
+        elsif non_empty && value.empty?
           raise ApiError.new(
             "Todolist field #{key.inspect} is empty in the response",
             hint: "#{key} is presence-validated server-side, so an empty one is a malformed " \
@@ -196,8 +211,18 @@ module Basecamp
       def raise_missing_field(key)
         raise ApiError.new(
           "Todolist field #{key.inspect} is missing from the response",
-          hint: "#{key} is required and presence-validated server-side, so a todolist without " \
-            "one is a malformed response, not an empty value to preserve."
+          hint: "#{key} is required on every todolist, so a body without one is a malformed " \
+            "response, not an empty value to preserve. The merge-safe update/edit PUT the full " \
+            "writable state back, so reading it as empty would erase the real value."
+        )
+      end
+
+      def raise_null_field(key)
+        raise ApiError.new(
+          "Todolist field #{key.inspect} is null in the response",
+          hint: "#{key} is required and never null, so a null one is a malformed response, not " \
+            "an empty value to preserve. The merge-safe update/edit PUT the full writable state " \
+            "back, so reading it as empty would erase the real value."
         )
       end
 

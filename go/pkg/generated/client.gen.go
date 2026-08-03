@@ -765,8 +765,27 @@ type CreateTodolistGroupRequestContent struct {
 	Name string `json:"name"`
 }
 
-// CreateTodolistGroupResponseContent defines model for CreateTodolistGroupResponseContent.
-type CreateTodolistGroupResponseContent = TodolistGroup
+// CreateTodolistGroupResponseContent A to-do list, or a group inside one. There is only this shape.
+//
+// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+// So a group reports `"type": "Todolist"` (the shared recording partial emits
+// `recordable_type`) and carries `description`/`description_attachments` like
+// any other list. Every operation that returns a list or a group returns this
+// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+// group list, group create and group get.
+//
+// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+// and emits exactly one of:
+//
+// - `groups_url` — a to-do list; its `parent` is a Todoset.
+// - `group_position_url` — a group; its `parent` is a Todolist.
+//
+// The two are mutually exclusive and exactly one is always present.
+type CreateTodolistGroupResponseContent = Todolist
 
 // CreateTodolistRequestContent defines model for CreateTodolistRequestContent.
 type CreateTodolistRequestContent struct {
@@ -775,7 +794,26 @@ type CreateTodolistRequestContent struct {
 	VisibleToClients *bool   `json:"visible_to_clients,omitempty"`
 }
 
-// CreateTodolistResponseContent defines model for CreateTodolistResponseContent.
+// CreateTodolistResponseContent A to-do list, or a group inside one. There is only this shape.
+//
+// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+// So a group reports `"type": "Todolist"` (the shared recording partial emits
+// `recordable_type`) and carries `description`/`description_attachments` like
+// any other list. Every operation that returns a list or a group returns this
+// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+// group list, group create and group get.
+//
+// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+// and emits exactly one of:
+//
+// - `groups_url` — a to-do list; its `parent` is a Todoset.
+// - `group_position_url` — a group; its `parent` is a Todolist.
+//
+// The two are mutually exclusive and exactly one is always present.
 type CreateTodolistResponseContent = Todolist
 
 // CreateTodosetTodoRequestContent defines model for CreateTodosetTodoRequestContent.
@@ -1519,8 +1557,27 @@ type GetTimesheetReportResponseContent = []TimesheetEntry
 // GetTodoResponseContent defines model for GetTodoResponseContent.
 type GetTodoResponseContent = Todo
 
-// GetTodolistOrGroupResponseContent Union type for polymorphic todolist endpoint
-type GetTodolistOrGroupResponseContent = TodolistOrGroup
+// GetTodolistOrGroupResponseContent A to-do list, or a group inside one. There is only this shape.
+//
+// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+// So a group reports `"type": "Todolist"` (the shared recording partial emits
+// `recordable_type`) and carries `description`/`description_attachments` like
+// any other list. Every operation that returns a list or a group returns this
+// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+// group list, group create and group get.
+//
+// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+// and emits exactly one of:
+//
+// - `groups_url` — a to-do list; its `parent` is a Todoset.
+// - `group_position_url` — a group; its `parent` is a Todolist.
+//
+// The two are mutually exclusive and exactly one is always present.
+type GetTodolistOrGroupResponseContent = Todolist
 
 // GetTodosetResponseContent defines model for GetTodosetResponseContent.
 type GetTodosetResponseContent = Todoset
@@ -1702,7 +1759,7 @@ type ListScheduleEntriesResponseContent = []ScheduleEntry
 type ListTemplatesResponseContent = []Template
 
 // ListTodolistGroupsResponseContent defines model for ListTodolistGroupsResponseContent.
-type ListTodolistGroupsResponseContent = []TodolistGroup
+type ListTodolistGroupsResponseContent = []Todolist
 
 // ListTodolistsResponseContent defines model for ListTodolistsResponseContent.
 type ListTodolistsResponseContent = []Todolist
@@ -2867,8 +2924,29 @@ type TodoParent struct {
 	Url    string `json:"url"`
 }
 
-// Todolist defines model for Todolist.
+// Todolist A to-do list, or a group inside one. There is only this shape.
+//
+// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+// So a group reports `"type": "Todolist"` (the shared recording partial emits
+// `recordable_type`) and carries `description`/`description_attachments` like
+// any other list. Every operation that returns a list or a group returns this
+// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+// group list, group create and group get.
+//
+// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+// and emits exactly one of:
+//
+// - `groups_url` — a to-do list; its `parent` is a Todoset.
+// - `group_position_url` — a group; its `parent` is a Todolist.
+//
+// The two are mutually exclusive and exactly one is always present.
 type Todolist struct {
+	// AppTodosUrl In-app (non-API) URL for this record's to-dos, alongside the API-host
+	// `todos_url`.
 	AppTodosUrl *string `json:"app_todos_url,omitempty"`
 	AppUrl      string  `json:"app_url"`
 	BookmarkUrl *string `json:"bookmark_url,omitempty"`
@@ -2880,22 +2958,68 @@ type Todolist struct {
 	// with `bubbleupable: true` unconditionally, and every list, show, and group
 	// path renders that partial — so the key is present on every projection of
 	// this shape.
-	BubbleUpUrl            string               `json:"bubble_up_url"`
-	Bucket                 TodoBucket           `json:"bucket"`
-	CommentsCount          *int32               `json:"comments_count,omitempty"`
-	CommentsUrl            *string              `json:"comments_url,omitempty"`
-	Completed              *bool                `json:"completed,omitempty"`
-	CompletedRatio         *string              `json:"completed_ratio,omitempty"`
-	CreatedAt              time.Time            `json:"created_at"`
-	Creator                Person               `json:"creator"`
-	Description            *string              `json:"description,omitempty"`
+	BubbleUpUrl string     `json:"bubble_up_url"`
+	Bucket      TodoBucket `json:"bucket"`
+
+	// Color Color of the list or group, one of BC3's `Colored` enum values
+	// (`white red orange yellow green blue aqua purple gray pink brown`). For a
+	// top-level list a hill-chart dot color takes precedence over the recording's
+	// own.
+	//
+	// **Nullable.** `recordings.color` is a nullable integer column, so the value is
+	// JSON `null` whenever it is unset — which, for a group, is the ordinary case.
+	// Smithy has no native nullable scalar, so the `["string", "null"]` union is
+	// applied to the OpenAPI projection through `jsonAdd` in `spec/smithy-build.json`,
+	// the same treatment `SearchResult.content` and `SearchType.key` get. Without it
+	// the published schema and the generated static types would be non-nullable and
+	// every uncolored list and group would violate them.
+	//
+	// Modelled optional rather than `@required` even though
+	// `_todolist.json.jbuilder` calls `json.color` in both branches of its
+	// `todolist_group?` conditional and so always emits the key. Optional is the
+	// weaker, safer claim: it accepts both an explicit `null` and an absent key,
+	// where `@required` would additionally oblige every captured body and inline
+	// test stub in the typed SDKs to carry a field that is cosmetic. Tightening it
+	// is a clean follow-up; publishing a non-nullable type was the actual defect.
+	Color *string `json:"color,omitempty"`
+
+	// CommentsAppUrl In-app (non-API) URL for this recording's comments, alongside the API-host
+	// `comments_url`.
+	CommentsAppUrl *string   `json:"comments_app_url,omitempty"`
+	CommentsCount  *int32    `json:"comments_count,omitempty"`
+	CommentsUrl    *string   `json:"comments_url,omitempty"`
+	Completed      *bool     `json:"completed,omitempty"`
+	CompletedRatio *string   `json:"completed_ratio,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	Creator        Person    `json:"creator"`
+
+	// Description Rich text description (HTML). Required and never null: the shared rich-text
+	// partial emits the key unconditionally, and `format_api_content` funnels a
+	// blank or absent rich text through `call_pipeline`, which returns `""` rather
+	// than nil. A list with no description carries `""`, not `null`, and a group
+	// carries it too — `todolists/groups/{index,show}.json.jbuilder` render the
+	// same partial.
+	Description string `json:"description"`
+
+	// DescriptionAttachments Downloadable files embedded in `description`. Required and never null:
+	// the partial emits `rich_text&.downloadable_attachments.to_a`, so the value
+	// is `[]` when there is no description and when there are no attachments.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
-	GroupsUrl              *string              `json:"groups_url,omitempty"`
-	Id                     int64                `json:"id"`
-	InheritsStatus         bool                 `json:"inherits_status"`
-	Name                   string               `json:"name"`
-	Parent                 TodoParent           `json:"parent"`
-	Position               *int32               `json:"position,omitempty"`
+
+	// GroupPositionUrl API URL for repositioning this group within its parent list. The group half
+	// of the structural discriminator: emitted only when `parent` is a Todolist,
+	// and mutually exclusive with `groups_url`.
+	GroupPositionUrl *string `json:"group_position_url,omitempty"`
+
+	// GroupsUrl API URL for this list's groups. The to-do-list half of the structural
+	// discriminator: emitted only when `parent` is a Todoset, and mutually
+	// exclusive with `group_position_url`.
+	GroupsUrl      *string    `json:"groups_url,omitempty"`
+	Id             int64      `json:"id"`
+	InheritsStatus bool       `json:"inherits_status"`
+	Name           string     `json:"name"`
+	Parent         TodoParent `json:"parent"`
+	Position       *int32     `json:"position,omitempty"`
 
 	// Status active|archived|trashed
 	Status           string    `json:"status"`
@@ -2906,55 +3030,6 @@ type Todolist struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 	Url              string    `json:"url"`
 	VisibleToClients bool      `json:"visible_to_clients"`
-}
-
-// TodolistGroup defines model for TodolistGroup.
-type TodolistGroup struct {
-	AppTodosUrl *string `json:"app_todos_url,omitempty"`
-	AppUrl      string  `json:"app_url"`
-	BookmarkUrl *string `json:"bookmark_url,omitempty"`
-
-	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Required:
-	// `todolists/_todolist.json.jbuilder` renders the shared recording partial
-	// with `bubbleupable: true` unconditionally, and every list, show, and group
-	// path renders that partial — so the key is present on every projection of
-	// this shape.
-	BubbleUpUrl      string     `json:"bubble_up_url"`
-	Bucket           TodoBucket `json:"bucket"`
-	CommentsCount    *int32     `json:"comments_count,omitempty"`
-	CommentsUrl      *string    `json:"comments_url,omitempty"`
-	Completed        *bool      `json:"completed,omitempty"`
-	CompletedRatio   *string    `json:"completed_ratio,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	Creator          Person     `json:"creator"`
-	Id               int64      `json:"id"`
-	InheritsStatus   bool       `json:"inherits_status"`
-	Name             string     `json:"name"`
-	Parent           TodoParent `json:"parent"`
-	Position         *int32     `json:"position,omitempty"`
-	Status           string     `json:"status"`
-	SubscriptionUrl  *string    `json:"subscription_url,omitempty"`
-	Title            string     `json:"title"`
-	TodosUrl         *string    `json:"todos_url,omitempty"`
-	Type             string     `json:"type"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Url              string     `json:"url"`
-	VisibleToClients bool       `json:"visible_to_clients"`
-}
-
-// TodolistOrGroup Union type for polymorphic todolist endpoint
-type TodolistOrGroup struct {
-	union json.RawMessage
-}
-
-// TodolistOrGroup0 defines model for TodolistOrGroup.0.
-type TodolistOrGroup0 struct {
-	Todolist Todolist `json:"todolist"`
-}
-
-// TodolistOrGroup1 defines model for TodolistOrGroup.1.
-type TodolistOrGroup1 struct {
-	Group TodolistGroup `json:"group"`
 }
 
 // Todoset defines model for Todoset.
@@ -3293,12 +3368,31 @@ type UpdateTodolistOrGroupRequestContent struct {
 	// Description Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way
 	Description *string `json:"description,omitempty"`
 
-	// Name Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve
+	// Name Name (required for a to-do list and for a group alike) - presence-validated server-side, so omitting it is a 422, not a preserve
 	Name string `json:"name"`
 }
 
-// UpdateTodolistOrGroupResponseContent Union type for polymorphic todolist endpoint
-type UpdateTodolistOrGroupResponseContent = TodolistOrGroup
+// UpdateTodolistOrGroupResponseContent A to-do list, or a group inside one. There is only this shape.
+//
+// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+// So a group reports `"type": "Todolist"` (the shared recording partial emits
+// `recordable_type`) and carries `description`/`description_attachments` like
+// any other list. Every operation that returns a list or a group returns this
+// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+// group list, group create and group get.
+//
+// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+// and emits exactly one of:
+//
+// - `groups_url` — a to-do list; its `parent` is a Todoset.
+// - `group_position_url` — a group; its `parent` is a Todolist.
+//
+// The two are mutually exclusive and exactly one is always present.
+type UpdateTodolistOrGroupResponseContent = Todolist
 
 // UpdateToolRequestContent defines model for UpdateToolRequestContent.
 type UpdateToolRequestContent struct {
@@ -4384,68 +4478,6 @@ type CreateVaultJSONRequestBody = CreateVaultRequestContent
 
 // UpdateWebhookJSONRequestBody defines body for UpdateWebhook for application/json ContentType.
 type UpdateWebhookJSONRequestBody = UpdateWebhookRequestContent
-
-// AsTodolistOrGroup0 returns the union data inside the TodolistOrGroup as a TodolistOrGroup0
-func (t TodolistOrGroup) AsTodolistOrGroup0() (TodolistOrGroup0, error) {
-	var body TodolistOrGroup0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromTodolistOrGroup0 overwrites any union data inside the TodolistOrGroup as the provided TodolistOrGroup0
-func (t *TodolistOrGroup) FromTodolistOrGroup0(v TodolistOrGroup0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeTodolistOrGroup0 performs a merge with any union data inside the TodolistOrGroup, using the provided TodolistOrGroup0
-func (t *TodolistOrGroup) MergeTodolistOrGroup0(v TodolistOrGroup0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsTodolistOrGroup1 returns the union data inside the TodolistOrGroup as a TodolistOrGroup1
-func (t TodolistOrGroup) AsTodolistOrGroup1() (TodolistOrGroup1, error) {
-	var body TodolistOrGroup1
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromTodolistOrGroup1 overwrites any union data inside the TodolistOrGroup as the provided TodolistOrGroup1
-func (t *TodolistOrGroup) FromTodolistOrGroup1(v TodolistOrGroup1) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeTodolistOrGroup1 performs a merge with any union data inside the TodolistOrGroup, using the provided TodolistOrGroup1
-func (t *TodolistOrGroup) MergeTodolistOrGroup1(v TodolistOrGroup1) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t TodolistOrGroup) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *TodolistOrGroup) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error

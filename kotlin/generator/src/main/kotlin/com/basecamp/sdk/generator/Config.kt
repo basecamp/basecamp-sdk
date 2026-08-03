@@ -321,7 +321,6 @@ val TYPE_ALIASES = mapOf(
     "Template" to "Template",
     "Todolist" to "Todolist",
     "Todoset" to "Todoset",
-    "TodolistGroup" to "TodolistGroup",
     "Questionnaire" to "Questionnaire",
     "Question" to "Question",
     "QuestionAnswer" to "Answer",

@@ -26,6 +26,7 @@ data class Todolist(
     val parent: TodoParent,
     val bucket: TodoBucket,
     val creator: Person,
+    val description: String,
     @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>,
     val name: String,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
@@ -33,12 +34,14 @@ data class Todolist(
     @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
     val position: Int? = null,
-    val description: String? = null,
     val completed: Boolean? = null,
     @SerialName("completed_ratio") val completedRatio: String? = null,
     @SerialName("todos_url") val todosUrl: String? = null,
     @SerialName("groups_url") val groupsUrl: String? = null,
+    @SerialName("group_position_url") val groupPositionUrl: String? = null,
     @SerialName("app_todos_url") val appTodosUrl: String? = null,
+    val color: String? = null,
+    @SerialName("comments_app_url") val commentsAppUrl: String? = null,
     @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

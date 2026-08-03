@@ -415,6 +415,15 @@ async function executeOperation(
         );
         break;
 
+      case "GetTodolistOrGroup": {
+        // Read-only, so mapTodolistWireFields (a requestBody mapper) does not
+        // apply. One flat Todolist for a to-do list and a group alike since
+        // #544; the decoded value is the case result so the responseBody
+        // assertions read it rather than the raw wire body.
+        const todolist = await client.todolists.get(Number(params.id));
+        return { result: todolist };
+      }
+
       case "UpdateDocument":
         // Synthetic scenario key: the merge-safe composite, not a wire
         // operation. GET then full PUT; only fixture-present keys are passed.
@@ -653,6 +662,21 @@ async function executeOperation(
           Number(params.replyId),
         );
         break;
+
+      case "ListTodolistGroups": {
+        // Groups decode into the same flat Todolist as their parent list.
+        // Dispatch convention documented on the fixture: the FIRST element is
+        // the case result, so the responseBody assertions read element 0. An
+        // empty decode is a failure, not a vacuous pass — that is precisely the
+        // regression these cases exist to catch.
+        const groups = await client.todolistGroups.list(Number(params.todolistId));
+        if (groups.length === 0) {
+          throw new Error(
+            "ListTodolistGroups decoded no groups; the fixture serves a non-empty list",
+          );
+        }
+        return { result: groups[0] };
+      }
 
       case "RepositionTodolistGroup":
         await client.todolistGroups.reposition(Number(params.groupId), {

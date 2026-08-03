@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,7 +14,17 @@ import (
 // Note: Todolists default to fetching all (no limit) since they are structural
 // indices, not high-volume content. Use Limit to cap results if needed.
 
-// Todolist represents a Basecamp todolist.
+// Todolist represents a Basecamp todolist — or a group inside one. There is
+// only this type: BC3 has no group model, so a group is a Todolist whose
+// parent is a Todolist, rendered through the same jbuilder and reporting
+// Type "Todolist".
+//
+// Discriminate structurally, never on Type:
+//
+//   - GroupsURL non-empty  → a to-do list; Parent is a Todoset.
+//   - GroupPositionURL non-empty → a group; Parent is a Todolist.
+//
+// Exactly one of the two is present on any response.
 type Todolist struct {
 	ID               int64     `json:"id"`
 	Status           string    `json:"status"`
@@ -53,8 +64,24 @@ type Todolist struct {
 	CompletedRatio         string               `json:"completed_ratio"`
 	Name                   string               `json:"name"`
 	TodosURL               string               `json:"todos_url"`
-	GroupsURL              string               `json:"groups_url"`
-	AppTodosURL            string               `json:"app_todos_url"`
+	// GroupsURL is the API URL for this list's groups. Present only when Parent
+	// is a Todoset — i.e. this is a to-do list, not a group. Mutually exclusive
+	// with GroupPositionURL.
+	GroupsURL string `json:"groups_url"`
+	// GroupPositionURL is the API URL for repositioning this group within its
+	// parent list. Present only when Parent is a Todolist — i.e. this is a
+	// group. Mutually exclusive with GroupsURL.
+	GroupPositionURL string `json:"group_position_url"`
+	// AppTodosURL is the in-app (non-API) URL for this list's todos, alongside
+	// the API-host TodosURL.
+	AppTodosURL string `json:"app_todos_url"`
+	// Color is one of BC3's recording colors (white, red, orange, yellow,
+	// green, blue, aqua, purple, gray, pink, brown). The key is always emitted
+	// but its value is null when unset, which decodes to "".
+	Color string `json:"color"`
+	// CommentsAppURL is the in-app (non-API) URL for this recording's comments,
+	// alongside the API-host CommentsURL.
+	CommentsAppURL string `json:"comments_app_url"`
 }
 
 // TodolistListOptions specifies options for listing todolists.
@@ -137,7 +164,12 @@ type TodolistFields struct {
 // a todolist that comes back without one is malformed — not an empty value to
 // preserve, and emphatically not something to write back over the real name on
 // a full-replace endpoint.
-func fieldsFromTodolist(tl *Todolist) (*TodolistFields, error) {
+//
+// body is the raw GET payload the decoded todolist came from, and it is a
+// parameter rather than an afterthought so that no caller can lift writable
+// state without it: the description guard below is unimplementable from the
+// struct alone. See requireDescription.
+func fieldsFromTodolist(tl *Todolist, body []byte) (*TodolistFields, error) {
 	if tl.Name == "" {
 		// Structured, and statusless by SPEC §6: the transport succeeded, so no
 		// HTTP status describes this, and re-requesting cannot repair a
@@ -149,10 +181,56 @@ func fieldsFromTodolist(tl *Todolist) (*TodolistFields, error) {
 			Hint:    "The name is presence-validated server-side, so this is a malformed response, not a value to preserve. Use Replace to write the record deliberately.",
 		}
 	}
+	if err := requireDescription(body, tl.ID); err != nil {
+		return nil, err
+	}
 	return &TodolistFields{
 		Name:        tl.Name,
 		Description: tl.Description,
 	}, nil
+}
+
+// requireDescription refuses a response whose description key is absent or
+// null, before the merge-safe write reads a "" that was never there.
+//
+// Presence and non-emptiness are two different claims. Since #544 description
+// is @required and never null — BC3's format_api_content funnels a blank rich
+// text through call_pipeline, which returns "" rather than nil — so an absent
+// key and an explicit null are both malformed, while a present "" is the
+// ordinary state of a description-less list and must round-trip untouched.
+//
+// Go cannot make that distinction from the decoded value. generated.Todolist
+// carries Description as a plain string, so absent, null and a real "" all
+// unmarshal to "" and are indistinguishable at that layer — Swift's Codable
+// and kotlinx.serialization reject the missing member during decoding, and
+// encoding/json does not. The distinction survives only in the raw response
+// bytes, which the GET already has in hand (GetTodolistOrGroupResponse.Body)
+// and threads through fieldsFromTodolist. This second decode is therefore not
+// a redundant one: it reads presence, which the first decode discarded.
+//
+// The failure is api_error and statusless for the same reason the empty-name
+// one is: the transport succeeded and nothing the caller passed is at fault.
+func requireDescription(body []byte, id int64) error {
+	malformed := func(what string) error {
+		return &Error{
+			Code:    CodeAPI,
+			Message: fmt.Sprintf("todolist %d came back %s", id, what),
+			Hint:    "The description is required and never null on the wire, so this is a malformed response, not an empty value to preserve. Update and Edit PUT the full writable state back, so reading it as empty would erase the real description. Use Replace to write the record deliberately.",
+		}
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(body, &fields); err != nil {
+		return malformed("with a body that is not a JSON object")
+	}
+	raw, ok := fields["description"]
+	if !ok {
+		return malformed("without a description")
+	}
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return malformed("with a null description")
+	}
+	return nil
 }
 
 // fullBody serializes the complete writable state for the replace transport:
@@ -274,7 +352,20 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 }
 
 // Get returns a todolist by ID.
-func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *Todolist, err error) {
+func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (*Todolist, error) {
+	todolist, _, err := s.getWithBody(ctx, todolistID)
+	return todolist, err
+}
+
+// getWithBody is Get, plus the raw response payload the todolist decoded from.
+//
+// Update and Edit need both: the decoded struct for the values and the bytes
+// for what the struct cannot express. Since #544 generated.Todolist declares
+// Description as a plain string, so an absent key, an explicit null and a real
+// "" all arrive as "" — see requireDescription. Get itself drops the bytes,
+// keeping the public read surface unchanged; nothing else about the request
+// differs, so hooks observe one Todolists.Get either way.
+func (s *TodolistsService) getWithBody(ctx context.Context, todolistID int64) (result *Todolist, body []byte, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "Get",
 		ResourceType: "todolist", IsMutation: false,
@@ -291,25 +382,23 @@ func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *T
 
 	resp, err := s.client.parent.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, todolistID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if resp.JSON200 == nil {
 		err = fmt.Errorf("unexpected empty response")
-		return nil, err
+		return nil, nil, err
 	}
 
-	// The API returns flat JSON, not the envelope that AsTodolistOrGroup0 expects.
-	// Decode resp.Body directly into the generated Todolist type.
-	var gtl generated.Todolist
-	if err := json.Unmarshal(resp.Body, &gtl); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist: %w", err)
-	}
-
-	todolist := todolistFromGenerated(gtl)
-	return &todolist, nil
+	// One flat shape (#544): GetTodolistOrGroupResponseContent is generated.Todolist
+	// itself, so the generated parser's decode is the decode — the bytes returned
+	// alongside it are not a second decode of the values but the only remaining
+	// record of which keys the server actually sent. A group answers here too and
+	// lands in the same struct.
+	todolist := todolistFromGenerated(*resp.JSON200)
+	return &todolist, resp.Body, nil
 }
 
 // Create creates a new todolist in a todoset.
@@ -375,12 +464,12 @@ func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *Up
 		return nil, ErrUsage("update request is required")
 	}
 
-	current, err := s.Get(ctx, todolistID)
+	current, body, err := s.getWithBody(ctx, todolistID)
 	if err != nil {
 		return nil, err
 	}
 
-	fields, err := fieldsFromTodolist(current)
+	fields, err := fieldsFromTodolist(current, body)
 	if err != nil {
 		return nil, err
 	}
@@ -413,12 +502,12 @@ func (s *TodolistsService) Edit(ctx context.Context, todolistID int64, fn func(*
 		return nil, ErrUsage("edit function is required")
 	}
 
-	current, err := s.Get(ctx, todolistID)
+	current, body, err := s.getWithBody(ctx, todolistID)
 	if err != nil {
 		return nil, err
 	}
 
-	fields, err := fieldsFromTodolist(current)
+	fields, err := fieldsFromTodolist(current, body)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +544,7 @@ func (s *TodolistsService) Replace(ctx context.Context, todolistID int64, req *R
 
 // replaceTodolist is the single transport for the UpdateTodolistOrGroup wire
 // operation as TodolistsService issues it, shared by Replace, Update, and
-// Edit. It pins the Todolists.Replace hook identity and decodes the todolist
+// Edit. It pins the Todolists.Replace hook identity and projects the todolist
 // shape; the envelope and the one generated-client call site live in
 // replaceTodolistOrGroup.
 func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64, buildBody func() (map[string]any, error)) (*Todolist, error) {
@@ -465,16 +554,9 @@ func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64
 		ResourceID: todolistID,
 	}
 
-	raw, err := replaceTodolistOrGroup(ctx, s.client, op, todolistID, buildBody)
+	gtl, err := replaceTodolistOrGroup(ctx, s.client, op, todolistID, buildBody)
 	if err != nil {
 		return nil, err
-	}
-
-	// The API returns flat JSON, not the envelope that AsTodolistOrGroup0 expects.
-	// Decode the body directly into the generated Todolist type.
-	var gtl generated.Todolist
-	if err := json.Unmarshal(raw, &gtl); err != nil {
-		return nil, fmt.Errorf("failed to parse todolist: %w", err)
 	}
 
 	todolist := todolistFromGenerated(gtl)
@@ -494,11 +576,13 @@ func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64
 // present-and-empty (that is how a clear is expressed), which omitempty on a
 // generated struct cannot express.
 //
-// Returns the raw response body for the caller to decode.
-func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op OperationInfo, id int64, buildBody func() (map[string]any, error)) (raw []byte, err error) {
+// Returns the decoded generated shape. Since #544 that is one flat
+// generated.Todolist for both variants, so each caller only chooses which
+// wrapper name to project it under.
+func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op OperationInfo, id int64, buildBody func() (map[string]any, error)) (gtl generated.Todolist, err error) {
 	if gater, ok := client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
-			return nil, err
+			return generated.Todolist{}, err
 		}
 	}
 	start := time.Now()
@@ -507,26 +591,26 @@ func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op Opera
 
 	body, err := buildBody()
 	if err != nil {
-		return nil, err
+		return generated.Todolist{}, err
 	}
 
 	bodyReader, err := marshalBody(body)
 	if err != nil {
-		return nil, err
+		return generated.Todolist{}, err
 	}
 	resp, err := client.parent.gen.UpdateTodolistOrGroupWithBodyWithResponse(ctx, client.accountID, id, "application/json", bodyReader)
 	if err != nil {
-		return nil, err
+		return generated.Todolist{}, err
 	}
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
+		return generated.Todolist{}, err
 	}
 	if resp.JSON200 == nil {
 		err = fmt.Errorf("unexpected empty response")
-		return nil, err
+		return generated.Todolist{}, err
 	}
 
-	return resp.Body, nil
+	return *resp.JSON200, nil
 }
 
 // Trash moves a todolist to the trash.
@@ -592,7 +676,10 @@ func (s *TodolistsService) Reposition(ctx context.Context, todolistID int64, pos
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
-// todolistFromGenerated converts a generated Todolist to our clean Todolist type.
+// todolistFromGenerated converts a generated Todolist to our clean Todolist
+// type. It is variant-agnostic: a group decodes into generated.Todolist just
+// as a to-do list does, so both arrive here and the structural discriminator
+// (GroupsURL vs GroupPositionURL) simply carries through.
 func todolistFromGenerated(gtl generated.Todolist) Todolist {
 	tl := Todolist{
 		Status:           gtl.Status,
@@ -609,16 +696,24 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		BubbleUpURL:      gtl.BubbleUpUrl,
 		CommentsCount:    int(deref(gtl.CommentsCount)),
 		CommentsURL:      deref(gtl.CommentsUrl),
+		CommentsAppURL:   deref(gtl.CommentsAppUrl),
 		Position:         int(deref(gtl.Position)),
-		Description:      deref(gtl.Description),
+		// Description is @required and never null on the wire:
+		// format_api_content funnels a blank rich text through call_pipeline,
+		// which returns "" rather than nil. No deref — it is a plain string.
+		Description:      gtl.Description,
 		Completed:        deref(gtl.Completed),
 		CompletedRatio:   deref(gtl.CompletedRatio),
 		Name:             gtl.Name,
 		TodosURL:         deref(gtl.TodosUrl),
 		GroupsURL:        deref(gtl.GroupsUrl),
-		AppTodosURL:      deref(gtl.AppTodosUrl),
-		CreatedAt:        gtl.CreatedAt,
-		UpdatedAt:        gtl.UpdatedAt,
+		GroupPositionURL: deref(gtl.GroupPositionUrl),
+		// Color's key is always emitted but its value is null when unset, so a
+		// nil pointer and an unset color are the same thing: "".
+		Color:       deref(gtl.Color),
+		AppTodosURL: deref(gtl.AppTodosUrl),
+		CreatedAt:   gtl.CreatedAt,
+		UpdatedAt:   gtl.UpdatedAt,
 	}
 
 	if gtl.Id != 0 {

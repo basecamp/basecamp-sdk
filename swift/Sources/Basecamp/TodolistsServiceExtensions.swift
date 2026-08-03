@@ -32,7 +32,7 @@ public struct TodolistFields: Sendable {
 
     init(from todolist: Todolist) {
         name = todolist.name
-        description = todolist.description ?? ""
+        description = todolist.description
     }
 }
 
@@ -40,6 +40,15 @@ public struct TodolistFields: Sendable {
 // `get` and `replace` methods — hooks observe the two wire operations
 // (`GetTodolistOrGroup` then `UpdateTodolistOrGroup`), not a synthetic
 // composite.
+//
+// Both wire operations carry a plain ``Todolist``. BC3 has no separate group
+// model: `todolists/groups/{index,show}.json.jbuilder` render
+// `todolists/_todolist.json.jbuilder`, so a group IS a todolist — it reports
+// `"type": "Todolist"` and carries `description`/`description_attachments` like
+// any list. Only the structural pair `groups_url` (parent is a Todoset) versus
+// `group_position_url` (parent is a Todolist) tells them apart, and nothing
+// here branches on either: the composites are variant-agnostic by
+// construction.
 //
 // `PUT /{accountId}/todolists/{id}` is a full replace: BC3's
 // `TodolistsController#update` rebuilds the recordable from only the permitted
@@ -97,17 +106,17 @@ extension TodolistsService {
                 hint: "The server presence-validates a todolist's name; set a non-empty name."
             )
         }
-        let written = try await replace(
+        return try await replace(
             id: id,
             req: UpdateTodolistOrGroupRequest(
                 description: fields.description,
                 name: fields.name
             )
         )
-        return try Self.todolist(from: written, operation: "UpdateTodolistOrGroup")
     }
 
-    /// GETs the todolist and unwraps the union arm the composites read from.
+    /// GETs the todolist the composites read from, rendering a decoder failure
+    /// as the SDK's own error shape.
     private func fetchTodolist(id: Int) async throws -> Todolist {
         // Swift's decoder is the typed guard the dynamic SDKs have to write by
         // hand, and it rejects a wrong-typed field before this composite ever
@@ -115,9 +124,9 @@ extension TodolistsService {
         // the shape SPEC §6 defines for a malformed 2xx body: callers checking
         // for `BasecampError` would miss it entirely, and it carries no hint.
         // Wrap it, so a malformed response looks the same in every SDK.
-        let fetched: TodolistOrGroup
+        let todolist: Todolist
         do {
-            fetched = try await get(id: id)
+            todolist = try await get(id: id)
         } catch let error as DecodingError {
             throw BasecampError.api(
                 message: BasecampError.truncate(
@@ -130,7 +139,6 @@ extension TodolistsService {
                 requestId: nil
             )
         }
-        let todolist = try Self.todolist(from: fetched, operation: "GetTodolistOrGroup")
 
         // Classification is by origin, not by value. The same empty name is a
         // caller error when the caller set it and a malformed response when it
@@ -150,46 +158,5 @@ extension TodolistsService {
             )
         }
         return todolist
-    }
-
-    /// Unwraps the ``TodolistOrGroup`` union the generated `get` and `replace`
-    /// return.
-    ///
-    /// The union's `todolist`/`group` envelope is a spec-modelling convention,
-    /// not the wire shape — see AGENTS.md, "Smithy Spec vs Actual API
-    /// Responses". BC3 renders a list and a group through the same
-    /// `todolists/_todolist.json.jbuilder` partial, so the body arrives FLAT
-    /// and the decoder matches it against the arms in order; a group body
-    /// carries `description` too and so lands in the `todolist` arm. That is
-    /// expected, and it is why this composite is variant-agnostic: it neither
-    /// sniffs the type nor branches on which arm matched.
-    ///
-    /// The `group` arm is not a fallback. Its projection has no `description`
-    /// field at all, so converting from it would have to invent an empty one —
-    /// and PUTting that back is exactly the erasure this file exists to
-    /// prevent. A group-only match is an error with its reason stated.
-    private static func todolist(
-        from value: TodolistOrGroup, operation: String
-    ) throws -> Todolist {
-        switch (value.todolist, value.group) {
-        case (let todolist?, _):
-            return todolist
-        case (nil, .some):
-            throw BasecampError.api(
-                message: "\(operation) returned a todolist group projection, which carries no "
-                    + "description; writing it back would erase the description",
-                httpStatus: nil,
-                hint: "Use replace(id:req:) to overwrite this recording deliberately.",
-                requestId: nil
-            )
-        case (nil, nil):
-            throw BasecampError.api(
-                message: "\(operation) returned a body matching neither the todolist nor the "
-                    + "group shape",
-                httpStatus: nil,
-                hint: "Check the todolist id; the server did not return a todolist.",
-                requestId: nil
-            )
-        }
     }
 }

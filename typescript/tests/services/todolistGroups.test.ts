@@ -72,11 +72,24 @@ describe("TodolistGroupsService", () => {
   describe("create", () => {
     it("should create a new group in a todolist", async () => {
       const todolistId = 222;
+      // A group IS a to-do list on the wire: BC3's
+      // todolists/groups/{index,show}.json.jbuilder render
+      // todolists/_todolist.json.jbuilder, and the recording partial emits
+      // `recordable_type`, which is "Todolist" for both variants. ("Todolist::Group"
+      // is a *webhook* recording type — see ruby/lib/basecamp/webhooks/event.rb's
+      // TODOLIST_GROUP and go/pkg/basecamp/webhook_event.go's
+      // WebhookTypeTodolistGroup — and never appears in this payload.) So the
+      // truthful stub carries a description and discriminates structurally:
+      // group_position_url (parent is a Todolist), and no groups_url.
       const mockGroup = {
         id: 444,
         name: "New Phase",
-        type: "Todolist::Group",
+        type: "Todolist",
         completed: false,
+        description: "<div>Second half of the build</div>",
+        description_attachments: [],
+        group_position_url:
+          "https://3.basecampapi.com/12345/buckets/1/todolists/groups/444/position.json",
       };
 
       server.use(
@@ -95,6 +108,10 @@ describe("TodolistGroupsService", () => {
       });
       expect(group.id).toBe(444);
       expect(group.name).toBe("New Phase");
+      // create carries the flat Todolist now (#544), description included — the
+      // old group projection modelled none.
+      expect(group.description).toBe("<div>Second half of the build</div>");
+      expect(group.group_position_url).toBe(mockGroup.group_position_url);
     });
 
     // Client-side validation short-circuits before any HTTP call. No MSW handler

@@ -817,6 +817,42 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        // Decode-only read of the polymorphic route. The result is the decoded
+        // Todolist re-serialized, so the fixture's responseBody assertions
+        // (name, description, type, groups_url / group_position_url) read the
+        // SDK's own model rather than the raw body: a decoder that yields
+        // nothing fails here instead of silently returning it.
+        //
+        // One arm, both variants. BC3 renders a group through
+        // todolists/_todolist.json.jbuilder, so a group IS a Todolist —
+        // discriminated by group_position_url standing in for groups_url,
+        // never by the type string, which is "Todolist" either way (#544).
+        "GetTodolistOrGroup" -> {
+            val id = tc.pathParams.longParam("id")
+            val todolist = account.todolists.get(id)
+            DispatchResult(resultJson = Json.encodeToJsonElement(Todolist.serializer(), todolist))
+        }
+
+        // The group list decodes into an array of that same flat shape.
+        // Dispatch convention (documented in the fixture): the runner returns
+        // the FIRST decoded element as the result, so the responseBody
+        // assertions read element 0. An empty decode has no element 0 — fail
+        // loudly rather than report a missing field.
+        "ListTodolistGroups" -> {
+            val todolistId = tc.pathParams.longParam("todolistId")
+            val groups = account.todolistGroups.list(todolistId)
+            val first = groups.firstOrNull()
+                ?: error(
+                    "ListTodolistGroups decoded an empty list; the responseBody " +
+                        "assertions read the first element"
+                )
+            DispatchResult(
+                totalCount = groups.meta.totalCount,
+                truncated = groups.meta.truncated,
+                resultJson = Json.encodeToJsonElement(Todolist.serializer(), first),
+            )
+        }
+
         // Synthetic scenario key (not a wire operation, which is
         // UpdateTodolistOrGroup): the merge-safe composite. GET then PUT,
         // resending the fetched description — a name-only sparse PUT would

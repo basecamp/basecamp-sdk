@@ -7,6 +7,7 @@ public struct Todolist: Codable, Sendable {
     public let bucket: TodoBucket
     public let createdAt: String
     public let creator: Person
+    public let description: String
     public let descriptionAttachments: [RichTextAttachment]
     public let id: Int
     public let inheritsStatus: Bool
@@ -22,11 +23,13 @@ public struct Todolist: Codable, Sendable {
     public var bookmarkUrl: String?
     public var boostsCount: Int32?
     public var boostsUrl: String?
+    public var color: String?
+    public var commentsAppUrl: String?
     public var commentsCount: Int32?
     public var commentsUrl: String?
     public var completed: Bool?
     public var completedRatio: String?
-    public var description: String?
+    public var groupPositionUrl: String?
     public var groupsUrl: String?
     public var position: Int32?
     public var subscriptionUrl: String?
@@ -38,6 +41,7 @@ public struct Todolist: Codable, Sendable {
         bucket: TodoBucket,
         createdAt: String,
         creator: Person,
+        description: String,
         descriptionAttachments: [RichTextAttachment],
         id: Int,
         inheritsStatus: Bool,
@@ -53,11 +57,13 @@ public struct Todolist: Codable, Sendable {
         bookmarkUrl: String? = nil,
         boostsCount: Int32? = nil,
         boostsUrl: String? = nil,
+        color: String? = nil,
+        commentsAppUrl: String? = nil,
         commentsCount: Int32? = nil,
         commentsUrl: String? = nil,
         completed: Bool? = nil,
         completedRatio: String? = nil,
-        description: String? = nil,
+        groupPositionUrl: String? = nil,
         groupsUrl: String? = nil,
         position: Int32? = nil,
         subscriptionUrl: String? = nil,
@@ -68,6 +74,7 @@ public struct Todolist: Codable, Sendable {
         self.bucket = bucket
         self.createdAt = createdAt
         self.creator = creator
+        self.description = description
         self.descriptionAttachments = descriptionAttachments
         self.id = id
         self.inheritsStatus = inheritsStatus
@@ -83,11 +90,13 @@ public struct Todolist: Codable, Sendable {
         self.bookmarkUrl = bookmarkUrl
         self.boostsCount = boostsCount
         self.boostsUrl = boostsUrl
+        self.color = color
+        self.commentsAppUrl = commentsAppUrl
         self.commentsCount = commentsCount
         self.commentsUrl = commentsUrl
         self.completed = completed
         self.completedRatio = completedRatio
-        self.description = description
+        self.groupPositionUrl = groupPositionUrl
         self.groupsUrl = groupsUrl
         self.position = position
         self.subscriptionUrl = subscriptionUrl

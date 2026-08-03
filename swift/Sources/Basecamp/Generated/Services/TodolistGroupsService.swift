@@ -14,7 +14,7 @@ public struct ListTodolistGroupOptions: Sendable {
 
 
 public final class TodolistGroupsService: BaseService, @unchecked Sendable {
-    public func create(todolistId: Int, req: CreateTodolistGroupRequest) async throws -> TodolistGroup {
+    public func create(todolistId: Int, req: CreateTodolistGroupRequest) async throws -> Todolist {
         return try await request(
             OperationInfo(service: "TodolistGroups", operation: "CreateTodolistGroup", resourceType: "todolist_group", isMutation: true, resourceId: todolistId),
             method: "POST",
@@ -24,7 +24,7 @@ public final class TodolistGroupsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func list(todolistId: Int, options: ListTodolistGroupOptions? = nil) async throws -> ListResult<TodolistGroup> {
+    public func list(todolistId: Int, options: ListTodolistGroupOptions? = nil) async throws -> ListResult<Todolist> {
         var queryItems: [URLQueryItem] = []
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))

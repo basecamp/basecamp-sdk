@@ -460,9 +460,12 @@ export {
 } from "./generated/services/automation.js";
 
 // Organization services - generated
+//
+// No `TodolistGroup` type: #544 consolidated it and `TodolistOrGroup` into the
+// one flat `Todolist` (exported above from ./generated/services/todolists.js),
+// which is what this service's `list` and `create` now carry.
 export {
   TodolistGroupsService,
-  type TodolistGroup,
   type CreateTodolistGroupRequest,
 } from "./generated/services/todolist-groups.js";
 

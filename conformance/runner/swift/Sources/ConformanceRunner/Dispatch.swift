@@ -5,11 +5,16 @@ enum RunnerError: Error, CustomStringConvertible {
     case unknownOperation(String)
     /// A fixture parameter the dispatch table cannot use as written.
     case badParameter(String)
+    /// A decoded response the dispatch table cannot reduce to a case result —
+    /// an empty collection where the fixture's responseBody assertions read a
+    /// specific element. Reporting nothing would make those assertions vacuous.
+    case emptyResult(String)
 
     var description: String {
         switch self {
         case .unknownOperation(let op): "Unknown operation: \(op)"
         case .badParameter(let detail): "Fixture parameter: \(detail)"
+        case .emptyResult(let detail): "Empty result: \(detail)"
         }
     }
 }
@@ -146,6 +151,33 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
                 notify: rb.optBool("notify"),
                 startsOn: rb.optString("starts_on")))
         return DispatchResult()
+
+    // The raw read. BC3 renders a to-do list and a group through the same
+    // `todolists/_todolist.json.jbuilder` partial, so both answer with the one
+    // flat Todolist shape — nothing here sniffs which came back. The decoded
+    // value is returned as the case result so the fixture's responseBody
+    // assertions read it back through the SDK's own encoder (snake_case keys,
+    // see `resultJSON`): a decoder that yields an empty value fails those
+    // assertions instead of silently reporting success (#544).
+    case "GetTodolistOrGroup":
+        let todolist = try await account.todolists.get(id: pathParams.longParam("id"))
+        return DispatchResult(resultJSON: try resultJSON(todolist))
+
+    // The group list answers with an array of that same flat shape. Convention
+    // documented in the fixture: the FIRST decoded element is the case result,
+    // so the responseBody assertions read element 0. An empty list is a failure
+    // rather than a silently absent result — that would make them vacuous.
+    case "ListTodolistGroups":
+        let groups = try await account.todolistGroups.list(
+            todolistId: pathParams.longParam("todolistId"))
+        guard let firstGroup = groups.items.first else {
+            throw RunnerError.emptyResult(
+                "ListTodolistGroups decoded 0 groups; the responseBody assertions read element 0")
+        }
+        return DispatchResult(
+            totalCount: groups.meta.totalCount,
+            truncated: groups.meta.truncated,
+            resultJSON: try resultJSON(firstGroup))
 
     // Synthetic scenario key (not a wire operation): the merge-safe composite
     // over `PUT /todolists/{id}`, which is a full replace — BC3's

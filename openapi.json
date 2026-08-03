@@ -21463,7 +21463,7 @@
     },
     "/{accountId}/todolists/{id}": {
       "get": {
-        "description": "Get a single todolist or todolist group by id\nThe endpoint is polymorphic - the same URI returns either a Todolist or TodolistGroup",
+        "description": "Get a single todolist or todolist group by id\nThe endpoint is polymorphic, but it answers with one shape: BC3 has no group\nmodel, so both variants come back as a flat Todolist (see the Todolist shape).",
         "operationId": "GetTodolistOrGroup",
         "parameters": [
           {
@@ -21478,13 +21478,13 @@
             "required": true,
             "examples": {
               "GetTodolistOrGroup_example1": {
-                "summary": "Get a Todolist",
-                "description": "Returns a Todolist when ID refers to a todolist",
+                "summary": "Get a to-do list",
+                "description": "A to-do list: parent is a Todoset, and groups_url is present",
                 "value": "999"
               },
               "GetTodolistOrGroup_example2": {
-                "summary": "Get a TodolistGroup",
-                "description": "Returns a TodolistGroup when ID refers to a group",
+                "summary": "Get a group",
+                "description": "A group: parent is a Todolist, and group_position_url replaces groups_url",
                 "value": "999"
               }
             }
@@ -21499,13 +21499,13 @@
             "required": true,
             "examples": {
               "GetTodolistOrGroup_example1": {
-                "summary": "Get a Todolist",
-                "description": "Returns a Todolist when ID refers to a todolist",
+                "summary": "Get a to-do list",
+                "description": "A to-do list: parent is a Todoset, and groups_url is present",
                 "value": 987654
               },
               "GetTodolistOrGroup_example2": {
-                "summary": "Get a TodolistGroup",
-                "description": "Returns a TodolistGroup when ID refers to a group",
+                "summary": "Get a group",
+                "description": "A group: parent is a Todolist, and group_position_url replaces groups_url",
                 "value": 111222
               }
             }
@@ -21521,83 +21521,84 @@
                 },
                 "examples": {
                   "GetTodolistOrGroup_example1": {
-                    "summary": "Get a Todolist",
-                    "description": "Returns a Todolist when ID refers to a todolist",
+                    "summary": "Get a to-do list",
+                    "description": "A to-do list: parent is a Todoset, and groups_url is present",
                     "value": {
                       "result": {
-                        "todolist": {
-                          "id": 987654,
-                          "status": "active",
-                          "name": "Launch Tasks",
-                          "visible_to_clients": false,
+                        "id": 987654,
+                        "status": "active",
+                        "name": "Launch Tasks",
+                        "visible_to_clients": false,
+                        "created_at": "2025-01-01T00:00:00Z",
+                        "updated_at": "2025-01-01T00:00:00Z",
+                        "title": "Launch Tasks",
+                        "inherits_status": true,
+                        "type": "Todolist",
+                        "description": "",
+                        "description_attachments": [],
+                        "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
+                        "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
+                        "bubble_up_url": "https://3.basecampapi.com/999/buckets/12345678/recordings/987654/bubble_up.json",
+                        "creator": {
+                          "id": 1,
+                          "name": "Someone",
                           "created_at": "2025-01-01T00:00:00Z",
-                          "updated_at": "2025-01-01T00:00:00Z",
-                          "title": "Launch Tasks",
-                          "inherits_status": true,
-                          "type": "Todolist",
-                          "description_attachments": [],
-                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
-                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
-                          "bubble_up_url": "https://3.basecampapi.com/999/buckets/12345678/recordings/987654/bubble_up.json",
-                          "creator": {
-                            "id": 1,
-                            "name": "Someone",
-                            "created_at": "2025-01-01T00:00:00Z",
-                            "updated_at": "2025-01-01T00:00:00Z"
-                          },
-                          "bucket": {
-                            "id": 12345678,
-                            "name": "My Project",
-                            "type": "Project"
-                          },
-                          "parent": {
-                            "id": 99999,
-                            "title": "To-dos",
-                            "type": "Todoset",
-                            "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
-                            "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
-                          }
-                        }
+                          "updated_at": "2025-01-01T00:00:00Z"
+                        },
+                        "bucket": {
+                          "id": 12345678,
+                          "name": "My Project",
+                          "type": "Project"
+                        },
+                        "parent": {
+                          "id": 99999,
+                          "title": "To-dos",
+                          "type": "Todoset",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
+                        },
+                        "groups_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json"
                       }
                     }
                   },
                   "GetTodolistOrGroup_example2": {
-                    "summary": "Get a TodolistGroup",
-                    "description": "Returns a TodolistGroup when ID refers to a group",
+                    "summary": "Get a group",
+                    "description": "A group: parent is a Todolist, and group_position_url replaces groups_url",
                     "value": {
                       "result": {
-                        "group": {
-                          "id": 111222,
-                          "status": "active",
-                          "name": "Q1 Milestones",
-                          "visible_to_clients": false,
+                        "id": 111222,
+                        "status": "active",
+                        "name": "Q1 Milestones",
+                        "visible_to_clients": false,
+                        "created_at": "2025-01-01T00:00:00Z",
+                        "updated_at": "2025-01-01T00:00:00Z",
+                        "title": "Q1 Milestones",
+                        "inherits_status": true,
+                        "type": "Todolist",
+                        "description": "",
+                        "description_attachments": [],
+                        "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/111222.json",
+                        "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/111222",
+                        "bubble_up_url": "https://3.basecampapi.com/999/buckets/12345678/recordings/111222/bubble_up.json",
+                        "creator": {
+                          "id": 1,
+                          "name": "Someone",
                           "created_at": "2025-01-01T00:00:00Z",
-                          "updated_at": "2025-01-01T00:00:00Z",
-                          "title": "Q1 Milestones",
-                          "inherits_status": true,
-                          "type": "TodolistGroup",
-                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/111222.json",
-                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/111222",
-                          "bubble_up_url": "https://3.basecampapi.com/999/buckets/12345678/recordings/111222/bubble_up.json",
-                          "creator": {
-                            "id": 1,
-                            "name": "Someone",
-                            "created_at": "2025-01-01T00:00:00Z",
-                            "updated_at": "2025-01-01T00:00:00Z"
-                          },
-                          "bucket": {
-                            "id": 12345678,
-                            "name": "My Project",
-                            "type": "Project"
-                          },
-                          "parent": {
-                            "id": 99999,
-                            "title": "To-dos",
-                            "type": "Todoset",
-                            "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
-                            "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
-                          }
-                        }
+                          "updated_at": "2025-01-01T00:00:00Z"
+                        },
+                        "bucket": {
+                          "id": 12345678,
+                          "name": "My Project",
+                          "type": "Project"
+                        },
+                        "parent": {
+                          "id": 987654,
+                          "title": "Launch Tasks",
+                          "type": "Todolist",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654"
+                        },
+                        "group_position_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json"
                       }
                     }
                   }
@@ -21660,7 +21661,7 @@
         }
       },
       "put": {
-        "description": "Replace a todolist (or todolist group) with a new complete representation.\nThe endpoint is polymorphic - it addresses either a Todolist or a TodolistGroup.\nThe request body is the recordable's full writable state: TodolistsController#update\nbuilds a brand-new Todolist from the permitted params and swaps it in, so any\nwritable field omitted from the request is cleared server-side (a request that\nomits description erases the description). name is required - it is\npresence-validated on the model, so a request without it is rejected.\nTo set some fields while preserving the rest, use the SDK's merge-safe\nupdate or edit methods, which GET the current list and PUT the full\nrepresentation back. Those read-modify-write helpers are not atomic:\na concurrent write between the GET and PUT is overwritten (last write\nwins for the whole representation; the window is one round-trip).",
+        "description": "Replace a todolist (or todolist group) with a new complete representation.\nThe endpoint is polymorphic - it addresses a to-do list or a group, and answers\nwith the same flat Todolist shape either way.\nThe request body is the recordable's full writable state: TodolistsController#update\nbuilds a brand-new Todolist from the permitted params and swaps it in, so any\nwritable field omitted from the request is cleared server-side (a request that\nomits description erases the description). name is required - it is\npresence-validated on the model, so a request without it is rejected.\nTo set some fields while preserving the rest, use the SDK's merge-safe\nupdate or edit methods, which GET the current list and PUT the full\nrepresentation back. Those read-modify-write helpers are not atomic:\na concurrent write between the GET and PUT is overwritten (last write\nwins for the whole representation; the window is one round-trip).",
         "operationId": "UpdateTodolistOrGroup",
         "requestBody": {
           "content": {
@@ -27550,7 +27551,7 @@
         ]
       },
       "CreateTodolistGroupResponseContent": {
-        "$ref": "#/components/schemas/TodolistGroup"
+        "$ref": "#/components/schemas/Todolist"
       },
       "CreateTodolistRequestContent": {
         "type": "object",
@@ -29306,7 +29307,7 @@
         "$ref": "#/components/schemas/Todo"
       },
       "GetTodolistOrGroupResponseContent": {
-        "$ref": "#/components/schemas/TodolistOrGroup"
+        "$ref": "#/components/schemas/Todolist"
       },
       "GetTodosetResponseContent": {
         "$ref": "#/components/schemas/Todoset"
@@ -29750,7 +29751,7 @@
       "ListTodolistGroupsResponseContent": {
         "type": "array",
         "items": {
-          "$ref": "#/components/schemas/TodolistGroup"
+          "$ref": "#/components/schemas/Todolist"
         }
       },
       "ListTodolistsResponseContent": {
@@ -32766,6 +32767,7 @@
       },
       "Todolist": {
         "type": "object",
+        "description": "A to-do list, or a group inside one. There is only this shape.\n\nBC3 has no group model: a \"group\" is a `Todolist` whose parent is another\n`Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and\n`todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render\n`todolists/_todolist.json.jbuilder` — the same partial the list routes use.\nSo a group reports `\"type\": \"Todolist\"` (the shared recording partial emits\n`recordable_type`) and carries `description`/`description_attachments` like\nany other list. Every operation that returns a list or a group returns this\nstructure: the polymorphic GET/PUT, the todoset-scoped list, and the\ngroup list, group create and group get.\n\nDiscriminate STRUCTURALLY, never on `type` — which reads `\"Todolist\"` for\nboth variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`\nand emits exactly one of:\n\n- `groups_url` — a to-do list; its `parent` is a Todoset.\n- `group_position_url` — a group; its `parent` is a Todolist.\n\nThe two are mutually exclusive and exactly one is always present.",
         "properties": {
           "id": {
             "type": "integer",
@@ -32838,13 +32840,15 @@
             "$ref": "#/components/schemas/Person"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Rich text description (HTML). Required and never null: the shared rich-text\npartial emits the key unconditionally, and `format_api_content` funnels a\nblank or absent rich text through `call_pipeline`, which returns `\"\"` rather\nthan nil. A list with no description carries `\"\"`, not `null`, and a group\ncarries it too — `todolists/groups/{index,show}.json.jbuilder` render the\nsame partial."
           },
           "description_attachments": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
-            }
+            },
+            "description": "Downloadable files embedded in `description`. Required and never null:\nthe partial emits `rich_text&.downloadable_attachments.to_a`, so the value\nis `[]` when there is no description and when there are no attachments."
           },
           "completed": {
             "type": "boolean"
@@ -32859,10 +32863,28 @@
             "type": "string"
           },
           "groups_url": {
-            "type": "string"
+            "type": "string",
+            "description": "API URL for this list's groups. The to-do-list half of the structural\ndiscriminator: emitted only when `parent` is a Todoset, and mutually\nexclusive with `group_position_url`."
+          },
+          "group_position_url": {
+            "type": "string",
+            "description": "API URL for repositioning this group within its parent list. The group half\nof the structural discriminator: emitted only when `parent` is a Todolist,\nand mutually exclusive with `groups_url`."
           },
           "app_todos_url": {
-            "type": "string"
+            "type": "string",
+            "description": "In-app (non-API) URL for this record's to-dos, alongside the API-host\n`todos_url`."
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Color of the list or group, one of BC3's `Colored` enum values\n(`white red orange yellow green blue aqua purple gray pink brown`). For a\ntop-level list a hill-chart dot color takes precedence over the recording's\nown.\n\n**Nullable.** `recordings.color` is a nullable integer column, so the value is\nJSON `null` whenever it is unset — which, for a group, is the ordinary case.\nSmithy has no native nullable scalar, so the `[\"string\", \"null\"]` union is\napplied to the OpenAPI projection through `jsonAdd` in `spec/smithy-build.json`,\nthe same treatment `SearchResult.content` and `SearchType.key` get. Without it\nthe published schema and the generated static types would be non-nullable and\nevery uncolored list and group would violate them.\n\nModelled optional rather than `@required` even though\n`_todolist.json.jbuilder` calls `json.color` in both branches of its\n`todolist_group?` conditional and so always emits the key. Optional is the\nweaker, safer claim: it accepts both an explicit `null` and an absent key,\nwhere `@required` would additionally oblige every captured body and inline\ntest stub in the typed SDKs to carry a field that is cosmetic. Tightening it\nis a clean follow-up; publishing a non-nullable type was the actual defect.",
+            "x-go-type": "string"
+          },
+          "comments_app_url": {
+            "type": "string",
+            "description": "In-app (non-API) URL for this recording's comments, alongside the API-host\n`comments_url`."
           },
           "boosts_count": {
             "type": "integer",
@@ -32878,6 +32900,7 @@
           "bucket",
           "created_at",
           "creator",
+          "description",
           "description_attachments",
           "id",
           "inherits_status",
@@ -32889,141 +32912,6 @@
           "updated_at",
           "url",
           "visible_to_clients"
-        ]
-      },
-      "TodolistGroup": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "status": {
-            "type": "string"
-          },
-          "visible_to_clients": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
-          },
-          "updated_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
-          },
-          "title": {
-            "type": "string"
-          },
-          "inherits_status": {
-            "type": "boolean"
-          },
-          "type": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "app_url": {
-            "type": "string"
-          },
-          "bookmark_url": {
-            "type": "string"
-          },
-          "subscription_url": {
-            "type": "string"
-          },
-          "bubble_up_url": {
-            "type": "string",
-            "description": "URL of the Bubble Up record for this recording (BC5 addition). Required:\n`todolists/_todolist.json.jbuilder` renders the shared recording partial\nwith `bubbleupable: true` unconditionally, and every list, show, and group\npath renders that partial — so the key is present on every projection of\nthis shape."
-          },
-          "comments_count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "comments_url": {
-            "type": "string"
-          },
-          "position": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "parent": {
-            "$ref": "#/components/schemas/TodoParent"
-          },
-          "bucket": {
-            "$ref": "#/components/schemas/TodoBucket"
-          },
-          "creator": {
-            "$ref": "#/components/schemas/Person"
-          },
-          "name": {
-            "type": "string"
-          },
-          "completed": {
-            "type": "boolean"
-          },
-          "completed_ratio": {
-            "type": "string"
-          },
-          "todos_url": {
-            "type": "string"
-          },
-          "app_todos_url": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "app_url",
-          "bubble_up_url",
-          "bucket",
-          "created_at",
-          "creator",
-          "id",
-          "inherits_status",
-          "name",
-          "parent",
-          "status",
-          "title",
-          "type",
-          "updated_at",
-          "url",
-          "visible_to_clients"
-        ]
-      },
-      "TodolistOrGroup": {
-        "description": "Union type for polymorphic todolist endpoint",
-        "oneOf": [
-          {
-            "type": "object",
-            "title": "todolist",
-            "properties": {
-              "todolist": {
-                "$ref": "#/components/schemas/Todolist"
-              }
-            },
-            "required": [
-              "todolist"
-            ]
-          },
-          {
-            "type": "object",
-            "title": "group",
-            "properties": {
-              "group": {
-                "$ref": "#/components/schemas/TodolistGroup"
-              }
-            },
-            "required": [
-              "group"
-            ]
-          }
         ]
       },
       "Todoset": {
@@ -33726,7 +33614,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve"
+            "description": "Name (required for a to-do list and for a group alike) - presence-validated server-side, so omitting it is a 422, not a preserve"
           },
           "description": {
             "type": "string",
@@ -33738,7 +33626,7 @@
         ]
       },
       "UpdateTodolistOrGroupResponseContent": {
-        "$ref": "#/components/schemas/TodolistOrGroup"
+        "$ref": "#/components/schemas/Todolist"
       },
       "UpdateToolRequestContent": {
         "type": "object",

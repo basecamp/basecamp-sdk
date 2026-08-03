@@ -21,7 +21,7 @@ export type Todolist = components["schemas"]["Todolist"];
  * Request parameters for replace.
  */
 export interface ReplaceTodolistRequest {
-  /** Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve */
+  /** Name (required for a to-do list and for a group alike) - presence-validated server-side, so omitting it is a 422, not a preserve */
   name: string;
   /** Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way */
   description?: string;
@@ -70,7 +70,7 @@ export class TodolistsService extends BaseService {
   /**
    * Get a single todolist or todolist group by id
    * @param id - The id
-   * @returns The todolist_or_group
+   * @returns The Todolist
    * @throws {BasecampError} If the resource is not found
    *
    * @example
@@ -78,7 +78,7 @@ export class TodolistsService extends BaseService {
    * const result = await client.todolists.get(123);
    * ```
    */
-  async get(id: number): Promise<components["schemas"]["GetTodolistOrGroupResponseContent"]> {
+  async get(id: number): Promise<Todolist> {
     const response = await this.request(
       {
         service: "Todolists",
@@ -101,7 +101,7 @@ export class TodolistsService extends BaseService {
    * Replace a todolist (or todolist group) with a new complete representation.
    * @param id - The id
    * @param req - Todolist_or_group request parameters
-   * @returns The todolist_or_group
+   * @returns The Todolist
    * @throws {BasecampError} If the request fails
    *
    * @example
@@ -109,7 +109,7 @@ export class TodolistsService extends BaseService {
    * const result = await client.todolists.replace(123, { name: "My example" });
    * ```
    */
-  async replace(id: number, req: ReplaceTodolistRequest): Promise<components["schemas"]["UpdateTodolistOrGroupResponseContent"]> {
+  async replace(id: number, req: ReplaceTodolistRequest): Promise<Todolist> {
     if (!req.name) {
       throw Errors.validation("Name is required");
     }

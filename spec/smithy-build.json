@@ -33,6 +33,8 @@
               "name": "Basecamp",
               "url": "https://github.com/basecamp/basecamp-sdk"
             },
+            "/components/schemas/Todolist/properties/color/type": ["string", "null"],
+            "/components/schemas/Todolist/properties/color/x-go-type": "string",
             "/components/schemas/SearchType/properties/key/type": ["string", "null"],
             "/components/schemas/SearchType/properties/key/x-go-type": "string",
             "/components/schemas/SearchResult/properties/content/type": ["string", "null"],

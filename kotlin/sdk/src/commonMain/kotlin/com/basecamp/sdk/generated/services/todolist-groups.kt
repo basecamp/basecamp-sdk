@@ -38,7 +38,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
      * @param todolistId The todolist ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(todolistId: Long, options: ListTodolistGroupsOptions): ListResult<TodolistGroup> {
+    suspend fun list(todolistId: Long, options: ListTodolistGroupsOptions): ListResult<Todolist> {
         val info = OperationInfo(
             service = "TodolistGroups",
             operation = "ListTodolistGroups",
@@ -53,7 +53,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
         return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/todolists/${todolistId}/groups.json" + qs, operationName = info.operation)
         }) { body ->
-            json.decodeFromString<List<TodolistGroup>>(body)
+            json.decodeFromString<List<Todolist>>(body)
         }
     }
 
@@ -67,7 +67,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
      * Because two candidates now apply, an *untyped* callable reference to
      * [list] needs an expected type to disambiguate.
      */
-    suspend fun list(todolistId: Long, options: PaginationOptions? = null): ListResult<TodolistGroup> =
+    suspend fun list(todolistId: Long, options: PaginationOptions? = null): ListResult<Todolist> =
         list(todolistId, ListTodolistGroupsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
@@ -75,7 +75,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
      * @param todolistId The todolist ID
      * @param body Request body
      */
-    suspend fun create(todolistId: Long, body: CreateTodolistGroupBody): TodolistGroup {
+    suspend fun create(todolistId: Long, body: CreateTodolistGroupBody): Todolist {
         val info = OperationInfo(
             service = "TodolistGroups",
             operation = "CreateTodolistGroup",
@@ -89,7 +89,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
                 put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
             }), operationName = info.operation)
         }) { body ->
-            json.decodeFromString<TodolistGroup>(body)
+            json.decodeFromString<Todolist>(body)
         }
     }
 }

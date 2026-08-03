@@ -53,6 +53,23 @@ def _todolist_full(**overrides) -> dict:
     }
 
 
+def _group_full(**overrides) -> dict:
+    """Full validated group shape, from the group fixture.
+
+    A group is a Todolist. BC3 has no group model — todolists/groups/{index,
+    show}.json.jbuilder render todolists/_todolist.json.jbuilder — so the group
+    fixture carries the same `description`/`description_attachments` a list
+    does and reports `"type": "Todolist"`. Since #544 there is one declared
+    shape for both, and the variants are told apart structurally:
+    `group_position_url` here stands in for the list's `groups_url`. Never the
+    type string.
+    """
+    return {
+        **json.loads((_FIXTURES / "todolist_groups" / "get.json").read_text(encoding="utf-8")),
+        **overrides,
+    }
+
+
 class _RecordingHooks(BasecampHooks):
     def __init__(self) -> None:
         self.operations: list[OperationInfo] = []
@@ -190,6 +207,63 @@ class TestAsyncTodolistMetadata:
         assert info.resource_id == 2
 
 
+class TestSyncGroupRead:
+    """`todolists.get` answers for a group too, through the one flat shape (#544).
+
+    Before #544 the spec declared three shapes for this one wire body, and the
+    group arm modelled no `description` at all — so a group read through it lost
+    the field outright. There is now a single `Todolist`, and the group route is
+    the same route: `todolists/groups/show.json.jbuilder` renders
+    `todolists/_todolist.json.jbuilder`.
+    """
+
+    @respx.mock
+    def test_get_returns_a_group_with_its_description_and_position_url(self):
+        group = _group_full()
+        respx.get(f"{BASE}/todolists/7").mock(return_value=httpx.Response(200, json=group))
+
+        result = _sync_todolists().get(id=7)
+
+        # The field the pre-#544 group projection had nowhere to put.
+        assert result["description"] == "<div>Phase one hardware work</div>"
+        assert result["description_attachments"] == []
+        assert result["name"] == "Phase 1"
+        # Discrimination is structural, never the type string: a group reports
+        # "Todolist" like any list and is told apart by which URL it carries.
+        assert result["type"] == "Todolist"
+        assert result["group_position_url"] == group["group_position_url"]
+        assert "groups_url" not in result
+
+    @respx.mock
+    def test_get_returns_a_list_with_groups_url_and_no_group_position_url(self):
+        """The other side of the XOR, so the discriminator is pinned both ways."""
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        result = _sync_todolists().get(id=2)
+
+        assert result["type"] == "Todolist"
+        assert result["groups_url"]
+        assert "group_position_url" not in result
+        assert result["description"] == "<p>Ship the hardware</p>"
+
+
+class TestAsyncGroupRead:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_get_returns_a_group_with_its_description_and_position_url(self):
+        group = _group_full()
+        respx.get(f"{BASE}/todolists/7").mock(return_value=httpx.Response(200, json=group))
+
+        result = await _async_todolists().get(id=7)
+
+        assert result["description"] == "<div>Phase one hardware work</div>"
+        assert result["description_attachments"] == []
+        assert result["name"] == "Phase 1"
+        assert result["type"] == "Todolist"
+        assert result["group_position_url"] == group["group_position_url"]
+        assert "groups_url" not in result
+
+
 class TestMalformedWritableFields:
     """A malformed writable field must abort before the PUT, never be coerced.
 
@@ -284,15 +358,24 @@ class TestMalformedWritableFields:
         ],
     )
     @respx.mock
-    def test_refuses_a_non_object_envelope_arm(self, body):
-        """Level 2: the outer-body guard checks only the envelope."""
+    def test_refuses_an_enveloped_body_rather_than_unwrapping_it(self, body):
+        """The arm layer is gone with the union (#544); the outcome is not.
+
+        These bodies used to be caught one level down, by an arm guard that
+        existed only because the spec declared a `TodolistOrGroup` oneOf. With
+        one flat shape there is no arm to guard and nothing unwraps: an
+        enveloped body is simply a body carrying no `name`, which the
+        required-field guard refuses. Two levels now — body then scalar — where
+        there were three. What must not change is that the read fails and the
+        full-replace PUT is never issued.
+        """
         respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
         put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
 
         with pytest.raises(ApiError) as excinfo:
             _sync_todolists().update(id=2, name="Renamed")
 
-        assert "arm where an object was expected" in str(excinfo.value)
+        assert "'name' is missing from the response" in str(excinfo.value)
         assert put_route.call_count == 0
 
     @respx.mock
@@ -353,16 +436,74 @@ class TestMalformedWritableFields:
         assert put_route.call_count == 0
 
     @pytest.mark.parametrize(
-        "body",
-        [{"id": 2, "name": "Hardware"}, {"id": 2, "name": "Hardware", "description": None}],
+        ("label", "body"),
+        [
+            ("absent", {k: v for k, v in _todolist_full().items() if k != "description"}),
+            ("null", _todolist_full(description=None)),
+        ],
     )
     @respx.mock
-    def test_absent_and_null_description_are_genuinely_empty(self, body):
+    def test_absent_and_null_description_are_malformed_responses(self, label, body):
+        """`description` is @required and never null, so both are malformed.
+
+        BC3's ``format_api_content`` funnels a blank rich text through
+        ``call_pipeline``, which returns ``""`` rather than nil, so a
+        description-less list still carries the key. Reading an absent or null
+        one as ``""`` was the data-loss case this composite exists to remove:
+        the full-replace PUT then wrote that ``""`` over the record's real
+        description on a call that only renamed it. Refuse before the PUT.
+        """
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed list")
+
+        expected = "is missing from the response" if label == "absent" else "is null in the response"
+        assert f"'description' {expected}" in str(excinfo.value)
+        assert get_route.call_count == 1
+        assert put_route.call_count == 0, "an absent or null description must never reach the PUT"
+
+    @pytest.mark.parametrize(
+        ("label", "body"),
+        [
+            ("absent", {k: v for k, v in _todolist_full().items() if k != "description"}),
+            ("null", _todolist_full(description=None)),
+        ],
+    )
+    @respx.mock
+    def test_edit_refuses_an_absent_or_null_description_before_the_block(self, label, body):
+        """The same via ``edit``, the path that hands the value to caller code."""
         respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
         put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
 
+        entered = False
+        with pytest.raises(ApiError), _sync_todolists().edit(id=2) as tl:
+            entered = True
+            tl.name = "Renamed list"
+
+        assert not entered, "the edit block must not run on a malformed response"
+        assert put_route.call_count == 0, "an absent or null description must never reach the PUT"
+
+    @respx.mock
+    def test_present_and_empty_description_round_trips(self):
+        """The case the refusals must not swallow, and by far the common one.
+
+        A description-less list carries a present-and-empty description. ``""``
+        is a real value, so it round-trips and reaches the PUT; refusing it
+        would break every list without a description.
+        """
+        get_route = respx.get(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+
         _sync_todolists().update(id=2, name="Renamed list")
 
+        assert get_route.call_count == 1
+        assert put_route.call_count == 1
         assert _put_body(put_route) == {"name": "Renamed list", "description": ""}
 
 
@@ -420,22 +561,27 @@ class TestSyncUpdate:
         assert _put_body(put_route) == {"name": "Renamed list", "description": ""}
 
     @respx.mock
-    def test_enveloped_get_response_is_tolerated(self):
-        # BC3 answers this route with the flat recordable JSON; the Smithy
-        # envelope is a modelling convention. Reading an enveloped body must
-        # not degrade into writing an empty name.
+    def test_enveloped_get_response_is_refused_without_writing(self):
+        # BC3 answers this route with the flat recordable JSON and, since #544,
+        # so does the spec: there is no envelope and nothing unwraps one. A
+        # well-formed envelope is therefore a body with no readable `name`, and
+        # refusing it is the whole contract — the composite must not degrade
+        # into writing an empty name over the real one.
         respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json={"todolist": _todolist_full()}))
         put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
 
-        _sync_todolists().update(id=2, description="<p>New plan</p>")
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, description="<p>New plan</p>")
 
-        assert _put_body(put_route) == {"name": "Hardware", "description": "<p>New plan</p>"}
+        assert "'name' is missing from the response" in str(excinfo.value)
+        assert put_route.call_count == 0
 
     @respx.mock
-    def test_flat_body_wins_over_a_nested_object_of_the_same_name(self):
-        # The unwrap must never hijack a flat body: a group response carries a
-        # top-level name/description, so a nested dict that happens to be keyed
-        # "group" is just data, not an envelope.
+    def test_a_nested_group_object_is_ordinary_data(self):
+        # The unwrap that could once have hijacked a flat body went out with the
+        # union (#544). This pins that its removal left a nested dict keyed
+        # "group" exactly where it was: data on the record that no code path
+        # reads, with the top-level name/description preserved.
         respx.get(f"{BASE}/todolists/2").mock(
             return_value=httpx.Response(
                 200, json=_todolist_full(group={"id": 9, "name": "Decoy", "description": "<p>Decoy</p>"})
@@ -449,13 +595,15 @@ class TestSyncUpdate:
 
     @respx.mock
     def test_group_variant_is_preserved_without_type_sniffing(self):
-        # The same URI addresses a todolist or a todolist group; BC3 renders
+        # The same URI addresses a to-do list or a group inside one; BC3 renders
         # both through todolists/_todolist.json.jbuilder, so a group reports
-        # "type": "Todolist" and differs only by group_position_url replacing
-        # groups_url. The composite must carry {name, description} either way.
-        group = _todolist_full(name="Peripherals", title="Peripherals")
-        group.pop("groups_url")
-        group["group_position_url"] = f"{BASE}/buckets/1/todolists/groups/2/position.json"
+        # "type": "Todolist" and differs only by group_position_url standing in
+        # for groups_url. Read from the group fixture, whose description is real
+        # data a group-only projection would have had nowhere to put — the
+        # composite must resend it, not drop it.
+        group = _group_full()
+        assert group["type"] == "Todolist", "the type string is identical, which is why nothing branches on it"
+        assert "groups_url" not in group and group["group_position_url"]
         respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=group))
         put_route = respx.put(f"{BASE}/todolists/2").mock(
             return_value=httpx.Response(200, json={**group, "name": "Renamed group"})
@@ -463,7 +611,10 @@ class TestSyncUpdate:
 
         _sync_todolists().update(id=2, name="Renamed group")
 
-        assert _put_body(put_route) == {"name": "Renamed group", "description": "<p>Ship the hardware</p>"}
+        assert _put_body(put_route) == {
+            "name": "Renamed group",
+            "description": "<div>Phase one hardware work</div>",
+        }
 
     @respx.mock
     def test_empty_name_raises_usage_error_without_put(self):

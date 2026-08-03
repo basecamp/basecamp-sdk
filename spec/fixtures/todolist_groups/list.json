@@ -52,11 +52,16 @@
       "can_manage_projects": true,
       "can_manage_people": true
     },
-    "name": "Phase 1",
+    "description": "<div>Phase one hardware work</div>",
+    "description_attachments": [],
     "completed": false,
     "completed_ratio": "1/3",
+    "name": "Phase 1",
+    "color": null,
+    "group_position_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/groups/1069479600/position.json",
     "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479600/todos.json",
-    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479600/todos"
+    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479600/todos",
+    "comments_app_url": "https://3.basecamp.com/195539477/buckets/2085958500/recordings/1069479600/comments"
   },
   {
     "id": 1069479601,
@@ -111,10 +116,15 @@
       "can_manage_projects": true,
       "can_manage_people": true
     },
-    "name": "Phase 2",
+    "description": "",
+    "description_attachments": [],
     "completed": false,
     "completed_ratio": "0/2",
+    "name": "Phase 2",
+    "color": null,
+    "group_position_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/groups/1069479601/position.json",
     "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479601/todos.json",
-    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479601/todos"
+    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479601/todos",
+    "comments_app_url": "https://3.basecamp.com/195539477/buckets/2085958500/recordings/1069479601/comments"
   }
 ]

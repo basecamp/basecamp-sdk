@@ -466,9 +466,12 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   ScheduleEntry: ["ScheduleEntry", "entity"],
   Recording: ["Recording", "entity"],
   Template: ["Template", "entity"],
+  // No TodolistGroup entry: #544 folded it and the TodolistOrGroup union into
+  // the one flat Todolist, so the TodolistGroups service's list/create carry
+  // Todolist. Every lookup here is keyed by a literal schema name resolved from
+  // the OpenAPI document, and that name no longer exists in it.
   Todolist: ["Todolist", "entity"],
   Todoset: ["Todoset", "entity"],
-  TodolistGroup: ["TodolistGroup", "entity"],
   Questionnaire: ["Questionnaire", "entity"],
   Question: ["Question", "entity"],
   QuestionAnswer: ["Answer", "entity"], // Schema is QuestionAnswer, type alias is Answer

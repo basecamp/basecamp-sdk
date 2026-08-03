@@ -412,8 +412,12 @@ params it receives, so a field you omit is cleared. `Update` (overlay the
 fields you set) and `Edit` (read-modify-write closure) are merge-safe
 composites over that route — they GET first and resend the whole
 representation. `Replace` is the raw verbatim PUT. `TodolistGroups()` offers
-only `Replace`; use `Todolists().Update`/`Edit` for merge-safe group writes,
-since the group projection does not model `description` (#544).
+only `Replace`; use `Todolists().Update`/`Edit` for merge-safe group writes.
+That is not a workaround — BC3 has no group model, so `TodolistGroup` is a Go
+alias for `Todolist` (#544) and both surfaces address one polymorphic route
+through one projection. Tell the variants apart structurally: `GroupsURL` on a
+list, `GroupPositionURL` on a group. Never on `Type`, which reads `"Todolist"`
+for both.
 
 ### Messages & Communication
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-03T05:51:51Z
+# Generated: 2026-08-03T22:07:14Z
 
 require "json"
 require "time"
@@ -4427,11 +4427,11 @@ module Basecamp
     # Todolist
     class Todolist
       include TypeHelpers
-      attr_accessor :app_url, :bubble_up_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_ratio, :description, :groups_url, :position, :subscription_url, :todos_url
+      attr_accessor :app_url, :bubble_up_url, :bucket, :created_at, :creator, :description, :description_attachments, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :color, :comments_app_url, :comments_count, :comments_url, :completed, :completed_ratio, :group_position_url, :groups_url, :position, :subscription_url, :todos_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bubble_up_url bucket created_at creator description_attachments id inherits_status name parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bubble_up_url bucket created_at creator description description_attachments id inherits_status name parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -4440,6 +4440,7 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @description = data["description"]
         @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
@@ -4455,11 +4456,13 @@ module Basecamp
         @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @color = data["color"]
+        @comments_app_url = data["comments_app_url"]
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @completed = parse_boolean(data["completed"])
         @completed_ratio = data["completed_ratio"]
-        @description = data["description"]
+        @group_position_url = data["group_position_url"]
         @groups_url = data["groups_url"]
         @position = parse_integer(data["position"])
         @subscription_url = data["subscription_url"]
@@ -4473,6 +4476,7 @@ module Basecamp
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,
+          "description" => @description,
           "description_attachments" => @description_attachments,
           "id" => @id,
           "inherits_status" => @inherits_status,
@@ -4488,83 +4492,14 @@ module Basecamp
           "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "color" => @color,
+          "comments_app_url" => @comments_app_url,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "completed" => @completed,
           "completed_ratio" => @completed_ratio,
-          "description" => @description,
+          "group_position_url" => @group_position_url,
           "groups_url" => @groups_url,
-          "position" => @position,
-          "subscription_url" => @subscription_url,
-          "todos_url" => @todos_url,
-        }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # TodolistGroup
-    class TodolistGroup
-      include TypeHelpers
-      attr_accessor :app_url, :bubble_up_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :comments_count, :comments_url, :completed, :completed_ratio, :position, :subscription_url, :todos_url
-
-      # @return [Array<Symbol>]
-      def self.required_fields
-        %i[app_url bubble_up_url bucket created_at creator id inherits_status name parent status title type updated_at url visible_to_clients].freeze
-      end
-
-      def initialize(data = {})
-        @app_url = data["app_url"]
-        @bubble_up_url = data["bubble_up_url"]
-        @bucket = parse_type(data["bucket"], "TodoBucket")
-        @created_at = parse_datetime(data["created_at"])
-        @creator = parse_type(data["creator"], "Person")
-        @id = parse_integer(data["id"])
-        @inherits_status = parse_boolean(data["inherits_status"])
-        @name = data["name"]
-        @parent = parse_type(data["parent"], "TodoParent")
-        @status = data["status"]
-        @title = data["title"]
-        @type = data["type"]
-        @updated_at = parse_datetime(data["updated_at"])
-        @url = data["url"]
-        @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @app_todos_url = data["app_todos_url"]
-        @bookmark_url = data["bookmark_url"]
-        @comments_count = parse_integer(data["comments_count"])
-        @comments_url = data["comments_url"]
-        @completed = parse_boolean(data["completed"])
-        @completed_ratio = data["completed_ratio"]
-        @position = parse_integer(data["position"])
-        @subscription_url = data["subscription_url"]
-        @todos_url = data["todos_url"]
-      end
-
-      def to_h
-        {
-          "app_url" => @app_url,
-          "bubble_up_url" => @bubble_up_url,
-          "bucket" => @bucket,
-          "created_at" => @created_at,
-          "creator" => @creator,
-          "id" => @id,
-          "inherits_status" => @inherits_status,
-          "name" => @name,
-          "parent" => @parent,
-          "status" => @status,
-          "title" => @title,
-          "type" => @type,
-          "updated_at" => @updated_at,
-          "url" => @url,
-          "visible_to_clients" => @visible_to_clients,
-          "app_todos_url" => @app_todos_url,
-          "bookmark_url" => @bookmark_url,
-          "comments_count" => @comments_count,
-          "comments_url" => @comments_url,
-          "completed" => @completed,
-          "completed_ratio" => @completed_ratio,
           "position" => @position,
           "subscription_url" => @subscription_url,
           "todos_url" => @todos_url,

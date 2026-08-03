@@ -769,6 +769,45 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		})
 		return operationResult{err: err}
 
+	case "GetTodolistOrGroup":
+		// The polymorphic read. Since #544 there is one flat shape, so a to-do
+		// list and a group both land here and both decode into the same SDK
+		// type — this case serves both fixture bodies with no branching, which
+		// is itself part of what the fixture pins.
+		todolistID := getInt64Param(tc.PathParams, "id")
+		todolist, err := account.Todolists().Get(ctx, todolistID)
+		return operationResult{err: err, result: todolist}
+
+	case "ListTodolistGroups":
+		todolistID := getInt64Param(tc.PathParams, "todolistId")
+		var groupOpts *basecamp.TodolistGroupListOptions
+		if tc.ConfigOverrides != nil && (tc.ConfigOverrides.MaxItems > 0 || tc.ConfigOverrides.Page > 0) {
+			groupOpts = &basecamp.TodolistGroupListOptions{
+				Limit: tc.ConfigOverrides.MaxItems,
+				Page:  tc.ConfigOverrides.Page,
+			}
+		}
+		result, err := account.TodolistGroups().List(ctx, todolistID, groupOpts)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		if len(result.Groups) == 0 {
+			// Not a pass. responseBody assertions read the first decoded
+			// element, so an empty list would silently satisfy every one of
+			// them by never being compared — exactly the decode failure this
+			// fixture exists to catch.
+			return operationResult{err: fmt.Errorf("ListTodolistGroups decoded 0 groups; responseBody assertions read the first element, so there is nothing to assert against")}
+		}
+		// Dispatch convention declared by the fixture's description: the FIRST
+		// decoded element is the result the responseBody assertions read.
+		return operationResult{
+			meta: map[string]interface{}{
+				"totalCount": result.Meta.TotalCount,
+				"truncated":  result.Meta.Truncated,
+			},
+			result: result.Groups[0],
+		}
+
 	case "ReplaceTodolist":
 		todolistID := getInt64Param(tc.PathParams, "id")
 		req := &basecamp.ReplaceTodolistRequest{
