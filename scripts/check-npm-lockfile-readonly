@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+#
+# check-npm-lockfile-readonly — assert nothing `make check` runs can rewrite an
+# npm lockfile.
+#
+# `npm install` reconciles package-lock.json in place and writes the result.
+# What it writes depends on the npm version doing the writing, not on the
+# platform and not on the lockfile's contents: npm >= 11.11.0 records a `libc`
+# array on Linux-only optional dependencies, and every npm below that silently
+# drops it. Measured on the same bytes, the split is by version alone — npm
+# 11.5.1 produces the same lockfile on macOS and Linux, and so does 11.19.0;
+# they just differ from each other by 24 lines.
+#
+# The repo pins node 22 (npm 10.9.8), CI installs node 24 (npm 11.5.1 and up),
+# and Dependabot runs whatever npm is current. Those straddle 11.11.0, so any
+# routine `npm install` turns the lockfile into a file that oscillates by
+# whoever ran it last (#612).
+#
+# `npm ci` is the read-only install: it installs *from* the lockfile, never
+# writes it back, and fails loudly when the lockfile and package.json disagree —
+# which is the drift an `npm install` would have papered over.
+#
+# So: no package.json lifecycle script, no Makefile recipe, and no script under
+# scripts/ may use a lockfile-writing npm subcommand. The one deliberate writer,
+# scripts/bump-version.sh, is exempt by name below: bumping the version is
+# exactly when the lockfile is supposed to change, it is a reviewed release step,
+# and no `make check` target invokes it.
+#
+# Exits 1 listing every offending file, line, and text.
+
+set -uo pipefail
+export LC_ALL=C
+
+cd "$(dirname "$0")/.." || exit 1
+
+# npm subcommands that write package-lock.json. `npm ci` is deliberately absent.
+readonly WRITERS='npm[[:space:]]+(install|i|add|update|up|dedupe|prune)([[:space:]]|$)'
+
+# Deliberate lockfile writers, exempt by design.
+readonly ALLOWED_FILES='^scripts/bump-version\.sh$'
+
+fail=0
+
+report() {
+  printf '%s\n' "FAIL: $1:$2 runs a lockfile-writing npm command" >&2
+  printf '%s\n' "      $3" >&2
+  fail=1
+}
+
+# 1. package.json lifecycle scripts. This is where the #612 defect lived: the
+#    conformance runner's `pretest` shelled into typescript/ and ran
+#    `npm install`, so every `make check` rewrote a lockfile as a side effect.
+while IFS= read -r pkg; do
+  # Emit "<script name>\t<command>" so a violation names the script it came from.
+  # jq, not node: this gate runs in the toolchain-light spec-gates job, which
+  # sets up no node and must not depend on whatever the runner image ships.
+  while IFS=$'\t' read -r name cmd; do
+    [[ -z "$name" ]] && continue
+    if [[ "$cmd" =~ $WRITERS ]]; then
+      report "$pkg" "scripts.$name" "$cmd"
+    fi
+  done < <(jq -r '(.scripts // {}) | to_entries[]
+                  | select(.value | type == "string")
+                  | "\(.key)\t\(.value)"' "$pkg" 2>/dev/null)
+done < <(git ls-files '*package.json' ':!:**/node_modules/**')
+
+# 2. Makefile recipes. Recipe lines are the tab-indented ones; comments and
+#    variable assignments are not executed and must not trip the gate.
+while IFS=: read -r lineno text; do
+  [[ "$text" =~ ^$'\t' ]] || continue
+  stripped="${text#"${text%%[![:space:]]*}"}"
+  [[ "$stripped" == \#* ]] && continue
+  if [[ "$stripped" =~ $WRITERS ]]; then
+    report "Makefile" "$lineno" "$stripped"
+  fi
+done < <(grep -n '' Makefile)
+
+# 3. Scripts under scripts/, which is what those Makefile recipes actually run.
+#    Without this, the exemption above would be unreachable decoration and the
+#    only real lockfile writer in the tree would go unscanned.
+while IFS= read -r script; do
+  [[ "$script" =~ $ALLOWED_FILES ]] && continue
+  [[ -f "$script" ]] || continue
+  while IFS=: read -r lineno text; do
+    stripped="${text#"${text%%[![:space:]]*}"}"
+    [[ "$stripped" == \#* ]] && continue
+    if [[ "$stripped" =~ $WRITERS ]]; then
+      report "$script" "$lineno" "$stripped"
+    fi
+  done < <(grep -n '' "$script" 2>/dev/null)
+done < <(git ls-files 'scripts/*')
+
+if [[ $fail -eq 0 ]]; then
+  echo "npm lockfile read-only: no lockfile-writing npm command in package.json scripts, Makefile recipes, or scripts/."
+fi
+
+exit $fail
