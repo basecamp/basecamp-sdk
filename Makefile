@@ -245,9 +245,12 @@ sync-api-version-check:
 # SPEC §19's assertion-type table) against their machine-readable sources.
 # Only HTML-comment-marked spans are checked; spec/doc-constants.json commits
 # the per-file marker floor so deleting a marker cannot silence the gate.
+# The live run only ever proves the gate can say yes, so the self-test follows:
+# it crafts each failure mode and asserts the gate rejects it.
 doc-constants-check:
 	@echo "==> Checking documentation constants..."
 	@./scripts/check-doc-constants.sh
+	@ruby ./scripts/test-doc-constants.rb
 
 #------------------------------------------------------------------------------
 # Go SDK targets (delegates to go/Makefile)
