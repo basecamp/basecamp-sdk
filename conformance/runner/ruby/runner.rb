@@ -173,6 +173,16 @@ class OperationMapper
       @account.bookmarks.create_bookmark(recording_id: path_params["recordingId"])
     when "DeleteBookmark"
       @account.bookmarks.delete_bookmark(recording_id: path_params["recordingId"])
+    when "ListFolders"
+      @account.folders.list_folders
+    when "GetFolder"
+      @account.folders.get_folder(folder_id: path_params["folderId"])
+    when "CreateFolder"
+      @account.folders.create_folder(name: body["name"], project_ids: body["project_ids"])
+    when "UpdateFolder"
+      @account.folders.update_folder(folder_id: path_params["folderId"], name: body["name"])
+    when "DeleteFolder"
+      @account.folders.delete_folder(folder_id: path_params["folderId"])
     when "CreateTodosetTodo"
       @account.todos.create_todoset_todo(
         bucket_id: path_params["bucketId"],

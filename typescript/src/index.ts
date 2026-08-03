@@ -309,6 +309,14 @@ export {
 } from "./generated/services/bookmarks.js";
 
 export {
+  FoldersService,
+  type Folder,
+  type FolderWithProjects,
+  type CreateFolderFolderRequest,
+  type UpdateFolderFolderRequest,
+} from "./generated/services/folders.js";
+
+export {
   DraftsService,
   type Draft,
   type ListMyDraftsDraftOptions,

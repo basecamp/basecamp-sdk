@@ -41,6 +41,7 @@ export { SubscriptionsService } from "./subscriptions.js";
 export { ReportsService } from "./reports.js";
 export { SchedulesService } from "./schedules.js";
 export { SearchService } from "./search.js";
+export { FoldersService } from "./folders.js";
 export { TemplatesService } from "./templates.js";
 export { TodolistGroupsService } from "./todolist-groups.js";
 export { TodolistsService } from "./todolists.js";

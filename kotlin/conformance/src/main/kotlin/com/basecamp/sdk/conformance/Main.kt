@@ -910,6 +910,40 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "ListFolders" -> {
+            account.folders.listFolders()
+            DispatchResult()
+        }
+
+        "GetFolder" -> {
+            account.folders.getFolder(tc.pathParams.longParam("folderId"))
+            DispatchResult()
+        }
+
+        "CreateFolder" -> {
+            val rb = tc.requestBody
+            account.folders.createFolder(
+                CreateFolderBody(
+                    name = rb?.get("name")?.jsonPrimitive?.contentOrNull,
+                    projectIds = rb?.get("project_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                )
+            )
+            DispatchResult()
+        }
+
+        "UpdateFolder" -> {
+            account.folders.updateFolder(
+                tc.pathParams.longParam("folderId"),
+                UpdateFolderBody(name = tc.requestBody.stringParam("name")),
+            )
+            DispatchResult()
+        }
+
+        "DeleteFolder" -> {
+            account.folders.deleteFolder(tc.pathParams.longParam("folderId"))
+            DispatchResult()
+        }
+
         "GetTimesheetEntry" -> {
             val entryId = tc.pathParams.longParam("timesheetEntryId")
                 .let { if (it != 0L) it else tc.pathParams.longParam("entryId") }

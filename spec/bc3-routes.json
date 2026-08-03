@@ -5,12 +5,12 @@
   "source": {
     "repo": "basecamp/bc3",
     "branch": "master",
-    "revision": "d0edc1283b231c58b7c88b014df5f8d231b1f7c8",
-    "date": "2026-07-31",
+    "revision": "2c0dafba1312a8a998cc5fac3f01a4a29f542702",
+    "date": "2026-08-02",
     "extracted_from": [
       "doc/api/sections/*.md"
     ],
-    "sections_scanned": 63,
+    "sections_scanned": 64,
     "generator_sha256": "20e682227ca1962b8127691abb41343dde05155bff529123d0dd0489f5ecc378"
   },
   "routes": [
@@ -340,6 +340,17 @@
       "raw": "/recordings/2/subscription.json",
       "sections": [
         "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/stacks/:id",
+      "raw": "/stacks/2.json",
+      "sections": [
+        "folders.md"
       ],
       "evidence": [
         "bullet"
@@ -2147,6 +2158,30 @@
     },
     {
       "method": "GET",
+      "path": "/stacks",
+      "raw": "/stacks.json",
+      "sections": [
+        "folders.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/stacks/:id",
+      "raw": "/stacks/2.json",
+      "sections": [
+        "folders.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/templates",
       "raw": "/templates.json",
       "sections": [
@@ -3172,6 +3207,18 @@
     },
     {
       "method": "POST",
+      "path": "/stacks",
+      "raw": "/stacks.json",
+      "sections": [
+        "folders.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/templates",
       "raw": "/templates.json",
       "sections": [
@@ -4031,6 +4078,18 @@
       ],
       "evidence": [
         "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/stacks/:id",
+      "raw": "/stacks/2.json",
+      "sections": [
+        "folders.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
       ]
     },
     {

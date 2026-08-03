@@ -190,6 +190,20 @@ class OperationMapper:
                 return self._account.bookmarks.create_bookmark(recording_id=path_params["recordingId"])
             case "DeleteBookmark":
                 return self._account.bookmarks.delete_bookmark(recording_id=path_params["recordingId"])
+            case "ListFolders":
+                return self._account.folders.list_folders()
+            case "GetFolder":
+                return self._account.folders.get_folder(folder_id=path_params["folderId"])
+            case "CreateFolder":
+                return self._account.folders.create_folder(
+                    name=body.get("name"), project_ids=body.get("project_ids")
+                )
+            case "UpdateFolder":
+                return self._account.folders.update_folder(
+                    folder_id=path_params["folderId"], name=body["name"]
+                )
+            case "DeleteFolder":
+                return self._account.folders.delete_folder(folder_id=path_params["folderId"])
             case "UpdateTodo":
                 return self._account.todos.update(
                     todo_id=path_params["todoId"],

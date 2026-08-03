@@ -51,7 +51,19 @@
             "/components/schemas/Wormhole/properties/destination_url/type": ["string", "null"],
             "/components/schemas/Wormhole/properties/destination_url/x-go-type": "string",
             "/components/schemas/Wormhole/properties/color/type": ["string", "null"],
-            "/components/schemas/Wormhole/properties/color/x-go-type": "string"
+            "/components/schemas/Wormhole/properties/color/x-go-type": "string",
+            "/components/schemas/Folder/properties/gauges_url/type": ["string", "null"],
+            "/components/schemas/Folder/properties/gauges_url/x-go-type": "string",
+            "/components/schemas/Folder/properties/color/type": ["string", "null"],
+            "/components/schemas/Folder/properties/color/x-go-type": "string",
+            "/components/schemas/Folder/properties/image_url/type": ["string", "null"],
+            "/components/schemas/Folder/properties/image_url/x-go-type": "string",
+            "/components/schemas/FolderWithProjects/properties/gauges_url/type": ["string", "null"],
+            "/components/schemas/FolderWithProjects/properties/gauges_url/x-go-type": "string",
+            "/components/schemas/FolderWithProjects/properties/color/type": ["string", "null"],
+            "/components/schemas/FolderWithProjects/properties/color/x-go-type": "string",
+            "/components/schemas/FolderWithProjects/properties/image_url/type": ["string", "null"],
+            "/components/schemas/FolderWithProjects/properties/image_url/x-go-type": "string"
           }
         }
       }

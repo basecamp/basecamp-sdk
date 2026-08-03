@@ -608,6 +608,38 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		err := account.Bookmarks().Delete(ctx, recordingID)
 		return operationResult{err: err}
 
+	case "ListFolders":
+		_, err := account.Folders().List(ctx)
+		return operationResult{err: err}
+
+	case "GetFolder":
+		folderID := getInt64Param(tc.PathParams, "folderId")
+		_, err := account.Folders().Get(ctx, folderID)
+		return operationResult{err: err}
+
+	case "CreateFolder":
+		req := basecamp.CreateFolderRequest{Name: getStringParam(tc.RequestBody, "name")}
+		if ids, ok := tc.RequestBody["project_ids"].([]any); ok {
+			req.ProjectIDs = make([]int64, 0, len(ids))
+			for _, id := range ids {
+				if n, ok := id.(float64); ok {
+					req.ProjectIDs = append(req.ProjectIDs, int64(n))
+				}
+			}
+		}
+		_, err := account.Folders().Create(ctx, req)
+		return operationResult{err: err}
+
+	case "UpdateFolder":
+		folderID := getInt64Param(tc.PathParams, "folderId")
+		_, err := account.Folders().Update(ctx, folderID, getStringParam(tc.RequestBody, "name"))
+		return operationResult{err: err}
+
+	case "DeleteFolder":
+		folderID := getInt64Param(tc.PathParams, "folderId")
+		err := account.Folders().Delete(ctx, folderID)
+		return operationResult{err: err}
+
 	case "UpdateTodo":
 		todoID := getInt64Param(tc.PathParams, "todoId")
 		req := &basecamp.UpdateTodoRequest{

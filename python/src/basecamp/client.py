@@ -381,6 +381,12 @@ class AccountClient:
         return self._service("bookmarks", lambda: BookmarksService(self))
 
     @property
+    def folders(self):
+        from basecamp.generated.services.folders import FoldersService
+
+        return self._service("folders", lambda: FoldersService(self))
+
+    @property
     def drafts(self):
         from basecamp.generated.services.drafts import DraftsService
 
