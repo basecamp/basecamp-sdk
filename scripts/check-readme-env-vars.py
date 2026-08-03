@@ -467,7 +467,17 @@ def condition_paren(text: str, close: int, flags: dict) -> bool:
     word_end = k + 1
     while k >= 0 and (text[k].isalnum() or text[k] == "_"):
         k -= 1
-    return text[k + 1 : word_end] in CONDITION_KEYWORDS
+    if text[k + 1 : word_end] not in CONDITION_KEYWORDS:
+        return False
+    # ...but only as a statement head. `obj.if(ready) / x / 2` is a call on a
+    # property that merely spells a keyword -- legal since ES5 -- and what
+    # follows it is still an expression, so the slash there is division.
+    # Without this the mask would run to the next slash and eat the read
+    # between them, which is the fail-open direction this whole rule is
+    # supposed to be avoiding.
+    while k >= 0 and text[k] in " \t":
+        k -= 1
+    return k < 0 or text[k] != "."
 
 
 def operand_position(text: str, i: int, flags: dict) -> bool:

@@ -1337,6 +1337,19 @@ def main() -> int:
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_REAL"])
 
+        # ...and the keyword has to be a statement head, not a property that
+        # merely spells one. `obj.if(...)` is a legal call, so what follows it
+        # is an expression and the slash is division.
+        root = tmp / "ts-property-named-if"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts":
+                "const n = obj.if(ready) / process.env.BASECAMP_REAL / 2;\n",
+        })
+        check("a property spelled like a keyword is not a condition",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
         # Ruby has statement modifiers, so `if (x) / 2` really is division
         # inside a trailing condition. The rule above is therefore TypeScript's
         # alone -- applying it here would mask the read in that condition.
