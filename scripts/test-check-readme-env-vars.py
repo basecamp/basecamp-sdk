@@ -74,30 +74,11 @@ def check(name: str, actual, expected) -> None:
         FAILURES.append(name)
 
 
-PY_SDK = {
-    "Python": {
-        "readme": "python/README.md",
-        "source": "python/src",
-        "suffixes": (".py",),
-        "patterns": gate.SDKS["Python"]["patterns"],
-    }
-}
-RB_SDK = {
-    "Ruby": {
-        "readme": "ruby/README.md",
-        "source": "ruby/lib",
-        "suffixes": (".rb",),
-        "patterns": gate.SDKS["Ruby"]["patterns"],
-    }
-}
-TS_SDK = {
-    "TypeScript": {
-        "readme": "typescript/README.md",
-        "source": "typescript/src",
-        "suffixes": (".ts",),
-        "patterns": gate.SDKS["TypeScript"]["patterns"],
-    }
-}
+# Reuse the real per-SDK specs verbatim, so the fixtures exercise the patterns
+# and comment style that actually ship rather than a copy that can drift.
+PY_SDK = {"Python": gate.SDKS["Python"]}
+RB_SDK = {"Ruby": gate.SDKS["Ruby"]}
+TS_SDK = {"TypeScript": gate.SDKS["TypeScript"]}
 
 TABLE = "| Variable | Description |\n|---|---|\n| `{var}` | thing |\n"
 
@@ -165,13 +146,74 @@ def main() -> int:
         check("commented-out read does not satisfy the table",
               run_gate(root, PY_SDK), ["forward:Python:BASECAMP_COMMENTED"])
 
+        # A whole JSDoc block, delimiters included — this is the shape that
+        # actually ships in typescript/src, and every BASECAMP_* there is inside
+        # one. A bare " * ..." fragment with no opening /* is not valid source
+        # and must not be what the fixture asserts on.
         root = tmp / "comments-ts"
         build(root, {
             "typescript/README.md": "no tables\n",
-            "typescript/src/c.ts": " *   accessToken: process.env.BASECAMP_TOKEN!,\n",
+            "typescript/src/c.ts": (
+                "/**\n * const client = createBasecampClient({\n"
+                " *   accessToken: process.env.BASECAMP_TOKEN!,\n * });\n */\n"
+                "export const x = 1;\n"
+            ),
         })
         check("jsdoc example is not a read (no-env claim survives)",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # 5b. Interior lines of an unstarred block comment begin with ordinary
+        #     code characters, so a line-prefix test would count them.
+        root = tmp / "blockcomment"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts": "/*\nprocess.env.BASECAMP_DOC\n*/\n",
+        })
+        check("unstarred block comment is not a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        root = tmp / "docstring"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_DOCSTR"),
+            "python/src/c.py": 'def f():\n    """Example: os.environ.get("BASECAMP_DOCSTR")"""\n    return 1\n',
+        })
+        check("python docstring example is not a read",
+              run_gate(root, PY_SDK), ["forward:Python:BASECAMP_DOCSTR"])
+
+        # 5c. A `#` inside a string literal does not start a comment, so a read
+        #     later on the same line must still be seen.
+        root = tmp / "hashinstring"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_AFTERHASH"),
+            "python/src/c.py": 'u = "http://h/#frag"\nv = os.environ.get("BASECAMP_AFTERHASH")\n',
+        })
+        check("hash inside a string does not hide a later read",
+              run_gate(root, PY_SDK), [])
+
+        # 5d. Reads split across lines. A per-line scan misses these entirely,
+        #     which fails open on the reverse and no-env checks.
+        root = tmp / "multiline-py"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_MULTI"),
+            "python/src/c.py": 'v = os.getenv(\n    "BASECAMP_MULTI"\n)\n',
+        })
+        check("multiline python read is seen", run_gate(root, PY_SDK), [])
+
+        root = tmp / "multiline-rb"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_MULTI"),
+            "ruby/lib/c.rb": 'v = ENV.fetch(\n  "BASECAMP_MULTI", nil\n)\n',
+        })
+        check("multiline ruby read is seen", run_gate(root, RB_SDK), [])
+
+        root = tmp / "multiline-ts"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_MULTI\n",
+            "typescript/src/c.ts": 'const v = process.env[\n  "BASECAMP_MULTI"\n];\n',
+        })
+        check("multiline typescript read breaks the no-env claim",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_MULTI"])
 
         # 6. The no-env claim breaks on a real read.
         root = tmp / "noenv"

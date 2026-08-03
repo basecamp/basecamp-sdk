@@ -41,11 +41,11 @@ The one-line rule: **a redirect URI you control → authorization code; no brows
 - **Device flow** — nothing to register. It runs as the pre-registered public `basecamp-cli` client, which sends no secret, against the device endpoint that discovery returns. Launchpad advertises no device endpoint, so a client you register there is not the one this flow uses.
 - **Static token** — nothing to register; you already hold the token.
 
-`StaticTokenProvider` hands back the string you gave it and nothing more — it never refreshes, so once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to an OAuth provider before you ship.
+`StaticTokenProvider` hands back the string you gave it and nothing more — it never refreshes, so once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to a refreshing path before you ship — `OauthTokenProvider` for an authorization-code token from Launchpad, or, for a device-flow token, `Basecamp::Oauth.refresh_token` echoing the stored `resource`. Do not hand a device-flow token to `OauthTokenProvider`: it refreshes only against Launchpad and sends no `resource`, so it fails at the first expiry.
 
 ## Finding your account ID
 
-Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* client because the endpoint lives on Launchpad, not on the Basecamp API, and so takes no account context:
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* client because it takes no account context. Unlike the other SDKs, Ruby does not hardcode Launchpad here: `Http#get_authorization_document` runs resource-first discovery (SPEC.md §16) against your configured base URL and fetches `/authorization.json` from the *selected* issuer, reaching Launchpad only on a soft fallback. Point egress rules and HTTP stubs at the issuer discovery selects, not at Launchpad; a hard selection failure raises `Basecamp::Oauth::DiscoverySelectionError` before any credentialed request goes out.
 
 ```ruby
 client = Basecamp.client(access_token: ENV["BASECAMP_TOKEN"])

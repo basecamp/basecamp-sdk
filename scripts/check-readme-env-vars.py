@@ -21,9 +21,14 @@ This checks four invariants:
 "Genuinely reads" means an env-read call site in non-test source, not a bare
 mention. That distinction is the whole point: every `process.env.BASECAMP_*`
 in typescript/src and every `ENV["BASECAMP_CLIENT_ID"]` in ruby/lib sits inside
-a doc comment, so a substring search would happily bless a phantom row. Lines
-whose first non-whitespace characters open a comment (`#`, `//`, `*`, `/*`) are
-excluded for exactly that reason.
+a doc comment, so a substring search would happily bless a phantom row.
+
+Comments are therefore removed before matching, by a scanner rather than a
+line-prefix test — inside an unstarred `/* ... */` the interior lines begin with
+ordinary code characters — and the stripped text is matched whole rather than
+line by line, so a call split across lines is still seen. Both directions of
+that matter: counting a doc example as a read lets a phantom table row pass,
+and missing a real read lets an undocumented variable pass.
 """
 
 from __future__ import annotations
@@ -51,6 +56,7 @@ SDKS = {
     "Go": {
         "readme": "go/README.md",
         "source": "go/pkg",
+        "comments": "slash",
         "suffixes": (".go",),
         "patterns": [
             rf"os\.Getenv\(\s*{GO_Q}{NAME}{ENDQ}",
@@ -60,6 +66,7 @@ SDKS = {
     "Ruby": {
         "readme": "ruby/README.md",
         "source": "ruby/lib",
+        "comments": "hash",
         "suffixes": (".rb",),
         "patterns": [
             rf"ENV\[\s*{Q}{NAME}{ENDQ}",
@@ -69,6 +76,7 @@ SDKS = {
     "Python": {
         "readme": "python/README.md",
         "source": "python/src",
+        "comments": "hash",
         "suffixes": (".py",),
         "patterns": [
             rf"os\.environ\.get\(\s*{Q}{NAME}{ENDQ}",
@@ -79,6 +87,7 @@ SDKS = {
     "TypeScript": {
         "readme": "typescript/README.md",
         "source": "typescript/src",
+        "comments": "slash",
         "suffixes": (".ts",),
         "patterns": [
             rf"process\.env\.{NAME}",
@@ -88,6 +97,7 @@ SDKS = {
     "Swift": {
         "readme": "swift/README.md",
         "source": "swift/Sources",
+        "comments": "slash",
         "suffixes": (".swift",),
         "patterns": [rf"ProcessInfo\.processInfo\.environment\[\s*{DQ}{NAME}{ENDQ}"],
     },
@@ -97,6 +107,7 @@ SDKS = {
     "Kotlin": {
         "readme": "kotlin/README.md",
         "source": "kotlin/sdk/src",
+        "comments": "slash",
         "suffixes": (".kt",),
         "patterns": [rf"System\.getenv\(\s*{DQ}{NAME}{ENDQ}"],
     },
@@ -110,8 +121,90 @@ NO_ENV_SDKS = ("TypeScript", "Swift", "Kotlin")
 # Only variables in these families are in scope; the SDKs read no others.
 VAR_RE = re.compile(r"\b((?:BASECAMP|XDG)_[A-Z0-9_]+)\b")
 
-COMMENT_STARTS = ("#", "//", "*", "/*")
 FILENAME_TEST_MARKERS = ("_test.", "test_", ".test.", "_spec.")
+
+# Quote characters that open a string literal, per comment style. String bodies
+# are kept — the variable name lives inside one — but they are skipped over so a
+# `#` or `//` inside a string is not mistaken for the start of a comment.
+STRING_QUOTES = {"hash": "\"'", "slash": "\"'`"}
+
+
+def strip_noncode(text: str, style: str) -> str:
+    """Blank comments and doc-only string blocks, preserving every offset.
+
+    Removed characters become spaces and newlines are kept, so match offsets
+    still map to the right line of the original file.
+
+    A line-prefix test is not enough: in an unstarred block comment the interior
+    lines start with ordinary code characters, so `/*\\nprocess.env.FOO\\n*/`
+    would otherwise count as a real read.
+    """
+    out = list(text)
+    n = len(text)
+    quotes = STRING_QUOTES[style]
+    i = 0
+
+    def blank(start: int, end: int) -> None:
+        for k in range(start, min(end, n)):
+            if out[k] != "\n":
+                out[k] = " "
+
+    while i < n:
+        # Python/Ruby docstrings: string literals, but used as documentation, so
+        # an example inside one is not a read.
+        if style == "hash" and text[i : i + 3] in ('"""', "'''"):
+            quote = text[i : i + 3]
+            end = text.find(quote, i + 3)
+            end = n if end == -1 else end + 3
+            blank(i, end)
+            i = end
+            continue
+        if text[i] in quotes:
+            quote = text[i]
+            j = i + 1
+            while j < n:
+                if text[j] == "\\":
+                    j += 2
+                    continue
+                if text[j] == quote:
+                    j += 1
+                    break
+                # An unterminated single-line literal ends at the newline; Go and
+                # TypeScript backtick literals legitimately span lines.
+                if text[j] == "\n" and quote != "`":
+                    break
+                j += 1
+            i = j
+            continue
+        if style == "slash" and text.startswith("//", i):
+            end = text.find("\n", i)
+            blank(i, n if end == -1 else end)
+            i = n if end == -1 else end
+            continue
+        if style == "slash" and text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            end = n if end == -1 else end + 2
+            blank(i, end)
+            i = end
+            continue
+        if style == "hash" and text[i] == "#":
+            end = text.find("\n", i)
+            blank(i, n if end == -1 else end)
+            i = n if end == -1 else end
+            continue
+        # Ruby block comment: =begin/=end, each at column 0.
+        if style == "hash" and text.startswith("=begin", i) and (i == 0 or text[i - 1] == "\n"):
+            end = text.find("\n=end", i)
+            if end == -1:
+                end = n
+            else:
+                nl = text.find("\n", end + 1)
+                end = n if nl == -1 else nl
+            blank(i, end)
+            i = end
+            continue
+        i += 1
+    return "".join(out)
 
 
 def is_test(rel_path: Path) -> bool:
@@ -147,16 +240,19 @@ def real_reads(spec: dict) -> dict[str, list[str]]:
         rel = path.relative_to(REPO)
         if is_test(rel):
             continue
-        for lineno, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
-            if line.lstrip().startswith(COMMENT_STARTS):
-                continue  # a doc-comment example is not a read
-            for pattern in compiled:
-                # finditer + the named group, not findall: these patterns carry a
-                # quote group too, and findall would hand back tuples.
-                for match in pattern.finditer(line):
-                    name = match.group("name")
-                    if VAR_RE.fullmatch(name):
-                        found.setdefault(name, []).append(f"{rel}:{lineno}")
+        # Scan the comment-stripped file whole rather than line by line: the
+        # patterns allow whitespace after the opening paren/bracket, so a call
+        # split across lines — os.getenv(\n    "BASECAMP_FOO") — is still a read,
+        # and a per-line scan would silently miss it.
+        text = strip_noncode(path.read_text(encoding="utf-8", errors="replace"), spec["comments"])
+        for pattern in compiled:
+            # finditer + the named group, not findall: these patterns carry a
+            # quote group too, and findall would hand back tuples.
+            for match in pattern.finditer(text):
+                name = match.group("name")
+                if VAR_RE.fullmatch(name):
+                    lineno = text.count("\n", 0, match.start()) + 1
+                    found.setdefault(name, []).append(f"{rel}:{lineno}")
     return found
 
 

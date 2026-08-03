@@ -57,7 +57,7 @@ The one-line rule: **a redirect URI you control → authorization code; no brows
 - **Device flow** — nothing to register. It runs as the pre-registered public `basecamp-cli` client, which sends no secret, against the device endpoint that discovery returns. Launchpad advertises no device endpoint, so a client you register there is not the one this flow uses.
 - **Static token** — nothing to register; you already hold the token.
 
-`Client(access_token=...)` wraps the string in a `StaticTokenProvider`, which never refreshes — once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to `OAuthTokenProvider` before you ship.
+`Client(access_token=...)` wraps the string in a `StaticTokenProvider`, which never refreshes — once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to a refreshing path before you ship — `OAuthTokenProvider` for an authorization-code token from Launchpad, or, for a device-flow token, `basecamp.oauth.exchange.refresh_token` echoing the stored `resource`. Do not hand a device-flow token to `OAuthTokenProvider`: it refreshes only against Launchpad and sends no `resource`, so it fails at the first expiry.
 
 ## Finding your account ID
 
