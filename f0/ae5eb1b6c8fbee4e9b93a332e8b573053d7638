@@ -1,5 +1,7 @@
 spec/api-gaps/README.md
   s_ae792ed0be3006::t_81cd3eee13c70a 102
+  s_ae792ed0be3006::t_ebc9f7e639f8bd 96-101,103
+  s_ae792ed0be3006::t_8316c6f39b13be 121-122
 scripts/check-doc-constants.sh
   s_ae792ed0be3006::t_eff908aa249d6e 1-13
 AGENTS.md
@@ -29,6 +31,8 @@ scripts/sync-api-version.sh
 .github/workflows/test.yml
   s_ae792ed0be3006::t_4fcdb283452751 114-119
   s_ae792ed0be3006::t_eaddf56e85314e 113
+COORDINATION.md
+  s_ae792ed0be3006::t_a9a7feb476c3d2 12-18
 ---
 {
   "schema_version": "authorship/3.0.0",
