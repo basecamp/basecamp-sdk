@@ -2240,8 +2240,8 @@ typed error element is emitted), `Closed` (absorbing; no error element).
 | 3 | Minting | Connecting | ticket minted; dial the mint's `url` verbatim |
 | 4 | Minting | Backoff | mint transient/throttled, or an unauthorized mint (401/403) below the shared-counter threshold (Retry-After honored as the floor of the next delay) |
 | 5 | Minting | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (shared counter across unauthorized mints, `unauthorized` disconnects, and unauthorized polls; resets only on a successful poll page) |
-| 6 | Connecting | AwaitingWelcome | dial ok; frame pump started; `handshake-deadline` armed (10s) |
-| 7 | Connecting | Backoff | dial failed |
+| 6 | Connecting | AwaitingWelcome | dial ok; frame pump started (`handshake-deadline` was armed on entry to Connecting, before `dial` — a stalled dial expires it) |
+| 7 | Connecting | Backoff | dial failed, or `handshake-deadline` expired mid-dial (the pending dial is cancelled). A dial refused by cable-URL policy is NOT this edge — it is Terminal(`invalid_cable_url`), below the table |
 | 8 | AwaitingWelcome | AwaitingConfirmation | `welcome` → send subscribe; re-arm as `confirmation-deadline` (10s) |
 | 9 | AwaitingWelcome | Backoff | socket error/close, staleness expiry, or handshake deadline lapsed (full teardown first) |
 | 10 | AwaitingWelcome | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (reason-string dispatch on the literal `unauthorized`; shared counter with unauthorized mints) |
@@ -2267,7 +2267,7 @@ Semantic-signal dispositions are an **overlay** on this table, not additional nu
 rows: a `FeedGap` signal arises at transition 17; a `BufferOverflow` signal arises whenever
 the live buffer drops events (any buffer-holding state) and is dispatched synchronously
 before the next Save; a Terminate disposition — or an absent handler — lands in the
-corresponding Terminal state from wherever the signal was dispatched. Six further edges
+corresponding Terminal state from wherever the signal was dispatched. Seven further edges
 sit outside the 26 numbered rows for the same reason: the Terminal(`checkpoint_load`) edge
 (fires on the first iteration, before the first mint — zero wire attempts); the
 Terminal(`usage`) edge (a re-consumed iterator); the Terminal(`invalid_continuation`) edge
@@ -2276,7 +2276,9 @@ Terminal(`usage`) edge (a re-consumed iterator); the Terminal(`invalid_continuat
 pass through it; zero requests to the failing URL); the Terminal(`poll_failed`) edge (an
 `unrecoverable`-kind poll error — Seam Contracts below — from any polling state, carrying
 the generated error); the Terminal(`mint_failed`) edge (an `unrecoverable`-kind mint
-error, from Minting, carrying the generated error); and the poll transient/throttle
+error, from Minting, carrying the generated error); the Terminal(`invalid_cable_url`)
+edge (a policy-refused dial, from Connecting — recurring by construction, so never the
+Backoff path); and the poll transient/throttle
 **self-loop** inside CatchingUp (the `poll-retry` timer — a wait, not a state change).
 An `unauthorized`-kind poll error rides the reconnect cycle — full teardown → Backoff with
 a shared-counter increment (the fresh mint/token cycle is its recovery path) — and the
@@ -2338,7 +2340,7 @@ Per-state invariants (asserted by the tier-2 harness as exact sets):
 | Idle | none | {} | no | no |
 | Backoff | closed | {`backoff`} | no | no |
 | Minting | none | {} | no | no |
-| Connecting | opening | {} | no | no |
+| Connecting | opening | {`handshake-deadline`} | no | no |
 | AwaitingWelcome | open | {`handshake-deadline`, `staleness`} | no | no |
 | AwaitingConfirmation | open | {`confirmation-deadline`, `staleness`} | **no** | no |
 | CatchingUp | open | {`staleness`} (+ `poll-retry` while a poll wait is pending) | poll pages only | after each page's delivery (held on present-class entry) |
@@ -2387,6 +2389,12 @@ Two dispatch clarifications, pinned:
   "socket error/close" failure edge (9/15/21/25), whatever its `reconnect` flag says — and
   never increments the authorization counter; only the literal `unauthorized` does.
   Unknown reasons must not be guessed into either terminal class.
+- **The protocol-fatal disconnect is terminal from EVERY socket-open state.** The
+  inventory numbers it where the connector is actively commanding (rows 13 and 26); a
+  raw `invalid_event_stream_command` frame read in AwaitingWelcome, CatchingUp, or
+  Draining — the pump runs throughout — is the same reason-level dispatch applied
+  state-generically: Terminal(`protocol_fatal`), never Backoff. An explicitly
+  non-retryable protocol rejection must not reconnect from any state.
 
 ### Cable Protocol Details `[conformance]`
 
@@ -2550,7 +2558,7 @@ Terminal reasons end iteration with exactly one typed error element:
 | `subscription_rejected` | `reject_subscription` — always terminal, first attempt or reconnect; zero reconnect attempts |
 | `protocol_fatal` | raw disconnect `reason=invalid_event_stream_command` |
 | `filter_invalid` | 400-filter from a poll; the server's message naming the offending list is preserved |
-| `authorization_failed` | 3rd consecutive connection-level authorization failure (unauthorized mint or `unauthorized` disconnect) |
+| `authorization_failed` | 3rd consecutive connection-level authorization failure on the shared counter (unauthorized mint, `unauthorized` disconnect, or unauthorized poll) |
 | `checkpoint_load` | `CheckpointStore.load` failed at start |
 | `usage` | re-consumed iterator (the only `usage` condition that surfaces as an iteration element — construction-time validation failures raise language-native construction errors carrying the same code) |
 | `buffer_overflow` | live-buffer overflow with no registered handler, or a handler returning Terminate |
@@ -2558,6 +2566,7 @@ Terminal reasons end iteration with exactly one typed error element:
 | `invalid_continuation` | a `next` or 410 `resume` URL failed same-origin/downgrade validation (Continuation and Resume URL Validation below); no request is issued to it |
 | `poll_failed` | an `unrecoverable`-kind poll error — a generated-operation outcome outside the feed's 400/409/410 matrix and the retryable classes (e.g. 404, 405, an unexpected shape) — passed through with the generated error attached |
 | `mint_failed` | an `unrecoverable`-kind mint error — a non-retryable `CreateStreamTicket` outcome other than 401/403 (e.g. 404, 422, a malformed success) — passed through with the generated error attached |
+| `invalid_cable_url` | the mint's `url` violates cable-URL policy (non-`wss://` outside localhost, a redirect on dial, unparseable) — recurring by construction on every re-mint, so it is surfaced, never retried into |
 
 `auth_revoked` is deliberately **reserved, not used**: the wire carries no distinct
 revocation signal — revocation is one possible cause of repeated unauthorized failures, and
@@ -2628,6 +2637,8 @@ INTERFACE CableTransport
   -- Dials exactly one connection per call. MUST NOT auto-reconnect. MUST NOT interpret,
   -- filter, or swallow application text frames. Negotiates subprotocol
   -- "actioncable-v1-json". Refuses redirects (§23 Security Invariants).
+  -- MUST be cancellable: the connector cancels a pending dial on handshake-deadline
+  -- expiry and on close() — a dial that cannot be interrupted violates this contract.
 END
 
 INTERFACE CableConn
@@ -2709,7 +2720,7 @@ sleep may bypass it. There are exactly six timer kinds, kebab-case:
 
 | Kind | Armed | Duration |
 |---|---|---|
-| `handshake-deadline` | on dial success (transition 6) | `EVENT_FEED_HANDSHAKE_DEADLINE` (10s) |
+| `handshake-deadline` | on entry to Connecting, BEFORE `dial` is invoked — it spans dial-to-`welcome`, so a stalled TCP connect or HTTP upgrade cannot hang the connector | `EVENT_FEED_HANDSHAKE_DEADLINE` (10s) |
 | `confirmation-deadline` | on `welcome` → subscribe (transition 8) | `EVENT_FEED_CONFIRMATION_DEADLINE` (10s default, configurable) |
 | `backoff` | on entry to Backoff | full-jitter: `uniform(0, min(60s, 1s × 2^(n−1)))` for failed-cycle count n; Retry-After floors it, and wins outright when it exceeds the cap (server-directed waits are exempt, §7) |
 | `staleness` | at socket open; re-armed per inbound frame of any kind | 7500ms |
@@ -2723,6 +2734,13 @@ term at `MAX_BACKOFF_DELAY_MS` = 30s and adds jitter on top; this one draws unif
 governs attempts inside a seam call; this governs cycles between them. The same 60s cap
 bounds `poll-retry`'s locally computed jitter draw; a server-directed `Retry-After` is
 exempt from both caps, per §7.
+
+**Saturate before exponentiating** — §7's overflow rule applies to both formulas: an
+implementation MUST compare the failure index (n or k) against the cap-crossing exponent
+before evaluating `2^(n−1)`/`2^(k−1)` (for base 1s and cap 60s, any index above 7 already
+saturates the range at 60s). Evaluating the power first overflows fixed-width integers
+after a long genuine outage (~64 consecutive failures), producing exactly the tight-loop
+or crash failure §7's saturation rules exist to prevent.
 
 **Virtual-advance algorithm (normative).** Every language's test clock must honor the same
 semantics, so a tier-2 script means the same thing everywhere: *advancing virtual time
