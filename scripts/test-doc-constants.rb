@@ -291,6 +291,17 @@ out, status = gate lambda { |f|
 expect_fail(failures, "granted file grows an extra citation", out, status,
             "grants 1 unmarked citation(s) of the current pin, found 2 (lines 3, 5)")
 
+# Claims are counted, not lines. A second claim appended to a line that already
+# carries one must not hide behind the first — with a first-match-only scan the
+# count still read 1 here and the new claim sailed through.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] =
+    "# An entry\n\nSDK #528 repinned to `#{SHORT}`, and the provenance pin is `#{SHORT}`.\n"
+  grant.call(f, "count" => 1, "reason" => "as-of fact about SDK #528")
+}
+expect_fail(failures, "two citations on one line both count", out, status,
+            "grants 1 unmarked citation(s) of the current pin, found 2 (line 3 (x2))")
+
 # An entry that no longer describes anything is a standing permission nobody
 # reviewed — it would silently cover the next unmarked restatement in the file.
 out, status = gate ->(f) { grant.call(f, "count" => 1, "reason" => "stale grant") }

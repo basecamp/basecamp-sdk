@@ -328,8 +328,25 @@ end
 #
 # Scanning the raw line subsumes both. A marked span's line never reaches here
 # (scan_file drops it from prose), and neither does anything fenced.
-def cites_current_pin?(line, revision)
-  line[/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/]
+#
+# It returns EVERY occurrence, not the first. The count that bounds a grant is
+# a count of claims, and claims are not one per line: append "…, which is the
+# provenance pin `X`" to a line that already ends a range at `X` and the line
+# now makes two, while a first-match-only scan would still report one and keep
+# the grant satisfied.
+def current_pin_citations(line, revision)
+  line.scan(/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/)
+end
+
+# "lines 103, 107" normally; "line 103 (x2)" when one line carries two claims,
+# because a bare repeated line number reads as a bug in the message rather than
+# the thing it is reporting.
+def citation_locations(hits)
+  tallied = hits.map(&:first).tally
+  label = tallied.length == 1 ? "line" : "lines"
+  listed = tallied.map { |line_no, n| n > 1 ? "#{line_no} (x#{n})" : line_no.to_s }
+
+  "#{label} #{listed.join(', ')}"
 end
 
 # A grant is bounded by a COUNT, for the same reason markerFloors became
@@ -341,29 +358,28 @@ end
 # count says "this file carries exactly N as-of citations of today's pin, all
 # reviewed"; the N+1th fails until someone looks at it and re-states the number.
 def check_unmarked_pin(file, prose, revision, allowed)
-  hits = prose.filter_map do |line_no, line|
-    hit = cites_current_pin?(line, revision)
-    hit && [line_no, hit]
+  hits = prose.flat_map do |line_no, line|
+    current_pin_citations(line, revision).map { |hit| [line_no, hit] }
   end
 
   grant = allowed[file]
 
   if grant.nil?
-    hits.map do |line_no, hit|
+    hits.map { |line_no, hit|
       "#{file}:#{line_no}: `#{hit}` is the current provenance pin, restated outside a " \
         "@bc3-pin span. Either mark the line <!-- @bc3-pin --> (and name the sync date) so " \
         "`make sync-api-version` keeps it current, or bind the SHA to what makes it permanently " \
         "true — the PR that shipped it, the verification it backs — and record the file in " \
         "spec/doc-constants.json .unmarkedPinCitations with that reason and a count."
-    end
+    }.uniq
   elsif hits.length == grant["count"]
     []
   elsif hits.length > grant["count"]
     ["#{file}: spec/doc-constants.json grants #{grant['count']} unmarked citation(s) of the " \
-     "current pin, found #{hits.length} (lines #{hits.map(&:first).join(', ')}). The grant " \
-     "covers reviewed as-of facts, not whatever the file grows next — read the new one, " \
-     "confirm it binds the SHA to a fixed observation rather than claiming today's pin, and " \
-     "raise the count in the same commit."]
+     "current pin, found #{hits.length} (#{citation_locations(hits)}). The grant covers " \
+     "reviewed as-of facts, not whatever the file grows next — read the new one, confirm it " \
+     "binds the SHA to a fixed observation rather than claiming today's pin, and raise the " \
+     "count in the same commit."]
   else
     # Fewer than granted: the entry has outlived what it described. Left alone
     # it is a standing permission nobody reviewed, pre-authorising the next
