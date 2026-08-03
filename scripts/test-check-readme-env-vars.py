@@ -1691,6 +1691,38 @@ def main() -> int:
         check("a short fence does not close a longer one",
               run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_LONG"])
 
+        # A closing fence carries nothing but its run and trailing spaces, so a
+        # ```-prefixed word inside a block is code rather than its end.
+        root = tmp / "fence-info-string"
+        build(root, {
+            "python/README.md":
+                "intro\n\n```\n```not-a-close\n# The SDK uses BASECAMP_INFO\n```\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_INFO")\n',
+        })
+        check("an info-string line does not close a fence",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_INFO"])
+
+        # Swift wraps long member chains across lines, and the dots stay dots.
+        root = tmp / "swift-wrapped-chain"
+        build(root, {
+            "swift/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "swift/Sources/c.swift":
+                'let t = ProcessInfo\n  .processInfo\n  .environment["BASECAMP_REAL"]\n',
+        })
+        check("a wrapped swift environment chain is a read",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)),
+              ["noenv:Swift:BASECAMP_REAL"])
+
+        # `import os as X` rebinds the module, moving every qualified spelling.
+        root = tmp / "py-module-alias"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_MODALIAS"),
+            "python/src/c.py":
+                'import os as operating_system\n\n'
+                'v = operating_system.getenv("BASECAMP_MODALIAS")\n',
+        })
+        check("an aliased os module still binds", run_gate(root, PY_SDK), [])
+
         # A parenthesised import runs over as many lines as it likes, and a
         # backslash continues one. Both are ordinary Python.
         root = tmp / "py-paren-import"

@@ -82,6 +82,9 @@ ENDQ = r"(?P=q)"
 # group, so it can be embedded in patterns that already bind `q`.
 TS_ENV = r"process(?:\??\.env\b|(?:\?\.)?\[\s*[\"']env[\"']\s*\])"
 
+# Same idea for Swift, whose chain is three members long and may be wrapped.
+SWIFT_ENV = r"ProcessInfo\s*\.\s*processInfo\s*\.\s*environment"
+
 # Where each SDK's shipping source lives, and how that language reads an env var.
 SDKS = {
     "Go": {
@@ -158,7 +161,9 @@ SDKS = {
         # `#*` around the quotes: a raw string is a valid dictionary key, so
         # environment[#"BASECAMP_TOKEN"#] is a real read that a bare-quote
         # pattern reports as nonexistent.
-        "patterns": [rf"ProcessInfo\.processInfo\.environment\[\s*#*{DQ}{NAME}{ENDQ}#*"],
+        # Swift formats long member chains across lines, and the dots stay
+        # dots. An exact-token pattern reported those reads as nonexistent.
+        "patterns": [rf"{SWIFT_ENV}\[\s*#*{DQ}{NAME}{ENDQ}#*"],
     },
     # kotlin/sdk/src, not just commonMain: jvmMain ships in the same artifact, so
     # scoping to commonMain would let a platform-specific read bypass this gate.
@@ -190,6 +195,11 @@ SDKS = {
 # nothing, and made every read through that import invisible.
 PY_FROM_OS_RE = re.compile(
     r"^[ \t]*from[ \t]+os[ \t]+import[ \t]*(\([^)]*\)|(?:[^\n#\\]|\\\n)+)", re.M)
+# `import os as operating_system` rebinds the module itself, so the qualified
+# patterns -- which spell the literal `os.` -- stop seeing every read through
+# it. Plain `import os` needs nothing here: those call sites are what the
+# static patterns already match, and emitting for it too would count them twice.
+PY_IMPORT_OS_RE = re.compile(r"^[ \t]*import[ \t]+os[ \t]+as[ \t]+(\w+)", re.M)
 
 
 def python_os_aliases(text: str) -> dict[str, str]:
@@ -229,6 +239,13 @@ def python_dynamic_patterns(text: str) -> list[str]:
         else:
             patterns.append(rf"(?<![.\w]){name}\.get\(\s*{Q}{NAME}{ENDQ}")
             patterns.append(rf"(?<![.\w]){name}\[\s*{Q}{NAME}{ENDQ}")
+    # ...and the module itself may be rebound, which moves every qualified
+    # spelling at once rather than one name at a time.
+    for match in PY_IMPORT_OS_RE.finditer(text):
+        module = re.escape(match.group(1))
+        patterns.append(rf"(?<![.\w]){module}\.getenv\(\s*{Q}{NAME}{ENDQ}")
+        patterns.append(rf"(?<![.\w]){module}\.environ\.get\(\s*{Q}{NAME}{ENDQ}")
+        patterns.append(rf"(?<![.\w]){module}\.environ\[\s*{Q}{NAME}{ENDQ}")
     return patterns
 
 
@@ -1299,7 +1316,7 @@ ENV_API = {
     # need name binding, but for this invariant it does not have to be
     # resolved -- destructuring `env` off `process` is itself the touch.
     "TypeScript": [TS_ENV, r"[{,]\s*env\b(?=[^{}]*\}\s*=\s*process\b)"],
-    "Swift": [r"ProcessInfo\.processInfo\.environment\b"],
+    "Swift": [SWIFT_ENV + r"\b"],
     "Kotlin": [r"System\.getenv\b"],
 }
 
@@ -1380,10 +1397,14 @@ def prose_lines(readme: Path) -> list[tuple[int, str]]:
             if fence is None:
                 fence = (char, run)
                 continue
-            if char == fence[0] and run >= fence[1]:
+            # A closing fence carries nothing but the run and trailing spaces,
+            # so ```` ```not-a-close ```` inside a block is code. Closing on the
+            # run alone ended the block there and handed the rest back as prose.
+            closes = stripped[run:].strip() == ""
+            if char == fence[0] and run >= fence[1] and closes:
                 fence = None
                 continue
-            # A shorter run, or the other marker, is example content.
+            # A shorter run, an info string, or the other marker, is content.
         if fence or line.strip().startswith("|"):
             continue
         out.append((lineno, line))
