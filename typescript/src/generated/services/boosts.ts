@@ -21,7 +21,7 @@ export type Boost = components["schemas"]["Boost"];
  * Options for listForRecording.
  */
 export interface ListForRecordingBoostOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -37,7 +37,7 @@ export interface CreateForRecordingBoostRequest {
  * Options for listForEvent.
  */
 export interface ListForEventBoostOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 

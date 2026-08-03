@@ -2,7 +2,7 @@
 import Foundation
 
 public struct EverythingCheckinsEverythingOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -13,7 +13,7 @@ public struct EverythingCheckinsEverythingOptions: Sendable {
 }
 
 public struct EverythingCommentsEverythingOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -28,7 +28,7 @@ public struct EverythingCompletedCardsEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -50,7 +50,7 @@ public struct EverythingCompletedTodosEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -72,7 +72,7 @@ public struct EverythingFilesEverythingOptions: Sendable {
     public var kind: String?
     /// Restrict to files created by the given people (repeatable).
     public var peopleIds: [Int]?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -90,7 +90,7 @@ public struct EverythingFilesEverythingOptions: Sendable {
 }
 
 public struct EverythingForwardsEverythingOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -101,7 +101,7 @@ public struct EverythingForwardsEverythingOptions: Sendable {
 }
 
 public struct EverythingMessagesEverythingOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -116,7 +116,7 @@ public struct EverythingNoDueDateCardsEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -138,7 +138,7 @@ public struct EverythingNoDueDateTodosEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -160,7 +160,7 @@ public struct EverythingNotNowCardsEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -182,7 +182,7 @@ public struct EverythingOpenCardsEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -204,7 +204,7 @@ public struct EverythingOpenTodosEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -250,7 +250,7 @@ public struct EverythingUnassignedCardsEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -272,7 +272,7 @@ public struct EverythingUnassignedTodosEverythingOptions: Sendable {
     public var assigneeIds: [Int]?
     /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
     public var due: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

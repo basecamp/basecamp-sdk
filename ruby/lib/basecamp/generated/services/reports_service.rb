@@ -8,7 +8,7 @@ module Basecamp
     class ReportsService < BaseService
 
       # Get account-wide activity feed (progress report)
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def progress(page: nil, max_items: nil)
@@ -48,7 +48,7 @@ module Basecamp
 
       # Get a person's activity timeline
       # @param person_id [Integer] person id ID
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [Hash] wrapper fields merged with a ListEnumerator of the paginated items
       def person_progress(person_id:, page: nil, max_items: nil)

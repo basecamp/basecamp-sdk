@@ -21,7 +21,7 @@ module Basecamp
       # @param type [String, nil] Deprecated: prefer type_names[].
       # @param bucket_id [Integer, nil] Deprecated: prefer bucket_ids[].
       # @param creator_id [Integer, nil] Deprecated: prefer creator_ids[].
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def search(q:, type_names: nil, bucket_ids: nil, creator_ids: nil, file_type: nil, exclude_chat: nil, since: nil, sort: nil, type: nil, bucket_id: nil, creator_id: nil, page: nil, max_items: nil)

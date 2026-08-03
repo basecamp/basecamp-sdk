@@ -57,7 +57,7 @@ export interface UpdateMyProfilePeopleRequest {
  * Options for list.
  */
 export interface ListPeopleOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -73,7 +73,7 @@ export interface EnableOutOfOfficePeopleRequest {
  * Options for listForProject.
  */
 export interface ListForProjectPeopleOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 

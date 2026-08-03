@@ -6,7 +6,7 @@ public struct ListLinesCampfireOptions: Sendable {
     public var sort: String?
     /// asc|desc
     public var direction: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -28,7 +28,7 @@ public struct ListUploadsCampfireOptions: Sendable {
     public var sort: String?
     /// asc|desc
     public var direction: String?
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 
@@ -46,7 +46,7 @@ public struct ListUploadsCampfireOptions: Sendable {
 }
 
 public struct ListCampfireOptions: Sendable {
-    /// Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+    /// Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
     public var page: Int?
     public var maxItems: Int?
 

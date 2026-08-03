@@ -27,7 +27,7 @@ export type Person = components["schemas"]["Person"];
  * Options for reminders.
  */
 export interface RemindersCheckinOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -45,7 +45,7 @@ export interface UpdateAnswerCheckinRequest {
  * Options for listQuestions.
  */
 export interface ListQuestionsCheckinOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -77,7 +77,7 @@ export interface UpdateQuestionCheckinRequest {
  * Options for listAnswers.
  */
 export interface ListAnswersCheckinOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 
@@ -101,7 +101,7 @@ export interface AnswerersCheckinOptions extends PaginationOptions {
  * Options for byPerson.
  */
 export interface ByPersonCheckinOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
+  /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
   page?: number;
 }
 

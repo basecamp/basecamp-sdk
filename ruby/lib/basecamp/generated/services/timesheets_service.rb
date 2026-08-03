@@ -12,7 +12,7 @@ module Basecamp
       # @param from [String, nil] from
       # @param to [String, nil] to
       # @param person_id [Integer, nil] person id
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def for_project(project_id:, from: nil, to: nil, person_id: nil, page: nil, max_items: nil)
@@ -27,7 +27,7 @@ module Basecamp
       # @param from [String, nil] from
       # @param to [String, nil] to
       # @param person_id [Integer, nil] person id
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def for_recording(recording_id:, from: nil, to: nil, person_id: nil, page: nil, max_items: nil)

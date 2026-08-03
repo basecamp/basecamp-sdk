@@ -72,7 +72,7 @@ module Basecamp
       # List entries on a schedule
       # @param schedule_id [Integer] schedule id ID
       # @param status [String, nil] active|archived|trashed
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def list_entries(schedule_id:, status: nil, page: nil, max_items: nil)

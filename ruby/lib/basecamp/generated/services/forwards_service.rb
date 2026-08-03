@@ -18,7 +18,7 @@ module Basecamp
 
       # List all replies to a forward
       # @param forward_id [Integer] forward id ID
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def list_replies(forward_id:, page: nil, max_items: nil)
@@ -51,7 +51,7 @@ module Basecamp
       # @param inbox_id [Integer] inbox id ID
       # @param sort [String, nil] created_at|updated_at
       # @param direction [String, nil] asc|desc
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
       def list(inbox_id:, sort: nil, direction: nil, page: nil, max_items: nil)
