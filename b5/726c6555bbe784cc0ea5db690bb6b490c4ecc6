@@ -1,0 +1,41 @@
+ruby/lib/basecamp/config.rb
+  s_ae792ed0be3006::t_4b3fd24e6c2a6d 53-83,92-97,105-110
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_ae792ed0be3006::t_758998f489a2f8 85-97,99-110,113-116
+  s_ae792ed0be3006::t_6b2a3e98469ea2 117
+python/tests/test_backoff_ceiling.py
+  s_ae792ed0be3006::t_a25b5e4004ed51 84-128
+typescript/src/retry.ts
+  s_ae792ed0be3006::t_6e0ea78807c7e7 186-203
+  s_ae792ed0be3006::t_248f3c008326c5 217-224,235,240-241,243-248,250
+  s_ae792ed0be3006::t_e9f276280630c9 185
+ruby/test/basecamp/backoff_ceiling_test.rb
+  s_ae792ed0be3006::t_4889b86ae5c6e5 62-108
+python/src/basecamp/config.py
+  s_ae792ed0be3006::t_b32b7e1c9eef17 3
+  s_ae792ed0be3006::t_96c7d597c99428 21-47,58-63,67-69
+SPEC.md
+  s_ae792ed0be3006::t_629aca94b83864 665-679
+typescript/tests/backoff-ceiling.test.ts
+  s_ae792ed0be3006::t_12469a75e58fc0 116-125,127-131
+  s_ae792ed0be3006::t_4d253b17a8334f 76-115,126,132-133
+swift/Tests/BasecampTests/TransportNetworkErrorRetryTests.swift
+  s_ae792ed0be3006::t_8e4a286215d566 307-368,371-521
+  s_ae792ed0be3006::t_158174dc7b1a03 369-370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b5726c6555bbe784cc0ea5db690bb6b490c4ecc6",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
