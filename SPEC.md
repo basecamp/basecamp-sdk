@@ -2041,15 +2041,815 @@ Regenerate-and-diff freshness gates now exist for all six SDKs' generated output
 
 The following are explicitly NOT part of this specification:
 
-- GraphQL, WebSocket, or SSE transport
+- GraphQL or SSE transport. WebSocket as a general API transport remains out of scope; the §23 Event Feed connector’s Action Cable lane is in scope
 - CLI UI or interactive prompts
 - Circuit breaker, bulkhead, or client-side rate limiter (rubric T2D criteria exist but are optional extras, not core contracts)
 - Prometheus or OpenTelemetry hook implementations (the hook protocol is in scope; specific integrations are not)
 - Package publishing or release automation
-- Language-specific async/concurrency model (spec is synchronous-first; async is a language adaptation)
+- Language-specific async/concurrency model (spec is synchronous-first; async is a language adaptation). The §23 Event Feed connector is the carve-out: its surface is inherently asynchronous — a long-lived, serially back-pressured event stream — and each language realizes it with its native streaming idiom (§23 "Consumer Surface"); the concurrency primitive is the adaptation, the behavioral contract is not
 - Smithy model authoring
 - File upload multipart encoding details
 - Webhook receiver HTTP server implementation (the verification algorithm is in scope; how to run an HTTP server is not)
+
+---
+
+## §23. Event Feed Connector
+
+### What This Is
+
+BC3 exposes an account-wide **event feed** — a resumable notification feed, not an audit
+log — over two lanes. The **push lane** is a native Action Cable WebSocket (`EventsChannel`),
+authenticated by short-lived stream tickets minted at `POST /events/stream_ticket.json`;
+its payloads are wake-up signals that may be delayed, duplicated, or dropped. The **poll
+lane** is `GET /events.json`: stateless, client-held cursor, strict event-id order, behind a
+best-effort ~30-second safety horizon. The poll lane repairs what push missed **for ids above
+the held position whose transactions commit within the horizon** — the bound is
+position-relative, never wall-clock, and it is best-effort rather than guaranteed delivery.
+Completeness-critical workflows corroborate against canonical resource APIs.
+
+The SDK ships **one blessed connector** in every language so that six integrations never
+become six divergent reinventions of a subtle stateful protocol: mint → dial the mint's URL
+verbatim → subscribe → await confirmation → catch-up poll → drain the live buffer → stream,
+with the reconnect, backoff, staleness, dedupe, and checkpoint discipline specified below.
+Connecting the live lane **before** entering the poll lane is load-bearing, not an
+optimization: entry at the present places every already-visible event — and any in-flight
+event that drew a lower id and commits after entry — permanently behind the entry position,
+so the live buffer is the only carrier of an in-flight-at-entry straggler (see Entry
+Boundary below).
+
+The wire operations beneath the connector — `PollEvents` and `CreateStreamTicket` — are
+ordinary generated operations, tracked in `spec/api-gaps/event-feed.md` until the BC3
+contract merges. The connector performs **no wire I/O of its own** except dialing the mint's
+URL verbatim through the transport seam; every HTTP exchange reaches the wire through a seam
+backed by a generated operation. That is what lets this section fix the connector contract
+ahead of the generated layer landing.
+
+### Provenance `[manual]`
+
+Everything bc3-derived in this section is verified at bc3 `8be5c67de5` (pre-merge; lineage
+`ee19670c02`); re-verified at bc3's merge-time gate. Until that gate clears, the
+bc3-derived material is **PROVISIONAL** — normative for SDK drafting, frozen only at the
+gate — and it comes in two classes with different re-verification mechanics:
+
+**Class 1 — wire literals**, frozen when bc3 regenerates transcripts against the rebased
+head:
+
+- disconnect reason strings `unauthorized`, `remote`, `invalid_event_stream_command`;
+- the poll body envelope keys `events` / `position` / `next`;
+- the 409 body's digest keys `position_digest` / `filters_digest`;
+- the 410 body's keys `epoch_after_id` / `resume`;
+- the 400-position and 400-filter error-body shapes (the discriminating matrix, as
+  captured in the transcripts);
+- the published srv1 digest vectors (Checkpoint Identity below);
+- the mint response body `{ticket, expires_in, url}`;
+- the subscribe identifier literals — channel `EventsChannel`, filter param spellings
+  `types` / `buckets` / `creators`, comma-joined values.
+
+One literal in that list carries a different verification basis: `remote` has **no
+transcript capture** (none exists in the provisional delivery, and the connection-outcome
+scenarios don't produce it) — it is source-verified against the pinned Rails and the
+branch. Its freeze at the merge-time gate rides bc3's re-verification of the disconnect
+matrix (plus the single requested capture frame), not transcript regeneration.
+
+**Class 2 — semantic behavior**, equally provisional; transcript diffs cannot prove these,
+so each is re-verified at the gate as its own row (against the rebased source and docs):
+
+- present-entry semantics — `since=now` and the bare entry are equivalent, mint the cursor
+  at the newest visible event id, and permanently exclude an in-flight lower id that
+  commits after entry (the Entry Boundary section's premise);
+- the best-effort, position-relative ~30-second safety-horizon bound;
+- the frozen-head `next` predicate (when a walk continues vs. terminates);
+- 409/410 re-entry semantics, including that a 410 `resume` URL re-enters at `since=now`
+  with the canonical filter set preserved;
+- the srv1 canonicalization algorithm itself (not just its vectors);
+- ticket statelessness and replayability, and the ~120-second TTL;
+- the 3-second server heartbeat cadence (the input to the SDK's staleness policy);
+- the 400 split's recovery semantics — a malformed-position 400 is recoverable by `since=`
+  re-entry, a malformed-filter 400 is not;
+- the subscribe retransmit contract — identical resubscribes silently absorbed, different
+  ones rejected;
+- the push payload's shape, including the `visible_to_clients` presence asymmetry (push
+  rows carry it, poll rows omit it);
+- the disconnect matrix's completeness at the verified head, including that `unauthorized`
+  arrives only pre-welcome.
+
+**SDK-owned contract** — normative as written, not gated on bc3: the state inventory and
+transitions, the ownership cut and the conjunctive save-ordering invariant (they *respond
+to* class-2 semantics — the premises re-verify at the gate; the discipline stands), the
+semantic-handler contract, the dedupe rule, timer kinds and the virtual-advance algorithm,
+the checkpoint-identity structure with origin canonicalization and the `srv1-` namespace
+prefix, continuation/resume-URL validation, the staleness detection policy (7500ms), the
+options surface, and the security invariants.
+
+### Classification: Infrastructure, Not a Composite `[manual]`
+
+The connector is hand-written, spec-normative infrastructure in the same class as §14
+(Download), §15 (Webhooks), and §16 (OAuth Utilities). It is **not** a §18 composite:
+composites are stateless multi-call orchestrations over generated operations; this is a
+long-lived stateful transport with its own liveness contract. §18's composite rules
+(read-overlay-write, `METHOD_NAME_OVERRIDES`, raw-path reachability) do not apply here;
+what does carry over is the spirit of §18 rule 1 — no hand-written wire I/O. Every mint and
+poll flows through a generated operation behind a seam; the one non-HTTP wire act the
+connector owns is `CableTransport.dial(mint.url)`, verbatim, as sanctioned. The connector
+never assembles cable topology (scheme, host, path, account prefix) client-side — the
+mint's `url` is connected to exactly as returned.
+
+### Consumer Surface
+
+The connector is consumed as a serial stream of deduplicated events plus lifecycle
+observability. The delivery idiom is language-native (Go `iter.Seq2[Event, error]`
+range-over-func is the reference; TypeScript/Python async iterators, Kotlin `Flow`, Swift
+`AsyncSequence`, Ruby a blocking enumerator are the expected adaptations), but the contract
+is shared:
+
+- **Serial back-pressure is structural.** The consumer's processing *is* the loop body; the
+  connector does not advance, monitor, or reconnect while the consumer is processing. Timers
+  that fire mid-delivery are observed when control returns; a stale socket is then detected
+  before any further delivery **from the live socket**. (Draining's replay of
+  already-admitted buffered events is a bounded in-memory completion, not socket delivery —
+  it finishes first; see the deferred-consumption note under the state machine.)
+- **Events only.** The iteration element is the event. Gap, caught-up, and position-rejected
+  notifications are Observer callbacks; semantic dispositions live exclusively in the signal
+  handler (below). Neither is ever an in-band union element.
+- **Typed terminal errors end iteration** as exactly one final error element carrying a
+  `TerminalReason`. Cancellation, `close()`, and a consumer break end iteration with **no**
+  error element — a clean stop; the feed is resumable by design.
+- **Single-shot.** A second consumption of the same connector is the `usage` terminal —
+  the one `usage` condition that surfaces as an iteration error element. Construction does
+  no I/O (validation only); construction-time validation failures (a filter violation, a
+  configured store with an empty consumer namespace) surface as **language-native
+  construction errors** carrying the `usage` code, before any iteration exists — never as
+  iteration elements, and with zero wire attempts. First I/O happens on first iteration,
+  which keeps hosts and tests deterministic.
+- **`close()`** is idempotent and callable from any context: it abandons, never drains.
+  Undelivered buffered events are abandoned — the next run re-serves from the last **usable**
+  checkpoint (see the exclusion under Entry Boundary).
+- A consumer break takes the identical teardown path; the in-flight page's checkpoint is
+  **not** saved.
+- All Observer callbacks fire on the consumer's execution context, never concurrently with a
+  delivery.
+
+Feed rows are wake-up signals — enough to route, not enough to act. Consumers refetch the
+referenced recording through canonical resource APIs before acting; feed payloads are never
+current resource state.
+
+```
+RECORD Event
+  id                 : Integer
+  kind               : String
+  event_type         : String
+  action             : String
+  created_at         : String       -- ISO 8601
+  bucket_id          : Integer
+  creator_id         : Integer
+  recording_id       : Integer
+  visible_to_clients : Boolean?     -- presence-bearing: push payloads carry it, poll rows
+                                    -- omit it; absent ≠ false. Never a defaulted boolean.
+END
+
+RECORD Filters
+  types    : List<String>?      -- cataloged event types only
+  buckets  : List<Integer>?     -- ≤ 100 ids
+  creators : List<Integer>?     -- ≤ 100 ids
+END
+```
+
+All id fields carry §10's 64-bit integer contract; no new type spelling is introduced for
+it.
+
+Filter validation is client-side and fail-closed `[conformance]`: ids must be positive; type
+strings non-empty with no commas, whitespace, or quotes; each id list capped at 100. A
+violation is a `usage`-coded construction error (Consumer Surface above) — zero wire
+attempts. Positions are filter-bound; changing filters starts a new checkpoint lineage (the
+server enforces this with 409).
+
+### State Machine `[conformance]`
+
+The connector is **11 states and 26 labeled transitions**, plus one universal edge to
+`Closed` from each of the 9 non-absorbing states. This inventory is published as the
+cross-language contract; each SDK's state code encodes this table.
+
+States: `Idle`, `Backoff`, `Minting`, `Connecting`, `AwaitingWelcome`,
+`AwaitingConfirmation`, `CatchingUp`, `Draining`, `Streaming`, `Terminal` (absorbing; the
+typed error element is emitted), `Closed` (absorbing; no error element).
+
+| # | From | To | Trigger / action |
+|---|------|----|------------------|
+| 1 | Idle | Minting | first iteration (initial connect is immediate; no backoff) |
+| 2 | Backoff | Minting | `backoff` timer fired (a fresh ticket is ALWAYS minted next) |
+| 3 | Minting | Connecting | ticket minted; dial the mint's `url` verbatim |
+| 4 | Minting | Backoff | mint transient/throttled, or an unauthorized mint (401/403) below the shared-counter threshold (Retry-After honored as the floor of the next delay) |
+| 5 | Minting | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (shared counter across unauthorized mints and `unauthorized` disconnects; resets on `confirm_subscription`) |
+| 6 | Connecting | AwaitingWelcome | dial ok; frame pump started; `handshake-deadline` armed (10s) |
+| 7 | Connecting | Backoff | dial failed |
+| 8 | AwaitingWelcome | AwaitingConfirmation | `welcome` → send subscribe; re-arm as `confirmation-deadline` (10s) |
+| 9 | AwaitingWelcome | Backoff | socket error/close, staleness expiry, or handshake deadline lapsed (full teardown first) |
+| 10 | AwaitingWelcome | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (reason-string dispatch on the literal `unauthorized`; shared counter with unauthorized mints) |
+| 11 | AwaitingConfirmation | CatchingUp | `confirm_subscription` → cancel deadline; reset attempt + auth counters; select entry cursor |
+| 12 | AwaitingConfirmation | Terminal(`subscription_rejected`) | `reject_subscription` → cancel deadline, **close the socket**, ZERO reconnects |
+| 13 | AwaitingConfirmation | Terminal(`protocol_fatal`) | raw disconnect frame `reason=invalid_event_stream_command, reconnect=false` |
+| 14 | AwaitingConfirmation | Backoff | confirmation deadline lapsed → dispose conn + pump + ALL of the attempt's timers, then jittered fresh-ticket retry |
+| 15 | AwaitingConfirmation | Backoff | socket dropped, staleness expiry, or disconnect with `reconnect ≠ false` (includes `remote`) |
+| 16 | CatchingUp | CatchingUp | page fetched → deliver events → save + announce checkpoint → follow `next` |
+| 17 | CatchingUp | CatchingUp **or** Terminal(`feed_gap`) | 410 → dispatch `FeedGap` signal (Semantic Signals below): a registered handler returning Accept re-enters via the provided resume URL; Terminate — or no handler — is Terminal(`feed_gap`). `Observer.gap` fires as observability either way. A 410 never silently auto-continues. |
+| 18 | CatchingUp | CatchingUp | 400-position → re-enter `since=<last accepted id>` (or, with no accepted id, `since="now"` — a present-class entry, Entry Boundary below); `Observer.position_rejected(position_invalid)` |
+| 19 | CatchingUp | CatchingUp | 409 → discard the held position → re-enter `since=<last accepted id>` (or, with no accepted id, `since="now"` — a present-class entry); `Observer.position_rejected(filter_changed)` |
+| 20 | CatchingUp | Terminal(`filter_invalid`) | 400-filter: configuration error; a position reset won't help |
+| 21 | CatchingUp | Backoff | socket died mid-walk, or staleness expiry (per-page checkpoints already saved are kept) |
+| 22 | CatchingUp | Draining | `next` absent — the walk reached its frozen head → deliver the final page's events → save + announce its checkpoint (position-resume entries) → enter Draining. **Present-class amendment (present-class entries only — Entry Boundary below; position-resume entries unchanged):** the entry poll's returned position is HELD, not saved; the ownership cut — defined under Entry Boundary — is taken after entry into Draining. |
+| 23 | Draining | Streaming | buffer replayed through dedupe → `Observer.caught_up` → arm jittered `repair-poll`. **Present-class amendment:** the held entry position is saved only once the conjunctive save-ordering invariant holds; a `BufferOverflow` disposition of Terminate — or no handler — lands in Terminal(`buffer_overflow`) instead, with no Save. (A `FeedGap` cannot arise here: 410s arise from polls, which Draining never performs — a 410 on the entry walk was already dispatched at transition 17.) |
+| 24 | Streaming | CatchingUp | `repair-poll` fired → one walk from the durable position (60s ± 20%) |
+| 25 | Streaming | Backoff | `staleness` fired (7.5s without a frame) / socket error / disconnect `reconnect ≠ false` and not protocol-fatal (includes `remote`) |
+| 26 | Streaming | Terminal(`protocol_fatal`) | raw disconnect `invalid_event_stream_command` |
+| — | any non-absorbing | Closed | `close()` / cancellation / consumer break (universal edge) |
+
+Semantic-signal dispositions are an **overlay** on this table, not additional numbered
+rows: a `FeedGap` signal arises at transition 17; a `BufferOverflow` signal arises whenever
+the live buffer drops events (any buffer-holding state) and is dispatched synchronously
+before the next Save; a Terminate disposition — or an absent handler — lands in the
+corresponding Terminal state from wherever the signal was dispatched. Four further edges
+sit outside the 26 numbered rows for the same reason: the Terminal(`checkpoint_load`) edge
+(fires on the first iteration, before the first mint — zero wire attempts); the
+Terminal(`usage`) edge (a re-consumed iterator); the Terminal(`invalid_continuation`) edge
+(fires between URL validation and the poll call, wherever a `next` continuation or 410
+`resume` URL is about to be followed — row 16's follow and row 17's Accept re-entry both
+pass through it; zero requests to the failing URL); and the poll transient/throttle
+**self-loop** inside CatchingUp (the `poll-retry` timer — a wait, not a state change).
+The published inventory stays 11/26.
+
+Interpretation, pinned:
+
+- **`reject_subscription` is always terminal** — first attempt or reconnect, zero reconnect
+  attempts, and the connector must explicitly close the still-open socket (Action Cable
+  leaves a rejected socket open; an unhandled one stays registered server-side, receiving
+  heartbeats forever while delivering nothing).
+- **Connection-level authorization failures retry, then surface — on ONE shared counter.**
+  Unauthorized mints (401/403) and `unauthorized`-reason disconnects at connect
+  (pre-welcome — rows 9/10; Disconnect Dispatch pins the arrival point) increment the same
+  consecutive-failure counter; at `EVENT_FEED_AUTH_FAILURE_THRESHOLD = 3` the connector
+  surfaces `authorization_failed` (a mixed sequence — mint 401, `unauthorized` disconnect,
+  mint 401 — is terminal). A single blip must not kill a long-lived agent: a ticket that
+  expired in the mint→dial race is indistinguishable from revocation on one sample. The
+  counter resets on `confirm_subscription`, and only these two failure shapes ever
+  increment it.
+- **Poll transients and throttles are never terminal.** They retry inside CatchingUp on the
+  `poll-retry` timer, with one algorithm: a server-directed `Retry-After` is waited
+  exactly, exempt from local caps per §7's rule (implementations may still bound it
+  against host limits, as §7 allows); otherwise the wait is full-jitter
+  `uniform(0, min(60s, 1s × 2^(k−1)))` over the **consecutive-poll-failure index k** — a
+  counter separate from the reconnect-cycle count, starting at 1 on the first consecutive
+  failed poll, incremented per consecutive transient/throttled failure, and reset by any
+  successful poll page and by socket teardown (after a teardown, the Backoff cycle's own
+  counter governs; the poll index starts fresh in the next walk).
+- **Checkpoint discipline:** only poll-page acceptance ever calls `save` (transitions 16/22–23
+  per their amendments; re-entry walks save through 16 like any other pages). Streaming never
+  saves — live event ids never advance the durable position. `save` failure is
+  `Observer.checkpoint_save_failed` and the feed continues. `load` happens exactly once,
+  on the first iteration **before the first mint**; its failure is
+  Terminal(`checkpoint_load`) with zero wire attempts, because silently starting at the
+  present would skip history.
+- **Reconnect discipline:** one path through Backoff → Minting → Connecting; at most one
+  in-flight reconnect attempt at any time; the attempt counter increments per failed cycle
+  and resets on confirmation. A fresh ticket is minted on **every** pass — the connector
+  never stores a mint URL across attempts.
+
+Per-state invariants (asserted by the tier-2 harness as exact sets):
+
+| State | Socket | Allowed timers (exact set) | Delivery? | Save? |
+|---|---|---|---|---|
+| Idle | none | {} | no | no |
+| Backoff | closed | {`backoff`} | no | no |
+| Minting | none | {} | no | no |
+| Connecting | opening | {} | no | no |
+| AwaitingWelcome | open | {`handshake-deadline`, `staleness`} | no | no |
+| AwaitingConfirmation | open | {`confirmation-deadline`, `staleness`} | **no** | no |
+| CatchingUp | open | {`staleness`} (+ `poll-retry` while a poll wait is pending) | poll pages only | after each page's delivery (held on present-class entry) |
+| Draining | open | {`staleness`} | buffered live, deduped | only per the save-ordering invariant |
+| Streaming | open | {`staleness`, `repair-poll`} | live (deduped) + repair pages | poll positions only — never live ids |
+| Terminal / Closed | closed | **{}** | no | no |
+
+Draining is a bounded, in-memory replay — it performs no polls and takes no wire waits, so
+it has no failure edge of its own: a staleness expiry or socket failure observed while
+draining is consumed at the Streaming boundary (transition 23 completes the drain, then
+transition 25 handles the failure). This is the one deliberate deferred-consumption case;
+everywhere else a socket-open state's failure edge (9/15/21/25) fires directly, and
+staleness expiry is among each of those edges' triggers.
+
+### Disconnect Dispatch `[conformance]`
+
+Action Cable's `disconnect` is a **text frame**, not a WebSocket close frame, and stock
+Action Cable discards the reason before subscription callbacks fire. The transport seam's
+verbatim raw frames exist so the connector can read it. Dispatch is on the **reason
+string** — never on the `reconnect:false` flag alone, since `unauthorized` and
+`invalid_event_stream_command` share `reconnect:false` and demand opposite responses. The
+matrix — complete over every reason the server emits at the verified head:
+
+| Failure | Wire signal | Connector response |
+|---|---|---|
+| Handshake failure (bad `Origin`, missing ticket) | HTTP upgrade failure — **no frame** | Backoff → fresh mint (transitions 7/9) |
+| Invalid/expired ticket at connect | `{"type":"disconnect","reason":"unauthorized","reconnect":false}`, then close | retriable **with a fresh ticket** (9 → Backoff); Terminal(`authorization_failed`) after 3 consecutive on the shared counter (10) |
+| Mid-connection revocation / server-initiated disconnect | `{"type":"disconnect","reason":"remote","reconnect":true}` | maps into the existing `reconnect ≠ false` → Backoff transitions (15/25) — no new state, no new transition: re-mint and reconnect. A genuinely revoked user's next mint fails, and that mint-failure path into `authorization_failed` (5) **is** the designed revocation detection — revocation is not wire-distinguishable at disconnect time |
+| Protocol violation (malformed/oversized/uncorrelatable command) | `{"type":"disconnect","reason":"invalid_event_stream_command","reconnect":false}` | Terminal(`protocol_fatal`) (13/26) — surface, never retry into it |
+
+Reason strings are provisional wire literals (Provenance above). The reason-level dispatch
+rule itself — and the threshold-3 `authorization_failed` — are SDK-owned and final.
+
+Two dispatch clarifications, pinned:
+
+- **`unauthorized` arrives only pre-welcome on the wire** — the server rejects the ticket
+  at connect, before any `welcome` (the TTL+ε capture shows the disconnect with no
+  preceding welcome), which is why the inventory routes it through transitions 9/10 and no
+  other row admits it. An `unauthorized`-reason disconnect observed in any later
+  socket-open state (wire-impossible at the verified head) is treated as a **socket drop**
+  — the current state's "socket error/close" failure edge (15/21/25) — with **no** counter
+  increment. Nothing is lost by that: the reconnect cycle re-mints, and a genuinely
+  revoked user's mint then fails 401/403 and increments the shared counter — the same
+  detection path the `remote` row relies on. No out-of-inventory edge exists.
+- **An unrecognized reason string is treated as a socket drop** — the current state's
+  "socket error/close" failure edge (9/15/21/25), whatever its `reconnect` flag says — and
+  never increments the authorization counter; only the literal `unauthorized` does.
+  Unknown reasons must not be guessed into either terminal class.
+
+### Cable Protocol Details `[conformance]`
+
+- The subscribe command is built once per connection as an exact byte string:
+  `{"command":"subscribe","identifier":"<json-escaped identifier>"}`, where the identifier
+  is the JSON-encoded string of an **ordered** object
+  `{"channel":"EventsChannel"[,"types":"a,b"][,"buckets":"1,2"][,"creators":"3"]}` —
+  comma-joined values, fixed key order, absent filters omitted, hand-built rather than
+  map-marshaled so any retransmit is byte-identical. The server absorbs identical
+  retransmits and rejects different ones.
+- Subscribe is sent on each `welcome` received. Confirm/reject correlation is exact string
+  equality against the connector's identifier; frames carrying other identifiers are
+  ignored.
+- Ping parsing accepts both `{"type":"ping"}` and `{"type":"ping","message":<epoch>}`.
+  Unknown frame types update liveness and are otherwise ignored.
+- **Every** inbound frame, of any kind, resets the `staleness` timer
+  (`EVENT_FEED_STALE_AFTER = 7500ms`: two missed 3-second server heartbeats plus 25% grace —
+  the server contract leaves detection policy to the SDK; the SDK pins and publishes this
+  one).
+- The transport negotiates subprotocol `actioncable-v1-json`, sends no `Origin` header
+  (non-browser clients), and passes the mint URL through untouched, query string included.
+
+### Entry Boundary and Save Ordering `[conformance]`
+
+`since=now` — and the bare present entry, which the server treats identically — mints the
+cursor at the newest **visible** event id. An in-flight transaction that drew a lower id N
+before entry and commits after it falls permanently behind that cursor: the poll lane never
+serves N, because the repair bound covers ids **above** the position, position-relative,
+never wall-clock. The live buffer is therefore the only carrier of an in-flight-at-entry
+straggler, which creates a client-side ordering obligation and a durability boundary this
+section states honestly rather than papers over.
+
+**Present-class entries, defined.** The amendment below applies to every entry whose
+cursor resolves at the server's present head — the class, used by this name throughout
+this section and the state table: the zero Cursor (bare present entry); `since="now"`; a
+410 reset's resume URL (the server documents it as `since=now` with the canonical filter
+set preserved); and a 400-position/409 re-entry that falls back to the present because no
+accepted event id exists. Entries positioned in served history — `position=`,
+`since=<id>`, `since=0` — are **position-resume class** and keep the unamended per-page
+save discipline.
+
+**Entry sequencing (present-class entries only):** hold the entry poll's returned
+position → take the **ownership cut** → fix the snapshot → drain-and-accept → only then
+`save`.
+
+**The ownership cut, defined:** the cut is the state machine's first empty receive from the
+frame pump's queue after accepting the entry-poll response — deliberately **not** a
+drain-until-empty barrier, which races a concurrent sender and promises an unclosable
+window. "Observed" means **admitted into the state-machine-owned buffer at or before the
+cut**; a frame the transport had read but the state machine had not yet received at the cut
+does not count. **The snapshot** is the pre-cut contents of the state-machine-owned buffer,
+fixed at the cut; "pre-cut events" and "post-snapshot stragglers" below are defined against
+it.
+
+**The published delivery promise is the CONJUNCTIVE save-ordering invariant, and nothing
+stronger:**
+
+> `save(P)` only after ALL retained pre-cut events have been accepted AND every pre-cut
+> loss condition has been explicitly accepted. Terminate — or no handler — means no `save`.
+
+A disjunctive form ("accepted, or its signal handled") would let an accepted overflow
+bypass delivery of the other retained events; the conjunction is the invariant.
+
+**Explicitly excluded: crash or cancellation before the first usable checkpoint.** On a
+first present entry there is no older durable cursor, and on a 410 reset the old cursor is
+unusable — so an event admitted pre-cut and lost to a crash before delivery and `save` is
+unrecoverable, with no signal. Client-side ordering cannot manufacture durability the
+server does not offer. No blanket loss-prevention or global delivery-completeness claim is
+published anywhere in this section — such a claim would contradict this exclusion. What is
+published is the save-ordering invariant above, scoped to the defined observation point.
+
+**Overflow invalidates completeness before checkpoint.** A dropped lower-ID event behind
+the present position is **not** poll-repairable — the repair bound covers ids above the
+position only. Overflow during the entry window therefore invalidates completeness, and its
+signal must be handled (or be terminal) before any `save`. This supersedes any reading of
+overflow as safe-because-the-poll-lane-repairs.
+
+**Post-snapshot lower-id stragglers** (N arrives on the live lane after the snapshot) are
+the server's documented best-effort case: delivered live, deduplicated, never a position
+regression. Completeness-critical work corroborates against canonical resource APIs.
+
+### Semantic Signals `[conformance]`
+
+Conditions that change what the feed can promise get a **separate synchronous handler with
+an explicit disposition** — never a fire-and-forget callback, and never an overloaded
+epoch-shaped callback:
+
+```
+Signal = BufferOverflow | FeedGap        -- two DISTINCT types, a closed union
+
+RECORD BufferOverflow
+  dropped_ids   : List<Integer>   -- exact ids dropped: "dropped" is unambiguous
+  dropped_count : Integer
+END
+
+RECORD FeedGap
+  epoch_after_id : Integer
+  resume_url     : String
+END
+
+SignalHandler : (Signal) → Accept | Terminate
+```
+
+- **No handler registered ⇒ typed terminal:** `buffer_overflow` for an overflow, `feed_gap`
+  for a 410 gap. An unhandled semantic signal cannot disappear, and **a 410 never silently
+  auto-continues**.
+- **Accept on `FeedGap`** resumes via the provided resume URL (it preserves the canonical
+  filter set). **Accept on `BufferOverflow`** means the consumer owns the acknowledged
+  incompleteness — and acceptance is not license to skip retained deliveries (the
+  conjunctive invariant above still gates the `save`).
+- **A registered handler is invoked exactly once per semantic signal, synchronously, on the
+  consumer's execution context, before its disposition takes effect.** Skipping a
+  registered handler and applying the default-terminal path is a conformance violation:
+  the fixtures assert exact handler-invocation records `{kind, disposition}`, and the
+  default-terminal fixtures assert **zero** invocations. (The visible outcome of
+  handler-Terminate is otherwise identical to no-handler-terminal; the invocation record is
+  what distinguishes them.)
+- `Observer.gap` and `Observer.buffer_overflow` remain observability-only notifications.
+  The semantic disposition lives exclusively in the handler.
+
+**Only event-bearing frames are admitted to the live buffer** — pings, control frames, and
+unknown frame types update liveness and are discarded, never buffered — so the buffer is
+denominated in events and every dropped entry has an id. On overflow the connector drops
+the oldest buffered events; the signal carries their exact ids and count. The live
+buffer's capacity is its own option (`EVENT_FEED_LIVE_BUFFER_CAPACITY`, default 10,000
+events), deliberately decoupled from the dedupe capacity.
+
+### Dedupe `[conformance]`
+
+The connector keeps a bounded LRU (default 10,000 entries) of **actually-delivered event
+ids** — never position ordering. The rule is symmetric across lanes: **every delivery —
+poll page, drain, or streaming — checks the LRU before delivering and records the
+delivered id.** Poll-vs-push duplication is expected in both directions (pushes arrive
+instantly and polls re-serve the same events once they clear the safety horizon; a repair
+poll can equally re-serve what streaming already delivered), so duplicates are suppressed
+by id regardless of which lane delivered first.
+
+Two sharp edges, pinned:
+
+- **A buffered live event with an id ≤ the current position is still delivered** — it was
+  never served by poll. Discarding live ids at or below the position is the named mutant
+  this rule exists to kill.
+- A duplicate suppressed during poll delivery still counts toward the page's checkpoint:
+  the position advances regardless — it is a poll position, not an event acknowledgment.
+
+### Terminal and Continuable Outcomes `[conformance]`
+
+Terminal reasons end iteration with exactly one typed error element:
+
+| TerminalReason | Trigger |
+|---|---|
+| `subscription_rejected` | `reject_subscription` — always terminal, first attempt or reconnect; zero reconnect attempts |
+| `protocol_fatal` | raw disconnect `reason=invalid_event_stream_command` |
+| `filter_invalid` | 400-filter from a poll; the server's message naming the offending list is preserved |
+| `authorization_failed` | 3rd consecutive connection-level authorization failure (unauthorized mint or `unauthorized` disconnect) |
+| `checkpoint_load` | `CheckpointStore.load` failed at start |
+| `usage` | re-consumed iterator (the only `usage` condition that surfaces as an iteration element — construction-time validation failures raise language-native construction errors carrying the same code) |
+| `buffer_overflow` | live-buffer overflow with no registered handler, or a handler returning Terminate |
+| `feed_gap` | 410 with no registered handler, or a handler returning Terminate |
+| `invalid_continuation` | a `next` or 410 `resume` URL failed same-origin/downgrade validation (Continuation and Resume URL Validation below); no request is issued to it |
+
+`auth_revoked` is deliberately **reserved, not used**: the wire carries no distinct
+revocation signal — revocation is one possible cause of repeated unauthorized failures, and
+the error name must not claim certainty the wire cannot substantiate. It comes into
+existence only if bc3 ships an observable revocation contract.
+
+Continuable — none of these end iteration: mint transients and throttles (Retry-After
+floors the next reconnect delay), poll transients and throttles (Retry-After waited
+exactly) — server-directed waits exempt from local caps per §7 in both lanes — dial
+failures, socket drops, `remote` disconnects,
+`unauthorized` failures below the threshold, staleness, 400-position (re-enter `since=`),
+409 (discard the held position, re-enter `since=`), and a 410 whose registered handler
+returns Accept (resume via the provided URL).
+
+### Seam Contracts
+
+Five seams isolate the connector from wire I/O, time, and persistence. `CableTransport` and
+`Clock` are **product surface, not test hooks** — they are the documented extension points
+for custom WebSocket stacks and embedded runtimes, and the reason the conformance harness
+is deterministic.
+
+```
+INTERFACE TicketMinter
+  mint_stream_ticket() → StreamTicket   -- one fully-governed generated CreateStreamTicket call
+END
+
+RECORD StreamTicket
+  ticket     : String    -- opaque bearer credential; never logged
+  expires_in : Integer   -- seconds (~120); server-owned, NEVER used for client scheduling
+  url        : String    -- connect verbatim; never assemble cable topology client-side
+END
+-- Mint errors carry a kind: transient | throttled(retry_after) | unauthorized.
+
+INTERFACE PollSource
+  poll(cursor: Cursor, filters: Filters) → PollPage   -- one fully-governed generated PollEvents call
+END
+
+RECORD Cursor           -- exactly one field set; the zero Cursor is the bare present entry
+  position : String?    -- durable resume/repair token
+  since    : String?    -- "now", "0", or a decimal event id
+  page_url : String?    -- absolute URL: a `next` continuation OR a 410 resume URL.
+                        -- Same-origin + no-downgrade validated BEFORE any poll call
+                        -- (Continuation and Resume URL Validation)
+END
+
+RECORD PollPage         -- the body envelope IS the contract; never bind to response headers
+  events   : List<Event>
+  position : String     -- the ONLY thing that ever advances the checkpoint
+  next     : String?    -- continuation URL; absent = the walk reached its frozen head.
+                        -- Bound to that walk; NEVER persisted.
+END
+-- Poll errors carry a kind: transient | throttled(retry_after) | position_invalid |
+-- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url).
+
+INTERFACE CableTransport
+  dial(ws_url) → CableConn
+  -- Dials exactly one connection per call. MUST NOT auto-reconnect. MUST NOT interpret,
+  -- filter, or swallow application text frames. Negotiates subprotocol
+  -- "actioncable-v1-json". Refuses redirects (§23 Security Invariants).
+END
+
+INTERFACE CableConn
+  read_frame() → String  -- the next raw text frame VERBATIM — including
+                         -- {"type":"disconnect",...}: the terminal/non-terminal
+                         -- distinction lives only in this raw frame. Byte-level
+                         -- representation is language-native (Go []byte); verbatim-ness
+                         -- is the contract. Peer close surfaces as CloseError{code, reason}.
+  write_frame(String)
+  close(code, reason)    -- idempotent, safe from any context, unblocks read_frame
+END
+
+INTERFACE Clock
+  now() → monotonic reading            -- used ONLY for deltas, never persisted
+  new_timer(duration, kind) → Timer    -- kind-labelled, cancellable, enumerable
+  outstanding() → List<kind>           -- kinds of live (unfired, unstopped) timers
+END
+-- Product seam, registry included: the system clock keeps the same enumerable registry
+-- the test clocks rely on, which is what makes "no timer survives teardown" an exact-set
+-- assertion (`outstanding()`) rather than a test-only artifact.
+
+INTERFACE CheckpointStore
+  load(key: CheckpointKey) → (position: String, ok: Boolean)
+  save(key: CheckpointKey, position: String)
+END
+
+RECORD CheckpointKey
+  origin             : String   -- canonicalized (Checkpoint Identity below)
+  account_id         : String
+  consumer_namespace : String   -- required whenever a store is configured
+  filter_key         : String   -- "srv1-" + bare server digest
+END
+```
+
+Frame-parsing ownership: **the connector parses every frame; the transport moves bytes.**
+Application-level `{"type":"ping"}` frames are connector business (staleness);
+WebSocket-level ping/pong control frames stay inside the transport implementation. This
+split is what makes the protocol-fatal disconnect interceptable by contract rather than by
+library-specific hacks.
+
+### Seam-Call Semantics `[conformance]`
+
+**One seam call (`mint_stream_ticket`, `poll`) is one fully-governed generated call.** The
+generated operation keeps its full §7 contract *inside* the seam — internal retry budget,
+declared `retry_on` gate, backoff, Retry-After. `CreateStreamTicket` is safe-to-retry (a
+stateless mint — deliberately not a claim of identical responses), so §7 retry applies
+inside a mint seam call. The connector **never adds a second per-request retry layer**: its
+backoff and Retry-After logic governs **reconnect cycles and poll-walk resumption only**,
+and treats seam errors as post-retry outcomes. Conformance mint/connect/poll counts count
+seam calls, never wire attempts.
+
+### Continuation and Resume URL Validation `[conformance]`
+
+The two absolute URLs the poll lane follows — the envelope's `next` continuation and a 410
+body's `resume` URL — carry the caller's `Authorization` bearer when followed. Before a
+`poll(Cursor{page_url})` call is made, the connector validates the URL against the
+configured base origin with §8's Same-Origin Validation Algorithm, and rejects a protocol
+downgrade (HTTPS → HTTP) — the same rule, for the same reason, as §8's pagination `Link`
+rejection: a cross-origin or downgraded URL in a response body must never redirect an
+authenticated request (SSRF and token leakage). A URL that fails validation is
+Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the
+rejected URL is carried redacted (origin only) in the error. There is no retry and no
+handler for this condition: a hostile continuation is not an operable feed state.
+
+The mint's cable `url` is deliberately **not** under this rule: it is server-directed
+cable topology, cross-host by design, dialed verbatim with its own credential (the
+short-lived ticket rides in the URL itself; no `Authorization` header is attached), and
+governed by its own invariants — `wss://` outside localhost, redirects refused, never
+logged (Security Invariants below).
+
+Required tier-2 coverage: a hostile cross-origin `next` mid-walk and a hostile 410
+`resume` URL each terminate with `invalid_continuation` and zero requests to the foreign
+origin.
+
+### Clock, Timers, and Virtual Time `[conformance]`
+
+**Every delay the connector takes flows through the injected Clock** — no native timer or
+sleep may bypass it. There are exactly six timer kinds, kebab-case:
+
+| Kind | Armed | Duration |
+|---|---|---|
+| `handshake-deadline` | on dial success (transition 6) | `EVENT_FEED_HANDSHAKE_DEADLINE` (10s) |
+| `confirmation-deadline` | on `welcome` → subscribe (transition 8) | `EVENT_FEED_CONFIRMATION_DEADLINE` (10s default, configurable) |
+| `backoff` | on entry to Backoff | full-jitter: `uniform(0, min(60s, 1s × 2^(n−1)))` for failed-cycle count n; Retry-After floors it, and wins outright when it exceeds the cap (server-directed waits are exempt, §7) |
+| `staleness` | at socket open; re-armed per inbound frame of any kind | 7500ms |
+| `repair-poll` | on entry to Streaming; re-armed per cycle | 60s ± 20% jitter per cycle |
+| `poll-retry` | on a transient/throttled poll inside CatchingUp | Retry-After when present (exact, cap-exempt per §7); else full-jitter `uniform(0, min(60s, 1s × 2^(k−1)))` on the consecutive-poll-failure index k (reset by a successful poll or socket teardown) |
+
+The connector's reconnect backoff is deliberately **not** the §7 per-request formula: it is
+full-jitter delay *selection* over the whole range (the §7 formula saturates its backoff
+term at `MAX_BACKOFF_DELAY_MS` = 30s and adds jitter on top; this one draws uniformly from
+`[0, min(60s, 1s × 2^(n−1)))` with no added term). The two govern different things — §7
+governs attempts inside a seam call; this governs cycles between them. The same 60s cap
+bounds `poll-retry`'s locally computed jitter draw; a server-directed `Retry-After` is
+exempt from both caps, per §7.
+
+**Virtual-advance algorithm (normative).** Every language's test clock must honor the same
+semantics, so a tier-2 script means the same thing everywhere: *advancing virtual time
+fires due timers in deadline order, re-evaluating after each fire; timers scheduled during
+the advance whose deadlines land inside the window also fire; ties break by creation
+order.* A harness may additionally fire a named timer without advancing the clock,
+asserting its scheduled delay against a `{min, max}` envelope — that is how jitter is
+asserted without a cross-language RNG seam. Each language's test clock passes a shared
+semantics checklist (deadline order, reentrant scheduling within an advance, creation-order
+tie-break) before its tier-2 results count.
+
+Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket
+death, terminal — cancels the frame pump, closes the connection, and stops **all** of that
+attempt's timers before the next state is entered. After a confirmation-deadline teardown,
+the exact outstanding-timer set is `{backoff}`; after a terminal, it is `{}`. Exact-set
+timer assertions are what make a leaked deadline timer, ghost watchdog, or duplicated
+backoff a hard failure rather than a heuristic.
+
+### Checkpoint Identity `[conformance]`
+
+Checkpoint identity is `{origin, account_id, consumer_namespace, filter_key}` — all four,
+always:
+
+- Server positions are bound to `{account, filter set}` but carry **no consumer identity**;
+  two independent consumers in one account would otherwise share a lineage and silently
+  skip each other's work. `consumer_namespace` is therefore a required input whenever a
+  store is configured (a configured store with an empty namespace fails construction with
+  a `usage`-coded language-native error — Consumer Surface above).
+- `origin` is included because the SDK supports configurable base URLs; a server-side
+  cursor-domain key is not a safe client persistence key on its own. **Origin
+  canonicalization:** lowercase scheme and host; omit the default port (`:443` for https,
+  `:80` for http); no path, query, fragment, or trailing slash — canonical form exactly
+  `scheme "://" host [":" nondefault-port]`. Hosts are used as configured after lowercasing
+  (no IDN/punycode transformation).
+- `filter_key = "srv1-" + <bare 16-lowercase-hex server digest>`. The **server wire format
+  is the bare hex** — exactly what the 409 body's `position_digest`/`filters_digest` carry;
+  the server never emits the `srv1-` prefix. It is the SDK-side checkpoint-lineage
+  namespace only.
+
+**srv1 canonicalization (the published server contract; the SDK implements it as
+published, not as a mirror of server internals):**
+
+```
+digest = lowercase_hex(SHA-256(UTF-8(canonical_json)))[0:16]   -- 16 hex chars = first 8 bytes
+canonical_json = "[" T "," B "," C "]"     -- compact: no whitespace anywhere
+  T = null if no types,   else a JSON array of the type strings, deduped,
+      sorted bytewise-ascending over their UTF-8 encodings
+  B = null if no buckets, else a JSON array of integers: base-10 coerced, deduped AFTER
+      coercion ("1" and "01" are one id), numerically ascending, canonical integer
+      rendering (no sign for positives, no leading zeros, no fraction, no exponent)
+  C = same as B, for creators
+  absent list ⇒ null; empty filter set ⇒ the input is exactly [null,null,null]
+  string escaping: RFC 8259 minimal — only ", \, and control characters U+0000–U+001F;
+  NO HTML escaping; no \uXXXX for non-control characters
+```
+
+The canonical bytes are hand-built (string builder plus a minimal escape helper) — no
+language's default JSON emitter is load-bearing, because several HTML-escape by default.
+srv1's domain is the cataloged ASCII type strings and integer ids; unknown types draw the
+filter 400 before any digest is computed, so no quoted-string or non-ASCII vector exists.
+
+Published srv1 vectors (provisional until the merge-time gate; the conformance vector
+source):
+
+| Input | Canonical JSON | Digest |
+|---|---|---|
+| no filters | `[null,null,null]` | `fe44a8cccd89edae` |
+| `types=message.created` | `[["message.created"],null,null]` | `9eae6bbae1414746` |
+| `types=todo.completed,message.created&buckets=2,1` (unsorted multi-list) | `[["message.created","todo.completed"],[1,2],null]` | `00ed03e6196e77a2` |
+| `buckets=01` (also `buckets=1,01` — post-coercion dedup) | `[null,[1],null]` | `fb19e601cd033cad` |
+| `buckets=1,...,100` (the cap boundary) | `[null,[1,2,...,100],null]` | `832adbc56aa7c8f2` |
+
+The one built-in store is a file store: a single JSON file keyed by the compact RFC 8259
+JSON array of the four identity strings — e.g.
+`["https://3.basecampapi.com","5951425","openclaw","srv1-9f2ab04e5c11d3a7"]` — written
+atomically (temp + rename, 0600), documented as single-process (a server-side advisory
+checkpoint API is deliberately deferred until a multi-host connector needs a shared
+cursor). No `delete` method exists: after a 409 the connector re-enters via `since=` and
+the next page's `save` overwrites under the same key, and after a filter change the key
+itself changed, so the old lineage simply goes cold.
+
+Checkpoints only move forward; an access grant does not replay history behind them.
+Inspecting a newly granted bucket's past activity is an explicit caller choice: rewind to
+an older stored position, reset via `since=`, or (preferred for agents) fetch canonical
+resources.
+
+### Options and Per-Language Naming `[static]`
+
+Following the §16 device-flow precedent (injectable clock, per-language option idiom), the
+connector's options map per language as follows. Go uses functional options; TypeScript an
+options object with optional fields; Python and Ruby keyword arguments (Ruby with
+`DEFAULT_…` constants); Kotlin constructor parameters; Swift initializer parameters.
+
+| Concern (default) | Go option | TS field | Python / Ruby kwarg | Kotlin / Swift parameter |
+|---|---|---|---|---|
+| Filters (none) | `WithFilters` | `filters?` | `filters` | `filters` |
+| Entry mode (resume: stored position if any, else present; also present / beginning / after(id) / at-position(token)) | `WithStart` | `start?` | `start` | `start` |
+| Cable transport (default WebSocket impl) | `WithTransport` | `transport?` | `transport` | `transport` |
+| Clock (system monotonic) | `WithClock` | `clock?` | `clock` | `clock` |
+| Checkpoint store (none) | `WithCheckpointStore` | `checkpointStore?` | `checkpoint_store` | `checkpointStore` |
+| Consumer namespace (required with a store) | `WithConsumerNamespace` | `consumerNamespace?` | `consumer_namespace` | `consumerNamespace` |
+| Confirmation deadline (10s) | `WithConfirmationDeadline` | `confirmationDeadlineMs?` | `confirmation_deadline` | `confirmationDeadline` |
+| Repair interval (60s ± 20%) | `WithRepairInterval` | `repairIntervalMs?` | `repair_interval` | `repairInterval` |
+| Dedupe capacity (10,000) | `WithDedupeCapacity` | `dedupeCapacity?` | `dedupe_capacity` | `dedupeCapacity` |
+| Live buffer capacity (10,000) | `WithLiveBufferCapacity` | `liveBufferCapacity?` | `live_buffer_capacity` | `liveBufferCapacity` |
+| Signal handler (none ⇒ default-terminal) | `WithSignalHandler` | `signalHandler?` | `signal_handler` | `signalHandler` |
+| Observer (none) | `WithObserver` | `observer?` | `observer` | `observer` |
+
+The Observer is a struct of optional callbacks in the `httptrace.ClientTrace` style —
+extensible without breaking implementers: `connecting(attempt, delay)`, `connected()`,
+`confirmed()`, `disconnected(reason, error)`, `catch_up_started(cursor)`,
+`page_delivered(count, position)`, `checkpoint(position)` (after that page's events were
+accepted), `checkpoint_save_failed(error)`, `caught_up()`, `gap(epoch_after_id,
+resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
+`buffer_overflow(dropped_count)`. All are observability-only; none carries a disposition.
+
+### Security Invariants `[static]`
+
+- **Never log the ticket or the mint URL's query string** — the ticket rides in it.
+  Observer callbacks and error renderings carry redacted URLs.
+- **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) and
+  bound/truncate any error rendering of frame contents (§9's `MAX_ERROR_MESSAGE_LENGTH`
+  applies).
+- **Require `wss://`** for the cable URL, with the §9 localhost/loopback carve-out.
+- **Refuse mint-URL redirects** — a redirect on dial is a hard error, never followed.
+- **Validate every continuation and resume URL** before following it — §8's same-origin
+  algorithm plus downgrade rejection, terminal `invalid_continuation` on failure
+  (Continuation and Resume URL Validation above). Authenticated poll requests never
+  follow a cross-origin URL.
+
+### Constants
+
+The connector's constants live in Appendix A (the `EVENT_FEED_*` rows): handshake deadline
+10s; confirmation deadline 10s; repair interval 60s ± 20% jitter per cycle; reconnect
+backoff base 1s, ×2, cap 60s, full-jitter (the same cap bounds `poll-retry`'s jitter draw;
+server-directed `Retry-After` is exempt from local caps per §7); server
+heartbeat cadence 3s; staleness 7500ms; authorization-failure threshold 3; dedupe capacity
+10,000 ids; live buffer capacity 10,000 events; ticket TTL ~120s (server-owned —
+`expires_in` is never used for client-side scheduling; expiry is arbitrated by the server
+and the connector always mints fresh); maximum inbound frame 1 MiB.
+
+### Verification
+
+Verification is three tiers with disjoint responsibilities:
+
+| Tier | What it proves | Where it lives |
+|---|---|---|
+| 1 — poll-lane wire behavior | request/response contract of the generated `PollEvents` as ordinary operation-dispatch cases | `conformance/tests/` — deferred to the generated layer's landing |
+| 2 — connector protocol scenarios | the cross-lane state machine, frame-level cable behavior, mint/connect/poll interleave, virtual time | `conformance/event-feed/` fixture family + per-SDK native scenario drivers |
+| 3 — per-language internals | what data fixtures cannot express: LRU bounds, jitter formula, single-flight under real concurrency, real transport adapter contract, test-clock semantics | per-SDK unit/integration tests against the seams |
+
+The tier-2 family has its own schema and README; scenarios are strictly-ordered interleaved
+scripts (an unexpected mint, poll, connect, or outbound frame fails the scenario), with
+time consumed through the Clock seam per the virtual-advance algorithm above. Four
+acceptance behaviors are cross-language contracts: **(a)** fresh-ticket reconnect — after a
+severed socket past the ticket TTL, the reconnect presents a newly minted ticket URL;
+**(b)** confirmation gating — zero deliveries, zero polls, zero saves before
+`confirm_subscription`; **(c)** deadline teardown — the disposed attempt leaves exactly
+`{backoff}` outstanding; **(d)** terminal rejection — the connector closes the open socket,
+zero reconnect attempts, no armed retry timer survives. Handler-invocation records and the
+present-class-entry fixtures pin the Entry Boundary and Semantic Signals contracts;
+mint/connect/poll counts in fixtures count seam calls per Seam-Call Semantics. The
+fixture-by-fixture inventory lives in the family's own README — following the
+oauth/oauth-token precedent, parallel fixture families are documented at their consuming
+section and directory, not in §19's operation-dispatch category table or Appendix D.
+Per-SDK scenario-lane divergences (Swift's fake-transport lane, Kotlin's jvmTest-only
+consumption) are recorded in Appendix F with their compensating tier-3 tests.
 
 ---
 
@@ -2057,7 +2857,7 @@ The following are explicitly NOT part of this specification:
 
 All magic numbers in one place, derived from shipping SDK code (not `rubric-audit.json`).
 
-Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 13 rows are hand-maintained and were read against their cited sources on 2026-08-03 — all 13 matched. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
+Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 14 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — and `MAX_BACKOFF_DELAY` joined with #592 under that PR’s own six-SDK verification (the sentence previously said 13 rows while the table carried 14). The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23’s normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3’s merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
 
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
@@ -2076,6 +2876,18 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
 | `API_VERSION` | `2026-08-02` | — | `openapi.json` `info.version` <!-- @api-version --> |
 | `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
+| `EVENT_FEED_HANDSHAKE_DEADLINE` | 10 | seconds | §23 timers — dial-to-`welcome` deadline |
+| `EVENT_FEED_CONFIRMATION_DEADLINE` | 10 | seconds | §23 (configurable; default) |
+| `EVENT_FEED_REPAIR_INTERVAL` | 60, ± 20% jitter per cycle | seconds | §23 (configurable; default) |
+| `EVENT_FEED_BACKOFF_BASE` | 1 | seconds | §23 — full-jitter base for both the reconnect-cycle and `poll-retry` formulas |
+| `EVENT_FEED_BACKOFF_CAP` | 60 | seconds | §23 — caps the locally computed reconnect-cycle and `poll-retry` delays (server-directed `Retry-After` is exempt, §7); deliberately distinct from `MAX_BACKOFF_DELAY` above (§7's `MAX_BACKOFF_DELAY_MS`, 30s), which governs attempts inside a seam call |
+| `EVENT_FEED_PING_INTERVAL` | 3 | seconds | server heartbeat cadence (bc3; provisional until the merge-time gate); input to `EVENT_FEED_STALE_AFTER` |
+| `EVENT_FEED_STALE_AFTER` | 7500 | milliseconds | §23 — two missed 3s heartbeats + 25% grace; SDK-pinned detection policy |
+| `EVENT_FEED_AUTH_FAILURE_THRESHOLD` | 3 | consecutive failures | §23 disconnect dispatch (one shared counter) |
+| `EVENT_FEED_DEDUPE_CAPACITY` | 10,000 | event ids | §23 (configurable; default) |
+| `EVENT_FEED_LIVE_BUFFER_CAPACITY` | 10,000 | events | §23 (configurable; default; decoupled from the dedupe capacity; only event-bearing frames are buffered) |
+| `EVENT_FEED_TICKET_TTL` | ~120 | seconds | server-owned (`expires_in`; provisional until the merge-time gate); never used for client scheduling |
+| `EVENT_FEED_MAX_FRAME_BYTES` | 1,048,576 (1 MiB) | bytes | §23 security invariants |
 
 ---
 
@@ -2333,3 +3145,22 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 | Ruby | 46 (full canonical set) |
 | Go | 44 as standalone accessors (folds `automation`; `clientVisibility` ops exist on `RecordingsService` rather than as a separate service). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
 | Python | 46 (full canonical set; sync + async) |
+
+### Event Feed Connector Scenario Lane (§23)
+
+Tier-2 scenarios drive the real transport adapter over an in-process loopback cable server
+wherever a lightweight one exists, with only the Clock faked; divergences are compensated
+by named tier-3 tests.
+
+| SDK | Tier-2 scenario lane | Compensation / note |
+|-----|----------------------|---------------------|
+| Go | Real default transport against an in-process loopback ws server; fixtures consumed as data | Full-jitter formula additionally pinned exactly via an injected deterministic rand source (tier 3) |
+| TypeScript | Real transport under MSW `ws` interception | Default transport must use the global `WebSocket` (Node ≥ 22), never the `ws` package |
+| Python | Real transport over an in-process `websockets` loopback | Connector transport ships under an optional `stream` extra |
+| Ruby | Real transport over a `websocket-driver` loopback | `websocket-driver` becomes a runtime dependency |
+| Kotlin | jvmTest-only: real ktor ws client against a test-scoped server (`MockEngine` cannot mock WebSockets) | State machine mirrored in commonTest tier 3 for the four acceptance scenarios |
+| Swift | Fake-transport-driven scenarios (no in-process ws server without adding SwiftNIO) | macOS-gated tier-3 `URLSessionWebSocketTask` adapter contract test proves the real adapter honors the transport contract (verbatim frames, close mapping) |
+
+Outside Go, jitter is asserted only as a `{min, max}` envelope — a degenerate RNG
+(always-0 is legal full-jitter output) is caught only by Go's formula pin. Documented
+divergence, accepted.
