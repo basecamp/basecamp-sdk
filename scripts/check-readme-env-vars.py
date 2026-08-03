@@ -124,6 +124,29 @@ SDKS = {
     },
 }
 
+# Lexical quirks that are not implied by the comment style. Getting these wrong
+# is not academic: each was a real miss found in review.
+#
+#   triple:  Python/Ruby `"""`, and Swift/Kotlin multiline `"""` -- which are
+#            ordinary strings, not documentation.
+#   nested:  Swift and Kotlin allow `/* /* */ */`; Go and TypeScript end the
+#            comment at the first `*/`, so nesting them there would swallow code.
+#   raw:     Swift `#"..."#`, whose interpolation is `\#(...)`.
+LANG_FLAGS = {
+    "Go": {"triple": False, "nested": False, "raw": False},
+    "Ruby": {"triple": True, "nested": False, "raw": False},
+    "Python": {"triple": True, "nested": False, "raw": False},
+    "TypeScript": {"triple": False, "nested": False, "raw": False},
+    "Swift": {"triple": True, "nested": True, "raw": True},
+    "Kotlin": {"triple": True, "nested": True, "raw": False},
+}
+DEFAULT_FLAGS = {"triple": True, "nested": True, "raw": True}
+
+# Attach each SDK's lexical flags, so the scanner is driven by the language it
+# is actually reading rather than by the comment style alone.
+for _sdk, _spec in SDKS.items():
+    _spec["flags"] = LANG_FLAGS[_sdk]
+
 ROOT_README = "README.md"
 
 # The root README states these three read nothing. Invariant 4 holds it true.
@@ -161,15 +184,30 @@ CLAIM_END_RE = re.compile(r"\.\s|\n")
 STRING_QUOTES = {"hash": "\"'", "slash": "\"'`"}
 
 
-def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str) -> int:
+
+
+def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str,
+                       style: str | None = None, flags: dict | None = None) -> int:
     """Index of the delimiter closing the one already opened, honouring nesting.
+
+    Skips over string literals when told the language, because a delimiter
+    inside one is data: in `${foo("}", process.env.X)}` the quoted `}` is not the
+    end of the interpolation, and treating it as such truncated the hole and
+    hid the read behind it.
 
     Returns len(text) when unterminated, so a malformed literal consumes the
     rest of the file rather than silently resyncing mid-expression.
     """
     depth = 1
     k = start
-    while k < len(text):
+    n = len(text)
+    quotes = STRING_QUOTES[style] if style else ""
+    while k < n:
+        if quotes and text[k] in quotes:
+            literal_end, _ = scan_literal(text, k, style, flags)
+            if literal_end > k:
+                k = literal_end
+                continue
         if text[k] == open_ch:
             depth += 1
         elif text[k] == close_ch:
@@ -177,7 +215,7 @@ def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str) -> in
             if depth == 0:
                 return k
         k += 1
-    return len(text)
+    return n
 
 
 def has_fstring_prefix(text: str, i: int) -> bool:
@@ -188,32 +226,82 @@ def has_fstring_prefix(text: str, i: int) -> bool:
     return "f" in text[prefix_start:i].lower()
 
 
-def scan_literal(text: str, i: int, style: str) -> tuple[int, list[tuple[int, int]]]:
+def raw_string_hashes(text: str, i: int) -> int:
+    """Number of `#` opening a Swift raw string at `i`, or 0 if this is not one."""
+    k = i
+    while k < len(text) and text[k] == "#":
+        k += 1
+    return k - i if k > i and k < len(text) and text[k] == '"' else 0
+
+
+def brace_holes(text: str, start: int, stop: int, style: str, flags: dict,
+                opener: str, closer: str) -> list[tuple[int, int]]:
+    """Interpolation holes in a literal body, skipping escaped openers."""
+    holes = []
+    j = start
+    while j < stop:
+        # A doubled opener is an escape -- literal text, not an expression.
+        if text.startswith(opener * 2, j):
+            j += 2 * len(opener)
+            continue
+        if text.startswith(opener, j):
+            close = matching_delimiter(text, j + len(opener), opener[-1], closer, style, flags)
+            holes.append((j + len(opener), min(close, stop)))
+            j = close + 1
+            continue
+        j += 1
+    return holes
+
+
+def scan_literal(text: str, i: int, style: str,
+                 flags: dict | None = None) -> tuple[int, list[tuple[int, int]]]:
     """Extent of the literal opening at `i`, plus its interpolation holes.
 
     Returns (end, holes) where end is one past the closing quote and each hole is
     a half-open range of executable text inside the literal.
     """
     n = len(text)
-    triple = text[i : i + 3] if style == "hash" and text[i : i + 3] in ('"""', "'''") else None
-    if triple:
-        end = text.find(triple, i + 3)
-        end = n if end == -1 else end + 3
+    flags = DEFAULT_FLAGS if flags is None else flags
+
+    # Swift raw strings: #"..."# , ##"..."## , and the #"""..."""# forms. The
+    # hash count is part of both delimiters, and interpolation becomes \#(...).
+    if flags["raw"]:
+        hashes = raw_string_hashes(text, i)
+        if hashes:
+            fence = "#" * hashes
+            body_open = i + hashes
+            triple = text[body_open : body_open + 3] == '"""'
+            open_len = 3 if triple else 1
+            close_token = ('"""' if triple else '"') + fence
+            body_start = body_open + open_len
+            close_at = text.find(close_token, body_start)
+            end = n if close_at == -1 else close_at + len(close_token)
+            body_stop = close_at if close_at != -1 else n
+            holes = brace_holes(text, body_start, body_stop, style, flags, "\\" + fence + "(", ")")
+            return end, holes
+
+    triple_quote = None
+    if flags["triple"]:
+        candidate = text[i : i + 3]
+        if style == "hash" and candidate in ('"""', "'''"):
+            triple_quote = candidate
+        elif style == "slash" and candidate == '"""':
+            triple_quote = candidate
+
+    if triple_quote:
+        close_at = text.find(triple_quote, i + 3)
+        end = n if close_at == -1 else close_at + 3
+        body_stop = close_at if close_at != -1 else n
         holes = []
-        if has_fstring_prefix(text, i):
-            j = i + 3
-            body_end = end - 3 if end < n else n
-            while j < body_end:
-                # `{{` is an escaped brace, i.e. literal text, not an expression.
-                if text.startswith("{{", j):
-                    j += 2
-                    continue
-                if text[j] == "{":
-                    close = matching_delimiter(text, j + 1, "{", "}")
-                    holes.append((j + 1, min(close, body_end)))
-                    j = close + 1
-                    continue
-                j += 1
+        if style == "hash":
+            # Only an f-string's braces are code; a plain docstring's are text.
+            if has_fstring_prefix(text, i):
+                holes = brace_holes(text, i + 3, body_stop, style, flags, "{", "}")
+        else:
+            # Swift and Kotlin multiline strings are ordinary strings, not
+            # documentation, and both interpolate.
+            holes = brace_holes(text, i + 3, body_stop, style, flags, "${", "}")
+            holes += brace_holes(text, i + 3, body_stop, style, flags, "\\(", ")")
         return end, holes
 
     quote = text[i]
@@ -226,7 +314,7 @@ def scan_literal(text: str, i: int, style: str) -> tuple[int, list[tuple[int, in
             # Swift interpolation opens with a backslash, so it has to be tested
             # before the generic escape skip swallows the paren.
             if swift_interp and text.startswith("\\(", j):
-                end = matching_delimiter(text, j + 2, "(", ")")
+                end = matching_delimiter(text, j + 2, "(", ")", style, flags)
                 holes.append((j + 2, end))
                 j = end + 1
                 continue
@@ -242,7 +330,7 @@ def scan_literal(text: str, i: int, style: str) -> tuple[int, list[tuple[int, in
         opened = False
         for opener, closer in openers:
             if opener != "\\(" and text.startswith(opener, j):
-                end = matching_delimiter(text, j + len(opener), "{", closer)
+                end = matching_delimiter(text, j + len(opener), "{", closer, style, flags)
                 holes.append((j + len(opener), end))
                 j = end + 1
                 opened = True
@@ -253,24 +341,29 @@ def scan_literal(text: str, i: int, style: str) -> tuple[int, list[tuple[int, in
     return j, holes
 
 
-def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray) -> None:
+def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray,
+                  flags: dict | None = None) -> None:
     """Mask string literals in [lo, hi), recursing through interpolation holes.
 
     Called on the inside of an interpolation, which is code: any literal *there*
     is data again. Without this, `${"process.env.BASECAMP_FAKE"}` would count as
     a read, because the hole was un-masked wholesale.
     """
+    flags = DEFAULT_FLAGS if flags is None else flags
     quotes = STRING_QUOTES[style]
     i = lo
     while i < hi:
-        if text[i] in quotes:
-            end, holes = scan_literal(text, i, style)
+        if text[i] in quotes or (flags["raw"] and raw_string_hashes(text, i)):
+            end, holes = scan_literal(text, i, style, flags)
+            if end <= i:
+                i += 1
+                continue
             for k in range(i, min(end, hi)):
                 in_string[k] = 1
             for hole_start, hole_end in holes:
                 for k in range(hole_start, min(hole_end, hi)):
                     in_string[k] = 0
-                mask_literals(text, hole_start, min(hole_end, hi), style, in_string)
+                mask_literals(text, hole_start, min(hole_end, hi), style, in_string, flags)
             i = end
             continue
         i += 1
@@ -301,7 +394,7 @@ def interpolation_openers(text: str, i: int, quote: str, style: str) -> list[tup
     return openers
 
 
-def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
+def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str, bytearray]:
     """Blank comments and doc-only string blocks, preserving every offset.
 
     Returns the cleaned text plus a mask marking offsets that sit inside a
@@ -323,6 +416,7 @@ def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
     out = list(text)
     n = len(text)
     in_string = bytearray(n)
+    flags = DEFAULT_FLAGS if flags is None else flags
     quotes = STRING_QUOTES[style]
     i = 0
 
@@ -331,37 +425,40 @@ def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
             if out[k] != "\n":
                 out[k] = " "
 
+    def take_literal(start: int) -> int:
+        """Mask the literal at `start`, un-masking and recursing into its holes."""
+        end, holes = scan_literal(text, start, style, flags)
+        for k in range(start, min(end, n)):
+            in_string[k] = 1
+        # An interpolation is executable code that merely lives inside a literal,
+        # so it is un-masked: `token=${process.env.BASECAMP_TOKEN}` is a genuine
+        # read, and masking it would hide one. Literals *inside* that expression
+        # are data again, hence the recursive re-mask.
+        for hole_start, hole_end in holes:
+            for k in range(hole_start, min(hole_end, n)):
+                in_string[k] = 0
+            mask_literals(text, hole_start, min(hole_end, n), style, in_string, flags)
+        return end
+
     while i < n:
         # Python/Ruby docstrings: string literals used as documentation, so an
         # example inside one is not a read -- unless it is an f-string, whose
         # braces are executable. scan_literal makes that distinction; blanking
-        # every triple-quoted literal outright hid real reads.
-        if style == "hash" and text[i : i + 3] in ('"""', "'''"):
-            end, holes = scan_literal(text, i, style)
+        # every triple-quoted literal outright hid real reads. Swift and Kotlin
+        # `"""` are ordinary strings, so they fall through to take_literal.
+        if flags["triple"] and style == "hash" and text[i : i + 3] in ('"""', "'''"):
+            end, holes = scan_literal(text, i, style, flags)
             if holes:
-                for k in range(i, min(end, n)):
-                    in_string[k] = 1
-                for hole_start, hole_end in holes:
-                    for k in range(hole_start, min(hole_end, n)):
-                        in_string[k] = 0
-                    mask_literals(text, hole_start, min(hole_end, n), style, in_string)
+                take_literal(i)
             else:
                 blank(i, end)
             i = end
             continue
+        if flags["raw"] and raw_string_hashes(text, i):
+            i = take_literal(i)
+            continue
         if text[i] in quotes:
-            end, holes = scan_literal(text, i, style)
-            for k in range(i, min(end, n)):
-                in_string[k] = 1
-            # An interpolation is executable code that merely lives inside a
-            # literal, so it is un-masked: `token=${process.env.BASECAMP_TOKEN}`
-            # is a genuine read, and masking it would hide one. Literals *inside*
-            # that expression are data again, hence the recursive re-mask.
-            for hole_start, hole_end in holes:
-                for k in range(hole_start, min(hole_end, n)):
-                    in_string[k] = 0
-                mask_literals(text, hole_start, min(hole_end, n), style, in_string)
-            i = end
+            i = take_literal(i)
             continue
         if style == "slash" and text.startswith("//", i):
             end = text.find("\n", i)
@@ -369,8 +466,24 @@ def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
             i = n if end == -1 else end
             continue
         if style == "slash" and text.startswith("/*", i):
-            end = text.find("*/", i + 2)
-            end = n if end == -1 else end + 2
+            # Swift and Kotlin nest block comments; Go and TypeScript end at the
+            # first `*/`, so nesting them there would swallow the code after it.
+            if flags["nested"]:
+                depth = 1
+                k = i + 2
+                while k < n and depth:
+                    if text.startswith("/*", k):
+                        depth += 1
+                        k += 2
+                    elif text.startswith("*/", k):
+                        depth -= 1
+                        k += 2
+                    else:
+                        k += 1
+                end = k
+            else:
+                end = text.find("*/", i + 2)
+                end = n if end == -1 else end + 2
             blank(i, end)
             i = end
             continue
@@ -432,7 +545,9 @@ def real_reads(spec: dict) -> dict[str, list[str]]:
         # split across lines — os.getenv(\n    "BASECAMP_FOO") — is still a read,
         # and a per-line scan would silently miss it.
         text, in_string = strip_noncode(
-            path.read_text(encoding="utf-8", errors="replace"), spec["comments"]
+            path.read_text(encoding="utf-8", errors="replace"),
+            spec["comments"],
+            spec.get("flags"),
         )
         for pattern in compiled:
             # finditer + the named group, not findall: these patterns carry a

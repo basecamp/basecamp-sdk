@@ -85,6 +85,7 @@ RB_SDK = {"Ruby": gate.SDKS["Ruby"]}
 TS_SDK = {"TypeScript": gate.SDKS["TypeScript"]}
 PY_RB = {"Python": gate.SDKS["Python"], "Ruby": gate.SDKS["Ruby"]}
 SW_SDK = {"Swift": gate.SDKS["Swift"]}
+KT_SDK = {"Kotlin": gate.SDKS["Kotlin"]}
 
 TABLE = "| Variable | Description |\n|---|---|\n| `{var}` | thing |\n"
 
@@ -289,6 +290,75 @@ def main() -> int:
         })
         check("a swift \\() interpolation is a read",
               run_gate(root, SW_SDK, no_env_sdks=("Swift",)), ["noenv:Swift:BASECAMP_SW"])
+
+        # 5b-iv. Language-specific lexical forms. Each of these was a real miss:
+        #     the scanner is driven by per-SDK flags, not by comment style alone.
+        root = tmp / "kotlin-multiline"
+        build(root, {
+            "kotlin/README.md": "no tables\n",
+            "kotlin/sdk/src/c.kt":
+                'val s = """\n    System.getenv("BASECAMP_FAKE")\n    """.trimIndent()\n',
+        })
+        check("kotlin multiline string body is not a read",
+              run_gate(root, KT_SDK, no_env_sdks=("Kotlin",)), [])
+
+        # ...but an interpolation inside that multiline string still is.
+        root = tmp / "kotlin-multiline-interp"
+        build(root, {
+            "kotlin/README.md": "mentions BASECAMP_REAL\n",
+            "kotlin/sdk/src/c.kt": 'val s = """\ntok=${System.getenv("BASECAMP_REAL")}\n"""\n',
+        })
+        check("kotlin multiline interpolation is a read",
+              run_gate(root, KT_SDK, no_env_sdks=("Kotlin",)),
+              ["noenv:Kotlin:BASECAMP_REAL"])
+
+        root = tmp / "swift-multiline"
+        build(root, {
+            "swift/README.md": "no tables\n",
+            "swift/Sources/c.swift":
+                'let s = """\nProcessInfo.processInfo.environment["BASECAMP_FAKE"]\n"""\n',
+        })
+        check("swift multiline string body is not a read",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)), [])
+
+        root = tmp / "swift-raw"
+        build(root, {
+            "swift/README.md": "mentions BASECAMP_RAW\n",
+            "swift/Sources/c.swift":
+                'let t = #"\\#(ProcessInfo.processInfo.environment["BASECAMP_RAW"]!)"#\n',
+        })
+        check("swift raw-string interpolation is a read",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)),
+              ["noenv:Swift:BASECAMP_RAW"])
+
+        root = tmp / "brace-in-nested-literal"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_SECRET\n",
+            "typescript/src/c.ts": 'const x = `${foo("}", process.env.BASECAMP_SECRET)}`;\n',
+        })
+        check("a quoted brace does not truncate the interpolation",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_SECRET"])
+
+        root = tmp / "swift-nested-comment"
+        build(root, {
+            "swift/README.md": "no tables\n",
+            "swift/Sources/c.swift":
+                '/* outer /* inner */ ProcessInfo.processInfo.environment["BASECAMP_DOC"] */\n',
+        })
+        check("swift nested block comment stays a comment",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)), [])
+
+        # ...while TypeScript does *not* nest, so code after the inner `*/` is
+        # code. Nesting it everywhere would have swallowed a real read.
+        root = tmp / "ts-unnested-comment"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_AFTER\n",
+            "typescript/src/c.ts": '/* outer /* inner */ const v = process.env.BASECAMP_AFTER;\n',
+        })
+        check("typescript block comments do not nest",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_AFTER"])
 
         # 5c. A `#` inside a string literal does not start a comment, so a read
         #     later on the same line must still be seen.
