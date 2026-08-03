@@ -446,6 +446,10 @@ async function executeOperation(
         await client.timesheets.get(Number(params.entryId));
         break;
 
+      case "DestroyTimesheetEntry":
+        await client.timesheets.destroy(Number(params.entryId));
+        break;
+
       case "UpdateTimesheetEntry":
         await client.timesheets.update(Number(params.entryId), {
           hours: body.hours ? String(body.hours) : undefined,

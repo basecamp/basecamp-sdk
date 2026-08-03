@@ -107,7 +107,7 @@ class ServiceGenerator
         CreateScheduleEntry GetScheduleEntry UpdateScheduleEntry
         GetScheduleEntryOccurrence
       ],
-      'Timesheets' => %w[GetRecordingTimesheet GetProjectTimesheet GetTimesheetReport GetTimesheetEntry CreateTimesheetEntry UpdateTimesheetEntry]
+      'Timesheets' => %w[GetRecordingTimesheet GetProjectTimesheet GetTimesheetReport GetTimesheetEntry CreateTimesheetEntry UpdateTimesheetEntry DestroyTimesheetEntry]
     },
     'ClientFeatures' => {
       'ClientApprovals' => %w[ListClientApprovals GetClientApproval],
@@ -178,6 +178,7 @@ class ServiceGenerator
     'GetTimesheetEntry' => 'get',
     'CreateTimesheetEntry' => 'create',
     'UpdateTimesheetEntry' => 'update',
+    'DestroyTimesheetEntry' => 'destroy',
     'GetProgressReport' => 'progress',
     'GetUpcomingSchedule' => 'upcoming',
     'GetAssignedTodos' => 'assigned',

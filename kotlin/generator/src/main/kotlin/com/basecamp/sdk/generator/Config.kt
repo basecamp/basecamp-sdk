@@ -84,7 +84,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
             "GetSchedule", "UpdateScheduleSettings", "ListScheduleEntries",
             "CreateScheduleEntry", "GetScheduleEntry", "UpdateScheduleEntry", "GetScheduleEntryOccurrence",
         ),
-        "Timesheets" to listOf("GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport", "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry"),
+        "Timesheets" to listOf("GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport", "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry", "DestroyTimesheetEntry"),
     ),
     "ClientFeatures" to mapOf(
         "ClientApprovals" to listOf("ListClientApprovals", "GetClientApproval"),
@@ -218,6 +218,7 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "GetTimesheetEntry" to "get",
     "CreateTimesheetEntry" to "create",
     "UpdateTimesheetEntry" to "update",
+    "DestroyTimesheetEntry" to "destroy",
     "GetProgressReport" to "progress",
     "GetUpcomingSchedule" to "upcoming",
     "GetAssignedTodos" to "assigned",
@@ -292,6 +293,10 @@ val RESOURCE_TYPE_OVERRIDES = mapOf(
     // Creates and returns a Todo; the inferred "todoset_todo" would split
     // loose-to-do operations into their own telemetry category.
     "CreateTodosetTodo" to "todo",
+    // "Destroy" is not a verb pattern, so inference falls through to the generic
+    // "resource" and would split this delete away from the get/update siblings
+    // that report "timesheet_entry".
+    "DestroyTimesheetEntry" to "timesheet_entry",
 )
 
 /**

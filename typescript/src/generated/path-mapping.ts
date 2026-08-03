@@ -158,6 +158,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "DELETE:/{accountId}/stacks/{folderId}": "DeleteFolder",
   "GET:/{accountId}/stacks/{folderId}": "GetFolder",
   "PUT:/{accountId}/stacks/{folderId}": "UpdateFolder",
+  "DELETE:/{accountId}/timesheet_entries/{entryId}": "DestroyTimesheetEntry",
   "GET:/{accountId}/timesheet_entries/{entryId}": "GetTimesheetEntry",
   "PUT:/{accountId}/timesheet_entries/{entryId}": "UpdateTimesheetEntry",
   "GET:/{accountId}/todolists/{id}": "GetTodolistOrGroup",

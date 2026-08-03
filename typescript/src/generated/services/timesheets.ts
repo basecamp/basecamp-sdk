@@ -294,4 +294,33 @@ export class TimesheetsService extends BaseService {
     );
     return response;
   }
+
+  /**
+   * Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+   * @param entryId - The entry ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.timesheets.destroy(123);
+   * ```
+   */
+  async destroy(entryId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Timesheets",
+        operation: "DestroyTimesheetEntry",
+        resourceType: "timesheet_entry",
+        isMutation: true,
+        resourceId: entryId,
+      },
+      () =>
+        this.client.DELETE("/timesheet_entries/{entryId}", {
+          params: {
+            path: { entryId },
+          },
+        })
+    );
+  }
 }

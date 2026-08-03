@@ -243,7 +243,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
       "GetSchedule", "UpdateScheduleSettings", "ListScheduleEntries",
       "CreateScheduleEntry", "GetScheduleEntry", "UpdateScheduleEntry", "GetScheduleEntryOccurrence",
     ],
-    Timesheets: ["GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport", "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry"],
+    Timesheets: ["GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport", "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry", "DestroyTimesheetEntry"],
   },
   ClientFeatures: {
     ClientApprovals: ["ListClientApprovals", "GetClientApproval"],
@@ -312,6 +312,10 @@ const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
   // Creates and returns a Todo; the inferred "todoset_todo" would split
   // loose-to-do operations into their own telemetry category.
   CreateTodosetTodo: "todo",
+  // "Destroy" is not a verb pattern, so inference falls through to the generic
+  // "resource" and would split this delete away from the get/update siblings
+  // that report "timesheet_entry".
+  DestroyTimesheetEntry: "timesheet_entry",
 };
 
 const METHOD_NAME_OVERRIDES: Record<string, string> = {
@@ -372,6 +376,7 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   GetTimesheetEntry: "get",
   CreateTimesheetEntry: "create",
   UpdateTimesheetEntry: "update",
+  DestroyTimesheetEntry: "destroy",
   GetProgressReport: "progress",
   GetUpcomingSchedule: "upcoming",
   GetAssignedTodos: "assigned",

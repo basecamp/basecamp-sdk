@@ -83,7 +83,7 @@ let serviceSplits: [String: [String: [String]]] = [
             "GetSchedule", "UpdateScheduleSettings", "ListScheduleEntries",
             "CreateScheduleEntry", "GetScheduleEntry", "UpdateScheduleEntry", "GetScheduleEntryOccurrence",
         ],
-        "Timesheets": ["GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport", "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry"],
+        "Timesheets": ["GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport", "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry", "DestroyTimesheetEntry"],
     ],
     "ClientFeatures": [
         "ClientApprovals": ["ListClientApprovals", "GetClientApproval"],

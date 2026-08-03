@@ -1028,6 +1028,13 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "DestroyTimesheetEntry" -> {
+            val entryId = tc.pathParams.longParam("timesheetEntryId")
+                .let { if (it != 0L) it else tc.pathParams.longParam("entryId") }
+            account.timesheets.destroy(entryId)
+            DispatchResult()
+        }
+
         "CreateTimesheetEntry" -> {
             val recordingId = tc.pathParams.longParam("recordingId")
             val date = tc.requestBody.stringParam("date")

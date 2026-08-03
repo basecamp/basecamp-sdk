@@ -2276,6 +2276,7 @@
       "pattern": "/{accountId}/timesheet_entries/{entryId}",
       "resource": "Schedule",
       "operations": {
+        "DELETE": "DestroyTimesheetEntry",
         "GET": "GetTimesheetEntry",
         "PUT": "UpdateTimesheetEntry"
       },

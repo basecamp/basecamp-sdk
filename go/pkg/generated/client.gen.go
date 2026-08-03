@@ -5656,6 +5656,9 @@ type ClientInterface interface {
 	// GetProjectConstruction request
 	GetProjectConstruction(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DestroyTimesheetEntry request
+	DestroyTimesheetEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetTimesheetEntry request
 	GetTimesheetEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -8697,6 +8700,16 @@ func (c *Client) GetProjectConstruction(ctx context.Context, accountId string, t
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetProjectConstructionRequest(c.Server, accountId, templateId, constructionId)
 	}, true, "GetProjectConstruction", reqEditors...)
+
+}
+
+// DestroyTimesheetEntry is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DestroyTimesheetEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDestroyTimesheetEntryRequest(c.Server, accountId, entryId)
+	}, true, "DestroyTimesheetEntry", reqEditors...)
 
 }
 
@@ -20238,6 +20251,47 @@ func NewGetProjectConstructionRequest(server string, accountId string, templateI
 	return req, nil
 }
 
+// NewDestroyTimesheetEntryRequest generates requests for DestroyTimesheetEntry
+func NewDestroyTimesheetEntryRequest(server string, accountId string, entryId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "entryId", runtime.ParamLocationPath, entryId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/timesheet_entries/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetTimesheetEntryRequest generates requests for GetTimesheetEntry
 func NewGetTimesheetEntryRequest(server string, accountId string, entryId int64) (*http.Request, error) {
 	var err error
@@ -22671,6 +22725,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateTemplate":                     {Idempotent: true, HasSensitiveParams: false},
 	"CreateProjectFromTemplate":          {Idempotent: false, HasSensitiveParams: false},
 	"GetProjectConstruction":             {Idempotent: true, HasSensitiveParams: false},
+	"DestroyTimesheetEntry":              {Idempotent: true, HasSensitiveParams: false},
 	"GetTimesheetEntry":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTimesheetEntry":               {Idempotent: true, HasSensitiveParams: false},
 	"RepositionTodolistGroup":            {Idempotent: true, HasSensitiveParams: false},
@@ -22920,6 +22975,7 @@ var operationRetryMax = map[string]int{
 	"UpdateTemplate":                     3,
 	"CreateProjectFromTemplate":          2,
 	"GetProjectConstruction":             3,
+	"DestroyTimesheetEntry":              3,
 	"GetTimesheetEntry":                  3,
 	"UpdateTimesheetEntry":               3,
 	"RepositionTodolistGroup":            3,
@@ -23167,6 +23223,7 @@ var operationRetryOn = map[string][]int{
 	"UpdateTemplate":                     {429, 503},
 	"CreateProjectFromTemplate":          {429, 503},
 	"GetProjectConstruction":             {429, 503},
+	"DestroyTimesheetEntry":              {429, 503},
 	"GetTimesheetEntry":                  {429, 503},
 	"UpdateTimesheetEntry":               {429, 503},
 	"RepositionTodolistGroup":            {429, 503},
@@ -24888,6 +24945,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetProjectConstructionWithResponse request
 	GetProjectConstructionWithResponse(ctx context.Context, accountId string, templateId int64, constructionId int64, reqEditors ...RequestEditorFn) (*GetProjectConstructionResponse, error)
+
+	// DestroyTimesheetEntryWithResponse request
+	DestroyTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*DestroyTimesheetEntryResponse, error)
 
 	// GetTimesheetEntryWithResponse request
 	GetTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*GetTimesheetEntryResponse, error)
@@ -31925,6 +31985,40 @@ func (r GetProjectConstructionResponse) ContentType() string {
 	return ""
 }
 
+type DestroyTimesheetEntryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DestroyTimesheetEntryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DestroyTimesheetEntryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DestroyTimesheetEntryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetTimesheetEntryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -35582,6 +35676,15 @@ func (c *ClientWithResponses) GetProjectConstructionWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseGetProjectConstructionResponse(rsp)
+}
+
+// DestroyTimesheetEntryWithResponse request returning *DestroyTimesheetEntryResponse
+func (c *ClientWithResponses) DestroyTimesheetEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*DestroyTimesheetEntryResponse, error) {
+	rsp, err := c.DestroyTimesheetEntry(ctx, accountId, entryId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDestroyTimesheetEntryResponse(rsp)
 }
 
 // GetTimesheetEntryWithResponse request returning *GetTimesheetEntryResponse
@@ -46493,6 +46596,58 @@ func ParseGetProjectConstructionResponse(rsp *http.Response) (*GetProjectConstru
 		var dest NotFoundErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseDestroyTimesheetEntryResponse parses an HTTP response from a DestroyTimesheetEntryWithResponse call
+func ParseDestroyTimesheetEntryResponse(rsp *http.Response) (*DestroyTimesheetEntryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DestroyTimesheetEntryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

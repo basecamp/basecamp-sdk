@@ -277,6 +277,10 @@ class OperationMapper
       @account.timesheets.get(
         entry_id: path_params["entryId"]
       )
+    when "DestroyTimesheetEntry"
+      @account.timesheets.destroy(
+        entry_id: path_params["entryId"]
+      )
     when "GetProjectTimeline"
       @account.timeline.get_project_timeline(
         project_id: path_params["projectId"]

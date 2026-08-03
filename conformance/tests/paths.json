@@ -238,6 +238,38 @@
     ]
   },
   {
+    "name": "Timesheet entry destroy uses /timesheet_entries/{entryId} path",
+    "description": "Verifies that DestroyTimesheetEntry deletes via the flat timesheet_entries path and accepts a 204 with no body. bc3 draws this action only unscoped (config/routes.rb:187), so a bucket-scoped spelling would 404.",
+    "operation": "DestroyTimesheetEntry",
+    "method": "DELETE",
+    "path": "/timesheet_entries/{entryId}",
+    "pathParams": {
+      "entryId": 999
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/timesheet_entries/999"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "DELETE"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "timesheets"
+    ]
+  },
+  {
     "name": "List webhooks uses bucket-scoped /buckets/{bucketId}/webhooks.json path",
     "description": "Verifies that ListWebhooks constructs the bucket-scoped URL path /buckets/{bucketId}/webhooks.json",
     "operation": "ListWebhooks",

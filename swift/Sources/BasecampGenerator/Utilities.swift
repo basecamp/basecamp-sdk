@@ -154,6 +154,10 @@ private let resourceTypeOverrides: [String: String] = [
     // Creates and returns a Todo; the inferred "todoset_todo" would split
     // loose-to-do operations into their own telemetry category.
     "CreateTodosetTodo": "todo",
+    // "Destroy" is not a verb pattern, so inference falls through to the generic
+    // "resource" and would split this delete away from the get/update siblings
+    // that report "timesheet_entry".
+    "DestroyTimesheetEntry": "timesheet_entry",
 ]
 
 /// Extracts the resource type from an operationId using verb patterns.

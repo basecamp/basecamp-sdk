@@ -408,6 +408,11 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
             entryId: pathParams.longParam(anyOf: ["timesheetEntryId", "entryId"]))
         return DispatchResult()
 
+    case "DestroyTimesheetEntry":
+        try await account.timesheets.destroy(
+            entryId: pathParams.longParam(anyOf: ["timesheetEntryId", "entryId"]))
+        return DispatchResult()
+
     case "CreateTimesheetEntry":
         _ = try await account.timesheets.create(
             recordingId: pathParams.longParam("recordingId"),
