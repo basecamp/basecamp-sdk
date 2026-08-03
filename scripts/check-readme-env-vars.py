@@ -734,8 +734,13 @@ def scan_literal(text: str, i: int, style: str,
     quote = text[i]
     openers = interpolation_openers(text, i, quote, style, flags)
     swift_interp = ("\\(", ")") in openers
-    raw = (style == "hash" and has_raw_prefix(text, i)) or (
-        quote == "`" and flags.get("backtick_raw"))
+    # Two different kinds of raw, and they differ exactly where it matters. In
+    # Python's the backslash stays in the value but still keeps the next quote
+    # from closing the literal, so `r"\""` is one string. In Go's backtick
+    # literal the backslash is nothing at all, so a trailing one cannot protect
+    # the delimiter and the literal simply ends.
+    py_raw = style == "hash" and has_raw_prefix(text, i)
+    raw = py_raw or (quote == "`" and flags.get("backtick_raw"))
     j = i + 1
     holes = []
     while j < n:
@@ -748,6 +753,9 @@ def scan_literal(text: str, i: int, style: str,
                 j = end + 1
                 continue
             if raw:
+                if py_raw and text[j + 1 : j + 2] == quote:
+                    j += 2
+                    continue
                 j += 1
                 continue
             j += 2
@@ -1058,7 +1066,26 @@ def prose_lines(readme: Path) -> list[tuple[int, str]]:
 # Words that turn a mention into a denial. A bare substring test counted
 # "the SDK never looks them up" as documentation, so a variable an SDK started
 # reading could ship undocumented behind a sentence saying it does not.
-NEGATION_RE = re.compile(r"\b(never|not|no|none|nothing|cannot|n't)\b", re.I)
+# "reserved", "planned" and friends belong here rather than in some separate
+# category: saying a variable is reserved for future use is saying the SDK does
+# not read it today, which is a denial wearing optimistic clothes.
+NEGATION_RE = re.compile(
+    r"\b(never|not|no|none|nothing|cannot|n't|reserved|unused|ignored|planned)\b",
+    re.I,
+)
+
+# ...and a mention only documents a read when the sentence actually claims one.
+# Absence of a negation was never enough on its own: "`BASECAMP_FOO` appears in
+# the table." denies nothing and asserts nothing either.
+#
+# The verbs are invariant 5's, so the two checks agree about what a claim looks
+# like -- including the bare "use" that the sentence which prompted this whole
+# gate was built on ("which Go and Ruby use to site their cache directories").
+AFFIRMATIVE_RE = re.compile(
+    r"\b(reads?|uses?|consults?|honou?rs?|checks?|respects?|sets?|configures?"
+    r"|overrides?|enables?|disables?|sites?|looks? up|falls? back to)\b",
+    re.I,
+)
 
 
 def affirmative_mentions(readme: Path) -> set[str]:
@@ -1089,7 +1116,7 @@ def affirmative_mentions(readme: Path) -> set[str]:
                 # it." The pronoun is the whole trick, and taking the sentence
                 # in isolation missed it.
                 denied.update(named or previous)
-            else:
+            elif AFFIRMATIVE_RE.search(sentence):
                 mentioned.update(named)
             if named:
                 previous = named

@@ -164,7 +164,7 @@ def main() -> int:
         # were invisible to patterns that demanded the dot or bracket directly.
         root = tmp / "optional-chaining"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_OPT\n",
+            "typescript/README.md": "The SDK reads BASECAMP_OPT.\n",
             "typescript/src/c.ts": "const v = process.env?.BASECAMP_OPT;\n",
         })
         check("typescript optional-chained read is seen",
@@ -173,7 +173,7 @@ def main() -> int:
 
         root = tmp / "optional-chaining-bracket"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_OPTB\n",
+            "typescript/README.md": "The SDK reads BASECAMP_OPTB.\n",
             "typescript/src/c.ts": 'const v = process.env?.["BASECAMP_OPTB"];\n',
         })
         check("typescript optional-chained bracket read is seen",
@@ -184,7 +184,7 @@ def main() -> int:
         # and its contents must not read as calls.
         root = tmp / "regex-in-hole"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_SECRET\n",
+            "typescript/README.md": "The SDK reads BASECAMP_SECRET.\n",
             "typescript/src/c.ts":
                 'const x = `${(/}/, process.env.BASECAMP_SECRET)}`;\n',
         })
@@ -204,7 +204,7 @@ def main() -> int:
         # would swallow code up to the next slash and hide the read.
         root = tmp / "division-not-regex"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_DIV\n",
+            "typescript/README.md": "The SDK reads BASECAMP_DIV.\n",
             "typescript/src/c.ts": "const r = total / process.env.BASECAMP_DIV;\n",
         })
         check("a division slash is not a regex",
@@ -215,7 +215,7 @@ def main() -> int:
         # match has to start on the brace or comma to survive the string mask.
         root = tmp / "destructured-quoted-key"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_QK\n",
+            "typescript/README.md": "The SDK reads BASECAMP_QK.\n",
             "typescript/src/c.ts": 'const { "BASECAMP_QK": token } = process.env;\n',
         })
         check("a quoted destructuring key is a read",
@@ -226,7 +226,7 @@ def main() -> int:
         # escape the terminator. Swift's are not raw, which is how \( works.
         root = tmp / "kotlin-triple-raw"
         build(root, {
-            "kotlin/README.md": "mentions BASECAMP_KA\n",
+            "kotlin/README.md": "The SDK reads BASECAMP_KA.\n",
             "kotlin/sdk/src/c.kt":
                 'val s = """ends with a backslash \\"""\nval v = System.getenv("BASECAMP_KA")\n',
         })
@@ -270,6 +270,28 @@ def main() -> int:
         })
         check("a neutral mention beside a denial is not documentation",
               run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_NEUTRAL"])
+
+        # ...and a sentence that denies nothing still has to claim something.
+        # "reserved for future use" documents no read at all.
+        root = tmp / "neutral-no-denial"
+        build(root, {
+            "python/README.md": "`BASECAMP_RESERVED` is reserved for future use.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_RESERVED")\n',
+        })
+        check("a neutral sentence with no claim is not documentation",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_RESERVED"])
+
+        # The verbs the shipping READMEs actually use have to keep working, or
+        # this fails CI on correct prose. `consults` is go/README.md's word for
+        # the XDG pair, which has no table row anywhere.
+        root = tmp / "affirmative-verbs"
+        build(root, {
+            "go/README.md":
+                "`DefaultConfig` consults `XDG_CACHE_HOME` to site the cache directory.\n",
+            "go/pkg/c.go": 'v := os.Getenv("XDG_CACHE_HOME")\n',
+        })
+        check("an affirmative verb documents a prose-only read",
+              run_gate(root, GO_SDK), [])
 
         # ...but a table row is an affirmative claim in its own right, and the
         # denial usually qualifies one code path rather than the SDK. This is
@@ -488,7 +510,7 @@ def main() -> int:
         # parenthesis-less call, so the same spelling there is arithmetic.
         root = tmp / "ts-not-command-regex"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_TSDIV\n",
+            "typescript/README.md": "The SDK reads BASECAMP_TSDIV.\n",
             "typescript/src/c.ts":
                 "const n = total /count/ 2;\nconst v = process.env.BASECAMP_TSDIV;\n",
         })
@@ -593,6 +615,18 @@ def main() -> int:
         })
         check("a go backtick literal is raw", run_gate(root, GO_SDK), [])
 
+        # A raw string keeps the backslash in its value, but the tokenizer still
+        # lets it protect a quote: `r"\""` is one literal. Advancing a single
+        # character made the escaped quote the terminator and left the rest of
+        # the literal executable.
+        root = tmp / "raw-escaped-quote"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "python/src/c.py": 'X = r"\\" os.getenv(\'BASECAMP_FAKE\')"\n',
+        })
+        check("an escaped quote does not end a raw string",
+              run_gate(root, PY_SDK), ["forward:Python:BASECAMP_FAKE"])
+
         # In a raw f-string the backslash is literal, so it must not eat the
         # brace that opens the expression.
         root = tmp / "raw-fstring"
@@ -605,7 +639,7 @@ def main() -> int:
         # Destructuring is a read, and every name in the pattern is one.
         root = tmp / "destructured"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_DA and BASECAMP_DB\n",
+            "typescript/README.md": "The SDK reads BASECAMP_DA and BASECAMP_DB.\n",
             "typescript/src/c.ts": "const { BASECAMP_DA, BASECAMP_DB } = process.env;\n",
         })
         check("destructured reads are seen, all of them",
@@ -768,7 +802,7 @@ def main() -> int:
         #     direction — so each language's spelling is exercised.
         root = tmp / "interp-ts"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_TMPL\n",
+            "typescript/README.md": "The SDK reads BASECAMP_TMPL.\n",
             "typescript/src/c.ts": "const label = `token=${process.env.BASECAMP_TMPL}`;\n",
         })
         check("a template-literal interpolation is a read",
@@ -820,7 +854,7 @@ def main() -> int:
 
         root = tmp / "interp-swift"
         build(root, {
-            "swift/README.md": "mentions BASECAMP_SW\n",
+            "swift/README.md": "The SDK reads BASECAMP_SW.\n",
             "swift/Sources/c.swift":
                 'let s = "tok=\\(ProcessInfo.processInfo.environment["BASECAMP_SW"])"\n',
         })
@@ -841,7 +875,7 @@ def main() -> int:
         # ...but an interpolation inside that multiline string still is.
         root = tmp / "kotlin-multiline-interp"
         build(root, {
-            "kotlin/README.md": "mentions BASECAMP_REAL\n",
+            "kotlin/README.md": "The SDK reads BASECAMP_REAL.\n",
             "kotlin/sdk/src/c.kt": 'val s = """\ntok=${System.getenv("BASECAMP_REAL")}\n"""\n',
         })
         check("kotlin multiline interpolation is a read",
@@ -859,7 +893,7 @@ def main() -> int:
 
         root = tmp / "swift-raw"
         build(root, {
-            "swift/README.md": "mentions BASECAMP_RAW\n",
+            "swift/README.md": "The SDK reads BASECAMP_RAW.\n",
             "swift/Sources/c.swift":
                 'let t = #"\\#(ProcessInfo.processInfo.environment["BASECAMP_RAW"]!)"#\n',
         })
@@ -869,7 +903,7 @@ def main() -> int:
 
         root = tmp / "brace-in-nested-literal"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_SECRET\n",
+            "typescript/README.md": "The SDK reads BASECAMP_SECRET.\n",
             "typescript/src/c.ts": 'const x = `${foo("}", process.env.BASECAMP_SECRET)}`;\n',
         })
         check("a quoted brace does not truncate the interpolation",
@@ -880,7 +914,7 @@ def main() -> int:
         # literal — otherwise the hole is truncated and the read behind it hides.
         root = tmp / "comment-in-hole"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_SECRET\n",
+            "typescript/README.md": "The SDK reads BASECAMP_SECRET.\n",
             "typescript/src/c.ts":
                 'const x = `${foo(/* } */ process.env.BASECAMP_SECRET)}`;\n',
         })
@@ -911,7 +945,7 @@ def main() -> int:
         # to accept the fences the lexer already understands.
         root = tmp / "swift-raw-key"
         build(root, {
-            "swift/README.md": "mentions BASECAMP_RAWKEY\n",
+            "swift/README.md": "The SDK reads BASECAMP_RAWKEY.\n",
             "swift/Sources/c.swift":
                 'let v = ProcessInfo.processInfo.environment[#"BASECAMP_RAWKEY"#]\n',
         })
@@ -932,7 +966,7 @@ def main() -> int:
         # ...while the identical bytes in Kotlin are code.
         root = tmp / "kotlin-dq-interp"
         build(root, {
-            "kotlin/README.md": "mentions BASECAMP_REAL\n",
+            "kotlin/README.md": "The SDK reads BASECAMP_REAL.\n",
             "kotlin/sdk/src/c.kt": 'val v = "${System.getenv("BASECAMP_REAL")}"\n',
         })
         check("kotlin double quotes do interpolate",
@@ -960,7 +994,7 @@ def main() -> int:
         # code. Nesting it everywhere would have swallowed a real read.
         root = tmp / "ts-unnested-comment"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_AFTER\n",
+            "typescript/README.md": "The SDK reads BASECAMP_AFTER.\n",
             "typescript/src/c.ts": '/* outer /* inner */ const v = process.env.BASECAMP_AFTER;\n',
         })
         check("typescript block comments do not nest",
@@ -995,7 +1029,7 @@ def main() -> int:
 
         root = tmp / "multiline-ts"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_MULTI\n",
+            "typescript/README.md": "The SDK reads BASECAMP_MULTI.\n",
             "typescript/src/c.ts": 'const v = process.env[\n  "BASECAMP_MULTI"\n];\n',
         })
         check("multiline typescript read breaks the no-env claim",
@@ -1005,7 +1039,7 @@ def main() -> int:
         # 6. The no-env claim breaks on a real read.
         root = tmp / "noenv"
         build(root, {
-            "typescript/README.md": "mentions BASECAMP_REAL\n",
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
             "typescript/src/c.ts": "const v = process.env.BASECAMP_REAL;\n",
         })
         check("real read breaks the no-env claim",
@@ -1065,7 +1099,7 @@ def main() -> int:
         build(root, {
             "python/README.md": "Python reads `BASECAMP_ONE` and Ruby reads `BASECAMP_TWO` here.\n",
             "python/src/c.py": 'v = os.environ.get("BASECAMP_ONE")\n',
-            "ruby/README.md": "mentions BASECAMP_TWO\n",
+            "ruby/README.md": "The SDK reads BASECAMP_TWO.\n",
             "ruby/lib/c.rb": 'v = ENV["BASECAMP_TWO"]\n',
         })
         check("a two-SDK sentence attributes each variable to its own SDK",
@@ -1076,7 +1110,7 @@ def main() -> int:
         build(root, {
             "python/README.md": "Python reads `BASECAMP_ONE` and Ruby reads `BASECAMP_TWO` here.\n",
             "python/src/c.py": 'v = os.environ.get("BASECAMP_ONE")\n',
-            "ruby/README.md": "mentions BASECAMP_TWO\n",
+            "ruby/README.md": "The SDK reads BASECAMP_TWO.\n",
             "ruby/lib/c.rb": "v = 1\n",
         })
         check("a false second clause is caught",
@@ -1121,7 +1155,7 @@ def main() -> int:
         build(root, {
             "python/README.md": "`BASECAMP_BOTH`, which Python and Ruby use, matters.\n",
             "python/src/c.py": 'v = os.environ.get("BASECAMP_BOTH")\n',
-            "ruby/README.md": "mentions BASECAMP_BOTH\n",
+            "ruby/README.md": "The SDK reads BASECAMP_BOTH.\n",
             "ruby/lib/c.rb": "v = 1\n",
         })
         check("a compound subject is checked against each SDK named",
