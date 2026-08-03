@@ -528,6 +528,34 @@ def main() -> int:
         check("a quoted brace inside a percent hole does not close it",
               run_gate(root, RB_SDK), [])
 
+        # A backtick command literal is data, like any other string...
+        root = tmp / "ruby-backtick-data"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "ruby/lib/c.rb": 's = `echo ENV["BASECAMP_FAKE"]`\n',
+        })
+        check("a ruby backtick literal is not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_FAKE"])
+
+        # ...and it interpolates, so the `#` must not open a comment.
+        root = tmp / "ruby-backtick-interp"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_BTI"),
+            "ruby/lib/c.rb": 's = `echo #{ENV["BASECAMP_BTI"]}`\n',
+        })
+        check("a ruby backtick interpolation is a read",
+              run_gate(root, RB_SDK), [])
+
+        # `%` after a value is modulo. Accepting `-` as a delimiter here ran the
+        # literal to the end of the file, masking every read after it.
+        root = tmp / "ruby-modulo-unary"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_MODU"),
+            "ruby/lib/c.rb": '10%-ENV["BASECAMP_MODU"].to_i\n',
+        })
+        check("modulo before a unary operand is not a percent literal",
+              run_gate(root, RB_SDK), [])
+
         # ...and `%` as modulo must not start one.
         root = tmp / "ruby-modulo"
         build(root, {
@@ -583,6 +611,18 @@ def main() -> int:
         check("destructured reads are seen, all of them",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_DA"])
+
+        # Renaming reads the *key*, not the local name it is bound to. The
+        # unanchored lookahead matched identifiers on the value side of `:` too,
+        # so this invented a BASECAMP_TOKEN read the code never makes.
+        root = tmp / "destructured-alias"
+        build(root, {
+            "typescript/README.md": TABLE.format(var="BASECAMP_TOKEN"),
+            "typescript/src/c.ts": "const { OTHER: BASECAMP_TOKEN } = process.env;\n",
+        })
+        check("a destructuring alias is not the key that was read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["forward:TypeScript:BASECAMP_TOKEN"])
 
         # ...but destructuring something else is not an environment read.
         root = tmp / "destructured-other"

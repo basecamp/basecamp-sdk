@@ -125,7 +125,13 @@ SDKS = {
             # comes *before* process.env, so this is a zero-width lookahead:
             # a consuming pattern would bind only one name per brace group,
             # which is the "looks like coverage" failure all over again.
-            rf"\b{NAME}\b(?=[^{{}}]*\}}\s*=\s*process\.env)",
+            #
+            # Anchored on the brace or comma so it matches destructuring *keys*
+            # only. Unanchored it also matched the local name in
+            # `const { OTHER: BASECAMP_TOKEN } = process.env`, where the key --
+            # the variable actually read -- is OTHER and BASECAMP_TOKEN is just
+            # what it was renamed to.
+            rf"[{{,]\s*{NAME}\b(?=[^{{}}]*\}}\s*=\s*process\.env)",
             # ...and the quoted-key form, `{ "BASECAMP_TOKEN": token }`. The
             # match has to start on the brace or comma, because the name is
             # inside a literal and would be rejected as string data.
@@ -186,6 +192,7 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "command_regex": False,
+        "backtick_string": False,
         "backtick_raw": True,
         "triple_raw": False,
         "percent": False,
@@ -201,15 +208,20 @@ LANG_FLAGS = {
         "regex": True,
         "command_regex": True,
         "backtick_raw": False,
+        # Ruby's backtick is a command literal, and it interpolates like a
+        # double-quoted string. Python shares this comment style and has no such
+        # literal, which is why this is a flag rather than a `hash` quote.
+        "backtick_string": True,
         "triple_raw": False,
         "percent": True,
-        "interp": {'"': [("#{", "}")]},
+        "interp": {'"': [("#{", "}")], "`": [("#{", "}")]},
     },
     "Python": {
         "triple": True, "nested": False, "raw": False, "fstring": True,
         "multiline": False,
         "regex": False,
         "command_regex": False,
+        "backtick_string": False,
         "backtick_raw": False,
         "triple_raw": False,
         "percent": False,
@@ -220,6 +232,7 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": True,
         "command_regex": False,
+        "backtick_string": False,
         "backtick_raw": False,
         "triple_raw": False,
         "percent": False,
@@ -230,6 +243,7 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "command_regex": False,
+        "backtick_string": False,
         "backtick_raw": False,
         "triple_raw": False,
         "percent": False,
@@ -240,6 +254,7 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "command_regex": False,
+        "backtick_string": False,
         "backtick_raw": False,
         "triple_raw": True,
         "percent": False,
@@ -248,7 +263,7 @@ LANG_FLAGS = {
 }
 # Permissive union, used only when no language is supplied.
 DEFAULT_FLAGS = {
-    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "command_regex": True, "backtick_raw": False, "triple_raw": False, "percent": True,
+    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "command_regex": True, "backtick_string": False, "backtick_raw": False, "triple_raw": False, "percent": True,
     "interp": {"`": [("${", "}")], '"': [("${", "}"), ("\\(", ")"), ("#{", "}")]},
 }
 
@@ -292,6 +307,24 @@ CLAIM_END_RE = re.compile(r"\.\s|\n")
 # are kept — the variable name lives inside one — but they are skipped over so a
 # `#` or `//` inside a string is not mistaken for the start of a comment.
 STRING_QUOTES = {"hash": "\"'", "slash": "\"'`"}
+
+
+def string_quotes(style: str | None, flags: dict | None = None) -> str:
+    """Quote characters that open a literal in this language.
+
+    Keyed by comment style *and* flags, because Ruby and Python share the `hash`
+    style and only Ruby has backtick command literals. Putting the backtick in
+    the shared set would have a stray one in Python open a literal; leaving it
+    out entirely -- which is what happened -- left Ruby's ``echo `` bodies
+    executable, so `` `echo ENV["X"]` `` counted as a read while the `#` of
+    `` `echo #{ENV["X"]}` `` opened a comment and hid a real one.
+    """
+    if not style:
+        return ""
+    quotes = STRING_QUOTES[style]
+    if flags and flags.get("backtick_string"):
+        quotes += "`"
+    return quotes
 
 
 
@@ -359,6 +392,32 @@ def command_argument(text: str, i: int, word: str, spaced: bool, flags: dict) ->
     return bool(after) and not after.isspace() and after != "="
 
 
+def operand_position(text: str, i: int, flags: dict) -> bool:
+    """Whether an operand may begin at `i`, rather than a binary operator.
+
+    `/` and `%` are both overloaded the same way -- regex or division, percent
+    literal or modulo -- and both are decided by what precedes them, so both ask
+    here. Getting `%` wrong is the more violent of the two: an accepted literal
+    with a punctuation delimiter that never recurs consumes the rest of the file.
+    """
+    k = i - 1
+    # Whether anything separated the operator from the token before it. Ruby
+    # needs it to tell a command-form argument from arithmetic, and the scan
+    # below discards it.
+    spaced = k >= 0 and text[k] in " \t"
+    while k >= 0 and text[k] in " \t":
+        k -= 1
+    if k < 0 or text[k] in REGEX_PRECEDERS or text[k] == "\n":
+        return True
+    if not (text[k].isalnum() or text[k] == "_"):
+        return False
+    word_end = k + 1
+    while k >= 0 and (text[k].isalnum() or text[k] == "_"):
+        k -= 1
+    word = text[k + 1 : word_end]
+    return word in REGEX_KEYWORDS or command_argument(text, i, word, spaced, flags)
+
+
 def regex_extent(text: str, i: int, flags: dict) -> int:
     """End of a regex literal starting at `i`, else `i`.
 
@@ -371,22 +430,8 @@ def regex_extent(text: str, i: int, flags: dict) -> int:
         return i
     if text.startswith("//", i) or text.startswith("/*", i):
         return i
-    k = i - 1
-    # Whether anything separated the slash from the token before it. Ruby needs
-    # this to tell a command-form argument from division, and the scan below
-    # discards it.
-    spaced = k >= 0 and text[k] in " \t"
-    while k >= 0 and text[k] in " \t":
-        k -= 1
-    if k >= 0 and text[k] not in REGEX_PRECEDERS and text[k] != "\n":
-        if not (text[k].isalnum() or text[k] == "_"):
-            return i
-        word_end = k + 1
-        while k >= 0 and (text[k].isalnum() or text[k] == "_"):
-            k -= 1
-        word = text[k + 1 : word_end]
-        if word not in REGEX_KEYWORDS and not command_argument(text, i, word, spaced, flags):
-            return i
+    if not operand_position(text, i, flags):
+        return i
     j = i + 1
     in_class = False
     n = len(text)
@@ -424,6 +469,11 @@ def percent_literal_extent(text: str, i: int, flags: dict) -> tuple[int, list[tu
     that let a `"` inside `%q{"}` open a phantom string and run past the close.
     """
     if not flags or not flags.get("percent") or text[i] != "%":
+        return i, []
+    # `%` is modulo wherever a value just ended. Skipping this test, `10%-x`
+    # read the `-` as a bare delimiter, and with no second `-` on the way the
+    # literal ran to the end of the file and masked every read after it.
+    if not operand_position(text, i, flags):
         return i, []
     n = len(text)
     j = i + 1
@@ -525,7 +575,7 @@ def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str,
     depth = 1
     k = start
     n = len(text)
-    quotes = STRING_QUOTES[style] if style else ""
+    quotes = string_quotes(style, flags)
     while k < n:
         if quotes and text[k] in quotes:
             literal_end, _ = scan_literal(text, k, style, flags)
@@ -732,7 +782,7 @@ def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray,
     a read, because the hole was un-masked wholesale.
     """
     flags = DEFAULT_FLAGS if flags is None else flags
-    quotes = STRING_QUOTES[style]
+    quotes = string_quotes(style, flags)
     i = lo
     while i < hi:
         # A comment inside the expression is not code either. The hole was
@@ -823,7 +873,7 @@ def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str
     n = len(text)
     in_string = bytearray(n)
     flags = DEFAULT_FLAGS if flags is None else flags
-    quotes = STRING_QUOTES[style]
+    quotes = string_quotes(style, flags)
     i = 0
 
     def blank(start: int, end: int) -> None:
