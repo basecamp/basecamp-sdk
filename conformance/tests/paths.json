@@ -1601,5 +1601,245 @@
       "path",
       "todolist-groups"
     ]
+  },
+  {
+    "name": "ListFolders constructs the flat /stacks.json path",
+    "description": "Verifies ListFolders constructs the top-level, non-bucket-scoped /stacks.json collection and decodes a bare array whose items carry no `projects` (BC3 #12384).",
+    "operation": "ListFolders",
+    "method": "GET",
+    "path": "/stacks.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": [
+          {
+            "id": 2085958513,
+            "name": "Client work",
+            "type": "Stack",
+            "created_at": "2026-07-27T10:16:49.312Z",
+            "updated_at": "2026-07-27T10:16:49.325Z",
+            "bucket_ids": [],
+            "is_emoji_only_name": false,
+            "star_url": "https://3.basecampapi.com/999/buckets/2085958513/stars.json",
+            "gauges_url": null,
+            "color": null,
+            "image_url": null,
+            "url": "https://3.basecampapi.com/999/stacks/2085958513.json"
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/stacks.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "folders"
+    ]
+  },
+  {
+    "name": "GetFolder constructs the single-folder path",
+    "description": "Verifies GetFolder constructs /stacks/{folderId} and decodes the expanded `projects` the singular actions add (BC3 #12384).",
+    "operation": "GetFolder",
+    "method": "GET",
+    "path": "/stacks/{folderId}",
+    "pathParams": {
+      "folderId": 2085958513
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": {
+          "id": 2085958513,
+          "name": "Client work",
+          "type": "Stack",
+          "created_at": "2026-07-27T10:16:49.312Z",
+          "updated_at": "2026-07-27T10:16:49.325Z",
+          "bucket_ids": [],
+          "is_emoji_only_name": false,
+          "star_url": "https://3.basecampapi.com/999/buckets/2085958513/stars.json",
+          "gauges_url": null,
+          "color": null,
+          "image_url": null,
+          "url": "https://3.basecampapi.com/999/stacks/2085958513.json",
+          "projects": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/stacks/2085958513"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "folders"
+    ]
+  },
+  {
+    "name": "CreateFolder POSTs the flat collection with project_ids",
+    "description": "Verifies CreateFolder POSTs /stacks.json with a FLAT body (name + project_ids, no `stack` envelope) and accepts 201 (BC3 #12384).",
+    "operation": "CreateFolder",
+    "method": "POST",
+    "path": "/stacks.json",
+    "requestBody": {
+      "name": "Client work",
+      "project_ids": []
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "body": {
+          "id": 2085958513,
+          "name": "Client work",
+          "type": "Stack",
+          "created_at": "2026-07-27T10:16:49.312Z",
+          "updated_at": "2026-07-27T10:16:49.325Z",
+          "bucket_ids": [],
+          "is_emoji_only_name": false,
+          "star_url": "https://3.basecampapi.com/999/buckets/2085958513/stars.json",
+          "gauges_url": null,
+          "color": null,
+          "image_url": null,
+          "url": "https://3.basecampapi.com/999/stacks/2085958513.json",
+          "projects": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/stacks.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestBody",
+        "path": "name",
+        "expected": "Client work"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "folders"
+    ]
+  },
+  {
+    "name": "UpdateFolder PUTs a flat name to the single-folder path",
+    "description": "Verifies UpdateFolder PUTs /stacks/{folderId} with a flat {name} body \u2014 rename is the only write \u2014 and decodes the returned projects (BC3 #12384).",
+    "operation": "UpdateFolder",
+    "method": "PUT",
+    "path": "/stacks/{folderId}",
+    "pathParams": {
+      "folderId": 2085958513
+    },
+    "requestBody": {
+      "name": "Active client work"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": {
+          "id": 2085958513,
+          "name": "Active client work",
+          "type": "Stack",
+          "created_at": "2026-07-27T10:16:49.312Z",
+          "updated_at": "2026-07-27T10:16:49.325Z",
+          "bucket_ids": [],
+          "is_emoji_only_name": false,
+          "star_url": "https://3.basecampapi.com/999/buckets/2085958513/stars.json",
+          "gauges_url": null,
+          "color": null,
+          "image_url": null,
+          "url": "https://3.basecampapi.com/999/stacks/2085958513.json",
+          "projects": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/stacks/2085958513"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT"
+      },
+      {
+        "type": "requestBody",
+        "path": "name",
+        "expected": "Active client work"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "folders"
+    ]
+  },
+  {
+    "name": "DeleteFolder DELETEs the single-folder path and accepts 204",
+    "description": "Verifies DeleteFolder DELETEs /stacks/{folderId} and accepts an empty 204 (BC3 #12384).",
+    "operation": "DeleteFolder",
+    "method": "DELETE",
+    "path": "/stacks/{folderId}",
+    "pathParams": {
+      "folderId": 2085958513
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/stacks/2085958513"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "DELETE"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "folders"
+    ]
   }
 ]

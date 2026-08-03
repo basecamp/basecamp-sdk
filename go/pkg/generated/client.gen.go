@@ -605,6 +605,24 @@ type CreateEventBoostRequestContent struct {
 // CreateEventBoostResponseContent defines model for CreateEventBoostResponseContent.
 type CreateEventBoostResponseContent = Boost
 
+// CreateFolderRequestContent defines model for CreateFolderRequestContent.
+type CreateFolderRequestContent struct {
+	// Name The folder's name. Defaults to `New folder` when blank, null, or omitted.
+	Name *string `json:"name,omitempty"`
+
+	// ProjectIds IDs of the projects to file into the folder — the same ids the folder
+	// reports back as `bucket_ids` and expands as `projects`. This does not
+	// round-trip under its own name. Omit it, or send null or an empty array,
+	// for an empty folder.
+	ProjectIds *[]int64 `json:"project_ids,omitempty"`
+}
+
+// CreateFolderResponseContent One folder plus the projects grouped inside it, as get/create/update return it.
+//
+// The `projects` entries are the shared project projection, minus the
+// `bookmarked` flag that only the projects index adds.
+type CreateFolderResponseContent = FolderWithProjects
+
 // CreateForwardReplyRequestContent defines model for CreateForwardReplyRequestContent.
 type CreateForwardReplyRequestContent struct {
 	Content string `json:"content"`
@@ -1034,6 +1052,79 @@ type FieldValidationErrorResponseContent = FieldKeyedErrors
 // FirstWeekDay defines model for FirstWeekDay.
 type FirstWeekDay string
 
+// Folder A folder as the list returns it: the base shape, without expanded projects.
+//
+// Deliberately distinct from FolderWithProjects. A single shape with an
+// optional `projects` member would make every list item declare a field the
+// list response never populates.
+type Folder struct {
+	// BucketIds IDs of the projects filed into this folder. Same ids as `project_ids` on
+	// create, and the ids FolderWithProjects expands under `projects`.
+	BucketIds []int64 `json:"bucket_ids"`
+
+	// Color The viewer's colour customization for this folder; always emitted, `null`
+	// when unset. Required-and-nullable, like gauges_url.
+	Color     *string   `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// GaugesUrl Gauges URL covering this folder's projects; always emitted, `null` when
+	// none of them is gauged. `@required` models the presence — the nullability
+	// is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:
+	// ["string","null"]), so Go types it *string because the value is nullable,
+	// not because the key is optional.
+	GaugesUrl *string `json:"gauges_url"`
+	Id        int64   `json:"id"`
+
+	// ImageUrl The viewer's folder image; always emitted, `null` when unset. Read-only:
+	// there is no image create or update in v1. Required-and-nullable, like
+	// gauges_url.
+	ImageUrl        *string `json:"image_url"`
+	IsEmojiOnlyName bool    `json:"is_emoji_only_name"`
+	Name            string  `json:"name"`
+	StarUrl         string  `json:"star_url"`
+
+	// Type Always the string `Stack` — the wire type kept its pre-rename name.
+	Type      string    `json:"type"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Url       string    `json:"url"`
+}
+
+// FolderWithProjects One folder plus the projects grouped inside it, as get/create/update return it.
+//
+// The `projects` entries are the shared project projection, minus the
+// `bookmarked` flag that only the projects index adds.
+type FolderWithProjects struct {
+	// BucketIds IDs of the projects filed into this folder — the same set `projects`
+	// expands.
+	BucketIds []int64 `json:"bucket_ids"`
+
+	// Color The viewer's colour customization for this folder; always emitted, `null`
+	// when unset. Required-and-nullable.
+	Color     *string   `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// GaugesUrl Gauges URL covering this folder's projects; always emitted, `null` when
+	// none of them is gauged. Required-and-nullable (see Folder.gauges_url).
+	GaugesUrl *string `json:"gauges_url"`
+	Id        int64   `json:"id"`
+
+	// ImageUrl The viewer's folder image; always emitted, `null` when unset. Read-only.
+	// Required-and-nullable.
+	ImageUrl        *string `json:"image_url"`
+	IsEmojiOnlyName bool    `json:"is_emoji_only_name"`
+	Name            string  `json:"name"`
+
+	// Projects The projects filed into this folder, expanded. Always emitted; empty for
+	// an empty folder.
+	Projects []Project `json:"projects"`
+	StarUrl  string    `json:"star_url"`
+
+	// Type Always the string `Stack` — the wire type kept its pre-rename name.
+	Type      string    `json:"type"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Url       string    `json:"url"`
+}
+
 // ForbiddenErrorResponseContent defines model for ForbiddenErrorResponseContent.
 type ForbiddenErrorResponseContent struct {
 	Error   string  `json:"error"`
@@ -1276,6 +1367,12 @@ type GetEverythingUnassignedCardsResponseContent = []BucketCardsGroup
 
 // GetEverythingUnassignedTodosResponseContent defines model for GetEverythingUnassignedTodosResponseContent.
 type GetEverythingUnassignedTodosResponseContent = []BucketTodosGroup
+
+// GetFolderResponseContent One folder plus the projects grouped inside it, as get/create/update return it.
+//
+// The `projects` entries are the shared project projection, minus the
+// `bookmarked` flag that only the projects index adds.
+type GetFolderResponseContent = FolderWithProjects
 
 // GetForwardReplyResponseContent defines model for GetForwardReplyResponseContent.
 type GetForwardReplyResponseContent = ForwardReply
@@ -1554,6 +1651,9 @@ type ListEventBoostsResponseContent = []Boost
 
 // ListEventsResponseContent defines model for ListEventsResponseContent.
 type ListEventsResponseContent = []Event
+
+// ListFoldersResponseContent defines model for ListFoldersResponseContent.
+type ListFoldersResponseContent = []Folder
 
 // ListForwardRepliesResponseContent defines model for ListForwardRepliesResponseContent.
 type ListForwardRepliesResponseContent = []ForwardReply
@@ -3001,6 +3101,19 @@ type UpdateDocumentRequestContent struct {
 // UpdateDocumentResponseContent defines model for UpdateDocumentResponseContent.
 type UpdateDocumentResponseContent = Document
 
+// UpdateFolderRequestContent defines model for UpdateFolderRequestContent.
+type UpdateFolderRequestContent struct {
+	// Name The folder's new name. Blank is rejected with 422 — unlike create, update
+	// does not fall back to a default name.
+	Name string `json:"name"`
+}
+
+// UpdateFolderResponseContent One folder plus the projects grouped inside it, as get/create/update return it.
+//
+// The `projects` entries are the shared project projection, minus the
+// `bookmarked` flag that only the projects index adds.
+type UpdateFolderResponseContent = FolderWithProjects
+
 // UpdateGaugeNeedleRequestContent defines model for UpdateGaugeNeedleRequestContent.
 type UpdateGaugeNeedleRequestContent struct {
 	GaugeNeedle *GaugeNeedleUpdatePayload `json:"gauge_needle,omitempty"`
@@ -4222,6 +4335,12 @@ type UpdateScheduleSettingsJSONRequestBody = UpdateScheduleSettingsRequestConten
 
 // CreateScheduleEntryJSONRequestBody defines body for CreateScheduleEntry for application/json ContentType.
 type CreateScheduleEntryJSONRequestBody = CreateScheduleEntryRequestContent
+
+// CreateFolderJSONRequestBody defines body for CreateFolder for application/json ContentType.
+type CreateFolderJSONRequestBody = CreateFolderRequestContent
+
+// UpdateFolderJSONRequestBody defines body for UpdateFolder for application/json ContentType.
+type UpdateFolderJSONRequestBody = UpdateFolderRequestContent
 
 // CreateTemplateJSONRequestBody defines body for CreateTemplate for application/json ContentType.
 type CreateTemplateJSONRequestBody = CreateTemplateRequestContent
@@ -5512,6 +5631,25 @@ type ClientInterface interface {
 
 	// GetSearchMetadata request
 	GetSearchMetadata(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListFolders request
+	ListFolders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateFolderWithBody request with any body
+	CreateFolderWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateFolder(ctx context.Context, accountId string, body CreateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteFolder request
+	DeleteFolder(ctx context.Context, accountId string, folderId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetFolder request
+	GetFolder(ctx context.Context, accountId string, folderId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateFolderWithBody request with any body
+	UpdateFolderWithBody(ctx context.Context, accountId string, folderId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateFolder(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTemplates request
 	ListTemplates(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8428,6 +8566,84 @@ func (c *Client) GetSearchMetadata(ctx context.Context, accountId string, reqEdi
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetSearchMetadataRequest(c.Server, accountId)
 	}, true, "GetSearchMetadata", reqEditors...)
+
+}
+
+// ListFolders is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListFolders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListFoldersRequest(c.Server, accountId)
+	}, true, "ListFolders", reqEditors...)
+
+}
+
+// CreateFolderWithBody executes the CreateFolder operation.
+
+func (c *Client) CreateFolderWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateFolderRequestWithBody(c.Server, accountId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateFolder(ctx context.Context, accountId string, body CreateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateFolderRequest(c.Server, accountId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// DeleteFolder is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteFolder(ctx context.Context, accountId string, folderId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteFolderRequest(c.Server, accountId, folderId)
+	}, true, "DeleteFolder", reqEditors...)
+
+}
+
+// GetFolder is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetFolder(ctx context.Context, accountId string, folderId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetFolderRequest(c.Server, accountId, folderId)
+	}, true, "GetFolder", reqEditors...)
+
+}
+
+// UpdateFolderWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateFolderWithBody(ctx context.Context, accountId string, folderId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateFolderRequestWithBody(c.Server, accountId, folderId, contentType, body)
+	}, true, "UpdateFolder", reqEditors...)
+
+}
+
+func (c *Client) UpdateFolder(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateFolderRequest(c.Server, accountId, folderId, body)
+	}, true, "UpdateFolder", reqEditors...)
 
 }
 
@@ -19555,6 +19771,223 @@ func NewGetSearchMetadataRequest(server string, accountId string) (*http.Request
 	return req, nil
 }
 
+// NewListFoldersRequest generates requests for ListFolders
+func NewListFoldersRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/stacks.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateFolderRequest calls the generic CreateFolder builder with application/json body
+func NewCreateFolderRequest(server string, accountId string, body CreateFolderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateFolderRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewCreateFolderRequestWithBody generates requests for CreateFolder with any type of body
+func NewCreateFolderRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/stacks.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteFolderRequest generates requests for DeleteFolder
+func NewDeleteFolderRequest(server string, accountId string, folderId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "folderId", runtime.ParamLocationPath, folderId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/stacks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetFolderRequest generates requests for GetFolder
+func NewGetFolderRequest(server string, accountId string, folderId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "folderId", runtime.ParamLocationPath, folderId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/stacks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateFolderRequest calls the generic UpdateFolder builder with application/json body
+func NewUpdateFolderRequest(server string, accountId string, folderId int64, body UpdateFolderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateFolderRequestWithBody(server, accountId, folderId, "application/json", bodyReader)
+}
+
+// NewUpdateFolderRequestWithBody generates requests for UpdateFolder with any type of body
+func NewUpdateFolderRequestWithBody(server string, accountId string, folderId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "folderId", runtime.ParamLocationPath, folderId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/stacks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListTemplatesRequest generates requests for ListTemplates
 func NewListTemplatesRequest(server string, accountId string, params *ListTemplatesParams) (*http.Request, error) {
 	var err error
@@ -22376,6 +22809,11 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateScheduleEntry":                {Idempotent: false, HasSensitiveParams: false},
 	"Search":                             {Idempotent: true, HasSensitiveParams: false},
 	"GetSearchMetadata":                  {Idempotent: true, HasSensitiveParams: false},
+	"ListFolders":                        {Idempotent: true, HasSensitiveParams: false},
+	"CreateFolder":                       {Idempotent: false, HasSensitiveParams: false},
+	"DeleteFolder":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetFolder":                          {Idempotent: true, HasSensitiveParams: false},
+	"UpdateFolder":                       {Idempotent: true, HasSensitiveParams: false},
 	"ListTemplates":                      {Idempotent: true, HasSensitiveParams: false},
 	"CreateTemplate":                     {Idempotent: false, HasSensitiveParams: false},
 	"DeleteTemplate":                     {Idempotent: true, HasSensitiveParams: false},
@@ -22623,6 +23061,11 @@ var operationRetryMax = map[string]int{
 	"CreateScheduleEntry":                2,
 	"Search":                             3,
 	"GetSearchMetadata":                  3,
+	"ListFolders":                        3,
+	"CreateFolder":                       3,
+	"DeleteFolder":                       3,
+	"GetFolder":                          3,
+	"UpdateFolder":                       3,
 	"ListTemplates":                      3,
 	"CreateTemplate":                     2,
 	"DeleteTemplate":                     3,
@@ -22868,6 +23311,11 @@ var operationRetryOn = map[string][]int{
 	"CreateScheduleEntry":                {429, 503},
 	"Search":                             {429, 503},
 	"GetSearchMetadata":                  {429, 503},
+	"ListFolders":                        {429, 503},
+	"CreateFolder":                       {429, 503},
+	"DeleteFolder":                       {429, 503},
+	"GetFolder":                          {429, 503},
+	"UpdateFolder":                       {429, 503},
 	"ListTemplates":                      {429, 503},
 	"CreateTemplate":                     {429, 503},
 	"DeleteTemplate":                     {429, 503},
@@ -24567,6 +25015,25 @@ type ClientWithResponsesInterface interface {
 
 	// GetSearchMetadataWithResponse request
 	GetSearchMetadataWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetSearchMetadataResponse, error)
+
+	// ListFoldersWithResponse request
+	ListFoldersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListFoldersResponse, error)
+
+	// CreateFolderWithBodyWithResponse request with any body
+	CreateFolderWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateFolderResponse, error)
+
+	CreateFolderWithResponse(ctx context.Context, accountId string, body CreateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateFolderResponse, error)
+
+	// DeleteFolderWithResponse request
+	DeleteFolderWithResponse(ctx context.Context, accountId string, folderId int64, reqEditors ...RequestEditorFn) (*DeleteFolderResponse, error)
+
+	// GetFolderWithResponse request
+	GetFolderWithResponse(ctx context.Context, accountId string, folderId int64, reqEditors ...RequestEditorFn) (*GetFolderResponse, error)
+
+	// UpdateFolderWithBodyWithResponse request with any body
+	UpdateFolderWithBodyWithResponse(ctx context.Context, accountId string, folderId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error)
+
+	UpdateFolderWithResponse(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error)
 
 	// ListTemplatesWithResponse request
 	ListTemplatesWithResponse(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error)
@@ -31290,6 +31757,179 @@ func (r GetSearchMetadataResponse) ContentType() string {
 	return ""
 }
 
+type ListFoldersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListFoldersResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListFoldersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListFoldersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListFoldersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateFolderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateFolderResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateFolderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateFolderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateFolderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteFolderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteFolderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteFolderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteFolderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetFolderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetFolderResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetFolderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetFolderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetFolderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateFolderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateFolderResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateFolderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateFolderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateFolderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTemplatesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -35098,6 +35738,67 @@ func (c *ClientWithResponses) GetSearchMetadataWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseGetSearchMetadataResponse(rsp)
+}
+
+// ListFoldersWithResponse request returning *ListFoldersResponse
+func (c *ClientWithResponses) ListFoldersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListFoldersResponse, error) {
+	rsp, err := c.ListFolders(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListFoldersResponse(rsp)
+}
+
+// CreateFolderWithBodyWithResponse request with arbitrary body returning *CreateFolderResponse
+func (c *ClientWithResponses) CreateFolderWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateFolderResponse, error) {
+	rsp, err := c.CreateFolderWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateFolderResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateFolderWithResponse(ctx context.Context, accountId string, body CreateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateFolderResponse, error) {
+	rsp, err := c.CreateFolder(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateFolderResponse(rsp)
+}
+
+// DeleteFolderWithResponse request returning *DeleteFolderResponse
+func (c *ClientWithResponses) DeleteFolderWithResponse(ctx context.Context, accountId string, folderId int64, reqEditors ...RequestEditorFn) (*DeleteFolderResponse, error) {
+	rsp, err := c.DeleteFolder(ctx, accountId, folderId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteFolderResponse(rsp)
+}
+
+// GetFolderWithResponse request returning *GetFolderResponse
+func (c *ClientWithResponses) GetFolderWithResponse(ctx context.Context, accountId string, folderId int64, reqEditors ...RequestEditorFn) (*GetFolderResponse, error) {
+	rsp, err := c.GetFolder(ctx, accountId, folderId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetFolderResponse(rsp)
+}
+
+// UpdateFolderWithBodyWithResponse request with arbitrary body returning *UpdateFolderResponse
+func (c *ClientWithResponses) UpdateFolderWithBodyWithResponse(ctx context.Context, accountId string, folderId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error) {
+	rsp, err := c.UpdateFolderWithBody(ctx, accountId, folderId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateFolderResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateFolderWithResponse(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error) {
+	rsp, err := c.UpdateFolder(ctx, accountId, folderId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateFolderResponse(rsp)
 }
 
 // ListTemplatesWithResponse request returning *ListTemplatesResponse
@@ -45577,6 +46278,276 @@ func ParseGetSearchMetadataResponse(rsp *http.Response) (*GetSearchMetadataRespo
 		var dest NotFoundErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseListFoldersResponse parses an HTTP response from a ListFoldersWithResponse call
+func ParseListFoldersResponse(rsp *http.Response) (*ListFoldersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListFoldersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListFoldersResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateFolderResponse parses an HTTP response from a CreateFolderWithResponse call
+func ParseCreateFolderResponse(rsp *http.Response) (*CreateFolderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateFolderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateFolderResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteFolderResponse parses an HTTP response from a DeleteFolderWithResponse call
+func ParseDeleteFolderResponse(rsp *http.Response) (*DeleteFolderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteFolderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetFolderResponse parses an HTTP response from a GetFolderWithResponse call
+func ParseGetFolderResponse(rsp *http.Response) (*GetFolderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetFolderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetFolderResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateFolderResponse parses an HTTP response from a UpdateFolderWithResponse call
+func ParseUpdateFolderResponse(rsp *http.Response) (*UpdateFolderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateFolderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateFolderResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

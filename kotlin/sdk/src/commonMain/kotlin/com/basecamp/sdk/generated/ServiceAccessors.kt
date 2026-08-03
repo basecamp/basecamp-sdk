@@ -95,6 +95,10 @@ val AccountClient.events: EventsService
 val AccountClient.everything: EverythingService
     get() = service("Everything") { EverythingService(this) }
 
+/** Folders operations. */
+val AccountClient.folders: FoldersService
+    get() = service("Folders") { FoldersService(this) }
+
 /** Forwards operations. */
 val AccountClient.forwards: ForwardsService
     get() = service("Forwards") { ForwardsService(this) }

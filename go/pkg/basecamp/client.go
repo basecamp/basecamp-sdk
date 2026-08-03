@@ -84,6 +84,7 @@ type AccountClient struct {
 	lineup                *LineupService
 	subscriptions         *SubscriptionsService
 	bookmarks             *BookmarksService
+	folders               *FoldersService
 	drafts                *DraftsService
 	myNotes               *MyNotesService
 	calendars             *CalendarsService
@@ -1185,6 +1186,16 @@ func (ac *AccountClient) Bookmarks() *BookmarksService {
 		ac.bookmarks = NewBookmarksService(ac)
 	}
 	return ac.bookmarks
+}
+
+// Folders returns the FoldersService for the current user's home-screen folders.
+func (ac *AccountClient) Folders() *FoldersService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.folders == nil {
+		ac.folders = NewFoldersService(ac)
+	}
+	return ac.folders
 }
 
 // Subscriptions returns the SubscriptionsService for subscription operations.

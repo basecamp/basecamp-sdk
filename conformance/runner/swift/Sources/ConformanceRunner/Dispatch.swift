@@ -339,6 +339,31 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         try await account.bookmarks.deleteBookmark(recordingId: pathParams.longParam("recordingId"))
         return DispatchResult()
 
+    case "ListFolders":
+        _ = try await account.folders.listFolders()
+        return DispatchResult()
+
+    case "GetFolder":
+        _ = try await account.folders.getFolder(folderId: pathParams.longParam("folderId"))
+        return DispatchResult()
+
+    case "CreateFolder":
+        _ = try await account.folders.createFolder(
+            req: CreateFolderRequest(
+                name: try rb.optString("name"),
+                projectIds: try rb.intArray("project_ids")))
+        return DispatchResult()
+
+    case "UpdateFolder":
+        _ = try await account.folders.updateFolder(
+            folderId: pathParams.longParam("folderId"),
+            req: UpdateFolderRequest(name: try rb.stringParam("name")))
+        return DispatchResult()
+
+    case "DeleteFolder":
+        try await account.folders.deleteFolder(folderId: pathParams.longParam("folderId"))
+        return DispatchResult()
+
     case "GetTimesheetEntry":
         _ = try await account.timesheets.get(
             entryId: pathParams.longParam(anyOf: ["timesheetEntryId", "entryId"]))

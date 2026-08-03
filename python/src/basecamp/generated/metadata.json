@@ -156,6 +156,17 @@
       ]
     }
   },
+  "CreateFolder": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateForwardReply": {
     "retry": {
       "backoff": "exponential",
@@ -424,6 +435,18 @@
     }
   },
   "DeleteChatbot": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "DeleteFolder": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",
@@ -987,6 +1010,17 @@
     }
   },
   "GetEverythingUnassignedTodos": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "GetFolder": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,
@@ -1636,6 +1670,17 @@
     }
   },
   "ListEvents": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "ListFolders": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,
@@ -2407,6 +2452,18 @@
     }
   },
   "UpdateDocument": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "UpdateFolder": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",

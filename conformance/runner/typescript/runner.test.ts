@@ -300,6 +300,29 @@ async function executeOperation(
         await client.bookmarks.deleteBookmark(Number(params.recordingId));
         break;
 
+      case "ListFolders":
+        await client.folders.listFolders();
+        break;
+
+      case "GetFolder":
+        await client.folders.getFolder(Number(params.folderId));
+        break;
+
+      case "CreateFolder":
+        await client.folders.createFolder({
+          name: body.name as string | undefined,
+          projectIds: body.project_ids as number[] | undefined,
+        });
+        break;
+
+      case "UpdateFolder":
+        await client.folders.updateFolder(Number(params.folderId), { name: body.name as string });
+        break;
+
+      case "DeleteFolder":
+        await client.folders.deleteFolder(Number(params.folderId));
+        break;
+
       case "UpdateTodo":
         // Merge-safe update: GET then full PUT; only fixture-present keys are passed.
         await client.todos.update(Number(params.todoId), mapTodoWireFields(body));

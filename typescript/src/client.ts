@@ -51,6 +51,7 @@ import { ClientCorrespondencesService } from "./generated/services/client-corres
 import { ClientRepliesService } from "./generated/services/client-replies.js";
 import { WebhooksService } from "./generated/services/webhooks.js";
 import { BookmarksService } from "./generated/services/bookmarks.js";
+import { FoldersService } from "./generated/services/folders.js";
 import { DraftsService } from "./generated/services/drafts.js";
 import { CalendarsService } from "./generated/services/calendars.js";
 import { MyNotesService } from "./generated/services/my-notes.js";
@@ -163,6 +164,9 @@ export interface BasecampClient extends RawClient {
   /** Bookmarks service - the current user's personal bookmarks */
   readonly bookmarks: BookmarksService;
 
+  /** Folders service - the current user's home-screen folders (wire type "Stack") */
+  readonly folders: FoldersService;
+
   /** Drafts service - the current user's unpublished drafts */
   readonly drafts: DraftsService;
 
@@ -257,7 +261,7 @@ export interface BasecampClientOptions {
 }
 
 export const VERSION = "0.12.0";
-export const API_VERSION = "2026-07-31";
+export const API_VERSION = "2026-08-02";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**
@@ -455,6 +459,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("clientReplies", () => new ClientRepliesService(client, hooks, fetchPage, maxPages));
   defineService("webhooks", () => new WebhooksService(client, hooks, fetchPage, maxPages));
   defineService("bookmarks", () => new BookmarksService(client, hooks, fetchPage, maxPages));
+  defineService("folders", () => new FoldersService(client, hooks, fetchPage, maxPages));
   defineService("drafts", () => new DraftsService(client, hooks, fetchPage, maxPages));
   defineService("calendars", () => new CalendarsService(client, hooks, fetchPage, maxPages));
   defineService("myNotes", () => new MyNotesService(client, hooks, fetchPage, maxPages));

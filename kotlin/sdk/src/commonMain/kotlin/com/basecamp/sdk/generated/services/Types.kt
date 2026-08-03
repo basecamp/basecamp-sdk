@@ -548,6 +548,17 @@ data class GetEverythingUnassignedTodosOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
+/** Request body for CreateFolder. */
+data class CreateFolderBody(
+    val name: String? = null,
+    val projectIds: List<Long>? = null
+)
+
+/** Request body for UpdateFolder. */
+data class UpdateFolderBody(
+    val name: String
+)
+
 /** Options for ListForwardReplies. */
 data class ListForwardRepliesOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */

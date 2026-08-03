@@ -169,6 +169,10 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "GetMyProfile" to "me",
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark" to "getBookmark",
+    // "folder(id)" reads as a noun with no verb; the rest of the family is
+    // listFolders/createFolder/updateFolder/deleteFolder, and Ruby and Python
+    // already emit get_folder. Keep all six SDKs on one name.
+    "GetFolder" to "getFolder",
     // "myNote()" reads oddly; keep the getter explicit.
     "GetMyNote" to "getMyNote",
     // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.
@@ -324,6 +328,8 @@ val TYPE_ALIASES = mapOf(
     "Subscription" to "Subscription",
     "Bookmark" to "Bookmark",
     "BookmarkStatus" to "BookmarkStatus",
+    "Folder" to "Folder",
+    "FolderWithProjects" to "FolderWithProjects",
     "Draft" to "Draft",
     "MyNote" to "MyNote",
     "Calendar" to "Calendar",

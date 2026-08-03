@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-01T02:10:46Z
+# Generated: 2026-08-03T05:51:51Z
 
 require "json"
 require "time"
@@ -1737,6 +1737,102 @@ module Basecamp
         {
           "errors" => @errors,
         }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Folder
+    class Folder
+      include TypeHelpers
+      attr_accessor :bucket_ids, :color, :created_at, :gauges_url, :id, :image_url, :is_emoji_only_name, :name, :star_url, :type, :updated_at, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[bucket_ids color created_at gauges_url id image_url is_emoji_only_name name star_url type updated_at url].freeze
+      end
+
+      def initialize(data = {})
+        @bucket_ids = data["bucket_ids"]
+        @color = data["color"]
+        @created_at = parse_datetime(data["created_at"])
+        @gauges_url = data["gauges_url"]
+        @id = parse_integer(data["id"])
+        @image_url = data["image_url"]
+        @is_emoji_only_name = parse_boolean(data["is_emoji_only_name"])
+        @name = data["name"]
+        @star_url = data["star_url"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "bucket_ids" => @bucket_ids,
+          "color" => @color,
+          "created_at" => @created_at,
+          "gauges_url" => @gauges_url,
+          "id" => @id,
+          "image_url" => @image_url,
+          "is_emoji_only_name" => @is_emoji_only_name,
+          "name" => @name,
+          "star_url" => @star_url,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+        }.reject { |k, v| v.nil? && !["color", "gauges_url", "image_url"].include?(k) }
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # FolderWithProjects
+    class FolderWithProjects
+      include TypeHelpers
+      attr_accessor :bucket_ids, :color, :created_at, :gauges_url, :id, :image_url, :is_emoji_only_name, :name, :projects, :star_url, :type, :updated_at, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[bucket_ids color created_at gauges_url id image_url is_emoji_only_name name projects star_url type updated_at url].freeze
+      end
+
+      def initialize(data = {})
+        @bucket_ids = data["bucket_ids"]
+        @color = data["color"]
+        @created_at = parse_datetime(data["created_at"])
+        @gauges_url = data["gauges_url"]
+        @id = parse_integer(data["id"])
+        @image_url = data["image_url"]
+        @is_emoji_only_name = parse_boolean(data["is_emoji_only_name"])
+        @name = data["name"]
+        @projects = parse_array(data["projects"], "Project")
+        @star_url = data["star_url"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "bucket_ids" => @bucket_ids,
+          "color" => @color,
+          "created_at" => @created_at,
+          "gauges_url" => @gauges_url,
+          "id" => @id,
+          "image_url" => @image_url,
+          "is_emoji_only_name" => @is_emoji_only_name,
+          "name" => @name,
+          "projects" => @projects,
+          "star_url" => @star_url,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+        }.reject { |k, v| v.nil? && !["color", "gauges_url", "image_url"].include?(k) }
       end
 
       def to_json(*args)

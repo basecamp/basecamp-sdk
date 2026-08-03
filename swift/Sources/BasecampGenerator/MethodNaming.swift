@@ -36,6 +36,10 @@ let verbPatterns: [(prefix: String, method: String)] = [
 let methodNameOverrides: [String: String] = [
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark": "getBookmark",
+    // "folder(id)" reads as a noun with no verb; the rest of the family is
+    // listFolders/createFolder/updateFolder/deleteFolder, and Ruby and Python
+    // already emit get_folder. Keep all six SDKs on one name.
+    "GetFolder": "getFolder",
     // "myNote()" reads oddly; keep the getter explicit.
     "GetMyNote": "getMyNote",
     // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.

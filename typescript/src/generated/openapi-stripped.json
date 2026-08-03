@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-07-31",
+    "version": "2026-08-02",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -17885,6 +17885,443 @@
         }
       }
     },
+    "/stacks.json": {
+      "get": {
+        "description": "List the authenticated user's folders in home-screen order.\n\nReturns a bare array with no pagination envelope. Items are the base folder\nshape: they carry `bucket_ids` but **not** the expanded `projects`, which\nonly the single-folder operations return.",
+        "operationId": "ListFolders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "ListFolders 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListFoldersResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Folders"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Create a folder for the authenticated user and file the given projects into it.\n\nReturns 201 with the new folder and its expanded `projects`, placed at the\ntop of the home screen. Filing an all-access project the user has not joined\n**grants** them access to it. Every id is preflighted: if any is archived,\ntrashed, or an invitation-only project the user is not on, the whole request\nfails with 404 and nothing is created — there is no partial success.",
+        "operationId": "CreateFolder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFolderRequestContent"
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "CreateFolder 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateFolderResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Folders"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/stacks/{folderId}": {
+      "delete": {
+        "description": "Delete a folder and unpin its projects from the home screen (returns 204 No Content).\n\nThe projects themselves are not deleted and are not moved back out onto the\nhome screen; they simply stop appearing there until pinned again.",
+        "operationId": "DeleteFolder",
+        "parameters": [
+          {
+            "name": "folderId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "DeleteFolder 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Folders"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "get": {
+        "description": "Get one folder, with the projects grouped inside it expanded under `projects`.",
+        "operationId": "GetFolder",
+        "parameters": [
+          {
+            "name": "folderId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetFolder 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetFolderResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Folders"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Rename a folder.\n\n`name` is the only writable attribute; a folder's projects, ordering, and\nimage are managed elsewhere and an image parameter sent here is ignored.",
+        "operationId": "UpdateFolder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFolderRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "folderId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UpdateFolder 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateFolderResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Folders"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/templates.json": {
       "get": {
         "description": "List all templates visible to the current user\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -24189,6 +24626,26 @@
       "CreateEventBoostResponseContent": {
         "$ref": "#/components/schemas/Boost"
       },
+      "CreateFolderRequestContent": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The folder's name. Defaults to `New folder` when blank, null, or omitted."
+          },
+          "project_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "IDs of the projects to file into the folder — the same ids the folder\nreports back as `bucket_ids` and expands as `projects`. This does not\nround-trip under its own name. Omit it, or send null or an empty array,\nfor an empty folder."
+          }
+        }
+      },
+      "CreateFolderResponseContent": {
+        "$ref": "#/components/schemas/FolderWithProjects"
+      },
       "CreateForwardReplyRequestContent": {
         "type": "object",
         "properties": {
@@ -25275,6 +25732,186 @@
           "Saturday"
         ]
       },
+      "Folder": {
+        "type": "object",
+        "description": "A folder as the list returns it: the base shape, without expanded projects.\n\nDeliberately distinct from FolderWithProjects. A single shape with an\noptional `projects` member would make every list item declare a field the\nlist response never populates.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Always the string `Stack` — the wire type kept its pre-rename name."
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "bucket_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "IDs of the projects filed into this folder. Same ids as `project_ids` on\ncreate, and the ids FolderWithProjects expands under `projects`."
+          },
+          "is_emoji_only_name": {
+            "type": "boolean"
+          },
+          "star_url": {
+            "type": "string"
+          },
+          "gauges_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Gauges URL covering this folder's projects; always emitted, `null` when\nnone of them is gauged. `@required` models the presence — the nullability\nis layered on in the OpenAPI (smithy-build.json jsonAdd -> type:\n[\"string\",\"null\"]), so Go types it *string because the value is nullable,\nnot because the key is optional.",
+            "x-go-type": "string"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The viewer's colour customization for this folder; always emitted, `null`\nwhen unset. Required-and-nullable, like gauges_url.",
+            "x-go-type": "string"
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The viewer's folder image; always emitted, `null` when unset. Read-only:\nthere is no image create or update in v1. Required-and-nullable, like\ngauges_url.",
+            "x-go-type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bucket_ids",
+          "color",
+          "created_at",
+          "gauges_url",
+          "id",
+          "image_url",
+          "is_emoji_only_name",
+          "name",
+          "star_url",
+          "type",
+          "updated_at",
+          "url"
+        ]
+      },
+      "FolderWithProjects": {
+        "type": "object",
+        "description": "One folder plus the projects grouped inside it, as get/create/update return it.\n\nThe `projects` entries are the shared project projection, minus the\n`bookmarked` flag that only the projects index adds.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Always the string `Stack` — the wire type kept its pre-rename name."
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "bucket_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "IDs of the projects filed into this folder — the same set `projects`\nexpands."
+          },
+          "is_emoji_only_name": {
+            "type": "boolean"
+          },
+          "star_url": {
+            "type": "string"
+          },
+          "gauges_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Gauges URL covering this folder's projects; always emitted, `null` when\nnone of them is gauged. Required-and-nullable (see Folder.gauges_url).",
+            "x-go-type": "string"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The viewer's colour customization for this folder; always emitted, `null`\nwhen unset. Required-and-nullable.",
+            "x-go-type": "string"
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The viewer's folder image; always emitted, `null` when unset. Read-only.\nRequired-and-nullable.",
+            "x-go-type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            },
+            "description": "The projects filed into this folder, expanded. Always emitted; empty for\nan empty folder."
+          }
+        },
+        "required": [
+          "bucket_ids",
+          "color",
+          "created_at",
+          "gauges_url",
+          "id",
+          "image_url",
+          "is_emoji_only_name",
+          "name",
+          "projects",
+          "star_url",
+          "type",
+          "updated_at",
+          "url"
+        ]
+      },
       "ForbiddenErrorResponseContent": {
         "type": "object",
         "properties": {
@@ -25872,6 +26509,9 @@
           "$ref": "#/components/schemas/BucketTodosGroup"
         }
       },
+      "GetFolderResponseContent": {
+        "$ref": "#/components/schemas/FolderWithProjects"
+      },
       "GetForwardReplyResponseContent": {
         "$ref": "#/components/schemas/ForwardReply"
       },
@@ -26442,6 +27082,12 @@
         "type": "array",
         "items": {
           "$ref": "#/components/schemas/Event"
+        }
+      },
+      "ListFoldersResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Folder"
         }
       },
       "ListForwardRepliesResponseContent": {
@@ -30168,6 +30814,21 @@
       },
       "UpdateDocumentResponseContent": {
         "$ref": "#/components/schemas/Document"
+      },
+      "UpdateFolderRequestContent": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The folder's new name. Blank is rejected with 422 — unlike create, update\ndoes not fall back to a default name."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateFolderResponseContent": {
+        "$ref": "#/components/schemas/FolderWithProjects"
       },
       "UpdateGaugeNeedleRequestContent": {
         "type": "object",
