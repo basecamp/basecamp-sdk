@@ -507,6 +507,12 @@ oauth-token-fixtures-check:
 # like `$comment` placed there declares a property of that name with a string
 # for a schema — accepted silently by the fixture pass, rejected by any
 # validator that meta-validates first.
+#
+# The self-test runs after the live check for the same reason the gate exists:
+# pointed only at the valid fixture set, the gate proves it can say yes and
+# nothing else. Several of its rejections — a kill case answering 204 above all
+# — are invisible to both the schema pass and every runner, so a regression that
+# removed them would show up as a clean `make conformance` and nowhere else.
 conformance-fixtures-check:
 	@echo "==> Validating conformance schemas against the JSON Schema metaschema..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
@@ -516,6 +522,8 @@ conformance-fixtures-check:
 		--schemafile conformance/tests.schema.json conformance/tests/*.json
 	@echo "==> Checking errorRaised fixtures have body-pinning control siblings..."
 	python3 conformance/check_kill_case_controls.py
+	@echo "==> Self-testing the control-sibling gate's rejections..."
+	@python3 conformance/test_check_kill_case_controls.py
 
 # Unit-test the runners' own assertion helpers.
 #
