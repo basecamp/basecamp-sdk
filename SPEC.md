@@ -2041,7 +2041,7 @@ Regenerate-and-diff freshness gates now exist for all six SDKs' generated output
 
 The following are explicitly NOT part of this specification:
 
-- GraphQL or SSE transport. WebSocket as a general API transport remains out of scope; the §23 Event Feed connector’s Action Cable lane is in scope
+- GraphQL or SSE transport. WebSocket as a general API transport remains out of scope; the §23 Event Feed connector's Action Cable lane is in scope
 - CLI UI or interactive prompts
 - Circuit breaker, bulkhead, or client-side rate limiter (rubric T2D criteria exist but are optional extras, not core contracts)
 - Prometheus or OpenTelemetry hook implementations (the hook protocol is in scope; specific integrations are not)
@@ -2252,8 +2252,8 @@ typed error element is emitted), `Closed` (absorbing; no error element).
 | 15 | AwaitingConfirmation | Backoff | socket dropped, staleness expiry, or disconnect with `reconnect ≠ false` (includes `remote`) |
 | 16 | CatchingUp | CatchingUp | page fetched → deliver events → save + announce checkpoint → follow `next` |
 | 17 | CatchingUp | CatchingUp **or** Terminal(`feed_gap`) | 410 → dispatch `FeedGap` signal (Semantic Signals below): a registered handler returning Accept re-enters via the provided resume URL; Terminate — or no handler — is Terminal(`feed_gap`). `Observer.gap` fires as observability either way. A 410 never silently auto-continues. |
-| 18 | CatchingUp | CatchingUp | 400-position → re-enter `since=<last accepted id>` (or, with no accepted id, `since="now"` — a present-class entry, Entry Boundary below); `Observer.position_rejected(position_invalid)` |
-| 19 | CatchingUp | CatchingUp | 409 → discard the held position → re-enter `since=<last accepted id>` (or, with no accepted id, `since="now"` — a present-class entry); `Observer.position_rejected(filter_changed)` |
+| 18 | CatchingUp | CatchingUp | 400-position → re-enter `since=<last poll-served id>` (or, with none, `since="now"` — a present-class entry, Entry Boundary below); `Observer.position_rejected(position_invalid)` |
+| 19 | CatchingUp | CatchingUp | 409 → discard the held position → re-enter `since=<last poll-served id>` (or, with none, `since="now"` — a present-class entry); `Observer.position_rejected(filter_changed)` |
 | 20 | CatchingUp | Terminal(`filter_invalid`) | 400-filter: configuration error; a position reset won't help |
 | 21 | CatchingUp | Backoff | socket died mid-walk, or staleness expiry (per-page checkpoints already saved are kept) |
 | 22 | CatchingUp | Draining | `next` absent — the walk reached its frozen head → deliver the final page's events → save + announce its checkpoint (position-resume entries) → enter Draining. **Present-class amendment (present-class entries only — Entry Boundary below; position-resume entries unchanged):** the entry poll's returned position is HELD, not saved; the ownership cut — defined under Entry Boundary — is taken after entry into Draining. |
@@ -2267,14 +2267,19 @@ Semantic-signal dispositions are an **overlay** on this table, not additional nu
 rows: a `FeedGap` signal arises at transition 17; a `BufferOverflow` signal arises whenever
 the live buffer drops events (any buffer-holding state) and is dispatched synchronously
 before the next Save; a Terminate disposition — or an absent handler — lands in the
-corresponding Terminal state from wherever the signal was dispatched. Four further edges
+corresponding Terminal state from wherever the signal was dispatched. Five further edges
 sit outside the 26 numbered rows for the same reason: the Terminal(`checkpoint_load`) edge
 (fires on the first iteration, before the first mint — zero wire attempts); the
 Terminal(`usage`) edge (a re-consumed iterator); the Terminal(`invalid_continuation`) edge
 (fires between URL validation and the poll call, wherever a `next` continuation or 410
 `resume` URL is about to be followed — row 16's follow and row 17's Accept re-entry both
-pass through it; zero requests to the failing URL); and the poll transient/throttle
+pass through it; zero requests to the failing URL); the Terminal(`poll_failed`) edge (an
+`unrecoverable`-kind poll error — Seam Contracts below — from any polling state, carrying
+the generated error); and the poll transient/throttle
 **self-loop** inside CatchingUp (the `poll-retry` timer — a wait, not a state change).
+An `unauthorized`-kind poll error rides the reconnect cycle — full teardown → Backoff with
+a shared-counter increment (the fresh mint/token cycle is its recovery path) — and the
+counter's threshold-3 terminal fires from wherever the third consecutive failure lands.
 The published inventory stays 11/26.
 
 Interpretation, pinned:
@@ -2284,14 +2289,16 @@ Interpretation, pinned:
   leaves a rejected socket open; an unhandled one stays registered server-side, receiving
   heartbeats forever while delivering nothing).
 - **Connection-level authorization failures retry, then surface — on ONE shared counter.**
-  Unauthorized mints (401/403) and `unauthorized`-reason disconnects at connect
-  (pre-welcome — rows 9/10; Disconnect Dispatch pins the arrival point) increment the same
-  consecutive-failure counter; at `EVENT_FEED_AUTH_FAILURE_THRESHOLD = 3` the connector
-  surfaces `authorization_failed` (a mixed sequence — mint 401, `unauthorized` disconnect,
-  mint 401 — is terminal). A single blip must not kill a long-lived agent: a ticket that
-  expired in the mint→dial race is indistinguishable from revocation on one sample. The
-  counter resets on `confirm_subscription`, and only these two failure shapes ever
-  increment it.
+  Unauthorized mints (401/403), `unauthorized`-reason disconnects at connect
+  (pre-welcome — rows 9/10; Disconnect Dispatch pins the arrival point), and
+  `unauthorized`-kind poll errors (401/403 after the seam's own refresh/retry budget)
+  increment the same consecutive-failure counter; at
+  `EVENT_FEED_AUTH_FAILURE_THRESHOLD = 3` the connector surfaces `authorization_failed`
+  (a mixed sequence — mint 401, `unauthorized` disconnect, poll 401 — is terminal). A
+  single blip must not kill a long-lived agent: a ticket that expired in the mint→dial
+  race is indistinguishable from revocation on one sample. The counter resets on
+  `confirm_subscription` **and on any successful poll page**, and only these three
+  failure shapes ever increment it.
 - **Poll transients and throttles are never terminal.** They retry inside CatchingUp on the
   `poll-retry` timer, with one algorithm: a server-directed `Retry-After` is waited
   exactly, exempt from local caps per §7's rule (implementations may still bound it
@@ -2308,6 +2315,12 @@ Interpretation, pinned:
   on the first iteration **before the first mint**; its failure is
   Terminal(`checkpoint_load`) with zero wire attempts, because silently starting at the
   present would skip history.
+- **The reset cursor is poll-lane-only.** Rows 18/19's `since=<last poll-served id>` is
+  the highest event id ever **served by the poll lane** on this lineage — a value tracked
+  independently of delivery, dedupe, and the live lane. A live-delivered id is NEVER a
+  reset cursor: a live id above the durable position would re-enter past the un-polled
+  gap behind it and permanently skip everything in between. Empty pages serve no ids and
+  do not advance this value; with no poll-served id at all, the re-entry is present-class.
 - **Reconnect discipline:** one path through Backoff → Minting → Connecting; at most one
   in-flight reconnect attempt at any time; the attempt counter increments per failed cycle
   and resets on confirmation. A fresh ticket is minted on **every** pass — the connector
@@ -2388,6 +2401,14 @@ Two dispatch clarifications, pinned:
   (`EVENT_FEED_STALE_AFTER = 7500ms`: two missed 3-second server heartbeats plus 25% grace —
   the server contract leaves detection policy to the SDK; the SDK pins and publishes this
   one).
+- **The frame pump's hand-off queue is bounded and never drops.** The pump reads frames
+  from the transport and hands them to the state machine over a queue of small fixed depth
+  (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
+  back-pressure propagates to the socket and TCP — rather than dropping: the
+  state-machine-owned live buffer is the only place a frame can ever be dropped, and its
+  overflow signal is the only drop signal. Connector memory is therefore bounded by pump
+  depth + `EVENT_FEED_LIVE_BUFFER_CAPACITY` + `EVENT_FEED_MAX_FRAME_BYTES`, even under a
+  slow consumer.
 - The transport negotiates subprotocol `actioncable-v1-json`, sends no `Origin` header
   (non-browser clients), and passes the mint URL through untouched, query string included.
 
@@ -2529,6 +2550,7 @@ Terminal reasons end iteration with exactly one typed error element:
 | `buffer_overflow` | live-buffer overflow with no registered handler, or a handler returning Terminate |
 | `feed_gap` | 410 with no registered handler, or a handler returning Terminate |
 | `invalid_continuation` | a `next` or 410 `resume` URL failed same-origin/downgrade validation (Continuation and Resume URL Validation below); no request is issued to it |
+| `poll_failed` | an `unrecoverable`-kind poll error — a generated-operation outcome outside the feed's 400/409/410 matrix and the retryable classes (e.g. 404, 405, an unexpected shape) — passed through with the generated error attached |
 
 `auth_revoked` is deliberately **reserved, not used**: the wire carries no distinct
 revocation signal — revocation is one possible cause of repeated unauthorized failures, and
@@ -2538,7 +2560,8 @@ existence only if bc3 ships an observable revocation contract.
 Continuable — none of these end iteration: mint transients and throttles (Retry-After
 floors the next reconnect delay), poll transients and throttles (Retry-After waited
 exactly) — server-directed waits exempt from local caps per §7 in both lanes — dial
-failures, socket drops, `remote` disconnects,
+failures, socket drops, `remote` disconnects, `unauthorized`-kind poll errors below the
+shared-counter threshold (recovery rides the reconnect cycle),
 `unauthorized` failures below the threshold, staleness, 400-position (re-enter `since=`),
 409 (discard the held position, re-enter `since=`), and a 410 whose registered handler
 returns Accept (resume via the provided URL).
@@ -2581,7 +2604,13 @@ RECORD PollPage         -- the body envelope IS the contract; never bind to resp
                         -- Bound to that walk; NEVER persisted.
 END
 -- Poll errors carry a kind: transient | throttled(retry_after) | position_invalid |
--- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url).
+-- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url) |
+-- unauthorized | unrecoverable(error).
+-- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
+-- 429/503 and §7-retryable outcomes exhausted inside the seam → transient/throttled;
+-- the feed's 400/409/410 matrix → its four kinds; 401/403 (after the seam's own token
+-- refresh and retry budget) → unauthorized; anything else non-retryable (404, 405,
+-- unexpected shapes) → unrecoverable, carrying the generated error verbatim.
 
 INTERFACE CableTransport
   dial(ws_url) → CableConn
@@ -2857,7 +2886,7 @@ consumption) are recorded in Appendix F with their compensating tier-3 tests.
 
 All magic numbers in one place, derived from shipping SDK code (not `rubric-audit.json`).
 
-Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 14 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — and `MAX_BACKOFF_DELAY` joined with #592 under that PR’s own six-SDK verification (the sentence previously said 13 rows while the table carried 14). The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23’s normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3’s merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
+Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 14 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — and `MAX_BACKOFF_DELAY` joined with #592 under that PR's own six-SDK verification (the sentence previously said 13 rows while the table carried 14). The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23's normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3's merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
 
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
