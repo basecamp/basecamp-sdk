@@ -631,8 +631,20 @@ check_glob_discovery "Python" py conformance/runner/python \
     recursive '(^|/)(\.[^/]*|[^/]*\.egg|_darcs|build|CVS|dist|node_modules|venv|\{arch\})/' \
     'test_*.py' '*_test.py'
 
+# Declarations, not the framework require — the same rule the Python arm follows,
+# for the same reason. `require "minitest/autorun"` in a conventional
+# test_helper.rb, required BY the suites rather than discovered independently,
+# matches no `*_test.rb` glob, so treating the require as a suite failed the
+# build over a support file that declares nothing runnable.
+#
+# A `Minitest::Test` subclass or a `def test_` still counts wherever it sits, so
+# a helper that declares real tests is still reported. That direction is
+# deliberately kept loud: minitest/autorun runs every test class LOADED into the
+# process, so whether such a declaration executes depends on some *_test.rb
+# requiring the helper — an edge this check cannot see and will not assume.
 check_glob_discovery "Ruby" rb conformance/runner/ruby \
-    'minitest/autorun|Minitest::Test' "$RUBY_SCOPE" '' '*_test.rb'
+    'Minitest::(Test|Spec)|^[[:space:]]*def test_|^[[:space:]]*(describe|it)[[:space:]]+["'"'"']' \
+    "$RUBY_SCOPE" '' '*_test.rb'
 
 # Quote-agnostic: `from 'vitest'` is the same import and the same discovery.
 #
@@ -776,10 +788,72 @@ else
     # the wrapper, the recipe must reach vitest: directly, or through the `npm
     # test` script, which is followed one level into package.json rather than
     # assumed to mean vitest.
+    # vitest_invocation_dirs — the effective working directory of every step
+    # that runs vitest, one per line.
+    #
+    # `vitest run` is not self-locating: vitest's root defaults to the process
+    # cwd, and the test-typescript job declares
+    # `defaults: run: working-directory: typescript`. So the very same command,
+    # with the step's override dropped, re-runs the SDK's own suite and touches
+    # none of the runner files this check counts — while the text of the command
+    # is unchanged. Matching the command without its directory asserted that a
+    # string appears, not that these tests run.
+    #
+    # Step-level `working-directory:` wins; otherwise the job's default, taken
+    # as any `working-directory:` in the job body before its `steps:` key.
+    TS_RUNNER_DIR=conformance/runner/typescript
+    vitest_invocation_dirs() {
+        awk -v cmd='(^|[^-[:alnum:]])(npx[[:space:]]+)?vitest run([[:space:]]|$)' '
+            function indent(s,   n) { n = match(s, /[^ ]/); return n ? n - 1 : -1 }
+            function flush() {
+                if (has_vitest) print (step_wd != "" ? step_wd : (job_wd != "" ? job_wd : "."))
+                instep = 0; has_vitest = 0; step_wd = ""
+            }
+            /^jobs:[[:space:]]*$/ { injobs = 1; jobind = -1; next }
+            {
+                if (!injobs) next
+                if ($0 ~ /^[[:space:]]*$/) next
+                ind = indent($0)
+                if (jobind < 0) jobind = ind
+                if (ind <= jobind) {
+                    if (instep) flush()
+                    job_wd = ""; seensteps = 0
+                    if (ind < jobind) injobs = 0
+                    next
+                }
+                if ($0 ~ /^[[:space:]]*steps:[[:space:]]*$/) { seensteps = 1 }
+                if (!seensteps && $0 ~ /^[[:space:]]*working-directory:/) {
+                    job_wd = $0; sub(/^[^:]*:[[:space:]]*/, "", job_wd); gsub(/["'"'"']/, "", job_wd)
+                }
+                if ($0 ~ /^[[:space:]]*-[[:space:]]/ && (!instep || ind <= dashind)) {
+                    if (instep) flush()
+                    instep = 1; dashind = ind; has_vitest = 0; step_wd = ""
+                }
+                if (instep) {
+                    if ($0 ~ /^[[:space:]]*working-directory:/) {
+                        step_wd = $0; sub(/^[^:]*:[[:space:]]*/, "", step_wd); gsub(/["'"'"']/, "", step_wd)
+                    }
+                    if ($0 ~ cmd) has_vitest = 1
+                }
+            }
+            END { if (instep) flush() }
+        ' <<<"$workflow_code"
+    }
+
     ts_invoked=0
     ts_detail=()
     if invoked_by_workflow '(npx[[:space:]]+)?vitest run'; then
-        ts_invoked=1
+        if grep -qxF "$TS_RUNNER_DIR" <<<"$(vitest_invocation_dirs)"; then
+            ts_invoked=1
+        else
+            ts_detail=(
+                "a 'vitest run' step exists, but none of them runs in $TS_RUNNER_DIR."
+                "vitest's root is the process cwd and the TypeScript job defaults to"
+                "working-directory: typescript, so that command re-runs the SDK's own"
+                "suite and collects none of the runner files counted above. Effective"
+                "directories found: $(vitest_invocation_dirs | tr '\n' ' ')"
+            )
+        fi
     elif invoked_by_workflow 'make[[:space:]]+conformance-typescript'; then
         ts_recipe="$(make_recipes '^conformance-typescript:')"
         ts_pkg=conformance/runner/typescript/package.json
@@ -893,6 +967,17 @@ fi
 #                    `matrix.ruby == '3.3'` — which is how the real workflow
 #                    runs the Ruby suite — must still count. Only a LITERALLY
 #                    false condition disables; expressions are not evaluated.
+# Case 26 a `vitest run` step that inherits the job's `working-directory:
+#                    typescript` → reported. Same command text, different root:
+#                    it re-runs the SDK suite and collects no runner file.
+# Case 27 the converse: the same step with the runner-directory override → NOT
+#                    reported, so 26 cannot be satisfied by the arm just failing.
+# Case 28 a Minitest test_helper.rb that only requires the framework → NOT
+#                    reported. It is required BY the suites, matches no glob, and
+#                    declares nothing — the Ruby half of case 14.
+# Case 29 the converse: a helper that DECLARES a Minitest::Test → reported.
+#                    Whether it runs depends on a require edge this check cannot
+#                    see, so that direction stays loud.
 # ---------------------------------------------------------------------------
 selftest_tree() {
     # selftest_tree <dir> <ruby-recipe-body>
@@ -1592,6 +1677,114 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         st_fail=1
     else
         echo "  ok: matrix-conditioned runner-test step still counts as invoked"
+    fi
+
+    # Cases 26-27: the vitest step, with and without the directory override.
+    # The job default mirrors the real workflow's `working-directory: typescript`.
+    selftest_vitest_workflow() {
+        local dir="$1" step_wd="$2"
+        mkdir -p "$dir/.github/workflows"
+        {
+            echo 'jobs:'
+            echo '  test-typescript:'
+            echo '    defaults:'
+            echo '      run:'
+            echo '        working-directory: typescript'
+            echo '    steps:'
+            local t
+            for t in go python ruby kotlin swift; do
+                echo "      - run: make conformance-runner-tests-$t"
+            done
+            echo '      - name: Run TypeScript conformance tests'
+            [[ -n "$step_wd" ]] && echo "        working-directory: $step_wd"
+            echo '        run: |'
+            echo '          npm ci'
+            echo '          npx vitest run'
+        } > "$dir/.github/workflows/test.yml"
+    }
+
+    echo ""
+    echo "==> Self-test 26: a vitest step in the wrong working directory is not an invocation"
+    # vitest's root is the process cwd, so the same command under the job's
+    # `working-directory: typescript` re-runs the SDK's suite and collects none
+    # of the runner files this check counts.
+    selftest_tree "$WORK/ts-wrong-dir" "$RECURSIVE_RECIPE"
+    selftest_vitest_workflow "$WORK/ts-wrong-dir" ''
+    out="$(REPO_ROOT="$WORK/ts-wrong-dir" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: ts-wrong-dir tree passed (exit 0) — the command's root is not checked"
+        st_fail=1
+    elif ! grep -q 'does not invoke the TypeScript runner suite' <<<"$out"; then
+        echo "  FAIL: a 'vitest run' inheriting working-directory: typescript was counted"
+        echo "        as invoking the runner suite"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: vitest step in the wrong working directory reported (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 27: the same step WITH the runner-directory override counts"
+    selftest_tree "$WORK/ts-right-dir" "$RECURSIVE_RECIPE"
+    selftest_vitest_workflow "$WORK/ts-right-dir" conformance/runner/typescript
+    out="$(REPO_ROOT="$WORK/ts-right-dir" "$SELF" 2>&1)"
+    if ! grep -q 'ok: .*invokes the TypeScript runner suite' <<<"$out"; then
+        echo "  FAIL: a correctly-overridden vitest step was reported as not invoking the"
+        echo "        suite — case 26 would then pass for the wrong reason"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: overridden vitest step accepted as the runner-suite invocation"
+    fi
+
+    echo ""
+    echo "==> Self-test 28: a require-only Minitest helper must NOT be reported"
+    # The Ruby half of case 14. A conventional test_helper.rb requires
+    # minitest/autorun to configure shared helpers, is required BY the suites
+    # rather than discovered, and matches no *_test.rb glob.
+    selftest_tree "$WORK/rb-helper" "$RECURSIVE_RECIPE"
+    printf 'require "minitest/autorun"\nrequire "json"\n\nFIXTURE_ROOT = File.expand_path("../fixtures", __dir__)\n' \
+        > "$WORK/rb-helper/conformance/runner/ruby/test_helper.rb"
+    out="$(REPO_ROOT="$WORK/rb-helper" "$SELF" 2>&1)"
+    if grep -q 'conformance/runner/ruby/test_helper\.rb' <<<"$out"; then
+        echo "  FAIL: a require-only test_helper.rb was reported unreachable — it declares"
+        echo "        no test and is loaded by the suites that require it"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    elif ! grep -q 'ok: Ruby' <<<"$out"; then
+        echo "  FAIL: the Ruby arm did not report ok, so its silence about test_helper.rb"
+        echo "        proves nothing — it bailed out before judging any file"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: require-only Minitest helper accepted (loaded by the suites, not discovered)"
+    fi
+
+    echo ""
+    echo "==> Self-test 29: a helper that DECLARES a Minitest test must still be reported"
+    # The bound on 28. minitest/autorun runs every test class loaded into the
+    # process, so whether this one executes depends on some *_test.rb requiring
+    # the file — an edge this check cannot see and will not assume.
+    selftest_tree "$WORK/rb-helper-test" "$RECURSIVE_RECIPE"
+    printf 'require "minitest/autorun"\n\nclass StrandedTest < Minitest::Test\n  def test_stranded\n    flunk "reached only if some *_test.rb requires this file"\n  end\nend\n' \
+        > "$WORK/rb-helper-test/conformance/runner/ruby/test_helper.rb"
+    out="$(REPO_ROOT="$WORK/rb-helper-test" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: rb-helper-test tree passed (exit 0) — helpers are exempted wholesale"
+        st_fail=1
+    elif ! grep -q 'conformance/runner/ruby/test_helper\.rb' <<<"$out"; then
+        echo "  FAIL: a Minitest::Test declared in a helper was not reported"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: test declared in a Minitest helper reported unreachable (exit $st)"
     fi
 
     echo ""
