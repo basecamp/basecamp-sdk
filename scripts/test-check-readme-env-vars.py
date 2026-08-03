@@ -1244,6 +1244,108 @@ def main() -> int:
             "python/src/c.py": 'v = os.environ.get("HTTP_PROXY")\n',
         })
         check("unrelated env vars are ignored", run_gate(root, PY_SDK), [])
+
+        # 10. Where a newline does and does not end a statement. Both of these
+        #     are the same bytes in the two languages that spell a regex `/.../`,
+        #     and they mean opposite things, so one rule cannot serve both.
+        #
+        #     JavaScript inserts no semicolon before `/`, because the slash
+        #     parses as a continuation of the expression above it. So this is
+        #     division and the read between the two slashes is real; treating
+        #     the line-leading slash as a regex opener masks it, and an
+        #     undocumented variable ships.
+        root = tmp / "ts-newline-division"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts":
+                "const ratio = 10\n/ process.env.BASECAMP_REAL / 2;\n",
+        })
+        check("a typescript division survives the line break",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        # ...while a slash that continues an operator really does open a regex,
+        # so the read spelled inside it is example text and not a read.
+        root = tmp / "ts-newline-regex"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                "const re =\n  /process.env.BASECAMP_FAKE/;\n",
+        })
+        check("a typescript regex after a line-broken operator is not a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # Ruby is the other way round: a complete expression ends at the newline,
+        # so a line-leading slash is a regex and its body is data.
+        root = tmp / "ruby-newline-regex"
+        build(root, {
+            "ruby/README.md": "no tables\n",
+            "ruby/lib/c.rb": "n = 10\n/ENV['BASECAMP_FAKE']/.match(s)\n",
+        })
+        check("a ruby line-leading slash is a regex",
+              run_gate(root, RB_SDK), [])
+
+        # 11. A `)` that closes a control-flow condition is followed by a
+        #     statement, and a statement may begin with a regex. Reading it as
+        #     division leaves the pattern text executable and invents a read.
+        root = tmp / "ts-condition-regex"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts":
+                "if (ready) /process.env.BASECAMP_FAKE/.test(value);\n",
+        })
+        check("a regex after a control-flow condition is not a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # ...but every other `)` still ends a value, so the slash after it stays
+        # division. This is the fail-open direction of the rule above: guess
+        # "regex" here and the read between the slashes disappears.
+        root = tmp / "ts-call-division"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts":
+                "const n = size() / process.env.BASECAMP_REAL / 2;\n",
+        })
+        check("division after a call is not a condition regex",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        # Ruby has statement modifiers, so `if (x) / 2` really is division
+        # inside a trailing condition. The rule above is therefore TypeScript's
+        # alone -- applying it here would mask the read in that condition.
+        root = tmp / "ruby-modifier-if-division"
+        build(root, {
+            "ruby/README.md": "no tables\n",
+            "ruby/lib/c.rb": "warn 'x' if (limit) / ENV['BASECAMP_REAL'].to_i / 2 > 1\n",
+        })
+        check("a ruby modifier-if condition keeps its division",
+              run_gate(root, RB_SDK), ["reverse:Ruby:BASECAMP_REAL"])
+
+        # 12. Kotlin's triple-quoted string is raw: a backslash is ordinary data
+        #     and does not escape the `$` after it, so `${...}` still executes.
+        #     Consuming the pair as an escape hid a real read -- and the root
+        #     README's "Kotlin reads no environment variables" stayed true-looking.
+        root = tmp / "kotlin-raw-escaped-dollar"
+        build(root, {
+            "kotlin/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "kotlin/sdk/src/c.kt":
+                'val s = """\\${System.getenv("BASECAMP_REAL")}"""\n',
+        })
+        check("a backslash does not escape kotlin raw interpolation",
+              run_gate(root, KT_SDK, no_env_sdks=("Kotlin",)),
+              ["noenv:Kotlin:BASECAMP_REAL"])
+
+        # Swift's plain `"""` is not raw, so there the backslash does escape and
+        # `\\(` is literal text rather than an interpolation. Same shape, opposite
+        # answer, which is why this is a per-language flag and not a global rule.
+        root = tmp / "swift-multiline-escaped-interp"
+        build(root, {
+            "swift/README.md": "no tables\n",
+            "swift/Sources/c.swift":
+                'let s = """\n\\\\(ProcessInfo.processInfo.environment["BASECAMP_FAKE"])\n"""\n',
+        })
+        check("a backslash still escapes swift multiline interpolation",
+              run_gate(root, SW_SDK, no_env_sdks=("Swift",)), [])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

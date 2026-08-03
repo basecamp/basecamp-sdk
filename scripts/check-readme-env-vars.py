@@ -186,12 +186,21 @@ SDKS = {
 #   multiline: Ruby, where an ordinary quoted literal may span physical lines.
 #            Everywhere else a newline ends it, which is what bounds the damage
 #            from an unbalanced quote.
+#   newline_operand: Ruby, where a line break ends a complete expression, so a
+#            slash at the start of the next line opens a regex. JavaScript
+#            inserts no semicolon before `/`, so there the same slash continues
+#            the expression above and is division.
+#   condition_regex: TypeScript, where `if (...)` is followed by a statement and
+#            a statement may begin with a regex. Off for Ruby, whose statement
+#            modifiers put a genuine division after the same `)`.
 LANG_FLAGS = {
     "Go": {
         "triple": False, "nested": False, "raw": False, "fstring": False,
         "multiline": False,
         "regex": False,
         "command_regex": False,
+        "newline_operand": False,
+        "condition_regex": False,
         "backtick_string": False,
         "backtick_raw": True,
         "triple_raw": False,
@@ -207,6 +216,11 @@ LANG_FLAGS = {
         "multiline": True,
         "regex": True,
         "command_regex": True,
+        # A complete Ruby expression ends at the newline, so the next line's
+        # leading slash is a regex. `if (x) / 2` after a statement modifier is
+        # not, which is why the condition rule is off here.
+        "newline_operand": True,
+        "condition_regex": False,
         "backtick_raw": False,
         # Ruby's backtick is a command literal, and it interpolates like a
         # double-quoted string. Python shares this comment style and has no such
@@ -221,6 +235,8 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "command_regex": False,
+        "newline_operand": False,
+        "condition_regex": False,
         "backtick_string": False,
         "backtick_raw": False,
         "triple_raw": False,
@@ -232,6 +248,11 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": True,
         "command_regex": False,
+        # No automatic semicolon is inserted before `/`, so a line-leading slash
+        # continues the expression above it and is division. `if (...)` is
+        # followed by a statement, which may begin with a regex.
+        "newline_operand": False,
+        "condition_regex": True,
         "backtick_string": False,
         "backtick_raw": False,
         "triple_raw": False,
@@ -243,6 +264,8 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "command_regex": False,
+        "newline_operand": False,
+        "condition_regex": False,
         "backtick_string": False,
         "backtick_raw": False,
         "triple_raw": False,
@@ -254,6 +277,8 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "command_regex": False,
+        "newline_operand": False,
+        "condition_regex": False,
         "backtick_string": False,
         "backtick_raw": False,
         "triple_raw": True,
@@ -263,7 +288,7 @@ LANG_FLAGS = {
 }
 # Permissive union, used only when no language is supplied.
 DEFAULT_FLAGS = {
-    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "command_regex": True, "backtick_string": False, "backtick_raw": False, "triple_raw": False, "percent": True,
+    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "command_regex": True, "newline_operand": True, "condition_regex": True, "backtick_string": False, "backtick_raw": False, "triple_raw": False, "percent": True,
     "interp": {"`": [("${", "}")], '"': [("${", "}"), ("\\(", ")"), ("#{", "}")]},
 }
 
@@ -397,6 +422,54 @@ def command_argument(text: str, i: int, word: str, spaced: bool, flags: dict) ->
     return bool(after) and not after.isspace() and after != "="
 
 
+# Statement heads whose parenthesised condition is followed by a statement,
+# rather than by more of an expression.
+CONDITION_KEYWORDS = {"if", "for", "while", "switch", "catch", "with"}
+
+
+def condition_paren(text: str, close: int, flags: dict) -> bool:
+    """Whether the `)` at `close` ends an `if (...)`-style condition.
+
+    A `)` normally ends a value, so a `/` after it is division. The exception is
+    a control-flow condition: what follows that is a *statement*, and a
+    statement may begin with a regex. `if (ready) /re/.test(value)` is valid
+    TypeScript, and reading its slash as division leaves the pattern text
+    executable -- so the gate invents an environment read out of regex data.
+
+    TypeScript only, and that restriction is load-bearing rather than cautious.
+    Ruby has statement modifiers, so in `warn 'x' if (limit) / n / 2 > 1` the
+    identical `)` really is followed by division, and masking to the next slash
+    would swallow whatever sits between them. That is the fail-open direction,
+    which is the one worth erring away from.
+
+    The backward walk counts parentheses without skipping strings or comments,
+    so a `)` written inside a literal in the condition can throw the depth off.
+    That resolves to "not a condition" and falls back to division, which leaves
+    the pattern text visible: the gate over-reports rather than under-reports.
+    """
+    if not flags.get("condition_regex"):
+        return False
+    depth = 1
+    k = close - 1
+    while k >= 0:
+        if text[k] == ")":
+            depth += 1
+        elif text[k] == "(":
+            depth -= 1
+            if depth == 0:
+                break
+        k -= 1
+    if depth:
+        return False
+    k -= 1
+    while k >= 0 and text[k] in " \t\r\n":
+        k -= 1
+    word_end = k + 1
+    while k >= 0 and (text[k].isalnum() or text[k] == "_"):
+        k -= 1
+    return text[k + 1 : word_end] in CONDITION_KEYWORDS
+
+
 def operand_position(text: str, i: int, flags: dict) -> bool:
     """Whether an operand may begin at `i`, rather than a binary operator.
 
@@ -412,8 +485,26 @@ def operand_position(text: str, i: int, flags: dict) -> bool:
     spaced = k >= 0 and text[k] in " \t"
     while k >= 0 and text[k] in " \t":
         k -= 1
-    if k < 0 or text[k] in REGEX_PRECEDERS or text[k] == "\n":
+    if k < 0:
         return True
+    if text[k] in "\r\n":
+        # Whether a line break ends the statement is the whole difference
+        # between the two languages that spell a regex `/.../`, so it cannot be
+        # one rule. Ruby ends a complete expression at the newline, so a
+        # line-leading slash opens a regex. JavaScript inserts no semicolon
+        # before `/` -- the slash parses as a continuation of the line above --
+        # so `const r = 10\n/ process.env.X / 2` is division, and calling it a
+        # regex masks the read between the slashes and ships it undocumented.
+        if flags.get("newline_operand"):
+            return True
+        while k >= 0 and text[k] in " \t\r\n":
+            k -= 1
+        if k < 0:
+            return True
+    if text[k] in REGEX_PRECEDERS:
+        return True
+    if text[k] == ")":
+        return condition_paren(text, k, flags)
     if not (text[k].isalnum() or text[k] == "_"):
         return False
     word_end = k + 1
@@ -655,8 +746,18 @@ def raw_string_hashes(text: str, i: int) -> int:
 
 
 def brace_holes(text: str, start: int, stop: int, style: str, flags: dict,
-                opener: str, closer: str) -> list[tuple[int, int]]:
-    """Interpolation holes in a literal body, skipping escaped openers."""
+                opener: str, closer: str, raw: bool = False) -> list[tuple[int, int]]:
+    """Interpolation holes in a literal body, skipping escaped openers.
+
+    `raw` says the literal processes no escapes, so a backslash inside it is
+    ordinary data and protects nothing. Kotlin's triple-quoted string is the
+    case that matters: there `\\${x}` still interpolates, because the backslash
+    is literal text and the `${` after it is the template marker regardless.
+    Consuming the pair as an escape skipped the `$`, dropped the hole, and
+    masked a real `System.getenv` read -- the fail-open direction, and one the
+    root README's "Kotlin reads no environment variables" would have kept
+    looking true through.
+    """
     holes = []
     j = start
     while j < stop:
@@ -672,8 +773,9 @@ def brace_holes(text: str, start: int, stop: int, style: str, flags: dict,
         # A backslash escapes what follows, so `\#{...}` in Ruby is literal text.
         # This has to be tested *after* the opener, because Swift's opener is
         # itself `\(` -- checking the escape first would eat it and lose every
-        # Swift interpolation.
-        if text[j] == "\\":
+        # Swift interpolation. And not at all in a raw literal, where there is
+        # no escape to honour.
+        if not raw and text[j] == "\\":
             j += 2
             continue
         j += 1
@@ -704,7 +806,10 @@ def scan_literal(text: str, i: int, style: str,
             close_at = text.find(close_token, body_start)
             end = n if close_at == -1 else close_at + len(close_token)
             body_stop = close_at if close_at != -1 else n
-            holes = brace_holes(text, body_start, body_stop, style, flags, "\\" + fence + "(", ")")
+            # Raw: the escape is `\#(` with the fence, so a lone backslash here
+            # is data. `#"\\#(x)"#` is a literal backslash then an interpolation.
+            holes = brace_holes(text, body_start, body_stop, style, flags,
+                                "\\" + fence + "(", ")", raw=True)
             return end, holes
 
     triple_quote = None
@@ -725,15 +830,20 @@ def scan_literal(text: str, i: int, style: str,
         if style == "hash":
             # Only an f-string's braces are code; a plain docstring's are text.
             if has_fstring_prefix(text, i):
-                holes = brace_holes(text, i + 3, body_stop, style, flags, "{", "}")
+                holes = brace_holes(text, i + 3, body_stop, style, flags, "{", "}",
+                                    raw=triple_is_raw)
         else:
             # Swift and Kotlin multiline strings are ordinary strings, not
             # documentation, and both interpolate.
             # Whatever this language interpolates in a double-quoted string, it
             # interpolates in a multiline one: `${...}` in Kotlin, `\(...)` in
             # Swift, and nothing at all elsewhere.
+            # Whether a backslash in there escapes anything is where the two
+            # part company: Kotlin's `"""` is raw and Swift's is not, so the
+            # same `\${...}` bytes are a live read in one and text in the other.
             for opener, closer in flags["interp"].get('"', []):
-                holes += brace_holes(text, i + 3, body_stop, style, flags, opener, closer)
+                holes += brace_holes(text, i + 3, body_stop, style, flags, opener, closer,
+                                     raw=triple_is_raw)
         return end, holes
 
     quote = text[i]
