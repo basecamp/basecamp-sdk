@@ -681,7 +681,17 @@ check_glob_discovery "Ruby" rb conformance/runner/ruby \
     'Minitest::(Test|Spec)|^[[:space:]]*def test_|^[[:space:]]*(describe|it)[[:space:]]+["'"'"']' \
     "$RUBY_SCOPE" '' '*_test.rb'
 
-# Quote-agnostic: `from 'vitest'` is the same import and the same discovery.
+# Declarations, not the framework import — the last of the three glob arms to
+# get the rule, after conftest.py and test_helper.rb. A support module that does
+# `import type { Mock } from 'vitest'` and is imported BY the suites matches no
+# `.test.`/`.spec.` glob, so keying on the import failed the build over a file
+# that declares nothing runnable. Every arm now keys on a declaration: `func
+# TestX`, a `def test`, a `Minitest::Test`, a `describe`/`it`, an `@Test`, an
+# XCTestCase.
+#
+# The suffixed forms are covered — `it.each([…])(`, `test.skip(`, and the tagged
+# template `it.each\`…\`` — because a runnable declaration written any of those
+# ways is still a runnable declaration, and missing one is the silent direction.
 #
 # BOTH of vitest's filename conventions are accepted, because both are run. CI
 # invokes an UNCONFIGURED `vitest run` with conformance/runner/typescript as its
@@ -705,7 +715,7 @@ check_glob_discovery "Ruby" rb conformance/runner/ruby \
 # `*.test.js` under dist/ is a real possibility, and vitest collects none of it.
 VITEST_EXTS='ts|tsx|mts|mtsx|cts|ctsx|js|jsx|mjs|mjsx|cjs|cjsx'
 check_glob_discovery "TypeScript" "$VITEST_EXTS" conformance/runner/typescript \
-    "from ['\"]vitest['\"]" recursive \
+    '^[[:space:]]*(describe|it|test|suite|bench)[.[:alnum:]]*[[:space:]]*[(`]' recursive \
     '(^|/)(node_modules|dist|cypress|\.idea|\.git|\.cache|\.output|\.temp)/' \
     '*.@(test|spec).?(c|m)@(j|t)s?(x)'
 
@@ -1057,6 +1067,10 @@ fi
 #                    leg; the step is untouched. Dropping a supported runtime is
 #                    the ordinary way this happens.
 # Case 31 the same pin in a job that declares no matrix at all → reported.
+# Case 33 a vitest support module — `import type { Mock } from 'vitest'`, no
+#                    declaration — → NOT reported. Imported BY the suites, it
+#                    matches no glob and declares nothing runnable: the
+#                    TypeScript twin of cases 14 and 28.
 # Case 32 a conformance-runner-tests-go recipe emptied to `@true` → reported.
 #                    CI still invokes the target, the workflow is unchanged, and
 #                    the suite runs nowhere: case 21's hollow wrapper one level
@@ -1944,6 +1958,35 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         st_fail=1
     else
         echo "  ok: hollow runner-test recipe reported (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 33: a vitest support module must NOT be reported"
+    # The TypeScript twin of 14 (conftest.py) and 28 (test_helper.rb). A module
+    # that imports vitest types and is imported BY the suites declares nothing
+    # runnable and matches no .test./.spec. glob. Case 17 is its loud pair: a
+    # file that DOES declare tests and matches neither convention is reported.
+    selftest_tree "$WORK/ts-support" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/ts-support/conformance/runner/typescript"
+    printf "import { describe, it, expect } from 'vitest';\n\ndescribe('runner', () => {\n  it('runs', () => { expect(1).toBe(1); });\n});\n" \
+        > "$WORK/ts-support/conformance/runner/typescript/runner.test.ts"
+    printf "import type { Mock } from 'vitest';\nimport { vi } from 'vitest';\n\nexport function makeFetch(): Mock {\n  return vi.fn();\n}\n" \
+        > "$WORK/ts-support/conformance/runner/typescript/vitest-support.ts"
+    out="$(REPO_ROOT="$WORK/ts-support" "$SELF" 2>&1)"
+    if grep -q 'conformance/runner/typescript/vitest-support\.ts' <<<"$out"; then
+        echo "  FAIL: a vitest support module was reported unreachable — it declares no"
+        echo "        test and is imported by the suites that use it"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    elif ! grep -q 'ok: TypeScript' <<<"$out"; then
+        echo "  FAIL: the TypeScript arm did not report ok, so its silence about"
+        echo "        vitest-support.ts proves nothing — it bailed out first"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: vitest support module accepted (imported by the suites, not collected)"
     fi
 
     echo ""
