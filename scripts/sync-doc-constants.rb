@@ -33,6 +33,16 @@
 # the pin, or that stopped being it before this gate existed, is out of reach
 # of any cheap check and is governed by the convention in AGENTS.md instead.
 #
+# WHICH WAY TO BE WRONG. Deciding what counts as prose means approximating
+# Markdown, and every approximation is wrong somewhere. Resolve every such
+# ambiguity toward treating a line AS PROSE. Over-scanning costs a false alarm:
+# loud, in front of the author, disproved in a minute. Under-scanning costs a
+# claim nobody ever looked at, reported as success — which is the exact failure
+# this gate exists to prevent, now wearing the gate's own green tick. Three
+# separate review findings here were all the same bug in that light: a line the
+# scanner could not see was a line it silently vouched for. This is a drift
+# gate, not a Markdown parser; when the two disagree, prefer the false alarm.
+#
 # Marker syntax
 #   Line span:   <!-- @api-version -->  or  <!-- @bc3-pin -->
 #                anywhere on the line; the span is exactly that line.
