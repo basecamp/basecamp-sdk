@@ -15,7 +15,9 @@ it, and asserts on the failures returned.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import shutil
 import sys
 import tempfile
@@ -104,6 +106,31 @@ def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = (),
         return failures
     finally:
         gate.REPO, gate.SDKS, gate.NO_ENV_SDKS = old_repo, old_sdks, old_no_env
+
+
+def run_main(root: Path, sdks: dict, no_env_sdks: tuple = ()) -> int:
+    """Call the gate's real `main()` against a synthetic repo, returning its code.
+
+    `run_gate` above drives the same helpers `main()` drives, which is what lets
+    every case assert on a compact tag rather than on prose. What that cannot
+    cover is `main()` itself: the order it wires the five invariants in, and the
+    exit code the Makefile recipe and the CI step actually branch on. Nothing
+    else here ever runs the shipped entrypoint.
+
+    Asserting only the code, never the message text, is what keeps this cheap.
+    Sharing the whole orchestration would mean rewriting every expectation
+    against failure strings, trading a small drift risk for a large brittleness
+    one in the file whose job is to be trustworthy; a smoke test on the return
+    value buys the coverage without that.
+    """
+    old = gate.REPO, gate.SDKS, gate.NO_ENV_SDKS
+    gate.REPO, gate.SDKS, gate.NO_ENV_SDKS = root, sdks, no_env_sdks
+    try:
+        with contextlib.redirect_stdout(io.StringIO()), \
+             contextlib.redirect_stderr(io.StringIO()):
+            return gate.main()
+    finally:
+        gate.REPO, gate.SDKS, gate.NO_ENV_SDKS = old
 
 
 def check(name: str, actual, expected) -> None:
@@ -1346,6 +1373,27 @@ def main() -> int:
         })
         check("a backslash still escapes swift multiline interpolation",
               run_gate(root, SW_SDK, no_env_sdks=("Swift",)), [])
+
+        # 13. The shipped entrypoint, end to end. Everything above drives the
+        #     helpers `main()` drives, so until here the exit code that `make
+        #     check` and the CI step branch on had no coverage at all -- a
+        #     `main()` that collected every failure and then returned 0 would
+        #     have passed this whole suite.
+        root = tmp / "main-consistent"
+        build(root, {
+            "README.md": "Python reads `BASECAMP_MAIN`.\n",
+            "python/README.md": TABLE.format(var="BASECAMP_MAIN"),
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_MAIN")\n',
+        })
+        check("main() exits 0 on a consistent repo", run_main(root, PY_SDK), 0)
+
+        root = tmp / "main-phantom"
+        build(root, {
+            "README.md": "Python reads `BASECAMP_PHANTOM`.\n",
+            "python/README.md": TABLE.format(var="BASECAMP_PHANTOM"),
+            "python/src/c.py": "v = 1\n",
+        })
+        check("main() exits 1 on a phantom table row", run_main(root, PY_SDK), 1)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
