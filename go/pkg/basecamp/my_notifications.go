@@ -43,8 +43,14 @@ type Notification struct {
 	PreviewableAttachments []PreviewableAttachment `json:"previewable_attachments,omitempty"`
 	CreatedAt              time.Time               `json:"created_at"`
 	UpdatedAt              time.Time               `json:"updated_at"`
-	ReadAt                 time.Time               `json:"read_at,omitempty"`
-	UnreadAt               time.Time               `json:"unread_at,omitempty"`
+	// ReadAt and UnreadAt are the read/unread transition times. Both are
+	// optional and mutually exclusive in practice: an unread notification has
+	// neither or only UnreadAt, a read one carries ReadAt. Pointers so "never
+	// read" stays distinguishable from a real timestamp — a value-typed
+	// time.Time would report 0001-01-01T00:00:00Z, and `,omitempty` cannot
+	// suppress it because encoding/json never treats a struct as empty.
+	ReadAt   *time.Time `json:"read_at,omitempty"`
+	UnreadAt *time.Time `json:"unread_at,omitempty"`
 }
 
 // PreviewableAttachment represents a preview-renderable attachment surfaced on

@@ -11,17 +11,24 @@ import (
 
 // SearchResult represents a single search result from the Basecamp API.
 type SearchResult struct {
-	ID               int64     `json:"id"`
-	Status           string    `json:"status"`
-	VisibleToClients bool      `json:"visible_to_clients"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Title            string    `json:"title"`
-	InheritsStatus   bool      `json:"inherits_status"`
-	Type             string    `json:"type"`
-	URL              string    `json:"url"`
-	AppURL           string    `json:"app_url"`
-	BookmarkURL      string    `json:"bookmark_url"`
+	ID               int64  `json:"id"`
+	Status           string `json:"status"`
+	VisibleToClients bool   `json:"visible_to_clients"`
+	// CreatedAt and UpdatedAt are optional on this polymorphic projection —
+	// neither carries @required in the spec, and the generated client types
+	// both as *time.Time. Pointers here so an absent timestamp stays
+	// distinguishable rather than collapsing to 0001-01-01T00:00:00Z; the tags
+	// carry omitempty so absence round-trips as an omitted key instead of the
+	// fabricated zero time (encoding/json never treats a struct as empty, so a
+	// value-typed field would always emit).
+	CreatedAt      *time.Time `json:"created_at,omitempty"`
+	UpdatedAt      *time.Time `json:"updated_at,omitempty"`
+	Title          string     `json:"title"`
+	InheritsStatus bool       `json:"inherits_status"`
+	Type           string     `json:"type"`
+	URL            string     `json:"url"`
+	AppURL         string     `json:"app_url"`
+	BookmarkURL    string     `json:"bookmark_url"`
 	// BubbleUpURL is the URL of the Bubble Up record for this recording. Optional
 	// on this polymorphic projection: recordings/_recording.json.jbuilder emits
 	// the key only when the caller passes bubbleupable, and todolists/_todolist
@@ -346,8 +353,8 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 	sr := SearchResult{
 		Status:               deref(gsr.Status),
 		VisibleToClients:     deref(gsr.VisibleToClients),
-		CreatedAt:            deref(gsr.CreatedAt),
-		UpdatedAt:            deref(gsr.UpdatedAt),
+		CreatedAt:            gsr.CreatedAt,
+		UpdatedAt:            gsr.UpdatedAt,
 		Title:                gsr.Title,
 		InheritsStatus:       deref(gsr.InheritsStatus),
 		Type:                 gsr.Type,

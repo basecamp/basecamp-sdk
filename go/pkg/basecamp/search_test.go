@@ -186,11 +186,16 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 		t.Errorf("expected a highlighted excerpt in PlainTextContent, got %q", r3.PlainTextContent)
 	}
 
-	// Verify timestamps are parsed
-	if r1.CreatedAt.IsZero() {
+	// Verify timestamps are parsed. Both are optional (*time.Time), so
+	// nil-check before dereferencing.
+	if r1.CreatedAt == nil {
+		t.Error("expected CreatedAt to be present")
+	} else if r1.CreatedAt.IsZero() {
 		t.Error("expected CreatedAt to be non-zero")
 	}
-	if r1.UpdatedAt.IsZero() {
+	if r1.UpdatedAt == nil {
+		t.Error("expected UpdatedAt to be present")
+	} else if r1.UpdatedAt.IsZero() {
 		t.Error("expected UpdatedAt to be non-zero")
 	}
 }
