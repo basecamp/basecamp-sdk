@@ -279,6 +279,49 @@ def main() -> int:
         })
         check("a %Q interpolation is a read", run_gate(root, RB_SDK), [])
 
+        # A quote inside a percent literal is data. Delegating the delimiter walk
+        # to the language-aware matcher let it open a phantom string and run past
+        # the close, masking the read after it.
+        root = tmp / "ruby-percent-quote"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_AFTERQ"),
+            "ruby/lib/c.rb": 's = %q{"}\nv = ENV["BASECAMP_AFTERQ"]\n',
+        })
+        check("a quote inside a percent literal is data", run_gate(root, RB_SDK), [])
+
+        # The delimiter can be any non-alphanumeric character, not just a bracket.
+        root = tmp / "ruby-percent-bang"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "ruby/lib/c.rb": "s = %q!ENV['BASECAMP_FAKE']!\n",
+        })
+        check("an unpaired percent delimiter still delimits",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_FAKE"])
+
+        # %x is a command literal: lowercase, but it interpolates.
+        root = tmp / "ruby-percent-x"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_XCMD"),
+            "ruby/lib/c.rb": 's = %x{echo #{ENV["BASECAMP_XCMD"]}}\n',
+        })
+        check("a %x command literal interpolates", run_gate(root, RB_SDK), [])
+
+        # Ruby regexes interpolate, and the `#` must not open a comment.
+        root = tmp / "ruby-regex-interp"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_RXI"),
+            "ruby/lib/c.rb": 'r = /#{ENV["BASECAMP_RXI"]}/\n',
+        })
+        check("a ruby regex interpolation is a read", run_gate(root, RB_SDK), [])
+
+        root = tmp / "ruby-regex-data"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_RXD"),
+            "ruby/lib/c.rb": "r = /ENV['BASECAMP_RXD']/\n",
+        })
+        check("ruby regex contents are not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_RXD"])
+
         # ...and `%` as modulo must not start one.
         root = tmp / "ruby-modulo"
         build(root, {

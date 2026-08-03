@@ -188,7 +188,7 @@ LANG_FLAGS = {
     "Ruby": {
         "triple": True, "nested": False, "raw": False, "fstring": False,
         "multiline": True,
-        "regex": False,
+        "regex": True,
         "backtick_raw": False,
         "triple_raw": False,
         "percent": True,
@@ -291,11 +291,19 @@ REGEX_PRECEDERS = set("=(,:[!&|?{};+-*%<>~^")
 REGEX_KEYWORDS = {
     "return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
     "case", "do", "else", "yield", "await", "throw",
+    # Ruby positions where an operand is expected.
+    "when", "if", "unless", "elsif", "and", "or", "not", "then", "while", "until",
 }
 
 
 def regex_extent(text: str, i: int, flags: dict) -> int:
-    """End of a TypeScript regex literal starting at `i`, else `i`."""
+    """End of a regex literal starting at `i`, else `i`.
+
+    TypeScript and Ruby both spell it `/.../` and both overload `/` as division,
+    so the same preceding-token test decides. Ruby's `#{...}` interpolation
+    inside one is handled by the caller, which also has to run this before the
+    comment check -- otherwise the `#` opens a line comment and eats the rest.
+    """
     if not flags or not flags.get("regex") or text[i] != "/":
         return i
     if text.startswith("//", i) or text.startswith("/*", i):
@@ -334,35 +342,56 @@ def regex_extent(text: str, i: int, flags: dict) -> int:
 # Ruby percent literals -- %q{...}, %w[...], %(...) -- are ordinary data, and
 # the scanner saw only quote characters, leaving their contents executable.
 PERCENT_DELIMS = {"{": "}", "[": "]", "(": ")", "<": ">"}
+# %q %w %i %s are data; %Q %W %I, %r, %x and the bare form interpolate.
+PERCENT_INTERPOLATING = {"", "r", "x"}
 
 
 def percent_literal_extent(text: str, i: int, flags: dict) -> tuple[int, list[tuple[int, int]]]:
     """End of a Ruby percent literal starting at `i` (else `i`), plus its holes.
 
-    The uppercase forms interpolate and the lowercase ones do not: `%q{...}` is
-    data throughout, while `%Q{#{ENV[...]}}` contains a real call. Masking the
-    whole literal either way hid that call.
+    The delimiter may be any non-alphanumeric character, not just a bracket:
+    `%q!...!` is as valid as `%q{...}`. Paired delimiters nest, unpaired ones do
+    not. Inside the body a quote is ordinary data, so the walk here is a plain
+    scan rather than the language-aware `matching_delimiter` -- delegating to
+    that let a `"` inside `%q{"}` open a phantom string and run past the close.
     """
     if not flags or not flags.get("percent") or text[i] != "%":
         return i, []
+    n = len(text)
     j = i + 1
     letter = ""
-    if j < len(text) and text[j].isalpha():
+    if j < n and text[j].isalpha():
         letter = text[j]
         j += 1
-    if j >= len(text):
+    if j >= n:
         return i, []
     opener = text[j]
+    if opener.isalnum() or opener.isspace() or opener == "=":
+        return i, []  # `a % b`, `%=`, and format strings are not literals
     closer = PERCENT_DELIMS.get(opener)
-    if closer is None:
-        return i, []
     body_start = j + 1
-    end = matching_delimiter(text, body_start, opener, closer, "hash", flags)
-    interpolates = letter == "" or letter.isupper() or letter == "r"
+    k = body_start
+    depth = 1
+    while k < n:
+        if text[k] == "\\":
+            k += 2
+            continue
+        if closer is None:
+            if text[k] == opener:
+                break
+        else:
+            if text[k] == opener:
+                depth += 1
+            elif text[k] == closer:
+                depth -= 1
+                if depth == 0:
+                    break
+        k += 1
+    body_stop = min(k, n)
     holes = []
-    if interpolates:
-        holes = brace_holes(text, body_start, min(end, len(text)), "hash", flags, "#{", "}")
-    return min(end + 1, len(text)), holes
+    if letter.lower() in PERCENT_INTERPOLATING or letter.isupper():
+        holes = brace_holes(text, body_start, body_stop, "hash", flags, "#{", "}")
+    return min(body_stop + 1, n), holes
 
 
 def comment_extent(text: str, i: int, style: str | None, flags: dict | None = None) -> int:
@@ -744,6 +773,22 @@ def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str
         if text[i] in quotes:
             i = take_literal(i)
             continue
+        # Regex before comment: Ruby interpolates with `#{...}`, and the comment
+        # branch would eat the `#` and the rest of the line with it. regex_extent
+        # already refuses `//` and `/*`, so TypeScript comments are unaffected.
+        regex_end = regex_extent(text, i, flags)
+        if regex_end > i:
+            for k in range(i, min(regex_end, n)):
+                in_string[k] = 1
+            if style == "hash":
+                for hole_start, hole_end in brace_holes(
+                    text, i + 1, max(i + 1, regex_end - 1), style, flags, "#{", "}"
+                ):
+                    for k in range(hole_start, min(hole_end, n)):
+                        in_string[k] = 0
+                    mask_literals(text, hole_start, min(hole_end, n), style, in_string, flags)
+            i = regex_end
+            continue
         comment_end = comment_extent(text, i, style, flags)
         if comment_end > i:
             blank(i, comment_end)
@@ -758,13 +803,6 @@ def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str
                     in_string[k] = 0
                 mask_literals(text, hole_start, min(hole_end, n), style, in_string, flags)
             i = percent_end
-            continue
-        # A regex literal is data, like a string: its contents are not calls.
-        regex_end = regex_extent(text, i, flags)
-        if regex_end > i:
-            for k in range(i, min(regex_end, n)):
-                in_string[k] = 1
-            i = regex_end
             continue
         # Ruby block comment: =begin/=end, each at column 0.
         if style == "hash" and text.startswith("=begin", i) and (i == 0 or text[i - 1] == "\n"):
