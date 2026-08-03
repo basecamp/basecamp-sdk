@@ -70,9 +70,12 @@ SDKS = {
         "suffixes": (".swift",),
         "patterns": [r'ProcessInfo\.processInfo\.environment\[\s*"([A-Z_][A-Z0-9_]*)"'],
     },
+    # kotlin/sdk/src, not just commonMain: jvmMain ships in the same artifact, so
+    # scoping to commonMain would let a platform-specific read bypass this gate.
+    # The source-set test directories (commonTest, jvmTest) are excluded below.
     "Kotlin": {
         "readme": "kotlin/README.md",
-        "source": "kotlin/sdk/src/commonMain",
+        "source": "kotlin/sdk/src",
         "suffixes": (".kt",),
         "patterns": [r'System\.getenv\(\s*"([A-Z_][A-Z0-9_]*)"'],
     },
@@ -87,12 +90,23 @@ NO_ENV_SDKS = ("TypeScript", "Swift", "Kotlin")
 VAR_RE = re.compile(r"\b((?:BASECAMP|XDG)_[A-Z0-9_]+)\b")
 
 COMMENT_STARTS = ("#", "//", "*", "/*")
-TEST_MARKERS = ("_test.", "test_", "/tests/", "/test/", ".test.", "Tests/", "spec/")
+FILENAME_TEST_MARKERS = ("_test.", "test_", ".test.", "_spec.")
 
 
 def is_test(path: Path) -> bool:
-    text = str(path)
-    return any(marker in text for marker in TEST_MARKERS)
+    """Test code, by directory or by filename.
+
+    Directory matching has to understand Kotlin/Swift source-set naming
+    (`commonTest`, `jvmTest`, `Tests`) as well as the plain `test`/`tests`/`spec`
+    directories the other SDKs use.
+    """
+    for part in path.parts[:-1]:
+        lowered = part.lower()
+        if lowered in ("test", "tests", "spec", "specs"):
+            return True
+        if part.endswith(("Test", "Tests")):
+            return True
+    return any(marker in path.name for marker in FILENAME_TEST_MARKERS)
 
 
 def real_reads(spec: dict) -> dict[str, list[str]]:
