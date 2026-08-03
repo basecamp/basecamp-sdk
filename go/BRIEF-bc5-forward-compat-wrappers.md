@@ -144,17 +144,18 @@ type NotificationsResult struct {
 }
 ```
 
-For `Notification.BubbleUpAt`, use `*time.Time` rather than the bare
-`time.Time` pattern the wrapper uses for `ReadAt` / `UnreadAt`. The
-pointer is what shipped (see `my_notifications.go`): a bare `time.Time`
-with `omitempty` still marshals the zero time as
-`"0001-01-01T00:00:00Z"` (Go's `omitempty` does not suppress structs
-that are merely zero-valued), so the absence of a scheduled bubble-up
-would surface as a wrong wire value rather than an omitted key. The
-`*time.Time` convention mirrors `Card.CompletedAt` and `Todo.CompletedAt`,
-where the same omit-cleanly semantics matter. Consumers should
-`nil`-check or use the `time.Time` returned by dereferencing rather than
-calling `IsZero()`.
+For `Notification.BubbleUpAt`, use `*time.Time`. A bare `time.Time` with
+`omitempty` still marshals the zero time as `"0001-01-01T00:00:00Z"`
+(Go's `omitempty` does not suppress structs that are merely
+zero-valued), so the absence of a scheduled bubble-up would surface as a
+wrong wire value rather than an omitted key. The `*time.Time` convention
+matches `Card.CompletedAt` (`cards.go:101`) and `Todo.CompletedAt`
+(`todos.go:52`), where the same omit-cleanly semantics matter, and now
+also `Notification.ReadAt` / `UnreadAt` (`my_notifications.go:52-53`) —
+this brief previously cited those two as the bare-`time.Time`
+counter-example, which stopped being true when #562 pointerized them.
+Consumers should `nil`-check rather than calling `IsZero()`: on a
+pointer, `IsZero()` still compiles and panics on nil.
 
 ## Verification
 
