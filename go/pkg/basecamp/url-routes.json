@@ -1003,7 +1003,7 @@
       }
     },
     {
-      "pattern": "/{accountId}/inboxes/{inboxId}/forwards",
+      "pattern": "/{accountId}/inboxes/{inboxId}/inbox_forwards",
       "resource": "Forwards",
       "operations": {
         "GET": "ListForwards"
@@ -2252,7 +2252,7 @@
       }
     },
     {
-      "pattern": "/{accountId}/todolists/{groupId}/position",
+      "pattern": "/{accountId}/todolists/groups/{groupId}/position",
       "resource": "Todos",
       "operations": {
         "PUT": "RepositionTodolistGroup"

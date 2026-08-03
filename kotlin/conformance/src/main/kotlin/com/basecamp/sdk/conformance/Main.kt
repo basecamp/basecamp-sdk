@@ -1091,6 +1091,21 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "ListForwards" -> {
+            val inboxId = tc.pathParams.longParam("inboxId")
+            val result = account.forwards.list(inboxId)
+            DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
+        }
+
+        "RepositionTodolistGroup" -> {
+            val groupId = tc.pathParams.longParam("groupId")
+            account.todolistGroups.reposition(
+                groupId,
+                RepositionTodolistGroupBody(position = tc.requestBody.longParam("position").toInt()),
+            )
+            DispatchResult()
+        }
+
         else ->
             throw UnsupportedOperationException("Unknown operation: ${tc.operation}")
     }

@@ -27,7 +27,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
             resourceId = groupId,
         )
         request(info, {
-            httpPut("/todolists/${groupId}/position.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPut("/todolists/groups/${groupId}/position.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("position", kotlinx.serialization.json.JsonPrimitive(body.position))
             }), operationName = info.operation)
         }) { Unit }

@@ -9205,7 +9205,7 @@
         }
       }
     },
-    "/{accountId}/inboxes/{inboxId}/forwards.json": {
+    "/{accountId}/inboxes/{inboxId}/inbox_forwards.json": {
       "get": {
         "description": "List all forwards in an inbox\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
         "operationId": "ListForwards",
@@ -20976,7 +20976,7 @@
         }
       }
     },
-    "/{accountId}/todolists/{groupId}/position.json": {
+    "/{accountId}/todolists/groups/{groupId}/position.json": {
       "put": {
         "description": "Reposition a todolist group",
         "operationId": "RepositionTodolistGroup",

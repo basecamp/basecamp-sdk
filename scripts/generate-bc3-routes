@@ -1,0 +1,150 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Generate spec/bc3-routes.json — the vendored table of routes bc3 actually
+# serves, derived from its API documentation at the pinned provenance revision.
+#
+# Why vendor a derived table instead of reading bc3 in CI: this repo already
+# does exactly that for openapi.json (derived from Smithy, committed,
+# regenerate-and-diff) and go/pkg/basecamp/url-routes.json. Committing the table
+# means check-bc3-route-parity runs offline, in every CI job, with no bc3
+# checkout and no secret — so it cannot be skipped, and a skipped gate is the
+# failure mode that let two 404ing routes ship.
+#
+# Two evidence classes are recorded per route:
+#
+#   bullet          a prose bullet, `* \`GET /x.json\` will return ...`
+#   example-marker  a `<!-- START GET /x.json -->` request/response example
+#
+# The markers are the stronger signal: bc3 regenerates them from live BC5
+# responses (their #11629 tooling), so a marker is proof the route answered a
+# real request. A bullet is a human writing prose.
+#
+# Reads through `git show <pin>:<path>` rather than the working tree, so a dirty
+# or checked-out-elsewhere bc3 cannot poison the table and the output is a pure
+# function of the provenance pin.
+#
+# Usage: BC3_REPO_PATH=/path/to/bc3 ./generate-bc3-routes [output.json]
+
+require 'json'
+require 'open3'
+require_relative 'bc3_route_normalizer'
+
+PROJECT_ROOT = File.expand_path('..', __dir__)
+OUTPUT = ARGV[0] || File.join(PROJECT_ROOT, 'spec', 'bc3-routes.json')
+SECTIONS_DIR = 'doc/api/sections'
+
+bc3 = ENV['BC3_REPO_PATH']
+abort "ERROR: BC3_REPO_PATH is not set. Point it at a basecamp/bc3 checkout." if bc3.nil? || bc3.empty?
+abort "ERROR: BC3_REPO_PATH is not a directory: #{bc3}" unless File.directory?(bc3)
+
+provenance = JSON.parse(File.read(File.join(PROJECT_ROOT, 'spec', 'api-provenance.json')))
+pin = provenance.fetch('bc3').fetch('revision')
+pin_date = provenance.fetch('bc3').fetch('date')
+
+def git(repo, *args)
+  out, err, status = Open3.capture3('git', '-C', repo, *args)
+  abort "ERROR: git #{args.join(' ')} failed: #{err.strip}" unless status.success?
+  out
+end
+
+# Fail loudly if the pin is not present locally — a silent fallback to whatever
+# the checkout happens to be at is how a table stops matching its stated source.
+git(bc3, 'cat-file', '-e', "#{pin}^{commit}")
+
+files = git(bc3, 'ls-tree', '--name-only', pin, "#{SECTIONS_DIR}/")
+        .lines(chomp: true)
+        .select { |f| f.end_with?('.md') }
+        .sort
+abort "ERROR: no #{SECTIONS_DIR}/*.md found at #{pin}" if files.empty?
+
+methods = Bc3RouteNormalizer::METHODS.join('|')
+BULLET  = /^\s*[*-]\s+`(#{methods})\s+(\S+?)`/
+MARKER  = /^<!--\s*START\s+(#{methods})\s+(\S+?)\s*-->/
+
+routes = {}
+
+files.each do |file|
+  section = File.basename(file)
+  body = git(bc3, 'show', "#{pin}:#{file}")
+
+  body.each_line do |line|
+    [[BULLET, 'bullet'], [MARKER, 'example-marker']].each do |regex, evidence|
+      m = regex.match(line)
+      next unless m
+
+      method = m[1].upcase
+      raw = m[2]
+      key = Bc3RouteNormalizer.key(method, raw)
+
+      entry = routes[key] ||= {
+        'method' => method,
+        'path' => Bc3RouteNormalizer.normalize(raw),
+        'raw' => raw,
+        'sections' => [],
+        'evidence' => []
+      }
+      entry['sections'] << section unless entry['sections'].include?(section)
+      entry['evidence'] << evidence unless entry['evidence'].include?(evidence)
+    end
+  end
+end
+
+abort 'ERROR: extracted zero routes — the doc format changed, fix the patterns' if routes.empty?
+
+# Per-section floor. The global route count cannot detect a SECTION-level
+# extraction failure: change one file's layout away from backticked bullets and
+# START markers and its routes vanish while the total stays comfortably above any
+# floor. Direction 2 would then pass without ever demanding a disposition for
+# those routes — a silent hole exactly where this gate is supposed to be loud.
+#
+# Sections that genuinely document no routes are named explicitly, so adding to
+# this list is a deliberate act with a reason attached.
+ZERO_ROUTE_SECTIONS = {
+  'basecamps.md' => 'conceptual overview of what a Basecamp is; documents no endpoints',
+  'rich_text.md' => 'explains the rich-text content format; documents no endpoints'
+}.freeze
+
+sections_with_routes = routes.values.flat_map { |r| r['sections'] }.uniq
+empty_sections = files.map { |f| File.basename(f) } - sections_with_routes
+unexpected = empty_sections - ZERO_ROUTE_SECTIONS.keys
+unless unexpected.empty?
+  abort <<~MSG
+    ERROR: #{unexpected.length} documentation section(s) yielded zero routes:
+    #{unexpected.map { |s| "  - #{s}" }.join("\n")}
+    Either the layout changed and the extraction patterns need updating, or the
+    section genuinely documents no endpoints — in which case add it to
+    ZERO_ROUTE_SECTIONS with a reason. Do not ignore this: a section that stops
+    yielding routes disappears from the parity comparison silently.
+  MSG
+end
+
+# The converse: a section listed as route-free that has started documenting
+# routes means the list is stale and is now suppressing a real check.
+stale_zero = ZERO_ROUTE_SECTIONS.keys & sections_with_routes
+unless stale_zero.empty?
+  abort "ERROR: #{stale_zero.join(', ')} now document routes — remove them from " \
+        'ZERO_ROUTE_SECTIONS.'
+end
+
+payload = {
+  '$schema' => 'https://basecamp.com/schemas/bc3-routes.json',
+  'version' => '1.0.0',
+  'generated' => true,
+  'source' => {
+    'repo' => 'basecamp/bc3',
+    'branch' => provenance.fetch('bc3').fetch('branch'),
+    'revision' => pin,
+    'date' => pin_date,
+    'extracted_from' => ["#{SECTIONS_DIR}/*.md"],
+    'sections_scanned' => files.length,
+    'generator_sha256' => Bc3RouteNormalizer.generator_fingerprint
+  },
+  'routes' => routes.keys.sort.map { |k| routes[k].merge('sections' => routes[k]['sections'].sort) }
+}
+
+File.write(OUTPUT, "#{JSON.pretty_generate(payload)}\n")
+
+marked = payload['routes'].count { |r| r['evidence'].include?('example-marker') }
+warn "Wrote #{payload['routes'].length} routes (#{marked} with live-response example markers) " \
+     "from #{files.length} sections at #{pin[0, 10]} -> #{OUTPUT}"

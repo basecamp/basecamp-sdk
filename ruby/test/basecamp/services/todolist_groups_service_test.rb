@@ -38,7 +38,7 @@ class TodolistGroupsServiceTest < Minitest::Test
   end
 
   def test_reposition
-    stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+/position\.json})
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/groups/\d+/position\.json})
       .to_return(status: 204)
 
     result = @account.todolist_groups.reposition(group_id: 2, position: 1)

@@ -114,7 +114,7 @@ describe("TodolistGroupsService", () => {
 
       server.use(
         http.put(
-          `${BASE_URL}/todolists/${groupId}/position.json`,
+          `${BASE_URL}/todolists/groups/${groupId}/position.json`,
           async ({ request }) => {
             const body = await request.json() as { position: number };
             expect(body.position).toBe(1);

@@ -67,7 +67,7 @@ module Basecamp
       def list(inbox_id:, sort: nil, direction: nil, page: nil, max_items: nil)
         wrap_paginated(service: "forwards", operation: "list", is_mutation: false, resource_id: inbox_id) do
           params = compact_query_params(sort: sort, direction: direction, page: page)
-          paginate("/inboxes/#{inbox_id}/forwards.json", params: params, operation: "ListForwards", max_items: max_items)
+          paginate("/inboxes/#{inbox_id}/inbox_forwards.json", params: params, operation: "ListForwards", max_items: max_items)
         end
       end
     end

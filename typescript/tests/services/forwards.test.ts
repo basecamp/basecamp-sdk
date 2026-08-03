@@ -81,7 +81,7 @@ describe("ForwardsService", () => {
       ];
 
       server.use(
-        http.get(`${BASE_URL}/inboxes/100/forwards.json`, () => {
+        http.get(`${BASE_URL}/inboxes/100/inbox_forwards.json`, () => {
           return HttpResponse.json(mockForwards);
         }),
       );

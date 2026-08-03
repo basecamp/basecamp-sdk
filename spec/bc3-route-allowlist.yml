@@ -1,0 +1,317 @@
+# Waivers for scripts/check-bc3-route-parity.
+#
+# Every entry needs evidence a reader can check. An entry that matches nothing is
+# a HARD FAILURE, not a shrug — a stale waiver reads exactly like a covered case,
+# which is how waiver lists rot. Absorbing a route should DELETE its entry; the
+# gate will tell you.
+#
+# ── The two directions are matched differently, on purpose ────────────────────
+#
+# Direction 1 (SDK -> bc3) is matched on EXACT route identity. An SDK route that
+# only matches after collapsing /buckets/:id may be a spelling bc3 does not
+# serve, which is a live 404 for every caller. Four confirmed defects in this
+# SDK are exactly that shape.
+#
+# Direction 2 (bc3 -> SDK) collapses bucket scoping. It is a coverage ledger
+# asking "do we model this resource+verb at all"; which spelling we model is a
+# design decision, not a reachability risk. Measured at bc3 d0edc1283b, exact
+# matching there reports 143 unmodeled routes of which 125 (87%) are the other
+# spelling of something already modeled.
+#
+# Neither is what check-bucket-flat-parity does: that lint covers only GETs
+# returning lists, and checks SDK-internal consistency, never bc3's truth.
+
+# ---------------------------------------------------------------------------
+# Proven scope aliases — bc3 serves a FLAT spelling it documents only
+# bucket-scoped.
+#
+# This is the highest-risk list in the file. Asserting an undocumented flat
+# route exists is exactly the mistake behind ListForwards, RepositionTodolistGroup,
+# CreateForwardReply and GetRecording. Prose is therefore not accepted: the gate
+# requires `routes_rb:` naming the line that draws the FLAT form, plus either
+# `api_test:` (a test/api path proving it answers) or `api_view:` (the
+# app/views/api template it renders).
+#
+# Remember bc3's API boundary is not route scope. api_request? keys on
+# request.host == BC3.api_host, then restrict_view_paths_to_api_root limits view
+# paths to app/views/api. So a route is a real API route iff it is DRAWN *and*
+# renderable under that restriction — the second half is what condemned
+# GetRecording.
+# ---------------------------------------------------------------------------
+scope_aliases:
+  # The three tool-position verbs share one path and one `resource :position`
+  # draw. bc3's docs are the wrong authority here: doc/api/sections/tools.md
+  # documents ONLY the bucket-scoped spelling (:145, :163, :189) and its
+  # "Legacy project-scoped routes" section (:222-230) covers only dock/tools.
+  # But bc3 both draws AND tests the flat form. So this is a bc3 documentation
+  # gap, not an SDK defect — which is why doc/api is only safe as NEGATIVE
+  # evidence when routes.rb and test/api agree with it.
+  #
+  # `resource :position` (config/routes.rb:226) sits in `concern
+  # :recording_actions` (:206), which is included flat at :273 inside
+  # `resources :recordings, only: []` (:258, commented "CANONICAL: Top-level
+  # unscoped routes for recording actions") and separately bucket-scoped at
+  # :902. It carries no `only:`/`except:`, so the singular-resource default set
+  # applies and create/update/destroy all exist — checked per verb, because the
+  # sibling door position at :947 IS `only: :update`.
+  #
+  # No app/views/api/recordings/positions/ template exists, and that is correct:
+  # Recordings::PositionsController answers `head :created` / `head :ok` /
+  # `head :no_content`, matching the SDK's declared 201/200/204. This is the
+  # template-less escape hatch, not the GetRecording trap.
+  #
+  # The flat route survives the @bucket-dependent guards because
+  # RecordingScoped#set_recording -> authorize_recording -> authorize_bucket
+  # assigns @bucket from the recording, and scoped_bucket_mismatch? is a no-op
+  # when params[:bucket_id] is absent.
+
+  - method: POST
+    path: /recordings/:id/position
+    routes_rb: "config/routes.rb:226 (resource :position in concern :recording_actions), included flat at :273"
+    api_test: "test/api/recordings/positions_controller_api_test.rb:36 — \"enable tool via unscoped position create\", asserts :created + positioned?"
+    api_view: "none needed — Recordings::PositionsController#create answers head :created"
+    reason: >-
+      EnableTool. Flat form drawn and API-tested; bc3's tools.md documents only
+      the bucket spelling, which is a docs gap on their side.
+
+  - method: DELETE
+    path: /recordings/:id/position
+    routes_rb: "config/routes.rb:226 (resource :position in concern :recording_actions), included flat at :273"
+    api_test: "test/api/recordings/positions_controller_api_test.rb:45 — \"disable tool via unscoped position destroy\", asserts :no_content"
+    api_view: "none needed — #destroy answers head :no_content"
+    reason: DisableTool. Same draw, destroy action.
+
+  - method: PUT
+    path: /recordings/:id/position
+    routes_rb: "config/routes.rb:226 (resource :position in concern :recording_actions), included flat at :273"
+    api_test: "test/api/recordings/positions_controller_api_test.rb:54 — \"reposition tool via unscoped route\", asserts :ok; :61 adds negative-authorization coverage on the same flat route"
+    api_view: "none needed — #update answers head :ok"
+    reason: RepositionTool. Same draw, update action.
+
+# ---------------------------------------------------------------------------
+# Direction 1 — the SDK declares a route bc3's docs do not describe at all.
+#
+# Each entry must cite positive evidence bc3 really serves it. "The docs are
+# probably just incomplete" is not evidence.
+# ---------------------------------------------------------------------------
+sdk_routes_absent_from_bc3_docs:
+  - method: GET
+    path: /card_tables/steps/:id
+    reason: >-
+      bc3 draws it at config/routes.rb:167 (resources :steps, only: %i[show update
+      destroy], controller: "/steps", inside namespace :kanban path: nil + scope
+      path: "card_tables") and covers it at
+      test/api/kanban_steps_controller_api_test.rb:10 ("get kanban step via
+      unscoped route", asserts :ok). API-renderable:
+      app/views/api/steps/show.json.jbuilder exists. The docs omit the standalone
+      GET deliberately — card_table_steps.md:22 says steps are returned
+      unpaginated as part of the Get-a-card payload — while documenting the
+      sibling PUT at the identical path at card_table_steps.md:60.
+
+  - method: GET
+    path: /schedule_entries/:id/occurrences/:id
+    reason: >-
+      Documented, but only in prose, so the extractor cannot see it:
+      doc/api/sections/schedule_entries.md:136 describes
+      `GET /schedule_entries/2/occurrences/20190218.json` inside the "Get a
+      schedule entry" section, with no bullet of its own and no START/END marker
+      pair. Routed at config/routes.rb:125, API view
+      app/views/api/schedules/entries/occurrences/show.json.jbuilder exists, and
+      test/api/schedules/entries/occurrences_controller_api_test.rb has a
+      "show occurrence via flat route" test plus a flat/scoped parity test.
+
+  - method: DELETE
+    path: /todos/:id
+    reason: >-
+      bc3 draws it at config/routes.rb:58 (resources :todos, only: %i[show edit
+      update destroy]) and covers it at
+      test/api/todos_controller_api_test.rb:279, which asserts 204. Undocumented
+      because the docs steer clients to
+      PUT /buckets/:id/recordings/:id/status/trashed.json (recordings.md:79)
+      instead. NOTE the route is fine but the SEMANTICS are not — this endpoint
+      archives rather than trashes, tracked in #585. That is a behaviour defect,
+      not a routing one, so it is not waivable here and this entry only attests
+      that the path exists.
+
+# ---------------------------------------------------------------------------
+# Known-defective SDK routes — bc3 does NOT serve these, and we know it.
+#
+# NOT a waiver of correctness. Confirmed defects kept in their own list so the
+# gate can go green on everything else without pretending they are fine. Each
+# needs a numeric `issue:` (the gate enforces it) and a breaking-change decision.
+# Anything here is a live 404. Treat the list as a countdown.
+# ---------------------------------------------------------------------------
+sdk_routes_known_defective:
+  - method: POST
+    path: /inbox_forwards/:id/replies
+    issue: 583
+    reason: >-
+      Flat create was never drawn — config/routes.rb:150 is
+      `resources :replies, only: %i[index show]`. Create exists only
+      bucket-scoped at config/routes.rb:1262. bc3 has no flat-create test at any
+      path and the docs list only the two GETs. Correct route is
+      POST /{accountId}/buckets/{bucketId}/inbox_forwards/{forwardId}/replies.json,
+      which adds a path label and so breaks the generated signature in six SDKs.
+      Removing the operation is a legitimate alternative — the bucket-scoped
+      route is undocumented with zero test/api coverage.
+
+  # -- #588: nine flat spellings bc3 only draws bucket-scoped. All 404 today;
+  #    the spec ships no bucket-scoped alternative for any of them. Each fix adds
+  #    a required bucketId label, so all nine are breaking and want one window.
+  #    NOTE GetClientApproval (spec:5713) and GetClientCorrespondence (spec:5775)
+  #    are CORRECT as flat and must not be swept along — only the lists are wrong.
+
+  - method: GET
+    path: /chats/:id/integrations
+    issue: 588
+    reason: >-
+      ListChatbots. The only `integrations` resource is bucket-scoped
+      (config/routes.rb:956, inside :954 resources :chats inside :887 resources
+      :buckets). The flat `chats` draw (:180) nests only lines and uploads. All 6
+      tests in test/api/chats/integrations_controller_api_test.rb are
+      bucket-scoped; the flat URL helper does not exist in bc3.
+  - method: POST
+    path: /chats/:id/integrations
+    issue: 588
+    reason: CreateChatbot. Same missing flat draw as ListChatbots.
+  - method: GET
+    path: /chats/:id/integrations/:id
+    issue: 588
+    reason: GetChatbot. Same missing flat draw.
+  - method: PUT
+    path: /chats/:id/integrations/:id
+    issue: 588
+    reason: UpdateChatbot. Same missing flat draw.
+  - method: DELETE
+    path: /chats/:id/integrations/:id
+    issue: 588
+    reason: DeleteChatbot. Same missing flat draw.
+
+  - method: GET
+    path: /client/approvals
+    issue: 588
+    reason: >-
+      ListClientApprovals. Drawn-but-wrong-action: the flat draw is
+      config/routes.rb:194 `resources :approvals, only: %i[show]`, so there is no
+      collection path. index lives bucket-scoped at :1278. A flat index is also
+      semantically impossible — Clients::ApprovalsController#index resolves
+      @bucket.project.client_board_recording, and the client board is per-project.
+  - method: GET
+    path: /client/correspondences
+    issue: 588
+    reason: >-
+      ListClientCorrespondences. Same shape: flat draw is config/routes.rb:193
+      `only: %i[show]`. test/api/clients/correspondences_controller_api_test.rb:49
+      asserts RecordNotFound for a bucket with no client board, confirming the
+      index requires one.
+  - method: GET
+    path: /client/recordings/:id/replies
+    issue: 588
+    reason: >-
+      ListClientReplies. Worse than a wrong `only:` — the flat `client` namespace
+      (config/routes.rb:190-195) has neither `replies` nor `recordings`. Bucket
+      form at :1285. Clients::RepliesController includes only BucketScoped, so
+      @bucket is never assigned on a flat route.
+  - method: GET
+    path: /client/recordings/:id/replies/:id
+    issue: 588
+    reason: GetClientReply. Same absent flat namespace members as ListClientReplies.
+
+  - method: GET
+    path: /recordings/:id
+    issue: 584
+    reason: >-
+      No correct path exists. config/routes.rb:258 is
+      `resources :recordings, only: []`, so the flat show is not drawn, and the
+      bucket-scoped show at :888 cannot render on the API host:
+      app/views/api/recordings/ holds only partials — no show.json.jbuilder, no
+      application/ fallback, no engine tree. There is no
+      test/api/recordings_controller_api_test.rb at all. Recommend REMOVING the
+      operation, as #504 did for GetEverythingBoosts; ListRecordings already
+      covers bc3's only recordings read endpoint.
+
+# ---------------------------------------------------------------------------
+# Direction 2 — bc3 documents a route the SDK models no operation for.
+#
+# Mechanizes the rule AGENTS.md states and nothing enforced: a repin is valid
+# exactly when every drift item is either absorbed into the spec or registered.
+#
+# Every entry carries exactly ONE structured disposition, which the gate
+# validates rather than reading prose:
+#
+#   tracking_issue: <n>            an open issue owns absorbing it
+#   registry: spec/api-gaps/<f>.md a registry entry owns it (file must exist)
+#   out_of_scope: <justification>  deliberately never modeled
+# ---------------------------------------------------------------------------
+bc3_routes_not_modeled:
+  # -- Deliberately out of scope, not coverage gaps --
+
+  - method: GET
+    path: /authorization
+    out_of_scope: >-
+      Launchpad identity endpoint, not an account-scoped Basecamp route — served
+      from https://launchpad.37signals.com/authorization.json, so it is absent
+      from openapi.json by design. The SDK does implement it, as the client-level
+      authorization service (SPEC §5, `authorization.getInfo()`).
+
+  - method: POST
+    path: /integrations/:id/buckets/:id/chats/:id/lines
+    out_of_scope: >-
+      Chatbot line posting authenticates with a per-integration signed URL, not a
+      user OAuth token or PAT. It sits outside this SDK's auth model (SPEC §16),
+      so modeling it would imply a credential type the client cannot hold.
+
+  # -- cloud_files + google_documents --
+
+  - method: GET
+    path: /cloud_files/:id
+    tracking_issue: 551
+  - method: PUT
+    path: /cloud_files/:id
+    tracking_issue: 551
+  - method: POST
+    path: /vaults/:id/cloud_files
+    tracking_issue: 551
+  - method: GET
+    path: /google_documents/:id
+    tracking_issue: 551
+  - method: PUT
+    path: /google_documents/:id
+    tracking_issue: 551
+  - method: POST
+    path: /vaults/:id/google_documents
+    tracking_issue: 551
+
+  # -- dock doors: registered, status partial-coverage (door create documented,
+  #    door show not) --
+
+  - method: GET
+    path: /dock/doors/:id
+    registry: spec/api-gaps/external-links-doors.md
+  - method: POST
+    path: /dock/doors
+    registry: spec/api-gaps/external-links-doors.md
+
+  # -- gauge needle CRUD --
+
+  - method: GET
+    path: /projects/:id/gauge/needles/:id
+    tracking_issue: 581
+  - method: PUT
+    path: /projects/:id/gauge/needles/:id
+    tracking_issue: 581
+  - method: DELETE
+    path: /projects/:id/gauge/needles/:id
+    tracking_issue: 581
+
+  # -- timesheet reads + entry writes --
+
+  - method: GET
+    path: /projects/:id/recordings/:id/timesheet
+    tracking_issue: 582
+  - method: POST
+    path: /projects/:id/recordings/:id/timesheet/entries
+    tracking_issue: 582
+  - method: DELETE
+    path: /timesheet_entries/:id
+    tracking_issue: 582

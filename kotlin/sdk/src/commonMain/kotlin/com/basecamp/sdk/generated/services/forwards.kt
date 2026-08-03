@@ -153,7 +153,7 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
-            httpGet("/inboxes/${inboxId}/forwards.json" + qs, operationName = info.operation)
+            httpGet("/inboxes/${inboxId}/inbox_forwards.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Forward>>(body)
         }

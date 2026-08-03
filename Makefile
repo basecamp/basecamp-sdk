@@ -84,6 +84,47 @@ url-routes-check:
 	@rm -f go/pkg/basecamp/url-routes.json.tmp
 	@echo "url-routes.json is up to date"
 
+.PHONY: bc3-routes bc3-route-parity bc3-routes-check
+
+# Regenerate spec/bc3-routes.json — the vendored table of routes bc3 actually
+# serves, extracted from its API docs at the pinned provenance revision.
+# Needs a bc3 checkout; reads through `git show <pin>:` so the output is a pure
+# function of the pin, not of whatever bc3's working tree happens to hold.
+bc3-routes:
+	@echo "==> Extracting bc3 routes at the pinned revision..."
+	@./scripts/generate-bc3-routes
+	@echo "Updated spec/bc3-routes.json"
+
+# Compare the SDK's declared routes against bc3's, both directions. Offline:
+# reads only the vendored table, so it runs in `make check` and in every CI job
+# with no bc3 checkout and no secret. A gate that skips when its input is absent
+# cannot prevent anything, and skipping is how two 404ing routes shipped.
+bc3-route-parity:
+	@echo "==> Checking bc3 route parity..."
+	@./scripts/check-bc3-route-parity
+
+# Freshness gate for the vendored table: regenerate at the current pin and diff.
+#
+# Needs BC3_REPO_PATH, so it is NOT in `make check` and NOT in CI — no workflow
+# checks out bc3 today, and inventing a secret for one is a provisioning
+# decision, not a code change. Run it by hand when you repin. Tracked in #589.
+#
+# What still holds without it: bc3-route-parity verifies the table's recorded
+# revision equals the provenance pin, and verifies a SHA-256 fingerprint of this
+# generator plus the normalizer, so a changed extractor with a stale table fails
+# offline. What it cannot catch is a hand-edited `source.revision` that matches
+# the pin without regeneration — that needs bc3, hence #589.
+#
+# Generates into a real temp dir rather than a sibling .tmp file: an in-tree temp
+# path races under `make -j` and can miss extra files.
+bc3-routes-check:
+	@echo "==> Checking bc3 route table freshness..."
+	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
+		./scripts/generate-bc3-routes "$$tmp/bc3-routes.json" && \
+		diff -q spec/bc3-routes.json "$$tmp/bc3-routes.json" > /dev/null 2>&1 || \
+		{ echo "ERROR: spec/bc3-routes.json is out of date for the current pin. Run 'make bc3-routes'"; exit 1; }
+	@echo "spec/bc3-routes.json is up to date"
+
 #------------------------------------------------------------------------------
 # API Provenance targets
 #------------------------------------------------------------------------------
@@ -952,7 +993,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

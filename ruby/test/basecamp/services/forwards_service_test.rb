@@ -43,7 +43,7 @@ class ForwardsServiceTest < Minitest::Test
   end
 
   def test_list_forwards
-    stub_get("/12345/inboxes/200/forwards.json",
+    stub_get("/12345/inboxes/200/inbox_forwards.json",
              response_body: [ sample_forward, sample_forward(id: 2, subject: "Another Email") ])
 
     forwards = @account.forwards.list(inbox_id: 200).to_a

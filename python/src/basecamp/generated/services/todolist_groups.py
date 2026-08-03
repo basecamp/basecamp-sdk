@@ -15,7 +15,7 @@ class TodolistGroupsService(BaseService):
         self._request_void(
             OperationInfo(service="todolistgroups", operation="reposition", is_mutation=True, resource_id=group_id),
             "PUT",
-            f"/todolists/{group_id}/position.json",
+            f"/todolists/groups/{group_id}/position.json",
             json_body=self._compact(position=position),
             operation="RepositionTodolistGroup",
         )
@@ -44,7 +44,7 @@ class AsyncTodolistGroupsService(AsyncBaseService):
         await self._request_void(
             OperationInfo(service="todolistgroups", operation="reposition", is_mutation=True, resource_id=group_id),
             "PUT",
-            f"/todolists/{group_id}/position.json",
+            f"/todolists/groups/{group_id}/position.json",
             json_body=self._compact(position=position),
             operation="RepositionTodolistGroup",
         )

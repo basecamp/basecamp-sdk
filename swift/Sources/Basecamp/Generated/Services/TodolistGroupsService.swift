@@ -42,7 +42,7 @@ public final class TodolistGroupsService: BaseService, @unchecked Sendable {
         try await requestVoid(
             OperationInfo(service: "TodolistGroups", operation: "RepositionTodolistGroup", resourceType: "todolist_group", isMutation: true, resourceId: groupId),
             method: "PUT",
-            path: "/todolists/\(groupId)/position.json",
+            path: "/todolists/groups/\(groupId)/position.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "RepositionTodolistGroup")
         )

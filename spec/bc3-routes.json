@@ -1,0 +1,4159 @@
+{
+  "$schema": "https://basecamp.com/schemas/bc3-routes.json",
+  "version": "1.0.0",
+  "generated": true,
+  "source": {
+    "repo": "basecamp/bc3",
+    "branch": "master",
+    "revision": "d0edc1283b231c58b7c88b014df5f8d231b1f7c8",
+    "date": "2026-07-31",
+    "extracted_from": [
+      "doc/api/sections/*.md"
+    ],
+    "sections_scanned": 63,
+    "generator_sha256": "20e682227ca1962b8127691abb41343dde05155bff529123d0dd0489f5ecc378"
+  },
+  "routes": [
+    {
+      "method": "DELETE",
+      "path": "/account/logo",
+      "raw": "/account/logo.json",
+      "sections": [
+        "account.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/boosts/:id",
+      "raw": "/boosts/2.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/boosts/:id",
+      "raw": "/buckets/1/boosts/2.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/card_tables/columns/:id/on_hold",
+      "raw": "/buckets/1/card_tables/columns/2/on_hold.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/card_tables/lists/:id/subscription",
+      "raw": "/buckets/1/card_tables/lists/2/subscription.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/card_tables/wormholes/:id",
+      "raw": "/buckets/1/card_tables/wormholes/3.json",
+      "sections": [
+        "card_table_wormholes.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/categories/:id",
+      "raw": "/buckets/1/categories/2.json",
+      "sections": [
+        "message_types.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/chats/:id/integrations/:id",
+      "raw": "/buckets/1/chats/1/integrations/3.json",
+      "sections": [
+        "chatbots.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/chats/:id/lines/:id",
+      "raw": "/buckets/1/chats/2/lines/3.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/dock/tools/:id",
+      "raw": "/buckets/1/dock/tools/2.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/questions/:id/pause",
+      "raw": "/buckets/1/questions/2/pause.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/recordings/:id/pin",
+      "raw": "/buckets/1/recordings/2/pin.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/recordings/:id/position",
+      "raw": "/buckets/1/recordings/2/position.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/recordings/:id/subscription",
+      "raw": "/buckets/1/recordings/2/subscription.json",
+      "sections": [
+        "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/todos/:id/completion",
+      "raw": "/buckets/1/todos/2/completion.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/buckets/:id/webhooks/:id",
+      "raw": "/buckets/1/webhooks/3.json",
+      "sections": [
+        "webhooks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/card_tables/columns/:id/on_hold",
+      "raw": "/card_tables/columns/2/on_hold.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/card_tables/lists/:id/subscription",
+      "raw": "/card_tables/lists/2/subscription.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/chats/:id/lines/:id",
+      "raw": "/chats/2/lines/3.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/dock/tools/:id",
+      "raw": "/dock/tools/2.json",
+      "sections": [
+        "external_links.md",
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/gauge_needles/:id",
+      "raw": "/gauge_needles/2.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/lineup/markers/:id",
+      "raw": "/lineup/markers/1.json",
+      "sections": [
+        "lineup_markers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/my/priorities/:id",
+      "raw": "/my/priorities/1069479801.json",
+      "sections": [
+        "my_assignments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/people/:id/out_of_office",
+      "raw": "/people/2/out_of_office.json",
+      "sections": [
+        "out_of_office.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/projects/:id",
+      "raw": "/projects/1.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/projects/:id/gauge/needles/:id",
+      "raw": "/projects/1/gauge/needles/2.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/questions/:id/pause",
+      "raw": "/questions/2/pause.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/recordings/:id/bookmark",
+      "raw": "/recordings/2/bookmark.json",
+      "sections": [
+        "my_bookmarks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/recordings/:id/pin",
+      "raw": "/recordings/2/pin.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/recordings/:id/subscription",
+      "raw": "/recordings/2/subscription.json",
+      "sections": [
+        "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/templates/:id",
+      "raw": "/templates/1.json",
+      "sections": [
+        "templates.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/timesheet_entries/:id",
+      "raw": "/timesheet_entries/2.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/todos/:id/completion",
+      "raw": "/todos/2/completion.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/webhooks/:id",
+      "raw": "/webhooks/3.json",
+      "sections": [
+        "webhooks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/account",
+      "raw": "/account.json",
+      "sections": [
+        "account.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/authorization",
+      "raw": "https://launchpad.37signals.com/authorization.json",
+      "sections": [
+        "authentication.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/boosts/:id",
+      "raw": "/boosts/2.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/boosts/:id",
+      "raw": "/buckets/1/boosts/2.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/card_tables/:id",
+      "raw": "/buckets/1/card_tables/2.json",
+      "sections": [
+        "card_tables.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/card_tables/cards/:id",
+      "raw": "/buckets/1/card_tables/cards/2.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/card_tables/columns/:id",
+      "raw": "/buckets/1/card_tables/columns/2.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/card_tables/lists/:id/cards",
+      "raw": "/buckets/1/card_tables/lists/3/cards.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/categories",
+      "raw": "/buckets/1/categories.json",
+      "sections": [
+        "message_types.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/categories/:id",
+      "raw": "/buckets/1/categories/2.json",
+      "sections": [
+        "message_types.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/chats/:id",
+      "raw": "/buckets/1/chats/2.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/chats/:id/integrations",
+      "raw": "/buckets/1/chats/1/integrations.json",
+      "sections": [
+        "chatbots.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/chats/:id/integrations/:id",
+      "raw": "/buckets/1/chats/1/integrations/3.json",
+      "sections": [
+        "chatbots.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/chats/:id/lines",
+      "raw": "/buckets/1/chats/2/lines.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/chats/:id/lines/:id",
+      "raw": "/buckets/1/chats/2/lines/3.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/chats/:id/uploads",
+      "raw": "/buckets/1/chats/2/uploads.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/client/approvals",
+      "raw": "/buckets/1/client/approvals.json",
+      "sections": [
+        "client_approvals.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/client/approvals/:id",
+      "raw": "/buckets/1/client/approvals/2.json",
+      "sections": [
+        "client_approvals.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/client/correspondences",
+      "raw": "/buckets/1/client/correspondences.json",
+      "sections": [
+        "client_correspondences.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/client/correspondences/:id",
+      "raw": "/buckets/1/client/correspondences/2.json",
+      "sections": [
+        "client_correspondences.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/client/recordings/:id/replies",
+      "raw": "/buckets/1/client/recordings/2/replies.json",
+      "sections": [
+        "client_replies.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/client/recordings/:id/replies/:id",
+      "raw": "/buckets/1/client/recordings/2/replies/3.json",
+      "sections": [
+        "client_replies.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/comments/:id",
+      "raw": "/buckets/1/comments/2.json",
+      "sections": [
+        "comments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/dock/doors/:id",
+      "raw": "/buckets/1/dock/doors/2.json",
+      "sections": [
+        "external_links.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/dock/tools/:id",
+      "raw": "/buckets/1/dock/tools/2.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/documents/:id",
+      "raw": "/buckets/1/documents/2.json",
+      "sections": [
+        "documents.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/inbox_forwards/:id",
+      "raw": "/buckets/1/inbox_forwards/2.json",
+      "sections": [
+        "forwards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/inbox_forwards/:id/replies",
+      "raw": "/buckets/1/inbox_forwards/2/replies.json",
+      "sections": [
+        "inbox_replies.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/inbox_forwards/:id/replies/:id",
+      "raw": "/buckets/1/inbox_forwards/2/replies/3.json",
+      "sections": [
+        "inbox_replies.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/inboxes/:id",
+      "raw": "/buckets/1/inboxes/2.json",
+      "sections": [
+        "inboxes.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/inboxes/:id/inbox_forwards",
+      "raw": "/buckets/1/inboxes/3/inbox_forwards.json",
+      "sections": [
+        "forwards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/message_boards/:id",
+      "raw": "/buckets/1/message_boards/2.json",
+      "sections": [
+        "message_boards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/message_boards/:id/messages",
+      "raw": "/buckets/1/message_boards/3/messages.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/messages/:id",
+      "raw": "/buckets/1/messages/2.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/question_answers/:id",
+      "raw": "/buckets/1/question_answers/2.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/questionnaires/:id",
+      "raw": "/buckets/1/questionnaires/2.json",
+      "sections": [
+        "questionnaires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/questionnaires/:id/questions",
+      "raw": "/buckets/1/questionnaires/2/questions.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/questions/:id",
+      "raw": "/buckets/1/questions/2.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/questions/:id/answers",
+      "raw": "/buckets/1/questions/2/answers.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/questions/:id/answers/by",
+      "raw": "/buckets/1/questions/2/answers/by.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/questions/:id/answers/by/:id",
+      "raw": "/buckets/1/questions/2/answers/by/3.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/recordings/:id/boosts",
+      "raw": "/buckets/1/recordings/2/boosts.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/recordings/:id/comments",
+      "raw": "/buckets/1/recordings/3/comments.json",
+      "sections": [
+        "comments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/recordings/:id/events",
+      "raw": "/buckets/1/recordings/2/events.json",
+      "sections": [
+        "events.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/recordings/:id/subscription",
+      "raw": "/buckets/1/recordings/2/subscription.json",
+      "sections": [
+        "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/schedule_entries/:id",
+      "raw": "/buckets/1/schedule_entries/2.json",
+      "sections": [
+        "schedule_entries.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/schedules/:id",
+      "raw": "/buckets/1/schedules/2.json",
+      "sections": [
+        "schedules.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/schedules/:id/entries",
+      "raw": "/buckets/1/schedules/3/entries.json",
+      "sections": [
+        "schedule_entries.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/todolists/:id",
+      "raw": "/buckets/1/todolists/3.json",
+      "sections": [
+        "todolist_groups.md",
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/todolists/:id/groups",
+      "raw": "/buckets/1/todolists/2/groups.json",
+      "sections": [
+        "todolist_groups.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/todolists/:id/todos",
+      "raw": "/buckets/1/todolists/3/todos.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/todos/:id",
+      "raw": "/buckets/1/todos/2.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/todosets/:id",
+      "raw": "/buckets/1/todosets/2.json",
+      "sections": [
+        "todosets.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/todosets/:id/todolists",
+      "raw": "/buckets/1/todosets/3/todolists.json",
+      "sections": [
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/uploads/:id",
+      "raw": "/buckets/1/uploads/2.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/uploads/:id/versions",
+      "raw": "/buckets/1/uploads/2/versions.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/vaults/:id",
+      "raw": "/buckets/1/vaults/2.json",
+      "sections": [
+        "vaults.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/vaults/:id/documents",
+      "raw": "/buckets/1/vaults/2/documents.json",
+      "sections": [
+        "documents.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/vaults/:id/uploads",
+      "raw": "/buckets/1/vaults/2/uploads.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/vaults/:id/vaults",
+      "raw": "/buckets/1/vaults/2/vaults.json",
+      "sections": [
+        "vaults.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/webhooks",
+      "raw": "/buckets/1/webhooks.json",
+      "sections": [
+        "webhooks.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/webhooks/:id",
+      "raw": "/buckets/1/webhooks/3.json",
+      "sections": [
+        "webhooks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/calendars/:id",
+      "raw": "/calendars/2.json",
+      "sections": [
+        "calendars.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/card_tables/:id",
+      "raw": "/card_tables/2.json",
+      "sections": [
+        "card_tables.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/card_tables/cards/:id",
+      "raw": "/card_tables/cards/2.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/card_tables/columns/:id",
+      "raw": "/card_tables/columns/2.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/card_tables/lists/:id/cards",
+      "raw": "/card_tables/lists/3/cards.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/cards/completed",
+      "raw": "/cards/completed.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/cards/no_due_date",
+      "raw": "/cards/no_due_date.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/cards/not_now",
+      "raw": "/cards/not_now.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/cards/open",
+      "raw": "/cards/open.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/cards/overdue",
+      "raw": "/cards/overdue.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/cards/unassigned",
+      "raw": "/cards/unassigned.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/chats",
+      "raw": "/chats.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/chats/:id",
+      "raw": "/chats/2.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/chats/:id/lines",
+      "raw": "/chats/2/lines.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/chats/:id/lines/:id",
+      "raw": "/chats/2/lines/3.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/chats/:id/uploads",
+      "raw": "/chats/2/uploads.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/checkins",
+      "raw": "/checkins.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/circles/people",
+      "raw": "/circles/people.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/client/approvals/:id",
+      "raw": "/client/approvals/2.json",
+      "sections": [
+        "client_approvals.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/client/correspondences/:id",
+      "raw": "/client/correspondences/2.json",
+      "sections": [
+        "client_correspondences.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/cloud_files/:id",
+      "raw": "/cloud_files/2.json",
+      "sections": [
+        "cloud_files.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/comments",
+      "raw": "/comments.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/comments/:id",
+      "raw": "/comments/2.json",
+      "sections": [
+        "comments.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/dock/tools/:id",
+      "raw": "/dock/tools/2.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/documents/:id",
+      "raw": "/documents/2.json",
+      "sections": [
+        "documents.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/files",
+      "raw": "/files.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/forwards",
+      "raw": "/forwards.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/gauge_needles/:id",
+      "raw": "/gauge_needles/2.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/google_documents/:id",
+      "raw": "/google_documents/2.json",
+      "sections": [
+        "google_documents.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/inbox_forwards/:id",
+      "raw": "/inbox_forwards/2.json",
+      "sections": [
+        "forwards.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/inbox_forwards/:id/replies",
+      "raw": "/inbox_forwards/2/replies.json",
+      "sections": [
+        "inbox_replies.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/inbox_forwards/:id/replies/:id",
+      "raw": "/inbox_forwards/2/replies/3.json",
+      "sections": [
+        "inbox_replies.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/inboxes/:id",
+      "raw": "/inboxes/2.json",
+      "sections": [
+        "inboxes.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/inboxes/:id/inbox_forwards",
+      "raw": "/inboxes/3/inbox_forwards.json",
+      "sections": [
+        "forwards.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/lineup/markers",
+      "raw": "/lineup/markers.json",
+      "sections": [
+        "lineup_markers.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/message_boards/:id",
+      "raw": "/message_boards/2.json",
+      "sections": [
+        "message_boards.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/message_boards/:id/messages",
+      "raw": "/message_boards/3/messages.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/messages",
+      "raw": "/messages.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/messages/:id",
+      "raw": "/messages/2.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/assignments",
+      "raw": "/my/assignments.json",
+      "sections": [
+        "my_assignments.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/assignments/completed",
+      "raw": "/my/assignments/completed.json",
+      "sections": [
+        "my_assignments.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/assignments/due",
+      "raw": "/my/assignments/due.json",
+      "sections": [
+        "my_assignments.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/bookmarks",
+      "raw": "/my/bookmarks.json",
+      "sections": [
+        "my_bookmarks.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/drafts",
+      "raw": "/my/drafts.json",
+      "sections": [
+        "drafts.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/notes",
+      "raw": "/my/notes.json",
+      "sections": [
+        "my_notes.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/preferences",
+      "raw": "/my/preferences.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/profile",
+      "raw": "/my/profile.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/question_reminders",
+      "raw": "/my/question_reminders.json",
+      "sections": [
+        "question_reminders.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/readings",
+      "raw": "/my/readings.json",
+      "sections": [
+        "my_notifications.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/my/readings/bubble_ups",
+      "raw": "/my/readings/bubble_ups.json",
+      "sections": [
+        "my_notifications.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/people",
+      "raw": "/people.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/people/:id",
+      "raw": "/people/2.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/people/:id/out_of_office",
+      "raw": "/people/2/out_of_office.json",
+      "sections": [
+        "out_of_office.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects",
+      "raw": "/projects.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id",
+      "raw": "/projects/1.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/gauge/needles",
+      "raw": "/projects/1/gauge/needles.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/gauge/needles/:id",
+      "raw": "/projects/1/gauge/needles/2.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/people",
+      "raw": "/projects/1/people.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/recordings/:id/timesheet",
+      "raw": "/projects/1/recordings/2/timesheet.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/timeline",
+      "raw": "/projects/1/timeline.json",
+      "sections": [
+        "timeline.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/timesheet",
+      "raw": "/projects/1/timesheet.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/projects/recordings",
+      "raw": "/projects/recordings.json?type=Door",
+      "sections": [
+        "external_links.md",
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/question_answers/:id",
+      "raw": "/question_answers/2.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/questionnaires/:id",
+      "raw": "/questionnaires/2.json",
+      "sections": [
+        "questionnaires.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/questionnaires/:id/questions",
+      "raw": "/questionnaires/2/questions.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/questions/:id",
+      "raw": "/questions/2.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/questions/:id/answers",
+      "raw": "/questions/2/answers.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/questions/:id/answers/by",
+      "raw": "/questions/2/answers/by.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/questions/:id/answers/by/:id",
+      "raw": "/questions/2/answers/by/3.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/bookmark",
+      "raw": "/recordings/2/bookmark.json",
+      "sections": [
+        "my_bookmarks.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/boosts",
+      "raw": "/recordings/2/boosts.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/comments",
+      "raw": "/recordings/3/comments.json",
+      "sections": [
+        "comments.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/events",
+      "raw": "/recordings/2/events.json",
+      "sections": [
+        "events.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/events/:id/boosts",
+      "raw": "/recordings/2/events/3/boosts.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/subscription",
+      "raw": "/recordings/2/subscription.json",
+      "sections": [
+        "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/timesheet",
+      "raw": "/recordings/2/timesheet.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/gauges",
+      "raw": "/reports/gauges.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/progress",
+      "raw": "/reports/progress.json",
+      "sections": [
+        "timeline.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/schedules/upcoming",
+      "raw": "/reports/schedules/upcoming.json",
+      "sections": [
+        "reports.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/timesheet",
+      "raw": "/reports/timesheet.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/todos/assigned",
+      "raw": "/reports/todos/assigned.json",
+      "sections": [
+        "reports.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/todos/assigned/:id",
+      "raw": "/reports/todos/assigned/1.json",
+      "sections": [
+        "reports.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/todos/overdue",
+      "raw": "/reports/todos/overdue.json",
+      "sections": [
+        "reports.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/reports/users/progress/:id",
+      "raw": "/reports/users/progress/1.json",
+      "sections": [
+        "timeline.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/schedule_entries/:id",
+      "raw": "/schedule_entries/2.json",
+      "sections": [
+        "schedule_entries.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/schedules/:id",
+      "raw": "/schedules/2.json",
+      "sections": [
+        "schedules.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/schedules/:id/entries",
+      "raw": "/schedules/3/entries.json",
+      "sections": [
+        "schedule_entries.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/search",
+      "raw": "/search.json",
+      "sections": [
+        "search.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/searches/metadata",
+      "raw": "/searches/metadata.json",
+      "sections": [
+        "search.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/templates",
+      "raw": "/templates.json",
+      "sections": [
+        "templates.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/templates/:id",
+      "raw": "/templates/1.json",
+      "sections": [
+        "templates.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/templates/:id/project_constructions/:id",
+      "raw": "/templates/1/project_constructions/2.json",
+      "sections": [
+        "templates.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/timesheet_entries/:id",
+      "raw": "/timesheet_entries/2.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todolists/:id",
+      "raw": "/todolists/3.json",
+      "sections": [
+        "todolist_groups.md",
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todolists/:id/groups",
+      "raw": "/todolists/2/groups.json",
+      "sections": [
+        "todolist_groups.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todolists/:id/todos",
+      "raw": "/todolists/3/todos.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todos/:id",
+      "raw": "/todos/2.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todos/completed",
+      "raw": "/todos/completed.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todos/no_due_date",
+      "raw": "/todos/no_due_date.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todos/open",
+      "raw": "/todos/open.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todos/overdue",
+      "raw": "/todos/overdue.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todos/unassigned",
+      "raw": "/todos/unassigned.json",
+      "sections": [
+        "everything.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todosets/:id",
+      "raw": "/todosets/2.json",
+      "sections": [
+        "todosets.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todosets/:id/hill",
+      "raw": "/todosets/1/hill.json",
+      "sections": [
+        "hill_charts.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/todosets/:id/todolists",
+      "raw": "/todosets/3/todolists.json",
+      "sections": [
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/uploads/:id",
+      "raw": "/uploads/2.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/uploads/:id/versions",
+      "raw": "/uploads/2/versions.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/vaults/:id",
+      "raw": "/vaults/2.json",
+      "sections": [
+        "vaults.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/vaults/:id/documents",
+      "raw": "/vaults/2/documents.json",
+      "sections": [
+        "documents.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/vaults/:id/uploads",
+      "raw": "/vaults/2/uploads.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/vaults/:id/vaults",
+      "raw": "/vaults/2/vaults.json",
+      "sections": [
+        "vaults.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/webhooks/:id",
+      "raw": "/webhooks/3.json",
+      "sections": [
+        "webhooks.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/attachments",
+      "raw": "/attachments.json",
+      "sections": [
+        "attachments.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/:id/columns",
+      "raw": "/buckets/1/card_tables/2/columns.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/:id/moves",
+      "raw": "/buckets/1/card_tables/2/moves.json",
+      "sections": [
+        "card_table_columns.md",
+        "card_tables.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/:id/wormholes",
+      "raw": "/buckets/1/card_tables/2/wormholes.json",
+      "sections": [
+        "card_table_wormholes.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/cards/:id/moves",
+      "raw": "/buckets/1/card_tables/cards/2/moves.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/cards/:id/positions",
+      "raw": "/buckets/1/card_tables/cards/2/positions.json",
+      "sections": [
+        "card_table_steps.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/cards/:id/steps",
+      "raw": "/buckets/1/card_tables/cards/2/steps.json",
+      "sections": [
+        "card_table_steps.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/columns/:id/on_hold",
+      "raw": "/buckets/1/card_tables/columns/2/on_hold.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/lists/:id/cards",
+      "raw": "/buckets/1/card_tables/lists/2/cards.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/card_tables/lists/:id/subscription",
+      "raw": "/buckets/1/card_tables/lists/2/subscription.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/categories",
+      "raw": "/buckets/1/categories.json",
+      "sections": [
+        "message_types.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/chats/:id/integrations",
+      "raw": "/buckets/1/chats/1/integrations.json",
+      "sections": [
+        "chatbots.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/chats/:id/lines",
+      "raw": "/buckets/1/chats/2/lines.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "example-marker",
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/chats/:id/uploads",
+      "raw": "/buckets/1/chats/2/uploads.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/dock/doors",
+      "raw": "/buckets/1/dock/doors.json",
+      "sections": [
+        "external_links.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/dock/tools",
+      "raw": "/buckets/1/dock/tools.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/message_boards/:id/messages",
+      "raw": "/buckets/1/message_boards/3/messages.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/questionnaires/:id/questions",
+      "raw": "/buckets/1/questionnaires/2/questions.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/questions/:id/answers",
+      "raw": "/buckets/1/questions/2/answers.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/questions/:id/pause",
+      "raw": "/buckets/1/questions/2/pause.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/recordings/:id/boosts",
+      "raw": "/buckets/1/recordings/2/boosts.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/recordings/:id/comments",
+      "raw": "/buckets/1/recordings/3/comments.json",
+      "sections": [
+        "comments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/recordings/:id/pin",
+      "raw": "/buckets/1/recordings/2/pin.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/recordings/:id/position",
+      "raw": "/buckets/1/recordings/2/position.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/recordings/:id/subscription",
+      "raw": "/buckets/1/recordings/2/subscription.json",
+      "sections": [
+        "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/schedules/:id/entries",
+      "raw": "/buckets/1/schedules/3/entries.json",
+      "sections": [
+        "schedule_entries.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/todolists/:id/groups",
+      "raw": "/buckets/1/todolists/2/groups.json",
+      "sections": [
+        "todolist_groups.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/todolists/:id/todos",
+      "raw": "/buckets/1/todolists/3/todos.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/todos/:id/completion",
+      "raw": "/buckets/1/todos/2/completion.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/todosets/:id/todolists",
+      "raw": "/buckets/1/todosets/3/todolists.json",
+      "sections": [
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/todosets/:id/todos",
+      "raw": "/buckets/1/todosets/2/todos.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/vaults/:id/cloud_files",
+      "raw": "/buckets/1/vaults/3/cloud_files.json",
+      "sections": [
+        "cloud_files.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/vaults/:id/documents",
+      "raw": "/buckets/1/vaults/2/documents.json",
+      "sections": [
+        "documents.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/vaults/:id/google_documents",
+      "raw": "/buckets/1/vaults/3/google_documents.json",
+      "sections": [
+        "google_documents.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/vaults/:id/uploads",
+      "raw": "/buckets/1/vaults/2/uploads.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/vaults/:id/vaults",
+      "raw": "/buckets/1/vaults/2/vaults.json",
+      "sections": [
+        "vaults.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/webhooks",
+      "raw": "/buckets/1/webhooks.json",
+      "sections": [
+        "webhooks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/card_tables/:id/columns",
+      "raw": "/card_tables/2/columns.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/card_tables/:id/moves",
+      "raw": "/card_tables/2/moves.json",
+      "sections": [
+        "card_table_columns.md",
+        "card_tables.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/card_tables/cards/:id/moves",
+      "raw": "/card_tables/cards/2/moves.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/card_tables/cards/:id/positions",
+      "raw": "/card_tables/cards/2/positions.json",
+      "sections": [
+        "card_table_steps.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/card_tables/cards/:id/steps",
+      "raw": "/card_tables/cards/2/steps.json",
+      "sections": [
+        "card_table_steps.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/card_tables/columns/:id/on_hold",
+      "raw": "/card_tables/columns/2/on_hold.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/card_tables/lists/:id/cards",
+      "raw": "/card_tables/lists/2/cards.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/card_tables/lists/:id/subscription",
+      "raw": "/card_tables/lists/2/subscription.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/chats/:id/lines",
+      "raw": "/chats/2/lines.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/chats/:id/uploads",
+      "raw": "/chats/2/uploads.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/integrations/:id/buckets/:id/chats/:id/lines",
+      "raw": "/integrations/$CHATBOT_KEY/buckets/1/chats/2/lines.json",
+      "sections": [
+        "chatbots.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/lineup/markers",
+      "raw": "/lineup/markers.json",
+      "sections": [
+        "lineup_markers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/message_boards/:id/messages",
+      "raw": "/message_boards/3/messages.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/my/priorities",
+      "raw": "/my/priorities.json",
+      "sections": [
+        "my_assignments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/my/priority_moves",
+      "raw": "/my/priority_moves.json",
+      "sections": [
+        "my_assignments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/people/:id/out_of_office",
+      "raw": "/people/2/out_of_office.json",
+      "sections": [
+        "out_of_office.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "raw": "/projects.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/projects/:id/gauge/needles",
+      "raw": "/projects/1/gauge/needles.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/projects/:id/recordings/:id/timesheet/entries",
+      "raw": "/projects/1/recordings/2/timesheet/entries.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/questionnaires/:id/questions",
+      "raw": "/questionnaires/2/questions.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/questions/:id/answers",
+      "raw": "/questions/2/answers.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/questions/:id/pause",
+      "raw": "/questions/2/pause.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/recordings/:id/bookmark",
+      "raw": "/recordings/2/bookmark.json",
+      "sections": [
+        "my_bookmarks.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/recordings/:id/boosts",
+      "raw": "/recordings/2/boosts.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/recordings/:id/comments",
+      "raw": "/recordings/3/comments.json",
+      "sections": [
+        "comments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/recordings/:id/events/:id/boosts",
+      "raw": "/recordings/2/events/3/boosts.json",
+      "sections": [
+        "boosts.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/recordings/:id/pin",
+      "raw": "/recordings/2/pin.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/recordings/:id/subscription",
+      "raw": "/recordings/2/subscription.json",
+      "sections": [
+        "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/recordings/:id/timesheet/entries",
+      "raw": "/recordings/2/timesheet/entries.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/schedules/:id/entries",
+      "raw": "/schedules/3/entries.json",
+      "sections": [
+        "schedule_entries.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/templates",
+      "raw": "/templates.json",
+      "sections": [
+        "templates.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/templates/:id/project_constructions",
+      "raw": "/templates/:template_id/project_constructions.json",
+      "sections": [
+        "templates.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/todolists/:id/groups",
+      "raw": "/todolists/2/groups.json",
+      "sections": [
+        "todolist_groups.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/todolists/:id/todos",
+      "raw": "/todolists/3/todos.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/todos/:id/completion",
+      "raw": "/todos/2/completion.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/todosets/:id/todolists",
+      "raw": "/todosets/3/todolists.json",
+      "sections": [
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/vaults/:id/documents",
+      "raw": "/vaults/2/documents.json",
+      "sections": [
+        "documents.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/vaults/:id/uploads",
+      "raw": "/vaults/2/uploads.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/vaults/:id/vaults",
+      "raw": "/vaults/2/vaults.json",
+      "sections": [
+        "vaults.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/account/logo",
+      "raw": "/account/logo.json",
+      "sections": [
+        "account.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/account/name",
+      "raw": "/account/name.json",
+      "sections": [
+        "account.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/card_tables/cards/:id",
+      "raw": "/buckets/1/card_tables/cards/2.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/card_tables/columns/:id",
+      "raw": "/buckets/1/card_tables/columns/2.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/card_tables/columns/:id/color",
+      "raw": "/buckets/1/card_tables/columns/2/color.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/card_tables/steps/:id",
+      "raw": "/buckets/1/card_tables/steps/2.json",
+      "sections": [
+        "card_table_steps.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/card_tables/steps/:id/completions",
+      "raw": "/buckets/1/card_tables/steps/2/completions.json",
+      "sections": [
+        "card_table_steps.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/card_tables/wormholes/:id",
+      "raw": "/buckets/1/card_tables/wormholes/3.json",
+      "sections": [
+        "card_table_wormholes.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/categories/:id",
+      "raw": "/buckets/1/categories/2.json",
+      "sections": [
+        "message_types.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/chats/:id/integrations/:id",
+      "raw": "/buckets/1/chats/1/integrations/3.json",
+      "sections": [
+        "chatbots.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/chats/:id/lines/:id",
+      "raw": "/buckets/1/chats/2/lines/3.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/cloud_files/:id",
+      "raw": "/buckets/1/cloud_files/2.json",
+      "sections": [
+        "cloud_files.md"
+      ],
+      "evidence": [
+        "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/comments/:id",
+      "raw": "/buckets/1/comments/2.json",
+      "sections": [
+        "comments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/dock/tools/:id",
+      "raw": "/buckets/1/dock/tools/2.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/documents/:id",
+      "raw": "/buckets/1/documents/2.json",
+      "sections": [
+        "documents.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/google_documents/:id",
+      "raw": "/buckets/1/google_documents/2.json",
+      "sections": [
+        "google_documents.md"
+      ],
+      "evidence": [
+        "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/messages/:id",
+      "raw": "/buckets/1/messages/2.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/question_answers/:id",
+      "raw": "/buckets/1/question_answers/2.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/questions/:id",
+      "raw": "/buckets/1/questions/2.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/questions/:id/notification_settings",
+      "raw": "/buckets/1/questions/2/notification_settings.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/recordings/:id/client_visibility",
+      "raw": "/buckets/1/recordings/2/client_visibility.json",
+      "sections": [
+        "client_visibility.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/recordings/:id/position",
+      "raw": "/buckets/1/recordings/2/position.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/recordings/:id/status/active",
+      "raw": "/buckets/1/recordings/2/status/active.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/recordings/:id/status/archived",
+      "raw": "/buckets/1/recordings/2/status/archived.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/recordings/:id/status/trashed",
+      "raw": "/buckets/1/recordings/2/status/trashed.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/recordings/:id/subscription",
+      "raw": "/buckets/1/recordings/2/subscription.json",
+      "sections": [
+        "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/schedule_entries/:id",
+      "raw": "/buckets/1/schedule_entries/2.json",
+      "sections": [
+        "schedule_entries.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/schedules/:id",
+      "raw": "/buckets/1/schedules/2.json",
+      "sections": [
+        "schedules.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/todolists/:id",
+      "raw": "/buckets/1/todolists/2.json",
+      "sections": [
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/todolists/groups/:id/position",
+      "raw": "/buckets/1/todolists/groups/3/position.json",
+      "sections": [
+        "todolist_groups.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/todos/:id",
+      "raw": "/buckets/1/todos/2.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/todos/:id/position",
+      "raw": "/buckets/1/todos/2/position.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/todosets/todolists/:id/position",
+      "raw": "/buckets/1/todosets/todolists/2/position.json",
+      "sections": [
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/uploads/:id",
+      "raw": "/buckets/1/uploads/2.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/vaults/:id",
+      "raw": "/buckets/1/vaults/3.json",
+      "sections": [
+        "vaults.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/buckets/:id/webhooks/:id",
+      "raw": "/buckets/1/webhooks/3.json",
+      "sections": [
+        "webhooks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/calendars/:id",
+      "raw": "/calendars/2.json",
+      "sections": [
+        "calendars.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/card_tables/cards/:id",
+      "raw": "/card_tables/cards/2.json",
+      "sections": [
+        "card_table_cards.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/card_tables/columns/:id",
+      "raw": "/card_tables/columns/2.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/card_tables/columns/:id/color",
+      "raw": "/card_tables/columns/2/color.json",
+      "sections": [
+        "card_table_columns.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/card_tables/steps/:id",
+      "raw": "/card_tables/steps/2.json",
+      "sections": [
+        "card_table_steps.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/card_tables/steps/:id/completions",
+      "raw": "/card_tables/steps/2/completions.json",
+      "sections": [
+        "card_table_steps.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/chats/:id/lines/:id",
+      "raw": "/chats/2/lines/3.json",
+      "sections": [
+        "campfires.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/cloud_files/:id",
+      "raw": "/cloud_files/2.json",
+      "sections": [
+        "cloud_files.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/comments/:id",
+      "raw": "/comments/2.json",
+      "sections": [
+        "comments.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/dock/tools/:id",
+      "raw": "/dock/tools/2.json",
+      "sections": [
+        "tools.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/documents/:id",
+      "raw": "/documents/2.json",
+      "sections": [
+        "documents.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/gauge_needles/:id",
+      "raw": "/gauge_needles/2.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/google_documents/:id",
+      "raw": "/google_documents/2.json",
+      "sections": [
+        "google_documents.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/lineup/markers/:id",
+      "raw": "/lineup/markers/1.json",
+      "sections": [
+        "lineup_markers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/messages/:id",
+      "raw": "/messages/2.json",
+      "sections": [
+        "messages.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/my/notes",
+      "raw": "/my/notes.json",
+      "sections": [
+        "my_notes.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/my/preferences",
+      "raw": "/my/preferences.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/my/profile",
+      "raw": "/my/profile.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/my/unreads",
+      "raw": "/my/unreads.json",
+      "sections": [
+        "my_notifications.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/:id",
+      "raw": "/projects/1.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/:id/gauge",
+      "raw": "/projects/1/gauge.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/:id/gauge/needles/:id",
+      "raw": "/projects/1/gauge/needles/2.json",
+      "sections": [
+        "gauges.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/:id/people/users",
+      "raw": "/projects/1/people/users.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/question_answers/:id",
+      "raw": "/question_answers/2.json",
+      "sections": [
+        "question_answers.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/questions/:id",
+      "raw": "/questions/2.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/questions/:id/notification_settings",
+      "raw": "/questions/2/notification_settings.json",
+      "sections": [
+        "questions.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/recordings/:id/client_visibility",
+      "raw": "/recordings/2/client_visibility.json",
+      "sections": [
+        "client_visibility.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/recordings/:id/status/active",
+      "raw": "/recordings/2/status/active.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/recordings/:id/status/archived",
+      "raw": "/recordings/2/status/archived.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/recordings/:id/status/trashed",
+      "raw": "/recordings/2/status/trashed.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/recordings/:id/subscription",
+      "raw": "/recordings/2/subscription.json",
+      "sections": [
+        "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/schedule_entries/:id",
+      "raw": "/schedule_entries/2.json",
+      "sections": [
+        "schedule_entries.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/schedules/:id",
+      "raw": "/schedules/2.json",
+      "sections": [
+        "schedules.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/templates/:id",
+      "raw": "/templates/1.json",
+      "sections": [
+        "templates.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/timesheet_entries/:id",
+      "raw": "/timesheet_entries/2.json",
+      "sections": [
+        "timesheets.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/todolists/:id",
+      "raw": "/todolists/2.json",
+      "sections": [
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/todolists/groups/:id/position",
+      "raw": "/todolists/groups/3/position.json",
+      "sections": [
+        "todolist_groups.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/todos/:id",
+      "raw": "/todos/2.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/todos/:id/position",
+      "raw": "/todos/2/position.json",
+      "sections": [
+        "todos.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/todosets/:id/hills/settings",
+      "raw": "/todosets/1/hills/settings.json",
+      "sections": [
+        "hill_charts.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/todosets/todolists/:id/position",
+      "raw": "/todosets/todolists/2/position.json",
+      "sections": [
+        "todolists.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/uploads/:id",
+      "raw": "/uploads/2.json",
+      "sections": [
+        "uploads.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/vaults/:id",
+      "raw": "/vaults/3.json",
+      "sections": [
+        "vaults.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/webhooks/:id",
+      "raw": "/webhooks/3.json",
+      "sections": [
+        "webhooks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    }
+  ]
+}

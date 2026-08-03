@@ -100,7 +100,7 @@ public final class ForwardsService: BaseService, @unchecked Sendable {
         }
         return try await requestPaginated(
             OperationInfo(service: "Forwards", operation: "ListForwards", resourceType: "forward", isMutation: false, resourceId: inboxId),
-            path: "/inboxes/\(inboxId)/forwards.json",
+            path: "/inboxes/\(inboxId)/inbox_forwards.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListForwards")
