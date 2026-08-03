@@ -1,0 +1,213 @@
+go/pkg/basecamp/my_notifications.go
+  s_ae792ed0be3006::t_8229c747f775b1 259
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt
+  s_ae792ed0be3006::t_537d00df5533b3 27-37
+typescript/src/services/base.ts
+  s_ae792ed0be3006::t_99268273565e20 482-488
+  s_ae792ed0be3006::t_1b2cf9e59297f4 51-82
+  s_ae792ed0be3006::t_57bed66d8c00f7 391-396
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/TypeEmitter.kt
+  s_ae792ed0be3006::t_f9ea273360441c 163-165,167-171
+go/pkg/basecamp/gauges.go
+  s_ae792ed0be3006::t_0e79f5eb7d7914 230-233,248-258,271-283,285,297
+  s_ae792ed0be3006::t_913e5cd09857d8 100-137
+  s_ae792ed0be3006::t_95dda4e6979f8c 162-164,178-188,201-213,215,227
+swift/Sources/Basecamp/Pagination.swift
+  s_ae792ed0be3006::t_f2fef773c0acf6 24-34,36
+python/src/basecamp/_pagination.py
+  s_ae792ed0be3006::t_d92a166628ab99 42-59
+go/pkg/basecamp/helpers.go
+  s_ae792ed0be3006::t_69ca04bcfeaacf 358-370
+conformance/schema.json
+  s_ae792ed0be3006::t_d8bd05403bc85b 184-187
+typescript/src/pagination.ts
+  s_ae792ed0be3006::t_7915078a26f851 31-42
+ruby/lib/basecamp/http.rb
+  s_ae792ed0be3006::t_d56c730e6ba801 250
+  s_ae792ed0be3006::t_5c430cf38b69e8 323-336
+  s_ae792ed0be3006::t_4f298dab2b44bf 281-286,299
+SPEC.md
+  s_ae792ed0be3006::t_e84945635a43c5 855-874,876-886,888-912
+conformance/runner/go/main.go
+  s_ae792ed0be3006::t_38688eeb07948b 57-58,452-456
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_4e6ffbb34f6125 208-218,226-230,553
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_55e5aa88624349 204,212-218,596-597
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_ae792ed0be3006::t_2ce2141ac6208b 108-111
+conformance/runner/swift/Sources/ConformanceRunner/Fixtures.swift
+  s_ae792ed0be3006::t_82d59af4092c0f 155-156
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_ae792ed0be3006::t_25f871cc1a14a5 14-19,178-181
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_1f4a70771f904a 55,182,184
+conformance/tests/pagination.json
+  s_ae792ed0be3006::t_2f3816df6fe9b6 232-297
+go/README.md
+  s_ae792ed0be3006::t_de4af8130c66b0 572-574,579-580
+go/pkg/basecamp/bookmarks.go
+  s_ae792ed0be3006::t_9a5cd560f62155 75
+go/pkg/basecamp/boosts.go
+  s_ae792ed0be3006::t_4b13697dc6d1ac 111,201
+go/pkg/basecamp/campfires.go
+  s_ae792ed0be3006::t_7a28c0cb4c356f 247,376,622,790
+go/pkg/basecamp/cards.go
+  s_ae792ed0be3006::t_65e7210b1f5158 368
+go/pkg/basecamp/checkins.go
+  s_ae792ed0be3006::t_9df7a233f233a3 330,653,735,808,1029
+go/pkg/basecamp/checkins_test.go
+  s_ae792ed0be3006::t_760c83e7e2fff3 978-980,986,1285,1401
+go/pkg/basecamp/client_approvals.go
+  s_ae792ed0be3006::t_070b80451c630a 158
+go/pkg/basecamp/client_correspondences.go
+  s_ae792ed0be3006::t_190abc922101ae 135
+go/pkg/basecamp/client_replies.go
+  s_ae792ed0be3006::t_150a7352155834 121
+go/pkg/basecamp/comments.go
+  s_ae792ed0be3006::t_9f282b2fa10953 141
+go/pkg/basecamp/drafts.go
+  s_ae792ed0be3006::t_0d591f4e65d328 101
+go/pkg/basecamp/events.go
+  s_ae792ed0be3006::t_b91bb9165dbbf8 123
+go/pkg/basecamp/everything.go
+  s_ae792ed0be3006::t_bfc398c869235a 264,323,665,693
+go/pkg/basecamp/forwards.go
+  s_ae792ed0be3006::t_966f9cd919074d 240,360
+go/pkg/basecamp/gauges_test.go
+  s_ae792ed0be3006::t_d2fe88b8930e01 12,14-16,133-271
+go/pkg/basecamp/message_types.go
+  s_ae792ed0be3006::t_5009aaf6765237 113
+go/pkg/basecamp/messages.go
+  s_ae792ed0be3006::t_28c9763c7f8c9f 181
+go/pkg/basecamp/operation_scope_test.go
+  s_ae792ed0be3006::t_e881245fbac1c2 72
+go/pkg/basecamp/people.go
+  s_ae792ed0be3006::t_3f558439800057 161,367,445
+go/pkg/basecamp/projects.go
+  s_ae792ed0be3006::t_ca8c4504b082b8 186
+go/pkg/basecamp/recordings.go
+  s_ae792ed0be3006::t_58e6037653447c 260
+go/pkg/basecamp/schedules.go
+  s_ae792ed0be3006::t_9f504f57e820c4 262
+go/pkg/basecamp/search.go
+  s_ae792ed0be3006::t_07ffdf750fc8c5 267
+go/pkg/basecamp/templates.go
+  s_ae792ed0be3006::t_1b9aa3bd8f65a1 137
+go/pkg/basecamp/timeline.go
+  s_ae792ed0be3006::t_ae04e85dc27a1c 206,289,384
+go/pkg/basecamp/timesheet.go
+  s_ae792ed0be3006::t_ce43ed863297cc 203,296
+go/pkg/basecamp/todolist_groups.go
+  s_ae792ed0be3006::t_4b817804ec3ffc 149
+go/pkg/basecamp/todolists.go
+  s_ae792ed0be3006::t_9bc6f76dfe144f 241
+go/pkg/basecamp/todos.go
+  s_ae792ed0be3006::t_10c4d2849d7579 427
+go/pkg/basecamp/vaults.go
+  s_ae792ed0be3006::t_7db7be8feef188 336,568,771,987
+go/pkg/basecamp/webhooks.go
+  s_ae792ed0be3006::t_9a6bd84c340c7e 143
+kotlin/README.md
+  s_ae792ed0be3006::t_3120f314737f25 575-576,579-580,583-587
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_ae792ed0be3006::t_a7c6da89a52b6e 125-126,691-693
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_ae792ed0be3006::t_36f943ab5d4659 24,33,47,91,115,187,204,219,242,257,276,289,298,317,337,355,364,377,390,403,416,438,447,456,469,478,487,500,513,526,548,568,581,600,618,661,720,751,765,783,813,822,845,872,914,931,957,969,981,1019,1046,1076,1136,1159
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_ae792ed0be3006::t_c2d5da7610b4fd 244-257,357-370
+python/README.md
+  s_ae792ed0be3006::t_646e1c65532678 576-577,580-581,584-588
+python/src/basecamp/generated/services/_async_base.py
+  s_ae792ed0be3006::t_879aa057458d12 7-13,306-316,370-380,432-437
+python/src/basecamp/generated/services/_base.py
+  s_ae792ed0be3006::t_f5b8888c40d9ee 7-13,311-321,375-385,437-442
+ruby/README.md
+  s_ae792ed0be3006::t_02a85a6ead8e52 410-411,414,417-421
+swift/README.md
+  s_ae792ed0be3006::t_3056b4889ab7a0 286-287,290-291,294-298
+swift/Sources/Basecamp/Generated/Services/BookmarksService.swift
+  s_ae792ed0be3006::t_e7c22255d28ccd 53
+swift/Sources/Basecamp/Generated/Services/BoostsService.swift
+  s_ae792ed0be3006::t_1ad323bddfe5f9 75,89
+swift/Sources/Basecamp/Generated/Services/CampfiresService.swift
+  s_ae792ed0be3006::t_e53eaa88eebfcf 162,182,196
+swift/Sources/Basecamp/Generated/Services/CardsService.swift
+  s_ae792ed0be3006::t_54d7ab7e8dcc9b 45
+swift/Sources/Basecamp/Generated/Services/CheckinsService.swift
+  s_ae792ed0be3006::t_a21343c11533ea 96,119,142,165
+swift/Sources/Basecamp/Generated/Services/ClientApprovalsService.swift
+  s_ae792ed0be3006::t_db8380a2414a0b 52
+swift/Sources/Basecamp/Generated/Services/ClientCorrespondencesService.swift
+  s_ae792ed0be3006::t_ee4db853033648 52
+swift/Sources/Basecamp/Generated/Services/ClientRepliesService.swift
+  s_ae792ed0be3006::t_fdc6c02f0aa303 35
+swift/Sources/Basecamp/Generated/Services/CommentsService.swift
+  s_ae792ed0be3006::t_c9bad64761824d 45
+swift/Sources/Basecamp/Generated/Services/DocumentsService.swift
+  s_ae792ed0be3006::t_5454f154f25115 45
+swift/Sources/Basecamp/Generated/Services/DraftsService.swift
+  s_ae792ed0be3006::t_229cbb1b770010 26
+swift/Sources/Basecamp/Generated/Services/EventsService.swift
+  s_ae792ed0be3006::t_ef9806e4a6364d 26
+swift/Sources/Basecamp/Generated/Services/EverythingService.swift
+  s_ae792ed0be3006::t_97b127f08975ac 303,317,339,361,383,397,411,433,455,477,499,521,579,601
+swift/Sources/Basecamp/Generated/Services/ForwardsService.swift
+  s_ae792ed0be3006::t_ba6622d387cee8 75,95
+swift/Sources/Basecamp/Generated/Services/GaugesService.swift
+  s_ae792ed0be3006::t_9e441644ac476c 68,85
+swift/Sources/Basecamp/Generated/Services/MessagesService.swift
+  s_ae792ed0be3006::t_c857db62009001 62
+swift/Sources/Basecamp/Generated/Services/MyNotificationsService.swift
+  s_ae792ed0be3006::t_9b7ea373ee6e07 38
+swift/Sources/Basecamp/Generated/Services/PeopleService.swift
+  s_ae792ed0be3006::t_1f03612e363cc1 109,132
+swift/Sources/Basecamp/Generated/Services/ProjectsService.swift
+  s_ae792ed0be3006::t_0ffdae22757f8b 51
+swift/Sources/Basecamp/Generated/Services/RecordingsService.swift
+  s_ae792ed0be3006::t_d8063b5cdc6ac1 66
+swift/Sources/Basecamp/Generated/Services/ReportsService.swift
+  s_ae792ed0be3006::t_65906cd86dd21d 85,104
+swift/Sources/Basecamp/Generated/Services/SchedulesService.swift
+  s_ae792ed0be3006::t_bf4650a2fe0d48 69
+swift/Sources/Basecamp/Generated/Services/SearchService.swift
+  s_ae792ed0be3006::t_14bef568e3022a 115
+swift/Sources/Basecamp/Generated/Services/TemplatesService.swift
+  s_ae792ed0be3006::t_7f403f9a806453 79
+swift/Sources/Basecamp/Generated/Services/TimelineService.swift
+  s_ae792ed0be3006::t_c00eb04c6c4355 26
+swift/Sources/Basecamp/Generated/Services/TimesheetsService.swift
+  s_ae792ed0be3006::t_9fdc6189ceb689 92,115
+swift/Sources/Basecamp/Generated/Services/TodolistGroupsService.swift
+  s_ae792ed0be3006::t_b88058ff229b4f 36
+swift/Sources/Basecamp/Generated/Services/TodolistsService.swift
+  s_ae792ed0be3006::t_4a749ff5151a93 51
+swift/Sources/Basecamp/Generated/Services/TodosService.swift
+  s_ae792ed0be3006::t_fe2d36d4f63d34 80
+swift/Sources/Basecamp/Generated/Services/UploadsService.swift
+  s_ae792ed0be3006::t_b6274eb7b2efad 62
+swift/Sources/Basecamp/Generated/Services/VaultsService.swift
+  s_ae792ed0be3006::t_a7bbe87840e08b 45
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_ae792ed0be3006::t_37d3a152c54d48 179-185,268-274,306-325
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  s_ae792ed0be3006::t_90010b0a58ba6b 163-169,223,266
+typescript/README.md
+  s_ae792ed0be3006::t_56c777bb8f9430 541-553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5900f4797423d791f106402b338bf264a6fc0b23",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
