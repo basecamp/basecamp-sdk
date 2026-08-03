@@ -1,0 +1,63 @@
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_d29aa5a44aa0c0 937-940,942-943
+  s_ae792ed0be3006::t_0c8cc04aa86b57 19
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ErrorRaised.kt
+  s_ae792ed0be3006::t_2609c1e4aa57cb 1-31
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_ae792ed0be3006::t_9e53b67bbaa4c5 399-406,408-409
+conformance/runner/go/error_raised.go
+  s_ae792ed0be3006::t_96ee4ecd9c4dae 1-28
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/ErrorRaisedTest.kt
+  s_ae792ed0be3006::t_4f333fe0fe9475 1-35
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_ae792ed0be3006::t_bf1f5bd142f8fc 267-275,277-278
+  s_ae792ed0be3006::t_524cb82e8111e5 95-99
+conformance/runner/swift/Tests/ConformanceSupportTests/ErrorRaisedTests.swift
+  s_ae792ed0be3006::t_4599520c752341 1-25
+conformance/runner/typescript/error-raised.test.ts
+  s_ae792ed0be3006::t_bc20fbe2e03fe1 1-26
+conformance/runner/swift/Sources/ConformanceSupport/ErrorRaised.swift
+  s_ae792ed0be3006::t_7aa89913efd93e 1-28
+conformance/runner/python/test_error_raised.py
+  s_ae792ed0be3006::t_2cdd07c41ae1aa 1-26
+conformance/runner/go/error_raised_test.go
+  s_ae792ed0be3006::t_2c92226e4dc685 1-45
+conformance/runner/typescript/error-raised.ts
+  s_ae792ed0be3006::t_e5c4334caa1f19 1-30
+conformance/runner/go/main.go
+  s_ae792ed0be3006::t_ffab275f5e5eed 1095-1098,1100-1101
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_ae792ed0be3006::t_5e4b11f18164af 212-217
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_d05a03ea23397c 689-692,694-695
+  s_ae792ed0be3006::t_4d094617411d10 18-45
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_66bd2ac7b3a345 598-601,603-605
+  s_ae792ed0be3006::t_ce5da6c7d1e592 41-64
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_3a30ab22214b96 432
+  s_ae792ed0be3006::t_206fe4e1b37710 351-353
+conformance/runner/ruby/error_raised_test.rb
+  s_ae792ed0be3006::t_a975a85f630b18 1-29
+Makefile
+  s_ae792ed0be3006::t_993386fd23386f 509-512
+  s_ae792ed0be3006::t_aa3798bfef5e69 516,518
+conformance/tests/cards_write.json
+  s_ae792ed0be3006::t_f37b20e13db770 1132,1474,1522-1863
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4d9ef0a08c28a17465f4791c73dcb349d9d06b19",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
