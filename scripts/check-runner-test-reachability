@@ -451,11 +451,20 @@ check_dir_discovery() {
 # Disabling a step is the natural way to "temporarily" park a suite, which makes
 # it the natural way to reopen #572.
 #
-# The bound is deliberate and narrow: only a LITERALLY false condition —
-# `if: false` or `if: ${{ false }}` — disables anything here. Expressions are
-# not evaluated, because this workflow legitimately conditions runner-test steps
-# on the matrix leg (`if: matrix.ruby == '3.3'`), and a check that treated any
-# `if:` as disqualifying would fail the real workflow. Self-test 25 pins that.
+# Two ways a condition disables a step, and no third:
+#
+#   - it is LITERALLY false: `if: false` or `if: ${{ false }}`.
+#   - it pins a matrix value the job's matrix does not offer. This workflow runs
+#     the Ruby suite under `if: matrix.ruby == '3.3'`, so dropping '3.3' from
+#     `matrix.ruby` — an ordinary thing to do when supported runtimes move on —
+#     leaves the step skipped on every leg with the step itself untouched. The
+#     literal value has to appear in the job's own `strategy:` block; a job with
+#     no matrix at all cannot satisfy `matrix.x == 'v'` either.
+#
+# Everything else is left alone. Expressions are not evaluated, `!=` is not
+# reasoned about, and a `matrix.ruby == '3.3'` whose value IS in the matrix
+# still counts — a check that treated any `if:` as disqualifying would fail the
+# real workflow. Self-test 25 pins the quiet side, 23/24/30/31 the loud one.
 #
 # Two passes, jobs then steps, because a job block contains step blocks and one
 # buffer cannot be both. A job-level `if:` is the one that appears before the
@@ -497,6 +506,20 @@ drop_disabled_workflow_blocks() {
         function false_if(s) {
             return s ~ /^[[:space:]]*(-[[:space:]]+)?if:[[:space:]]*(\$\{\{[[:space:]]*)?false([[:space:]]*\}\})?[[:space:]]*$/
         }
+        # The matrix value an `if: matrix.<key> == <value>` pins, or "".
+        function pinned_value(s,   v) {
+            if (s !~ /^[[:space:]]*(-[[:space:]]+)?if:.*matrix\.[A-Za-z0-9_]+[[:space:]]*==/) return ""
+            v = s
+            sub(/^.*==[[:space:]]*/, "", v)
+            sub(/[[:space:]]*\}\}.*$/, "", v)
+            gsub(/^[[:space:]]*['"'"'"]|['"'"'"][[:space:]]*$/, "", v)
+            sub(/[[:space:]]*$/, "", v)
+            return v
+        }
+        function offered(v,   re) {
+            re = "(^|[^A-Za-z0-9_.-])" v "([^A-Za-z0-9_.-]|$)"
+            return strat ~ re
+        }
         function indent(s,   n) { n = match(s, /[^ ]/); return n ? n - 1 : -1 }
         function flush(   i) {
             if (!disabled) for (i = 1; i <= n; i++) print buf[i]
@@ -505,6 +528,16 @@ drop_disabled_workflow_blocks() {
         {
             if ($0 ~ /^[[:space:]]*$/) { if (instep) buf[++n] = $0; else print; next }
             ind = indent($0)
+            # Track the enclosing job so its matrix is known before its steps
+            # are judged. A job key sits at the shallowest indent under `jobs:`.
+            if ($0 ~ /^jobs:[[:space:]]*$/) { injobs = 1; jobind = -1 }
+            else if (injobs) {
+                if (jobind < 0) jobind = ind
+                if (ind <= jobind) { if (instep) flush(); strat = ""; instrat = 0 }
+                if (instrat && ind <= stratind) instrat = 0
+                if (instrat) strat = strat "\n" $0
+                if ($0 ~ /^[[:space:]]*strategy:[[:space:]]*$/) { instrat = 1; stratind = ind }
+            }
             # A dash at or left of the current item opens a new one; a deeper
             # dash is a nested list INSIDE this step (a `with:` value, say) and
             # must not split it, or an `if:` above would stop guarding the
@@ -514,12 +547,14 @@ drop_disabled_workflow_blocks() {
                 instep = 1; dashind = ind; n = 0; disabled = 0
                 buf[++n] = $0
                 if (false_if($0)) disabled = 1
+                else { pv = pinned_value($0); if (pv != "" && !offered(pv)) disabled = 1 }
                 next
             }
             if (instep) {
                 if (ind > dashind) {
                     buf[++n] = $0
                     if (false_if($0)) disabled = 1
+                    else { pv = pinned_value($0); if (pv != "" && !offered(pv)) disabled = 1 }
                     next
                 }
                 flush()
@@ -712,6 +747,44 @@ else
     check_no_enumeration "Makefile conformance-runner-tests* recipe" "$MAKE_RECIPES"
 fi
 
+# Tooth 1, second half: each runner-test target must still RUN its language's
+# test runner.
+# The invocation loop above only establishes that CI calls the target; the
+# target itself is one `@true` away from running nothing, and the workflow
+# would be unchanged. The TypeScript wrapper is already followed for exactly
+# this reason (below), and leaving the other five trusted by name was an
+# asymmetry, not a decision.
+#
+# One expected command per language. When a recipe legitimately changes
+# tooling this table changes with it — that is the point: "what runs the
+# tests" stays written down in one place instead of being inferred.
+runner_target_tool() {
+    case "$1" in
+        go)     echo 'go test' ;;
+        python) echo 'pytest' ;;
+        ruby)   echo 'bundle exec ruby' ;;
+        kotlin) echo ':conformance:test' ;;
+        swift)  echo 'swift test' ;;
+        *)      echo '' ;;
+    esac
+}
+hollow_targets=()
+for target in go python ruby kotlin swift; do
+    target_recipe="$(make_recipes "^conformance-runner-tests-$target:")"
+    target_tool="$(runner_target_tool "$target")"
+    grep -qF -- "$target_tool" <<<"$target_recipe" \
+        || hollow_targets+=("conformance-runner-tests-$target runs no '$target_tool'")
+done
+if [[ "${#hollow_targets[@]}" -gt 0 ]]; then
+    note_fail "runner-test target(s) that no longer run their test runner" \
+        "${hollow_targets[@]}" \
+        "CI invoking the target is only half of it — a recipe emptied to @true" \
+        "leaves the workflow unchanged and the suite unrun (#572)."
+else
+    pass=$((pass + 1))
+    echo "  ok: all five conformance-runner-tests-* recipes run their test runner"
+fi
+
 # --- Tooth 1: the CI workflow ------------------------------------------------
 # CI must reach the runner suites through the make targets, so "what runs" has
 # exactly one definition. Any runner test filename in test.yml is a second
@@ -763,6 +836,7 @@ else
         pass=$((pass + 1))
         echo "  ok: $WORKFLOW invokes all five conformance-runner-tests-* targets"
     fi
+
 
     # TypeScript is the sixth language and the only one with NO
     # conformance-runner-tests-* target: its runner tests and its conformance
@@ -978,6 +1052,15 @@ fi
 # Case 29 the converse: a helper that DECLARES a Minitest::Test → reported.
 #                    Whether it runs depends on a require edge this check cannot
 #                    see, so that direction stays loud.
+# Case 30 a step pinning `matrix.go == '1.25'` against a matrix that offers only
+#                    1.23 and 1.24 → reported missing. Actions skips it on every
+#                    leg; the step is untouched. Dropping a supported runtime is
+#                    the ordinary way this happens.
+# Case 31 the same pin in a job that declares no matrix at all → reported.
+# Case 32 a conformance-runner-tests-go recipe emptied to `@true` → reported.
+#                    CI still invokes the target, the workflow is unchanged, and
+#                    the suite runs nowhere: case 21's hollow wrapper one level
+#                    in.
 # ---------------------------------------------------------------------------
 selftest_tree() {
     # selftest_tree <dir> <ruby-recipe-body>
@@ -1592,12 +1675,17 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
     # Cases 23-25 share a workflow shape; only the Go step's condition varies.
     # <cond-line> is inserted into the Go step, <job-cond> into the job.
     selftest_workflow() {
-        local dir="$1" step_cond="$2" job_cond="$3"
+        local dir="$1" step_cond="$2" job_cond="$3" matrix="${4:-}"
         mkdir -p "$dir/.github/workflows"
         {
             echo 'jobs:'
             echo '  test:'
             [[ -n "$job_cond" ]] && echo "    $job_cond"
+            if [[ -n "$matrix" ]]; then
+                echo '    strategy:'
+                echo '      matrix:'
+                echo "        go: [$matrix]"
+            fi
             echo '    steps:'
             echo '      - name: Go runner tests'
             [[ -n "$step_cond" ]] && echo "        $step_cond"
@@ -1661,7 +1749,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
     # covers one of two paths is a quiet case that proves one of two things.
     selftest_tree "$WORK/wf-matrix" "$RECURSIVE_RECIPE"
     selftest_workflow "$WORK/wf-matrix" "if: matrix.go == '1.25'" \
-        "if: github.event_name == 'push'"
+        "if: github.event_name == 'push'" "'1.24', '1.25'"
     out="$(REPO_ROOT="$WORK/wf-matrix" "$SELF" 2>&1)"
     if grep -q 'does not invoke every per-language runner-test target' <<<"$out"; then
         echo "  FAIL: a matrix-conditioned step was treated as disabled — expressions are"
@@ -1785,6 +1873,77 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         st_fail=1
     else
         echo "  ok: test declared in a Minitest helper reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 30: a step pinning a matrix value the matrix dropped is not invoked"
+    # The natural recurrence: supported runtimes move on, `'3.3'` leaves
+    # matrix.ruby, and the step conditioned on it is skipped on every leg with
+    # the step itself untouched. Nothing in the diff says the suite stopped
+    # running.
+    selftest_tree "$WORK/wf-matrix-gone" "$RECURSIVE_RECIPE"
+    selftest_workflow "$WORK/wf-matrix-gone" "if: matrix.go == '1.25'" '' "'1.23', '1.24'"
+    out="$(REPO_ROOT="$WORK/wf-matrix-gone" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: wf-matrix-gone tree passed (exit 0) — an unsatisfiable matrix pin"
+        echo "        counts as invoked"
+        st_fail=1
+    elif ! grep -q 'conformance-runner-tests-go' <<<"$out"; then
+        echo "  FAIL: a step pinning matrix.go == '1.25' was counted while the matrix"
+        echo "        offers only 1.23 and 1.24"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: unsatisfiable matrix pin reported missing (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 31: a matrix pin in a job with NO matrix is not invoked either"
+    selftest_tree "$WORK/wf-matrix-none" "$RECURSIVE_RECIPE"
+    selftest_workflow "$WORK/wf-matrix-none" "if: matrix.go == '1.25'" '' ''
+    out="$(REPO_ROOT="$WORK/wf-matrix-none" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: wf-matrix-none tree passed (exit 0) — a matrix pin with no matrix"
+        echo "        counts as invoked"
+        st_fail=1
+    elif ! grep -q 'conformance-runner-tests-go' <<<"$out"; then
+        echo "  FAIL: a matrix pin in a job that declares no matrix was counted"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: matrix pin with no matrix reported missing (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 32: a runner-test recipe emptied to @true must be reported"
+    # CI invoking the target is only half of it. Rewriting the Go recipe to
+    # @true leaves the workflow byte-identical and the suite unrun — the same
+    # hollow-wrapper shape as case 21, one level in.
+    selftest_tree "$WORK/mk-hollow" "$RECURSIVE_RECIPE"
+    {
+        echo 'conformance-runner-tests-go:'
+        printf '\t@true\n'
+        echo ''
+        echo 'conformance-runner-tests-ruby:'
+        printf '%s\n' "$RECURSIVE_RECIPE"
+    } > "$WORK/mk-hollow/Makefile"
+    out="$(REPO_ROOT="$WORK/mk-hollow" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: mk-hollow tree passed (exit 0) — recipes are trusted by name"
+        st_fail=1
+    elif ! grep -q "conformance-runner-tests-go runs no 'go test'" <<<"$out"; then
+        echo "  FAIL: a Go recipe emptied to @true was not reported — CI still calls the"
+        echo "        target, and the target runs nothing"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: hollow runner-test recipe reported (exit $st)"
     fi
 
     echo ""
