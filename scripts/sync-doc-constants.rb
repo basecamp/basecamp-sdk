@@ -433,8 +433,11 @@ def check_unmarked_pin(file, prose, revision, allowed)
   end
 
   grant = allowed[file]
+  claims = grant.nil? ? [] : class_a_claims(file, prose, revision)
 
-  if grant.nil?
+  if claims.any?
+    claims
+  elsif grant.nil?
     hits.map { |line_no, hit|
       "#{file}:#{line_no}: `#{hit}` is the current provenance pin, restated outside a " \
         "@bc3-pin span. Either mark the line <!-- @bc3-pin --> (and name the sync date) so " \
@@ -457,6 +460,42 @@ def check_unmarked_pin(file, prose, revision, allowed)
     ["#{file}: spec/doc-constants.json grants #{grant['count']} unmarked citation(s) of the " \
      "current pin, found #{hits.length} — the entry no longer describes the file. Lower the " \
      "count, or drop the entry."]
+  end
+end
+
+# The one thing a grant never covers: a sentence in the class-A grammar.
+#
+# A grant is a statement about KIND — "the citations in this file are as-of
+# facts" — enforced by a count, which is a statement about QUANTITY. Swap one
+# granted citation for "the provenance pin is X" in the same change and the
+# quantity is unchanged, so the count alone lets a current-value claim in under
+# a reason that does not describe it.
+#
+# Binding the grant to occurrence identity would close that completely, and it
+# was considered: line numbers churn on every unrelated edit, and hashing the
+# matched text churns on every rewording of the triage prose. Either way the
+# grant would need bumping constantly, and an inventory that gets bumped
+# reflexively is not an inventory — the same argument that makes markerCounts
+# work only because it moves when the number of claims moves, which is rare and
+# meaningful.
+#
+# So instead of identity, this checks for the one shape that is never an as-of
+# fact. AGENTS.md already names it as the failure to avoid — "writing the second
+# in the grammar of the first" — and a sentence in that grammar wants a marker
+# whether or not its file holds a grant. Deliberately narrow: it is a floor
+# under the grant, not a tense parser, and the residual is recorded in the PR.
+CLASS_A_GRAMMAR_RE = /\b(?:pin|revision)\s+is\b|\bat\s+the\s+pinned\b|\bprovenance\s+pin\s*\(/i
+
+def class_a_claims(file, prose, revision)
+  prose.filter_map do |line_no, line|
+    next if current_pin_citations(line, revision).empty?
+    next unless line.match?(CLASS_A_GRAMMAR_RE)
+
+    "#{file}:#{line_no}: names the current pin in the grammar of a current-value claim " \
+      "(\"the pin is X\", \"at the pinned X\"). spec/doc-constants.json .unmarkedPinCitations " \
+      "grants as-of FACTS, and never this shape — a grant cannot make a class-A sentence " \
+      "permanently true. Mark the line <!-- @bc3-pin --> (and name the sync date), or reword it " \
+      "to say what binds the revision."
   end
 end
 

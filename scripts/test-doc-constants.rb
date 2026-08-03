@@ -280,12 +280,43 @@ out, status = gate lambda { |f|
 }
 expect_pass(failures, "granted pin citation passes", out, status)
 
+# A grant covers as-of FACTS, never the class-A grammar. Swapping one granted
+# citation for "the provenance pin is X" leaves the count untouched, so the
+# count alone would wave a current-value claim through under a reason that does
+# not describe it.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = "# An entry\n\nThe provenance pin is `#{SHORT}`.\n"
+  grant.call(f, "count" => 1, "reason" => "as-of fact about SDK #528")
+}
+expect_fail(failures, "a grant does not cover a class-A claim", out, status,
+            "names the current pin in the grammar of a current-value claim")
+
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = "# An entry\n\nVerified at the pinned #{SHORT} today.\n"
+  grant.call(f, "count" => 1, "reason" => "as-of fact about SDK #528")
+}
+expect_fail(failures, "a grant does not cover \"at the pinned X\"", out, status,
+            "names the current pin in the grammar of a current-value claim")
+
+# The grammar check only fires on lines that actually name today's pin, so
+# an as-of citation in a granted file is still fine.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = "# An entry\n\nThe pin is `dffa7e11b3` in that old note.\n"
+  grant.call(f, "count" => 1, "reason" => "as-of fact about SDK #528")
+  cfg = JSON.parse(f["spec/doc-constants.json"])
+  cfg["unmarkedPinCitations"] = {}
+  f["spec/doc-constants.json"] = JSON.pretty_generate(cfg)
+}
+expect_pass(failures, "class-A grammar about a HISTORICAL sha is not flagged", out, status)
+
 # The grant is bounded. A SECOND unmarked citation appearing in an already-
 # granted file is the hole an unbounded file grant leaves open, and it is
 # widest in exactly the files that need granting.
+# Both sentences are as-of facts, so only the COUNT is under test here — the
+# class-A grammar check below is a separate floor and must not be what fires.
 out, status = gate lambda { |f|
   f["spec/api-gaps/entry.md"] =
-    "# An entry\n\nSDK #528 repinned to `#{SHORT}`.\n\nThe provenance pin is `#{SHORT}`.\n"
+    "# An entry\n\nSDK #528 repinned to `#{SHORT}`.\n\nSDK #530 verified against `#{SHORT}`.\n"
   grant.call(f, "count" => 1, "reason" => "as-of fact about SDK #528")
 }
 expect_fail(failures, "granted file grows an extra citation", out, status,
@@ -296,7 +327,7 @@ expect_fail(failures, "granted file grows an extra citation", out, status,
 # count still read 1 here and the new claim sailed through.
 out, status = gate lambda { |f|
   f["spec/api-gaps/entry.md"] =
-    "# An entry\n\nSDK #528 repinned to `#{SHORT}`, and the provenance pin is `#{SHORT}`.\n"
+    "# An entry\n\nSDK #528 repinned to `#{SHORT}`, and #530 verified against `#{SHORT}`.\n"
   grant.call(f, "count" => 1, "reason" => "as-of fact about SDK #528")
 }
 expect_fail(failures, "two citations on one line both count", out, status,
