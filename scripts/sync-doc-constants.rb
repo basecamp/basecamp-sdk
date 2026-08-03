@@ -124,6 +124,22 @@ MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
 # nobody checked. Fences nested in deeply indented list items would need real
 # container tracking; none exist here, and the gate is not a Markdown parser.
 FENCE_RE    = /\A {0,3}(?<delimiter>`{3,}|~{3,})(?<info>.*)\z/
+
+# A fence opening, or nil when the line only looks like one.
+#
+# A backtick fence's info string may not itself contain a backtick, so
+# "```code``` is inline" is a paragraph holding an inline code span, not an
+# opening. Accepting it opened a fence that the line never closes, and the rest
+# of the file went unscanned — the same fail-open shape once more, so it lands
+# on the same side as everything else: not a fence, therefore prose.
+# Tilde fences have no such restriction; their info string may contain anything.
+def fence_at(line)
+  fence = line.match(FENCE_RE)
+  return nil if fence.nil?
+  return nil if fence[:delimiter].start_with?("`") && fence[:info].include?("`")
+
+  fence
+end
 ISO_DATE_RE = /\b\d{4}-\d{2}-\d{2}\b/
 TICKED_HEX_RE = /`([0-9a-f]{7,40})`/
 BACKTICKED_RE = /`[^`]*`/
@@ -216,7 +232,7 @@ def scan_file(file)
     # the flag still set and every following line silently treated as code —
     # including an unmarked restatement of the pin, which the gate would then
     # never see. Fail-open, and invisible: the check would report success.
-    if (fence = line.match(FENCE_RE))
+    if (fence = fence_at(line))
       delimiter = fence[:delimiter]
 
       if open_fence.nil?
@@ -381,8 +397,15 @@ end
 # provenance pin `X`" to a line that already ends a range at `X` and the line
 # now makes two, while a first-match-only scan would still report one and keep
 # the grant satisfied.
+#
+# Case-insensitive, because 2C0DAFBA and 2c0dafba are the same revision and a
+# lowercase-only scan would wave the first one through. Only this scan is
+# relaxed: a MARKED span is still required to spell the SHA in the lowercase
+# form the writer emits, and an uppercase one there is reported as "states no
+# backticked bc3 SHA" — actionable, and it keeps the writer from having to
+# guess which spelling to preserve.
 def current_pin_citations(line, revision)
-  line.scan(/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/)
+  line.scan(/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/i)
 end
 
 # "lines 103, 107" normally; "line 103 (x2)" when one line carries two claims,

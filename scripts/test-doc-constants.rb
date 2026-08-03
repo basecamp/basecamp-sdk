@@ -433,6 +433,53 @@ out, status = gate lambda { |f|
 }
 expect_pass(failures, "a 3-space-indented fence still fences", out, status)
 
+# A backtick fence's info string may not contain a backtick, so "```code``` is
+# inline" is a paragraph with an inline code span, not an opening. Taking it as
+# one opened a fence the line never closes and the rest of the file went
+# unscanned — so this must FAIL.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    ```code``` is how you write it inline.
+
+    The provenance pin is `#{SHORT}`.
+  MD
+}
+expect_fail(failures, "a backtick in a backtick fence's info string means no fence", out, status,
+            "is the current provenance pin, restated outside a @bc3-pin span")
+
+# A normal info string still opens a fence, so its contents stay code.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    ```ruby
+    The provenance pin is `#{SHORT}`.
+    ```
+  MD
+}
+expect_pass(failures, "a plain info string still opens a fence", out, status)
+
+# Tilde fences carry no such restriction — backticks in their info are fine.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    ~~~`weird`
+    The provenance pin is `#{SHORT}`.
+    ~~~
+  MD
+}
+expect_pass(failures, "backticks in a tilde fence's info are allowed", out, status)
+
+# Uppercase hex is the same revision. A lowercase-only scan waved it through.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = "# An entry\n\nThe provenance pin is #{SHORT.upcase}.\n"
+}
+expect_fail(failures, "an uppercase spelling of the pin still counts", out, status,
+            "is the current provenance pin, restated outside a @bc3-pin span")
+
 # An info string closes nothing — ```ruby inside a ``` block is content.
 out, status = gate lambda { |f|
   f["spec/api-gaps/entry.md"] = <<~MD
