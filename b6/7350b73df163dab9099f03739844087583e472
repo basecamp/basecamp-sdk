@@ -1,0 +1,89 @@
+ruby/lib/basecamp/config.rb
+  s_ae792ed0be3006::t_5d1c6779a5068a 48-77
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt
+  s_ae792ed0be3006::t_3c424c8552cb9a 337-343
+  s_ae792ed0be3006::t_06af7a5d2b34e1 344-358,360-366
+swift/Tests/BasecampTests/BackoffCeilingTests.swift
+  s_ae792ed0be3006::t_315e84c72d76da 1-67
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_ae792ed0be3006::t_5125f0a52208b8 21-25
+  s_ae792ed0be3006::t_17c1cd378836dc 412-414,417-420,443-445
+  s_ae792ed0be3006::t_b85ec41898eebc 385
+  s_ae792ed0be3006::t_8185a89811a643 245-253,256-258,281-286
+  s_ae792ed0be3006::t_dffa8c2636b35c 525-531,546
+  s_ae792ed0be3006::t_4d894a689c4ae9 194
+  s_ae792ed0be3006::t_87f30e374f01d1 40-78
+  s_ae792ed0be3006::t_7b48c01821f9a9 333,532-545,547-549,552-556,558,560,563-564
+  s_ae792ed0be3006::t_cf0c57a4211d00 332,334-335,485-488
+go/pkg/basecamp/http.go
+  s_ae792ed0be3006::t_9d56ce3cd70862 19-27
+ruby/lib/basecamp/http.rb
+  s_ae792ed0be3006::t_053f74cad9d260 669-670,673-674
+typescript/src/retry.ts
+  s_ae792ed0be3006::t_092679436cb88d 229
+  s_ae792ed0be3006::t_17794b5260610d 39-44
+  s_ae792ed0be3006::t_de2e6fadb52703 38,185-207,209-210,212-215,218,225-228
+  s_ae792ed0be3006::t_8b7590d1f4bbd5 230
+typescript/tests/backoff-ceiling.test.ts
+  s_ae792ed0be3006::t_665a783c99bf82 60-65,67-74
+  s_ae792ed0be3006::t_8604856aef62e8 30-38
+  s_ae792ed0be3006::t_3a05d6837f7c75 1,4
+  s_ae792ed0be3006::t_72f5d4187bf7e9 2-3,5-29,39-59,66,75-76
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/RetryTest.kt
+  s_ae792ed0be3006::t_1e6b1c7a28fe9a 39-52,59-64,76-89
+  s_ae792ed0be3006::t_cf072c80bead09 68,71,73,75
+  s_ae792ed0be3006::t_7280d92fcd6a62 53-58,65-67,69-70,72,74
+SPEC.md
+  s_ae792ed0be3006::t_a9c204d942f4d8 1954
+  s_ae792ed0be3006::t_45d102d2125e6a 638,644,648-692
+  s_ae792ed0be3006::t_6a2a8783a48153 575
+  s_9443efc68aafc4::t_552066e10953da 693
+go/pkg/basecamp/client.go
+  s_ae792ed0be3006::t_b5ee5678118c75 942-946,949
+  s_ae792ed0be3006::t_6910d87cbd58f9 909,917-941,947-948
+  s_ae792ed0be3006::t_c9d7083fcdb97b 950-951
+python/tests/test_backoff_ceiling.py
+  s_ae792ed0be3006::t_6a073d58afd50a 1-17,20-26,29,33-34,41-82
+  s_ae792ed0be3006::t_21f5523d30df3b 18-19,27-28,30-32,35-40
+  s_ae792ed0be3006::t_7fa5f61e346bb0 83
+typescript/src/services/base.ts
+  s_ae792ed0be3006::t_d478e011607b5b 212-213,216
+  s_ae792ed0be3006::t_5a3441a6526508 30
+go/pkg/basecamp/backoff_ceiling_test.go
+  s_ae792ed0be3006::t_4d7b42240d9000 1-61
+ruby/test/basecamp/backoff_ceiling_test.rb
+  s_ae792ed0be3006::t_a4b636b0aec99a 1-12,15-21,23-62
+  s_ae792ed0be3006::t_23e2d2ed652ede 13-14,22
+python/src/basecamp/config.py
+  s_ae792ed0be3006::t_976a5fafc1e148 15-40
+swift/Tests/BasecampTests/TransportNetworkErrorRetryTests.swift
+  s_ae792ed0be3006::t_a0aa2ba43926de 1-332
+python/src/basecamp/_async_http.py
+  s_ae792ed0be3006::t_7d9bbcadc06dd6 11,377-378,381
+python/src/basecamp/_http.py
+  s_ae792ed0be3006::t_a78030fc460006 10,375-376,379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b67350b73df163dab9099f03739844087583e472",
+  "prompts": {},
+  "sessions": {
+    "s_9443efc68aafc4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019faa4d-defc-7190-a2f2-964b53a0161d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
