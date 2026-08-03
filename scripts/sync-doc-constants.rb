@@ -317,9 +317,12 @@ end
 # revision's own prefix, so it cannot collide with an ordinary number.
 def cites_current_pin?(line, revision)
   ticked = line.scan(TICKED_HEX_RE).flatten.select { |h| revision.start_with?(h) }
-  return ticked.first unless ticked.empty?
 
-  line.gsub(BACKTICKED_RE, " ")[/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/]
+  if ticked.empty?
+    line.gsub(BACKTICKED_RE, " ")[/\b#{Regexp.escape(revision[0, 7])}[0-9a-f]{0,33}\b/]
+  else
+    ticked.first
+  end
 end
 
 # A grant is bounded by a COUNT, for the same reason markerFloors became
@@ -337,25 +340,23 @@ def check_unmarked_pin(file, prose, revision, allowed)
   end
 
   grant = allowed[file]
+
   if grant.nil?
-    return hits.map do |line_no, hit|
+    hits.map do |line_no, hit|
       "#{file}:#{line_no}: `#{hit}` is the current provenance pin, restated outside a " \
         "@bc3-pin span. Either mark the line <!-- @bc3-pin --> (and name the sync date) so " \
         "`make sync-api-version` keeps it current, or bind the SHA to what makes it permanently " \
         "true — the PR that shipped it, the verification it backs — and record the file in " \
         "spec/doc-constants.json .unmarkedPinCitations with that reason and a count."
     end
-  end
-
-  return [] if hits.length == grant["count"]
-
-  if hits.length > grant["count"]
-    lines = hits.map { |line_no, _| line_no }.join(", ")
+  elsif hits.length == grant["count"]
+    []
+  elsif hits.length > grant["count"]
     ["#{file}: spec/doc-constants.json grants #{grant['count']} unmarked citation(s) of the " \
-     "current pin, found #{hits.length} (lines #{lines}). The grant covers reviewed as-of " \
-     "facts, not whatever the file grows next — read the new one, confirm it binds the SHA to " \
-     "a fixed observation rather than claiming today's pin, and raise the count in the same " \
-     "commit."]
+     "current pin, found #{hits.length} (lines #{hits.map(&:first).join(', ')}). The grant " \
+     "covers reviewed as-of facts, not whatever the file grows next — read the new one, " \
+     "confirm it binds the SHA to a fixed observation rather than claiming today's pin, and " \
+     "raise the count in the same commit."]
   else
     # Fewer than granted: the entry has outlived what it described. Left alone
     # it is a standing permission nobody reviewed, pre-authorising the next
@@ -381,27 +382,22 @@ def validate_citation_grants(allowed)
   valid = {}
 
   allowed.each do |file, grant|
-    unless grant.is_a?(Hash)
-      errors << "spec/doc-constants.json: .unmarkedPinCitations[#{file.inspect}] must be an " \
-                "object with \"count\" and \"reason\", got #{grant.class}"
-      next
-    end
+    where = ".unmarkedPinCitations[#{file.inspect}]"
+    problem =
+      if !grant.is_a?(Hash)
+        "#{where} must be an object with \"count\" and \"reason\", got #{grant.class}"
+      elsif !grant["count"].is_a?(Integer) || !grant["count"].positive?
+        "#{where}.count must be a positive integer, got #{grant['count'].inspect}"
+      elsif !grant["reason"].is_a?(String) || grant["reason"].strip.empty?
+        "#{where} needs a non-empty \"reason\" — the reason is what a reviewer checks the " \
+          "citation against"
+      end
 
-    count = grant["count"]
-    unless count.is_a?(Integer) && count.positive?
-      errors << "spec/doc-constants.json: .unmarkedPinCitations[#{file.inspect}].count must be " \
-                "a positive integer, got #{count.inspect}"
-      next
+    if problem
+      errors << "spec/doc-constants.json: #{problem}"
+    else
+      valid[file] = grant
     end
-
-    reason = grant["reason"]
-    unless reason.is_a?(String) && !reason.strip.empty?
-      errors << "spec/doc-constants.json: .unmarkedPinCitations[#{file.inspect}] needs a " \
-                "non-empty \"reason\" — the reason is what a reviewer checks the citation against"
-      next
-    end
-
-    valid[file] = grant
   end
 
   [errors, valid]
