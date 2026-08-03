@@ -95,7 +95,7 @@ turns that into a diagnosable error.
 `has_many_occurrences?` is `schedule_with_time_zone.first(2).size == 2`
 (`app/models/schedule/entry/occurrences.rb`). A perfectly valid pattern whose
 `recurs_until` leaves room for only one occurrence takes the same discard path.
-This is documented nowhere in `doc/api` and is a modelling-relevant behavior:
+This is documented nowhere in `doc/api` and is a modeling-relevant behavior:
 "valid per the parameter table" is not sufficient for the entry to come back
 recurring.
 
