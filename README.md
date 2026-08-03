@@ -40,16 +40,23 @@ All SDKs are generated from a single [Smithy](https://smithy.io/) specification,
 
 Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
 
-1. Register your integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
-2. Choose the grant that matches how your code runs:
+1. Choose the grant that matches how your code runs:
 
 | Your integration | Grant | Who refreshes the token |
 |---|---|---|
 | already holds a token you obtained elsewhere | **static token** | you do |
 | can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** | a refreshing token provider (built in for Go, Ruby, Python; wire it yourself in TypeScript and Kotlin) |
-| has no browser at all (CLI, daemon, CI job, device) | **device flow** ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)) | a refreshing token provider (built in for Go, Ruby, Python; wire it yourself in TypeScript and Kotlin) |
+| has no browser at all (CLI, daemon, CI job, device) | **device flow** ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)) | Go's `AuthManager`; in Ruby and Python the standalone refresh helper, **not** their built-in token providers (see below); wire it yourself in TypeScript and Kotlin |
 
 The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+
+2. Get the client credentials that grant needs:
+
+- **Authorization code + PKCE** — register your own integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+- **Device flow** — nothing to register. It runs as the pre-registered public `basecamp-cli` client, which sends no secret, against the device endpoint that discovery returns. Launchpad advertises no device endpoint, so a client you register there is not the one this flow uses.
+- **Static token** — nothing to register; you already hold the token.
+
+A device-flow token needs a matching refresh path. BC5 device logins mint multi-account refresh tokens carrying an RFC 8707 `resource` indicator, and a refresh that does not echo it is rejected with `400 invalid_request`. Go's `AuthManager` refreshes against the stored token endpoint and echoes `resource`, so it handles this. Ruby's `OauthTokenProvider` and Python's `OAuthTokenProvider` do **not** — both are pinned to Launchpad's legacy token URL, send no `resource`, and expect a client secret the public client does not have. In those two, refresh a device token with `Basecamp::Oauth.refresh_token` / `basecamp.oauth.exchange.refresh_token`, passing the stored `resource`.
 
 A static token is the shortest path to a first successful call, and it is the one option the SDK will never refresh for you — once it expires, every request fails with `401` until you supply a new one. The Quick Start snippets below all use static tokens for brevity; move to one of the other two grants before you ship. OAuth is available in every SDK except Swift, and the device flow in Go, Ruby, TypeScript, Kotlin, and Python — see the per-language docs linked under [Documentation](#documentation).
 

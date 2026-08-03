@@ -148,8 +148,7 @@ The access token in the snippets below is a **Basecamp API** token. It is unrela
 
 Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
 
-1. Register your integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
-2. Choose the grant that matches how your code runs:
+1. Choose the grant that matches how your code runs:
 
 | Your integration | Grant | Who refreshes the token |
 |---|---|---|
@@ -158,6 +157,12 @@ Every Basecamp API request carries an OAuth 2.0 access token. There is no API ke
 | has no browser at all (CLI, daemon, CI job, device) | **device flow** — [`Device Authorization Flow`](#device-authorization-flow-rfc-8628) | you, calling the SDK's `refreshToken()` from `accessToken { … }` |
 
 The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+
+2. Get the client credentials that grant needs:
+
+- **Authorization code + PKCE** — register your own integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+- **Device flow** — nothing to register. It runs as the pre-registered public `basecamp-cli` client, which sends no secret, against the device endpoint that discovery returns. Launchpad advertises no device endpoint, so a client you register there is not the one this flow uses.
+- **Static token** — nothing to register; you already hold the token.
 
 `accessToken("…")` hands back that exact string forever and never refreshes, so once the token expires every call fails with `401`. The lambda form, `accessToken { fetchFreshToken() }`, is re-invoked per request — that is where a refresh belongs.
 

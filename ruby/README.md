@@ -25,16 +25,21 @@ gem install basecamp-sdk
 
 Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
 
-1. Register your integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
-2. Choose the grant that matches how your code runs:
+1. Choose the grant that matches how your code runs:
 
 | Your integration | Grant | Who refreshes the token |
 |---|---|---|
 | already holds a token you obtained elsewhere | **static token** — [`Token Providers`](#token-providers) | you do |
 | can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`OAuth Flow Helpers`](#oauth-flow-helpers) | `OauthTokenProvider` |
-| has no browser at all (CLI, daemon, CI job, device) | **device flow** — [`Device Authorization Grant`](#device-authorization-grant-rfc-8628) | `OauthTokenProvider` |
+| has no browser at all (CLI, daemon, CI job, device) | **device flow** — [`Device Authorization Grant`](#device-authorization-grant-rfc-8628) | `Basecamp::Oauth.refresh_token`, echoing the token's `resource` — **not** `OauthTokenProvider` |
 
 The one-line rule: **a redirect URI you control → authorization code; no browser → device flow; a token already in hand → static token.**
+
+2. Get the client credentials that grant needs:
+
+- **Authorization code + PKCE** — register your own integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+- **Device flow** — nothing to register. It runs as the pre-registered public `basecamp-cli` client, which sends no secret, against the device endpoint that discovery returns. Launchpad advertises no device endpoint, so a client you register there is not the one this flow uses.
+- **Static token** — nothing to register; you already hold the token.
 
 `StaticTokenProvider` hands back the string you gave it and nothing more — it never refreshes, so once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to an OAuth provider before you ship.
 
