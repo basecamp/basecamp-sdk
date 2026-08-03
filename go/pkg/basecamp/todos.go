@@ -193,8 +193,10 @@ type TodoListOptions struct {
 	// If 0, uses DefaultTodoLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -424,7 +426,8 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &TodoListResult{Todos: todos, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(todos), opts.Limit, resp.HTTPResponse)
+		return &TodoListResult{Todos: todos[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit

@@ -189,8 +189,10 @@ type CardListOptions struct {
 	// If 0 (default), returns all cards. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -365,7 +367,8 @@ func (s *CardsService) List(ctx context.Context, columnID int64, opts *CardListO
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &CardListResult{Cards: cards, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(cards), opts.Limit, resp.HTTPResponse)
+		return &CardListResult{Cards: cards[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for cards), >0 = specific limit

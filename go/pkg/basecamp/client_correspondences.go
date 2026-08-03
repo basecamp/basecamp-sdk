@@ -132,7 +132,8 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, bucketID int64,
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &ClientCorrespondenceListResult{Correspondences: correspondences, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(correspondences), opts.Limit, resp.HTTPResponse)
+		return &ClientCorrespondenceListResult{Correspondences: correspondences[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (no limit)

@@ -16,8 +16,10 @@ type QuestionListOptions struct {
 	// If 0 (default), returns all questions. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -27,8 +29,10 @@ type AnswerListOptions struct {
 	// If 0 (default), returns all answers. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -38,8 +42,10 @@ type QuestionReminderListOptions struct {
 	// If 0 (default), returns all reminders. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -327,7 +333,8 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &QuestionListResult{Questions: questions, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(questions), opts.Limit, resp.HTTPResponse)
+		return &QuestionListResult{Questions: questions[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for questions), >0 = specific limit
@@ -650,7 +657,8 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(answers), opts.Limit, resp.HTTPResponse)
+		return &AnswerListResult{Answers: answers[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for answers), >0 = specific limit
@@ -732,7 +740,8 @@ func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, p
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(answers), opts.Limit, resp.HTTPResponse)
+		return &AnswerListResult{Answers: answers[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	limit := 0
@@ -805,7 +814,8 @@ func (s *CheckinsService) ListAnswerers(ctx context.Context, questionID int64, o
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(people), opts.Limit, resp.HTTPResponse)
+		return &PeopleListResult{People: people[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	limit := 0
@@ -1026,7 +1036,8 @@ func (s *CheckinsService) ListQuestionReminders(ctx context.Context, opts *Quest
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &QuestionReminderListResult{Reminders: reminders, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(reminders), opts.Limit, resp.HTTPResponse)
+		return &QuestionReminderListResult{Reminders: reminders[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	limit := 0

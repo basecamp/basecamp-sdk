@@ -134,7 +134,8 @@ func (s *TemplatesService) List(ctx context.Context, opts *TemplateListOptions) 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &TemplateListResult{Templates: templates, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(templates), opts.Limit, resp.HTTPResponse)
+		return &TemplateListResult{Templates: templates[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (no limit)

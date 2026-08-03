@@ -31,8 +31,10 @@ type BoostListOptions struct {
 	// If 0, uses DefaultBoostLimit (50). Use -1 for unlimited.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -108,7 +110,8 @@ func (s *BoostsService) ListRecording(ctx context.Context, recordingID int64, op
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(boosts), opts.Limit, resp.HTTPResponse)
+		return &BoostListResult{Boosts: boosts[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = default (50), -1 = unlimited, >0 = specific limit
@@ -198,7 +201,8 @@ func (s *BoostsService) ListEvent(ctx context.Context, recordingID, eventID int6
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &BoostListResult{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(boosts), opts.Limit, resp.HTTPResponse)
+		return &BoostListResult{Boosts: boosts[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = default (50), -1 = unlimited, >0 = specific limit

@@ -295,5 +295,35 @@
       {"type": "responseMeta", "path": "truncated", "expected": false}
     ],
     "tags": ["pagination", "page-selection"]
+  },
+  {
+    "name": "A pinned page still honours the item cap",
+    "description": "page and the item cap compose: pinning page 3 with maxItems 1 costs one request and truncates, because the cap discarded an item. The page carries NO Link rel=next, so truncated can only be true by way of the cap — which is what distinguishes an SDK that applies the cap to a pinned page from one that returns the page whole (SPEC section 8, #566)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "configOverrides": {
+      "page": 3,
+      "maxItems": 1
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "X-Total-Count": "6"
+        },
+        "body": [
+          {"id": 5, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 5", "url": "https://3.basecampapi.com/999/projects/5.json", "app_url": "https://3.basecamp.com/999/projects/5"},
+          {"id": 6, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 6", "url": "https://3.basecampapi.com/999/projects/6.json", "app_url": "https://3.basecamp.com/999/projects/6"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "totalCount", "expected": 6},
+      {"type": "responseMeta", "path": "truncated", "expected": true}
+    ],
+    "tags": ["pagination", "page-selection", "max-items"]
   }
 ]

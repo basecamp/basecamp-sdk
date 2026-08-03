@@ -868,16 +868,25 @@ offset.** In every SDK:
 
 Absent, `0`, and negative all mean the same thing: auto-paginate the whole
 collection per the algorithm above. `page` and `max_items` compose — the cap
-still trims the selected page — but `max_items` is not itself a page selector:
-it caps *items*, so it collapses to a single request only when the cap does not
-exceed that page's item count, which requires the caller to know the server's
-page size.
+still trims the selected page, and dropping items from it is itself truncation
+— but `max_items` is not itself a page selector: it caps *items*, so it
+collapses to a single request only when the cap does not exceed that page's
+item count, which requires the caller to know the server's page size.
+
+One qualification for Go, whose `max_items` analog is a per-operation `Limit`
+with a **nonzero default** on several services (`DefaultTodoLimit` and
+friends): only an explicitly-set positive `Limit` trims a pinned page. The
+default must not, because a caller who asked for page 3 asked for page 3, not
+for its first 100 items. The other five SDKs have no such default — an absent
+`max_items` is uncapped — so the rule reads identically in all six: whatever
+cap the caller set applies to the page they pinned.
 
 ```
 FUNCTION paginate(initial_response, max_pages, max_items?, page?) → ListResult<T>
   0. If page is set and page > 0:
      a. items = parse first_page_items from initial_response body.
-     b. dropped = max_items set AND items.length > max_items.
+     b. dropped = max_items set (explicitly, not a per-operation default)
+        AND items.length > max_items.
      c. truncated = dropped OR parseNextLink(initial_response.headers["Link"]) ≠ null.
      d. → ListResult(dropped ? items[0:max_items] : items,
                      meta: {total_count, truncated}).

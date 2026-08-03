@@ -16,8 +16,10 @@ type VaultListOptions struct {
 	// If 0 (default), returns all vaults. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -35,8 +37,10 @@ type DocumentListOptions struct {
 	// If 0 (default), returns all documents. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -54,8 +58,10 @@ type UploadListOptions struct {
 	// If 0 (default), returns all uploads. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -333,7 +339,8 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &VaultListResult{Vaults: vaults, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(vaults), opts.Limit, resp.HTTPResponse)
+		return &VaultListResult{Vaults: vaults[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for vaults), >0 = specific limit
@@ -565,7 +572,8 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &DocumentListResult{Documents: documents, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(documents), opts.Limit, resp.HTTPResponse)
+		return &DocumentListResult{Documents: documents[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for documents), >0 = specific limit
@@ -768,7 +776,8 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &UploadListResult{Uploads: uploads, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(uploads), opts.Limit, resp.HTTPResponse)
+		return &UploadListResult{Uploads: uploads[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for uploads), >0 = specific limit
@@ -984,7 +993,8 @@ func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64, opts 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &UploadVersionListResult{Versions: versions, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(versions), opts.Limit, resp.HTTPResponse)
+		return &UploadVersionListResult{Versions: versions[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for versions)

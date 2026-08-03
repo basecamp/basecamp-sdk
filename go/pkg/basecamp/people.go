@@ -81,8 +81,10 @@ type PeopleListOptions struct {
 	// If 0 (default), returns all people.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	// Ignored by endpoints that are not paginated server-side (Pingable).
 	Page int
 }
@@ -158,7 +160,8 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(people), opts.Limit, resp.HTTPResponse)
+		return &PeopleListResult{People: people[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for people)
@@ -364,7 +367,8 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(people), opts.Limit, resp.HTTPResponse)
+		return &PeopleListResult{People: people[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for people)
@@ -442,7 +446,8 @@ func (s *PeopleService) Pingable(ctx context.Context, opts *PeopleListOptions) (
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(people), opts.Limit, resp.HTTPResponse)
+		return &PeopleListResult{People: people[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for people)

@@ -569,8 +569,13 @@ auto-pagination:
 result, err := account.Projects().List(ctx, &basecamp.ProjectListOptions{Page: 3})
 ```
 
+A positive `Limit` still trims that page, and dropping items from it counts as
+truncation. The per-operation *default* limits (100 todos, and so on) do not
+apply to a pinned page — asking for page 3 asks for page 3, not its first 100
+items.
+
 `Meta.Truncated` still answers "was there more": on a pinned page it is true when
-the response carried a `rel="next"` Link this SDK deliberately did not follow.
+a `rel="next"` Link went deliberately unfollowed, or when `Limit` discarded items.
 
 A handful of endpoints are not paginated server-side (`Webhooks().List()`,
 `MessageTypes().List()`, and the other cases each options struct calls out); they

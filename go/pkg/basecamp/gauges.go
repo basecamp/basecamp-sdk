@@ -103,8 +103,10 @@ type GaugeListOptions struct {
 	// If 0 (default), returns all gauges.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -122,8 +124,10 @@ type GaugeNeedleListOptions struct {
 	// If 0 (default), returns all needles.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -200,7 +204,8 @@ func (s *GaugesService) List(ctx context.Context, opts *GaugeListOptions) (resul
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 	if opts != nil && opts.Page > 0 {
-		return &GaugeListResult{Gauges: gauges, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(gauges), opts.Limit, resp.HTTPResponse)
+		return &GaugeListResult{Gauges: gauges[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	limit := 0
@@ -270,7 +275,8 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64, opts *
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 	if opts != nil && opts.Page > 0 {
-		return &GaugeNeedleListResult{Needles: needles, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(needles), opts.Limit, resp.HTTPResponse)
+		return &GaugeNeedleListResult{Needles: needles[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	limit := 0

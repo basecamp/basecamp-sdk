@@ -269,3 +269,91 @@ func TestGaugesService_ListNeedles_PinnedFinalPageIsNotTruncated(t *testing.T) {
 		t.Error("expected Truncated=false: the pinned page carried no next link")
 	}
 }
+
+// Limit composes with Page rather than being ignored by it: the pinned page is
+// trimmed to an explicitly-requested Limit, and dropping items is itself
+// truncation. This is the Go half of SPEC §8's "max_items still trims the
+// pinned page" — the other five SDKs slice their single-page branch the same
+// way.
+func TestGaugesService_List_PageComposesWithLimit(t *testing.T) {
+	var requestCount int
+	svc := testGaugesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		// No Link header: the pinned page is the last one, so the only reason
+		// this result can be truncated is the Limit dropping an item.
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id": 1, "title": "One"}, {"id": 2, "title": "Two"}, {"id": 3, "title": "Three"}]`))
+	})
+
+	result, err := svc.List(context.Background(), &GaugeListOptions{Page: 2, Limit: 2})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if requestCount != 1 {
+		t.Errorf("expected 1 HTTP request, got %d", requestCount)
+	}
+	if len(result.Gauges) != 2 {
+		t.Fatalf("expected Limit to trim the pinned page to 2 gauges, got %d", len(result.Gauges))
+	}
+	if result.Gauges[1].ID != 2 {
+		t.Errorf("expected the first 2 gauges of the page, got id %d in slot 1", result.Gauges[1].ID)
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated=true: Limit discarded an item from the pinned page")
+	}
+}
+
+func TestGaugesService_ListNeedles_PageComposesWithLimit(t *testing.T) {
+	svc := testGaugesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id": 11}, {"id": 12}, {"id": 13}]`))
+	})
+
+	result, err := svc.ListNeedles(context.Background(), 7, &GaugeNeedleListOptions{Page: 2, Limit: 1})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Needles) != 1 {
+		t.Fatalf("expected Limit to trim the pinned page to 1 needle, got %d", len(result.Needles))
+	}
+	if !result.Meta.Truncated {
+		t.Error("expected Truncated=true: Limit discarded items from the pinned page")
+	}
+}
+
+// A page-selected result must NOT pick up a per-operation default limit: the
+// caller asked for a page, not for the first DefaultTodoLimit items of it.
+// Todos is the service with a nonzero default (100), so it is where this can
+// regress.
+func TestTodosService_List_PageIgnoresDefaultLimit(t *testing.T) {
+	const pageSize = 150
+	items := make([]string, pageSize)
+	for i := range items {
+		items[i] = fmt.Sprintf(`{"id": %d, "content": "t%d"}`, i+1, i+1)
+	}
+	body := "[" + strings.Join(items, ",") + "]"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Todos()
+
+	result, err := svc.List(context.Background(), 2, &TodoListOptions{Page: 3})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Todos) != pageSize {
+		t.Errorf("expected the whole pinned page (%d todos), got %d — DefaultTodoLimit leaked into page selection", pageSize, len(result.Todos))
+	}
+	if result.Meta.Truncated {
+		t.Error("expected Truncated=false: nothing was dropped and the page carried no next link")
+	}
+}

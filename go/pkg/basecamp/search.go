@@ -264,7 +264,8 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &SearchListResult{Results: searchResults, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
+		keep, truncated := pageCap(len(searchResults), opts.Limit, resp.HTTPResponse)
+		return &SearchListResult{Results: searchResults[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (default for search)
