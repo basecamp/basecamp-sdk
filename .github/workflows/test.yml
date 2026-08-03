@@ -152,6 +152,13 @@ jobs:
       - name: SDK routes match the routes bc3 serves
         run: make bc3-route-parity
 
+      # The run above only exercises the VALID allowlist, which proves nothing
+      # about `modeled_as` — the one disposition that asserts something is DONE.
+      # This drives adversarial substitutions through the same gate, including
+      # the interior-segment case an earlier subset rule accepted.
+      - name: bc3 route-parity gate self-test (adversarial allowlists)
+        run: make test-bc3-route-parity
+
       # Static (bash+grep), so it runs here rather than in a language job: it
       # reads the Makefile, this workflow, and the runner trees. Catches the
       # #572 shape — a runner test file no target's discovery reaches.

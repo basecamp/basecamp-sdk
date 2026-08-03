@@ -24,6 +24,12 @@
 #
 # Refresh the vendored table with:  make bc3-routes   (requires BC3_REPO_PATH)
 #
+# BC3_ROUTE_ALLOWLIST overrides the allowlist path, so
+# scripts/test-check-bc3-route-parity.rb can drive adversarial entries through
+# this gate against the REAL route tables. openapi.json and spec/bc3-routes.json
+# are deliberately NOT overridable — a self-test against invented routes proves
+# nothing about the routes we ship.
+#
 # Usage: ./check-bc3-route-parity
 
 require 'json'
@@ -109,7 +115,7 @@ die(failures) unless failures.empty?
 
 # ------------------------------------------------------------------- allowlist
 
-allow_path = File.join(ROOT, 'spec', 'bc3-route-allowlist.yml')
+allow_path = ENV['BC3_ROUTE_ALLOWLIST'] || File.join(ROOT, 'spec', 'bc3-route-allowlist.yml')
 allow = File.exist?(allow_path) ? (YAML.safe_load(File.read(allow_path)) || {}) : {}
 sdk_allow = allow['sdk_routes_absent_from_bc3_docs'] || []
 bc3_allow = allow['bc3_routes_not_modeled'] || []
@@ -174,6 +180,36 @@ VALID_DISPOSITIONS = %w[tracking_issue registry out_of_scope modeled_as].freeze
 #      recordings, timesheet}. But that drops `recordings/:id` from the MIDDLE,
 #      which changes which timesheet you get. Dropping a leading scope is a
 #      spelling; dropping an interior resource is a different endpoint.
+#
+# What this gate CANNOT check, and a reviewer therefore must.
+#
+# Every check above is about SHAPE: the operation exists, the verb matches, the
+# path differs, bc3 documents it, and it is this route with a leading scope
+# removed. None of them establishes the thing `modeled_as` actually claims —
+# that the two spellings reach the SAME controller action. spec/bc3-routes.json
+# is extracted from bc3's doc/api/sections/*.md and carries only `method`,
+# `path`, `raw`, `sections` and `evidence`. There is no controller and no action
+# in it, so no amount of cleverness here derives that fact; two routes can
+# satisfy every check above and still be served by different controllers.
+#
+# So a fifth requirement is enforced as EVIDENCE rather than as a check: every
+# `modeled_as` entry must carry a non-empty `routes_rb:`. Before approving a new
+# one, verify by hand and record it there:
+#
+#   1. Both draws in bc3's config/routes.rb name the SAME controller action —
+#      cite both line numbers, and the enclosing `resources` blocks, since a
+#      draw's meaning is its nesting.
+#   2. A bc3 API test covers the pair, ideally asserting the two spellings
+#      return identical data — cite it by name and line.
+#   3. Rule out the NEAR MISS, and say which one you rejected. The routes that
+#      trip this are neighbours: config/routes.rb:740 draws
+#      /projects/:id/timesheet five lines from :745's
+#      /projects/:id/recordings/:id/timesheet, and they are different endpoints.
+#      Requirement 1 is what catches that — a near miss fails it, because the
+#      neighbouring draw reaches the same controller by a different route.
+#
+# Writing that down is the point. An unstated requirement is one nobody applies,
+# and `modeled_as` is the only disposition here that asserts something is DONE.
 by_id = sdk.group_by { |o| o[:id] }
 # Named to avoid ending in `key`: gitleaks' generic-api-key rule reads
 # `<name>key = <token>` as a credential assignment and fails the Secret Scanning job.
@@ -186,6 +222,14 @@ def flat_segments(path)
 end
 
 validate_modeled_as = lambda do |e, where|
+  # The unmechanizable half, demanded as a citation. Not `next`-guarded: a
+  # missing citation and a bogus operationId are separate defects, and reporting
+  # only the first hides the second behind a second run.
+  failures << "#{where}: `modeled_as` needs `routes_rb:` naming BOTH draws and stating they name the " \
+              'same controller action. spec/bc3-routes.json carries no controller data, so this gate ' \
+              'cannot check it — the citation is the only record that anyone did.' \
+    unless e['routes_rb'].is_a?(String) && !e['routes_rb'].strip.empty?
+
   opid = e['modeled_as']
   unless opid.is_a?(String) && !opid.strip.empty?
     failures << "#{where}: `modeled_as` must name an operationId."
@@ -213,8 +257,9 @@ validate_modeled_as = lambda do |e, where|
   elsif flat_segments(match[:path]).last != flat_segments(e['path']).last
     failures << "#{where}: `modeled_as: #{opid}` is #{N.normalize(match[:path])}, which ends in " \
                 "#{flat_segments(match[:path]).last.inspect} where this route ends in " \
-                "#{flat_segments(e['path']).last.inspect} — a collection and a member are not " \
-                'the same route.'
+                "#{flat_segments(e['path']).last.inspect} — the terminal segment has to match. " \
+                'A collection cannot stand in for a member, and a different noun is a different ' \
+                'resource whether or not both are collections.'
   else
     sub = flat_segments(match[:path])
     full = flat_segments(e['path'])
