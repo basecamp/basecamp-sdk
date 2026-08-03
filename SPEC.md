@@ -2415,13 +2415,22 @@ Two dispatch clarifications, pinned:
 - Ping parsing accepts both `{"type":"ping"}` and `{"type":"ping","message":<epoch>}`.
   Unknown frame types — parseable JSON whose `type` the connector doesn't recognize —
   update liveness and are otherwise ignored.
-- **An unparseable or oversized inbound frame is a peer protocol violation, dispatched as
-  a socket failure** `[conformance]`: a frame that fails to parse as JSON, or exceeds
-  `EVENT_FEED_MAX_FRAME_BYTES`, triggers full teardown through the current state's
-  socket-failure edge (9/15/21/25 → Backoff; the reconnect cycle recovers), with
-  `Observer.disconnected` carrying an unparseable-frame indication. The size check binds
-  inside the transport (the `max_frame_bytes` dial parameter — an over-limit message is
-  rejected during the read, never materialized); the parse check is the connector's. Never terminal — a
+- **An invalid inbound frame is a peer protocol violation, dispatched as a socket
+  failure** `[conformance]` — three shapes, one disposition: a frame that fails to parse
+  as JSON; a frame exceeding `EVENT_FEED_MAX_FRAME_BYTES`; and a correlated `message`
+  frame whose payload fails to decode as an Event (a missing required key, a wrong-typed
+  id). Each triggers full teardown through the current state's socket-failure edge
+  (9/15/21/25 → Backoff; the reconnect cycle recovers — the fresh walk repairs anything
+  the discarded stream carried), with `Observer.disconnected` carrying an invalid-frame
+  indication; never an untyped decoder error escaping, never a silent skip. Never
+  terminal — a garbled frame is transport-level corruption, unlike the server's own
+  `invalid_event_stream_command` verdict. The size check binds inside the transport (the
+  `max_frame_bytes` dial parameter — an over-limit message is rejected during the read,
+  never materialized); the parse and decode checks are the connector's. **In Draining,
+  this class defers like any other recoverable socket failure** (the deferred-consumption
+  rule): the already-admitted retained set is intact and unimplicated, so the drain
+  completes and transition 25 handles the failure — only the protocol-fatal disconnect,
+  where the server itself declares the session dead, terminates mid-drain. Never terminal — a
   garbled frame is transport-level corruption, unlike the server's own
   `invalid_event_stream_command` verdict — and never silently ignored: continuing to read
   a stream that has stopped parsing invites silent divergence.
@@ -2431,8 +2440,14 @@ Two dispatch clarifications, pinned:
   one). **The reset happens pump-side, at frame receipt** — not at state-machine dequeue —
   so frame-vs-deadline ordering is well-defined at the transport boundary regardless of
   queue depth or consumer latency: a fired staleness deadline observed on return from a
-  slow delivery is authoritative (no frame arrived within the window), and frames still
+  slow delivery is authoritative, and frames still
   queued at that moment were received before the firing and already reset the timer then.
+  **Staleness is suspended while the pump is blocked on a full hand-off queue**: a full
+  queue proves the peer was sending faster than the connector consumed — the opposite of
+  a dead peer — and a pump that isn't reading cannot observe resets, so absence of a
+  reset is not evidence. The timer re-arms fresh when the pump resumes reading;
+  "authoritative" above therefore holds exactly when the pump was reading throughout the
+  window.
 - **The frame pump's hand-off queue is bounded and never drops.** The pump reads frames
   from the transport and hands them to the state machine over a queue of small fixed depth
   (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
