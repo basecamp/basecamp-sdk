@@ -1701,8 +1701,23 @@ structure Todolist {
   /// Color of the list or group, one of BC3's `Colored` enum values
   /// (`white red orange yellow green blue aqua purple gray pink brown`). For a
   /// top-level list a hill-chart dot color takes precedence over the recording's
-  /// own. Optional because the underlying column is nullable — the key is
-  /// emitted on every projection but its value is JSON `null` when unset.
+  /// own.
+  ///
+  /// **Nullable.** `recordings.color` is a nullable integer column, so the value is
+  /// JSON `null` whenever it is unset — which, for a group, is the ordinary case.
+  /// Smithy has no native nullable scalar, so the `["string", "null"]` union is
+  /// applied to the OpenAPI projection through `jsonAdd` in `spec/smithy-build.json`,
+  /// the same treatment `SearchResult.content` and `SearchType.key` get. Without it
+  /// the published schema and the generated static types would be non-nullable and
+  /// every uncolored list and group would violate them.
+  ///
+  /// Modelled optional rather than `@required` even though
+  /// `_todolist.json.jbuilder` calls `json.color` in both branches of its
+  /// `todolist_group?` conditional and so always emits the key. Optional is the
+  /// weaker, safer claim: it accepts both an explicit `null` and an absent key,
+  /// where `@required` would additionally oblige every captured body and inline
+  /// test stub in the typed SDKs to carry a field that is cosmetic. Tightening it
+  /// is a clean follow-up; publishing a non-nullable type was the actual defect.
   color: String
 
   /// In-app (non-API) URL for this recording's comments, alongside the API-host

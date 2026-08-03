@@ -320,7 +320,7 @@ describe("TodolistsService", () => {
       );
       expect(error).toBeInstanceOf(BasecampError);
       expect((error as BasecampError).code).toBe("api_error");
-      expect((error as BasecampError).message).toMatch(/todolist name is (missing|empty)/);
+      expect((error as BasecampError).message).toMatch(/todolist name is (missing|null|empty)/);
       expect(requests).toEqual(["GET"]);
     });
 
@@ -572,26 +572,104 @@ describe("TodolistsService", () => {
       expect((error as BasecampError).retryable).toBe(false);
     });
 
+    // `description` is @required and never null since #544 — BC3's
+    // `format_api_content` funnels a blank rich text through `call_pipeline`,
+    // which returns `""` — so an absent key and an explicit `null` are both
+    // malformed, exactly as for `name`. This is the data-loss case these
+    // composites exist to remove: the old read collapsed either to `""`, and
+    // the full-replace PUT then wrote that `""` over the record's real
+    // description on a call that only renamed it. Refuse before the PUT.
     it.each([
       ["absent", undefined],
       ["null", null],
-    ])("treats an %s description as genuinely empty", async (_label, value) => {
+    ])("update refuses an %s description before writing", async (_label, value) => {
       const id = 42;
-      let putBody: Record<string, unknown> = {};
-      const body = describedTodolist(id);
-      if (value === undefined) delete (body as Record<string, unknown>).description;
-      else (body as Record<string, unknown>).description = value;
+      const requests: string[] = [];
+      const body = describedTodolist(id) as Record<string, unknown>;
+      if (value === undefined) delete body.description;
+      else body.description = value;
 
       server.use(
-        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(body)),
-        http.put(`${BASE_URL}/todolists/${id}`, async ({ request }) => {
-          putBody = (await request.json()) as Record<string, unknown>;
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
           return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed list" }));
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(
+        /todolist description is (missing from|null in) the response/
+      );
+      expect((error as BasecampError).retryable).toBe(false);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The same through the edit closure, which is the path that hands the value
+    // to caller code: the read must fail before the closure ever sees a
+    // description the server never sent.
+    it.each([
+      ["absent", undefined],
+      ["null", null],
+    ])("edit refuses an %s description before the callback runs", async (_label, value) => {
+      const id = 42;
+      const requests: string[] = [];
+      let called = false;
+      const body = describedTodolist(id) as Record<string, unknown>;
+      if (value === undefined) delete body.description;
+      else body.description = value;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          called = true;
+          t.name = `${t.name} (revised)`;
+        })
+      );
+      expect((error as BasecampError).code).toBe("api_error");
+      expect(called).toBe(false);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The case those refusals must not swallow, and by far the common one: a
+    // description-less list carries a present-and-empty description. `""` is a
+    // real value, so it round-trips and reaches the PUT — refusing it would
+    // break every list without a description.
+    it("preserves a present-and-empty description through the round trip", async () => {
+      const id = 42;
+      const requests: string[] = [];
+      let putBody: Record<string, unknown> = {};
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id, { description: "" }));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, async ({ request }) => {
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(describedTodolist(id, { description: "" }));
         })
       );
 
       await client.todolists.update(id, { name: "Renamed list" });
 
+      expect(requests).toEqual(["GET", "PUT"]);
       expect(putBody).toEqual({ name: "Renamed list", description: "" });
     });
   });

@@ -97,12 +97,12 @@ def _fields_from_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
     """
     body = _require_mapping(todolist)
     return {
-        "name": _writable_string(body, "name", required=True),
+        "name": _writable_string(body, "name", non_empty=True),
         "description": _writable_string(body, "description"),
     }
 
 
-def _writable_string(body: dict[str, Any], key: str, *, required: bool = False) -> str:
+def _writable_string(body: dict[str, Any], key: str, *, non_empty: bool = False) -> str:
     """Read a writable string field, refusing to coerce a malformed one.
 
     **Classification is by origin, not by value.** The same empty string is a
@@ -113,12 +113,21 @@ def _writable_string(body: dict[str, Any], key: str, *, required: bool = False) 
     empty ``name`` the caller supplied raises :class:`UsageError` — same value,
     different origin, different fault.
 
-    A ``required`` field (one the schema marks non-nullable, as ``name`` is)
-    must arrive as a non-empty string: absent, ``None`` and ``""`` are all
-    malformed, because BC3 presence-validates ``name`` so no real todolist has
-    one. An optional field (``description``) treats absent and ``None`` as
-    genuinely empty — there is nothing to preserve and ``""`` is what the server
-    already holds.
+    **Presence and non-emptiness are two different claims, and only one of them
+    is per-field.** Since #544 ``name`` and ``description`` are both
+    ``@required`` and never null on this shape — ``format_api_content`` funnels
+    a blank rich text through ``call_pipeline``, which returns ``""`` rather
+    than nil — so for *both* an absent key and an explicit ``None`` are
+    malformed and are refused here, before any PUT. Reading either as ``""``
+    would put that ``""`` in the full-replace body and erase the record's real
+    value on a call that never mentioned the field.
+
+    ``non_empty`` is the *other* claim and holds for ``name`` alone: BC3
+    presence-validates the attribute, so no real todolist carries an empty one
+    and ``""`` off the wire is malformed too. ``description`` has no such
+    validation — a description-less list carries ``""``, which is the ordinary
+    case — so an empty description is a real value, preserved and resent
+    verbatim.
 
     A wrong type is malformed either way and must NOT be coerced: a plain
     ``or ""`` turns every falsey non-string (``False``, ``0``, ``[]``, ``{}``)
@@ -135,17 +144,25 @@ def _writable_string(body: dict[str, Any], key: str, *, required: bool = False) 
     the shipped Todos and Cards composites; that is tracked separately in #576,
     and giving Python a decoder at all in #578.
     """
-    value = body.get(key)
+    if key not in body:
+        raise ApiError(
+            f"Todolist field {key!r} is missing from the response",
+            hint=(
+                f"{key} is required on every todolist, so a body without one is a malformed "
+                "response, not an empty value to preserve. The merge-safe update/edit PUT the "
+                "full writable state back, so reading it as empty would erase the real value."
+            ),
+        )
+    value = body[key]
     if value is None:
-        if required:
-            raise ApiError(
-                f"Todolist field {key!r} is missing from the response",
-                hint=(
-                    f"{key} is required and presence-validated server-side, so a todolist "
-                    "without one is a malformed response, not an empty value to preserve."
-                ),
-            )
-        return ""
+        raise ApiError(
+            f"Todolist field {key!r} is null in the response",
+            hint=(
+                f"{key} is required and never null, so a null one is a malformed response, not "
+                "an empty value to preserve. The merge-safe update/edit PUT the full writable "
+                "state back, so reading it as empty would erase the real value."
+            ),
+        )
     if not isinstance(value, str):
         raise ApiError(
             _truncate_message(f"Todolist field {key!r} is not a string: {_describe(value)}"),
@@ -155,7 +172,7 @@ def _writable_string(body: dict[str, Any], key: str, *, required: bool = False) 
                 "record deliberately."
             ),
         )
-    if required and not value:
+    if non_empty and not value:
         raise ApiError(
             f"Todolist field {key!r} is empty in the response",
             hint=(

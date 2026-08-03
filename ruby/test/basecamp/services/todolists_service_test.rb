@@ -314,15 +314,61 @@ class TodolistsServiceTest < Minitest::Test
     assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
   end
 
-  def test_update_treats_absent_and_nil_description_as_empty
-    [ full_todolist.except("description"), full_todolist.merge("description" => nil) ].each do |body|
+  # +description+ is @required and never null since #544 — BC3's
+  # format_api_content funnels a blank rich text through call_pipeline, which
+  # returns "" rather than nil — so a missing key and an explicit null are both
+  # malformed, exactly as for +name+. This is the data-loss case the composite
+  # exists to remove: the old read collapsed either to "", and the full-replace
+  # PUT then wrote that "" over the record's real description on a call that
+  # only renamed it. Refuse before the PUT.
+  {
+    "missing" => [ :except, "is missing from the response" ],
+    "nil" => [ :nil, "is null in the response" ]
+  }.each do |label, (mutation, expected)|
+    define_method("test_update_refuses_a_#{label}_description_before_writing") do
+      body = mutation == :except ? full_todolist.except("description") : full_todolist.merge("description" => nil)
       captured = stub_todolist_get_and_put(todolist: body)
 
-      @account.todolists.update(id: 2, name: "Renamed list")
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, name: "Renamed list")
+      end
 
-      assert_equal({ "name" => "Renamed list", "description" => "" }, captured[:bodies].first)
-      WebMock.reset!
+      assert_equal %(Todolist field "description" #{expected}), error.message
+      assert_requested :get, "#{BASE_URL}/12345/todolists/2", times: 1
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+      assert_empty captured[:bodies]
     end
+
+    # The same via +edit+, the path that hands the value to caller code: the
+    # read must fail before the block ever sees a description BC3 never sent.
+    define_method("test_edit_refuses_a_#{label}_description_before_the_block") do
+      body = mutation == :except ? full_todolist.except("description") : full_todolist.merge("description" => nil)
+      stub_todolist_get_and_put(todolist: body)
+      yielded = false
+
+      assert_raises(Basecamp::ApiError) do
+        @account.todolists.edit(id: 2) do |list|
+          yielded = true
+          list.name = "Renamed list"
+        end
+      end
+
+      assert_not yielded, "the edit block must not run on a malformed response"
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  # The case those refusals must not swallow, and by far the common one: a
+  # description-less list carries a present-and-empty description. "" is a real
+  # value, so it round-trips and reaches the PUT — refusing it would break every
+  # list without a description.
+  def test_update_preserves_a_present_and_empty_description
+    captured = stub_todolist_get_and_put(todolist: full_todolist.merge("description" => ""))
+
+    @account.todolists.update(id: 2, name: "Renamed list")
+
+    assert_requested :put, "#{BASE_URL}/12345/todolists/2", times: 1
+    assert_equal({ "name" => "Renamed list", "description" => "" }, captured[:bodies].first)
   end
 
   def test_update_name_only_preserves_the_description
@@ -499,6 +545,12 @@ class TodolistsServiceTest < Minitest::Test
   # backwards. Classification is by ORIGIN — the name came off the wire, so this
   # is an ApiError. The caller-supplied empty name stays a UsageError, covered by
   # test_caller_supplied_empty_name_is_a_usage_error.
+  #
+  # The name here is an explicit JSON null rather than an absent key, and the
+  # two are now reported apart: both are malformed, but "the server sent the key
+  # and put null in it" and "the server never sent the key" are different server
+  # faults, so they get different messages. The absent-key wording is asserted
+  # by test_refuses_an_unmodelled_wrapper_* above.
   def test_update_of_a_nameless_todolist_reports_a_malformed_response_without_put
     captured = stub_todolist_get_and_put(todolist: full_todolist.merge("name" => nil))
 
@@ -506,8 +558,8 @@ class TodolistsServiceTest < Minitest::Test
       @account.todolists.update(id: 2, description: "<p>Revised</p>")
     end
 
-    assert_equal 'Todolist field "name" is missing from the response', error.message
-    assert_includes error.hint, "presence-validated server-side"
+    assert_equal 'Todolist field "name" is null in the response', error.message
+    assert_includes error.hint, "not an empty value to preserve"
     assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
     assert_empty captured[:bodies]
   end

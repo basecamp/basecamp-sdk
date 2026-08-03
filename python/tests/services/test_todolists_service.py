@@ -436,16 +436,74 @@ class TestMalformedWritableFields:
         assert put_route.call_count == 0
 
     @pytest.mark.parametrize(
-        "body",
-        [{"id": 2, "name": "Hardware"}, {"id": 2, "name": "Hardware", "description": None}],
+        ("label", "body"),
+        [
+            ("absent", {k: v for k, v in _todolist_full().items() if k != "description"}),
+            ("null", _todolist_full(description=None)),
+        ],
     )
     @respx.mock
-    def test_absent_and_null_description_are_genuinely_empty(self, body):
+    def test_absent_and_null_description_are_malformed_responses(self, label, body):
+        """`description` is @required and never null, so both are malformed.
+
+        BC3's ``format_api_content`` funnels a blank rich text through
+        ``call_pipeline``, which returns ``""`` rather than nil, so a
+        description-less list still carries the key. Reading an absent or null
+        one as ``""`` was the data-loss case this composite exists to remove:
+        the full-replace PUT then wrote that ``""`` over the record's real
+        description on a call that only renamed it. Refuse before the PUT.
+        """
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed list")
+
+        expected = "is missing from the response" if label == "absent" else "is null in the response"
+        assert f"'description' {expected}" in str(excinfo.value)
+        assert get_route.call_count == 1
+        assert put_route.call_count == 0, "an absent or null description must never reach the PUT"
+
+    @pytest.mark.parametrize(
+        ("label", "body"),
+        [
+            ("absent", {k: v for k, v in _todolist_full().items() if k != "description"}),
+            ("null", _todolist_full(description=None)),
+        ],
+    )
+    @respx.mock
+    def test_edit_refuses_an_absent_or_null_description_before_the_block(self, label, body):
+        """The same via ``edit``, the path that hands the value to caller code."""
         respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
         put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
 
+        entered = False
+        with pytest.raises(ApiError), _sync_todolists().edit(id=2) as tl:
+            entered = True
+            tl.name = "Renamed list"
+
+        assert not entered, "the edit block must not run on a malformed response"
+        assert put_route.call_count == 0, "an absent or null description must never reach the PUT"
+
+    @respx.mock
+    def test_present_and_empty_description_round_trips(self):
+        """The case the refusals must not swallow, and by far the common one.
+
+        A description-less list carries a present-and-empty description. ``""``
+        is a real value, so it round-trips and reaches the PUT; refusing it
+        would break every list without a description.
+        """
+        get_route = respx.get(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+        put_route = respx.put(f"{BASE}/todolists/2").mock(
+            return_value=httpx.Response(200, json=_todolist_full(description=""))
+        )
+
         _sync_todolists().update(id=2, name="Renamed list")
 
+        assert get_route.call_count == 1
+        assert put_route.call_count == 1
         assert _put_body(put_route) == {"name": "Renamed list", "description": ""}
 
 

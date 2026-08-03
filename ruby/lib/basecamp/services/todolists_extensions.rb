@@ -95,7 +95,7 @@ module Basecamp
       def fields_from_todolist(todolist)
         body = require_hash(todolist)
         TodolistFields.new(
-          name: writable_string(body, "name", required: true),
+          name: writable_string(body, "name", non_empty: true),
           description: writable_string(body, "description")
         )
       end
@@ -155,20 +155,22 @@ module Basecamp
       # +name+ the caller supplied raises UsageError — same value, different
       # origin, different fault.
       #
-      # A +required+ field (one the schema marks non-nullable, as +name+ is)
-      # must arrive as a non-empty String: missing, +nil+ and <tt>""</tt> are all
-      # malformed, because BC3 presence-validates +name+ so no real todolist has
-      # one. An optional field (+description+) treats missing and +nil+ as
-      # genuinely empty — there is nothing to preserve and <tt>""</tt> is what
-      # the server already holds.
+      # *Presence and non-emptiness are two different claims, and only one of
+      # them is per-field.* Since #544 +name+ and +description+ are both
+      # +@required+ and never null on this shape — +format_api_content+ funnels
+      # a blank rich text through +call_pipeline+, which returns <tt>""</tt>
+      # rather than nil — so for BOTH a missing key and an explicit +nil+ are
+      # malformed and are refused here, before any PUT. Reading either as
+      # <tt>""</tt> would put that <tt>""</tt> in the full-replace body and
+      # erase the record's real value on a call that never mentioned the field.
       #
-      # +description+ stays optional HERE even though #544 marked it +@required+
-      # on the model. The two words mean different things: the schema says the
-      # field is always RENDERED (a group carries it too — that is the bug #544
-      # fixed), while this flag says the value is presence-VALIDATED and so can
-      # never legitimately be blank. BC3 permits a blank description — the
-      # canonical fixture ships one — so raising on <tt>""</tt> would refuse a
-      # real record.
+      # +non_empty+ is the OTHER claim and holds for +name+ alone: BC3
+      # presence-validates the attribute, so no real todolist carries an empty
+      # one and <tt>""</tt> off the wire is malformed too. +description+ has no
+      # such validation — a description-less list carries <tt>""</tt>, which is
+      # the ordinary case, and the canonical group fixture ships one — so an
+      # empty description is a real value, preserved and resent verbatim.
+      # Conflating the two flags would refuse every description-less record.
       #
       # A wrong type is malformed either way and must NOT be coerced: a plain
       # <tt>|| ""</tt> turns +false+ into <tt>""</tt> and passes arrays, hashes
@@ -181,12 +183,13 @@ module Basecamp
       # returns <tt>http_get(...).json</tt> verbatim. The same shape is live in
       # the shipped Todos composite; tracked in #576, with the generated
       # validating layer that would retire this guard tracked in #578.
-      def writable_string(body, key, required: false)
+      def writable_string(body, key, non_empty: false)
+        raise_missing_field(key) unless body.key?(key)
+
         value = body[key]
 
         if value.nil?
-          raise_missing_field(key) if required
-          ""
+          raise_null_field(key)
         elsif !value.is_a?(String)
           raise ApiError.new(
             Security.truncate("Todolist field #{key.inspect} is not a string: #{describe(value)}"),
@@ -194,7 +197,7 @@ module Basecamp
               "empty value would overwrite the current one. Use replace to write the record " \
               "deliberately."
           )
-        elsif required && value.empty?
+        elsif non_empty && value.empty?
           raise ApiError.new(
             "Todolist field #{key.inspect} is empty in the response",
             hint: "#{key} is presence-validated server-side, so an empty one is a malformed " \
@@ -208,8 +211,18 @@ module Basecamp
       def raise_missing_field(key)
         raise ApiError.new(
           "Todolist field #{key.inspect} is missing from the response",
-          hint: "#{key} is required and presence-validated server-side, so a todolist without " \
-            "one is a malformed response, not an empty value to preserve."
+          hint: "#{key} is required on every todolist, so a body without one is a malformed " \
+            "response, not an empty value to preserve. The merge-safe update/edit PUT the full " \
+            "writable state back, so reading it as empty would erase the real value."
+        )
+      end
+
+      def raise_null_field(key)
+        raise ApiError.new(
+          "Todolist field #{key.inspect} is null in the response",
+          hint: "#{key} is required and never null, so a null one is a malformed response, not " \
+            "an empty value to preserve. The merge-safe update/edit PUT the full writable state " \
+            "back, so reading it as empty would erase the real value."
         )
       end
 

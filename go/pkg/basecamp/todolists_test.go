@@ -344,6 +344,24 @@ func patchTodolistFixture(t *testing.T, base []byte, patch map[string]any) []byt
 	return b
 }
 
+// dropTodolistFixtureKey returns the fixture with the given top-level key
+// removed entirely. patchTodolistFixture cannot express this: a nil value
+// marshals to JSON null, which is a different malformed body — present key,
+// null value — and the two have to be told apart.
+func dropTodolistFixtureKey(t *testing.T, base []byte, key string) []byte {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal(base, &m); err != nil {
+		t.Fatalf("failed to unmarshal fixture: %v", err)
+	}
+	delete(m, key)
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("failed to marshal fixture: %v", err)
+	}
+	return b
+}
+
 // capturedTodolistRequest records one request seen by testTodolistsCaptureServer.
 type capturedTodolistRequest struct {
 	method string
@@ -769,7 +787,10 @@ func TestReplaceTodolistRequest_NameAlwaysMarshals(t *testing.T) {
 // Classifying by origin is what keeps this distinct from the caller passing an
 // empty name, which fullBody still rejects as usage.
 func TestFieldsFromTodolist_EmptyNameIsAMalformedResponse(t *testing.T) {
-	_, err := fieldsFromTodolist(&Todolist{ID: 2, Name: "", Description: "<p>Ship it</p>"})
+	_, err := fieldsFromTodolist(
+		&Todolist{ID: 2, Name: "", Description: "<p>Ship it</p>"},
+		[]byte(`{"id":2,"name":"","description":"<p>Ship it</p>"}`),
+	)
 	if err == nil {
 		t.Fatal("expected an empty name from the wire to be rejected, got nil")
 	}
@@ -785,11 +806,14 @@ func TestFieldsFromTodolist_EmptyNameIsAMalformedResponse(t *testing.T) {
 // fieldsFromTodolist lifts exactly the writable set — {name, description} —
 // off a fetched todolist.
 func TestFieldsFromTodolist(t *testing.T) {
-	f, err := fieldsFromTodolist(&Todolist{
-		Name:        "Hardware",
-		Description: "<p>Ship it</p>",
-		Title:       "Hardware",
-	})
+	f, err := fieldsFromTodolist(
+		&Todolist{
+			Name:        "Hardware",
+			Description: "<p>Ship it</p>",
+			Title:       "Hardware",
+		},
+		[]byte(`{"name":"Hardware","description":"<p>Ship it</p>","title":"Hardware"}`),
+	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -809,6 +833,150 @@ func TestFieldsFromTodolist(t *testing.T) {
 	}
 	if body["name"] != "Hardware" || body["description"] != "<p>Ship it</p>" {
 		t.Errorf("unexpected body: %v", body)
+	}
+}
+
+// --- description presence: absent and null are malformed, "" is a value ---
+//
+// The merge-safe composites PUT the full writable state back, so whatever they
+// read for description is written. Since #544 the key is @required and never
+// null — format_api_content funnels a blank rich text through call_pipeline,
+// which returns "" — so a response missing it, or sending null, is malformed
+// and must be refused BEFORE the PUT. Reading it as "" would erase the record's
+// real description on a call that only renamed it.
+//
+// Go cannot see this in the decoded struct: generated.Todolist.Description is a
+// plain string, so absent, null and a real "" all land as "". requireDescription
+// reads the raw GET payload, which getWithBody threads through, and these cases
+// go through the public API so they pin the behaviour a caller actually gets.
+
+func assertMalformedDescription(t *testing.T, err error, reqs *[]capturedTodolistRequest) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected a malformed-response error, got nil")
+	}
+	var typed *Error
+	if !errors.As(err, &typed) {
+		t.Fatalf("expected a structured *Error, got %T: %v", err, err)
+	}
+	if typed.Code != CodeAPI {
+		t.Errorf("expected code %q (the value came off the wire), got %q", CodeAPI, typed.Code)
+	}
+	if !strings.Contains(typed.Message, "description") {
+		t.Errorf("the error must name the offending field, got %q", typed.Message)
+	}
+	if typed.Hint == "" {
+		t.Error("expected a hint pointing at Replace")
+	}
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatal("a malformed description must never reach the full-replace PUT")
+		}
+	}
+}
+
+func TestTodolistsService_UpdateRefusesAnAbsentDescription(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	getBody := dropTodolistFixtureKey(t, fixture, "description")
+	svc, reqs := testTodolistsCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479519, &UpdateTodolistRequest{Name: "Renamed list"})
+
+	assertMalformedDescription(t, err, reqs)
+}
+
+func TestTodolistsService_UpdateRefusesANullDescription(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	getBody := patchTodolistFixture(t, fixture, map[string]any{"description": nil})
+	svc, reqs := testTodolistsCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479519, &UpdateTodolistRequest{Name: "Renamed list"})
+
+	assertMalformedDescription(t, err, reqs)
+}
+
+// The same via Edit, which is the path that hands the value to a closure: the
+// read must fail before the closure ever sees a description that was never sent.
+func TestTodolistsService_EditRefusesAnAbsentDescription(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	getBody := dropTodolistFixtureKey(t, fixture, "description")
+	svc, reqs := testTodolistsCaptureServer(t, getBody, fixture, nil)
+
+	called := false
+	_, err := svc.Edit(context.Background(), 1069479519, func(f *TodolistFields) error {
+		called = true
+		return nil
+	})
+
+	assertMalformedDescription(t, err, reqs)
+	if called {
+		t.Error("the edit closure must not run on a malformed response")
+	}
+}
+
+func TestTodolistsService_EditRefusesANullDescription(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	getBody := patchTodolistFixture(t, fixture, map[string]any{"description": nil})
+	svc, reqs := testTodolistsCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479519, func(f *TodolistFields) error { return nil })
+
+	assertMalformedDescription(t, err, reqs)
+}
+
+// The case the refusals above must not swallow, and by far the common one: a
+// description-less list carries a present-and-empty description. It is a real
+// value, so it round-trips through the composite and reaches the PUT as "".
+func TestTodolistsService_UpdatePreservesAnEmptyDescription(t *testing.T) {
+	fixture := loadTodolistsFixture(t, "get.json")
+	getBody := patchTodolistFixture(t, fixture, map[string]any{"description": ""})
+	svc, reqs := testTodolistsCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479519, &UpdateTodolistRequest{Name: "Renamed list"})
+	if err != nil {
+		t.Fatalf("a present-and-empty description is a real value, not a malformed one: %v", err)
+	}
+
+	if len(*reqs) != 2 || (*reqs)[1].method != "PUT" {
+		t.Fatalf("expected GET then PUT, got %+v", *reqs)
+	}
+	body := (*reqs)[1].body
+	desc, ok := body["description"]
+	if !ok {
+		t.Fatalf("expected description present-and-empty in the PUT body, got it omitted; body=%v", body)
+	}
+	if desc != "" {
+		t.Errorf("expected the empty description carried over, got %v (%T)", desc, desc)
+	}
+	if body["name"] != "Renamed list" {
+		t.Errorf("expected name 'Renamed list', got %v", body["name"])
+	}
+}
+
+// The guard read directly, so the three states are pinned side by side rather
+// than only through whichever composite happens to call it.
+func TestRequireDescription(t *testing.T) {
+	cases := []struct {
+		name    string
+		body    string
+		wantErr bool
+	}{
+		{"absent", `{"id":2,"name":"Hardware"}`, true},
+		{"null", `{"id":2,"name":"Hardware","description":null}`, true},
+		{"empty string", `{"id":2,"name":"Hardware","description":""}`, false},
+		{"present", `{"id":2,"name":"Hardware","description":"<p>Ship it</p>"}`, false},
+		{"not an object", `["nope"]`, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := requireDescription([]byte(tc.body), 2)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected %s to be refused, got nil", tc.name)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected %s to pass, got %v", tc.name, err)
+			}
+		})
 	}
 }
 

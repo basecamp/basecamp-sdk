@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -163,7 +164,12 @@ type TodolistFields struct {
 // a todolist that comes back without one is malformed — not an empty value to
 // preserve, and emphatically not something to write back over the real name on
 // a full-replace endpoint.
-func fieldsFromTodolist(tl *Todolist) (*TodolistFields, error) {
+//
+// body is the raw GET payload the decoded todolist came from, and it is a
+// parameter rather than an afterthought so that no caller can lift writable
+// state without it: the description guard below is unimplementable from the
+// struct alone. See requireDescription.
+func fieldsFromTodolist(tl *Todolist, body []byte) (*TodolistFields, error) {
 	if tl.Name == "" {
 		// Structured, and statusless by SPEC §6: the transport succeeded, so no
 		// HTTP status describes this, and re-requesting cannot repair a
@@ -175,10 +181,56 @@ func fieldsFromTodolist(tl *Todolist) (*TodolistFields, error) {
 			Hint:    "The name is presence-validated server-side, so this is a malformed response, not a value to preserve. Use Replace to write the record deliberately.",
 		}
 	}
+	if err := requireDescription(body, tl.ID); err != nil {
+		return nil, err
+	}
 	return &TodolistFields{
 		Name:        tl.Name,
 		Description: tl.Description,
 	}, nil
+}
+
+// requireDescription refuses a response whose description key is absent or
+// null, before the merge-safe write reads a "" that was never there.
+//
+// Presence and non-emptiness are two different claims. Since #544 description
+// is @required and never null — BC3's format_api_content funnels a blank rich
+// text through call_pipeline, which returns "" rather than nil — so an absent
+// key and an explicit null are both malformed, while a present "" is the
+// ordinary state of a description-less list and must round-trip untouched.
+//
+// Go cannot make that distinction from the decoded value. generated.Todolist
+// carries Description as a plain string, so absent, null and a real "" all
+// unmarshal to "" and are indistinguishable at that layer — Swift's Codable
+// and kotlinx.serialization reject the missing member during decoding, and
+// encoding/json does not. The distinction survives only in the raw response
+// bytes, which the GET already has in hand (GetTodolistOrGroupResponse.Body)
+// and threads through fieldsFromTodolist. This second decode is therefore not
+// a redundant one: it reads presence, which the first decode discarded.
+//
+// The failure is api_error and statusless for the same reason the empty-name
+// one is: the transport succeeded and nothing the caller passed is at fault.
+func requireDescription(body []byte, id int64) error {
+	malformed := func(what string) error {
+		return &Error{
+			Code:    CodeAPI,
+			Message: fmt.Sprintf("todolist %d came back %s", id, what),
+			Hint:    "The description is required and never null on the wire, so this is a malformed response, not an empty value to preserve. Update and Edit PUT the full writable state back, so reading it as empty would erase the real description. Use Replace to write the record deliberately.",
+		}
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(body, &fields); err != nil {
+		return malformed("with a body that is not a JSON object")
+	}
+	raw, ok := fields["description"]
+	if !ok {
+		return malformed("without a description")
+	}
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return malformed("with a null description")
+	}
+	return nil
 }
 
 // fullBody serializes the complete writable state for the replace transport:
@@ -300,7 +352,20 @@ func (s *TodolistsService) List(ctx context.Context, todosetID int64, opts *Todo
 }
 
 // Get returns a todolist by ID.
-func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *Todolist, err error) {
+func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (*Todolist, error) {
+	todolist, _, err := s.getWithBody(ctx, todolistID)
+	return todolist, err
+}
+
+// getWithBody is Get, plus the raw response payload the todolist decoded from.
+//
+// Update and Edit need both: the decoded struct for the values and the bytes
+// for what the struct cannot express. Since #544 generated.Todolist declares
+// Description as a plain string, so an absent key, an explicit null and a real
+// "" all arrive as "" — see requireDescription. Get itself drops the bytes,
+// keeping the public read surface unchanged; nothing else about the request
+// differs, so hooks observe one Todolists.Get either way.
+func (s *TodolistsService) getWithBody(ctx context.Context, todolistID int64) (result *Todolist, body []byte, err error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "Get",
 		ResourceType: "todolist", IsMutation: false,
@@ -317,22 +382,23 @@ func (s *TodolistsService) Get(ctx context.Context, todolistID int64) (result *T
 
 	resp, err := s.client.parent.gen.GetTodolistOrGroupWithResponse(ctx, s.client.accountID, todolistID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if resp.JSON200 == nil {
 		err = fmt.Errorf("unexpected empty response")
-		return nil, err
+		return nil, nil, err
 	}
 
 	// One flat shape (#544): GetTodolistOrGroupResponseContent is generated.Todolist
-	// itself, so the generated parser's decode is the decode — no hand-rolled
-	// second pass over resp.Body. A group answers here too and lands in the same
-	// struct.
+	// itself, so the generated parser's decode is the decode — the bytes returned
+	// alongside it are not a second decode of the values but the only remaining
+	// record of which keys the server actually sent. A group answers here too and
+	// lands in the same struct.
 	todolist := todolistFromGenerated(*resp.JSON200)
-	return &todolist, nil
+	return &todolist, resp.Body, nil
 }
 
 // Create creates a new todolist in a todoset.
@@ -398,12 +464,12 @@ func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *Up
 		return nil, ErrUsage("update request is required")
 	}
 
-	current, err := s.Get(ctx, todolistID)
+	current, body, err := s.getWithBody(ctx, todolistID)
 	if err != nil {
 		return nil, err
 	}
 
-	fields, err := fieldsFromTodolist(current)
+	fields, err := fieldsFromTodolist(current, body)
 	if err != nil {
 		return nil, err
 	}
@@ -436,12 +502,12 @@ func (s *TodolistsService) Edit(ctx context.Context, todolistID int64, fn func(*
 		return nil, ErrUsage("edit function is required")
 	}
 
-	current, err := s.Get(ctx, todolistID)
+	current, body, err := s.getWithBody(ctx, todolistID)
 	if err != nil {
 		return nil, err
 	}
 
-	fields, err := fieldsFromTodolist(current)
+	fields, err := fieldsFromTodolist(current, body)
 	if err != nil {
 		return nil, err
 	}

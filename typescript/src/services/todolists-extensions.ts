@@ -102,16 +102,20 @@ function malformedResponse(message: string, hint: string) {
  * why an empty `name` here is an `api_error` while an empty `name` the caller
  * supplied is a `UsageError` — same value, different origin, different fault.
  *
- * `required` fields (those the schema marks non-nullable, as `name` is) must
- * arrive as a non-empty string: absent, `null`, and `""` are all malformed,
- * because BC3 presence-validates `name` so no real todolist has one.
+ * **Presence and non-emptiness are two different claims, and only one of them
+ * is per-field.** Since #544 `name` and `description` are both `@required` and
+ * never null on this shape — BC3's `format_api_content` funnels a blank rich
+ * text through `call_pipeline`, which returns `""` rather than nil — so for
+ * *both* fields an absent key and an explicit `null` are malformed, and both
+ * are refused here before any PUT. Reading either as `""` would put that `""`
+ * in the full-replace body and erase the record's real value on a call that
+ * never mentioned the field.
  *
- * `description` stays on the tolerant side: absent and `null` are read as
- * genuinely empty. Since #544 the spec marks it required-and-never-null for a
- * group as much as for a list — `format_api_content` funnels a blank rich text
- * through `call_pipeline`, which returns `""` — so a body without one is in fact
- * malformed. Reading it as empty is deliberately unchanged here: `""` is what
- * such a record holds, and a full-replace PUT has no third state to express.
+ * `nonEmpty` is the *other* claim and holds for `name` alone: BC3
+ * presence-validates the attribute, so no real todolist carries an empty one
+ * and `""` off the wire is malformed too. `description` has no such validation
+ * — a description-less list carries `""`, which is the ordinary case — so an
+ * empty description is a real value, preserved and resent verbatim.
  *
  * Anything of the wrong type is malformed either way: `?? ""` only coalesces
  * null and undefined, so a number, boolean, array or object would ride through
@@ -127,18 +131,24 @@ function malformedResponse(message: string, hint: string) {
 function writableString(
   todolist: Todolist,
   key: "name" | "description",
-  required = false
+  opts: { nonEmpty?: boolean } = {}
 ): string {
   const value: unknown = todolist[key];
-  if (value === undefined || value === null) {
-    if (required) {
-      throw malformedResponse(
-        `todolist ${key} is missing from the response`,
-        `${key} is required and presence-validated server-side, so a todolist without one is a ` +
-          "malformed response, not an empty value to preserve."
-      );
-    }
-    return "";
+  if (!(key in todolist) || value === undefined) {
+    throw malformedResponse(
+      `todolist ${key} is missing from the response`,
+      `${key} is required on every todolist, so a body without one is a malformed response, ` +
+        "not an empty value to preserve. The merge-safe update/edit PUT the full writable " +
+        "state back, so reading it as empty would erase the record's real value."
+    );
+  }
+  if (value === null) {
+    throw malformedResponse(
+      `todolist ${key} is null in the response`,
+      `${key} is required and never null, so a null one is a malformed response, not an empty ` +
+        "value to preserve. The merge-safe update/edit PUT the full writable state back, so " +
+        "reading it as empty would erase the record's real value."
+    );
   }
   if (typeof value !== "string") {
     throw malformedResponse(
@@ -147,7 +157,7 @@ function writableString(
         "overwrite the current one. Use replace() to write the record deliberately."
     );
   }
-  if (required && value === "") {
+  if (opts.nonEmpty && value === "") {
     throw malformedResponse(
       `todolist ${key} is empty in the response`,
       `${key} is presence-validated server-side, so an empty one is a malformed response. ` +
@@ -270,7 +280,7 @@ export class TodolistsService extends GeneratedTodolistsService {
   private async currentFields(id: number): Promise<TodolistFields> {
     const current = requireTodolistObject(await this.get(id), "GetTodolistOrGroup");
     return {
-      name: writableString(current, "name", true),
+      name: writableString(current, "name", { nonEmpty: true }),
       description: writableString(current, "description"),
     };
   }
