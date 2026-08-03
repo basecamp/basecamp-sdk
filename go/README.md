@@ -54,6 +54,9 @@ Every API path is scoped to an account — `https://3.basecampapi.com/{accountId
 ```go
 info, err := client.Authorization().GetInfo(context.Background(), &basecamp.GetInfoOptions{
     FilterProduct: "bc3", // Basecamp; the same response also carries "hey" and other products
+    // Endpoint defaults to Launchpad, which is right for a Launchpad-issued
+    // token. For a device-flow token, set it to the discovered issuer:
+    //   Endpoint: issuer + "/authorization.json",
 })
 if err != nil {
     log.Fatal(err)

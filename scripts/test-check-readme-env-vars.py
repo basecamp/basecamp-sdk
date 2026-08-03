@@ -86,6 +86,7 @@ TS_SDK = {"TypeScript": gate.SDKS["TypeScript"]}
 PY_RB = {"Python": gate.SDKS["Python"], "Ruby": gate.SDKS["Ruby"]}
 SW_SDK = {"Swift": gate.SDKS["Swift"]}
 KT_SDK = {"Kotlin": gate.SDKS["Kotlin"]}
+GO_SDK = {"Go": gate.SDKS["Go"]}
 
 TABLE = "| Variable | Description |\n|---|---|\n| `{var}` | thing |\n"
 
@@ -339,6 +340,46 @@ def main() -> int:
         check("a quoted brace does not truncate the interpolation",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_SECRET"])
+
+        # A delimiter inside a comment is not a delimiter, same as inside a
+        # literal — otherwise the hole is truncated and the read behind it hides.
+        root = tmp / "comment-in-hole"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_SECRET\n",
+            "typescript/src/c.ts":
+                'const x = `${foo(/* } */ process.env.BASECAMP_SECRET)}`;\n',
+        })
+        check("a commented brace does not truncate the interpolation",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_SECRET"])
+
+        # Interpolation is per language *and* per quote: TypeScript interpolates
+        # in backticks only, so this is ordinary text and not a read.
+        root = tmp / "ts-dq-not-interp"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts": 'const example = "${process.env.BASECAMP_FAKE}";\n',
+        })
+        check("typescript double quotes do not interpolate",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
+        # ...while the identical bytes in Kotlin are code.
+        root = tmp / "kotlin-dq-interp"
+        build(root, {
+            "kotlin/README.md": "mentions BASECAMP_REAL\n",
+            "kotlin/sdk/src/c.kt": 'val v = "${System.getenv("BASECAMP_REAL")}"\n',
+        })
+        check("kotlin double quotes do interpolate",
+              run_gate(root, KT_SDK, no_env_sdks=("Kotlin",)),
+              ["noenv:Kotlin:BASECAMP_REAL"])
+
+        # Go interpolates nowhere, so neither spelling is a read.
+        root = tmp / "go-no-interp"
+        build(root, {
+            "go/README.md": "no tables\n",
+            "go/pkg/c.go": 'v := "${os.Getenv(\\"BASECAMP_FAKE\\")}"\n',
+        })
+        check("go strings never interpolate", run_gate(root, GO_SDK), [])
 
         root = tmp / "swift-nested-comment"
         build(root, {

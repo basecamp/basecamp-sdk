@@ -44,8 +44,7 @@ actually do with comments, string literals, and interpolation — including the
 parts that differ, which is why `LANG_FLAGS` exists: Swift and Kotlin nest block
 comments and Go and TypeScript do not; a triple-quoted literal is documentation
 in Python and an ordinary string in Kotlin; only Swift has raw strings. It does
-*not* model
-preprocessor conditionals, macros, or heredocs, and it assumes source is
+*not* model preprocessor conditionals, macros, or heredocs, and it assumes source is
 syntactically valid — a file with an unterminated literal is consumed to the
 end rather than resynchronised.
 
@@ -149,15 +148,42 @@ SDKS = {
 #   nested:  Swift and Kotlin allow `/* /* */ */`; Go and TypeScript end the
 #            comment at the first `*/`, so nesting them there would swallow code.
 #   raw:     Swift `#"..."#`, whose interpolation is `\#(...)`.
+#   interp:  which quote character interpolates, and how. Keyed by the opening
+#            quote, because it differs *within* a language: TypeScript
+#            interpolates in backticks only, so `"${x}"` is plain text, and Go
+#            interpolates nowhere at all.
+#   fstring: Python only, where the `f` prefix decides whether braces are code.
 LANG_FLAGS = {
-    "Go": {"triple": False, "nested": False, "raw": False},
-    "Ruby": {"triple": True, "nested": False, "raw": False},
-    "Python": {"triple": True, "nested": False, "raw": False},
-    "TypeScript": {"triple": False, "nested": False, "raw": False},
-    "Swift": {"triple": True, "nested": True, "raw": True},
-    "Kotlin": {"triple": True, "nested": True, "raw": False},
+    "Go": {
+        "triple": False, "nested": False, "raw": False, "fstring": False,
+        "interp": {},
+    },
+    "Ruby": {
+        "triple": True, "nested": False, "raw": False, "fstring": False,
+        "interp": {'"': [("#{", "}")]},
+    },
+    "Python": {
+        "triple": True, "nested": False, "raw": False, "fstring": True,
+        "interp": {},
+    },
+    "TypeScript": {
+        "triple": False, "nested": False, "raw": False, "fstring": False,
+        "interp": {"`": [("${", "}")]},
+    },
+    "Swift": {
+        "triple": True, "nested": True, "raw": True, "fstring": False,
+        "interp": {'"': [("\\(", ")")]},
+    },
+    "Kotlin": {
+        "triple": True, "nested": True, "raw": False, "fstring": False,
+        "interp": {'"': [("${", "}")]},
+    },
 }
-DEFAULT_FLAGS = {"triple": True, "nested": True, "raw": True}
+# Permissive union, used only when no language is supplied.
+DEFAULT_FLAGS = {
+    "triple": True, "nested": True, "raw": True, "fstring": True,
+    "interp": {"`": [("${", "}")], '"': [("${", "}"), ("\\(", ")"), ("#{", "}")]},
+}
 
 # Attach each SDK's lexical flags, so the scanner is driven by the language it
 # is actually reading rather than by the comment style alone.
@@ -203,6 +229,44 @@ STRING_QUOTES = {"hash": "\"'", "slash": "\"'`"}
 
 
 
+def comment_extent(text: str, i: int, style: str | None, flags: dict | None = None) -> int:
+    """End of the comment starting at `i`, or `i` when none starts there.
+
+    Shared by the top-level scan and the delimiter walk so the two cannot
+    disagree about where a comment ends -- they did, and a commented brace
+    truncated an interpolation as a result.
+    """
+    if not style:
+        return i
+    flags = DEFAULT_FLAGS if flags is None else flags
+    n = len(text)
+    if style == "slash" and text.startswith("//", i):
+        end = text.find("\n", i)
+        return n if end == -1 else end
+    if style == "slash" and text.startswith("/*", i):
+        # Swift and Kotlin nest block comments; Go and TypeScript end at the
+        # first `*/`, so nesting them there would swallow the code after it.
+        if flags["nested"]:
+            depth = 1
+            k = i + 2
+            while k < n and depth:
+                if text.startswith("/*", k):
+                    depth += 1
+                    k += 2
+                elif text.startswith("*/", k):
+                    depth -= 1
+                    k += 2
+                else:
+                    k += 1
+            return k
+        end = text.find("*/", i + 2)
+        return n if end == -1 else end + 2
+    if style == "hash" and text[i] == "#":
+        end = text.find("\n", i)
+        return n if end == -1 else end
+    return i
+
+
 def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str,
                        style: str | None = None, flags: dict | None = None) -> int:
     """Index of the delimiter closing the one already opened, honouring nesting.
@@ -225,6 +289,12 @@ def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str,
             if literal_end > k:
                 k = literal_end
                 continue
+        # A delimiter inside a comment is not a delimiter either: in
+        # `${foo(/* } */ x)}` the commented brace must not end the hole.
+        comment_end = comment_extent(text, k, style, flags)
+        if comment_end > k:
+            k = comment_end
+            continue
         if text[k] == open_ch:
             depth += 1
         elif text[k] == close_ch:
@@ -317,12 +387,15 @@ def scan_literal(text: str, i: int, style: str,
         else:
             # Swift and Kotlin multiline strings are ordinary strings, not
             # documentation, and both interpolate.
-            holes = brace_holes(text, i + 3, body_stop, style, flags, "${", "}")
-            holes += brace_holes(text, i + 3, body_stop, style, flags, "\\(", ")")
+            # Whatever this language interpolates in a double-quoted string, it
+            # interpolates in a multiline one: `${...}` in Kotlin, `\(...)` in
+            # Swift, and nothing at all elsewhere.
+            for opener, closer in flags["interp"].get('"', []):
+                holes += brace_holes(text, i + 3, body_stop, style, flags, opener, closer)
         return end, holes
 
     quote = text[i]
-    openers = interpolation_openers(text, i, quote, style)
+    openers = interpolation_openers(text, i, quote, style, flags)
     swift_interp = ("\\(", ")") in openers
     j = i + 1
     holes = []
@@ -386,27 +459,23 @@ def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray,
         i += 1
 
 
-def interpolation_openers(text: str, i: int, quote: str, style: str) -> list[tuple[str, str]]:
+def interpolation_openers(text: str, i: int, quote: str, style: str,
+                          flags: dict | None = None) -> list[tuple[str, str]]:
     """Interpolation delimiters valid inside the literal opening at `i`.
 
     Interpolations are the one part of a string literal that is executable, so
-    they must stay visible to the read patterns. Each language spells them
-    differently, and spelling them wrong fails *open* -- a masked read is a read
-    the gate swears does not exist.
+    they must stay visible to the read patterns. Which spelling is valid depends
+    on the language *and* the quote: TypeScript interpolates in backticks only,
+    so `"${x}"` is ordinary text there while the same bytes are code in Kotlin.
+    Applying one language's rule to another is wrong in both directions -- too
+    narrow hides a real read, too wide promotes example text to one.
     """
-    if quote == "`":
-        return [("${", "}")]  # TypeScript and Kotlin raw strings
-    if style == "slash":
-        if quote == '"':
-            return [("${", "}"), ("\\(", ")")]  # Kotlin, and Swift's \( ... )
-        return []
-    openers = []
-    if quote == '"':
-        openers.append(("#{", "}"))  # Ruby
+    flags = DEFAULT_FLAGS if flags is None else flags
+    openers = list(flags["interp"].get(quote, []))
     # Python f-strings, whose braces are code. Only with an `f` prefix: an
     # ordinary "{...}" is literal text, and treating it as code would let a
     # documentation example count as a read.
-    if has_fstring_prefix(text, i):
+    if flags["fstring"] and has_fstring_prefix(text, i):
         openers.append(("{", "}"))
     return openers
 
@@ -477,37 +546,10 @@ def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str
         if text[i] in quotes:
             i = take_literal(i)
             continue
-        if style == "slash" and text.startswith("//", i):
-            end = text.find("\n", i)
-            blank(i, n if end == -1 else end)
-            i = n if end == -1 else end
-            continue
-        if style == "slash" and text.startswith("/*", i):
-            # Swift and Kotlin nest block comments; Go and TypeScript end at the
-            # first `*/`, so nesting them there would swallow the code after it.
-            if flags["nested"]:
-                depth = 1
-                k = i + 2
-                while k < n and depth:
-                    if text.startswith("/*", k):
-                        depth += 1
-                        k += 2
-                    elif text.startswith("*/", k):
-                        depth -= 1
-                        k += 2
-                    else:
-                        k += 1
-                end = k
-            else:
-                end = text.find("*/", i + 2)
-                end = n if end == -1 else end + 2
-            blank(i, end)
-            i = end
-            continue
-        if style == "hash" and text[i] == "#":
-            end = text.find("\n", i)
-            blank(i, n if end == -1 else end)
-            i = n if end == -1 else end
+        comment_end = comment_extent(text, i, style, flags)
+        if comment_end > i:
+            blank(i, comment_end)
+            i = comment_end
             continue
         # Ruby block comment: =begin/=end, each at column 0.
         if style == "hash" and text.startswith("=begin", i) and (i == 0 or text[i - 1] == "\n"):
