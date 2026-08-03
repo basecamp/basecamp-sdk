@@ -348,6 +348,45 @@ def main() -> int:
         })
         check("a symbol subject is not an SDK attribution", run_gate(root, PY_SDK), [])
 
+        # The literal sentence this gate was built to catch: compound subject,
+        # verb "use" rather than "reads", and the variables *before* the subject
+        # in a trailing relative clause. Ruby has never read XDG_CACHE_HOME.
+        root = tmp / "prose-original-defect"
+        build(root, {
+            "ruby/README.md": (
+                "What the SDKs read on their own (the XDG directory variables aside: "
+                "`XDG_CACHE_HOME` / `XDG_CONFIG_HOME`, which Ruby uses to site its "
+                "cache and config directories):\n"
+            ),
+            "ruby/lib/c.rb": 'd = ENV["XDG_CONFIG_HOME"]\n',
+        })
+        check("the original 'uses' + variables-first sentence is caught",
+              run_gate(root, RB_SDK), ["prose:Ruby:XDG_CACHE_HOME"])
+
+        # A compound subject is checked against every SDK it names, not just the
+        # first — Ruby is the false half here.
+        root = tmp / "prose-compound"
+        build(root, {
+            "python/README.md": "`BASECAMP_BOTH`, which Python and Ruby use, matters.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_BOTH")\n',
+            "ruby/README.md": "mentions BASECAMP_BOTH\n",
+            "ruby/lib/c.rb": "v = 1\n",
+        })
+        check("a compound subject is checked against each SDK named",
+              run_gate(root, PY_RB), ["prose:Ruby:BASECAMP_BOTH"])
+
+        # The backward pass must not reach across a sentence boundary into the
+        # previous claim's variables.
+        root = tmp / "prose-backward-bounded"
+        build(root, {
+            "python/README.md": "Python reads `BASECAMP_MINE`. Ruby uses a config file.\n",
+            "python/src/c.py": 'v = os.environ.get("BASECAMP_MINE")\n',
+            "ruby/README.md": "no tables\n",
+            "ruby/lib/c.rb": "v = 1\n",
+        })
+        check("the backward pass stops at the sentence boundary",
+              run_gate(root, PY_RB), [])
+
         # Fenced examples are not claims.
         root = tmp / "prose-fenced"
         build(root, {

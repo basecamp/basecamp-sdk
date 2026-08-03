@@ -131,13 +131,22 @@ VAR_RE = re.compile(r"\b((?:BASECAMP|XDG)_[A-Z0-9_]+)\b")
 
 FILENAME_TEST_MARKERS = ("_test.", "test_", ".test.", "_spec.")
 
-# Invariant 5. Only the active voice with a bare SDK name as the subject --
-# "Go reads `X`". The passive "`BASECAMP_TOKEN` is read by `AuthManager`" and
-# "`Config()` reads no environment" both name a *symbol* rather than an SDK, and
-# neither matches, which is what keeps this from firing on the per-SDK READMEs.
+# Invariant 5. Only the active voice with SDK names as the subject. The passive
+# "`BASECAMP_TOKEN` is read by `AuthManager`", the symbol subject "`Config()`
+# reads no environment", and "`DefaultConfig` consults `XDG_CACHE_HOME`" all name
+# a *symbol* rather than an SDK, so none match -- which is what keeps this quiet
+# on the per-SDK READMEs, where every one of those sentences ships today.
+#
+# The subject may be compound, because the sentence this gate exists to catch
+# was: "XDG_CACHE_HOME / XDG_CONFIG_HOME, which Go and Ruby use to site their
+# cache and config directories". A single-name subject would have missed it, and
+# so would a "reads"-only verb -- both were checked against that literal string.
+SDK_ALT = "|".join(SDKS)
+SDK_SUBJECT = rf"(?:{SDK_ALT})(?:(?:,\s*|\s+and\s+|,\s*and\s+)(?:{SDK_ALT}))*"
 SDK_READS_RE = re.compile(
-    rf"\b(?P<sdk>{'|'.join(SDKS)})\b\s+reads?\b"
+    rf"\b(?P<subject>{SDK_SUBJECT})\s+(?:reads?|uses?|consults?|honou?rs?)\b"
 )
+SDK_NAME_RE = re.compile(rf"\b({SDK_ALT})\b")
 
 # A claim runs to the next such claim or the end of its sentence, whichever
 # comes first, so "Go reads `A` ... and Ruby reads `B`" splits at "Ruby".
@@ -331,19 +340,43 @@ def prose_lines(readme: Path) -> list[tuple[int, str]]:
 
 
 def prose_claims(readme: Path) -> list[tuple[int, str, list[str]]]:
-    """Every "<SDK> reads `VAR`" claim, as (line number, sdk, variables)."""
+    """Every "<SDK> reads `VAR`" claim, as (line number, sdk, variables).
+
+    A compound subject yields one claim per SDK named, so "Go and Ruby use `X`"
+    is checked against Go *and* Ruby.
+
+    Variables are taken from after the verb -- "Go reads `X`" -- and, only when
+    nothing follows, from before the subject. The backward pass is not
+    hypothetical: the sentence that motivated this gate put the variables first
+    and the subject in a trailing relative clause ("`XDG_CACHE_HOME` /
+    `XDG_CONFIG_HOME`, which Go and Ruby use to site their cache and config
+    directories"), where a forward-only scan sees no variables and reports
+    nothing. Both passes stop at a sentence boundary or a neighbouring claim, so
+    one clause cannot borrow another's variables.
+    """
     claims = []
     for lineno, line in prose_lines(readme):
         matches = list(SDK_READS_RE.finditer(line))
         for index, match in enumerate(matches):
-            start = match.end()
-            stop = matches[index + 1].start() if index + 1 < len(matches) else len(line)
-            terminator = CLAIM_END_RE.search(line, start, stop)
+            forward_start = match.end()
+            forward_stop = matches[index + 1].start() if index + 1 < len(matches) else len(line)
+            terminator = CLAIM_END_RE.search(line, forward_start, forward_stop)
             if terminator:
-                stop = terminator.start()
-            named = VAR_RE.findall(line[start:stop])
-            if named:
-                claims.append((lineno, match.group("sdk"), named))
+                forward_stop = terminator.start()
+            named = VAR_RE.findall(line[forward_start:forward_stop])
+
+            if not named:
+                # Back to the start of this sentence, but never past the previous
+                # claim -- otherwise "Go reads `X`. Ruby uses it too" would hand
+                # Go's variable to Ruby.
+                backward_start = matches[index - 1].end() if index else 0
+                for boundary in CLAIM_END_RE.finditer(line, backward_start, match.start()):
+                    backward_start = boundary.end()
+                named = VAR_RE.findall(line[backward_start:match.start()])
+
+            for sdk in SDK_NAME_RE.findall(match.group("subject")):
+                if named:
+                    claims.append((lineno, sdk, named))
     return claims
 
 
