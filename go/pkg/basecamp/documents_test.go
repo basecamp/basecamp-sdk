@@ -635,6 +635,11 @@ func TestDocumentsService_EditRefusesAMissingTitleBeforeWriting(t *testing.T) {
 	}
 }
 
+// The table deliberately spans three different decoder error types, because
+// fetchDocument classifies by EXCLUSION rather than by an allowlist: an
+// allowlist of encoding/json sentinels leaked *time.ParseError, and adding that
+// still leaked types.FlexInt's bare fmt.Errorf.
+//
 // json.Unmarshal is Go's answer to the hand-written type guards the dynamic
 // SDKs carry, and it does refuse a wrong-typed field before the composite can
 // write it back. But it reports that as a raw *json.UnmarshalTypeError, which
@@ -650,6 +655,18 @@ func TestDocumentsService_UpdateWrapsADecodeFailureAsStatuslessAPIError(t *testi
 	}{
 		{"title is a number", map[string]any{"title": 42}},
 		{"content is an object", map[string]any{"content": map[string]any{"a": 1}}},
+		// The two shapes an allowlist of encoding/json sentinels misses.
+		// created_at is time.Time, so a bad timestamp is *time.ParseError.
+		// A non-integral attachment dimension is rejected by
+		// types.FlexInt.UnmarshalJSON itself, which returns a plain
+		// fmt.Errorf that is no named type at all — the case that shows an
+		// allowlist can never be completed, only extended. (A *string-typed*
+		// height would surface as *json.UnmarshalTypeError from the nested
+		// json.Unmarshal and so would not discriminate.)
+		{"created_at is not a timestamp", map[string]any{"created_at": "not-a-timestamp"}},
+		{"attachment height is non-integral", map[string]any{
+			"content_attachments": []any{map[string]any{"height": 1024.5}},
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			getBody := patchDocumentFixture(t, fixture, tc.patch)
@@ -743,6 +760,48 @@ func TestDocumentsService_ReplaceSendsExplicitEmptyStrings(t *testing.T) {
 		}
 		if value != "" {
 			t.Errorf("expected %q to be the empty string, got %#v", key, value)
+		}
+	}
+}
+
+// The decode-failure normalizer has to cover every error the response decoder
+// can produce, not just the two encoding/json sentinels. Document carries
+// time.Time fields, and time.Time.UnmarshalJSON reports a bad timestamp as
+// *time.ParseError — which is neither *json.UnmarshalTypeError nor
+// *json.SyntaxError, so a two-type allowlist would leak it raw.
+//
+// Those three are structurally the complete set for this model: json.Unmarshal
+// reports a wrong type as *json.UnmarshalTypeError and malformed JSON as
+// *json.SyntaxError, and the only field type on Document with its own
+// UnmarshalJSON is time.Time.
+func TestDocumentsService_UpdateNormalizesABadTimestamp(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	getBody := patchDocumentFixture(t, fixture, map[string]any{"created_at": "not-a-timestamp"})
+	svc, reqs := testDocumentsCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+		Content: "<div>New body.</div>",
+	})
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+
+	var apiErr *Error
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	if apiErr.Code != CodeAPI {
+		t.Errorf("expected code %q, got %q", CodeAPI, apiErr.Code)
+	}
+	if apiErr.HTTPStatus != 0 {
+		t.Errorf("expected a statusless error, got HTTP %d", apiErr.HTTPStatus)
+	}
+	if apiErr.Retryable {
+		t.Error("re-requesting cannot repair a malformed body")
+	}
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatalf("expected no PUT after a decode failure, got %+v", r)
 		}
 	}
 }

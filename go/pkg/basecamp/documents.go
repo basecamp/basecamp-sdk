@@ -2,9 +2,9 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 )
 
@@ -128,21 +128,36 @@ func (f *DocumentFields) fullBody() (map[string]any, error) {
 //
 // Go's json.Unmarshal is the typed guard the dynamic SDKs write by hand, and it
 // rejects a wrong-typed field before this composite ever sees it — but it
-// reports that as a raw *json.UnmarshalTypeError/*json.SyntaxError surfaced
-// through the generated parser, which is not the shape SPEC §6 defines for a
-// malformed 2xx body: callers switching on *Error would miss it entirely and it
-// carries no hint. Wrap it, so a malformed response looks the same in every SDK
-// (the Swift composite does this with DecodingError). A transport or HTTP error
-// passes through untouched.
+// reports that as a raw decoder error surfaced through the generated parser,
+// which is not the shape SPEC §6 defines for a malformed 2xx body: callers
+// switching on *Error would miss it entirely and it carries no hint. Wrap it, so
+// a malformed response looks the same in every SDK (the Swift composite does
+// this with DecodingError).
+//
+// Classified by EXCLUSION, not by an allowlist of decoder error types. An
+// allowlist has to enumerate every shape the generated model can produce and it
+// silently leaks the ones it forgets — this function had two such holes in
+// review. created_at/updated_at are time.Time, whose UnmarshalJSON returns
+// *time.ParseError rather than an encoding/json sentinel; and
+// content_attachments carries *types.FlexInt dimensions, whose UnmarshalJSON
+// returns a plain fmt.Errorf that is no named type at all. There is no
+// enumerable set on that side.
+//
+// The other side IS enumerable, and it is short: an error already carrying the
+// SDK taxonomy (checkResponse maps HTTP status onto *Error), a transport
+// failure, or a cancelled/expired context. Everything else reaching here came
+// out of the response decoder, so a 404 still surfaces as a 404 while any
+// malformed 2xx body — whatever produced it — becomes a statusless api_error.
 func (s *DocumentsService) fetchDocument(ctx context.Context, documentID int64) (*Document, error) {
 	current, getErr := s.Get(ctx, documentID)
 	if getErr == nil {
 		return current, nil
 	}
 
-	var typeErr *json.UnmarshalTypeError
-	var syntaxErr *json.SyntaxError
-	if !errors.As(getErr, &typeErr) && !errors.As(getErr, &syntaxErr) {
+	var sdkErr *Error
+	var urlErr *url.Error
+	if errors.As(getErr, &sdkErr) || errors.As(getErr, &urlErr) ||
+		errors.Is(getErr, context.Canceled) || errors.Is(getErr, context.DeadlineExceeded) {
 		return nil, getErr
 	}
 	return nil, &Error{
