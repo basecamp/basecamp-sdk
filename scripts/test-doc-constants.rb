@@ -399,6 +399,40 @@ out, status = gate lambda { |f|
 }
 expect_pass(failures, "a nested fence keeps its contents fenced", out, status)
 
+# Four spaces is an INDENTED code block, not a fence opener. Showing a fence by
+# indenting it is common, the quoted example rarely has a matching close, and a
+# permissive indent took it as an opening that then swallowed the rest of the
+# file — the fail-open hole again, through the indentation door. So this must
+# FAIL: the restatement below is still prose.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    To open a code block, write:
+
+        ```ruby
+
+    The provenance pin is `#{SHORT}`.
+  MD
+}
+expect_fail(failures, "a 4-space-indented fence does not open one", out, status,
+            "is the current provenance pin, restated outside a @bc3-pin span")
+
+# Three spaces is still a fence (CONTRIBUTING.md indents fences inside numbered
+# list items exactly this way), so its contents stay code.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = <<~MD
+    # An entry
+
+    1. Step one:
+
+       ```
+       The provenance pin is `#{SHORT}`.
+       ```
+  MD
+}
+expect_pass(failures, "a 3-space-indented fence still fences", out, status)
+
 # An info string closes nothing — ```ruby inside a ``` block is content.
 out, status = gate lambda { |f|
   f["spec/api-gaps/entry.md"] = <<~MD

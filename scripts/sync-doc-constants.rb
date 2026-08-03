@@ -95,9 +95,25 @@ BLOCK_KINDS = %w[assertion-types].freeze
 KNOWN_KINDS = (LINE_KINDS + BLOCK_KINDS).freeze
 
 MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
-# A fenced-code delimiter: 3+ backticks or 3+ tildes, optional leading space,
-# with whatever follows captured as the info string (a close must have none).
-FENCE_RE    = /\A\s*(?<delimiter>`{3,}|~{3,})(?<info>.*)\z/
+# A fenced-code delimiter: 3+ backticks or 3+ tildes, indented at most three
+# spaces, with whatever follows captured as the info string (a close must have
+# none).
+#
+# The three-space limit is load-bearing, not pedantry. At four spaces a line is
+# an INDENTED code block — "    ```ruby" is how you show a fence without opening
+# one — and a permissive \s* took that as an opening. Since the example it
+# quotes usually has no matching close, the fence stayed open and every line
+# after it was skipped, which is the same fail-open hole the delimiter matching
+# was added to close, re-entering through the indentation door. Tabs are
+# excluded for the same reason: a tab counts as four columns.
+#
+# Tracked Markdown indents fences 0, 2 or 3 spaces and never more, so this
+# rejects nothing that exists today. A 4-space-indented fence line now reads as
+# prose rather than as code, which over-scans rather than under-scans — the
+# safe direction, since the cost is a visible false alarm rather than a claim
+# nobody checked. Fences nested in deeply indented list items would need real
+# container tracking; none exist here, and the gate is not a Markdown parser.
+FENCE_RE    = /\A {0,3}(?<delimiter>`{3,}|~{3,})(?<info>.*)\z/
 ISO_DATE_RE = /\b\d{4}-\d{2}-\d{2}\b/
 TICKED_HEX_RE = /`([0-9a-f]{7,40})`/
 BACKTICKED_RE = /`[^`]*`/
