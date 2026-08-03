@@ -2645,7 +2645,8 @@ INTERFACE TicketMinter
   mint_stream_ticket(cancellation) → StreamTicket
   -- One fully-governed generated CreateStreamTicket call. `cancellation` is the same
   -- language-native channel the dial seam takes (Go context, TS AbortSignal, …): the
-  -- connector triggers it on close() and caller cancellation, and a triggered call MUST
+  -- connector triggers it on close(), caller cancellation, and any teardown of the
+  -- attempt the call belongs to, and a triggered call MUST
   -- return promptly — the universal edge to Closed cannot wait out a stalled request.
 END
 
@@ -2663,7 +2664,9 @@ END
 INTERFACE PollSource
   poll(cursor: Cursor, filters: Filters, cancellation) → PollPage
   -- One fully-governed generated PollEvents call; `cancellation` as on TicketMinter —
-  -- triggered on close()/caller cancellation, prompt return required.
+  -- triggered on close(), caller cancellation, AND any teardown of the attempt the call
+  -- belongs to (mid-walk socket failure, staleness, a terminal): a superseded poll must
+  -- not stall reconnection or return into a disposed attempt. Prompt return required.
 END
 
 RECORD Cursor           -- exactly one field set; the zero Cursor is the bare present entry
@@ -2825,7 +2828,9 @@ semantics checklist (deadline order, reentrant scheduling within an advance, cre
 tie-break) before its tier-2 results count.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket
-death, terminal — cancels the frame pump, closes the connection, and stops **all** of that
+death, terminal — cancels the frame pump, **cancels any in-flight seam call belonging to
+the attempt** (a stalled poll must not delay the reconnect cycle or return into a
+superseded attempt), closes the connection, and stops **all** of that
 attempt's timers before the next state is entered. After a confirmation-deadline teardown,
 the exact outstanding-timer set is `{backoff}`; after a terminal, it is `{}`. Exact-set
 timer assertions are what make a leaked deadline timer, ghost watchdog, or duplicated
