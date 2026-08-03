@@ -34,41 +34,62 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 
+NAME = r"(?P<name>[A-Z_][A-Z0-9_]*)"
+
+# Quote styles that actually delimit a string literal in each language. Getting
+# this wrong fails *open*: a read the pattern cannot see is a read the gate will
+# swear does not exist, so it would report a phantom row as fine and an
+# undocumented variable as documented. The closing quote is a backreference, so
+# a mismatched pair cannot match.
+Q = r"(?P<q>[\"'])"  # Ruby, Python, TypeScript
+GO_Q = r"(?P<q>[\"`])"  # Go has interpreted and raw string literals, no single quotes
+DQ = r"(?P<q>\")"  # Swift and Kotlin have only double-quoted strings
+ENDQ = r"(?P=q)"
+
 # Where each SDK's shipping source lives, and how that language reads an env var.
 SDKS = {
     "Go": {
         "readme": "go/README.md",
         "source": "go/pkg",
         "suffixes": (".go",),
-        "patterns": [r'os\.Getenv\(\s*"([A-Z_][A-Z0-9_]*)"', r'os\.LookupEnv\(\s*"([A-Z_][A-Z0-9_]*)"'],
+        "patterns": [
+            rf"os\.Getenv\(\s*{GO_Q}{NAME}{ENDQ}",
+            rf"os\.LookupEnv\(\s*{GO_Q}{NAME}{ENDQ}",
+        ],
     },
     "Ruby": {
         "readme": "ruby/README.md",
         "source": "ruby/lib",
         "suffixes": (".rb",),
-        "patterns": [r'ENV\[\s*"([A-Z_][A-Z0-9_]*)"', r'ENV\.fetch\(\s*"([A-Z_][A-Z0-9_]*)"'],
+        "patterns": [
+            rf"ENV\[\s*{Q}{NAME}{ENDQ}",
+            rf"ENV\.fetch\(\s*{Q}{NAME}{ENDQ}",
+        ],
     },
     "Python": {
         "readme": "python/README.md",
         "source": "python/src",
         "suffixes": (".py",),
         "patterns": [
-            r'os\.environ\.get\(\s*"([A-Z_][A-Z0-9_]*)"',
-            r'os\.environ\[\s*"([A-Z_][A-Z0-9_]*)"',
-            r'os\.getenv\(\s*"([A-Z_][A-Z0-9_]*)"',
+            rf"os\.environ\.get\(\s*{Q}{NAME}{ENDQ}",
+            rf"os\.environ\[\s*{Q}{NAME}{ENDQ}",
+            rf"os\.getenv\(\s*{Q}{NAME}{ENDQ}",
         ],
     },
     "TypeScript": {
         "readme": "typescript/README.md",
         "source": "typescript/src",
         "suffixes": (".ts",),
-        "patterns": [r'process\.env\.([A-Z_][A-Z0-9_]*)', r'process\.env\[\s*"([A-Z_][A-Z0-9_]*)"'],
+        "patterns": [
+            rf"process\.env\.{NAME}",
+            rf"process\.env\[\s*{Q}{NAME}{ENDQ}",
+        ],
     },
     "Swift": {
         "readme": "swift/README.md",
         "source": "swift/Sources",
         "suffixes": (".swift",),
-        "patterns": [r'ProcessInfo\.processInfo\.environment\[\s*"([A-Z_][A-Z0-9_]*)"'],
+        "patterns": [rf"ProcessInfo\.processInfo\.environment\[\s*{DQ}{NAME}{ENDQ}"],
     },
     # kotlin/sdk/src, not just commonMain: jvmMain ships in the same artifact, so
     # scoping to commonMain would let a platform-specific read bypass this gate.
@@ -77,7 +98,7 @@ SDKS = {
         "readme": "kotlin/README.md",
         "source": "kotlin/sdk/src",
         "suffixes": (".kt",),
-        "patterns": [r'System\.getenv\(\s*"([A-Z_][A-Z0-9_]*)"'],
+        "patterns": [rf"System\.getenv\(\s*{DQ}{NAME}{ENDQ}"],
     },
 }
 
@@ -130,7 +151,10 @@ def real_reads(spec: dict) -> dict[str, list[str]]:
             if line.lstrip().startswith(COMMENT_STARTS):
                 continue  # a doc-comment example is not a read
             for pattern in compiled:
-                for name in pattern.findall(line):
+                # finditer + the named group, not findall: these patterns carry a
+                # quote group too, and findall would hand back tuples.
+                for match in pattern.finditer(line):
+                    name = match.group("name")
                     if VAR_RE.fullmatch(name):
                         found.setdefault(name, []).append(f"{rel}:{lineno}")
     return found
