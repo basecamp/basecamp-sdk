@@ -1,0 +1,21 @@
+go/pkg/basecamp/documents.go
+  s_ae792ed0be3006::t_fcb6134deb1746 150-157,159,161
+go/pkg/basecamp/documents_test.go
+  s_ae792ed0be3006::t_fdaa76ff1d9cc7 874-922
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "90a4a73f547b1c79f952d8c4a43b821c00b903f4",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
