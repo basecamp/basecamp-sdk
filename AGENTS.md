@@ -3,7 +3,9 @@
 All six SDKs (Go, TypeScript, Ruby, Swift, Kotlin, Python) share one architecture:
 **Smithy spec -> OpenAPI -> generated services.** Every wire operation is generated. The
 only hand-written runtime API methods are sanctioned composites calling generated wire
-methods exclusively -- see SPEC.md §18 "Hand-Written Composite Methods".
+methods exclusively -- see SPEC.md §18 "Hand-Written Composite Methods" -- plus one
+sanctioned non-HTTP wire act: the SPEC.md §23 Event Feed connector's cable dial of the
+URL a generated `CreateStreamTicket` call returned (Hard Rule 2 below).
 
 ---
 
@@ -65,7 +67,7 @@ When verifying API response shapes, check Go generated code in `go/pkg/generated
 ### Never Do These
 
 1. **NEVER edit files under `*/generated/`** — they get overwritten by generators. Four files under `generated/` are not generator-emitted and are the ONLY exceptions: three hand-written base files, edited like any other infrastructure file — `python/src/basecamp/generated/services/_base.py`, `python/src/basecamp/generated/services/_async_base.py`, `ruby/lib/basecamp/generated/services/base_service.rb` — plus the empty package marker `python/src/basecamp/generated/__init__.py`. The `generated/services/__init__.py` next to the Python base files IS generated.
-2. **NEVER add hand-written service methods that touch the wire** — all wire operations come from generators. The sole exception is a conformance-tested composite that only calls generated wire methods and satisfies SPEC.md §18 "Hand-Written Composite Methods"
+2. **NEVER add hand-written service methods that touch the wire** — all wire operations come from generators. Two sanctioned exceptions: a conformance-tested composite that only calls generated wire methods and satisfies SPEC.md §18 "Hand-Written Composite Methods"; and the SPEC.md §23 Event Feed connector's cable dial — `CableTransport.dial(mint.url)`, connecting verbatim to the URL a generated `CreateStreamTicket` call returned. That dial is the connector's one non-HTTP wire act; every HTTP exchange it makes still flows through generated operations behind its `TicketMinter`/`PollSource` seams (§23 "Classification: Infrastructure, Not a Composite")
 3. **NEVER skip running `make smithy-build` after Smithy changes** — keeps OpenAPI in sync
 4. **NEVER construct API paths manually** — use the generated client methods
 5. **NEVER bypass the SDK** — no raw `client.Get()`, string-concatenated URLs, or internal method calls
