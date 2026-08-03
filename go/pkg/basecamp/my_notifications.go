@@ -256,8 +256,7 @@ func (s *MyNotificationsService) BubbleUps(ctx context.Context, page int32) (res
 	// Truncated when the response carries a rel="next" Link (more pages exist)
 	// even though we deliberately do not follow it here.
 	if page > 0 {
-		truncated := parseNextLink(resp.HTTPResponse.Header.Get("Link")) != ""
-		return &BubbleUpsResult{BubbleUps: items, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+		return &BubbleUpsResult{BubbleUps: items, Meta: ListMeta{TotalCount: totalCount, Truncated: hasNextPage(resp.HTTPResponse)}}, nil
 	}
 
 	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(items), 0)

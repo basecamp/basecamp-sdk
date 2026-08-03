@@ -181,6 +181,10 @@
         "maxItems": {
           "type": "integer",
           "description": "Override the maximum number of items to fetch across all pages"
+        },
+        "page": {
+          "type": "integer",
+          "description": "Pin the list operation to a single page. A positive value must select exactly that page: one request, no Link rel=next follow (SPEC section 8). Runners pass it through the operation's own page option, so a fixture using it needs the dispatch case to forward it."
         }
       }
     },

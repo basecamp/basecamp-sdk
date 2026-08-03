@@ -59,7 +59,7 @@ public final class MessagesService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Messages", operation: "ListMessages", resourceType: "message", isMutation: false, resourceId: boardId),
             path: "/message_boards/\(boardId)/messages.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListMessages")
         )
     }

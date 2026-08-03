@@ -160,9 +160,15 @@ class TypeEmitter(private val paramOrder: Map<String, List<String>> = emptyMap()
         sb.appendLine(order.map { declarations.getValue(it) }.joinToString(",\n"))
         sb.appendLine(") {")
 
-        // Convert to PaginationOptions if needed
+        // Convert to PaginationOptions if needed. A `page` query param is
+        // carried across too: BaseService needs it to know the caller pinned a
+        // single page and must not follow Link headers (SPEC §8).
         if (hasPagination) {
-            sb.appendLine("    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)")
+            val pageArg = if (optionalParams.any { it.name == "page" }) ", page = page" else ""
+            sb.appendLine(
+                "    fun toPaginationOptions(): PaginationOptions = " +
+                    "PaginationOptions(maxItems = maxItems$pageArg)"
+            )
         }
 
         sb.appendLine("}")

@@ -330,6 +330,24 @@ class PaginationTest {
         "dock": []
     }"""
 
+    private val COMMENT_JSON = """{
+        "id": 1,
+        "status": "active",
+        "visible_to_clients": false,
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-01T00:00:00Z",
+        "title": "Re: Test",
+        "inherits_status": true,
+        "type": "Comment",
+        "url": "https://3.basecampapi.com/12345/buckets/1/comments/1.json",
+        "app_url": "https://3.basecamp.com/12345/buckets/1/comments/1",
+        "content": "c1",
+        "content_attachments": [],
+        "parent": {"id": 100, "title": "Parent", "type": "Todo", "url": "https://3.basecampapi.com/12345/buckets/1/todos/100.json", "app_url": "https://3.basecamp.com/12345/buckets/1/todos/100"},
+        "bucket": {"id": 1, "name": "Project", "type": "Project"},
+        "creator": {"id": 1, "name": "Test User", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"}
+    }"""
+
     private fun mockClient(handler: MockRequestHandler): BasecampClient {
         val engine = MockEngine(handler)
         return testBasecampClient {
@@ -657,5 +675,41 @@ class PaginationTest {
         }
 
         assertNotNull(shapes)
+    }
+
+    /**
+     * The compatibility bridge must forward `page`, not just `maxItems`.
+     *
+     * `PaginationOptions` gained `page` in #566. A bridge that forwarded only
+     * `maxItems` would drop it from BOTH the query string and the pagination
+     * options, so `list(id, PaginationOptions(page = 3))` would auto-paginate
+     * the whole collection — precisely the bug #566 exists to remove, reachable
+     * through the older of the two call shapes.
+     */
+    @Test
+    fun paginationOptionsBridgeForwardsThePinnedPage() = runTest {
+        var requestCount = 0
+        val seenPages = mutableListOf<String?>()
+        val client = mockClient { request ->
+            requestCount++
+            seenPages += request.url.parameters["page"]
+            respond(
+                content = """[$COMMENT_JSON]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(
+                    HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                    "Link" to listOf("""<https://3.basecampapi.com/12345/buckets/1/recordings/1/comments.json?page=4>; rel="next""""),
+                ),
+            )
+        }
+
+        val comments = CommentsService(client.forAccount("12345"))
+        val result = comments.list(1, PaginationOptions(page = 3))
+
+        assertEquals(listOf<String?>("3"), seenPages.toList())
+        assertEquals(1, requestCount)
+        assertEquals(1, result.size)
+        assertTrue(result.meta.truncated)
+        client.close()
     }
 }

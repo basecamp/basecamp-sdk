@@ -118,7 +118,8 @@ func (s *ClientRepliesService) List(ctx context.Context, bucketID, recordingID i
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &ClientReplyListResult{Replies: replies, Meta: ListMeta{TotalCount: totalCount}}, nil
+		keep, truncated := pageCap(len(replies), opts.Limit, resp.HTTPResponse)
+		return &ClientReplyListResult{Replies: replies[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (no limit)

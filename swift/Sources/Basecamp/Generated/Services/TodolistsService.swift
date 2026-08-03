@@ -48,7 +48,7 @@ public final class TodolistsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Todolists", operation: "ListTodolists", resourceType: "todolist", isMutation: false, resourceId: todosetId),
             path: "/todosets/\(todosetId)/todolists.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListTodolists")
         )
     }

@@ -106,7 +106,7 @@ public final class PeopleService: BaseService, @unchecked Sendable {
             OperationInfo(service: "People", operation: "ListPeople", resourceType: "people", isMutation: false),
             path: "/people.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListPeople")
         )
     }
@@ -129,7 +129,7 @@ public final class PeopleService: BaseService, @unchecked Sendable {
             OperationInfo(service: "People", operation: "ListProjectPeople", resourceType: "project_people", isMutation: false, projectId: projectId),
             path: "/projects/\(projectId)/people.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListProjectPeople")
         )
     }

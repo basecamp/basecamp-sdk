@@ -21,7 +21,7 @@ data class ListMyBookmarksOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for ListRecordingBoosts. */
@@ -30,7 +30,7 @@ data class ListRecordingBoostsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateRecordingBoost. */
@@ -44,7 +44,7 @@ data class ListEventBoostsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateEventBoost. */
@@ -75,7 +75,7 @@ data class ListCampfiresOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for ListCampfireLines. */
@@ -88,7 +88,7 @@ data class ListCampfireLinesOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateCampfireLine. */
@@ -112,7 +112,7 @@ data class ListCampfireUploadsOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for SetCardColumnColor. */
@@ -184,7 +184,7 @@ data class ListCardsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateCard. */
@@ -201,7 +201,7 @@ data class GetQuestionRemindersOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateAnswer. */
@@ -216,7 +216,7 @@ data class ListQuestionsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateQuestion. */
@@ -239,7 +239,7 @@ data class ListAnswersOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateAnswer. */
@@ -254,7 +254,7 @@ data class GetAnswersByPersonOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateQuestionNotificationSettings. */
@@ -273,7 +273,7 @@ data class ListClientApprovalsOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for ListClientCorrespondences. */
@@ -286,7 +286,7 @@ data class ListClientCorrespondencesOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for ListClientReplies. */
@@ -295,7 +295,7 @@ data class ListClientRepliesOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for SetClientVisibility. */
@@ -314,7 +314,7 @@ data class ListCommentsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateComment. */
@@ -334,7 +334,7 @@ data class ListDocumentsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateDocument. */
@@ -352,7 +352,7 @@ data class ListMyDraftsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for ListEvents. */
@@ -361,7 +361,7 @@ data class ListEventsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingCompletedCards. */
@@ -374,7 +374,7 @@ data class GetEverythingCompletedCardsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingNoDueDateCards. */
@@ -387,7 +387,7 @@ data class GetEverythingNoDueDateCardsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingNotNowCards. */
@@ -400,7 +400,7 @@ data class GetEverythingNotNowCardsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingOpenCards. */
@@ -413,7 +413,7 @@ data class GetEverythingOpenCardsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingOverdueCards. */
@@ -435,7 +435,7 @@ data class GetEverythingUnassignedCardsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingCheckins. */
@@ -444,7 +444,7 @@ data class GetEverythingCheckinsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingComments. */
@@ -453,7 +453,7 @@ data class GetEverythingCommentsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingFiles. */
@@ -466,7 +466,7 @@ data class GetEverythingFilesOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingForwards. */
@@ -475,7 +475,7 @@ data class GetEverythingForwardsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingMessages. */
@@ -484,7 +484,7 @@ data class GetEverythingMessagesOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingCompletedTodos. */
@@ -497,7 +497,7 @@ data class GetEverythingCompletedTodosOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingNoDueDateTodos. */
@@ -510,7 +510,7 @@ data class GetEverythingNoDueDateTodosOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingOpenTodos. */
@@ -523,7 +523,7 @@ data class GetEverythingOpenTodosOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetEverythingOverdueTodos. */
@@ -545,7 +545,7 @@ data class GetEverythingUnassignedTodosOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateFolder. */
@@ -565,7 +565,7 @@ data class ListForwardRepliesOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for ListForwards. */
@@ -578,7 +578,7 @@ data class ListForwardsOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateGaugeNeedle. */
@@ -597,7 +597,7 @@ data class ListGaugeNeedlesOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateGaugeNeedle. */
@@ -615,7 +615,7 @@ data class ListGaugesOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateHillChartSettings. */
@@ -658,7 +658,7 @@ data class ListMessagesOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateMessage. */
@@ -717,7 +717,7 @@ data class GetBubbleUpsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for MarkAsRead. */
@@ -748,7 +748,7 @@ data class ListPeopleOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for EnableOutOfOffice. */
@@ -762,7 +762,7 @@ data class ListProjectPeopleOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateProjectAccess. */
@@ -780,7 +780,7 @@ data class ListProjectsOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateProject. */
@@ -810,7 +810,7 @@ data class ListRecordingsOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetProgressReport. */
@@ -819,7 +819,7 @@ data class GetProgressReportOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetUpcomingSchedule. */
@@ -842,7 +842,7 @@ data class GetPersonProgressOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateScheduleEntry. */
@@ -869,7 +869,7 @@ data class ListScheduleEntriesOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateScheduleEntry. */
@@ -911,7 +911,7 @@ data class SearchOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for UpdateSubscription. */
@@ -928,7 +928,7 @@ data class ListTemplatesOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateTemplate. */
@@ -954,7 +954,7 @@ data class GetProjectTimelineOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetProjectTimesheet. */
@@ -966,7 +966,7 @@ data class GetProjectTimesheetOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Options for GetRecordingTimesheet. */
@@ -978,7 +978,7 @@ data class GetRecordingTimesheetOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateTimesheetEntry. */
@@ -1016,7 +1016,7 @@ data class ListTodolistGroupsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateTodolistGroup. */
@@ -1043,7 +1043,7 @@ data class ListTodolistsOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateTodolist. */
@@ -1073,7 +1073,7 @@ data class ListTodosOptions(
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
     val page: Long? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateTodo. */
@@ -1133,7 +1133,7 @@ data class ListUploadsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateUpload. */
@@ -1156,7 +1156,7 @@ data class ListVaultsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
 /** Request body for CreateVault. */

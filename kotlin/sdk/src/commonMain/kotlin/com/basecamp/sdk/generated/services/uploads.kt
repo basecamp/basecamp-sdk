@@ -112,7 +112,7 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(vaultId: Long, options: PaginationOptions? = null): ListResult<Upload> =
-        list(vaultId, ListUploadsOptions(maxItems = options?.maxItems))
+        list(vaultId, ListUploadsOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a new upload in a vault

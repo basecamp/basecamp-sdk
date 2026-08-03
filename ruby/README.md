@@ -407,18 +407,18 @@ the result is definitely complete.
 
 ### The `page` keyword
 
-`page` sets where the walk *starts*, not which single page you get. Link-following
-continues from there to the end of the collection, so `page: 3` against a 10-page
-collection enumerates pages 3–10. Pair it with `max_items` to bound the result:
+A positive `page` selects exactly that page: one request, that page's items,
+no link-following.
 
 ```ruby
-from_page_3 = account.projects.list(page: 3, max_items: 50)
+page_3 = account.projects.list(page: 3).to_a
 ```
 
-This differs from the Go SDK, where a positive `Page` fetches exactly that page
-and turns auto-pagination off. Converging the six SDKs on Go's single-page
-semantics is a breaking change tracked in
-[#566](https://github.com/basecamp/basecamp-sdk/issues/566).
+Omit `page` (or pass `0`) to auto-paginate the whole collection. `max_items`
+still trims a pinned page.
+
+All six SDKs share these semantics — one request, that page only, no
+link-following. See SPEC section 8.
 
 ## Downloading Files
 

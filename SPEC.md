@@ -852,25 +852,73 @@ The variant is determined at code-generation time from the OpenAPI response sche
 
 **Wrapped response pagination:** For endpoints that return a wrapper object with a paginated array inside (e.g., `personProgress` returns `{person, events: [...]}`), the generated service method paginates the embedded array while preserving the wrapper fields from the first page. The `paginate` algorithm above handles item extraction; the wrapping/unwrapping is a code-generation concern, not a transport concern. See `typescript/src/generated/services/reports.ts` and `go/pkg/basecamp/timeline.go` for reference implementations.
 
-### The `page` Query Parameter
+### The `page` Query Parameter `[conformance]`
 
-Operations whose Basecamp endpoint honors `?page=` accept a `page` query parameter. **Its meaning currently differs between Go and the five auto-paginating SDKs, and callers must know which they are using.**
+Operations whose Basecamp endpoint honors `?page=` accept a `page` query
+parameter. **A positive `page` selects exactly that page. It is not a starting
+offset.** In every SDK:
 
-Two carve-outs, so the rule above is not read as universal:
+- the operation issues **exactly one** request;
+- it returns **only** that page's items;
+- the `Link: rel="next"` header is **not** followed;
+- `ListMeta.truncated` is true when that page carried a next link (or when
+  `max_items` dropped items from it), because items beyond those returned were
+  available;
+- `ListMeta.total_count` comes from `X-Total-Count` as usual.
 
-- `ListWebhooks`, `ListMessageTypes`, `ListChatbots`, `ListPingablePeople`, `ListQuestionAnswerers`, and `ListUploadVersions` carry the pagination trait but declare **no** `page` parameter: their Basecamp index actions return the whole collection rather than paginating, so there is no page to select.
-- `GetMyNotifications` declares `page` but carries **no** pagination trait, so no SDK follows links for it and everything below is inapplicable — it returns the page you asked for, in all six.
+Absent, `0`, and negative all mean the same thing: auto-paginate the whole
+collection per the algorithm above. `page` and `max_items` compose — the cap
+still trims the selected page, and dropping items from it is itself truncation
+— but `max_items` is not itself a page selector: it caps *items*, so it
+collapses to a single request only when the cap does not exceed that page's
+item count, which requires the caller to know the server's page size.
 
-| SDK | Behavior with `page = 3` | Requests issued |
-|-----|--------------------------|-----------------|
-| Go | Returns exactly page 3; auto-pagination is suppressed. | 1 |
-| TypeScript, Python, Ruby, Kotlin, Swift | Fetches page 3, then follows `Link: rel="next"` to the end of the collection, returning pages 3..N concatenated. | N - 2 |
+One qualification for Go, whose `max_items` analog is a per-operation `Limit`
+with a **nonzero default** on several services (`DefaultTodoLimit` and
+friends): only an explicitly-set positive `Limit` trims a pinned page. The
+default must not, because a caller who asked for page 3 asked for page 3, not
+for its first 100 items. The other five SDKs have no such default — an absent
+`max_items` is uncapped — so the rule reads identically in all six: whatever
+cap the caller set applies to the page they pinned.
 
-The divergence is structural: `page` rides in the query string of the *first* request only, while every subsequent request comes from the `Link` header. The auto-pagination algorithm above has no notion of a pinned page, so `page` acts as a starting offset rather than a selector. Go escapes this because its hand-written wrappers short-circuit before the follow loop when `Page > 0`.
+```
+FUNCTION paginate(initial_response, max_pages, max_items?, page?) → ListResult<T>
+  0. If page is set and page > 0:
+     a. items = parse first_page_items from initial_response body.
+     b. dropped = max_items set (explicitly, not a per-operation default)
+        AND items.length > max_items.
+     c. truncated = dropped OR parseNextLink(initial_response.headers["Link"]) ≠ null.
+     d. → ListResult(dropped ? items[0:max_items] : items,
+                     meta: {total_count, truncated}).
+  ... otherwise continue with step 1 of the algorithm above.
+END
+```
 
-`max_items` bounds the walk but is not a page selector: it caps *items*, so it collapses to a single request only when the cap does not exceed that page's item count, which requires the caller to know the server's page size.
+Two carve-outs, so the rule is not read as universal:
 
-This behavior predates the operations added in #561 — it has held since the first operations declared `@httpQuery("page")`. Converging all six SDKs on the Go semantics is tracked in issue #566; until then, the divergence is documented rather than silent, and SDK doc comments for `page` point here.
+- `ListWebhooks`, `ListMessageTypes`, `ListChatbots`, `ListPingablePeople`, `ListQuestionAnswerers`, and `ListUploadVersions` carry the pagination trait but declare **no** `page` parameter: their Basecamp index actions return the whole collection rather than paginating, so there is no page to select. Where an SDK's shared pagination options type still admits a `page` (TypeScript, Kotlin, Swift), passing one on those operations changes nothing — the responses carry no next link to suppress.
+- `GetMyNotifications` declares `page` but carries **no** pagination trait, so no SDK follows links for it and this section is inapplicable — it returns the page you asked for, in all six.
+
+**How each SDK learns the pinned page.** The paginator reads it from whichever
+representation it already holds, so no SDK carries a second copy that can drift
+from the query string actually sent:
+
+| SDK | Source of the pinned page |
+|-----|---------------------------|
+| TypeScript | `PaginationOptions.page` (generated options interfaces extend it) |
+| Kotlin | `PaginationOptions.page`, via the generated `toPaginationOptions()` |
+| Swift | `PaginationOptions.page`, passed by the generated service method |
+| Python | the outgoing `params` dict (`selects_single_page`) |
+| Ruby | the outgoing `params` hash (`single_page_selected?`) |
+| Go | the hand-written wrapper's `opts.Page` (or `page` argument) |
+
+Before #566 this held only in Go: `page` rode in the query string of the *first*
+request while every subsequent request came from the `Link` header, so in the
+other five SDKs `page: 3` of a 100-page collection issued 98 requests and
+returned pages 3..N concatenated. Go escaped it because its hand-written
+wrappers short-circuited before the follow loop when `Page > 0`. #566 converged
+the five on Go's semantics; #570 closed the last Go hole (`GaugesService.List`
+and `ListNeedles` took no options struct, so `page` could not reach the wire).
 
 ### Same-Origin Validation Algorithm `[conformance]`
 

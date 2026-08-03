@@ -76,7 +76,7 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Templates", operation: "ListTemplates", resourceType: "template", isMutation: false),
             path: "/templates.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListTemplates")
         )
     }

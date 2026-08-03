@@ -33,7 +33,7 @@ public final class TodolistGroupsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "TodolistGroups", operation: "ListTodolistGroups", resourceType: "todolist_group", isMutation: false, resourceId: todolistId),
             path: "/todolists/\(todolistId)/groups.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListTodolistGroups")
         )
     }

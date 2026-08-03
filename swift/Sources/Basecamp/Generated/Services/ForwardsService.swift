@@ -72,7 +72,7 @@ public final class ForwardsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Forwards", operation: "ListForwardReplies", resourceType: "forward_reply", isMutation: false, resourceId: forwardId),
             path: "/inbox_forwards/\(forwardId)/replies.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListForwardReplies")
         )
     }
@@ -92,7 +92,7 @@ public final class ForwardsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Forwards", operation: "ListForwards", resourceType: "forward", isMutation: false, resourceId: inboxId),
             path: "/inboxes/\(inboxId)/inbox_forwards.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListForwards")
         )
     }

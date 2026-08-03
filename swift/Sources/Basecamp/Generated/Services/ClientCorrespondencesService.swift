@@ -49,7 +49,7 @@ public final class ClientCorrespondencesService: BaseService, @unchecked Sendabl
             OperationInfo(service: "ClientCorrespondences", operation: "ListClientCorrespondences", resourceType: "client_correspondence", isMutation: false, projectId: bucketId),
             path: "/buckets/\(bucketId)/client/correspondences.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListClientCorrespondences")
         )
     }

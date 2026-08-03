@@ -21,8 +21,19 @@ public struct PaginationOptions: Sendable {
     /// When nil or 0, all pages are fetched.
     public let maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    /// Selects a single page. A positive `page` returns exactly that page in
+    /// exactly one request: `Link: rel="next"` is not followed, and
+    /// `ListMeta.truncated` reports whether a further page existed. When nil,
+    /// 0, or negative, auto-pagination walks the whole collection.
+    ///
+    /// Only meaningful for operations whose endpoint honors `?page=`; the few
+    /// list endpoints that return their whole collection at once never emit a
+    /// next link, so pinning a page there changes nothing. See SPEC section 8.
+    public let page: Int?
+
+    public init(maxItems: Int? = nil, page: Int? = nil) {
         self.maxItems = maxItems
+        self.page = page
     }
 }
 

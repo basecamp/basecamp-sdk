@@ -48,7 +48,7 @@ public final class ProjectsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Projects", operation: "ListProjects", resourceType: "project", isMutation: false),
             path: "/projects.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListProjects")
         )
     }

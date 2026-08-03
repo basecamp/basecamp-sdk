@@ -146,7 +146,8 @@ func (s *TodolistGroupsService) List(ctx context.Context, todolistID int64, opts
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &TodolistGroupListResult{Groups: groups, Meta: ListMeta{TotalCount: totalCount}}, nil
+		keep, truncated := pageCap(len(groups), opts.Limit, resp.HTTPResponse)
+		return &TodolistGroupListResult{Groups: groups[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (no limit)

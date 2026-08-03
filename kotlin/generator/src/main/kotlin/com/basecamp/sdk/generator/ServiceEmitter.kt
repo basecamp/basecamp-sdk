@@ -256,7 +256,13 @@ class ServiceEmitter(private val api: OpenApiParser) {
         val declared = buildParams(op).split(", ").filter { it.isNotEmpty() }
         // Reuse the primary signature minus its trailing options parameter.
         val paramDecls = declared.dropLast(1) + "options: PaginationOptions? = null"
-        val forwarded = (leading + "$optionsClassName(maxItems = options?.maxItems)").joinToString(", ")
+        // `page` rides across too when the operation declares one: PaginationOptions
+        // gained it in #566, and dropping it here would hand the compat overload
+        // the exact bug that issue fixed — a pinned page auto-paginating the whole
+        // collection because neither the query string nor the pagination options
+        // ever saw it.
+        val pageArg = if (op.queryParams.any { !it.required && it.name == "page" }) ", page = options?.page" else ""
+        val forwarded = (leading + "$optionsClassName(maxItems = options?.maxItems$pageArg)").joinToString(", ")
 
         val sb = StringBuilder()
         sb.appendLine()

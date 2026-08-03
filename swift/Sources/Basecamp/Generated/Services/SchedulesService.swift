@@ -66,7 +66,7 @@ public final class SchedulesService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Schedules", operation: "ListScheduleEntries", resourceType: "schedule_entry", isMutation: false, resourceId: scheduleId),
             path: "/schedules/\(scheduleId)/entries.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListScheduleEntries")
         )
     }

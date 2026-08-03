@@ -54,6 +54,8 @@ type ConfigOverrides struct {
 	BaseURL  string `json:"baseUrl"`
 	MaxPages int    `json:"maxPages"`
 	MaxItems int    `json:"maxItems"`
+	// Page pins the list operation to a single page (SPEC §8).
+	Page int `json:"page"`
 }
 
 // MockResponse defines a single mock HTTP response.
@@ -447,8 +449,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 	switch tc.Operation {
 	case "ListProjects":
 		var opts *basecamp.ProjectListOptions
-		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxItems > 0 {
-			opts = &basecamp.ProjectListOptions{Limit: tc.ConfigOverrides.MaxItems}
+		if tc.ConfigOverrides != nil && (tc.ConfigOverrides.MaxItems > 0 || tc.ConfigOverrides.Page > 0) {
+			opts = &basecamp.ProjectListOptions{
+				Limit: tc.ConfigOverrides.MaxItems,
+				Page:  tc.ConfigOverrides.Page,
+			}
 		}
 		result, err := account.Projects().List(ctx, opts)
 		if err != nil {

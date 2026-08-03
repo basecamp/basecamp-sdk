@@ -122,8 +122,10 @@ type TimelineListOptions struct {
 	// If 0, uses DefaultTimelineLimit (100). Any negative value means unlimited.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -203,7 +205,8 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &TimelineListResult{Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
+		keep, truncated := pageCap(len(events), opts.Limit, resp.HTTPResponse)
+		return &TimelineListResult{Events: events[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	limit := DefaultTimelineLimit
@@ -286,7 +289,8 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &TimelineListResult{Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
+		keep, truncated := pageCap(len(events), opts.Limit, resp.HTTPResponse)
+		return &TimelineListResult{Events: events[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	limit := DefaultTimelineLimit
@@ -381,7 +385,8 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 	}
 
 	if opts != nil && opts.Page > 0 {
-		return &PersonProgressResult{Person: person, Events: events, Meta: ListMeta{TotalCount: totalCount}}, nil
+		keep, truncated := pageCap(len(events), opts.Limit, resp.HTTPResponse)
+		return &PersonProgressResult{Person: person, Events: events[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	limit := DefaultTimelineLimit

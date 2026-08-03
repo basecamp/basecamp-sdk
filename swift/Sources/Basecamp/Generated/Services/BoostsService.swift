@@ -72,7 +72,7 @@ public final class BoostsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Boosts", operation: "ListEventBoosts", resourceType: "event_boost", isMutation: false, resourceId: eventId),
             path: "/recordings/\(recordingId)/events/\(eventId)/boosts.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListEventBoosts")
         )
     }
@@ -86,7 +86,7 @@ public final class BoostsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Boosts", operation: "ListRecordingBoosts", resourceType: "recording_boost", isMutation: false, resourceId: recordingId),
             path: "/recordings/\(recordingId)/boosts.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListRecordingBoosts")
         )
     }

@@ -39,6 +39,24 @@ def parse_next_link(link_header: str | None) -> str | None:
     return None
 
 
+def selects_single_page(params: dict | None) -> bool:
+    """Report whether the outgoing query pins a single page (SPEC section 8).
+
+    A positive ``page`` is a selector, not a starting offset: the operation
+    issues exactly one request and never follows ``Link: rel="next"``. The
+    query parameters are the authority here — ``page`` reaches the wire only
+    when the caller passed it, so reading it back needs no separate plumbing
+    through every generated service method.
+
+    ``bool`` is excluded explicitly because it subclasses ``int``: a stray
+    ``page=True`` is a caller mistake, not a request for page 1.
+    """
+    if not params:
+        return False
+    page = params.get("page")
+    return isinstance(page, int) and not isinstance(page, bool) and page > 0
+
+
 def parse_total_count(headers: dict[str, str]) -> int:
     """Parse X-Total-Count header, returning 0 if missing."""
     value = headers.get("X-Total-Count") or headers.get("x-total-count") or ""

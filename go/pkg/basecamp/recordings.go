@@ -144,8 +144,10 @@ type RecordingsListOptions struct {
 	// If 0, uses DefaultRecordingLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if positive, fetches only that page and disables auto-pagination.
-	// Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination:
+	// exactly one request, no Link rel="next" follow (SPEC §8). A positive
+	// Limit still trims that page; the per-operation default limit does not
+	// apply to it. Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -257,7 +259,8 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &RecordingListResult{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount}}, nil
+		keep, truncated := pageCap(len(recordings), opts.Limit, resp.HTTPResponse)
+		return &RecordingListResult{Recordings: recordings[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = default (100), -1 = unlimited, >0 = specific limit

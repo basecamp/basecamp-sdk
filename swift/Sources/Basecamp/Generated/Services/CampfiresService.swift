@@ -159,7 +159,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Campfires", operation: "ListCampfireLines", resourceType: "campfire_line", isMutation: false, resourceId: campfireId),
             path: "/chats/\(campfireId)/lines.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListCampfireLines")
         )
     }
@@ -179,7 +179,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Campfires", operation: "ListCampfireUploads", resourceType: "campfire_upload", isMutation: false, resourceId: campfireId),
             path: "/chats/\(campfireId)/uploads.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListCampfireUploads")
         )
     }
@@ -193,7 +193,7 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Campfires", operation: "ListCampfires", resourceType: "campfire", isMutation: false),
             path: "/chats.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListCampfires")
         )
     }

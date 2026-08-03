@@ -23,7 +23,7 @@ public final class TimelineService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Timeline", operation: "GetProjectTimeline", resourceType: "project_timeline", isMutation: false, projectId: projectId),
             path: "/projects/\(projectId)/timeline.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetProjectTimeline")
         )
     }

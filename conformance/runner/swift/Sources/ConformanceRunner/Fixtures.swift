@@ -152,6 +152,8 @@ struct ConfigOverrides: Decodable {
     let baseUrl: String?
     let maxPages: Int?
     let maxItems: Int?
+    /// Pins the list operation to a single page (SPEC section 8).
+    let page: Int?
 }
 
 struct MockResponse: Decodable, Sendable {

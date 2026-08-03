@@ -65,7 +65,7 @@ public final class GaugesService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Gauges", operation: "ListGaugeNeedles", resourceType: "gauge_needle", isMutation: false, projectId: projectId),
             path: "/projects/\(projectId)/gauge/needles.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListGaugeNeedles")
         )
     }
@@ -82,7 +82,7 @@ public final class GaugesService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Gauges", operation: "ListGauges", resourceType: "gauge", isMutation: false),
             path: "/reports/gauges.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListGauges")
         )
     }

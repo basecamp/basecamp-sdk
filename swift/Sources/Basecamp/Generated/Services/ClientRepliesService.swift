@@ -32,7 +32,7 @@ public final class ClientRepliesService: BaseService, @unchecked Sendable {
             OperationInfo(service: "ClientReplies", operation: "ListClientReplies", resourceType: "client_reply", isMutation: false, projectId: bucketId, resourceId: recordingId),
             path: "/buckets/\(bucketId)/client/recordings/\(recordingId)/replies.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListClientReplies")
         )
     }

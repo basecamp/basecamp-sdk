@@ -129,7 +129,7 @@ class GaugesService(client: AccountClient) : BaseService(client) {
      * [listGaugeNeedles] needs an expected type to disambiguate.
      */
     suspend fun listGaugeNeedles(projectId: Long, options: PaginationOptions? = null): ListResult<JsonElement> =
-        listGaugeNeedles(projectId, ListGaugeNeedlesOptions(maxItems = options?.maxItems))
+        listGaugeNeedles(projectId, ListGaugeNeedlesOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Create a gauge needle (progress update) for a project

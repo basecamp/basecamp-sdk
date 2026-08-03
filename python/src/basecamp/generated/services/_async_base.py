@@ -4,7 +4,13 @@ import time
 from typing import Any
 
 from basecamp import _security
-from basecamp._pagination import ListMeta, ListResult, parse_next_link, parse_total_count
+from basecamp._pagination import (
+    ListMeta,
+    ListResult,
+    parse_next_link,
+    parse_total_count,
+    selects_single_page,
+)
 from basecamp.errors import ApiError
 from basecamp.hooks import OperationInfo, OperationResult, safe_hook
 
@@ -297,6 +303,17 @@ class AsyncBaseService:
 
             all_items.extend(items)
 
+            # SPEC section 8: a positive `page` selects exactly that page. The
+            # follow loop stops here after a single request; a next link still
+            # means more items existed, which is what `truncated` reports.
+            if selects_single_page(params):
+                truncated = (max_items is not None and len(all_items) > max_items) or (
+                    parse_next_link(response.headers.get("link")) is not None
+                )
+                if max_items:
+                    all_items = all_items[:max_items]
+                break
+
             if max_items and len(all_items) >= max_items:
                 truncated = len(all_items) > max_items or parse_next_link(response.headers.get("link")) is not None
                 all_items = all_items[:max_items]
@@ -350,6 +367,17 @@ class AsyncBaseService:
             items = data.get(key, [])
             all_items.extend(items)
 
+            # SPEC section 8: a positive `page` selects exactly that page. The
+            # follow loop stops here after a single request; a next link still
+            # means more items existed, which is what `truncated` reports.
+            if selects_single_page(params):
+                truncated = (max_items is not None and len(all_items) > max_items) or (
+                    parse_next_link(response.headers.get("link")) is not None
+                )
+                if max_items:
+                    all_items = all_items[:max_items]
+                break
+
             if max_items and len(all_items) >= max_items:
                 truncated = len(all_items) > max_items or parse_next_link(response.headers.get("link")) is not None
                 all_items = all_items[:max_items]
@@ -401,7 +429,12 @@ class AsyncBaseService:
         url = base_url
         page = 1
 
-        while next_link and page < self._client.config.max_pages:
+        # SPEC section 8: a positive `page` selects exactly that page, so the
+        # follow loop never runs and `truncated` below reports the next link
+        # this call deliberately did not follow.
+        single_page = selects_single_page(params)
+
+        while not single_page and next_link and page < self._client.config.max_pages:
             if max_items and len(all_items) >= max_items:
                 break
 

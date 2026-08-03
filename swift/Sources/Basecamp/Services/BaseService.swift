@@ -176,6 +176,13 @@ open class BaseService: @unchecked Sendable {
             let totalCount = parseTotalCount(response)
             let maxItems = paginationOpts?.maxItems
 
+            if (paginationOpts?.page ?? 0) > 0 {
+                let durationMs = millisSince(startTime)
+                safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs)) }
+                return selectedPageResult(
+                    firstPageItems, response: response, totalCount: totalCount, maxItems: maxItems)
+            }
+
             // If maxItems is set and first page satisfies it, return early
             if let maxItems, maxItems > 0, firstPageItems.count >= maxItems {
                 let hasMore = firstPageItems.count > maxItems
@@ -258,6 +265,13 @@ open class BaseService: @unchecked Sendable {
             let totalCount = parseTotalCount(response)
             let maxItems = paginationOpts?.maxItems
 
+            if (paginationOpts?.page ?? 0) > 0 {
+                let durationMs = millisSince(startTime)
+                safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs)) }
+                return (firstPageData, selectedPageResult(
+                    firstPageItems, response: response, totalCount: totalCount, maxItems: maxItems))
+            }
+
             // If maxItems is set and first page satisfies it, return early
             if let maxItems, maxItems > 0, firstPageItems.count >= maxItems {
                 let hasMore = firstPageItems.count > maxItems
@@ -287,6 +301,26 @@ open class BaseService: @unchecked Sendable {
             safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs, error: error)) }
             throw error
         }
+    }
+
+    /// A pinned page is the whole answer (SPEC section 8): the caller gets
+    /// exactly that page in exactly one request, and the `Link: rel="next"`
+    /// follow loop never runs. `truncated` still reports whether more items
+    /// existed — dropped by the cap, or reachable through the link we
+    /// deliberately did not follow.
+    private func selectedPageResult<T: Decodable & Sendable>(
+        _ items: [T],
+        response: HTTPURLResponse,
+        totalCount: Int,
+        maxItems: Int?
+    ) -> ListResult<T> {
+        let cap = maxItems.flatMap { $0 > 0 && items.count > $0 ? $0 : nil }
+        let truncated = cap != nil
+            || parseNextLink(response.value(forHTTPHeaderField: "Link")) != nil
+        return ListResult(
+            cap.map { Array(items.prefix($0)) } ?? items,
+            meta: ListMeta(totalCount: totalCount, truncated: truncated)
+        )
     }
 
     // MARK: - Pagination

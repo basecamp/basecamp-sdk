@@ -355,6 +355,35 @@ func pageParam(page int) (*int32, error) {
 	return ptr(int32(page)), nil // #nosec G115 -- bounded above by the MaxInt32 guard
 }
 
+// hasNextPage reports whether a response advertises a further page.
+//
+// The page-selected path uses it: a positive Page returns exactly the page the
+// caller asked for, and the rel="next" Link this SDK deliberately does not
+// follow is what makes that result truncated under SPEC §8's ListMeta ("true
+// only when items beyond those returned were available").
+func hasNextPage(resp *http.Response) bool {
+	if resp == nil {
+		return false
+	}
+	return parseNextLink(resp.Header.Get("Link")) != ""
+}
+
+// pageCap reports how many items a page-selected result keeps and whether it
+// is truncated.
+//
+// Page selection returns exactly the page the caller asked for, so the
+// per-operation DEFAULT limits (DefaultTodoLimit and friends) must not apply
+// here — only a Limit the caller set explicitly, which is the same composition
+// max_items has with a pinned page in the other five SDKs (SPEC §8). Truncated
+// is true when that cap dropped items, or when the page advertised a further
+// page this SDK deliberately did not follow.
+func pageCap(count, limit int, resp *http.Response) (keep int, truncated bool) {
+	if limit > 0 && count > limit {
+		return limit, true
+	}
+	return count, hasNextPage(resp)
+}
+
 // isFirstPageTruncated returns true when items were capped on the first page
 // (either the page had more items than limit, or more pages are available).
 func isFirstPageTruncated(resp *http.Response, itemCount, limit int) bool {

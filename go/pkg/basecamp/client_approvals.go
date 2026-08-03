@@ -155,7 +155,8 @@ func (s *ClientApprovalsService) List(ctx context.Context, bucketID int64, opts 
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &ClientApprovalListResult{Approvals: approvals, Meta: ListMeta{TotalCount: totalCount}}, nil
+		keep, truncated := pageCap(len(approvals), opts.Limit, resp.HTTPResponse)
+		return &ClientApprovalListResult{Approvals: approvals[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (no limit)

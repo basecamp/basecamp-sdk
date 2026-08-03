@@ -11,6 +11,12 @@ let testAccountID = "999"
 /// widening one without the other is caught the first time a fixture asks.
 private let operationsHonoringMaxItems: Set<String> = ["ListProjects"]
 
+/// Same contract for `configOverrides.page`, which is a stronger claim: a
+/// fixture setting it asserts a SINGLE request, so an unthreaded page would
+/// let the SDK walk the whole collection while the fixture believed it had
+/// pinned one page.
+private let operationsHonoringPage: Set<String> = ["ListProjects"]
+
 /// Temporary capability skips, keyed by exact test name.
 ///
 /// EMPTY, and meant to stay that way. Swift is three-gate (status, network and
@@ -167,6 +173,10 @@ struct Runner {
         // arm and to this roster together.
         if tc.configOverrides?.maxItems != nil, !operationsHonoringMaxItems.contains(tc.operation) {
             return .fail("configOverrides.maxItems is set but \(tc.operation)'s dispatch does not thread it through — it would paginate unbounded")
+        }
+
+        if tc.configOverrides?.page != nil, !operationsHonoringPage.contains(tc.operation) {
+            return .fail("configOverrides.page is set but \(tc.operation)'s dispatch does not thread it through — it would paginate past the pinned page")
         }
 
         // Detect if the fixture uses Link next headers (SDK will auto-paginate).

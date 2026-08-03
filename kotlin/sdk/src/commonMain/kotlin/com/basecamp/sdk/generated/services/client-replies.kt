@@ -48,7 +48,7 @@ class ClientRepliesService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(bucketId: Long, recordingId: Long, options: PaginationOptions? = null): ListResult<ClientReply> =
-        list(bucketId, recordingId, ListClientRepliesOptions(maxItems = options?.maxItems))
+        list(bucketId, recordingId, ListClientRepliesOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Get a single client reply by id

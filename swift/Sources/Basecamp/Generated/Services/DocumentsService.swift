@@ -42,7 +42,7 @@ public final class DocumentsService: BaseService, @unchecked Sendable {
             OperationInfo(service: "Documents", operation: "ListDocuments", resourceType: "document", isMutation: false, resourceId: vaultId),
             path: "/vaults/\(vaultId)/documents.json",
             queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "ListDocuments")
         )
     }

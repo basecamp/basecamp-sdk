@@ -140,7 +140,8 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64, opts *Webhoo
 
 	// Handle single page fetch (--page flag)
 	if opts != nil && opts.Page > 0 {
-		return &WebhookListResult{Webhooks: webhooks, Meta: ListMeta{TotalCount: totalCount}}, nil
+		keep, truncated := pageCap(len(webhooks), opts.Limit, resp.HTTPResponse)
+		return &WebhookListResult{Webhooks: webhooks[:keep], Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	// Determine limit: 0 = all (no limit)

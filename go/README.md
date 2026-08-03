@@ -569,14 +569,20 @@ auto-pagination:
 result, err := account.Projects().List(ctx, &basecamp.ProjectListOptions{Page: 3})
 ```
 
+A positive `Limit` still trims that page, and dropping items from it counts as
+truncation. The per-operation *default* limits (100 todos, and so on) do not
+apply to a pinned page — asking for page 3 asks for page 3, not its first 100
+items.
+
+`Meta.Truncated` still answers "was there more": on a pinned page it is true when
+a `rel="next"` Link went deliberately unfollowed, or when `Limit` discarded items.
+
 A handful of endpoints are not paginated server-side (`Webhooks().List()`,
 `MessageTypes().List()`, and the other cases each options struct calls out); they
 return the whole list, and `Page` there only short-circuits auto-pagination.
 
-`Page` means something different in the other five SDKs, where a positive `page`
-is a *starting offset* that link-following then continues from. Converging the
-six on Go's single-page semantics is a breaking change tracked in
-[#566](https://github.com/basecamp/basecamp-sdk/issues/566).
+All six SDKs share these semantics — one request, that page only, no
+link-following. See SPEC section 8.
 
 ## Error Handling
 

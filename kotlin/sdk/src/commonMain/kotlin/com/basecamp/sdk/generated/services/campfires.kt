@@ -161,7 +161,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
      * [list] needs an expected type to disambiguate.
      */
     suspend fun list(options: PaginationOptions? = null): ListResult<Campfire> =
-        list(ListCampfiresOptions(maxItems = options?.maxItems))
+        list(ListCampfiresOptions(maxItems = options?.maxItems, page = options?.page))
 
     /**
      * Get a campfire by ID
