@@ -32,8 +32,9 @@ SDK registration only — the contract shipped to `master` via BC3 **#12380**
 contract of record. The **retrieval** side (`GET /my/assignments.json` and its
 completed/due variants) is already modeled as `GetMyAssignments`; #12380 hardens
 and **documents** the **Up Next priority-management** writes, which the SDK does
-not model. This entry registers that net-new write surface so the provenance pin
-(`c3086931`) is not carrying an unrecorded API change.
+not model. This entry registers that net-new write surface so the pin it was
+filed against (`c3086931`, 2026-07-26) was not carrying an unrecorded API
+change.
 
 "Up Next" is the current user's ordered list of prioritized assignments
 (returned as `priorities` by `GetMyAssignments`). Three write operations, all

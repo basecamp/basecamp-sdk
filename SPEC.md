@@ -1163,7 +1163,7 @@ Every JSON API request must include all four headers below. Download requests (�
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
 - `{VERSION}` is the SDK version (e.g., `0.6.0`)
-- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-03-23`), derived from the shared date in `spec/api-provenance.json`
+- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-02`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
 
 ### Redirect Handling
 
@@ -1828,7 +1828,11 @@ Test cases conform to `conformance/schema.json`. Each test specifies:
 
 ### Assertion Types
 
-Enumerated from `conformance/schema.json`:
+Enumerated from `conformance/schema.json` — the table below is gated against
+that enum by `make doc-constants-check`, so a new assertion type cannot ship
+undocumented:
+
+<!-- @assertion-types:begin -->
 
 | Type | Description |
 |------|-------------|
@@ -1838,10 +1842,14 @@ Enumerated from `conformance/schema.json`:
 | `responseStatus` | Response status category |
 | `responseBody` | Specific value in response body (by path) |
 | `headerPresent` | Named header exists on request |
+| `headerAbsent` | Named header does **not** exist on the request. Absence is decided on the header's value list, not a `get` that returns the empty string for both "missing" and "present but empty" — a present-but-empty header fails this assertion. |
 | `headerValue` | Named header has specific value |
 | `errorType` | Error type classification |
 | `noError` | Operation completed without error |
 | `requestPath` | URL path of the outgoing request |
+| `requestMethod` | HTTP method of the outgoing request |
+| `requestBody` | Value at `path` (dot-notation key) inside the captured JSON request body. A request that sent no JSON body fails, as does a body that omits the key. |
+| `requestBodyAbsent` | The `path` key is **not** present in the captured JSON request body — the assertion that pins omission-as-clear and body compaction (§18). A request with no JSON body at all satisfies it. |
 | `errorCode` | Error code in structured error |
 | `errorMessage` | Error message text |
 | `errorField` | Specific field value on the error object |
@@ -1849,6 +1857,14 @@ Enumerated from `conformance/schema.json`:
 | `requestScheme` | URL scheme (http/https) of request |
 | `urlOrigin` | Origin validation result (accepted/rejected) |
 | `responseMeta` | Metadata on paginated response (totalCount, truncated) |
+
+<!-- @assertion-types:end -->
+
+The per-request assertions — `headerPresent`, `headerAbsent`, `headerInjected`,
+`requestPath`, `requestMethod`, `requestBody`, `requestBodyAbsent` — take an
+optional `index` naming which recorded request to inspect (0-based; negative
+counts from the end, so `-1` is the last request). It defaults to `0`, and an
+index past the number of recorded requests fails rather than passing vacuously.
 
 ### Test Categories and Owning Sections
 
@@ -1967,6 +1983,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | `provenance-check` | Embedded provenance matches `spec/api-provenance.json` |
 | `sync-spec-version-check` | Smithy service version matches the shared date in `spec/api-provenance.json` |
 | `sync-api-version-check` | `API_VERSION` constants match `openapi.json` `info.version` across all SDKs |
+| `doc-constants-check` | Constants restated in prose match their sources: `@api-version`-marked spans vs. `openapi.json` `info.version`, `@bc3-pin`-marked spans vs. `spec/api-provenance.json`, and §19's `@assertion-types` table vs. `conformance/schema.json`. Only marked spans are checked — `spec/api-gaps/` cites historical bc3 SHAs on purpose — and `spec/doc-constants.json` commits the exact per-file marker count, so neither deleting a marker nor adding an unrecorded one can silence the gate. It also bounds, by count and with a reason, the files allowed to name today's pin unmarked. `make sync-api-version` rewrites the two scalar constants, except in files listed `.writerExcludes` |
 | `url-routes-check` | `go/pkg/basecamp/url-routes.json` (embedded via `//go:embed`) matches regeneration from `openapi.json` |
 | `go-check-drift` | Go generated services match current OpenAPI spec |
 | `kt-check-drift` | Kotlin generated services match current OpenAPI spec (operation-level coverage) |
@@ -2010,6 +2027,8 @@ The following are explicitly NOT part of this specification:
 
 All magic numbers in one place, derived from shipping SDK code (not `rubric-audit.json`).
 
+Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 13 rows are hand-maintained and were read against their cited sources on 2026-08-03 — all 13 matched. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
+
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
 | `MAX_RESPONSE_BODY_BYTES` | 52,428,800 (50 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`; Go/Ruby enforce; TS/Kotlin/Swift do not |
@@ -2025,7 +2044,7 @@ All magic numbers in one place, derived from shipping SDK code (not `rubric-audi
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
-| `API_VERSION` | `2026-03-23` | — | `openapi.json` `info.version` |
+| `API_VERSION` | `2026-08-02` | — | `openapi.json` `info.version` <!-- @api-version --> |
 | `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
 
 ---

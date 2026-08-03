@@ -2,7 +2,7 @@
 #
 # Orchestrates both Smithy spec and Go SDK
 
-.PHONY: all check clean help setup tools provenance-sync provenance-check sync-status bump sync-spec-version sync-spec-version-check sync-api-version sync-api-version-check release
+.PHONY: all check clean help setup tools provenance-sync provenance-check sync-status bump sync-spec-version sync-spec-version-check sync-api-version sync-api-version-check doc-constants-check release
 
 # Default: run all checks
 all: check
@@ -240,6 +240,18 @@ sync-api-version-check:
 	grep -q "API_VERSION = \"$$API_VER\"" python/src/basecamp/_version.py || ok=false; \
 	if [ "$$ok" = false ]; then echo "ERROR: API_VERSION constants are out of date. Run 'make sync-api-version'"; exit 1; fi
 	@echo "API version constants are up to date"
+
+# Check the constants restated in prose (API_VERSION, bc3 provenance pin,
+# SPEC §19's assertion-type table) against their machine-readable sources.
+# Only HTML-comment-marked spans are checked; spec/doc-constants.json commits
+# the exact per-file marker count so neither deleting a marker nor quietly
+# adding an unrecorded one can silence the gate.
+# The live run only ever proves the gate can say yes, so the self-test follows:
+# it crafts each failure mode and asserts the gate rejects it.
+doc-constants-check:
+	@echo "==> Checking documentation constants..."
+	@./scripts/check-doc-constants.sh
+	@ruby ./scripts/test-doc-constants.rb
 
 #------------------------------------------------------------------------------
 # Go SDK targets (delegates to go/Makefile)
@@ -993,7 +1005,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -1104,6 +1116,7 @@ help:
 	@echo "  bump VERSION=x.y.z       Bump SDK version across all languages"
 	@echo "  sync-api-version         Sync API_VERSION from openapi.json"
 	@echo "  sync-api-version-check   Verify API_VERSION constants are up to date"
+	@echo "  doc-constants-check      Verify marked doc constants match their sources"
 	@echo "  release VERSION=x.y.z    Tag and push a global release (triggers all SDK releases)"
 	@echo ""
 	@echo "GitHub Actions:"

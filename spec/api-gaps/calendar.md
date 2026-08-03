@@ -58,14 +58,15 @@ is intentionally small.
 ## SDK absorption plan when this lands
 
 **Absorbed** (post-#504 program C8): `CalendarsService` models the show +
-update pair with the shape taken from `doc/api/sections/calendars.md` **at the
-pinned revision** (verified: no doc/controller drift since `e83b2733`): id,
-type, name, color, created_at, updated_at, url, app_url, schedule_url — all
-required non-nullable. The update body is the nested `{calendar: {color}}`
-envelope; the pinned controller's 422 contract (`{"errors": {"color": ["is not
-a valid color"]}}`, rejected up front for unknown enum values) is documented on
-the operation and pinned in per-SDK 422 tests. `UpdateCalendar` is a flagged
-idempotent PUT with an idempotency conformance case. The `GetCalendar`
+update pair with the shape taken from `doc/api/sections/calendars.md` **at
+`e83b2733`, the provenance pin when this entry was verified** (no doc or
+controller drift up to it): id, type, name, color, created_at, updated_at, url,
+app_url, schedule_url — all required non-nullable. The update body is the
+nested `{calendar: {color}}` envelope; that revision's controller returns the
+422 contract (`{"errors": {"color": ["is not a valid color"]}}`, rejected up
+front for unknown enum values), documented on the operation and pinned in
+per-SDK 422 tests. `UpdateCalendar` is a flagged idempotent PUT with an
+idempotency conformance case. The `GetCalendar`
 live-canary case ships in `live-my-surface.json` with an **env-var-only**
 fixture (`BASECAMP_BC5_CALENDAR_ID` → `BASECAMP_CALENDAR_ID` → skip): no
 modeled endpoint returns a calendar bucket id (the dock has no calendar tool;
