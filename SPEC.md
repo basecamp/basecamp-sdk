@@ -2409,7 +2409,16 @@ Two dispatch clarifications, pinned:
   equality against the connector's identifier; frames carrying other identifiers are
   ignored.
 - Ping parsing accepts both `{"type":"ping"}` and `{"type":"ping","message":<epoch>}`.
-  Unknown frame types update liveness and are otherwise ignored.
+  Unknown frame types — parseable JSON whose `type` the connector doesn't recognize —
+  update liveness and are otherwise ignored.
+- **An unparseable or oversized inbound frame is a peer protocol violation, dispatched as
+  a socket failure** `[conformance]`: a frame that fails to parse as JSON, or exceeds
+  `EVENT_FEED_MAX_FRAME_BYTES`, triggers full teardown through the current state's
+  socket-failure edge (9/15/21/25 → Backoff; the reconnect cycle recovers), with
+  `Observer.disconnected` carrying an unparseable-frame indication. Never terminal — a
+  garbled frame is transport-level corruption, unlike the server's own
+  `invalid_event_stream_command` verdict — and never silently ignored: continuing to read
+  a stream that has stopped parsing invites silent divergence.
 - **Every** inbound frame, of any kind, resets the `staleness` timer
   (`EVENT_FEED_STALE_AFTER = 7500ms`: two missed 3-second server heartbeats plus 25% grace —
   the server contract leaves detection policy to the SDK; the SDK pins and publishes this
@@ -2419,9 +2428,14 @@ Two dispatch clarifications, pinned:
   (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
   back-pressure propagates to the socket and TCP — rather than dropping: the
   state-machine-owned live buffer is the only place a frame can ever be dropped, and its
-  overflow signal is the only drop signal. Connector memory is therefore bounded by pump
-  depth + `EVENT_FEED_LIVE_BUFFER_CAPACITY` + `EVENT_FEED_MAX_FRAME_BYTES`, even under a
-  slow consumer.
+  overflow signal is the only drop signal. Worst-case connector memory is therefore
+  bounded multiplicatively — every queued or buffered item is itself bounded by
+  `EVENT_FEED_MAX_FRAME_BYTES`, so the ceiling is
+  (pump depth + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
+  (≈ 10 GiB at the defaults' extreme, reached only if every slot holds a maximum-size
+  frame) — even under a slow consumer. Implementations MAY additionally impose a total
+  byte cap on the live buffer; if they do, eviction routes through the same overflow
+  signal, never a silent drop.
 - The transport negotiates subprotocol `actioncable-v1-json`, sends no `Origin` header
   (non-browser clients), and passes the mint URL through untouched, query string included.
 
