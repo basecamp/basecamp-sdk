@@ -78,7 +78,10 @@ SDKS = {
         "suffixes": (".rb",),
         "patterns": [
             rf"ENV\[\s*{Q}{NAME}{ENDQ}",
-            rf"ENV\.fetch\(\s*{Q}{NAME}{ENDQ}",
+            # Parentheses are optional in Ruby, so `ENV.fetch "FOO", nil` is a
+            # real read. Requiring `(` made it invisible, which is the fail-open
+            # direction: the gate would report that nothing reads the variable.
+            rf"ENV\.fetch[(\s]\s*{Q}{NAME}{ENDQ}",
         ],
     },
     "Python": {
@@ -412,6 +415,60 @@ def prose_lines(readme: Path) -> list[tuple[int, str]]:
     return out
 
 
+def prose_paragraphs(readme: Path) -> list[list[tuple[int, str]]]:
+    """Prose grouped into paragraphs of consecutive lines.
+
+    Markdown reflows, so an attribution can wrap: "Go reads" at the end of one
+    line and the variable at the start of the next. Scanning line by line finds
+    no claim at all in that case and invariant 5 silently stops enforcing a
+    sentence it used to cover. A blank line ends a paragraph, and so does a gap
+    in line numbers -- prose_lines drops tables and fenced blocks, and those
+    genuinely separate one paragraph from the next.
+    """
+    groups: list[list[tuple[int, str]]] = []
+    current: list[tuple[int, str]] = []
+    for lineno, line in prose_lines(readme):
+        if not line.strip() or (current and lineno != current[-1][0] + 1):
+            if current:
+                groups.append(current)
+            current = []
+        if line.strip():
+            current.append((lineno, line))
+    if current:
+        groups.append(current)
+    return groups
+
+
+def join_paragraph(paragraph: list[tuple[int, str]]):
+    """Join a paragraph's lines, returning the text and an offset->line mapper.
+
+    Lines are joined with a single space so a wrapped "Go reads\\n`VAR`" reads as
+    one sentence, and every claim is still reported at the source line where its
+    subject appears.
+    """
+    parts: list[str] = []
+    starts: list[tuple[int, int]] = []
+    position = 0
+    for lineno, line in paragraph:
+        if parts:
+            parts.append(" ")
+            position += 1
+        starts.append((position, lineno))
+        parts.append(line)
+        position += len(line)
+
+    def line_at(offset: int) -> int:
+        found = starts[0][1]
+        for start, lineno in starts:
+            if start <= offset:
+                found = lineno
+            else:
+                break
+        return found
+
+    return "".join(parts), line_at
+
+
 def prose_claims(readme: Path) -> list[tuple[int, str, list[str]]]:
     """Every "<SDK> reads `VAR`" claim, as (line number, sdk, variables).
 
@@ -428,28 +485,29 @@ def prose_claims(readme: Path) -> list[tuple[int, str, list[str]]]:
     one clause cannot borrow another's variables.
     """
     claims = []
-    for lineno, line in prose_lines(readme):
-        matches = list(SDK_READS_RE.finditer(line))
+    for paragraph in prose_paragraphs(readme):
+        text, line_at = join_paragraph(paragraph)
+        matches = list(SDK_READS_RE.finditer(text))
         for index, match in enumerate(matches):
             forward_start = match.end()
-            forward_stop = matches[index + 1].start() if index + 1 < len(matches) else len(line)
-            terminator = CLAIM_END_RE.search(line, forward_start, forward_stop)
+            forward_stop = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+            terminator = CLAIM_END_RE.search(text, forward_start, forward_stop)
             if terminator:
                 forward_stop = terminator.start()
-            named = VAR_RE.findall(line[forward_start:forward_stop])
+            named = VAR_RE.findall(text[forward_start:forward_stop])
 
             if not named:
                 # Back to the start of this sentence, but never past the previous
                 # claim -- otherwise "Go reads `X`. Ruby uses it too" would hand
                 # Go's variable to Ruby.
                 backward_start = matches[index - 1].end() if index else 0
-                for boundary in CLAIM_END_RE.finditer(line, backward_start, match.start()):
+                for boundary in CLAIM_END_RE.finditer(text, backward_start, match.start()):
                     backward_start = boundary.end()
-                named = VAR_RE.findall(line[backward_start:match.start()])
+                named = VAR_RE.findall(text[backward_start:match.start()])
 
             for sdk in SDK_NAME_RE.findall(match.group("subject")):
                 if named:
-                    claims.append((lineno, sdk, named))
+                    claims.append((line_at(match.start()), sdk, named))
     return claims
 
 

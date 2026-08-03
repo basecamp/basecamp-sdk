@@ -170,9 +170,11 @@ The one-line rule: **a redirect URI you control → authorization code; no brows
 
 Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `forAccount` needs that number before your first call. One token can reach several accounts.
 
-This SDK has no `authorization` service, because that endpoint lives on Launchpad rather than on the Basecamp API. Fetch it once yourself:
+This SDK has no `authorization` service, because that endpoint lives on the authorization server rather than on the Basecamp API. Fetch it once yourself, from the server that issued your token:
 
 ```bash
+# Launchpad-issued token. For a device-flow token, replace the host with the
+# issuer discovery selected — that is where its authorization.json lives.
 curl -s https://launchpad.37signals.com/authorization.json \
   -H "Authorization: Bearer $BASECAMP_TOKEN" \
   -H "User-Agent: MyApp/1.0 (you@example.com)"

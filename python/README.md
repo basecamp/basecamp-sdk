@@ -61,7 +61,7 @@ The one-line rule: **a redirect URI you control → authorization code; no brows
 
 ## Finding your account ID
 
-Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* `Client` because the endpoint lives on Launchpad, not on the Basecamp API, and so takes no account context:
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* `Client` because the endpoint lives on the authorization server rather than the Basecamp API, and so takes no account context. It is pinned to Launchpad and `authorization.get()` accepts no override, which is right for a Launchpad-issued token; a **device-flow** token is issued by the discovered BC5 server, so fetch `/authorization.json` from that issuer yourself:
 
 ```python
 import os

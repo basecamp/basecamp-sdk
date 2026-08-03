@@ -49,7 +49,7 @@ A bare `accessToken` string is never refreshed — once it expires every call fa
 
 ## Finding your account ID
 
-Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `createBasecampClient` needs that number before your first call. One token can reach several accounts, so ask the token which:
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `createBasecampClient` needs that number before your first call. One token can reach several accounts, so ask the token which. `getInfo()` addresses Launchpad by default, which is right for a Launchpad-issued token; a **device-flow** token is issued by the discovered BC5 server, so pass that issuer as the `endpoint` option:
 
 ```ts
 import { createBasecampClient } from "@37signals/basecamp";

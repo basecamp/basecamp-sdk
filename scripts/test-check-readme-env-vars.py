@@ -108,6 +108,16 @@ def main() -> int:
         })
         check("ruby single-quoted read is seen", run_gate(root, RB_SDK), [])
 
+        # Ruby parentheses are optional, so `ENV.fetch "FOO", nil` is a real read
+        # that a `(`-only pattern reports as nonexistent.
+        root = tmp / "ruby-no-parens"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_NOPAREN"),
+            "ruby/lib/c.rb": 'v = ENV.fetch "BASECAMP_NOPAREN", nil\n',
+        })
+        check("ruby ENV.fetch without parentheses is seen",
+              run_gate(root, RB_SDK), [])
+
         root = tmp / "quotes-ts"
         build(root, {
             "typescript/README.md": TABLE.format(var="BASECAMP_SINGLE"),
@@ -431,6 +441,34 @@ def main() -> int:
         })
         check("the backward pass stops at the sentence boundary",
               run_gate(root, PY_RB), [])
+
+        # Markdown reflows, so an attribution can wrap mid-sentence. A per-line
+        # scan finds no claim at all and invariant 5 silently stops enforcing it.
+        root = tmp / "prose-wrapped"
+        build(root, {
+            "python/README.md": "Python reads\n`BASECAMP_WRAPPED` on request.\n",
+            "python/src/c.py": "v = 1\n",
+        })
+        check("a claim wrapped across lines is still checked",
+              run_gate(root, PY_SDK), ["prose:Python:BASECAMP_WRAPPED"])
+
+        # The variables-first form has to survive wrapping too.
+        root = tmp / "prose-wrapped-backward"
+        build(root, {
+            "ruby/README.md": "`XDG_CACHE_HOME`, which\nRuby uses to site its cache.\n",
+            "ruby/lib/c.rb": "v = 1\n",
+        })
+        check("a wrapped variables-first claim is still checked",
+              run_gate(root, RB_SDK), ["prose:Ruby:XDG_CACHE_HOME"])
+
+        # A blank line still separates paragraphs, so an unrelated later
+        # paragraph cannot lend its variables to an earlier claim.
+        root = tmp / "prose-paragraph-break"
+        build(root, {
+            "python/README.md": "Python reads nothing here.\n\n`BASECAMP_ELSEWHERE` is unrelated.\n",
+            "python/src/c.py": "v = 1\n",
+        })
+        check("a blank line ends the paragraph", run_gate(root, PY_SDK), [])
 
         # Fenced examples are not claims.
         root = tmp / "prose-fenced"
