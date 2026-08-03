@@ -73,11 +73,15 @@ Every API path is scoped to an account — `https://3.basecampapi.com/{accountId
 
 The response lists every account the token can reach; take `accounts[].id` for an entry whose `product` is `"bc3"` (that is Basecamp — the same response also carries `"hey"` and other 37signals products). The same response carries the token's expiry — `expires_at` on the wire, `expiresAt` on the TypeScript type — which is the quickest way to confirm a static token has not lapsed.
 
-This endpoint lives on Launchpad rather than on the Basecamp API, so it is account-independent: call it on the *top-level* client, before `ForAccount`/`for_account`. TypeScript is the exception — `createBasecampClient` requires an `accountId` up front, so pass a placeholder for the bootstrap call and rebuild the client once you know the real one.
+The document is account-independent, so call it on the *top-level* client, before `ForAccount`/`for_account`. TypeScript is the exception — `createBasecampClient` requires an `accountId` up front, so pass a placeholder for the bootstrap call and rebuild the client once you know the real one.
+
+It lives on the authorization server that issued your token, not on the Basecamp API — which matters once you leave Launchpad behind. A Launchpad-issued token (authorization code, or a static token from there) reads it at Launchpad. A **device-flow** token is issued by the discovered BC5 server, and its document lives there too. Ruby follows the token: `Http#get_authorization_document` runs resource-first discovery and fetches from the *selected* issuer. The other three hardcode Launchpad, so a device-flow token needs the issuer supplied — Go takes `GetInfoOptions.Endpoint` and TypeScript an `endpoint` option, while Python's `authorization.get()` accepts no override at all, so fetch the document yourself as in the `curl` below.
 
 Swift and Kotlin ship no `authorization` service. Fetch it once with any HTTP client:
 
 ```bash
+# Launchpad-issued token. For a device-flow token, replace the host with the
+# issuer discovery selected — that is where its authorization.json lives.
 curl -s https://launchpad.37signals.com/authorization.json \
   -H "Authorization: Bearer $BASECAMP_TOKEN" \
   -H "User-Agent: my-app/1.0 (you@example.com)"
