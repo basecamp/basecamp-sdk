@@ -178,6 +178,35 @@ def main() -> int:
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_DIV"])
 
+        # A keyword ends in a letter, which otherwise reads as an identifier and
+        # therefore as division.
+        root = tmp / "regex-after-keyword"
+        build(root, {
+            "typescript/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "typescript/src/c.ts":
+                "function f() { return /process.env.BASECAMP_FAKE/; }\n",
+        })
+        check("a regex after a keyword is still a regex",
+              run_gate(root, TS_SDK), ["forward:TypeScript:BASECAMP_FAKE"])
+
+        # An escaped delimiter does not close a triple-quoted literal.
+        root = tmp / "escaped-triple"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "python/src/c.py": 'X = """a \\""" os.getenv(\'BASECAMP_FAKE\') b"""\n',
+        })
+        check("an escaped triple quote does not end the literal",
+              run_gate(root, PY_SDK), ["forward:Python:BASECAMP_FAKE"])
+
+        # Go backticks are raw: a trailing backslash does not escape the closing
+        # delimiter, so the literal ends and the code after it is scanned.
+        root = tmp / "go-backtick-raw"
+        build(root, {
+            "go/README.md": TABLE.format(var="BASECAMP_GO"),
+            "go/pkg/c.go": 's := `raw\\`\nv := os.Getenv("BASECAMP_GO")\n',
+        })
+        check("a go backtick literal is raw", run_gate(root, GO_SDK), [])
+
         # In a raw f-string the backslash is literal, so it must not eat the
         # brace that opens the expression.
         root = tmp / "raw-fstring"

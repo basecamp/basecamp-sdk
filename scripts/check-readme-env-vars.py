@@ -174,42 +174,48 @@ LANG_FLAGS = {
         "triple": False, "nested": False, "raw": False, "fstring": False,
         "multiline": False,
         "regex": False,
+        "backtick_raw": True,
         "interp": {},
     },
     "Ruby": {
         "triple": True, "nested": False, "raw": False, "fstring": False,
         "multiline": True,
         "regex": False,
+        "backtick_raw": False,
         "interp": {'"': [("#{", "}")]},
     },
     "Python": {
         "triple": True, "nested": False, "raw": False, "fstring": True,
         "multiline": False,
         "regex": False,
+        "backtick_raw": False,
         "interp": {},
     },
     "TypeScript": {
         "triple": False, "nested": False, "raw": False, "fstring": False,
         "multiline": False,
         "regex": True,
+        "backtick_raw": False,
         "interp": {"`": [("${", "}")]},
     },
     "Swift": {
         "triple": True, "nested": True, "raw": True, "fstring": False,
         "multiline": False,
         "regex": False,
+        "backtick_raw": False,
         "interp": {'"': [("\\(", ")")]},
     },
     "Kotlin": {
         "triple": True, "nested": True, "raw": False, "fstring": False,
         "multiline": False,
         "regex": False,
+        "backtick_raw": False,
         "interp": {'"': [("${", "}")]},
     },
 }
 # Permissive union, used only when no language is supplied.
 DEFAULT_FLAGS = {
-    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True,
+    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "backtick_raw": False,
     "interp": {"`": [("${", "}")], '"': [("${", "}"), ("\\(", ")"), ("#{", "}")]},
 }
 
@@ -262,6 +268,12 @@ STRING_QUOTES = {"hash": "\"'", "slash": "\"'`"}
 # preceding token is the standard heuristic and errs toward division, which is
 # the safe way round: mistaking division for a regex would swallow code.
 REGEX_PRECEDERS = set("=(,:[!&|?{};+-*%<>~^")
+# ...and after a keyword, whose last character is a letter and would otherwise
+# read as the end of an identifier, i.e. division.
+REGEX_KEYWORDS = {
+    "return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
+    "case", "do", "else", "yield", "await", "throw",
+}
 
 
 def regex_extent(text: str, i: int, flags: dict) -> int:
@@ -274,7 +286,13 @@ def regex_extent(text: str, i: int, flags: dict) -> int:
     while k >= 0 and text[k] in " \t":
         k -= 1
     if k >= 0 and text[k] not in REGEX_PRECEDERS and text[k] != "\n":
-        return i
+        if not (text[k].isalpha() or text[k] == "_"):
+            return i
+        word_end = k + 1
+        while k >= 0 and (text[k].isalnum() or text[k] == "_"):
+            k -= 1
+        if text[k + 1 : word_end] not in REGEX_KEYWORDS:
+            return i
     j = i + 1
     in_class = False
     n = len(text)
@@ -396,6 +414,24 @@ def has_fstring_prefix(text: str, i: int) -> bool:
     return "f" in text[prefix_start:i].lower()
 
 
+def find_unescaped(text: str, token: str, start: int, raw: bool = False) -> int:
+    """Index of `token` at or after `start`, skipping backslash-escaped ones.
+
+    An escaped delimiter inside a triple-quoted literal does not close it, and
+    treating it as the terminator left the rest of the literal scanned as code.
+    """
+    j = start
+    n = len(text)
+    while j < n:
+        if not raw and text[j] == "\\":
+            j += 2
+            continue
+        if text.startswith(token, j):
+            return j
+        j += 1
+    return -1
+
+
 def raw_string_hashes(text: str, i: int) -> int:
     """Number of `#` opening a Swift raw string at `i`, or 0 if this is not one."""
     k = i
@@ -464,7 +500,8 @@ def scan_literal(text: str, i: int, style: str,
             triple_quote = candidate
 
     if triple_quote:
-        close_at = text.find(triple_quote, i + 3)
+        close_at = find_unescaped(text, triple_quote, i + 3,
+                                  raw=style == "hash" and has_raw_prefix(text, i))
         end = n if close_at == -1 else close_at + 3
         body_stop = close_at if close_at != -1 else n
         holes = []
@@ -485,7 +522,8 @@ def scan_literal(text: str, i: int, style: str,
     quote = text[i]
     openers = interpolation_openers(text, i, quote, style, flags)
     swift_interp = ("\\(", ")") in openers
-    raw = style == "hash" and has_raw_prefix(text, i)
+    raw = (style == "hash" and has_raw_prefix(text, i)) or (
+        quote == "`" and flags.get("backtick_raw"))
     j = i + 1
     holes = []
     while j < n:
