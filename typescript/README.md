@@ -11,7 +11,7 @@ Official TypeScript SDK for the [Basecamp API](https://github.com/basecamp/bc3-a
 - Full type safety with TypeScript generics
 - 30+ services covering the complete Basecamp API
 - OAuth 2.0 with PKCE support
-- ETag-based HTTP caching
+- ETag-based HTTP caching (opt-in)
 - Automatic retry with exponential backoff
 - Pagination helpers for large result sets
 - Observability hooks for logging, metrics, and tracing
@@ -24,6 +24,60 @@ npm install @37signals/basecamp
 ```
 
 Requires Node.js 22.12+ and TypeScript 5.0+.
+
+## Getting a token
+
+Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
+
+1. Choose the grant that matches how your code runs:
+
+| Your integration | Grant | Who refreshes the token |
+|---|---|---|
+| already holds a token you obtained elsewhere | **static token** — [`Token Providers`](#token-providers) | you do |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`Manual Authorization Flow`](#manual-authorization-flow), or [`Interactive Login`](#interactive-login-cli--desktop) for a CLI | your `accessToken` function, which the SDK re-invokes per request |
+| has no browser, but a person can approve on another device (CLI, headless server, TV) | **device flow** — [`Device flow`](#device-flow-rfc-8628) | your `accessToken` function, which the SDK re-invokes per request |
+
+The one-line rule: **a redirect URI you control → authorization code; no browser but someone to approve → device flow; a token already in hand → static token.** An unattended daemon or CI job fits none of the three on its own — the device flow needs a person to enter the user code at the verification URI — so provision a token out of band and hand it to the process as a static or refresh token.
+
+2. Get the client credentials that grant needs:
+
+- **Authorization code + PKCE** — register your own integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+- **Device flow** — nothing to register. It runs as the pre-registered public `basecamp-cli` client, which sends no secret, against the device endpoint that discovery returns. Launchpad advertises no device endpoint, so a client you register there is not the one this flow uses.
+- **Static token** — nothing to register; you already hold the token.
+
+A bare `accessToken` string is never refreshed — once it expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then pass an async token provider or an `AuthStrategy` before you ship.
+
+## Finding your account ID
+
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `createBasecampClient` needs that number before your first call. One token can reach several accounts, so ask the token which. `getInfo()` addresses Launchpad by default, which is right for a Launchpad-issued token; a **device-flow** token is issued by the discovered BC5 server, so pass that issuer as the `endpoint` option:
+
+```ts
+import { createBasecampClient } from "@37signals/basecamp";
+
+const token = process.env.BASECAMP_TOKEN!;
+
+// createBasecampClient always requires an accountId, but authorization.getInfo()
+// talks to Launchpad rather than the account-scoped API, so a placeholder is fine
+// for the bootstrap call.
+const bootstrap = createBasecampClient({ accountId: "0", accessToken: token });
+
+// "bc3" is Basecamp; the unfiltered response also carries "hey" and other products.
+// endpoint defaults to Launchpad, which is right for a Launchpad-issued token.
+// For a device-flow token, pass the discovered issuer:
+//   { filterProduct: "bc3", endpoint: `${issuer}/authorization.json` }
+const info = await bootstrap.authorization.getInfo({ filterProduct: "bc3" });
+for (const account of info.accounts) {
+  console.log(`${account.id}: ${account.name}`);
+}
+
+// Rebuild with the real account ID — that is the client you keep.
+const client = createBasecampClient({
+  accountId: String(info.accounts[0].id),
+  accessToken: token,
+});
+```
+
+`info.expiresAt` is a `Date` telling you how long the token has left, which is the quickest way to confirm a static token has not lapsed.
 
 ## Quick Start
 
@@ -626,25 +680,23 @@ const client = createBasecampClient({
 
 ## Caching
 
-The SDK uses ETag-based HTTP caching to reduce API calls and respect Basecamp's rate limits:
-
-```ts
-// First request fetches from API
-const projects = await client.projects.list();
-
-// Second request returns cached data if unchanged (304 Not Modified)
-const projects2 = await client.projects.list();
-```
-
-Disable caching if needed:
+The SDK can do ETag-based HTTP caching to reduce API calls and respect Basecamp's rate limits, but it is **off by default** — `enableCache` defaults to `false`, and a client built without it sends no `If-None-Match` and stores no responses. Opt in:
 
 ```ts
 const client = createBasecampClient({
   accountId: "12345",
   accessToken: "token",
-  enableCache: false,
+  enableCache: true,
 });
+
+// First request fetches from the API and stores the ETag
+const projects = await client.projects.list();
+
+// Second request revalidates with If-None-Match; a 304 is served from the store
+const projects2 = await client.projects.list();
 ```
+
+The store is in-memory and per-client — it lives and dies with the client instance — holds at most 1,000 entries, and is keyed by URL plus a hash of the `Authorization` header, so a refreshed or swapped token never reads another token's entries.
 
 ## Observability
 

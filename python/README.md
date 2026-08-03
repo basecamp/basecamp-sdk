@@ -37,6 +37,51 @@ Or with [uv](https://docs.astral.sh/uv/):
 uv add basecamp-sdk
 ```
 
+## Getting a token
+
+Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
+
+1. Choose the grant that matches how your code runs:
+
+| Your integration | Grant | Who refreshes the token |
+|---|---|---|
+| already holds a token you obtained elsewhere | **static token** — [`Static Token`](#static-token) | you do |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** — [`PKCE and Authorization URL`](#pkce-and-authorization-url) | `OAuthTokenProvider` |
+| has no browser, but a person can approve on another device (CLI, headless server, TV) | **device flow** — [`Device Authorization Grant`](#device-authorization-grant-rfc-8628) | `basecamp.oauth.exchange.refresh_token`, echoing the token's `resource` — **not** `OAuthTokenProvider` |
+
+The one-line rule: **a redirect URI you control → authorization code; no browser but someone to approve → device flow; a token already in hand → static token.** An unattended daemon or CI job fits none of the three on its own — the device flow needs a person to enter the user code at the verification URI — so provision a token out of band and hand it to the process as a static or refresh token.
+
+2. Get the client credentials that grant needs:
+
+- **Authorization code + PKCE** — register your own integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+- **Device flow** — nothing to register. It runs as the pre-registered public `basecamp-cli` client, which sends no secret, against the device endpoint that discovery returns. Launchpad advertises no device endpoint, so a client you register there is not the one this flow uses.
+- **Static token** — nothing to register; you already hold the token.
+
+`Client(access_token=...)` wraps the string in a `StaticTokenProvider`, which never refreshes — once the token expires every call fails with `401` until you supply a new one. Use it to get a first successful call, then move to a refreshing path before you ship — `OAuthTokenProvider` for an authorization-code token from Launchpad, or, for a device-flow token, `basecamp.oauth.exchange.refresh_token` echoing the stored `resource`. Do not hand a device-flow token to `OAuthTokenProvider`: it refreshes only against Launchpad and sends no `resource`, so it fails at the first expiry.
+
+## Finding your account ID
+
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `for_account` needs that number before your first call. One token can reach several accounts, so ask the token which. `authorization` hangs off the *top-level* `Client` because the endpoint lives on the authorization server rather than the Basecamp API, and so takes no account context. It is pinned to Launchpad and `authorization.get()` accepts no override, which is right for a Launchpad-issued token; a **device-flow** token is issued by the discovered BC5 server, so fetch `/authorization.json` from that issuer yourself:
+
+```python
+import os
+from basecamp import Client
+
+client = Client(access_token=os.environ["BASECAMP_TOKEN"])
+
+info = client.authorization.get()
+# "bc3" is Basecamp; the same response also carries "hey" and other products,
+# and they are not ordered — filter before you pick, or you may scope the
+# client to a HEY account.
+basecamp_accounts = [a for a in info["accounts"] if a["product"] == "bc3"]
+for a in basecamp_accounts:
+    print(f"{a['id']}: {a['name']}")
+
+account = client.for_account(basecamp_accounts[0]["id"])
+```
+
+The response is a plain `dict` of parsed JSON. `info["expires_at"]` tells you how long the token has left, which is the quickest way to confirm a static token has not lapsed. On `AsyncClient`, the same call is `await client.authorization.get()`.
+
 ## Quick Start
 
 ```python
@@ -72,11 +117,15 @@ asyncio.run(main())
 
 ### Environment Variables
 
+Nothing here is read automatically. These apply only when you call `Config.from_env()`; a plain `Config()` reads no environment at all. They are also the only three environment variables the SDK reads anywhere — `from_env` does not consult `base_delay`, `max_jitter`, or `max_pages`, so those keep their defaults unless you pass them.
+
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `BASECAMP_BASE_URL` | API base URL | `https://3.basecampapi.com` |
 | `BASECAMP_TIMEOUT` | Request timeout (seconds) | `30` |
 | `BASECAMP_MAX_RETRIES` | Total attempts including the initial request | `3` |
+
+`BASECAMP_TOKEN` and `BASECAMP_ACCOUNT_ID` appear in the examples above only because the caller reads them and passes the values in; the SDK never looks them up. Pass the token to `Client(access_token=...)` and the account ID to `for_account`.
 
 ### Programmatic Configuration
 

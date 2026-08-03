@@ -139,6 +139,12 @@ jobs:
       - name: Kotlin service drift (static; jq/grep, no JVM)
         run: make kt-check-drift
 
+      - name: README env-var tables match what the SDKs actually read
+        run: make check-readme-env-vars
+
+      - name: README env-var gate self-test (synthetic repos)
+        run: make test-check-readme-env-vars
+
       # Offline by construction — compares openapi.json against the vendored
       # spec/bc3-routes.json, so it needs no bc3 checkout and no secret and
       # therefore cannot skip. A gate that skips when its input is absent is how

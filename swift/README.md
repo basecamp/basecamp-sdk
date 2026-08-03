@@ -45,6 +45,44 @@ targets: [
 ]
 ```
 
+## Getting a token
+
+Every Basecamp API request carries an OAuth 2.0 access token. There is no API key and no personal access token, so even a throwaway script starts here:
+
+1. Choose the grant that matches how your code runs:
+
+| Your integration | Grant | Who refreshes the token |
+|---|---|---|
+| already holds a token you obtained elsewhere | **static token** — `BasecampClient(accessToken:)` | you do |
+| can receive a browser redirect (app with `ASWebAuthenticationSession`, or a local callback server) | **authorization code + PKCE** | your code |
+| has no browser, but a person can approve on another device (CLI, headless server, TV) | **device flow** ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)) | your code |
+
+The one-line rule: **a redirect URI you control → authorization code; no browser but someone to approve → device flow; a token already in hand → static token.** An unattended daemon or CI job fits none of the three on its own — the device flow needs a person to enter the user code at the verification URI — so provision a token out of band and hand it to the process as a static or refresh token.
+
+2. Get the client credentials that grant needs:
+
+- **Authorization code + PKCE** — register your own integration at **<https://launchpad.37signals.com/integrations>**. You get a client ID, a client secret, and whatever redirect URI you nominated.
+- **Device flow** — nothing to register. It runs as the pre-registered public `basecamp-cli` client, which sends no secret, against the device endpoint that discovery returns. Launchpad advertises no device endpoint, so a client you register there is not the one this flow uses.
+- **Static token** — nothing to register; you already hold the token.
+
+**This SDK ships no OAuth client.** It consumes tokens; it does not obtain them. `accessToken:` is never refreshed, so once it expires every call fails with `401`. For anything longer-lived, run the flow yourself (or in a companion service) and supply a [`TokenProvider`](#token-providers) that hands back a fresh token on each call — that is the extension point the SDK gives you in place of a built-in flow.
+
+## Finding your account ID
+
+Every API path is scoped to an account — `https://3.basecampapi.com/{accountId}/…` — so `forAccount` needs that number before your first call. One token can reach several accounts.
+
+This SDK has no `authorization` service, because that endpoint lives on the authorization server rather than on the Basecamp API. Fetch it once yourself, from the server that issued your token:
+
+```bash
+# Launchpad-issued token. For a device-flow token, replace the host with the
+# issuer discovery selected — that is where its authorization.json lives.
+curl -s https://launchpad.37signals.com/authorization.json \
+  -H "Authorization: Bearer $BASECAMP_TOKEN" \
+  -H "User-Agent: MyApp/1.0 (you@example.com)"
+```
+
+Take `accounts[].id` for an entry whose `product` is `"bc3"` — that is Basecamp; the same response also carries `"hey"` and other 37signals products. `expires_at` tells you how long the token has left. A `User-Agent` identifying your app is required on every Basecamp request, including this one.
+
 ## Quick Start
 
 ```swift

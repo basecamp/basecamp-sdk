@@ -1007,7 +1007,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1089,6 +1089,22 @@ check-runner-test-reachability:
 check-replay-decoder-parity:
 	@./scripts/check-replay-decoder-parity
 
+# Verify the README environment-variable tables against the SDK sources, both
+# directions: nothing documented that isn't read, nothing read that isn't
+# documented. Nothing here is generated, so prose drift is otherwise silent —
+# a phantom BASECAMP_ACCOUNT_ID row and an XDG_CACHE_HOME credited to Ruby both
+# shipped. Python3 — runs anywhere, enforced in CI (spec-gates job).
+check-readme-env-vars:
+	@python3 ./scripts/check-readme-env-vars.py
+
+# Drive that gate from outside with synthetic repos whose correct answer is
+# known: single- and double-quoted reads, doc-comment examples, test source
+# sets, and a checkout nested under a directory named Tests. Its failure mode is
+# silent — a read pattern that misses reports "nothing reads this", which looks
+# like a README bug rather than a gate bug — so it needs its own tests.
+test-check-readme-env-vars:
+	@python3 ./scripts/test-check-readme-env-vars.py
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
@@ -1111,7 +1127,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
