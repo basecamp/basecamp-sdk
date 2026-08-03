@@ -37,6 +37,22 @@ ordinary code characters — and the stripped text is matched whole rather than
 line by line, so a call split across lines is still seen. Both directions of
 that matter: counting a doc example as a read lets a phantom table row pass,
 and missing a real read lets an undocumented variable pass.
+
+That scanner is a lexer, not a parser, and the distinction is worth stating
+plainly rather than discovering later. It models what these six languages
+actually do with comments, string literals, and interpolation — including the
+parts that differ, which is why `LANG_FLAGS` exists: Swift and Kotlin nest block
+comments and Go and TypeScript do not; `"""` is documentation in Python and an
+ordinary string in Kotlin; only Swift has `#"..."#`. It does *not* model
+preprocessor conditionals, macros, or heredocs, and it assumes source is
+syntactically valid — a file with an unterminated literal is consumed to the
+end rather than resynchronised.
+
+The failure directions are not symmetric, and every fix here has been argued in
+those terms. Masking too much hides a real read, so an undocumented variable
+ships silently. Masking too little promotes example text to a read, which either
+fails CI on a correct README or lets a phantom row pass behind a bogus
+no-environment break. Neither is acceptable, so both directions carry tests.
 """
 
 from __future__ import annotations
