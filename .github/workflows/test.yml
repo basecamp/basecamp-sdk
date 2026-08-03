@@ -146,6 +146,15 @@ jobs:
       - name: SDK routes match the routes bc3 serves
         run: make bc3-route-parity
 
+      # Static (bash+grep), so it runs here rather than in a language job: it
+      # reads the Makefile, this workflow, and the runner trees. Catches the
+      # #572 shape — a runner test file no target's discovery reaches.
+      - name: Conformance runner tests are all reachable
+        run: make check-runner-test-reachability
+
+      - name: Runner-test reachability guard self-test
+        run: ./scripts/check-runner-test-reachability --self-test
+
   test-go:
     name: Go Tests
     runs-on: ubuntu-latest
@@ -221,8 +230,14 @@ jobs:
         # Unit-tests the runner's own assertion helpers. Their bounds
         # branches never execute against a fixture that passes, so a
         # vacuous assertion (#563) survives a fully green conformance run.
-        working-directory: conformance/runner/go
-        run: go test ./...
+        #
+        # Through the make target, not a command spelled out here: #572 shipped
+        # two runner suites nothing executed because the Makefile and this
+        # workflow each enumerated filenames, and neither list covered them.
+        # scripts/check-runner-test-reachability fails if either regains a
+        # filename.
+        working-directory: .
+        run: make conformance-runner-tests-go
 
       - name: Run Go conformance tests
         working-directory: conformance/runner/go
@@ -346,11 +361,10 @@ jobs:
         # Unit-tests the runner's own assertion helpers. Their bounds
         # branches never execute against a fixture that passes, so a
         # vacuous assertion (#563) survives a fully green conformance run.
+        # Through the make target so discovery has one definition (#572).
         if: matrix.ruby == '3.3'
-        working-directory: conformance/runner/ruby
-        run: |
-          bundle exec ruby delay_gaps_test.rb
-          bundle exec ruby error_raised_test.rb
+        working-directory: .
+        run: make conformance-runner-tests-ruby
 
   test-python:
     name: Python ${{ matrix.python }}
@@ -427,9 +441,14 @@ jobs:
         # Unit-tests the runner's own assertion helpers. Their bounds
         # branches never execute against a fixture that passes, so a
         # vacuous assertion (#563) survives a fully green conformance run.
+        # Through the make target so discovery has one definition (#572); the
+        # interpreter pin moves to UV_PYTHON, uv's env spelling of --python,
+        # so the target itself stays version-agnostic.
         if: matrix.python == '3.13'
-        working-directory: conformance/runner/python
-        run: uv run --python ${{ matrix.python }} python -m pytest -q test_delay_gaps.py test_error_raised.py
+        working-directory: .
+        env:
+          UV_PYTHON: ${{ matrix.python }}
+        run: make conformance-runner-tests-python
 
   test-swift:
     name: Swift Tests
@@ -463,7 +482,7 @@ jobs:
         # branches never execute against a fixture that passes, so a
         # vacuous assertion (#563) survives a fully green conformance run.
         working-directory: .
-        run: make conformance-swift-runner-tests
+        run: make conformance-runner-tests-swift
 
       - name: Run Swift conformance tests
         # Same single-source-of-truth pattern as the drift gate: the make
@@ -522,7 +541,9 @@ jobs:
         # Unit-tests the runner's own assertion helpers. Their bounds
         # branches never execute against a fixture that passes, so a
         # vacuous assertion (#563) survives a fully green conformance run.
-        run: ./gradlew :conformance:test
+        # Through the make target so discovery has one definition (#572).
+        working-directory: .
+        run: make conformance-runner-tests-kotlin
 
       - name: Run Kotlin conformance tests
         run: ./gradlew :conformance:run

@@ -461,9 +461,9 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-runner-tests conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-swift-runner-tests conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check
+.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check
 
-# NOTE: conformance-swift and conformance-swift-runner-tests are defined in the
+# NOTE: conformance-swift and conformance-runner-tests-swift are defined in the
 # Swift SDK targets section below — their IS_MACOS conditional must parse after
 # that variable is defined.
 
@@ -536,14 +536,66 @@ conformance-fixtures-check:
 # errorRaised (#576) is the same shape: every fixture declaring it is one the
 # SDK does refuse, so its failing branch is unreachable from conformance/tests/
 # and a handler that accepted everything would look green in all six runners.
-conformance-runner-tests:
-	@echo "==> Running conformance runner unit tests..."
+#
+# Every recipe below DISCOVERS its suites; none names a test file. #572: the
+# Python and Ruby lines used to name `test_delay_gaps.py` / `delay_gaps_test.rb`
+# explicitly, so `test_replay_runner.py` and `replay_runner_test.rb` sat in the
+# tree executed by nothing — the same "assertion code nothing exercises" shape
+# these targets exist to close. Adding a runner test must be enough to run it.
+# `scripts/check-runner-test-reachability` enforces both halves: no recipe (here
+# or in CI) may name a test file, and every test-bearing file must sit where its
+# language's discovery finds it.
+#
+# Split per language so CI's per-language jobs can call the make target for
+# their own toolchain — one definition of what "run the runner tests" means,
+# instead of a second enumeration in .github/workflows/test.yml.
+conformance-runner-tests: conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift
+	@echo "==> Conformance runner unit tests passed"
+
+conformance-runner-tests-go:
+	@echo "==> Running Go conformance runner unit tests..."
 	cd conformance/runner/go && go test ./...
-	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py test_error_raised.py
-	cd conformance/runner/ruby && bundle install --quiet && bundle exec ruby delay_gaps_test.rb
-	cd conformance/runner/ruby && bundle exec ruby error_raised_test.rb
+
+# Bare `pytest` discovers test_*.py and *_test.py under the runner directory.
+# Collecting nothing is exit 5, so an empty suite fails rather than green-passes.
+conformance-runner-tests-python:
+	@echo "==> Running Python conformance runner unit tests..."
+	cd conformance/runner/python && uv sync --quiet && uv run python -m pytest -q
+
+# Ruby has no runner-level test task, so discovery is hand-rolled here.
+#
+# It RECURSES, via find. `go test ./...`, pytest and vitest all walk
+# subdirectories; a top-level `for f in *_test.rb` did not, which made Ruby the
+# one arm where a test file's PLACEMENT silently decided whether it ran.
+# conformance/runner/ruby/nested/probe_test.rb was executed by nothing while
+# scripts/check-runner-test-reachability — which fnmatched basenames over a
+# recursive find — certified it reachable. Recursing here is what makes that
+# check's basename model true. The check derives this scope back out of the
+# recipe below (see its `ruby_discovery_scope`), so reverting to a top-level
+# glob re-arms the placement tooth rather than reopening the hole.
+#
+# vendor/ and .bundle/ are pruned: `bundle install --path` puts third-party gem
+# suites there, and those are not ours to run.
+#
+# It aborts when discovery matches nothing: a rename that empties it must fail
+# loudly, not report success over zero files.
+conformance-runner-tests-ruby:
+	@echo "==> Running Ruby conformance runner unit tests..."
+	@cd conformance/runner/ruby && bundle install --quiet && \
+	files=$$(find . \( -name vendor -o -name .bundle \) -prune -o \
+		-type f -name '*_test.rb' -print | sort); \
+	if [ -z "$$files" ]; then \
+		echo "ERROR: no *_test.rb files found under conformance/runner/ruby" >&2; \
+		exit 1; \
+	fi; \
+	for f in $$files; do \
+		echo "  --> $$f"; \
+		bundle exec ruby "$$f" || exit 1; \
+	done
+
+conformance-runner-tests-kotlin:
+	@echo "==> Running Kotlin conformance runner unit tests..."
 	cd kotlin && ./gradlew --quiet :conformance:test
-	@$(MAKE) --no-print-directory conformance-swift-runner-tests
 
 # Build conformance test runner
 conformance-build:
@@ -834,13 +886,14 @@ endif
 # as the other five: the bounds branches never execute against a fixture that
 # passes, so a vacuous assertion survives a fully green conformance run.
 # Reached from conformance-runner-tests, which is platform-agnostic and defers
-# the gate to this target.
-conformance-swift-runner-tests:
+# the gate to this target. `swift test` discovers the whole Tests/ tree — no
+# file is named here (#572).
+conformance-runner-tests-swift:
 ifdef IS_MACOS
 	@echo "==> Running Swift conformance runner unit tests..."
 	cd conformance/runner/swift && swift test
 else
-	@echo "SKIP: conformance-swift-runner-tests (macOS only)"
+	@echo "SKIP: conformance-runner-tests-swift (macOS only)"
 endif
 
 # Regenerate Swift SDK services from OpenAPI spec (needs swift on any platform)
@@ -948,7 +1001,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-retry-metadata-parity
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1014,6 +1067,14 @@ check-idempotency-parity:
 check-retry-metadata-parity:
 	@python3 ./scripts/check-retry-metadata-parity.py
 
+# Verify every conformance-runner test file is actually reachable from the
+# discovery its language's `conformance-runner-tests-*` recipe performs, and
+# that no recipe (Makefile or CI) names an individual test file. #572: two
+# replay-runner suites sat in the tree for months executed by nothing because
+# the recipes enumerated filenames. Bash+grep — runs anywhere, enforced in CI.
+check-runner-test-reachability:
+	@./scripts/check-runner-test-reachability
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
@@ -1036,7 +1097,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -1113,11 +1174,13 @@ help:
 	@echo "  conformance-python         Run Python conformance tests"
 	@echo "  conformance-python-replay  Decode TS-captured wire snapshots through Python SDK"
 	@echo "  conformance-swift          Run Swift conformance tests (macOS only)"
-	@echo "  conformance-swift-runner-tests  Unit-test the Swift runner's assertion helpers (macOS only)"
+	@echo "  conformance-runner-tests   Unit-test every runner's own assertion helpers"
+	@echo "  conformance-runner-tests-<lang>  ...for one of go|python|ruby|kotlin|swift"
 	@echo "  conformance-build          Build Go conformance test runner"
 	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"
 	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json"
+	@echo "  check-runner-test-reachability  Assert every runner test file is reachable from discovery"
 	@echo ""
 	@echo "Ruby SDK:"
 	@echo "  rb-generate          Generate types and metadata from OpenAPI"
