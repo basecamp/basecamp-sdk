@@ -3323,6 +3323,8 @@ export interface components {
             error: string;
             message?: string;
         };
+        BareFieldBadRequestErrorResponseContent: components["schemas"]["FieldErrorMap"];
+        BareFieldValidationErrorResponseContent: components["schemas"]["FieldErrorMap"];
         /**
          * @description A personal bookmark: the current user's link to a single recording.
          *     The wrapped recording is the shared recording projection, whose `parent`
@@ -7265,6 +7267,15 @@ export interface operations {
                     "application/json": components["schemas"]["CreateMessageTypeResponseContent"];
                 };
             };
+            /** @description BareFieldBadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BareFieldBadRequestErrorResponseContent"];
+                };
+            };
             /** @description UnauthorizedError 401 response */
             401: {
                 headers: {
@@ -7281,15 +7292,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -7396,6 +7398,15 @@ export interface operations {
                     "application/json": components["schemas"]["UpdateMessageTypeResponseContent"];
                 };
             };
+            /** @description BareFieldBadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BareFieldBadRequestErrorResponseContent"];
+                };
+            };
             /** @description UnauthorizedError 401 response */
             401: {
                 headers: {
@@ -7421,15 +7432,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -8299,13 +8301,13 @@ export interface operations {
                     "application/json": components["schemas"]["CreateWebhookResponseContent"];
                 };
             };
-            /** @description BadRequestError 400 response */
+            /** @description BareFieldBadRequestError 400 response */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                    "application/json": components["schemas"]["BareFieldBadRequestErrorResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
@@ -12054,13 +12056,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description BareFieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["BareFieldValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -12132,13 +12134,13 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description BareFieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["BareFieldValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -21725,13 +21727,13 @@ export interface operations {
                     "application/json": components["schemas"]["UpdateWebhookResponseContent"];
                 };
             };
-            /** @description BadRequestError 400 response */
+            /** @description BareFieldBadRequestError 400 response */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                    "application/json": components["schemas"]["BareFieldBadRequestErrorResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

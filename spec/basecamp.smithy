@@ -397,6 +397,35 @@ list FieldErrorMessages {
   member: String
 }
 
+/// 400 whose body is a *bare* field map ({"payload_url": ["must be HTTPS"]}) —
+/// `render json: record.errors` with no wrapper at all. Distinct from
+/// BadRequestError, whose body is the flat {error} string, and from
+/// FieldValidationError, which wraps the same map in an "errors" key at 422.
+/// Emitted by WebhooksController#create/#update and CategoryActions#create/
+/// #update (bc3 renders these at :bad_request, not :unprocessable_entity).
+@error("client")
+@httpError(400)
+structure BareFieldBadRequestError {
+  /// Single member that is itself a *map*, so the OpenAPI unwrap resolves to
+  /// FieldErrorMap — the bare wire shape. Contrast FieldValidationError, whose
+  /// single member is a structure and therefore keeps the "errors" wrapper.
+  @required
+  field_errors: FieldErrorMap
+}
+
+/// 422 whose body is a *bare* field map ({"date": ["There's already a marker on
+/// that date"]}) — the same wrapperless `record.errors` rendering as
+/// BareFieldBadRequestError, at the validation status. Emitted by
+/// Lineup::MarkersController#create/#update.
+@error("client")
+@httpError(422)
+structure BareFieldValidationError {
+  /// Single map member — unwraps to the bare FieldErrorMap. See
+  /// BareFieldBadRequestError.
+  @required
+  field_errors: FieldErrorMap
+}
+
 @error("client")
 @retryable(throttling: true)
 @httpError(429)
@@ -2142,7 +2171,7 @@ structure GetMessageTypeOutput {
 operation CreateMessageType {
   input: CreateMessageTypeInput
   output: CreateMessageTypeOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BareFieldBadRequestError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateMessageTypeInput {
@@ -2174,7 +2203,7 @@ structure CreateMessageTypeOutput {
 operation UpdateMessageType {
   input: UpdateMessageTypeInput
   output: UpdateMessageTypeOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, BareFieldBadRequestError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateMessageTypeInput {
@@ -6254,7 +6283,7 @@ structure GetWebhookOutput {
 operation CreateWebhook {
   input: CreateWebhookInput
   output: CreateWebhookOutput
-  errors: [BadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BareFieldBadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateWebhookInput {
@@ -6288,7 +6317,7 @@ structure CreateWebhookOutput {
 operation UpdateWebhook {
   input: UpdateWebhookInput
   output: UpdateWebhookOutput
-  errors: [NotFoundError, BadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, BareFieldBadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateWebhookInput {
@@ -7904,7 +7933,7 @@ structure ListLineupMarkersOutput {
 operation CreateLineupMarker {
   input: CreateLineupMarkerInput
   output: CreateLineupMarkerOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BareFieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateLineupMarkerInput {
@@ -7929,7 +7958,7 @@ structure CreateLineupMarkerOutput {}
 operation UpdateLineupMarker {
   input: UpdateLineupMarkerInput
   output: UpdateLineupMarkerOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, BareFieldValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateLineupMarkerInput {

@@ -128,6 +128,12 @@ type BadRequestErrorResponseContent struct {
 	Message *string `json:"message,omitempty"`
 }
 
+// BareFieldBadRequestErrorResponseContent defines model for BareFieldBadRequestErrorResponseContent.
+type BareFieldBadRequestErrorResponseContent = FieldErrorMap
+
+// BareFieldValidationErrorResponseContent defines model for BareFieldValidationErrorResponseContent.
+type BareFieldValidationErrorResponseContent = FieldErrorMap
+
 // Bookmark A personal bookmark: the current user's link to a single recording.
 // The wrapped recording is the shared recording projection, whose `parent`
 // is optional (docked recordings and doors omit it).
@@ -25691,9 +25697,9 @@ type CreateMessageTypeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *CreateMessageTypeResponseContent
+	JSON400      *BareFieldBadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -25793,10 +25799,10 @@ type UpdateMessageTypeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *UpdateMessageTypeResponseContent
+	JSON400      *BareFieldBadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
 
@@ -26239,7 +26245,7 @@ type CreateWebhookResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *CreateWebhookResponseContent
-	JSON400      *BadRequestErrorResponseContent
+	JSON400      *BareFieldBadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
@@ -28229,7 +28235,7 @@ type CreateLineupMarkerResponse struct {
 	HTTPResponse *http.Response
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
+	JSON422      *BareFieldValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -28297,7 +28303,7 @@ type UpdateLineupMarkerResponse struct {
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
+	JSON422      *BareFieldValidationErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
 
@@ -33432,7 +33438,7 @@ type UpdateWebhookResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *UpdateWebhookResponseContent
-	JSON400      *BadRequestErrorResponseContent
+	JSON400      *BareFieldBadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -37032,6 +37038,12 @@ func ParseCreateMessageTypeResponse(rsp *http.Response) (*CreateMessageTypeRespo
 		}
 		response.JSON201 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BareFieldBadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
@@ -37042,12 +37054,6 @@ func ParseCreateMessageTypeResponse(rsp *http.Response) (*CreateMessageTypeRespo
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON422 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
@@ -37184,6 +37190,12 @@ func ParseUpdateMessageTypeResponse(rsp *http.Response) (*UpdateMessageTypeRespo
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BareFieldBadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
@@ -37200,12 +37212,6 @@ func ParseUpdateMessageTypeResponse(rsp *http.Response) (*UpdateMessageTypeRespo
 		var dest NotFoundErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON404 = &dest
-		}
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON422 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
@@ -37861,7 +37867,7 @@ func ParseCreateWebhookResponse(rsp *http.Response) (*CreateWebhookResponse, err
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestErrorResponseContent
+		var dest BareFieldBadRequestErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON400 = &dest
 		}
@@ -40889,7 +40895,7 @@ func ParseCreateLineupMarkerResponse(rsp *http.Response) (*CreateLineupMarkerRes
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
+		var dest BareFieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}
@@ -40993,7 +40999,7 @@ func ParseUpdateLineupMarkerResponse(rsp *http.Response) (*UpdateLineupMarkerRes
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
+		var dest BareFieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}
@@ -48762,7 +48768,7 @@ func ParseUpdateWebhookResponse(rsp *http.Response) (*UpdateWebhookResponse, err
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestErrorResponseContent
+		var dest BareFieldBadRequestErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON400 = &dest
 		}

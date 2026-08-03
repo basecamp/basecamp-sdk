@@ -1353,6 +1353,16 @@
               }
             }
           },
+          "400": {
+            "description": "BareFieldBadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BareFieldBadRequestErrorResponseContent"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UnauthorizedError 401 response",
             "content": {
@@ -1369,16 +1379,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
                 }
               }
             }
@@ -1634,6 +1634,16 @@
               }
             }
           },
+          "400": {
+            "description": "BareFieldBadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BareFieldBadRequestErrorResponseContent"
+                }
+              }
+            }
+          },
           "401": {
             "description": "UnauthorizedError 401 response",
             "content": {
@@ -1660,16 +1670,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
                 }
               }
             }
@@ -2981,11 +2981,11 @@
             }
           },
           "400": {
-            "description": "BadRequestError 400 response",
+            "description": "BareFieldBadRequestError 400 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
+                  "$ref": "#/components/schemas/BareFieldBadRequestErrorResponseContent"
                 }
               }
             }
@@ -8452,11 +8452,11 @@
             }
           },
           "422": {
-            "description": "ValidationError 422 response",
+            "description": "BareFieldValidationError 422 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                  "$ref": "#/components/schemas/BareFieldValidationErrorResponseContent"
                 }
               }
             }
@@ -8630,11 +8630,11 @@
             }
           },
           "422": {
-            "description": "ValidationError 422 response",
+            "description": "BareFieldValidationError 422 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                  "$ref": "#/components/schemas/BareFieldValidationErrorResponseContent"
                 }
               }
             }
@@ -22701,11 +22701,11 @@
             }
           },
           "400": {
-            "description": "BadRequestError 400 response",
+            "description": "BareFieldBadRequestError 400 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
+                  "$ref": "#/components/schemas/BareFieldBadRequestErrorResponseContent"
                 }
               }
             }
@@ -22977,6 +22977,12 @@
         "required": [
           "error"
         ]
+      },
+      "BareFieldBadRequestErrorResponseContent": {
+        "$ref": "#/components/schemas/FieldErrorMap"
+      },
+      "BareFieldValidationErrorResponseContent": {
+        "$ref": "#/components/schemas/FieldErrorMap"
       },
       "Bookmark": {
         "type": "object",
