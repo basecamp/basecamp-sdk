@@ -1560,7 +1560,54 @@ def main() -> int:
         check("other process properties are not the environment",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
 
-        # 17. The shipped entrypoint, end to end. Everything above drives the
+        # `process?.env` is valid optional chaining and the same object again.
+        root = tmp / "ts-optional-chained-process"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts": "const t = process?.env.BASECAMP_REAL;\n",
+        })
+        check("optional chaining before env is a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        root = tmp / "ts-optional-chained-bracket"
+        build(root, {
+            "typescript/README.md": "The SDK reads BASECAMP_REAL.\n",
+            "typescript/src/c.ts": 'const t = process?.["env"]?.BASECAMP_REAL;\n',
+        })
+        check("optional chaining with a bracket env is a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_REAL"])
+
+        # 17. `from os import getenv` is the ordinary Python spelling, and the
+        #     `os.`-qualified patterns reported those reads as nonexistent.
+        root = tmp / "py-unqualified-getenv"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_UNQ"),
+            "python/src/c.py":
+                'from os import getenv\n\nv = getenv("BASECAMP_UNQ")\n',
+        })
+        check("an unqualified getenv is a read", run_gate(root, PY_SDK), [])
+
+        root = tmp / "py-unqualified-environ"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_ENVQ"),
+            "python/src/c.py":
+                'from os import environ\n\nv = environ.get("BASECAMP_ENVQ")\n'
+                'w = environ["BASECAMP_ENVQ"]\n',
+        })
+        check("an unqualified environ is a read", run_gate(root, PY_SDK), [])
+
+        # ...and a differently-named function is not one, so an unrelated
+        # helper cannot be promoted into the inventory.
+        root = tmp / "py-lookalike-getenv"
+        build(root, {
+            "python/README.md": "no tables\n",
+            "python/src/c.py": 'v = mygetenv("BASECAMP_FAKE")\n',
+        })
+        check("a lookalike helper is not an env read", run_gate(root, PY_SDK), [])
+
+        # 18. The shipped entrypoint, end to end. Everything above drives the
         #     helpers `main()` drives, so until here the exit code that `make
         #     check` and the CI step branch on had no coverage at all -- a
         #     `main()` that collected every failure and then returned 0 would

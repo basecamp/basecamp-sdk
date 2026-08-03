@@ -80,7 +80,7 @@ ENDQ = r"(?P=q)"
 # named-read patterns and the whole-environment detector below, because a form
 # only one of them knows about is a hole in whichever one forgot it. No named
 # group, so it can be embedded in patterns that already bind `q`.
-TS_ENV = r"process(?:\.env\b|\[\s*[\"']env[\"']\s*\])"
+TS_ENV = r"process(?:\??\.env\b|(?:\?\.)?\[\s*[\"']env[\"']\s*\])"
 
 # Where each SDK's shipping source lives, and how that language reads an env var.
 SDKS = {
@@ -116,6 +116,15 @@ SDKS = {
             rf"os\.environ\.get\(\s*{Q}{NAME}{ENDQ}",
             rf"os\.environ\[\s*{Q}{NAME}{ENDQ}",
             rf"os\.getenv\(\s*{Q}{NAME}{ENDQ}",
+            # `from os import getenv` is the ordinary spelling, and requiring
+            # the `os.` qualifier made those reads invisible -- the fail-open
+            # direction, where the gate swears nothing reads the variable.
+            # The lookbehind keeps these from matching the qualified forms
+            # above a second time, which would double-count their call sites,
+            # and keeps `mygetenv(...)` out.
+            rf"(?<![.\w])getenv\(\s*{Q}{NAME}{ENDQ}",
+            rf"(?<![.\w])environ\.get\(\s*{Q}{NAME}{ENDQ}",
+            rf"(?<![.\w])environ\[\s*{Q}{NAME}{ENDQ}",
         ],
     },
     "TypeScript": {
