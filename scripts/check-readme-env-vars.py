@@ -280,7 +280,12 @@ NO_ENV_SDKS = ("TypeScript", "Swift", "Kotlin")
 # Only variables in these families are in scope; the SDKs read no others.
 VAR_RE = re.compile(r"\b((?:BASECAMP|XDG)_[A-Z0-9_]+)\b")
 
-FILENAME_TEST_MARKERS = ("_test.", "test_", ".test.", "_spec.")
+# Anchored, not merely contained. `test_` matched anywhere in the name made
+# `latest_config.py`, `contest_helper.go` and `protest_mode.rb` all test files,
+# and a read added to any shipping file so named would bypass every check here.
+# The dotted markers are already anchored by their own `.`.
+FILENAME_TEST_PREFIXES = ("test_",)
+FILENAME_TEST_MARKERS = ("_test.", ".test.", "_spec.")
 
 # Invariant 5. Only the active voice with SDK names as the subject. The passive
 # "`BASECAMP_TOKEN` is read by `AuthManager`", the symbol subject "`Config()`
@@ -987,11 +992,20 @@ def is_test(rel_path: Path) -> bool:
             return True
         if part.endswith(("Test", "Tests")):
             return True
-    return any(marker in rel_path.name for marker in FILENAME_TEST_MARKERS)
+    name = rel_path.name
+    return name.startswith(FILENAME_TEST_PREFIXES) or any(
+        marker in name for marker in FILENAME_TEST_MARKERS)
 
 
-def real_reads(spec: dict) -> dict[str, list[str]]:
-    """Env vars genuinely read by this SDK, mapped to 'file:line' call sites."""
+def real_reads(spec: dict, scoped: bool = True) -> dict[str, list[str]]:
+    """Env vars genuinely read by this SDK, mapped to 'file:line' call sites.
+
+    `scoped` keeps only the `BASECAMP_*` and `XDG_*` families, which is right for
+    the documentation invariants -- those are the only variables the READMEs
+    tabulate. It is wrong for invariant 4, which asserts an SDK reads *no*
+    environment at all: filtered, a new `process.env.HOME` disappeared and the
+    claim went on passing. That one asks for everything.
+    """
     root = REPO / spec["source"]
     found: dict[str, list[str]] = {}
     if not root.is_dir():
@@ -1024,9 +1038,10 @@ def real_reads(spec: dict) -> dict[str, list[str]]:
                 if in_string[match.start()]:
                     continue
                 name = match.group("name")
-                if VAR_RE.fullmatch(name):
-                    lineno = text.count("\n", 0, match.start()) + 1
-                    found.setdefault(name, []).append(f"{rel}:{lineno}")
+                if scoped and not VAR_RE.fullmatch(name):
+                    continue
+                lineno = text.count("\n", 0, match.start()) + 1
+                found.setdefault(name, []).append(f"{rel}:{lineno}")
     return found
 
 
@@ -1308,9 +1323,13 @@ def main() -> int:
                 )
 
     # 4. The root README's "read no environment variables at all" sentence.
+    # "At all" means at all, so this one is unscoped: `process.env.HOME` breaks
+    # the claim as surely as a BASECAMP_ variable would, and the scoped
+    # inventory could not see it.
     for sdk in NO_ENV_SDKS:
-        if reads[sdk]:
-            detail = ", ".join(f"{v} ({s[0]})" for v, s in sorted(reads[sdk].items()))
+        every = real_reads(SDKS[sdk], scoped=False)
+        if every:
+            detail = ", ".join(f"{v} ({s[0]})" for v, s in sorted(every.items()))
             failures.append(
                 f"{ROOT_README}: claims {sdk} reads no environment variables, but "
                 f"found: {detail}"

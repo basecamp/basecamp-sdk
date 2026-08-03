@@ -95,9 +95,12 @@ def run_gate(root: Path, sdks: dict, no_env_sdks: tuple = (),
                     for var in sorted(reads[s]):
                         if var not in root_documented:
                             failures.append(f"rootmissing:{s}:{var}")
+        # Invariant 4 is unscoped: "reads no environment variables at all" is
+        # broken by `process.env.HOME` too, and the scoped inventory drops it.
         for sdk in no_env_sdks:
-            if reads.get(sdk):
-                failures.append(f"noenv:{sdk}:{sorted(reads[sdk])[0]}")
+            every = gate.real_reads(sdks[sdk], scoped=False)
+            if every:
+                failures.append(f"noenv:{sdk}:{sorted(every)[0]}")
         return failures
     finally:
         gate.REPO, gate.SDKS, gate.NO_ENV_SDKS = old_repo, old_sdks, old_no_env
@@ -179,6 +182,27 @@ def main() -> int:
         check("typescript optional-chained bracket read is seen",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_OPTB"])
+
+        # "Reads no environment variables at all" is broken by any read, not
+        # just a documented family. Scoping this one hid `process.env.HOME`
+        # behind a claim that the SDK reads nothing.
+        root = tmp / "noenv-unscoped"
+        build(root, {
+            "typescript/README.md": "The SDK reads nothing.\n",
+            "typescript/src/c.ts": "const h = process.env.HOME;\n",
+        })
+        check("the no-environment claim sees reads outside the documented families",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:HOME"])
+
+        # A shipping file whose name merely contains `test_` is not a test.
+        root = tmp / "filename-not-a-test"
+        build(root, {
+            "python/README.md": "The SDK reads nothing.\n",
+            "python/src/latest_config.py": 'v = os.environ.get("BASECAMP_LATEST")\n',
+        })
+        check("a shipping file named latest_* is scanned",
+              run_gate(root, PY_SDK), ["reverse:Python:BASECAMP_LATEST"])
 
         # A regex literal is data. Its braces must not close an interpolation,
         # and its contents must not read as calls.
@@ -654,9 +678,12 @@ def main() -> int:
             "typescript/README.md": TABLE.format(var="BASECAMP_TOKEN"),
             "typescript/src/c.ts": "const { OTHER: BASECAMP_TOKEN } = process.env;\n",
         })
+        # The alias is not the key, so the phantom BASECAMP_TOKEN read is gone --
+        # and OTHER, which *is* the key, correctly breaks the no-environment
+        # claim. Both halves of that are the point.
         check("a destructuring alias is not the key that was read",
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
-              ["forward:TypeScript:BASECAMP_TOKEN"])
+              ["forward:TypeScript:BASECAMP_TOKEN", "noenv:TypeScript:OTHER"])
 
         # ...but destructuring something else is not an environment read.
         root = tmp / "destructured-other"
