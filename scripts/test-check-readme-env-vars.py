@@ -178,6 +178,46 @@ def main() -> int:
               run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
               ["noenv:TypeScript:BASECAMP_DIV"])
 
+        # A quoted destructuring key: the name sits inside a literal, so the
+        # match has to start on the brace or comma to survive the string mask.
+        root = tmp / "destructured-quoted-key"
+        build(root, {
+            "typescript/README.md": "mentions BASECAMP_QK\n",
+            "typescript/src/c.ts": 'const { "BASECAMP_QK": token } = process.env;\n',
+        })
+        check("a quoted destructuring key is a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)),
+              ["noenv:TypeScript:BASECAMP_QK"])
+
+        # Kotlin triple-quoted strings are raw, so a trailing backslash does not
+        # escape the terminator. Swift's are not raw, which is how \( works.
+        root = tmp / "kotlin-triple-raw"
+        build(root, {
+            "kotlin/README.md": "mentions BASECAMP_KA\n",
+            "kotlin/sdk/src/c.kt":
+                'val s = """ends with a backslash \\"""\nval v = System.getenv("BASECAMP_KA")\n',
+        })
+        check("a kotlin triple-quoted string is raw",
+              run_gate(root, KT_SDK, no_env_sdks=("Kotlin",)),
+              ["noenv:Kotlin:BASECAMP_KA"])
+
+        # Ruby percent literals are data.
+        root = tmp / "ruby-percent"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "ruby/lib/c.rb": "s = %q{ENV['BASECAMP_FAKE']}\n",
+        })
+        check("a ruby percent literal is not a read",
+              run_gate(root, RB_SDK), ["forward:Ruby:BASECAMP_FAKE"])
+
+        # ...and `%` as modulo must not start one.
+        root = tmp / "ruby-modulo"
+        build(root, {
+            "ruby/README.md": TABLE.format(var="BASECAMP_MOD"),
+            "ruby/lib/c.rb": 'v = ENV["BASECAMP_MOD"]\nx = a % b\n',
+        })
+        check("a ruby modulo is not a percent literal", run_gate(root, RB_SDK), [])
+
         # A keyword ends in a letter, which otherwise reads as an identifier and
         # therefore as division.
         root = tmp / "regex-after-keyword"

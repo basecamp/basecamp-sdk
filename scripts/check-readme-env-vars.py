@@ -126,6 +126,10 @@ SDKS = {
             # a consuming pattern would bind only one name per brace group,
             # which is the "looks like coverage" failure all over again.
             rf"\b{NAME}\b(?=[^{{}}]*\}}\s*=\s*process\.env)",
+            # ...and the quoted-key form, `{ "BASECAMP_TOKEN": token }`. The
+            # match has to start on the brace or comma, because the name is
+            # inside a literal and would be rejected as string data.
+            rf"[{{,]\s*{Q}{NAME}{ENDQ}\s*:(?=[^{{}}]*\}}\s*=\s*process\.env)",
         ],
     },
     "Swift": {
@@ -163,6 +167,8 @@ SDKS = {
 #            interpolates in backticks only, so `"${x}"` is plain text, and Go
 #            interpolates nowhere at all.
 #   fstring: Python only, where the `f` prefix decides whether braces are code.
+#   triple_raw: Kotlin, whose multiline strings have no escapes at all.
+#            Swift's do, which is how `\(` interpolates there.
 #   regex:   TypeScript `/.../` literals, whose contents are data. Enabled only
 #            there: `/` is division far more often than not, and the two are
 #            told apart by the preceding token, so this stays conservative.
@@ -175,6 +181,8 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "backtick_raw": True,
+        "triple_raw": False,
+        "percent": False,
         "interp": {},
     },
     "Ruby": {
@@ -182,6 +190,8 @@ LANG_FLAGS = {
         "multiline": True,
         "regex": False,
         "backtick_raw": False,
+        "triple_raw": False,
+        "percent": True,
         "interp": {'"': [("#{", "}")]},
     },
     "Python": {
@@ -189,6 +199,8 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "backtick_raw": False,
+        "triple_raw": False,
+        "percent": False,
         "interp": {},
     },
     "TypeScript": {
@@ -196,6 +208,8 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": True,
         "backtick_raw": False,
+        "triple_raw": False,
+        "percent": False,
         "interp": {"`": [("${", "}")]},
     },
     "Swift": {
@@ -203,6 +217,8 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "backtick_raw": False,
+        "triple_raw": False,
+        "percent": False,
         "interp": {'"': [("\\(", ")")]},
     },
     "Kotlin": {
@@ -210,12 +226,14 @@ LANG_FLAGS = {
         "multiline": False,
         "regex": False,
         "backtick_raw": False,
+        "triple_raw": True,
+        "percent": False,
         "interp": {'"': [("${", "}")]},
     },
 }
 # Permissive union, used only when no language is supplied.
 DEFAULT_FLAGS = {
-    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "backtick_raw": False,
+    "triple": True, "nested": True, "raw": True, "fstring": True, "multiline": True, "regex": True, "backtick_raw": False, "triple_raw": False, "percent": True,
     "interp": {"`": [("${", "}")], '"': [("${", "}"), ("\\(", ")"), ("#{", "}")]},
 }
 
@@ -278,7 +296,7 @@ REGEX_KEYWORDS = {
 
 def regex_extent(text: str, i: int, flags: dict) -> int:
     """End of a TypeScript regex literal starting at `i`, else `i`."""
-    if not flags.get("regex") or text[i] != "/":
+    if not flags or not flags.get("regex") or text[i] != "/":
         return i
     if text.startswith("//", i) or text.startswith("/*", i):
         return i
@@ -311,6 +329,28 @@ def regex_extent(text: str, i: int, flags: dict) -> int:
             return j + 1
         j += 1
     return i
+
+
+# Ruby percent literals -- %q{...}, %w[...], %(...) -- are ordinary data, and
+# the scanner saw only quote characters, leaving their contents executable.
+PERCENT_DELIMS = {"{": "}", "[": "]", "(": ")", "<": ">"}
+
+
+def percent_literal_extent(text: str, i: int, flags: dict) -> int:
+    """End of a Ruby percent literal starting at `i`, else `i`."""
+    if not flags or not flags.get("percent") or text[i] != "%":
+        return i
+    j = i + 1
+    if j < len(text) and text[j].isalpha():
+        j += 1
+    if j >= len(text):
+        return i
+    opener = text[j]
+    closer = PERCENT_DELIMS.get(opener)
+    if closer is None:
+        return i
+    end = matching_delimiter(text, j + 1, opener, closer, "hash", flags)
+    return min(end + 1, len(text))
 
 
 def comment_extent(text: str, i: int, style: str | None, flags: dict | None = None) -> int:
@@ -500,8 +540,9 @@ def scan_literal(text: str, i: int, style: str,
             triple_quote = candidate
 
     if triple_quote:
-        close_at = find_unescaped(text, triple_quote, i + 3,
-                                  raw=style == "hash" and has_raw_prefix(text, i))
+        triple_is_raw = flags.get("triple_raw") or (
+            style == "hash" and has_raw_prefix(text, i))
+        close_at = find_unescaped(text, triple_quote, i + 3, raw=triple_is_raw)
         end = n if close_at == -1 else close_at + 3
         body_stop = close_at if close_at != -1 else n
         holes = []
@@ -695,6 +736,12 @@ def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str
         if comment_end > i:
             blank(i, comment_end)
             i = comment_end
+            continue
+        percent_end = percent_literal_extent(text, i, flags)
+        if percent_end > i:
+            for k in range(i, min(percent_end, n)):
+                in_string[k] = 1
+            i = percent_end
             continue
         # A regex literal is data, like a string: its contents are not calls.
         regex_end = regex_extent(text, i, flags)
