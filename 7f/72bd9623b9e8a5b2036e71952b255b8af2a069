@@ -1,0 +1,39 @@
+scripts/check-runner-test-reachability
+  s_ae792ed0be3006::t_4f48939b144841 660-695,700
+  s_ae792ed0be3006::t_b80c64b6535569 621-637,640
+  s_ae792ed0be3006::t_07f025ba30787f 93-98
+  s_ae792ed0be3006::t_46d800208e95b8 464-465,468
+  s_ae792ed0be3006::t_146e165bfb67e8 315-319
+  s_ae792ed0be3006::t_947fccaa839611 336-380
+  s_ae792ed0be3006::t_8841512e4a6453 548-562
+  s_ae792ed0be3006::t_3a6a8078b62351 111-117,119-133
+  s_ae792ed0be3006::t_9807db72b4a87a 768-780
+  s_ae792ed0be3006::t_4bf6c24fa5c29f 1240-1275,1277-1363
+  s_ae792ed0be3006::t_4280a8e79eb5e3 1276
+  s_ae792ed0be3006::t_f014e9504ded97 482,485-487
+  s_ca5b5942b64b4e::t_195ac2c80ce27f 469,488
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7f72bd9623b9e8a5b2036e71952b255b8af2a069",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_ca5b5942b64b4e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc653-8b74-7641-b5e2-bf5d75699414",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
