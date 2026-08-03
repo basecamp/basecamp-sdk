@@ -506,11 +506,16 @@ conformance-fixtures-check:
 # #563 shipped a delayBetweenRequests check that vacuously passed when the gap
 # it named did not exist; nothing caught it because every committed fixture
 # supplied the gap. These pin the branches the fixtures cannot reach.
+#
+# errorRaised (#576) is the same shape: every fixture declaring it is one the
+# SDK does refuse, so its failing branch is unreachable from conformance/tests/
+# and a handler that accepted everything would look green in all six runners.
 conformance-runner-tests:
 	@echo "==> Running conformance runner unit tests..."
 	cd conformance/runner/go && go test ./...
-	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py
+	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py test_error_raised.py
 	cd conformance/runner/ruby && bundle install --quiet && bundle exec ruby delay_gaps_test.rb
+	cd conformance/runner/ruby && bundle exec ruby error_raised_test.rb
 	cd kotlin && ./gradlew --quiet :conformance:test
 	@$(MAKE) --no-print-directory conformance-swift-runner-tests
 

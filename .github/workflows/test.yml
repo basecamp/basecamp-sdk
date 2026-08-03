@@ -348,7 +348,9 @@ jobs:
         # vacuous assertion (#563) survives a fully green conformance run.
         if: matrix.ruby == '3.3'
         working-directory: conformance/runner/ruby
-        run: bundle exec ruby delay_gaps_test.rb
+        run: |
+          bundle exec ruby delay_gaps_test.rb
+          bundle exec ruby error_raised_test.rb
 
   test-python:
     name: Python ${{ matrix.python }}
@@ -427,7 +429,7 @@ jobs:
         # vacuous assertion (#563) survives a fully green conformance run.
         if: matrix.python == '3.13'
         working-directory: conformance/runner/python
-        run: uv run --python ${{ matrix.python }} python -m pytest -q test_delay_gaps.py
+        run: uv run --python ${{ matrix.python }} python -m pytest -q test_delay_gaps.py test_error_raised.py
 
   test-swift:
     name: Swift Tests

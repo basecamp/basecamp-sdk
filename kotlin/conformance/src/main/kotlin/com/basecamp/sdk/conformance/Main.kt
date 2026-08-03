@@ -396,17 +396,17 @@ private fun runTest(tc: TestCase): TestResult {
                 }
             }
 
-            // The inverse of noError, and deliberately code-agnostic. The
-            // malformed-response family (#576) is refused by a hand-written
-            // guard in TypeScript, Python and Ruby and by the model decoder in
-            // Go, Kotlin and Swift; those two mechanisms do not share a
-            // canonical code, so pinning errorType would make the fixture
-            // unwritable. What every SDK must agree on is that the call fails
-            // at all — which, paired with requestCount, is the whole contract:
-            // the composite refused the field instead of writing it.
+            // The inverse of noError, and deliberately code-agnostic. See
+            // errorRaisedFailure (ErrorRaised.kt) for the contract and for why
+            // the branch lives there rather than inline: no committed fixture
+            // can reach its failing side, so it is unit-tested instead.
+            //
+            // Read from BOTH signals: every path that records caughtException
+            // also sets dispatchFailed today, and the union keeps that true by
+            // construction rather than by call-site discipline.
             "errorRaised" -> {
-                if (!dispatchFailed) {
-                    return TestResult(false, "Expected the call to fail, but it succeeded")
+                errorRaisedFailure(dispatchFailed || caughtException != null)?.let {
+                    return TestResult(false, it)
                 }
             }
 

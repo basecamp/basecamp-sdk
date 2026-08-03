@@ -209,6 +209,12 @@ struct Runner {
             switch runHTTPSProbe(baseURL) {
             case .enforced:
                 caughtError = .usage(message: "Base URL must use HTTPS: \(baseURL)", hint: nil)
+                // The child died as required, so the dispatch DID fail — by a
+                // trap rather than a throw. Recording only caughtError left
+                // this the one failure path that did not flag itself, and an
+                // errorRaised fixture with an http:// configOverrides.baseUrl
+                // would have read it as a call that succeeded.
+                dispatchFailed = true
             case .constructionSucceeded:
                 return .fail("client construction with non-HTTPS base URL unexpectedly succeeded")
             case .probeFailure(let message):

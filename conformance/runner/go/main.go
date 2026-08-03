@@ -1092,16 +1092,13 @@ func checkAssertion(
 			return fail(tc, fmt.Sprintf("Expected no error, got: %v", sdkErr))
 		}
 
-	// The inverse of noError, and deliberately code-agnostic. The
-	// malformed-response family (#576) is refused by a hand-written guard in
-	// TypeScript, Python and Ruby and by the model decoder in Go, Kotlin and
-	// Swift; those two mechanisms do not share a canonical code, so pinning
-	// errorType would make the fixture unwritable. What every SDK must agree on
-	// is that the call fails at all — which, paired with requestCount, is the
-	// whole contract: the composite refused the field instead of writing it.
+	// The inverse of noError, and deliberately code-agnostic. See
+	// errorRaisedFailure (error_raised.go) for the contract and for why the
+	// branch lives there rather than inline: no committed fixture can reach
+	// its failing side, so it is unit-tested instead.
 	case "errorRaised":
-		if sdkErr == nil {
-			return fail(tc, "Expected the call to fail, but it succeeded")
+		if msg := errorRaisedFailure(sdkErr != nil); msg != "" {
+			return fail(tc, msg)
 		}
 
 	case "errorType":
