@@ -24,6 +24,12 @@
 #
 # Refresh the vendored table with:  make bc3-routes   (requires BC3_REPO_PATH)
 #
+# BC3_ROUTE_ALLOWLIST overrides the allowlist path, so
+# scripts/test-check-bc3-route-parity.rb can drive adversarial entries through
+# this gate against the REAL route tables. openapi.json and spec/bc3-routes.json
+# are deliberately NOT overridable — a self-test against invented routes proves
+# nothing about the routes we ship.
+#
 # Usage: ./check-bc3-route-parity
 
 require 'json'
@@ -109,7 +115,7 @@ die(failures) unless failures.empty?
 
 # ------------------------------------------------------------------- allowlist
 
-allow_path = File.join(ROOT, 'spec', 'bc3-route-allowlist.yml')
+allow_path = ENV['BC3_ROUTE_ALLOWLIST'] || File.join(ROOT, 'spec', 'bc3-route-allowlist.yml')
 allow = File.exist?(allow_path) ? (YAML.safe_load(File.read(allow_path)) || {}) : {}
 sdk_allow = allow['sdk_routes_absent_from_bc3_docs'] || []
 bc3_allow = allow['bc3_routes_not_modeled'] || []
@@ -140,7 +146,132 @@ end
 # Direction 2 dispositions. If this gate claims to enforce "absorbed into the
 # spec or registered", an entry cannot discharge that with free prose — it has to
 # say which mechanism is tracking it.
-VALID_DISPOSITIONS = %w[tracking_issue registry out_of_scope].freeze
+VALID_DISPOSITIONS = %w[tracking_issue registry out_of_scope modeled_as].freeze
+
+# `modeled_as` discharges an entry by naming the operation that already covers
+# this resource+verb at bc3's other spelling. It is the only disposition that
+# asserts something is DONE, so it is the only one that has to be provable — the
+# other three merely say who owns the debt.
+#
+# Four things are checked, and the last two are the ones that matter.
+#
+#   1. SDK side: the operationId exists and carries the same method.
+#   2. It sits at a different path — an identical one would have matched
+#      sdk_exact already, which makes the entry stale rather than discharged.
+#   3. bc3 side: bc3's own route table documents the substitute path. Without
+#      this, `modeled_as` is just the ListForwards mistake with a schema — a
+#      confident claim about a spelling bc3 never served.
+#   4. The substitute addresses the SAME resource. Checks 1-3 alone accept any
+#      unrelated same-verb operation: an early draft of this code happily let
+#      ListGaugeNeedles and GetTimesheetEntry both discharge the gauge-needle
+#      SHOW route, since both are real, bc3-documented GETs.
+#
+#      The rule is that the substitute's path must be a SUFFIX of the bc3 path,
+#      compared as flattened segments. A flat spelling is the scoped one with a
+#      leading scope removed, and nothing else — so a suffix is exactly the
+#      shape being claimed. Flattening (splitting segments on `_`) is what makes
+#      it survive bc3's renames across spellings: /gauge_needles/:id becomes
+#      [gauge, needles, :id], which IS a suffix of [projects, :id, gauge,
+#      needles, :id].
+#
+#      Suffix, not subset. Subset was the first version and it let
+#      GetProjectTimesheet (/projects/:id/timesheet) discharge the RECORDING
+#      timesheet route, because {projects, timesheet} does sit inside {projects,
+#      recordings, timesheet}. But that drops `recordings/:id` from the MIDDLE,
+#      which changes which timesheet you get. Dropping a leading scope is a
+#      spelling; dropping an interior resource is a different endpoint.
+#
+# What this gate CANNOT check, and a reviewer therefore must.
+#
+# Every check above is about SHAPE: the operation exists, the verb matches, the
+# path differs, bc3 documents it, and it is this route with a leading scope
+# removed. None of them establishes the thing `modeled_as` actually claims —
+# that the two spellings reach the SAME controller action. spec/bc3-routes.json
+# is extracted from bc3's doc/api/sections/*.md and carries only `method`,
+# `path`, `raw`, `sections` and `evidence`. There is no controller and no action
+# in it, so no amount of cleverness here derives that fact; two routes can
+# satisfy every check above and still be served by different controllers.
+#
+# So a fifth requirement is enforced as EVIDENCE rather than as a check: every
+# `modeled_as` entry must carry a non-empty `routes_rb:`. Before approving a new
+# one, verify by hand and record it there:
+#
+#   1. Both draws in bc3's config/routes.rb name the SAME controller action —
+#      cite both line numbers, and the enclosing `resources` blocks, since a
+#      draw's meaning is its nesting.
+#   2. A bc3 API test covers the pair, ideally asserting the two spellings
+#      return identical data — cite it by name and line.
+#   3. Rule out the NEAR MISS, and say which one you rejected. The routes that
+#      trip this are neighbours: config/routes.rb:740 draws
+#      /projects/:id/timesheet five lines from :745's
+#      /projects/:id/recordings/:id/timesheet, and they are different endpoints.
+#      Requirement 1 is what catches that — a near miss fails it, because the
+#      neighbouring draw reaches the same controller by a different route.
+#
+# Writing that down is the point. An unstated requirement is one nobody applies,
+# and `modeled_as` is the only disposition here that asserts something is DONE.
+by_id = sdk.group_by { |o| o[:id] }
+# Named to avoid ending in `key`: gitleaks' generic-api-key rule reads
+# `<name>key = <token>` as a credential assignment and fails the Secret Scanning job.
+bc3_documented = bc3_routes.map { |r| N.key(r['method'], r['path']) }.to_set
+
+# Path segments, rename-insensitive: split compound segments so gauge_needles
+# compares equal to the nested gauge/needles.
+def flat_segments(path)
+  N.normalize(path).split('/').reject(&:empty?).flat_map { |s| s.split('_') }
+end
+
+validate_modeled_as = lambda do |e, where|
+  # The unmechanizable half, demanded as a citation. Not `next`-guarded: a
+  # missing citation and a bogus operationId are separate defects, and reporting
+  # only the first hides the second behind a second run.
+  failures << "#{where}: `modeled_as` needs `routes_rb:` naming BOTH draws and stating they name the " \
+              'same controller action. spec/bc3-routes.json carries no controller data, so this gate ' \
+              'cannot check it — the citation is the only record that anyone did.' \
+    unless e['routes_rb'].is_a?(String) && !e['routes_rb'].strip.empty?
+
+  opid = e['modeled_as']
+  unless opid.is_a?(String) && !opid.strip.empty?
+    failures << "#{where}: `modeled_as` must name an operationId."
+    next
+  end
+
+  subs = by_id[opid]
+  if subs.nil?
+    failures << "#{where}: `modeled_as: #{opid}` names no operation in openapi.json."
+    next
+  end
+
+  entry_key = N.key(e['method'], e['path'])
+  match = subs.find { |o| o[:method] == e['method'].to_s.upcase }
+  if match.nil?
+    failures << "#{where}: `modeled_as: #{opid}` is #{subs.map { |o| o[:method] }.uniq.join('/')}, " \
+                "not #{e['method']} — a different verb does not cover this route."
+  elsif N.key(match[:method], match[:path]) == entry_key
+    failures << "#{where}: `modeled_as: #{opid}` sits at this very path, so the route is " \
+                'already matched directly — remove the entry.'
+  elsif !bc3_documented.include?(N.key(match[:method], match[:path]))
+    failures << "#{where}: `modeled_as: #{opid}` points at #{match[:method]} " \
+                "#{N.normalize(match[:path])}, which bc3 does not document. Substituting a " \
+                'spelling bc3 does not serve is the defect this gate exists to catch.'
+  elsif flat_segments(match[:path]).last != flat_segments(e['path']).last
+    failures << "#{where}: `modeled_as: #{opid}` is #{N.normalize(match[:path])}, which ends in " \
+                "#{flat_segments(match[:path]).last.inspect} where this route ends in " \
+                "#{flat_segments(e['path']).last.inspect} — the terminal segment has to match. " \
+                'A collection cannot stand in for a member, and a different noun is a different ' \
+                'resource whether or not both are collections.'
+  else
+    sub = flat_segments(match[:path])
+    full = flat_segments(e['path'])
+    unless full.last(sub.length) == sub
+      failures << "#{where}: `modeled_as: #{opid}` is #{N.normalize(match[:path])}, which is not " \
+                  "#{N.normalize(e['path'])} with a leading scope removed " \
+                  "(#{sub.join('/')} vs #{full.join('/')}). Only a scope prefix may differ; " \
+                  'anything else addresses a different resource.'
+    end
+  end
+end
+
 bc3_allow.each do |e|
   where = "bc3_routes_not_modeled entry #{e['method']} #{e['path']}"
   present = VALID_DISPOSITIONS.select { |k| e.key?(k) }
@@ -160,6 +291,8 @@ bc3_allow.each do |e|
     when 'out_of_scope'
       failures << "#{where}: `out_of_scope` must be a non-empty justification." \
         unless e['out_of_scope'].is_a?(String) && e['out_of_scope'].strip.length > 20
+    when 'modeled_as'
+      validate_modeled_as.call(e, where)
     end
   end
 end
@@ -258,7 +391,12 @@ puts "==> bc3 route parity OK: #{sdk.length} SDK routes vs #{bc3_routes.length} 
      "(#{marked} live-marker-backed) at bc3 #{pinned[0, 10]}."
 puts "    Direction 1 is EXACT (a wrong spelling is a 404): " \
      "#{scope_aliases.length} evidenced scope aliases, #{sdk_allow.length} documented-elsewhere waivers."
-puts "    Direction 2 collapses bucket scoping (coverage ledger): #{bc3_allow.length} dispositions."
+by_disposition = VALID_DISPOSITIONS
+                 .map { |k| [k, bc3_allow.count { |e| e.key?(k) }] }
+                 .reject { |_, n| n.zero? }
+                 .map { |k, n| "#{n} #{k}" }
+puts "    Direction 2 collapses bucket scoping (coverage ledger): " \
+     "#{bc3_allow.length} dispositions (#{by_disposition.join(', ')})."
 
 # Loud, every run. These are live 404s in shipped consumers; the gate is green
 # only because the fixes are breaking and queued, not because they are fine.

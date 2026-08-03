@@ -162,4 +162,22 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<TimesheetEntry>(body)
         }
     }
+
+    /**
+     * Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+     * @param entryId The entry ID
+     */
+    suspend fun destroy(entryId: Long): Unit {
+        val info = OperationInfo(
+            service = "Timesheets",
+            operation = "DestroyTimesheetEntry",
+            resourceType = "timesheet_entry",
+            isMutation = true,
+            projectId = null,
+            resourceId = entryId,
+        )
+        request(info, {
+            httpDelete("/timesheet_entries/${entryId}", operationName = info.operation)
+        }) { Unit }
+    }
 }

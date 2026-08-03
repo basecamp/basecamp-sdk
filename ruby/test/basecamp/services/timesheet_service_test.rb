@@ -64,4 +64,33 @@ class TimesheetServiceTest < Minitest::Test
     entries = result.to_a
     assert_equal 2.5, entries.first["hours"]
   end
+
+  # Timesheet entries are addressed flat off the account, not through a bucket:
+  # the URL below is the whole assertion, so a /buckets/<id>/ regression fails it.
+  DESTROY_URL = "https://3.basecampapi.com/12345/timesheet_entries/9007199254741099"
+
+  def test_destroy
+    stub_request(:delete, DESTROY_URL).to_return(status: 204, body: "")
+
+    assert_nil @account.timesheets.destroy(entry_id: 9007199254741099)
+    assert_requested :delete, DESTROY_URL, times: 1
+  end
+
+  # bc3's Timesheets::EntriesController#destroy answers head :forbidden when
+  # Current.person.can_archive_or_trash? is false.
+  def test_destroy_forbidden
+    stub_request(:delete, DESTROY_URL)
+      .to_return(status: 403, body: "", headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.timesheets.destroy(entry_id: 9007199254741099)
+    end
+
+    # Discriminating: assert the classification, not just the class — a wrong
+    # status would surface as a different code/http_status pair.
+    assert_equal Basecamp::ErrorCode::FORBIDDEN, error.code
+    assert_equal 403, error.http_status
+    assert_not error.retryable?
+    assert_requested :delete, DESTROY_URL, times: 1
+  end
 end

@@ -111,6 +111,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "Timesheets": [
             "GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport",
             "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry",
+            "DestroyTimesheetEntry",
         ],
     },
     "ClientFeatures": {
@@ -182,6 +183,7 @@ METHOD_NAME_OVERRIDES = {
     "GetTimesheetEntry": "get",
     "CreateTimesheetEntry": "create",
     "UpdateTimesheetEntry": "update",
+    "DestroyTimesheetEntry": "destroy",
     "GetProgressReport": "progress",
     "GetUpcomingSchedule": "upcoming",
     "GetAssignedTodos": "assigned",

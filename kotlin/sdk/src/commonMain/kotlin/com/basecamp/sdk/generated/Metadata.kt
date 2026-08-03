@@ -68,6 +68,7 @@ object Metadata {
         "DeleteWormhole" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DeprioritizeAssignment" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DestroyGaugeNeedle" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
+        "DestroyTimesheetEntry" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DisableCardColumnOnHold" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DisableOutOfOffice" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "DisableTool" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

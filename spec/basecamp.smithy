@@ -129,6 +129,7 @@ service Basecamp {
     GetTimesheetEntry,
     CreateTimesheetEntry,
     UpdateTimesheetEntry,
+    DestroyTimesheetEntry,
 
     // Batch 4 - Campfires, Chatbots, Forwards/Inboxes (Real-time)
     ListCampfires,
@@ -3095,7 +3096,31 @@ structure UpdateTimesheetEntryOutput {
   entry: TimesheetEntry
 }
 
-// Note: Use TrashRecording to trash timesheet entries
+/// Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/timesheet_entries/{entryId}", code: 204)
+operation DestroyTimesheetEntry {
+  input: DestroyTimesheetEntryInput
+  output: DestroyTimesheetEntryOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure DestroyTimesheetEntryInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  entryId: TimesheetEntryId
+}
+
+structure DestroyTimesheetEntryOutput {}
+
+// Note: DestroyTimesheetEntry deletes outright and cannot be undone. Use
+// TrashRecording to trash a timesheet entry recoverably instead.
 
 // ===== Comment Shapes (Batch 1) =====
 

@@ -82,6 +82,16 @@ module Basecamp
           http_put("/timesheet_entries/#{entry_id}", body: compact_params(date: date, hours: hours, description: description, person_id: person_id)).json
         end
       end
+
+      # Permanently delete a timesheet entry; answers 403 when the caller may not archive or trash it.
+      # @param entry_id [Integer] entry id ID
+      # @return [void]
+      def destroy(entry_id:)
+        with_operation(service: "timesheets", operation: "destroy", is_mutation: true, resource_id: entry_id) do
+          http_delete("/timesheet_entries/#{entry_id}")
+          nil
+        end
+      end
     end
   end
 end

@@ -99,6 +99,14 @@ class TimesheetsService(BaseService):
             operation="UpdateTimesheetEntry",
         )
 
+    def destroy(self, *, entry_id: int) -> None:
+        self._request_void(
+            OperationInfo(service="timesheets", operation="destroy", is_mutation=True, resource_id=entry_id),
+            "DELETE",
+            f"/timesheet_entries/{entry_id}",
+            operation="DestroyTimesheetEntry",
+        )
+
 
 class AsyncTimesheetsService(AsyncBaseService):
     async def for_project(
@@ -189,4 +197,12 @@ class AsyncTimesheetsService(AsyncBaseService):
             f"/timesheet_entries/{entry_id}",
             json_body=self._compact(date=date, hours=hours, description=description, person_id=person_id),
             operation="UpdateTimesheetEntry",
+        )
+
+    async def destroy(self, *, entry_id: int) -> None:
+        await self._request_void(
+            OperationInfo(service="timesheets", operation="destroy", is_mutation=True, resource_id=entry_id),
+            "DELETE",
+            f"/timesheet_entries/{entry_id}",
+            operation="DestroyTimesheetEntry",
         )

@@ -867,6 +867,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Timesheet().Get(ctx, entryID)
 		return operationResult{err: err}
 
+	case "DestroyTimesheetEntry":
+		entryID := getInt64Param(tc.PathParams, "entryId")
+		err := account.Timesheet().Destroy(ctx, entryID)
+		return operationResult{err: err}
+
 	case "UpdateTimesheetEntry":
 		entryID := getInt64Param(tc.PathParams, "entryId")
 		req := &basecamp.UpdateTimesheetEntryRequest{}

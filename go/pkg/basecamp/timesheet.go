@@ -454,7 +454,32 @@ func (s *TimesheetService) Update(ctx context.Context, entryID int64, req *Updat
 	return &entry, nil
 }
 
-// Trash moves a timesheet entry to the trash.
+// Destroy permanently deletes a timesheet entry. Unlike Trash, this cannot be
+// undone. The API answers 403 when the caller may not archive or trash the entry.
+func (s *TimesheetService) Destroy(ctx context.Context, entryID int64) (err error) {
+	op := OperationInfo{
+		Service: "Timesheet", Operation: "Destroy",
+		ResourceType: "timesheet_entry", IsMutation: true,
+		ResourceID: entryID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.DestroyTimesheetEntryWithResponse(ctx, s.client.accountID, entryID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// Trash moves a timesheet entry to the trash, where it can still be recovered.
+// Use Destroy to delete it outright.
 func (s *TimesheetService) Trash(ctx context.Context, entryID int64) (err error) {
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "Trash",

@@ -1,11 +1,34 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+// timesheetTestEntryID is the member ID used by the Destroy tests. Timesheet
+// entries are addressed flat off the account, so the ID lands in the only path
+// slot after the account — a bucket-scoped regression would move it.
+const timesheetTestEntryID = int64(9007199254741099)
+
+// testTimesheetServer creates an httptest.Server and a TimesheetService wired to it.
+func testTimesheetServer(t *testing.T, handler http.HandlerFunc) *TimesheetService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("12345")
+	return account.Timesheet()
+}
 
 func timesheetFixturesDir() string {
 	return filepath.Join("..", "..", "..", "spec", "fixtures", "timesheet")
@@ -497,6 +520,58 @@ func TestTimesheetReportOptions_BuildTimesheetParams(t *testing.T) {
 				t.Errorf("expected PersonId %d, got %d", tt.expectedPID, *result.PersonId)
 			}
 		})
+	}
+}
+
+func TestTimesheetService_Destroy(t *testing.T) {
+	var gotMethod, gotPath string
+	svc := testTimesheetServer(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	if err := svc.Destroy(context.Background(), timesheetTestEntryID); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotMethod != http.MethodDelete {
+		t.Errorf("expected method %s, got %s", http.MethodDelete, gotMethod)
+	}
+	// Flat, account-scoped member route — NOT /12345/buckets/<id>/...
+	if want := "/12345/timesheet_entries/9007199254741099"; gotPath != want {
+		t.Errorf("expected path %s, got %s", want, gotPath)
+	}
+}
+
+func TestTimesheetService_Destroy_Forbidden(t *testing.T) {
+	// bc3's Timesheets::EntriesController#destroy answers head :forbidden when
+	// Current.person.can_archive_or_trash? is false.
+	svc := testTimesheetServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"error":"You are not allowed to trash this entry"}`))
+	})
+
+	err := svc.Destroy(context.Background(), timesheetTestEntryID)
+	if err == nil {
+		t.Fatal("expected error for 403")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	// Discriminating: every failure path here yields *Error, so assert the
+	// forbidden classification itself, not merely the type.
+	if apiErr.Code != CodeForbidden {
+		t.Errorf("expected code %q, got %q", CodeForbidden, apiErr.Code)
+	}
+	if apiErr.HTTPStatus != 403 {
+		t.Errorf("expected HTTPStatus 403, got %d", apiErr.HTTPStatus)
+	}
+	if apiErr.Message != "You are not allowed to trash this entry" {
+		t.Errorf("expected the server's message, got %q", apiErr.Message)
+	}
+	if apiErr.Retryable {
+		t.Error("expected a 403 to be non-retryable")
 	}
 }
 

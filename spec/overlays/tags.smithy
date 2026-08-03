@@ -78,6 +78,7 @@ apply GetRecordingTimesheet @tags(["Schedule"])
 apply GetTimesheetEntry @tags(["Schedule"])
 apply CreateTimesheetEntry @tags(["Schedule"])
 apply UpdateTimesheetEntry @tags(["Schedule"])
+apply DestroyTimesheetEntry @tags(["Schedule"])
 
 // Campfire (Campfires, Chatbots)
 apply ListCampfires @tags(["Campfire"])

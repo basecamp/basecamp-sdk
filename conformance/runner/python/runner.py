@@ -380,6 +380,8 @@ class OperationMapper:
                 )
             case "GetTimesheetEntry":
                 return self._account.timesheets.get(entry_id=path_params["entryId"])
+            case "DestroyTimesheetEntry":
+                return self._account.timesheets.destroy(entry_id=path_params["entryId"])
             case "GetProjectTimeline":
                 return self._account.timeline.get_project_timeline(project_id=path_params["projectId"])
             case "GetProjectTimesheet":

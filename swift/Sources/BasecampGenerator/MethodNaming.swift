@@ -85,6 +85,7 @@ let methodNameOverrides: [String: String] = [
     "GetTimesheetEntry": "get",
     "CreateTimesheetEntry": "create",
     "UpdateTimesheetEntry": "update",
+    "DestroyTimesheetEntry": "destroy",
     "GetProgressReport": "progress",
     "GetUpcomingSchedule": "upcoming",
     "GetAssignedTodos": "assigned",

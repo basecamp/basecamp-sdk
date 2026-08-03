@@ -84,7 +84,7 @@ url-routes-check:
 	@rm -f go/pkg/basecamp/url-routes.json.tmp
 	@echo "url-routes.json is up to date"
 
-.PHONY: bc3-routes bc3-route-parity bc3-routes-check
+.PHONY: bc3-routes bc3-route-parity test-bc3-route-parity bc3-routes-check
 
 # Regenerate spec/bc3-routes.json — the vendored table of routes bc3 actually
 # serves, extracted from its API docs at the pinned provenance revision.
@@ -102,6 +102,15 @@ bc3-routes:
 bc3-route-parity:
 	@echo "==> Checking bc3 route parity..."
 	@./scripts/check-bc3-route-parity
+
+# Drive that gate from outside with adversarial allowlists. The live run only
+# exercises the VALID file, so nothing proves `modeled_as` — the one disposition
+# asserting something is DONE, and the same class of claim that shipped
+# ListForwards and RepositionTodolistGroup as 404s — rejects anything. Each case
+# substitutes a REAL operationId for a REAL route via BC3_ROUTE_ALLOWLIST; the
+# route tables are never faked.
+test-bc3-route-parity:
+	@ruby ./scripts/test-check-bc3-route-parity.rb
 
 # Freshness gate for the vendored table: regenerate at the current pin and diff.
 #
@@ -1127,7 +1136,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

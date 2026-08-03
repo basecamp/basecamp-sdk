@@ -147,6 +147,39 @@ sdk_routes_known_defective: []
 #   tracking_issue: <n>            an open issue owns absorbing it
 #   registry: spec/api-gaps/<f>.md a registry entry owns it (file must exist)
 #   out_of_scope: <justification>  deliberately never modeled
+#   modeled_as: <OperationId>      already modeled at bc3's OTHER spelling
+#
+# `modeled_as` exists because this direction collapses only a leading
+# /buckets/:id (see bc3_route_normalizer.rb). bc3 also serves several resources
+# under BOTH a /projects/:id-scoped and a flat spelling, sometimes renaming the
+# segment on the way (gauge/needles/:id vs gauge_needles/:id). Those surface here
+# as "unmodeled" even though the SDK models the resource+verb perfectly well, and
+# a tracking_issue on them is a promise to ship a duplicate operation nobody
+# needs.
+#
+# It is checked, not asserted. The gate requires the named operationId to exist
+# in openapi.json, to carry the SAME method, to sit at a DIFFERENT path (an
+# identical one would have matched already, making the entry stale), and — the
+# load-bearing half — for bc3's own route table to document that path too. So the
+# claim "we model this at bc3's other spelling" is verified on both sides, and
+# cannot decay into the ListForwards mistake of asserting a spelling bc3 does not
+# serve.
+#
+# One half of the claim stays unmechanizable: spec/bc3-routes.json is extracted
+# from doc/api/sections/*.md and holds no controller or action, so "both draws
+# name the same controller action" cannot be derived here. That half is demanded
+# as evidence instead — every `modeled_as` entry needs a non-empty `routes_rb:`
+# citing BOTH draw sites with their enclosing `resources` blocks, saying they
+# name the same controller action, citing the bc3 API test that covers the pair
+# where one exists, and naming the NEAR MISS it is not: the confusable routes
+# here are neighbours in the same file (:740 draws /projects/:id/timesheet five
+# lines from :745's /projects/:id/recordings/:id/timesheet). Verify all of that
+# by hand before approving — the gate checks the shape, not the destination.
+#
+# scripts/test-check-bc3-route-parity.rb (`make test-bc3-route-parity`) holds the
+# gate to that: it drives adversarial substitutions of REAL operationIds for REAL
+# routes through the checker and asserts each is rejected, the interior-segment
+# case above included.
 # ---------------------------------------------------------------------------
 bc3_routes_not_modeled:
   # -- Deliberately out of scope, not coverage gaps --
@@ -214,26 +247,52 @@ bc3_routes_not_modeled:
     path: /dock/doors
     registry: spec/api-gaps/external-links-doors.md
 
-  # -- gauge needle CRUD --
+  # -- gauge needle show/update/destroy (#581) --
+  #
+  # Not a coverage gap: bc3 draws these three actions twice, once nested under
+  # `resource :gauge` (config/routes.rb:737, `resources :needles` with no `only:`)
+  # and once flat (config/routes.rb:186, `resources :gauge_needles, only:
+  # %i[ show update destroy ]`). Both draws name controller "gauges/needles", so
+  # the two spellings are the same action — which
+  # test/api/gauges/needles_controller_api_test.rb asserts outright in "unscoped
+  # and scoped routes return identical data for needle".
+  #
+  # doc/api/sections/gauges.md documents both, and the flat GET and PUT carry
+  # live example-markers in spec/bc3-routes.json. The SDK models the flat form,
+  # which needs no projectId to address a needle. Modeling the scoped spelling
+  # too would add three operations across six SDKs for no reachable capability.
 
   - method: GET
     path: /projects/:id/gauge/needles/:id
-    tracking_issue: 581
+    modeled_as: GetGaugeNeedle
+    routes_rb: "config/routes.rb:186 draws the flat /gauge_needles/:id; :737, inside `resources :projects` at :676, draws /projects/:id/gauge/needles/:id. Both name controller \"gauges/needles\", read at the pinned revision 2c0dafba13. bc3's API test \"unscoped and scoped routes return identical data for needle\" (test/api/gauges/needles_controller_api_test.rb:42) asserts the two spellings return identical data."
   - method: PUT
     path: /projects/:id/gauge/needles/:id
-    tracking_issue: 581
+    modeled_as: UpdateGaugeNeedle
+    routes_rb: "config/routes.rb:186 draws the flat /gauge_needles/:id; :737, inside `resources :projects` at :676, draws /projects/:id/gauge/needles/:id. Both name controller \"gauges/needles\", read at the pinned revision 2c0dafba13. bc3's API test \"unscoped and scoped routes return identical data for needle\" (test/api/gauges/needles_controller_api_test.rb:42) asserts the two spellings return identical data."
   - method: DELETE
     path: /projects/:id/gauge/needles/:id
-    tracking_issue: 581
+    modeled_as: DestroyGaugeNeedle
+    routes_rb: "config/routes.rb:186 draws the flat /gauge_needles/:id; :737, inside `resources :projects` at :676, draws /projects/:id/gauge/needles/:id. Both name controller \"gauges/needles\", read at the pinned revision 2c0dafba13. bc3's API test \"unscoped and scoped routes return identical data for needle\" (test/api/gauges/needles_controller_api_test.rb:42) asserts the two spellings return identical data."
 
-  # -- timesheet reads + entry writes --
+  # -- recording timesheet read + entry create (#582) --
+  #
+  # Same shape. TimesheetsController#show is drawn project-scoped at
+  # config/routes.rb:745 and flat at :266; Timesheets::EntriesController#create at
+  # :747 and :268. Both controllers branch on @bucket being nil
+  # (TimesheetsController#set_recording, EntriesController#set_parent_recording)
+  # and fall back to authorize_recording, so the flat form is not a happy
+  # accident — it is the written path. test/api/timesheets_controller_api_test.rb
+  # ("show timesheet via flat recording route") and
+  # test/api/timesheets/entries_controller_api_test.rb ("create entry via flat
+  # recording route") exercise both, and both flat spellings carry live
+  # example-markers.
 
   - method: GET
     path: /projects/:id/recordings/:id/timesheet
-    tracking_issue: 582
+    modeled_as: GetRecordingTimesheet
+    routes_rb: "config/routes.rb:266 draws the flat /recordings/:id/timesheet; :745 draws the project-scoped form, inside `resources :recordings, only: []` at :744, inside `resources :projects` at :676. Both are `resource :timesheet, only: :show` with no explicit controller, so both resolve to the same TimesheetsController#show. Beware the near-miss five lines up: :740 draws `resource :timesheet` directly under :676, which is /projects/:id/timesheet — the PROJECT's own timesheet, modeled as GetProjectTimesheet. That is a different endpoint, not this route's other spelling, and bc3 covers it as its own test (\"show for project\", test/api/timesheets_controller_api_test.rb:9). bc3's API tests cover THIS pair on both sides: \"show for timesheetable\" (:26) hits the scoped form, \"show timesheet via flat recording route\" (:45) the flat one. Read at the pinned revision 2c0dafba13."
   - method: POST
     path: /projects/:id/recordings/:id/timesheet/entries
-    tracking_issue: 582
-  - method: DELETE
-    path: /timesheet_entries/:id
-    tracking_issue: 582
+    modeled_as: CreateTimesheetEntry
+    routes_rb: "config/routes.rb:268 draws the flat /recordings/:id/timesheet/entries; :747 draws the project-scoped form, inside `resources :recordings, only: []` at :744, inside `resources :projects` at :676. Both name controller \"timesheets/entries\", action create. Beware the near-miss: :741 draws entries under the PROJECT timesheet at :740, which is /projects/:id/timesheet/entries and is `only: %i[ show edit update destroy ]` — no create, and a different parent. bc3's API tests cover THIS pair on both sides: \"create entry on project timesheet\" (test/api/timesheets/entries_controller_api_test.rb:11) hits the scoped form, \"create entry via flat recording route\" (:139) the flat one. Read at the pinned revision 2c0dafba13."

@@ -71,6 +71,15 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func destroy(entryId: Int) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Timesheets", operation: "DestroyTimesheetEntry", resourceType: "timesheet_entry", isMutation: true, resourceId: entryId),
+            method: "DELETE",
+            path: "/timesheet_entries/\(entryId)",
+            retryConfig: Metadata.retryConfig(for: "DestroyTimesheetEntry")
+        )
+    }
+
     public func forProject(projectId: Int, options: ForProjectTimesheetOptions? = nil) async throws -> ListResult<TimesheetEntry> {
         var queryItems: [URLQueryItem] = []
         if let from = options?.from {

@@ -113,8 +113,10 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # Folders absorption (+5 ops): UpdateFolder and DeleteFolder are naturally
 # idempotent (+2 both counts); ListFolders and GetFolder are readonly (+2 union
 # only); CreateFolder is neither.
-expected_idempotent=78
-expected_union=201
+# Timesheet entry destroy absorption (#582, +1 op): DestroyTimesheetEntry is a
+# naturally idempotent DELETE, so it lands in both counts (+1 each).
+expected_idempotent=79
+expected_union=202
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"
