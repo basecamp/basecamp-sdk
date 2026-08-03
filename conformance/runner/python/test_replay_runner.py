@@ -27,7 +27,47 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from replay_runner import ReplayRunner, _decode, _resolve_body_text
+from replay_runner import DECODERS, ReplayRunner, _decode, _resolve_body_text
+
+LIVE_FIXTURE = Path(__file__).parent.parent.parent / "tests" / "live-my-surface.json"
+
+
+def _live_operations() -> set[str]:
+    tests = json.loads(LIVE_FIXTURE.read_text())
+    ops = {t["operation"] for t in tests if t.get("mode") == "live"}
+    # Fail closed: an empty set would make the assertions below vacuous.
+    assert ops, f"{LIVE_FIXTURE} declared no live operations — the reader is broken"
+    return ops
+
+
+class DecoderCoverageTest(unittest.TestCase):
+    """DECODERS must cover exactly the live fixture's operations.
+
+    ``ReplayRunner.coverage_gate`` asserts the same thing, but it only runs
+    during a live canary — and the scheduled canary skips whenever its secrets
+    are unconfigured. That is how DECODERS sat twenty operations behind the
+    fixture with CI fully green (#553). Asserting it here means the drift fails
+    an ordinary run. ``scripts/check-replay-decoder-parity`` makes the same
+    comparison statically across all five dispatch tables.
+    """
+
+    def test_every_live_operation_has_a_decoder(self) -> None:
+        missing = sorted(_live_operations() - DECODERS.keys())
+        self.assertEqual([], missing, "live operations with no entry in DECODERS")
+
+    def test_no_decoder_for_an_unknown_operation(self) -> None:
+        extra = sorted(DECODERS.keys() - _live_operations())
+        self.assertEqual([], extra, "DECODERS entries that are not live fixture operations")
+
+    def test_every_decoder_runs_the_sdk_normalize_boundary(self) -> None:
+        # The Python SDK has no per-op typed deserializer, so every entry must
+        # be the shared parse+normalize callable. A stub or a lambda that
+        # swallowed errors would satisfy coverage while decoding nothing.
+        for op, decoder in DECODERS.items():
+            with self.subTest(op=op):
+                self.assertIs(decoder, _decode)
+                with self.assertRaises(json.JSONDecodeError):
+                    decoder("")
 
 
 class ResolveBodyTextTest(unittest.TestCase):

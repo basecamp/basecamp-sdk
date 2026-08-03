@@ -2179,7 +2179,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `cards_write.json` | Merge-safe update composite (5 cases: due-on preservation, verbatim raw path, explicit clears/empties) | §5 (Cards), §18 |
 | `schedule_entries_write.json` | update-omits-participant-ids / update-empty-participant-ids | §10 |
-| `live-my-surface.json` | Live schema validation, 30 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
+| `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 
 ---
 

@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+#
+# check-replay-decoder-parity — assert every live conformance operation has a
+# decoder registered in all five replay/dispatch tables.
+#
+# The source of truth is conformance/tests/live-my-surface.json: the set of
+# `operation` values on its `mode: "live"` entries. Five tables must equal that
+# set EXACTLY (both directions — not subset):
+#
+#   TypeScript  conformance/runner/typescript/live-dispatch.ts  LIVE_OPERATIONS
+#   Go          conformance/runner/go/replay_runner.go          decoders
+#   Python      conformance/runner/python/replay_runner.py      DECODERS
+#   Ruby        conformance/runner/ruby/replay-runner.rb        DECODERS
+#   Kotlin      kotlin/conformance/.../ReplayRunner.kt          decoders
+#
+# Why this exists (#553): each replay runner already has a runtime coverage
+# gate ("every fixture op has a decoder"). Those gates only fire during a live
+# canary, and the scheduled canary workflow SKIPS whenever the canary secrets
+# are unconfigured — so the four non-TS tables sat 20 operations behind the
+# fixture indefinitely, with CI fully green. The `Keep this table in sync with
+# LIVE_OPERATIONS` comment in replay_runner.go was true and unenforced.
+#
+# It is also a prerequisite of `conformance-live`, so a static mismatch fails in
+# 0.3s rather than after a ~30-minute live capture whose replay half cannot run.
+#
+# Exit non-zero on any violation. Wired into `make check` and CI (spec-gates).
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT" || exit 2
+
+# Stable byte-wise collation for every sort/comm below — a non-C locale can
+# order the same op names differently than `comm` expects, yielding false diffs
+# (or masking real ones). Matches scripts/check-idempotency-parity.
+export LC_ALL=C
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required" >&2
+    exit 2
+fi
+
+# Explicit template so this works identically under GNU and BSD/macOS mktemp.
+# Fail fast if mktemp fails (this script omits `set -e` to accumulate
+# mismatches): an empty $WORK would turn `> "$WORK/…"` into a write to /.
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/replay-decoder-parity.XXXXXX")" || exit 2
+if [[ -z "$WORK" || ! -d "$WORK" ]]; then
+    echo "ERROR: could not create a temp directory" >&2
+    exit 2
+fi
+trap 'rm -rf "$WORK"' EXIT
+
+fail=0
+pass=0
+
+# compare <label> <expected-file> <actual-file>: set equality, both directions.
+# Inputs must be sorted. Reports names missing from / extra in the table.
+compare() {
+    local label="$1" expected="$2" actual="$3"
+    local missing extra
+    # Fail closed: both sets here are non-empty by construction. An empty file
+    # means an extraction (grep/awk/jq) matched nothing — a broken adapter, not
+    # a real "empty == empty" match — so `comm` producing no diff must not be
+    # counted as a pass. This is the failure mode that would let a renamed map
+    # silently disable the whole check.
+    if [[ ! -s "$expected" || ! -s "$actual" ]]; then
+        fail=$((fail + 1))
+        echo "  FAIL: $label"
+        echo "        internal error: empty operation set (expected=$(wc -l < "$expected" | tr -d ' '), actual=$(wc -l < "$actual" | tr -d ' ')) — an extraction matched nothing"
+        return
+    fi
+    missing=$(comm -23 "$expected" "$actual")   # in the fixture, absent from the table
+    extra=$(comm -13 "$expected" "$actual")     # in the table, absent from the fixture
+    if [[ -z "$missing" && -z "$extra" ]]; then
+        pass=$((pass + 1))
+        echo "  ok: $label"
+    else
+        fail=$((fail + 1))
+        echo "  FAIL: $label"
+        if [[ -n "$missing" ]]; then
+            echo "        missing decoders (live fixture operations with no registration):"
+            echo "$missing" | sed 's/^/          /'
+        fi
+        if [[ -n "$extra" ]]; then
+            echo "        extra registrations (not a live fixture operation):"
+            echo "$extra" | sed 's/^/          /'
+        fi
+    fi
+}
+
+echo "==> Checking replay-decoder parity across five dispatch tables"
+
+# ---- Source of truth: the live fixture ---------------------------------------
+FIXTURE=conformance/tests/live-my-surface.json
+jq -r '.[] | select(.mode == "live") | .operation' "$FIXTURE" \
+    | sort -u > "$WORK/live"
+
+# Pinned count. Bump deliberately when live-my-surface.json gains or loses a
+# live operation — and register the decoder in all five tables in the same
+# commit, which is the whole point of this check.
+expected_live_ops=31
+nLive=$(wc -l < "$WORK/live" | tr -d ' ')
+echo "    source of truth: $nLive live operations in $FIXTURE"
+if [[ "$nLive" != "$expected_live_ops" ]]; then
+    echo "  FAIL: unexpected live-operation count (got $nLive, want $expected_live_ops)"
+    echo "        $FIXTURE changed shape — update expected_live_ops deliberately."
+    fail=$((fail + 1))
+fi
+
+# Extraction is deliberately regex-light. Table delimiters are matched as
+# LITERAL TEXT with awk's index() — at column 1 for four of the five tables,
+# anywhere on the line for Kotlin's, whose declaration line begins with a
+# visibility modifier that is not part of its identity — and keys with a
+# `sed -E` capture, because
+# the tool dialects differ where it matters: an earlier draft anchored Go's keys
+# with `grep -oE '^\t"..."'`, which matches under ugrep (a common macOS grep
+# replacement) and matches NOTHING under GNU grep, where ERE has no `\t` escape.
+# It went green locally and red on ubuntu. compare()'s fail-closed empty-set
+# branch is what turned that into a loud failure instead of a silent pass.
+
+# block <file> <start-line-prefix> <end-line-prefix>: the lines strictly between
+# a line starting with <start-line-prefix> and the next line starting with
+# <end-line-prefix>. Both are literal text, not patterns.
+block() {
+    awk -v start="$2" -v end="$3" '
+        !f && index($0, start) == 1 { f = 1; next }
+        f  && index($0, end)   == 1 { f = 0 }
+        f
+    ' "$1"
+}
+
+# block_anywhere <file> <start-substring> <end-line-prefix>: as block(), but the
+# start is matched ANYWHERE on the line rather than at column 1.
+#
+# For declarations whose line begins with a modifier that is not part of the
+# declaration's identity — a Kotlin visibility keyword. Anchoring the Kotlin
+# start at column 1 bound this check to the literal string `internal val
+# decoders`, so flipping that map back to `private` (its spelling before #553
+# widened it for ReplayDecodersTest) turned a parity comparison into
+# compare()'s "empty operation set" internal error. Fail-closed, so nothing
+# passed silently — but a visibility edit is not a parity failure and must not
+# be reported as one. The start substring is still literal and still carries
+# the full type signature, so it cannot collide with prose in the KDoc above.
+block_anywhere() {
+    awk -v start="$2" -v end="$3" '
+        !f && index($0, start) > 0 { f = 1; next }
+        f  && index($0, end)   == 1 { f = 0 }
+        f
+    ' "$1"
+}
+
+# keys <sed-capture>: read a block on stdin, emit one operation name per line.
+keys() { sed -nE "$1" | sort -u; }
+
+# ---- TypeScript (live-dispatch.ts, LIVE_OPERATIONS object literal) -----------
+# Keys are bare identifiers at two-space indent inside the object literal.
+block conformance/runner/typescript/live-dispatch.ts \
+    'export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {' '};' \
+    | keys 's/^  ([[:alnum:]]+):.*/\1/p' > "$WORK/typescript"
+compare "TypeScript LIVE_OPERATIONS == live fixture" "$WORK/live" "$WORK/typescript"
+
+# ---- Go (replay_runner.go, decoders map) ------------------------------------
+block conformance/runner/go/replay_runner.go \
+    'var decoders = map[string]func(bodyText string) error{' '}' \
+    | keys 's/^[[:space:]]+"([[:alnum:]]+)":.*/\1/p' > "$WORK/go"
+compare "Go decoders == live fixture" "$WORK/live" "$WORK/go"
+
+# ---- Python (replay_runner.py, DECODERS dict) -------------------------------
+block conformance/runner/python/replay_runner.py \
+    'DECODERS: dict[str, Callable[[str], None]] = {' '}' \
+    | keys 's/^[[:space:]]+"([[:alnum:]]+)":.*/\1/p' > "$WORK/python"
+compare "Python DECODERS == live fixture" "$WORK/live" "$WORK/python"
+
+# ---- Ruby (replay-runner.rb, DECODERS hash) ---------------------------------
+block conformance/runner/ruby/replay-runner.rb \
+    '  DECODERS = {' '  }.freeze' \
+    | keys 's/^[[:space:]]+"([[:alnum:]]+)".*/\1/p' > "$WORK/ruby"
+compare "Ruby DECODERS == live fixture" "$WORK/live" "$WORK/ruby"
+
+# ---- Kotlin (ReplayRunner.kt, decoders mapOf) -------------------------------
+# Visibility-agnostic: `private`, `internal` and a bare `val` all match. See
+# block_anywhere — the column-1 anchor made this arm fail on a visibility edit.
+block_anywhere kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt \
+    'val decoders: Map<String, (String) -> Unit> = mapOf(' ')' \
+    | keys 's/^[[:space:]]+"([[:alnum:]]+)" to.*/\1/p' > "$WORK/kotlin"
+compare "Kotlin decoders == live fixture" "$WORK/live" "$WORK/kotlin"
+
+echo ""
+if [[ "$fail" -eq 0 ]]; then
+    echo "==> Replay-decoder parity clean ($pass checks passed, $nLive operations)"
+    exit 0
+else
+    echo "==> Replay-decoder parity FAILED ($fail failure(s), $pass passed)"
+    exit 1
+fi

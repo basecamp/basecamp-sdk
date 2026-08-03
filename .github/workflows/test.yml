@@ -155,6 +155,13 @@ jobs:
       - name: Runner-test reachability guard self-test
         run: ./scripts/check-runner-test-reachability --self-test
 
+      # The replay runners' own coverage gates fire only during a live canary,
+      # and that canary skips when its secrets are unset — so four decoder maps
+      # drifted 20 operations behind the live fixture with CI fully green
+      # (#553). This is the static answer to the same question.
+      - name: Replay decoders cover every live fixture operation
+        run: make check-replay-decoder-parity
+
   test-go:
     name: Go Tests
     runs-on: ubuntu-latest

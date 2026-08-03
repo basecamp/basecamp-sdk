@@ -1,8 +1,15 @@
 package com.basecamp.sdk.conformance
 
+import com.basecamp.sdk.generated.models.BucketCardsGroup
+import com.basecamp.sdk.generated.models.BucketTodosGroup
 import com.basecamp.sdk.generated.models.Calendar
+import com.basecamp.sdk.generated.models.Card
+import com.basecamp.sdk.generated.models.EverythingFile
+import com.basecamp.sdk.generated.models.Notification
 import com.basecamp.sdk.generated.models.Person
 import com.basecamp.sdk.generated.models.Project
+import com.basecamp.sdk.generated.models.Recording
+import com.basecamp.sdk.generated.models.TimelineEvent
 import com.basecamp.sdk.generated.models.Todo
 import com.basecamp.sdk.generated.models.Todolist
 import com.basecamp.sdk.generated.models.Todoset
@@ -40,12 +47,13 @@ import kotlin.system.exitProcess
  * Decode boundary
  * ---------------
  * Where the Kotlin SDK has a typed model for the response payload (`Project`,
- * `Person`, `Todo`, `Todolist`, `Todoset`), the decoder routes through that
- * type — exactly what the generated service method does at runtime. The four
- * `My*` operations (assignments, completed assignments, due assignments,
- * notifications) currently return `JsonElement` from the SDK because
- * `MyAssignment` and `Notification` lack typed Kotlin models; for those we
- * decode as `JsonElement`, which mirrors the SDK's actual surface.
+ * `Person`, `Todo`, `Todolist`, `Todoset`, `Recording`, `Card`,
+ * `BucketTodosGroup`, `BucketCardsGroup`, `EverythingFile`, `TimelineEvent`,
+ * `Notification`), the decoder routes through that type — exactly what the
+ * generated service method does at runtime. The four `My*` operations
+ * (assignments, completed assignments, due assignments, notifications) return
+ * bare `JsonElement` from the SDK, as does each element of `Search`'s result;
+ * for those we decode as `JsonElement`, which mirrors the SDK's actual surface.
  *
  * The `Json` instance below intentionally mirrors mock-mode (`ignoreUnknownKeys
  * = true`, `coerceInputValues = false`) — additive BC5 fields must NOT decode
@@ -72,8 +80,21 @@ const val REPLAY_SCHEMA_VERSION = 1
  * For `JsonElement`-returning SDK methods, we decode as `JsonElement` —
  * that's the SDK's actual decode boundary today. When the SDK adds typed
  * models for those operations, switch the decoder to the typed model.
+ *
+ * Every list-shaped entry mirrors the generated service exactly: those
+ * methods end in `json.decodeFromString<List<T>>(body)` per page (see
+ * `generated/services/everything.kt` and friends), so the replay decoder is
+ * `ListSerializer(T.serializer())` — decoding a page as the bare element type
+ * would test something the SDK never does.
+ *
+ * Must cover every live operation in conformance/tests/live-my-surface.json.
+ * coverageGate() enforces that at replay time, but replay only runs during a
+ * live canary — which skips whenever the canary secrets are unset, so this map
+ * silently lost twenty operations for the length of #553. The static guard
+ * scripts/check-replay-decoder-parity now compares it against the fixture on
+ * every `make check` and CI run.
  */
-private val decoders: Map<String, (String) -> Unit> = mapOf(
+internal val decoders: Map<String, (String) -> Unit> = mapOf(
     "ListProjects" to { bt -> replayJson.decodeFromString(ListSerializer(Project.serializer()), bt) },
     "GetProject" to { bt -> replayJson.decodeFromString(Project.serializer(), bt) },
     "GetMyAssignments" to { bt -> replayJson.decodeFromString(JsonElement.serializer(), bt) },
@@ -85,6 +106,29 @@ private val decoders: Map<String, (String) -> Unit> = mapOf(
     "ListTodolists" to { bt -> replayJson.decodeFromString(ListSerializer(Todolist.serializer()), bt) },
     "ListTodos" to { bt -> replayJson.decodeFromString(ListSerializer(Todo.serializer()), bt) },
     "GetCalendar" to { bt -> replayJson.decodeFromString(Calendar.serializer(), bt) },
+    "GetProgressReport" to { bt -> replayJson.decodeFromString(ListSerializer(TimelineEvent.serializer()), bt) },
+    "GetBubbleUps" to { bt -> replayJson.decodeFromString(ListSerializer(Notification.serializer()), bt) },
+    "ListRecordings" to { bt -> replayJson.decodeFromString(ListSerializer(Recording.serializer()), bt) },
+    // Search returns ListResult<JsonElement> from the SDK — SearchResult has no
+    // typed Kotlin model, so JsonElement is the real boundary.
+    "Search" to { bt -> replayJson.decodeFromString(ListSerializer(JsonElement.serializer()), bt) },
+    // The sixteen Everything aggregates.
+    "GetEverythingMessages" to { bt -> replayJson.decodeFromString(ListSerializer(Recording.serializer()), bt) },
+    "GetEverythingComments" to { bt -> replayJson.decodeFromString(ListSerializer(Recording.serializer()), bt) },
+    "GetEverythingCheckins" to { bt -> replayJson.decodeFromString(ListSerializer(Recording.serializer()), bt) },
+    "GetEverythingFiles" to { bt -> replayJson.decodeFromString(ListSerializer(EverythingFile.serializer()), bt) },
+    "GetEverythingForwards" to { bt -> replayJson.decodeFromString(ListSerializer(Recording.serializer()), bt) },
+    "GetEverythingOpenTodos" to { bt -> replayJson.decodeFromString(ListSerializer(BucketTodosGroup.serializer()), bt) },
+    "GetEverythingCompletedTodos" to { bt -> replayJson.decodeFromString(ListSerializer(BucketTodosGroup.serializer()), bt) },
+    "GetEverythingOverdueTodos" to { bt -> replayJson.decodeFromString(ListSerializer(Todo.serializer()), bt) },
+    "GetEverythingUnassignedTodos" to { bt -> replayJson.decodeFromString(ListSerializer(BucketTodosGroup.serializer()), bt) },
+    "GetEverythingNoDueDateTodos" to { bt -> replayJson.decodeFromString(ListSerializer(BucketTodosGroup.serializer()), bt) },
+    "GetEverythingOpenCards" to { bt -> replayJson.decodeFromString(ListSerializer(BucketCardsGroup.serializer()), bt) },
+    "GetEverythingCompletedCards" to { bt -> replayJson.decodeFromString(ListSerializer(BucketCardsGroup.serializer()), bt) },
+    "GetEverythingOverdueCards" to { bt -> replayJson.decodeFromString(ListSerializer(Card.serializer()), bt) },
+    "GetEverythingUnassignedCards" to { bt -> replayJson.decodeFromString(ListSerializer(BucketCardsGroup.serializer()), bt) },
+    "GetEverythingNoDueDateCards" to { bt -> replayJson.decodeFromString(ListSerializer(BucketCardsGroup.serializer()), bt) },
+    "GetEverythingNotNowCards" to { bt -> replayJson.decodeFromString(ListSerializer(BucketCardsGroup.serializer()), bt) },
 )
 
 private val safeNameRegex = Regex("[^a-z0-9_-]+", RegexOption.IGNORE_CASE)

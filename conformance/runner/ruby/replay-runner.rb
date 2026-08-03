@@ -40,18 +40,45 @@ class ReplayRunner
     parsed
   end
 
+  # Must cover every live operation in conformance/tests/live-my-surface.json.
+  # coverage_gate enforces that at replay time, but replay only runs during a
+  # live canary — which skips whenever the canary secrets are unset, so this
+  # map silently lost twenty operations for the length of #553. The static
+  # guard scripts/check-replay-decoder-parity now compares it against the
+  # fixture on every `make check` and CI run.
   DECODERS = {
-    "ListProjects"              => SDK_DECODE,
-    "GetProject"                => SDK_DECODE,
-    "GetMyAssignments"          => SDK_DECODE,
-    "GetMyCompletedAssignments" => SDK_DECODE,
-    "GetMyDueAssignments"       => SDK_DECODE,
-    "GetMyNotifications"        => SDK_DECODE,
-    "GetMyProfile"              => SDK_DECODE,
-    "GetTodoset"                => SDK_DECODE,
-    "ListTodolists"             => SDK_DECODE,
-    "ListTodos"                 => SDK_DECODE,
-    "GetCalendar"               => SDK_DECODE,
+    "ListProjects"                 => SDK_DECODE,
+    "GetProject"                   => SDK_DECODE,
+    "GetMyAssignments"             => SDK_DECODE,
+    "GetMyCompletedAssignments"    => SDK_DECODE,
+    "GetMyDueAssignments"          => SDK_DECODE,
+    "GetMyNotifications"           => SDK_DECODE,
+    "GetMyProfile"                 => SDK_DECODE,
+    "GetTodoset"                   => SDK_DECODE,
+    "ListTodolists"                => SDK_DECODE,
+    "ListTodos"                    => SDK_DECODE,
+    "GetCalendar"                  => SDK_DECODE,
+    "GetProgressReport"            => SDK_DECODE,
+    "GetBubbleUps"                 => SDK_DECODE,
+    "ListRecordings"               => SDK_DECODE,
+    "Search"                       => SDK_DECODE,
+    # The sixteen Everything aggregates.
+    "GetEverythingMessages"        => SDK_DECODE,
+    "GetEverythingComments"        => SDK_DECODE,
+    "GetEverythingCheckins"        => SDK_DECODE,
+    "GetEverythingFiles"           => SDK_DECODE,
+    "GetEverythingForwards"        => SDK_DECODE,
+    "GetEverythingOpenTodos"       => SDK_DECODE,
+    "GetEverythingCompletedTodos"  => SDK_DECODE,
+    "GetEverythingOverdueTodos"    => SDK_DECODE,
+    "GetEverythingUnassignedTodos" => SDK_DECODE,
+    "GetEverythingNoDueDateTodos"  => SDK_DECODE,
+    "GetEverythingOpenCards"       => SDK_DECODE,
+    "GetEverythingCompletedCards"  => SDK_DECODE,
+    "GetEverythingOverdueCards"    => SDK_DECODE,
+    "GetEverythingUnassignedCards" => SDK_DECODE,
+    "GetEverythingNoDueDateCards"  => SDK_DECODE,
+    "GetEverythingNotNowCards"     => SDK_DECODE,
   }.freeze
 
   def initialize(replay_dir, backend, fixture_path, openapi_path)
