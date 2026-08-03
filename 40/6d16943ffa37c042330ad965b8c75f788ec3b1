@@ -1,0 +1,44 @@
+go/pkg/basecamp/documents.go
+  s_ae792ed0be3006::t_275285fd1e691c 132-137
+  s_ae792ed0be3006::t_a3ad92be22f4f7 6,100,125,138-142
+go/pkg/basecamp/documents_test.go
+  s_ae792ed0be3006::t_1dd3568d97b3be 579,924-958
+go/pkg/basecamp/vaults.go
+  s_ae792ed0be3006::t_e9236aa69ff138 479-489,491-495,502
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/DocumentsService.kt
+  s_ae792ed0be3006::t_7fea26b1206b15 136
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DocumentsServiceTest.kt
+  s_ae792ed0be3006::t_5389cf679c1106 128
+python/src/basecamp/services/documents.py
+  s_ae792ed0be3006::t_70fe537b5a3a56 52
+python/tests/services/test_documents.py
+  s_ae792ed0be3006::t_3e9a28ff78e2ad 457,463,473,479
+ruby/lib/basecamp/services/documents_extensions.rb
+  s_ae792ed0be3006::t_1c1f394d35db68 130
+ruby/test/basecamp/services/documents_service_test.rb
+  s_ae792ed0be3006::t_c27348a1ecd299 412,425
+swift/Sources/Basecamp/DocumentsServiceExtensions.swift
+  s_ae792ed0be3006::t_fcc7828b3135a4 41
+swift/Tests/BasecampTests/DocumentsServiceExtensionsTests.swift
+  s_ae792ed0be3006::t_fb7ceec5da3b9b 124
+typescript/src/services/documents-extensions.ts
+  s_ae792ed0be3006::t_29f4b02f1e0024 30
+typescript/tests/services/documents.test.ts
+  s_ae792ed0be3006::t_1346d87ecbd950 666-667,682-683
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "406d16943ffa37c042330ad965b8c75f788ec3b1",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
