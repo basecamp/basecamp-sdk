@@ -1,5 +1,9 @@
 import { TodosService as GeneratedTodosService } from "../generated/services/todos.js";
 import type { Todo } from "../generated/services/todos.js";
+import { requireRecord, writableIdList, writableString } from "./merge-safe.js";
+
+/** The deliberate-overwrite escape hatch named in this composite's error hints. */
+const ESCAPE = "replace()";
 
 /**
  * Request parameters for update. Every field is optional: an omitted field
@@ -126,16 +130,32 @@ export class TodosService extends GeneratedTodosService {
     return this.putFields(todoId, fields);
   }
 
-  /** Fetches the todo and derives its full writable state. */
+  /**
+   * Fetches the todo and derives its full writable state.
+   *
+   * Every value here is resent in the full-replace PUT, so every value is
+   * validated before it is read. `?? ""` coalesces only `null` and `undefined`,
+   * so it left corruption wide open: `false`, `0`, `[]`, `{}`, `42`, `true`,
+   * `["x"]` and `{a:1}` were all forwarded **verbatim** and written to the
+   * todo on a call that never mentioned the field — a broader surface than
+   * Python's, which at least collapsed the falsey four to `""`. Nothing below
+   * this rejects them: `schema.d.ts` is erased at build time, so `Todo` is a
+   * compile-time claim about runtime data. See `merge-safe.ts` and #576.
+   */
   private async currentFields(todoId: number): Promise<TodoFields> {
-    const current = await this.get(todoId);
+    const current = requireRecord(await this.get(todoId), {
+      record: "Todo",
+      operation: "GetTodo",
+      escape: ESCAPE,
+    });
+    const opts = { record: "Todo", escape: ESCAPE };
     return {
-      content: current.content ?? "",
-      description: current.description ?? "",
-      assigneeIds: (current.assignees ?? []).map((p) => p.id),
-      completionSubscriberIds: (current.completion_subscribers ?? []).map((p) => p.id),
-      dueOn: current.due_on ?? "",
-      startsOn: current.starts_on ?? "",
+      content: writableString(current, "content", opts),
+      description: writableString(current, "description", opts),
+      assigneeIds: writableIdList(current, "assignees", opts),
+      completionSubscriberIds: writableIdList(current, "completion_subscribers", opts),
+      dueOn: writableString(current, "due_on", opts),
+      startsOn: writableString(current, "starts_on", opts),
       notify: false,
     };
   }

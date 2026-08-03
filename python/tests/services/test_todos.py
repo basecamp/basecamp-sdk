@@ -10,7 +10,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client, Config
-from basecamp.errors import UsageError, ValidationError
+from basecamp.errors import ApiError, UsageError, ValidationError
 from basecamp.hooks import BasecampHooks, OperationInfo
 
 BASE = "https://3.basecampapi.com/12345"
@@ -412,3 +412,164 @@ class TestCompleteRetriesIdempotentPost:
         await client.for_account("12345").todos.complete(todo_id=42)
 
         assert route.call_count == 2  # initial 503 + 1 retry that succeeds
+
+
+# --- #576: a malformed GET field must never reach the full-replace PUT -------
+#
+# `update`/`edit` GET the todo, read each writable field, and PUT the FULL
+# representation back. Every value read is therefore written, including one the
+# caller never mentioned. The old `todo.get(key) or ""` coerced each falsey
+# non-string to `""` (erasure) and passed `42`/`True` through verbatim
+# (corruption). Python has no typed decoder between the GET and the read — the
+# generated `get` returns `dict[str, Any]` — so the refusal is explicit.
+#
+# The assertion that matters is the ORDERING: `put_route.called` must be False.
+# A guard that fires after the PUT has already lost the field.
+
+_MALFORMED = [
+    pytest.param(False, id="false"),
+    pytest.param(0, id="zero"),
+    pytest.param([], id="empty-list"),
+    pytest.param({}, id="empty-dict"),
+    pytest.param(42, id="number"),
+    pytest.param(True, id="true"),
+    pytest.param(["x"], id="list"),
+    pytest.param({"a": 1}, id="dict"),
+]
+
+_WRITABLE_STRINGS = ["content", "description", "due_on", "starts_on"]
+
+_ID_LISTS = ["assignees", "completion_subscribers"]
+
+
+def _malformed_routes(todo: dict):
+    get_route = respx.get(f"{BASE}/todos/42").mock(return_value=httpx.Response(200, json=todo))
+    put_route = respx.put(f"{BASE}/todos/42").mock(return_value=httpx.Response(200, json=_todo()))
+    return get_route, put_route
+
+
+class TestMalformedResponseFields:
+    @respx.mock
+    @pytest.mark.parametrize("field", _WRITABLE_STRINGS)
+    @pytest.mark.parametrize("value", _MALFORMED)
+    def test_update_refuses_a_non_string_before_writing(self, field, value):
+        get_route, put_route = _malformed_routes(_todo(**{field: value}))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todos().update(todo_id=42, content="New title")
+
+        assert f"Todo field {field!r} is not a string" in str(excinfo.value)
+        # api_error, not usage: the value arrived in a successful response.
+        assert excinfo.value.code == "api_error"
+        assert get_route.called
+        assert not put_route.called, "the guard must fire BEFORE the full-replace PUT"
+
+    @respx.mock
+    @pytest.mark.parametrize("field", _WRITABLE_STRINGS)
+    def test_edit_refuses_a_non_string_before_writing(self, field):
+        get_route, put_route = _malformed_routes(_todo(**{field: 42}))
+
+        with pytest.raises(ApiError), _sync_todos().edit(todo_id=42) as t:
+            t.content = "New title"
+
+        assert get_route.called
+        assert not put_route.called
+
+    @respx.mock
+    @pytest.mark.parametrize("field", _WRITABLE_STRINGS)
+    @pytest.mark.asyncio
+    async def test_async_update_refuses_a_non_string_before_writing(self, field):
+        get_route, put_route = _malformed_routes(_todo(**{field: ["x"]}))
+
+        with pytest.raises(ApiError):
+            await _async_todos().update(todo_id=42, content="New title")
+
+        assert get_route.called
+        assert not put_route.called
+
+    @respx.mock
+    @pytest.mark.parametrize("absent", [True, False], ids=["absent", "null"])
+    @pytest.mark.parametrize("field", _WRITABLE_STRINGS)
+    def test_absent_and_null_stay_genuinely_empty(self, field, absent):
+        # The other half of the rule: absent and null are not malformed, they
+        # are empty. Guarding types must not turn a legitimately blank field
+        # into an error. The call overlays an ID list rather than a string so
+        # that no writable string under test is overwritten by the caller.
+        todo = _todo()
+        if absent:
+            todo.pop(field, None)
+        else:
+            todo[field] = None
+        _, put_route = _malformed_routes(todo)
+
+        _sync_todos().update(todo_id=42, assignee_ids=[100])
+
+        body = _put_body(put_route)
+        if field in ("due_on", "starts_on"):
+            # Dates ride only when non-empty: "" is a format error and an
+            # omitted date is how the server clears one.
+            assert field not in body
+        else:
+            assert body[field] == ""
+
+    @respx.mock
+    @pytest.mark.parametrize("value", _MALFORMED)
+    @pytest.mark.parametrize("field", _ID_LISTS)
+    def test_update_refuses_a_non_array_id_list_before_writing(self, field, value):
+        if isinstance(value, list):
+            pytest.skip("a list is checked element-wise, not by the array guard")
+        get_route, put_route = _malformed_routes(_todo(**{field: value}))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todos().update(todo_id=42, content="New title")
+
+        assert f"Todo field {field!r} is not an array" in str(excinfo.value)
+        assert get_route.called
+        assert not put_route.called
+
+    @respx.mock
+    @pytest.mark.parametrize("field", _ID_LISTS)
+    def test_update_refuses_a_non_object_element_before_writing(self, field):
+        get_route, put_route = _malformed_routes(_todo(**{field: ["nope"]}))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todos().update(todo_id=42, content="New title")
+
+        assert f"Todo field {field!r}[0] is not an object" in str(excinfo.value)
+        assert get_route.called
+        assert not put_route.called
+
+    @respx.mock
+    @pytest.mark.parametrize("bad_id", ["100", 10.5, None, True, [], {}])
+    @pytest.mark.parametrize("field", _ID_LISTS)
+    def test_update_refuses_a_non_integer_person_id_before_writing(self, field, bad_id):
+        # The ID lists are resent in full, so a string, float, bool or null id
+        # would be written as the complete assignee set. `True` matters
+        # specifically: bool subclasses int in Python, so a naive isinstance
+        # check passes it.
+        get_route, put_route = _malformed_routes(_todo(**{field: [{"id": bad_id, "name": "Jane"}]}))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todos().update(todo_id=42, content="New title")
+
+        assert f"Todo field {field!r}[0]" in str(excinfo.value)
+        assert get_route.called
+        assert not put_route.called
+
+    @respx.mock
+    @pytest.mark.parametrize("raw", [b"[]", b'"todo"', b"42", b"null", b"true"])
+    def test_update_refuses_a_non_object_response_before_writing(self, raw):
+        # One level up from the field guards: a successful GET can return a
+        # scalar, a list or null, and `body.get(key)` would raise a raw
+        # AttributeError instead of the documented statusless api_error.
+        get_route = respx.get(f"{BASE}/todos/42").mock(
+            return_value=httpx.Response(200, content=raw, headers={"Content-Type": "application/json"})
+        )
+        put_route = respx.put(f"{BASE}/todos/42").mock(return_value=httpx.Response(200, json=_todo()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todos().update(todo_id=42, content="New title")
+
+        assert "GetTodo returned" in str(excinfo.value)
+        assert get_route.called
+        assert not put_route.called

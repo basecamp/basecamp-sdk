@@ -17,17 +17,31 @@ from typing import Any
 from basecamp.errors import UsageError
 from basecamp.generated.services.todos import AsyncTodosService as _GeneratedAsyncTodosService
 from basecamp.generated.services.todos import TodosService as _GeneratedTodosService
+from basecamp.services._merge_safe import require_mapping, writable_id_list, writable_string
+
+_ESCAPE = "replace()"
 
 
 def _fields_from_todo(todo: dict[str, Any]) -> dict[str, Any]:
-    """Derive a todo's full writable state from a GET response."""
+    """Derive a todo's full writable state from a GET response.
+
+    Every value here is resent in the full-replace PUT, so every value is
+    validated before it is read. The plain ``or ""`` this replaced coerced each
+    falsey non-string (``False``, ``0``, ``[]``, ``{}``) to ``""`` — erasing the
+    field on a call that never mentioned it — and passed ``42``/``True``
+    straight through to be written verbatim. Python has no typed decoder
+    between the GET and this read (``get`` returns ``dict[str, Any]``), so the
+    check is explicit work here rather than something the layer below already
+    did. See :mod:`basecamp.services._merge_safe` and #576.
+    """
+    body = require_mapping(todo, record="Todo", operation="GetTodo", escape=_ESCAPE)
     return {
-        "content": todo.get("content") or "",
-        "description": todo.get("description") or "",
-        "assignee_ids": [p["id"] for p in todo.get("assignees") or []],
-        "completion_subscriber_ids": [p["id"] for p in todo.get("completion_subscribers") or []],
-        "due_on": todo.get("due_on") or "",
-        "starts_on": todo.get("starts_on") or "",
+        "content": writable_string(body, "content", record="Todo", escape=_ESCAPE),
+        "description": writable_string(body, "description", record="Todo", escape=_ESCAPE),
+        "assignee_ids": writable_id_list(body, "assignees", record="Todo", escape=_ESCAPE),
+        "completion_subscriber_ids": writable_id_list(body, "completion_subscribers", record="Todo", escape=_ESCAPE),
+        "due_on": writable_string(body, "due_on", record="Todo", escape=_ESCAPE),
+        "starts_on": writable_string(body, "starts_on", record="Todo", escape=_ESCAPE),
         # Send directive, not todo state: never populated from the current
         # todo; sent only when True.
         "notify": False,

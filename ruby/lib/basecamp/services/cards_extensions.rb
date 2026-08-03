@@ -19,6 +19,10 @@ module Basecamp
     # PUT is overwritten with the value this call read. The window is one
     # round-trip.
     module CardsExtensions
+      # The deliberate-overwrite escape hatch named in every malformed-response
+      # hint raised out of this composite.
+      ESCAPE_HATCH = "update_verbatim"
+
       # Updates a card without disturbing fields the caller did not mention.
       #
       # +due_on+ is tri-state, which is what makes this safe:
@@ -43,7 +47,7 @@ module Basecamp
       def update(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
         resolved_due_on =
           if due_on.nil?
-            get(card_id: card_id)["due_on"]
+            current_due_on(get(card_id: card_id))
           elsif due_on.to_s.empty?
             # Clearing is encoded by OMITTING due_on — compact_params strips the
             # nil below, and BC3 nils an omitted due date. Sending an explicit
@@ -61,6 +65,27 @@ module Basecamp
           due_on: resolved_due_on,
           assignee_ids: assignee_ids
         )
+      end
+
+      private
+
+      # Reads the fetched card's due date, refusing to resend a malformed one.
+      #
+      # +compact_params+ is +kwargs.compact+, which removes only +nil+, so
+      # before this guard +false+, +0+, +[]+, <tt>{}</tt>, +42+, +true+ and
+      # <tt>["x"]</tt> all reached the replacement request and were written to
+      # the card. This composite exists precisely to stop an omitted +due_on+
+      # from erasing the date, so resending an unvalidated one defeats it.
+      # Ruby has no typed decoder between the GET and this read (+get+ returns
+      # a raw Hash), so the check is explicit work here. See {MergeSafe}
+      # and #576.
+      #
+      # An empty date is normalised to +nil+ rather than sent: <tt>""</tt> is
+      # not a date BC3 accepts, and omission is how the clear is encoded.
+      def current_due_on(card)
+        body = MergeSafe.require_hash(card, record: "Card", operation: "GetCard", escape: ESCAPE_HATCH)
+        value = MergeSafe.writable_string(body, "due_on", record: "Card", escape: ESCAPE_HATCH)
+        value.empty? ? nil : value
       end
     end
   end

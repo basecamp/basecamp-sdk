@@ -92,6 +92,7 @@ func evaluateAssertions(
     _ tc: TestCase,
     transport: ScriptedTransport,
     caughtError: BasecampError?,
+    dispatchFailed: Bool = false,
     httpStatus: Int?,
     dispatch: DispatchResult
 ) -> TestResult {
@@ -257,6 +258,19 @@ func evaluateAssertions(
         case "noError":
             if let caughtError {
                 return .fail("Expected no error, got: \(caughtError.message)")
+            }
+
+        // The inverse of noError, and deliberately code-agnostic. The
+        // malformed-response family (#576) is refused by a hand-written guard
+        // in TypeScript, Python and Ruby and by the model decoder in Go, Kotlin
+        // and Swift; those two mechanisms do not share a canonical code, so
+        // pinning errorType would make the fixture unwritable. What every SDK
+        // must agree on is that the call fails at all — which, paired with
+        // requestCount, is the whole contract: the composite refused the field
+        // instead of writing it.
+        case "errorRaised":
+            if !dispatchFailed {
+                return .fail("Expected the call to fail, but it succeeded")
             }
 
         case "requestPath":

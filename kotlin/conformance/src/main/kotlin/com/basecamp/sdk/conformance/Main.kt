@@ -9,6 +9,7 @@ import io.ktor.http.*
 import io.ktor.http.content.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.MissingFieldException
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
 import java.io.File
 import java.io.IOException
@@ -256,6 +257,18 @@ private fun runTest(tc: TestCase): TestResult {
     var httpStatusCode: Int? = null
     var dispatchResult = DispatchResult()
 
+    // Set when the dispatch failed by ANY mechanism, including a decoder
+    // rejection that never becomes a BasecampException. Only `errorRaised`
+    // reads it; errorType, errorCode and errorMessage still read
+    // caughtException, so a fixture pinning a canonical code cannot be
+    // satisfied by a raw kotlinx.serialization throw.
+    var dispatchFailed = false
+    // A fixture declaring errorRaised is asserting that the body is
+    // DELIBERATELY malformed and that refusing it is the behaviour under test
+    // (#576). That flips the usual reading of a decoder rejection here: it is
+    // the point of the case, not an under-specified mock body to repair.
+    val expectsFailure = tc.assertions.any { it.type == "errorRaised" }
+
     val overrideBaseUrl = tc.configOverrides?.baseUrl
 
     try {
@@ -278,14 +291,29 @@ private fun runTest(tc: TestCase): TestResult {
             }
         } catch (e: BasecampException) {
             caughtException = e
+            dispatchFailed = true
             httpStatusCode = e.httpStatus
         } catch (e: MissingFieldException) {
             // A mock body that fails the model's required-field validation is a
             // fixture bug, not a runner limitation: fail loudly so it gets fixed
             // (canonical bodies live in spec/fixtures/) instead of silently
             // degrading coverage. Was SKIP until every rider was repaired.
-            client.close()
-            return TestResult(passed = false, message = "Mock body lacks required Kotlin model fields: ${e.message}")
+            if (!expectsFailure) {
+                client.close()
+                return TestResult(passed = false, message = "Mock body lacks required Kotlin model fields: ${e.message}")
+            }
+            dispatchFailed = true
+        } catch (e: SerializationException) {
+            // A wrong-TYPED field, as opposed to a missing one. Same policy:
+            // normally a fixture bug, but the refusal itself when the fixture
+            // declares errorRaised. This is how Kotlin satisfies the #576 kill
+            // cases — kotlinx.serialization is its guard, where TypeScript,
+            // Python and Ruby need a hand-written one.
+            if (!expectsFailure) {
+                client.close()
+                return TestResult(passed = false, message = "Mock body does not decode into the Kotlin model: ${e.message}")
+            }
+            dispatchFailed = true
         } catch (e: Exception) {
             client.close()
             return TestResult(false, "Unexpected exception: ${e::class.simpleName}: ${e.message}")
@@ -296,6 +324,7 @@ private fun runTest(tc: TestCase): TestResult {
         // SDK's require() throws IllegalArgumentException for HTTPS enforcement.
         // Map to BasecampException.Usage for assertion compatibility.
         caughtException = BasecampException.Usage(e.message ?: "HTTPS required")
+        dispatchFailed = true
     }
 
     // Run assertions
@@ -364,6 +393,20 @@ private fun runTest(tc: TestCase): TestResult {
             "noError" -> {
                 if (caughtException != null) {
                     return TestResult(false, "Expected no error, got: ${caughtException.message}")
+                }
+            }
+
+            // The inverse of noError, and deliberately code-agnostic. The
+            // malformed-response family (#576) is refused by a hand-written
+            // guard in TypeScript, Python and Ruby and by the model decoder in
+            // Go, Kotlin and Swift; those two mechanisms do not share a
+            // canonical code, so pinning errorType would make the fixture
+            // unwritable. What every SDK must agree on is that the call fails
+            // at all — which, paired with requestCount, is the whole contract:
+            // the composite refused the field instead of writing it.
+            "errorRaised" -> {
+                if (!dispatchFailed) {
+                    return TestResult(false, "Expected the call to fail, but it succeeded")
                 }
             }
 

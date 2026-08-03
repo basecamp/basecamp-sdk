@@ -333,6 +333,151 @@ class TodosServiceTest < Minitest::Test
     assert_nil pdf.height
   end
 
+  # --- #576: a malformed GET field must never reach the full-replace PUT ------
+  #
+  # `update`/`edit` GET the todo, read each writable field, and PUT the FULL
+  # representation back, so every value read is written -- including one the
+  # caller never mentioned. Ruby's `||` treats only nil and false as falsy, so
+  # the old `todo["content"] || ""` ERASED the field on `false` and passed
+  # arrays, hashes, numbers and `true` straight through to be written verbatim.
+  # There is no typed decoder between the GET and the read: the generated `get`
+  # returns a raw Hash.
+  #
+  # The assertion that matters is the ORDERING -- assert_not_requested :put. A
+  # guard that fires after the PUT has already lost the field.
+  MALFORMED_VALUES = [ false, 0, [], {}, 42, true, [ "x" ], { "a" => 1 } ].freeze
+  WRITABLE_STRINGS = %w[content description due_on starts_on].freeze
+  ID_LIST_FIELDS = %w[assignees completion_subscribers].freeze
+
+  WRITABLE_STRINGS.each do |field|
+    MALFORMED_VALUES.each do |malformed|
+      define_method("test_update_refuses_a_malformed_#{field}_#{malformed.inspect}") do
+        stub_todo_get_and_put(todo: full_todo(field => malformed))
+
+        error = assert_raises(Basecamp::ApiError) do
+          @account.todos.update(todo_id: 456, content: "New title")
+        end
+
+        assert_includes error.message, "Todo field \"#{field}\" is not a string"
+        # api_error, not usage: the value arrived in a successful response.
+        assert_equal Basecamp::ErrorCode::API, error.code
+        assert_requested :get, "#{BASE_URL}/12345/todos/456", times: 1
+        assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
+      end
+    end
+
+    define_method("test_edit_refuses_a_malformed_#{field}_before_writing") do
+      stub_todo_get_and_put(todo: full_todo(field => 42))
+
+      assert_raises(Basecamp::ApiError) do
+        @account.todos.edit(todo_id: 456) { |t| t.content = "New title" }
+      end
+
+      assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
+    end
+
+    # The other half of the rule: missing and nil are not malformed, they are
+    # empty. The call overlays an id list rather than a string so that no
+    # writable string under test is overwritten by the caller.
+    define_method("test_missing_#{field}_stays_genuinely_empty") do
+      captured = stub_todo_get_and_put(todo: full_todo.except(field))
+
+      @account.todos.update(todo_id: 456, assignee_ids: [ 100 ])
+
+      if %w[due_on starts_on].include?(field)
+        # Dates ride only when non-empty: "" is a format error and an omitted
+        # date is how the server clears one.
+        assert_not_includes captured[:body].keys, field
+      else
+        assert_equal "", captured[:body][field]
+      end
+    end
+
+    define_method("test_nil_#{field}_stays_genuinely_empty") do
+      captured = stub_todo_get_and_put(todo: full_todo(field => nil))
+
+      @account.todos.update(todo_id: 456, assignee_ids: [ 100 ])
+
+      if %w[due_on starts_on].include?(field)
+        assert_not_includes captured[:body].keys, field
+      else
+        assert_equal "", captured[:body][field]
+      end
+    end
+  end
+
+  ID_LIST_FIELDS.each do |field|
+    (MALFORMED_VALUES - [ [], [ "x" ] ]).each do |malformed|
+      define_method("test_update_refuses_a_non_array_#{field}_#{malformed.inspect}") do
+        stub_todo_get_and_put(todo: full_todo(field => malformed))
+
+        error = assert_raises(Basecamp::ApiError) do
+          @account.todos.update(todo_id: 456, content: "New title")
+        end
+
+        assert_includes error.message, "Todo field \"#{field}\" is not an array"
+        assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
+      end
+    end
+
+    define_method("test_update_refuses_a_non_object_#{field}_element") do
+      stub_todo_get_and_put(todo: full_todo(field => [ "nope" ]))
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todos.update(todo_id: 456, content: "New title")
+      end
+
+      assert_includes error.message, "Todo field \"#{field}\"[0] is not an object"
+      assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
+    end
+
+    # The id lists are resent in full, so a string, float or null id would be
+    # written as the complete assignee set.
+    [ "100", 10.5, nil, true, [], {} ].each do |bad_id|
+      define_method("test_update_refuses_a_non_integer_#{field}_id_#{bad_id.inspect}") do
+        stub_todo_get_and_put(todo: full_todo(field => [ { "id" => bad_id, "name" => "Jane" } ]))
+
+        error = assert_raises(Basecamp::ApiError) do
+          @account.todos.update(todo_id: 456, content: "New title")
+        end
+
+        assert_includes error.message, "Todo field \"#{field}\"[0]"
+        assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
+      end
+    end
+  end
+
+  # One level up from the field guards: a successful GET can return a scalar,
+  # an Array or nil, and `body["content"]` would raise a raw TypeError instead
+  # of the documented statusless api_error.
+  [ 42, "nope", nil, [ "a" ], true ].each do |body|
+    define_method("test_update_refuses_a_non_object_response_body_#{body.inspect}") do
+      # stub_get passes Strings through verbatim, so encode first.
+      stub_get("/12345/todos/456", response_body: body.to_json)
+      stub_request(:put, "#{BASE_URL}/12345/todos/456")
+        .to_return(status: 200, body: full_todo.to_json, headers: { "Content-Type" => "application/json" })
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todos.update(todo_id: 456, content: "New title")
+      end
+
+      assert_includes error.message, "GetTodo returned"
+      assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
+    end
+  end
+
+  # SPEC section 9 caps error messages at 500 bytes; the malformed value is
+  # interpolated into one, so the cap has to survive a huge body.
+  def test_malformed_message_is_capped
+    stub_todo_get_and_put(todo: full_todo("description" => [ "x" ] * 50_000))
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.todos.update(todo_id: 456, content: "New title")
+    end
+
+    assert_operator error.message.bytesize, :<=, 500
+  end
+
   class TrackingHooks
     include Basecamp::Hooks
 

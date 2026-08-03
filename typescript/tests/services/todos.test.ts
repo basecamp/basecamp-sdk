@@ -517,4 +517,194 @@ describe("TodosService", () => {
       ).resolves.toBeUndefined();
     });
   });
+
+  // --- #576: a malformed GET field must never reach the full-replace PUT ----
+  //
+  // `update`/`edit` GET the todo, read each writable field, and PUT the FULL
+  // representation back, so every value read is written -- including one the
+  // caller never mentioned. `?? ""` coalesces only null and undefined, so it
+  // ruled out *erasure* while leaving *corruption* wide open: all eight
+  // malformed shapes rode through VERBATIM into the PUT, a broader surface
+  // than Python's, which at least collapsed the falsey four to "".
+  //
+  // TypeScript has no runtime decoder to catch this -- `schema.d.ts` is erased
+  // at build time, so `Todo` is a compile-time claim nothing validates. That
+  // places this composite with Python and Ruby, not with Go and Swift.
+  //
+  // The assertion that matters is the ORDERING: `requests` must be ["GET"]. A
+  // guard that fires after the PUT has already lost the field.
+  describe("malformed writable fields (#576)", () => {
+    const fullTodo = (id = 42, overrides: Record<string, unknown> = {}) => ({
+      ...sampleTodo(id),
+      starts_on: "2024-02-01",
+      completion_subscribers: [{ id: 555, name: "Sub Scriber" }],
+      ...overrides,
+    });
+
+    const malformed: [string, unknown][] = [
+      ["false", false],
+      ["zero", 0],
+      ["empty array", []],
+      ["empty object", {}],
+      ["number", 42],
+      ["true", true],
+      ["array", ["x"]],
+      ["object", { a: 1 }],
+    ];
+
+    const writableStrings = ["content", "description", "due_on", "starts_on"] as const;
+    const idLists = ["assignees", "completion_subscribers"] as const;
+
+    // Serve a GET carrying `body` and a PUT that records that it happened.
+    const serve = (body: unknown, requests: string[]) => {
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todos/42`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(fullTodo());
+        })
+      );
+    };
+
+    const rejection = async (promise: Promise<unknown>): Promise<unknown> =>
+      promise.then(
+        () => {
+          throw new Error("expected the call to reject, but it resolved");
+        },
+        (error: unknown) => error
+      );
+
+    // Asserting only the message is vacuous about the taxonomy: a wrong `code`
+    // satisfies it. The value arrived in a successful API response, so this is
+    // `api_error` -- the caller passed nothing wrong.
+    const expectResponseError = (error: unknown, pattern: RegExp, requests: string[]) => {
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(pattern);
+      expect(requests).toEqual(["GET"]);
+    };
+
+    for (const field of writableStrings) {
+      it.each(malformed)(`update refuses a %s ${field} before writing`, async (_label, value) => {
+        const requests: string[] = [];
+        serve(fullTodo(42, { [field]: value }), requests);
+
+        const error = await rejection(client.todos.update(42, { content: "New title" }));
+        expectResponseError(error, new RegExp(`Todo field "${field}" is not a string`), requests);
+      });
+
+      it(`edit refuses a malformed ${field} before writing`, async () => {
+        const requests: string[] = [];
+        serve(fullTodo(42, { [field]: 42 }), requests);
+
+        const error = await rejection(
+          client.todos.edit(42, (t) => {
+            t.content = "New title";
+          })
+        );
+        expectResponseError(error, new RegExp(`Todo field "${field}" is not a string`), requests);
+      });
+
+      // The other half of the rule: absent and null are not malformed, they
+      // are empty. The call overlays an ID list rather than a string so that
+      // no writable string under test is overwritten by the caller.
+      it.each([
+        ["absent", undefined],
+        ["null", null],
+      ])(`treats a %s ${field} as genuinely empty`, async (_label, value) => {
+        let putBody: Record<string, unknown> = {};
+        const body = fullTodo(42, { [field]: value });
+        if (value === undefined) delete (body as Record<string, unknown>)[field];
+        server.use(
+          http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(body)),
+          http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+            putBody = (await request.json()) as Record<string, unknown>;
+            return HttpResponse.json(fullTodo());
+          })
+        );
+
+        if (field === "content") {
+          // Pre-existing, unchanged by these guards: the generated `replace`
+          // presence-validates content, so an empty one is refused client-side
+          // as a caller `validation` error before any PUT. Recorded here so the
+          // divergence from Python and Ruby (which send `content: ""`) is
+          // visible rather than folded into a skipped case.
+          const error = await rejection(client.todos.update(42, { assigneeIds: [100] }));
+          expect((error as BasecampError).code).toBe("validation");
+          return;
+        }
+
+        await client.todos.update(42, { assigneeIds: [100] });
+
+        if (field === "due_on" || field === "starts_on") {
+          // Dates ride only when non-empty: "" is a format error and an
+          // omitted date is how the server clears one.
+          expect(putBody).not.toHaveProperty(field);
+        } else {
+          expect(putBody[field]).toBe("");
+        }
+      });
+    }
+
+    for (const field of idLists) {
+      it.each(malformed.filter(([, v]) => !Array.isArray(v)))(
+        `update refuses a %s ${field} before writing`,
+        async (_label, value) => {
+          const requests: string[] = [];
+          serve(fullTodo(42, { [field]: value }), requests);
+
+          const error = await rejection(client.todos.update(42, { content: "New title" }));
+          expectResponseError(error, new RegExp(`Todo field "${field}" is not an array`), requests);
+        }
+      );
+
+      it(`update refuses a non-object ${field} element before writing`, async () => {
+        const requests: string[] = [];
+        serve(fullTodo(42, { [field]: ["nope"] }), requests);
+
+        const error = await rejection(client.todos.update(42, { content: "New title" }));
+        expectResponseError(
+          error,
+          new RegExp(`Todo field "${field}"\\[0\\] is not an object`),
+          requests
+        );
+      });
+
+      // The ID lists are resent in full, so a string, float, boolean or null
+      // id would be written as the complete assignee set.
+      it.each([
+        ["string", "100"],
+        ["float", 10.5],
+        ["NaN", Number.NaN],
+        ["null", null],
+        ["boolean", true],
+      ])(`update refuses a %s ${field} id before writing`, async (_label, badId) => {
+        const requests: string[] = [];
+        serve(fullTodo(42, { [field]: [{ id: badId, name: "Jane" }] }), requests);
+
+        const error = await rejection(client.todos.update(42, { content: "New title" }));
+        expectResponseError(error, new RegExp(`Todo field "${field}"\\[0\\]`), requests);
+      });
+    }
+
+    // One level up from the field guards: a successful GET can return a
+    // scalar, an array or null, and reading a property off null throws a raw
+    // TypeError instead of the documented statusless api_error.
+    it.each([
+      ["array", []],
+      ["string", "todo"],
+      ["number", 42],
+      ["null", null],
+      ["boolean", true],
+    ])("update refuses a %s response body before writing", async (_label, body) => {
+      const requests: string[] = [];
+      serve(body, requests);
+
+      const error = await rejection(client.todos.update(42, { content: "New title" }));
+      expectResponseError(error, /GetTodo returned/, requests);
+    });
+  });
 });

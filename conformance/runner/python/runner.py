@@ -571,6 +571,19 @@ class TestRunner:
                     if error:
                         failures.append(f"Expected no error, got: {type(error).__name__}: {error}")
 
+                # The inverse of noError, and deliberately code-agnostic. The
+                # malformed-response family (#576) is refused by a hand-written
+                # guard in TypeScript, Python and Ruby and by the model decoder
+                # in Go, Kotlin and Swift; those two mechanisms do not share a
+                # canonical code, so pinning errorType would make the fixture
+                # unwritable. What every SDK must agree on is that the call
+                # fails at all — which, paired with requestCount, is the whole
+                # contract: the composite refused the field instead of writing
+                # it.
+                case "errorRaised":
+                    if not error:
+                        failures.append("Expected the call to fail, but it succeeded")
+
                 case "statusCode":
                     expected = assertion["expected"]
                     actual_status = getattr(error, "http_status", None) if error else None

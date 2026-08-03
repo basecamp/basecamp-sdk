@@ -26,6 +26,10 @@ module Basecamp
         keyword_init: true
       )
 
+      # The deliberate-overwrite escape hatch named in every malformed-response
+      # hint raised out of this composite.
+      ESCAPE_HATCH = "replace"
+
       # Sets the given fields on a todo and preserves everything else:
       # GETs the current todo, overlays the explicitly-passed keyword
       # arguments, and PUTs the full representation back. An omitted
@@ -85,14 +89,26 @@ module Basecamp
       private
 
       # Derives the full writable state from a GET response.
+      #
+      # Every value here is resent in the full-replace PUT, so every value is
+      # validated before it is read. The plain <tt>|| ""</tt> this replaced
+      # turned +false+ into <tt>""</tt> — erasing the field on a call that never
+      # mentioned it — and passed arrays, hashes, numbers and +true+ straight
+      # through to be written verbatim. Ruby has no typed decoder between the
+      # GET and this read (+get+ returns a raw Hash), so the check is explicit
+      # work here rather than something the layer below already did. See
+      # {MergeSafe} and #576.
       def fields_from_todo(todo)
+        body = MergeSafe.require_hash(todo, record: "Todo", operation: "GetTodo", escape: ESCAPE_HATCH)
         TodoFields.new(
-          content: todo["content"] || "",
-          description: todo["description"] || "",
-          assignee_ids: (todo["assignees"] || []).map { |p| p["id"] },
-          completion_subscriber_ids: (todo["completion_subscribers"] || []).map { |p| p["id"] },
-          due_on: todo["due_on"] || "",
-          starts_on: todo["starts_on"] || "",
+          content: MergeSafe.writable_string(body, "content", record: "Todo", escape: ESCAPE_HATCH),
+          description: MergeSafe.writable_string(body, "description", record: "Todo", escape: ESCAPE_HATCH),
+          assignee_ids: MergeSafe.writable_id_list(body, "assignees", record: "Todo", escape: ESCAPE_HATCH),
+          completion_subscriber_ids: MergeSafe.writable_id_list(
+            body, "completion_subscribers", record: "Todo", escape: ESCAPE_HATCH
+          ),
+          due_on: MergeSafe.writable_string(body, "due_on", record: "Todo", escape: ESCAPE_HATCH),
+          starts_on: MergeSafe.writable_string(body, "starts_on", record: "Todo", escape: ESCAPE_HATCH),
           notify: false
         )
       end
