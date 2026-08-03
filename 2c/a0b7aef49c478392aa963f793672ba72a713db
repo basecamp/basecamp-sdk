@@ -1,0 +1,48 @@
+conformance/runner/typescript/request-count.test.ts
+  s_ae792ed0be3006::t_0c068b1e6abd06 1-81
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_97521ac81befc9 19,842-847
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_ae792ed0be3006::t_2755b70651c93a 321
+conformance/runner/typescript/request-count.ts
+  s_ae792ed0be3006::t_d23ff3a40db553 1-58
+SPEC.md
+  s_ae792ed0be3006::t_a733cebd78efbf 1796-1807
+  s_ae792ed0be3006::t_b1f3e9aceedbff 1780-1795,1808,1814-1816,1834-1835,1837-1838
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/RequestCountTest.kt
+  s_ae792ed0be3006::t_a63412e4a073ff 1-57
+conformance/runner/ruby/request_count_test.rb
+  s_ae792ed0be3006::t_5f3e8ed387b58e 1-80
+conformance/runner/python/test_request_count.py
+  s_ae792ed0be3006::t_22ec105fffbacf 1-77
+conformance/runner/go/request_count.go
+  s_ae792ed0be3006::t_c197e8d5414bf9 1-60
+conformance/runner/go/request_count_test.go
+  s_ae792ed0be3006::t_a1d29515304cb5 1-106
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_b44679949e18b9 71-121,656-661
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_ae792ed0be3006::t_865a6fff9eba7b 230-239
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_4fae00f412f58e 88-138,556-566
+conformance/runner/go/main.go
+  s_ae792ed0be3006::t_afb486318643bf 989-996
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/RequestCount.kt
+  s_ae792ed0be3006::t_091b383e0565e9 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2ca0b7aef49c478392aa963f793672ba72a713db",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
