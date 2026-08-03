@@ -304,6 +304,221 @@ final class TransportNetworkErrorRetryTests: XCTestCase {
         XCTAssertEqual(response.statusCode, 200)
         XCTAssertEqual(counter.value, 2)
     }
+
+    // MARK: - Cancellation through the wrapper
+
+    /// The two shapes a `Transport` normalizing into the SDK's taxonomy produces
+    /// when the caller cancels. Both are cancellation; neither is a blip.
+    private static let wrappedCancellations: [(name: String, error: BasecampError)] = [
+        ("CancellationError", .network(message: "Cancelled", cause: CancellationError())),
+        ("URLError(.cancelled)", .network(message: "Cancelled", cause: URLError(.cancelled))),
+    ]
+
+    /// Cancellation stays terminal when it arrives wrapped in `.network`.
+    ///
+    /// Routing a transport-thrown `.network` to the retry branch (#567) put it
+    /// past `catch let error as BasecampError`, where it used to be terminal,
+    /// and into the generic catch — where `isCancellation` saw only the outer
+    /// `BasecampError`. The retry loop then announced, slept, re-authenticated
+    /// and **re-sent a request the caller had cancelled**, while the identical
+    /// raw `CancellationError` stayed terminal. Classifying a network error by
+    /// meaning rather than by type is the whole premise of #567; it has to hold
+    /// for cancellation too, or the same error gets two answers.
+    func testWrappedCancellationIsTerminalOnPerformRequest() async {
+        for (name, error) in Self.wrappedCancellations {
+            let counter = AttemptCounter()
+            let hooks = RequestLifecycleSpy()
+            let transport = BasecampErrorTransport(
+                counter: counter, failuresBeforeSuccess: .max, error: error)
+
+            let client = BasecampClient(
+                tokenProvider: StaticTokenProvider("test-token"),
+                userAgent: "test-suite",
+                config: BasecampConfig(baseURL: "https://3.basecampapi.com", enableRetry: true),
+                hooks: hooks,
+                transport: transport
+            )
+
+            _ = try? await client.forAccount("999999999").httpClient.performRequest(
+                method: "GET",
+                url: "https://3.basecampapi.com/999999999/projects.json",
+                retryConfig: retryConfig
+            )
+
+            XCTAssertEqual(counter.value, 1, "\(name): a cancelled request must not be re-sent")
+            XCTAssertEqual(hooks.retries.count, 0, "\(name): onRetry must not fire for a cancellation")
+        }
+    }
+
+    /// Both loops carry the same classification, so both are pinned.
+    func testWrappedCancellationIsTerminalOnTheDownloadHop() async {
+        for (name, error) in Self.wrappedCancellations {
+            let counter = AttemptCounter()
+            let hooks = RequestLifecycleSpy()
+            let transport = BasecampErrorTransport(
+                counter: counter, failuresBeforeSuccess: .max, error: error)
+
+            let client = BasecampClient(
+                tokenProvider: StaticTokenProvider("test-token"),
+                userAgent: "test-suite",
+                config: BasecampConfig(baseURL: "https://3.basecampapi.com", enableRetry: true),
+                hooks: hooks,
+                transport: transport
+            )
+
+            _ = try? await client.httpClient.performDownloadRequest(
+                url: "https://3.basecampapi.com/999999999/attachment.json")
+
+            XCTAssertEqual(counter.value, 1, "\(name): a cancelled download must not be re-sent")
+            XCTAssertEqual(hooks.retries.count, 0, "\(name): onRetry must not fire for a cancellation")
+        }
+    }
+
+    /// The cancellation surfaces as the transport's own error, not a re-wrap.
+    func testWrappedCancellationSurfacesTheTransportsError() async {
+        let counter = AttemptCounter()
+        let transport = BasecampErrorTransport(
+            counter: counter, failuresBeforeSuccess: .max,
+            error: .network(message: "Cancelled", cause: CancellationError()))
+
+        let client = BasecampClient(
+            tokenProvider: StaticTokenProvider("test-token"),
+            userAgent: "test-suite",
+            config: BasecampConfig(baseURL: "https://3.basecampapi.com", enableRetry: true),
+            transport: transport
+        )
+
+        do {
+            _ = try await client.forAccount("999999999").httpClient.performRequest(
+                method: "GET",
+                url: "https://3.basecampapi.com/999999999/projects.json",
+                retryConfig: retryConfig
+            )
+            XCTFail("Expected the transport's cancellation error")
+        } catch let error as BasecampError {
+            XCTAssertEqual(error.message, "Cancelled")
+        } catch {
+            XCTFail("Expected a BasecampError, got \(error)")
+        }
+    }
+
+    /// A `.network` whose cause is an ordinary failure is NOT cancellation and
+    /// must still retry — otherwise the guard above would close #567 back up.
+    func testWrappedNonCancellationCauseStillRetries() async throws {
+        let counter = AttemptCounter()
+        let transport = BasecampErrorTransport(
+            counter: counter, failuresBeforeSuccess: 1,
+            error: .network(message: "Connection reset", cause: URLError(.networkConnectionLost)))
+
+        let client = BasecampClient(
+            tokenProvider: StaticTokenProvider("test-token"),
+            userAgent: "test-suite",
+            config: BasecampConfig(baseURL: "https://3.basecampapi.com", enableRetry: true),
+            transport: transport
+        )
+
+        let (_, response) = try await client.forAccount("999999999").httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            retryConfig: retryConfig
+        )
+
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(counter.value, 2, "a non-cancellation cause must still reach the retry branch")
+    }
+
+    // MARK: - Request-end lifecycle
+
+    /// #567 moves a transport-thrown `.network` from the `BasecampError` catch —
+    /// which emitted **no** request-end event and said so in a comment — into the
+    /// generic catch, which finalizes the attempt with `statusCode: 0`. That is
+    /// a deliberate consequence, not an accident: the error now means "the
+    /// attempt failed at the transport", the same as a raw `URLError`, so it is
+    /// reported the same way and `onRequestStart`/`onRequestEnd` stay paired for
+    /// every attempt the loop begins.
+    ///
+    /// Pinned in both directions, because the split is the whole point: the
+    /// `.network` path gains the event, and every other `BasecampError` — the
+    /// transport's own final verdict — still emits none.
+    func testTransportNetworkErrorFinalizesEachAttempt() async {
+        let counter = AttemptCounter()
+        let hooks = RequestLifecycleSpy()
+        let transport = BasecampErrorTransport(
+            counter: counter, failuresBeforeSuccess: .max,
+            error: .network(message: "Connection reset", cause: nil))
+
+        let client = BasecampClient(
+            tokenProvider: StaticTokenProvider("test-token"),
+            userAgent: "test-suite",
+            config: BasecampConfig(baseURL: "https://3.basecampapi.com", enableRetry: true),
+            hooks: hooks,
+            transport: transport
+        )
+
+        _ = try? await client.forAccount("999999999").httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            retryConfig: retryConfig
+        )
+
+        XCTAssertEqual(counter.value, 3, "should have spent the whole retry budget")
+        XCTAssertEqual(hooks.requestStarts.count, 3)
+        XCTAssertEqual(hooks.requestEnds.count, 3, "every attempt the loop begins is finalized")
+        XCTAssertEqual(hooks.requestEnds.map(\.statusCode), [0, 0, 0],
+                       "a transport failure is reported as status 0, like a raw URLError")
+    }
+
+    /// The other side of the split: a non-`.network` `BasecampError` is terminal
+    /// on sight and still emits no request-end event.
+    func testNonNetworkBasecampErrorEmitsNoRequestEnd() async {
+        let counter = AttemptCounter()
+        let hooks = RequestLifecycleSpy()
+        let transport = BasecampErrorTransport(
+            counter: counter, failuresBeforeSuccess: .max,
+            error: .auth(message: "nope", hint: nil, requestId: nil))
+
+        let client = BasecampClient(
+            tokenProvider: StaticTokenProvider("test-token"),
+            userAgent: "test-suite",
+            config: BasecampConfig(baseURL: "https://3.basecampapi.com", enableRetry: true),
+            hooks: hooks,
+            transport: transport
+        )
+
+        _ = try? await client.forAccount("999999999").httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            retryConfig: retryConfig
+        )
+
+        XCTAssertEqual(hooks.requestStarts.count, 1)
+        XCTAssertEqual(hooks.requestEnds.count, 0, "the transport's own verdict emits no request-end")
+    }
+}
+
+/// Records the request lifecycle so the #567 classification split can be
+/// asserted on events, not just on attempt counts.
+private final class RequestLifecycleSpy: BasecampHooks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _requestStarts: [RequestInfo] = []
+    private var _requestEnds: [RequestResult] = []
+    private var _retries: [Int] = []
+
+    var requestStarts: [RequestInfo] { lock.withLock { _requestStarts } }
+    var requestEnds: [RequestResult] { lock.withLock { _requestEnds } }
+    var retries: [Int] { lock.withLock { _retries } }
+
+    func onRequestStart(_ info: RequestInfo) {
+        lock.withLock { _requestStarts.append(info) }
+    }
+
+    func onRequestEnd(_ info: RequestInfo, result: RequestResult) {
+        lock.withLock { _requestEnds.append(result) }
+    }
+
+    func onRetry(_ info: RequestInfo, attempt: Int, error: any Error, delaySeconds: TimeInterval) {
+        lock.withLock { _retries.append(attempt) }
+    }
 }
 
 /// A transport that hands back a bare `URLResponse`, tripping the SDK's

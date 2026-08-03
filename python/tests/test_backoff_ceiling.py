@@ -81,3 +81,48 @@ def test_saturating_backoff_edges() -> None:
     assert saturating_backoff(0.0, 10_000) == 0.0
     # Below the ceiling the exponential term is exact.
     assert saturating_backoff(1.0, 3) == 4.0
+
+
+# Bases spanning the range Config accepts. 1e-30 is the case a fixed exponent
+# cap of 64 gets wrong; the denormal-adjacent ones prove the derived bound does
+# not simply move the plateau further out.
+TINY_BASE_DELAYS = [1e-3, 1e-9, 1e-30, 1e-100, 1e-300, 5e-324]
+
+
+@pytest.mark.parametrize("base_delay", TINY_BASE_DELAYS)
+def test_saturating_backoff_reaches_the_ceiling_for_any_positive_base(base_delay: float) -> None:
+    """The term saturates AT the ceiling, whatever the base — no plateau below it.
+
+    A fixed exponent cap plus a trailing ``min(..., MAX_BACKOFF_DELAY)`` bounds
+    the intermediate but not the outcome. With a cap of 64 and
+    ``base_delay=1e-30``, attempt 65 and every attempt after it returned
+    ~1.84e-11s forever: a tight retry loop against a server already answering
+    429/503, which is precisely what SPEC section 7 requirement 1 forbids.
+
+    ``Config`` accepts these bases — ``__post_init__`` validates only
+    ``base_delay >= 0`` — so the bound has to come from the base, not a constant.
+    """
+    Config(base_delay=base_delay)  # the configuration under test is a legal one
+
+    for attempt in (1_100, 5_000, 2**31):
+        assert saturating_backoff(base_delay, attempt) == MAX_BACKOFF_DELAY, (
+            f"base_delay={base_delay!r} attempt={attempt} plateaued below the ceiling"
+        )
+
+
+@pytest.mark.parametrize("base_delay", TINY_BASE_DELAYS)
+def test_saturating_backoff_is_monotonic_up_to_the_ceiling(base_delay: float) -> None:
+    """It grows to the ceiling rather than jumping — SPEC section 7's "and then stops".
+
+    Sampling every attempt from 1 to 1100 covers the whole exponent range any
+    positive double can need, so a formula that stalled anywhere in the middle
+    (the fixed-cap plateau) is caught wherever it stalls.
+    """
+    previous = 0.0
+    for attempt in range(1, 1_101):
+        delay = saturating_backoff(base_delay, attempt)
+        assert delay >= previous, f"base_delay={base_delay!r} went backwards at attempt {attempt}"
+        assert delay <= MAX_BACKOFF_DELAY, f"base_delay={base_delay!r} exceeded the ceiling at {attempt}"
+        previous = delay
+
+    assert previous == MAX_BACKOFF_DELAY

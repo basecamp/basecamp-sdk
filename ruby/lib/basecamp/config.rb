@@ -50,11 +50,37 @@ module Basecamp
     # this plus +max_jitter+.
     MAX_BACKOFF_DELAY = 30.0
 
-    # Largest exponent evaluated before the clamp takes over. 2**64 is 1.8e19,
-    # so with any base delay at all the ceiling is long since reached; the bound
-    # exists because Ruby Integers are unbounded — 2**10_000 is a real
-    # three-kilobyte number, not an overflow.
-    MAX_BACKOFF_EXPONENT = 64
+    # Hard ceiling on the exponent, past which the backoff term saturates
+    # without being computed. It exists only to keep +2**exponent+ inside the
+    # Float range — Ruby Integers are unbounded, so +2**10_000+ is a real
+    # three-kilobyte number that coerces to +Float::INFINITY+, not a wrap.
+    #
+    # 1023 is the largest exponent whose power is a finite Float. It is
+    # deliberately NOT the operative bound: +saturating_exponent+ derives the
+    # real one from the configured base, so this only binds for a base below
+    # ~1e-304 seconds, which is not a duration.
+    MAX_BACKOFF_EXPONENT = 1023
+
+    # Smallest exponent +e+ with <tt>base_delay * 2**e >= MAX_BACKOFF_DELAY</tt>.
+    #
+    # Derived from the *configured* base rather than assumed. A fixed exponent
+    # cap plus a trailing +min(..., MAX_BACKOFF_DELAY)+ looks equivalent and is
+    # not: for a small enough base the capped product never reaches the ceiling,
+    # so the delay plateaus below it forever. At +base_delay = 1e-30+ a cap of
+    # 64 pins every attempt from 65 on at ~1.84e-11s — a tight retry loop, which
+    # is the failure SPEC §7's ceiling exists to prevent, not an instance of it.
+    #
+    # @param base_delay [Float] initial backoff delay in seconds, strictly positive
+    # @return [Integer] the exponent at which the term reaches the ceiling
+    def self.saturating_exponent(base_delay)
+      ratio = MAX_BACKOFF_DELAY / base_delay
+      if ratio.finite?
+        [ Math.log2(ratio).ceil, MAX_BACKOFF_EXPONENT ].min
+      else
+        # base_delay is denormal-small; no finite power of two gets there.
+        MAX_BACKOFF_EXPONENT
+      end
+    end
 
     # Exponential backoff for a 1-based attempt, saturating at MAX_BACKOFF_DELAY.
     #
@@ -63,6 +89,12 @@ module Basecamp
     # failure streak coerces to +Float::INFINITY+ — and +sleep(Float::INFINITY)+
     # never returns. A retry that never happens is not backoff.
     #
+    # The exponent is compared against the point where the term reaches the
+    # ceiling *before* the power is evaluated, so no intermediate leaves the
+    # Float range and the term saturates AT the ceiling for every positive base
+    # — the same contract Go, Kotlin and Swift get from comparing their
+    # multiplier against <tt>MAX_BACKOFF_DELAY / base</tt> before multiplying.
+    #
     # @param base_delay [Float] initial backoff delay in seconds
     # @param attempt [Integer] 1-based attempt number
     # @return [Float] the backoff term in seconds
@@ -70,8 +102,12 @@ module Basecamp
       if base_delay <= 0
         0.0
       else
-        exponent = [ [ attempt - 1, 0 ].max, MAX_BACKOFF_EXPONENT ].min
-        [ base_delay * (2**exponent), MAX_BACKOFF_DELAY ].min.to_f
+        exponent = [ attempt - 1, 0 ].max
+        if exponent >= saturating_exponent(base_delay)
+          MAX_BACKOFF_DELAY
+        else
+          [ base_delay * (2**exponent), MAX_BACKOFF_DELAY ].min.to_f
+        end
       end
     end
 

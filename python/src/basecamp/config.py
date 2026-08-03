@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 
@@ -17,11 +18,33 @@ DEFAULT_MAX_PAGES = 10_000
 # plus max_jitter.
 MAX_BACKOFF_DELAY = 30.0
 
-# Largest exponent evaluated before the clamp takes over. 2**64 is 1.8e19, so
-# with any base delay at all the ceiling is long since reached; the bound exists
-# because Python integers are unbounded and 2 ** 10_000 is a real three-kilobyte
-# integer, not an overflow.
-_MAX_BACKOFF_EXPONENT = 64
+# Hard ceiling on the exponent, past which the backoff term saturates without
+# being computed. It exists only to keep ``2 ** exponent`` inside the float
+# range — Python integers are unbounded, so ``2 ** 10_000`` is a real
+# three-kilobyte integer that raises OverflowError on conversion, not a wrap.
+#
+# 1023 is the largest exponent whose power is a finite float. It is deliberately
+# NOT the operative bound: _saturating_exponent below derives the real one from
+# the configured base, so this only binds for a base below ~1e-304 seconds,
+# which is not a duration.
+_MAX_BACKOFF_EXPONENT = 1023
+
+
+def _saturating_exponent(base_delay: float) -> int:
+    """Smallest exponent ``e`` with ``base_delay * 2**e >= MAX_BACKOFF_DELAY``.
+
+    Derived from the *configured* base rather than assumed. A fixed exponent cap
+    plus a trailing ``min(..., MAX_BACKOFF_DELAY)`` looks equivalent and is not:
+    for a small enough base the capped product never reaches the ceiling, so the
+    delay plateaus below it forever. At ``base_delay=1e-30`` a cap of 64 pins
+    every attempt from 65 on at ~1.84e-11s — a tight retry loop, which is the
+    failure SPEC section 7's ceiling exists to prevent, not an instance of it.
+    """
+    ratio = MAX_BACKOFF_DELAY / base_delay
+    if not math.isfinite(ratio):
+        # base_delay is denormal-small; no finite power of two gets there.
+        return _MAX_BACKOFF_EXPONENT
+    return min(math.ceil(math.log2(ratio)), _MAX_BACKOFF_EXPONENT)
 
 
 def saturating_backoff(base_delay: float, attempt: int) -> float:
@@ -32,10 +55,18 @@ def saturating_backoff(base_delay: float, attempt: int) -> float:
     failure streak either raises ``OverflowError`` converting an arbitrary-
     precision integer to a float, or hands ``time.sleep`` a delay measured in
     geological time. Neither is a retry.
+
+    The exponent is compared against the point where the term reaches the
+    ceiling *before* the power is evaluated, so no intermediate leaves the float
+    range and the term saturates AT the ceiling for every positive base — the
+    same contract Go, Kotlin and Swift get from comparing their multiplier
+    against ``MAX_BACKOFF_DELAY / base`` before multiplying.
     """
     if base_delay <= 0:
         return 0.0
-    exponent = min(max(attempt - 1, 0), _MAX_BACKOFF_EXPONENT)
+    exponent = max(attempt - 1, 0)
+    if exponent >= _saturating_exponent(base_delay):
+        return MAX_BACKOFF_DELAY
     return min(base_delay * (2**exponent), MAX_BACKOFF_DELAY)
 
 

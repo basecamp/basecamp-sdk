@@ -662,9 +662,21 @@ each of the six SDKs demonstrated one before #577:
 Requirements:
 
 1. **Saturate, never wrap, never diverge.** An implementation must not evaluate an
-   unbounded `2^retry_index`. Clamp the exponent, or compare the multiplier against
-   `MAX_BACKOFF_DELAY_MS / base_delay_ms` before multiplying — either keeps every
-   intermediate inside the host's numeric range.
+   unbounded `2^retry_index`. Compare against `MAX_BACKOFF_DELAY_MS / base_delay_ms`
+   *before* multiplying — either the multiplier itself, or, where the power is the
+   thing that overflows, the exponent against the point at which the term first
+   reaches the ceiling. That keeps every intermediate inside the host's numeric range
+   **and** lands the term on the ceiling.
+
+   A **fixed** exponent cap followed by `min(base × 2^capped, MAX_BACKOFF_DELAY_MS)`
+   is not an acceptable substitute, however generous the cap looks. It bounds the
+   intermediate but not the *outcome*: for a base delay small enough that
+   `base × 2^cap < MAX_BACKOFF_DELAY_MS`, the term plateaus below the ceiling for
+   every subsequent attempt instead of saturating at it. At `base_delay_ms = 1e-30`
+   a cap of 64 pins every attempt from the 65th onward at ~1.84e-11s — which is
+   requirement 1's tight loop, not a fix for it. Any cap that remains must be a
+   pure numeric-range backstop (the largest exponent the host can represent),
+   provably never the operative bound for a base delay expressible as a duration.
 2. **The ceiling bounds the backoff term, not the total sleep.** Jitter is added after
    clamping, so the longest single backoff sleep is `MAX_BACKOFF_DELAY_MS + max_jitter`.
    This matches Go's generated client, which has capped at `RetryConfig.MaxDelay = 30s`

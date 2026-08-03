@@ -59,4 +59,51 @@ class BackoffCeilingTest < Minitest::Test
     # Below the ceiling the exponential term is exact.
     assert_in_delta 4.0, Basecamp::Config.saturating_backoff(1.0, 3)
   end
+
+  # Bases spanning the range Config accepts. 1e-30 is the case a fixed exponent
+  # cap of 64 gets wrong; the denormal-adjacent ones prove the derived bound
+  # does not simply move the plateau further out.
+  TINY_BASE_DELAYS = [ 1e-3, 1e-9, 1e-30, 1e-100, 1e-300, 5e-324 ].freeze
+
+  # A fixed exponent cap plus a trailing +min(..., MAX_BACKOFF_DELAY)+ bounds the
+  # intermediate but not the outcome. With a cap of 64 and +base_delay = 1e-30+,
+  # attempt 65 and every attempt after it returned ~1.84e-11s forever: a tight
+  # retry loop against a server already answering 429/503, which is precisely
+  # what SPEC §7 requirement 1 forbids.
+  #
+  # +validate!+ has no +base_delay+ check at all, so every one of these is a
+  # configuration the constructor accepts — the bound has to come from the base.
+  def test_saturating_backoff_reaches_the_ceiling_for_any_positive_base
+    violations = TINY_BASE_DELAYS.flat_map do |base_delay|
+      Basecamp::Config.new(base_delay: base_delay)
+
+      [ 1_100, 5_000, 2**31 ].filter_map do |attempt|
+        delay = Basecamp::Config.saturating_backoff(base_delay, attempt)
+        "base_delay=#{base_delay} attempt=#{attempt} -> #{delay}s" unless delay == Basecamp::Config::MAX_BACKOFF_DELAY
+      end
+    end
+
+    assert_empty violations, "the term must saturate at the ceiling, not plateau below it"
+  end
+
+  # It grows to the ceiling rather than jumping — SPEC §7's "and then stops".
+  # Sampling every attempt from 1 to 1100 covers the whole exponent range any
+  # positive Float can need, so a formula that stalled anywhere in the middle
+  # (the fixed-cap plateau) is caught wherever it stalls.
+  def test_saturating_backoff_is_monotonic_up_to_the_ceiling
+    ceiling = Basecamp::Config::MAX_BACKOFF_DELAY
+
+    TINY_BASE_DELAYS.each do |base_delay|
+      previous = 0.0
+      (1..1_100).each do |attempt|
+        delay = Basecamp::Config.saturating_backoff(base_delay, attempt)
+
+        assert_operator delay, :>=, previous, "base_delay=#{base_delay} went backwards at attempt #{attempt}"
+        assert_operator delay, :<=, ceiling, "base_delay=#{base_delay} exceeded the ceiling at attempt #{attempt}"
+        previous = delay
+      end
+
+      assert_equal ceiling, previous, "base_delay=#{base_delay} never reached the ceiling"
+    end
+  end
 end

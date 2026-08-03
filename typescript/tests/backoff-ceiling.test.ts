@@ -73,4 +73,62 @@ describe("backoff ceiling", () => {
     // A zero base delay stays at zero rather than saturating.
     expect(saturatingBackoff(0, "exponential", 1024)).toBe(0);
   });
+
+  /**
+   * A fixed exponent cap plus a trailing `Math.min` bounds the intermediate but
+   * not the outcome. With a cap of 53 and a base of 1e-30ms, every attempt from
+   * the 54th on returned ~9e-15ms forever — a tight retry loop against a server
+   * already answering 429/503, which is what SPEC §7 requirement 1 forbids. The
+   * bound has to be derived from the base.
+   *
+   * Go, Kotlin and Swift never had this shape: their bases are integer
+   * durations, so the `MAX / base` comparison always fires before their shift
+   * cap does. This is what makes the six uniform rather than three-and-three.
+   */
+  const tinyBaseDelays = [1e-3, 1e-9, 1e-30, 1e-100, 1e-300, 5e-324];
+
+  it("saturates at the ceiling for any positive base, never plateaus below it", () => {
+    const violations = tinyBaseDelays.flatMap((base) =>
+      [1023, 1100, 5000, Number.MAX_SAFE_INTEGER]
+        .map((attempt) => [base, attempt, saturatingBackoff(base, "exponential", attempt)] as const)
+        .filter(([, , delay]) => delay !== MAX_BACKOFF_DELAY_MS)
+        .map(([b, attempt, delay]) => `base=${b} attempt=${attempt} -> ${delay}ms`),
+    );
+
+    expect(violations, "the term must saturate at the ceiling, not plateau below it").toEqual([]);
+  });
+
+  it("grows monotonically to the ceiling rather than stalling on the way", () => {
+    for (const base of tinyBaseDelays) {
+      let previous = 0;
+      for (let attempt = 0; attempt <= 1100; attempt++) {
+        const delay = saturatingBackoff(base, "exponential", attempt);
+        expect(delay, `base=${base} went backwards at attempt ${attempt}`).toBeGreaterThanOrEqual(previous);
+        expect(delay, `base=${base} exceeded the ceiling at attempt ${attempt}`).toBeLessThanOrEqual(
+          MAX_BACKOFF_DELAY_MS,
+        );
+        previous = delay;
+      }
+      expect(previous, `base=${base} never reached the ceiling`).toBe(MAX_BACKOFF_DELAY_MS);
+    }
+  });
+
+  /**
+   * Linear backoff compares its multiplier against `MAX / base` before
+   * multiplying, the same as Swift's. Saturation is asserted only for the bases
+   * a linear term can actually reach the ceiling from: growth is `base × n`, so
+   * it needs `n >= 30000 / base`, and `n` is an attempt count. Below ~3.3e-12ms
+   * no finite attempt count gets there — an arithmetic fact about linear growth,
+   * not a clamp defect. The ceiling is still never exceeded, which is asserted
+   * for every base.
+   */
+  it("saturates linear backoff at the ceiling wherever a linear term can reach it", () => {
+    for (const base of tinyBaseDelays) {
+      const delay = saturatingBackoff(base, "linear", Number.MAX_SAFE_INTEGER);
+      expect(delay).toBeLessThanOrEqual(MAX_BACKOFF_DELAY_MS);
+      if (Number.MAX_SAFE_INTEGER >= MAX_BACKOFF_DELAY_MS / base) {
+        expect(delay, `base=${base} should have saturated`).toBe(MAX_BACKOFF_DELAY_MS);
+      }
+    }
+  });
 });

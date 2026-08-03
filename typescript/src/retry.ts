@@ -183,6 +183,25 @@ export async function executeWithRetry(
 }
 
 /**
+ * Hard ceiling on the exponent, past which the term saturates without being
+ * computed. It exists only to keep `Math.pow(2, index)` finite — 1023 is the
+ * largest exponent whose power is a finite double.
+ *
+ * It is deliberately NOT the operative bound: {@link saturatingExponent}
+ * derives the real one from the configured base, so this only binds for a base
+ * below ~1e-304 ms, which is not a duration.
+ */
+const MAX_BACKOFF_EXPONENT = 1023;
+
+/** Smallest exponent `e` with `base * 2**e >= MAX_BACKOFF_DELAY_MS`. */
+function saturatingExponent(base: number): number {
+  const ratio = MAX_BACKOFF_DELAY_MS / base;
+  // A denormal-small base makes the ratio Infinity: no finite power gets there.
+  if (!Number.isFinite(ratio)) return MAX_BACKOFF_EXPONENT;
+  return Math.min(Math.ceil(Math.log2(ratio)), MAX_BACKOFF_EXPONENT);
+}
+
+/**
  * The backoff term, saturating at {@link MAX_BACKOFF_DELAY_MS} (SPEC §7).
  *
  * Shared by both of the SDK's retry loops — this one and the raw multipart
@@ -195,6 +214,14 @@ export async function executeWithRetry(
  * long sleep, it is a tight retry loop against a server that is already
  * answering 429/503. Well before that, the computed delays run to millennia.
  *
+ * The exponent is compared against the point where the term reaches the ceiling
+ * *before* `Math.pow` is evaluated, and that point is derived from the
+ * CONFIGURED base — the same contract Go, Kotlin and Swift get from comparing
+ * their multiplier against `MAX_BACKOFF_DELAY_MS / base` before multiplying. A
+ * fixed exponent cap plus a trailing `Math.min` looks equivalent and is not:
+ * for a small enough base the capped product never reaches the ceiling, so the
+ * delay plateaus below it forever instead of saturating at it.
+ *
  * `attempt` is the 0-indexed retry count (first retry = 0), matching the SPEC
  * §7 `retry_index`.
  */
@@ -205,18 +232,22 @@ export function saturatingBackoff(
 ): number {
   const base = baseDelayMs > 0 ? baseDelayMs : 0;
   const index = attempt > 0 ? attempt : 0;
+  if (base === 0) return 0;
 
   let delay: number;
   switch (backoff) {
     case "exponential":
-      // Bounding the exponent keeps the product finite: 2^53 is already 9e15,
-      // so with any base at all the ceiling is long since reached, and
-      // Math.min below does the rest without ever seeing Infinity or NaN.
-      delay = base * Math.pow(2, Math.min(index, 53));
+      if (index >= saturatingExponent(base)) return MAX_BACKOFF_DELAY_MS;
+      delay = base * Math.pow(2, index);
       break;
-    case "linear":
-      delay = base * (Math.min(index, Number.MAX_SAFE_INTEGER) + 1);
+    case "linear": {
+      // Compared before multiplying, so `Infinity * 0`-shaped intermediates
+      // never arise. `index + 1` is finite for any finite index.
+      const multiplier = index + 1;
+      if (multiplier >= MAX_BACKOFF_DELAY_MS / base) return MAX_BACKOFF_DELAY_MS;
+      delay = base * multiplier;
       break;
+    }
     case "constant":
     default:
       delay = base;

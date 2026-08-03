@@ -82,10 +82,38 @@ package final class HTTPClient: Sendable {
     /// cancelled task as `URLError(.cancelled)` — so checking only the former
     /// would treat a real cancelled download as a retryable network blip and
     /// spend the whole budget on a request the caller already abandoned.
+    ///
+    /// It also looks *through* ``BasecampError/network(message:cause:)``. A
+    /// `Transport` that normalizes its failures into the SDK's own taxonomy —
+    /// the shape #567 exists to support — reports a cancelled request as
+    /// `.network(cause: CancellationError())` or `.network(cause:
+    /// URLError(.cancelled))`. Testing only the outer type would classify one
+    /// cancellation two ways: terminal when raw, retried (announced, slept on,
+    /// re-authenticated, re-sent) when wrapped. Classifying a network error by
+    /// meaning rather than by type is the whole point of #567, and cancellation
+    /// is part of that meaning.
+    ///
+    /// The walk is bounded rather than recursive: the `cause` chain is
+    /// caller-supplied, and a cycle in it must not hang the retry loop.
     private static func isCancellation(_ error: any Error) -> Bool {
-        if error is CancellationError { return true }
-        return (error as? URLError)?.code == .cancelled
+        var current: (any Error)? = error
+
+        for _ in 0..<maxCauseChainDepth {
+            guard let candidate = current else { return false }
+            if candidate is CancellationError { return true }
+            if (candidate as? URLError)?.code == .cancelled { return true }
+            guard let basecampError = candidate as? BasecampError,
+                  case .network(_, let cause) = basecampError else { return false }
+            current = cause
+        }
+
+        return false
     }
+
+    /// How far ``isCancellation(_:)`` walks a `.network` cause chain. Any real
+    /// chain is one or two links deep; the bound is what keeps a caller-built
+    /// cycle from spinning.
+    private static let maxCauseChainDepth = 8
 
     /// Converts a backoff interval to nanoseconds without trapping.
     ///
