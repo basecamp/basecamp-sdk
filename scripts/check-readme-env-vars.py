@@ -180,6 +180,102 @@ def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str) -> in
     return len(text)
 
 
+def has_fstring_prefix(text: str, i: int) -> bool:
+    """Whether the literal opening at `i` carries a Python f prefix."""
+    prefix_start = i
+    while prefix_start > 0 and text[prefix_start - 1].isalpha():
+        prefix_start -= 1
+    return "f" in text[prefix_start:i].lower()
+
+
+def scan_literal(text: str, i: int, style: str) -> tuple[int, list[tuple[int, int]]]:
+    """Extent of the literal opening at `i`, plus its interpolation holes.
+
+    Returns (end, holes) where end is one past the closing quote and each hole is
+    a half-open range of executable text inside the literal.
+    """
+    n = len(text)
+    triple = text[i : i + 3] if style == "hash" and text[i : i + 3] in ('"""', "'''") else None
+    if triple:
+        end = text.find(triple, i + 3)
+        end = n if end == -1 else end + 3
+        holes = []
+        if has_fstring_prefix(text, i):
+            j = i + 3
+            body_end = end - 3 if end < n else n
+            while j < body_end:
+                # `{{` is an escaped brace, i.e. literal text, not an expression.
+                if text.startswith("{{", j):
+                    j += 2
+                    continue
+                if text[j] == "{":
+                    close = matching_delimiter(text, j + 1, "{", "}")
+                    holes.append((j + 1, min(close, body_end)))
+                    j = close + 1
+                    continue
+                j += 1
+        return end, holes
+
+    quote = text[i]
+    openers = interpolation_openers(text, i, quote, style)
+    swift_interp = ("\\(", ")") in openers
+    j = i + 1
+    holes = []
+    while j < n:
+        if text[j] == "\\":
+            # Swift interpolation opens with a backslash, so it has to be tested
+            # before the generic escape skip swallows the paren.
+            if swift_interp and text.startswith("\\(", j):
+                end = matching_delimiter(text, j + 2, "(", ")")
+                holes.append((j + 2, end))
+                j = end + 1
+                continue
+            j += 2
+            continue
+        if text[j] == quote:
+            j += 1
+            break
+        # An unterminated single-line literal ends at the newline; Go and
+        # TypeScript backtick literals legitimately span lines.
+        if text[j] == "\n" and quote != "`":
+            break
+        opened = False
+        for opener, closer in openers:
+            if opener != "\\(" and text.startswith(opener, j):
+                end = matching_delimiter(text, j + len(opener), "{", closer)
+                holes.append((j + len(opener), end))
+                j = end + 1
+                opened = True
+                break
+        if opened:
+            continue
+        j += 1
+    return j, holes
+
+
+def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray) -> None:
+    """Mask string literals in [lo, hi), recursing through interpolation holes.
+
+    Called on the inside of an interpolation, which is code: any literal *there*
+    is data again. Without this, `${"process.env.BASECAMP_FAKE"}` would count as
+    a read, because the hole was un-masked wholesale.
+    """
+    quotes = STRING_QUOTES[style]
+    i = lo
+    while i < hi:
+        if text[i] in quotes:
+            end, holes = scan_literal(text, i, style)
+            for k in range(i, min(end, hi)):
+                in_string[k] = 1
+            for hole_start, hole_end in holes:
+                for k in range(hole_start, min(hole_end, hi)):
+                    in_string[k] = 0
+                mask_literals(text, hole_start, min(hole_end, hi), style, in_string)
+            i = end
+            continue
+        i += 1
+
+
 def interpolation_openers(text: str, i: int, quote: str, style: str) -> list[tuple[str, str]]:
     """Interpolation delimiters valid inside the literal opening at `i`.
 
@@ -200,10 +296,7 @@ def interpolation_openers(text: str, i: int, quote: str, style: str) -> list[tup
     # Python f-strings, whose braces are code. Only with an `f` prefix: an
     # ordinary "{...}" is literal text, and treating it as code would let a
     # documentation example count as a read.
-    prefix_start = i
-    while prefix_start > 0 and text[prefix_start - 1].isalpha():
-        prefix_start -= 1
-    if "f" in text[prefix_start:i].lower():
+    if has_fstring_prefix(text, i):
         openers.append(("{", "}"))
     return openers
 
@@ -239,59 +332,36 @@ def strip_noncode(text: str, style: str) -> tuple[str, bytearray]:
                 out[k] = " "
 
     while i < n:
-        # Python/Ruby docstrings: string literals, but used as documentation, so
-        # an example inside one is not a read.
+        # Python/Ruby docstrings: string literals used as documentation, so an
+        # example inside one is not a read -- unless it is an f-string, whose
+        # braces are executable. scan_literal makes that distinction; blanking
+        # every triple-quoted literal outright hid real reads.
         if style == "hash" and text[i : i + 3] in ('"""', "'''"):
-            quote = text[i : i + 3]
-            end = text.find(quote, i + 3)
-            end = n if end == -1 else end + 3
-            blank(i, end)
+            end, holes = scan_literal(text, i, style)
+            if holes:
+                for k in range(i, min(end, n)):
+                    in_string[k] = 1
+                for hole_start, hole_end in holes:
+                    for k in range(hole_start, min(hole_end, n)):
+                        in_string[k] = 0
+                    mask_literals(text, hole_start, min(hole_end, n), style, in_string)
+            else:
+                blank(i, end)
             i = end
             continue
         if text[i] in quotes:
-            quote = text[i]
-            openers = interpolation_openers(text, i, quote, style)
-            swift_interp = ("\\(", ")") in openers
-            j = i + 1
-            holes: list[tuple[int, int]] = []
-            while j < n:
-                if text[j] == "\\":
-                    # Swift interpolation opens with a backslash, so it has to be
-                    # tested before the generic escape skip swallows the paren.
-                    if swift_interp and text.startswith("\\(", j):
-                        end = matching_delimiter(text, j + 2, "(", ")")
-                        holes.append((j + 2, end))
-                        j = end + 1
-                        continue
-                    j += 2
-                    continue
-                if text[j] == quote:
-                    j += 1
-                    break
-                # An unterminated single-line literal ends at the newline; Go and
-                # TypeScript backtick literals legitimately span lines.
-                if text[j] == "\n" and quote != "`":
-                    break
-                opened = False
-                for opener, closer in openers:
-                    if opener != "\\(" and text.startswith(opener, j):
-                        end = matching_delimiter(text, j + len(opener), "{", closer)
-                        holes.append((j + len(opener), end))
-                        j = end + 1
-                        opened = True
-                        break
-                if opened:
-                    continue
-                j += 1
-            for k in range(i, min(j, n)):
+            end, holes = scan_literal(text, i, style)
+            for k in range(i, min(end, n)):
                 in_string[k] = 1
             # An interpolation is executable code that merely lives inside a
             # literal, so it is un-masked: `token=${process.env.BASECAMP_TOKEN}`
-            # is a genuine read, and masking it would hide one.
+            # is a genuine read, and masking it would hide one. Literals *inside*
+            # that expression are data again, hence the recursive re-mask.
             for hole_start, hole_end in holes:
                 for k in range(hole_start, min(hole_end, n)):
                     in_string[k] = 0
-            i = j
+                mask_literals(text, hole_start, min(hole_end, n), style, in_string)
+            i = end
             continue
         if style == "slash" and text.startswith("//", i):
             end = text.find("\n", i)

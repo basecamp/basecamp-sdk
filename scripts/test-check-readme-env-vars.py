@@ -261,6 +261,26 @@ def main() -> int:
         check("braces without an f prefix are not a read",
               run_gate(root, PY_SDK), ["forward:Python:BASECAMP_NOTF"])
 
+        # A triple-quoted f-string is not documentation — its braces execute.
+        # Blanking every triple-quoted literal outright hid the read entirely.
+        root = tmp / "interp-py-triple"
+        build(root, {
+            "python/README.md": TABLE.format(var="BASECAMP_TRIPLE"),
+            "python/src/c.py": 'X = f"""token={os.getenv(\'BASECAMP_TRIPLE\')}"""\n',
+        })
+        check("a triple-quoted f-string interpolation is a read",
+              run_gate(root, PY_SDK), [])
+
+        # A literal *inside* an interpolation is data again, so un-masking the
+        # hole wholesale wrongly promoted example text to a read.
+        root = tmp / "interp-nested-literal"
+        build(root, {
+            "typescript/README.md": "no tables\n",
+            "typescript/src/c.ts": 'const x = `${"process.env.BASECAMP_FAKE"}`;\n',
+        })
+        check("a literal nested in an interpolation is not a read",
+              run_gate(root, TS_SDK, no_env_sdks=("TypeScript",)), [])
+
         root = tmp / "interp-swift"
         build(root, {
             "swift/README.md": "mentions BASECAMP_SW\n",
