@@ -1,0 +1,75 @@
+conformance/event-feed/fixtures/01-happy-path-confirm-catchup-stream.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-190
+conformance/event-feed/fixtures/05-fresh-ticket-reconnect-after-ttl.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-163
+conformance/event-feed/fixtures/23-gap-410-default-terminal.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-90
+Makefile
+  s_62d102ac250358::t_e4e3b6e292b6ef 464,490-499,684,1222-1223
+conformance/event-feed/fixtures/28-checkpoint-load-failure.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-35
+conformance/event-feed/schema.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-819
+conformance/event-feed/fixtures/04-terminal-rejection.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-23
+conformance/event-feed/fixtures/19-present-entry-buffered-lower-id.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-25
+conformance/event-feed/fixtures/27-hostile-resume-cross-origin.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-60
+conformance/event-feed/fixtures/07-unauthorized-disconnect-reconnects.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-120
+conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-114
+conformance/event-feed/fixtures/24-overflow-handler-terminate.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-100
+conformance/event-feed/fixtures/25-gap-handler-terminate.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-61
+conformance/event-feed-digest/schema.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-140
+conformance/event-feed/fixtures/22-overflow-accepted.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-110
+conformance/event-feed-digest/README.md
+  s_62d102ac250358::t_85b4c08a8f802f 1-33
+conformance/event-feed/fixtures/02-confirmation-gating.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-122
+conformance/event-feed/fixtures/20-present-entry-post-snapshot-straggler.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-138
+conformance/event-feed/fixtures/21-overflow-default-terminal.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-120
+conformance/event-feed/fixtures/16-gap-410-accepted-resume.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-119
+conformance/event-feed/fixtures/17-remote-disconnect-remint.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-160
+conformance/event-feed/fixtures/12-checkpoint-after-handoff.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-138
+SPEC.md
+  s_62d102ac250358::t_8cb145a704ff2d 2375-2378,2634-2637,2678,2802-2809,2850-2859,2866-2870
+conformance/event-feed-digest/fixtures/srv1-vectors.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-198
+conformance/event-feed/fixtures/03-confirmation-deadline-teardown.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-106
+conformance/event-feed/fixtures/26-hostile-next-cross-origin.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-103
+conformance/event-feed/README.md
+  s_62d102ac250358::t_8cb145a704ff2d 1-315
+conformance/event-feed/fixtures/29-checkpoint-save-failure-continues.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-130
+conformance/event-feed/fixtures/06-protocol-fatal-disconnect.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5ce9a0be01e734710d86d8c9849a0496da20967c",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
