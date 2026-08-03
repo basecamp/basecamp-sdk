@@ -30,7 +30,25 @@ public struct DocumentFields: Sendable {
     /// Rich text body (HTML). Set `""` to clear.
     public var content: String
 
-    init(from document: Document) {
+    /// `title` needs a hand-written check the decoder cannot supply. The field
+    /// is non-optional on the model, so an absent or null title is already
+    /// refused — but `""` decodes fine, and BC3 can never render it blank
+    /// (`Document#title` is `super.presence || "Untitled"`). A blank title on a
+    /// 2xx read is therefore a malformed response, and carrying it into the
+    /// full-replace PUT would blank the real title on a call that only touched
+    /// `content`.
+    init(from document: Document) throws {
+        guard !document.title.isEmpty else {
+            throw BasecampError.api(
+                message: "GetDocument returned a document with a blank \"title\", "
+                    + "but the API never renders it blank",
+                httpStatus: nil,
+                hint: "The merge-safe update/edit resend this field verbatim, so a blank value "
+                    + "would blank the current one. Use replace(documentId:req:) to write the "
+                    + "record deliberately.",
+                requestId: nil
+            )
+        }
         title = document.title
         content = document.content ?? ""
     }
@@ -60,7 +78,7 @@ extension DocumentsService {
     ///
     /// Not atomic — see the extension docs for the GET→PUT race.
     public func update(documentId: Int, req: UpdateDocumentRequest) async throws -> Document {
-        var fields = DocumentFields(from: try await fetchDocument(documentId: documentId))
+        var fields = try DocumentFields(from: try await fetchDocument(documentId: documentId))
         if let title = req.title { fields.title = title }
         if let content = req.content { fields.content = content }
         return try await putFields(documentId: documentId, fields: fields)
@@ -83,7 +101,7 @@ extension DocumentsService {
     public func edit(
         documentId: Int, _ mutate: (inout DocumentFields) throws -> Void
     ) async throws -> Document {
-        var fields = DocumentFields(from: try await fetchDocument(documentId: documentId))
+        var fields = try DocumentFields(from: try await fetchDocument(documentId: documentId))
         try mutate(&fields)
         return try await putFields(documentId: documentId, fields: fields)
     }

@@ -113,6 +113,45 @@ final class DocumentsServiceExtensionsTests: XCTestCase {
 
     // MARK: - update (merge-safe)
 
+    /// BC3 can never render a blank title (`Document#title` is
+    /// `super.presence || "Untitled"`), so `""` on a 2xx read is malformed.
+    /// `Codable` already refuses an absent or null title because the model
+    /// field is non-optional; `""` decodes fine and needs the hand-written
+    /// check. The ordering is what matters: no PUT.
+    func testUpdate_refusesABlankTitle() async throws {
+        let log = DocumentRequestLog()
+        var blank = fullDocumentJSON()
+        blank["title"] = ""
+        let blankData = try JSONSerialization.data(withJSONObject: blank)
+        let transport = MockTransport { request in
+            log.record(request)
+            return (
+                blankData,
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 200,
+                    headers: ["Content-Type": "application/json"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.documents.update(
+                documentId: 42, req: UpdateDocumentRequest(content: "<p>New body.</p>"))
+            XCTFail("expected the call to fail, but it succeeded")
+        } catch let error as BasecampError {
+            guard case .api(_, let httpStatus, let hint, _) = error else {
+                return XCTFail("expected .api, got \(error)")
+            }
+            XCTAssertNil(httpStatus, "a malformed 2xx body carries no status")
+            XCTAssertNotNil(hint, "expected a hint naming the escape hatch")
+        }
+
+        XCTAssertEqual(log.methods, ["GET"], "the guard must fire before the PUT")
+    }
+
+
     func testUpdate_mergesUnsetFields() async throws {
         let log = DocumentRequestLog()
         let account = try makeDocumentsClient(log: log)

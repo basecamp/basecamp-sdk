@@ -115,6 +115,34 @@ class DocumentsServiceTest {
         client.close()
     }
 
+    // BC3 can never render a blank title (Document#title is
+    // super.presence || "Untitled"), so "" on a 2xx read is malformed. The
+    // model's non-null String already refuses absent/null; "" decodes fine and
+    // needs the hand-written check. The ordering is what matters: no PUT.
+    @Test
+    fun updateRefusesABlankTitle() = runTest {
+        val capture = WriteCapture()
+        val client = mockClient { request ->
+            capture.methods.add(request.method.value)
+            respond(
+                content = fullDocumentJson().replace("\"title\": \"Kickoff notes\"", "\"title\": \"\""),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val error = assertFailsWith<BasecampException.Api> {
+            client.forAccount("12345").documents
+                .update(42, UpdateDocumentBody(content = "<p>New body.</p>"))
+        }
+
+        assertEquals(null, error.httpStatus)
+        assertEquals(false, error.retryable)
+        assertEquals(listOf("GET"), capture.methods)
+
+        client.close()
+    }
+
     @Test
     fun updateMergesUnsetFields() = runTest {
         val capture = WriteCapture()

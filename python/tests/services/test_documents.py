@@ -452,13 +452,15 @@ class TestMalformedResponseFields:
     # that only touched ``content``. Same defect class as a forwarded
     # non-string, in the one shape ``or ""`` looks correct.
     @respx.mock
-    @pytest.mark.parametrize("absent", [True, False], ids=["absent", "null"])
-    def test_update_refuses_an_absent_title_before_writing(self, absent):
+    # BC3 can never render a blank title, so "" is malformed too — and it is
+    # the shape a missing/null check alone would let through.
+    @pytest.mark.parametrize("mangle", ["absent", "null", "blank"])
+    def test_update_refuses_an_absent_title_before_writing(self, mangle):
         document = _document()
-        if absent:
+        if mangle == "absent":
             document.pop("title", None)
         else:
-            document["title"] = None
+            document["title"] = None if mangle == "null" else ""
         _, put_route = _routes(document)
 
         with pytest.raises(ApiError, match=r'field "title" is required'):
@@ -468,13 +470,13 @@ class TestMalformedResponseFields:
         assert respx.calls.call_count == 1
 
     @respx.mock
-    @pytest.mark.parametrize("absent", [True, False], ids=["absent", "null"])
-    def test_edit_refuses_an_absent_title_before_writing(self, absent):
+    @pytest.mark.parametrize("mangle", ["absent", "null", "blank"])
+    def test_edit_refuses_an_absent_title_before_writing(self, mangle):
         document = _document()
-        if absent:
+        if mangle == "absent":
             document.pop("title", None)
         else:
-            document["title"] = None
+            document["title"] = None if mangle == "null" else ""
         _, put_route = _routes(document)
 
         with (

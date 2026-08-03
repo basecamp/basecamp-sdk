@@ -406,6 +406,32 @@ class DocumentsServiceTest < Minitest::Test
     end
   end
 
+  # BC3 can never render a blank title, so "" is malformed too — and it is the
+  # shape a missing/nil check alone would let through.
+  def test_update_refuses_a_blank_title_before_writing
+    captured = stub_document_get_and_put(document: full_document("title" => ""))
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.documents.update(document_id: 200, content: "<div>New body.</div>")
+    end
+
+    assert_includes error.message, %(Document field "title" is required)
+    assert_equal Basecamp::ErrorCode::API, error.code
+    assert_not_requested :put, "#{BASE_URL}/12345/documents/200"
+    assert_empty captured[:bodies]
+  end
+
+  def test_edit_refuses_a_blank_title_before_writing
+    captured = stub_document_get_and_put(document: full_document("title" => ""))
+
+    assert_raises(Basecamp::ApiError) do
+      @account.documents.edit(document_id: 200) { |doc| doc.content = "<div>New body.</div>" }
+    end
+
+    assert_not_requested :put, "#{BASE_URL}/12345/documents/200"
+    assert_empty captured[:bodies]
+  end
+
   # Drops or nils the title, mirroring the "missing"/"nil" labels above.
   def title_mangled(document, label)
     label == "missing" ? document.except("title") : document.merge("title" => nil)

@@ -49,11 +49,11 @@ def _required_writable_string(body: dict[str, Any], key: str, *, record: str, es
     field and an optional one report a non-string identically.
     """
     value = body.get(key)
-    if value is None:
+    if value is None or value == "":
         raise malformed(
             f'{record} field "{key}" is required but the response carried {describe(value)}',
-            "The merge-safe update/edit resend this field verbatim, so a missing value would "
-            f"blank the current one. Use {escape} to write the record deliberately.",
+            "The merge-safe update/edit resend this field verbatim, so a missing or blank value "
+            f"would blank the current one. Use {escape} to write the record deliberately.",
         )
     return writable_string(body, key, record=record, escape=escape)
 

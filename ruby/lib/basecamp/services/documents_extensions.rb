@@ -127,11 +127,11 @@ module Basecamp
       # required field and an optional one report a non-string identically.
       def required_writable_string(body, key)
         value = body[key]
-        if value.nil?
+        if value.nil? || value == ""
           raise MergeSafe.malformed(
             %(Document field "#{key}" is required but the response carried #{MergeSafe.describe(value)}),
-            "The merge-safe update/edit resend this field verbatim, so a missing value would " \
-            "blank the current one. Use #{ESCAPE_HATCH} to write the record deliberately."
+            "The merge-safe update/edit resend this field verbatim, so a missing or blank value " \
+            "would blank the current one. Use #{ESCAPE_HATCH} to write the record deliberately."
           )
         end
 

@@ -478,13 +478,18 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 
 	resp, err := s.client.parent.gen.GetDocumentWithResponse(ctx, s.client.accountID, documentID)
 	if err != nil {
+		// Transport or response-decoder failure. The merge-safe composites read
+		// this body and write every field of it back, so a malformed one has to
+		// arrive as the documented statusless api_error rather than as a raw
+		// decoder error (see normalizeDocumentDecodeError in documents.go).
+		err = normalizeDocumentDecodeError(err)
 		return nil, err
 	}
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		err = fmt.Errorf("unexpected empty response")
+		err = normalizeDocumentDecodeError(fmt.Errorf("the response carried no document object"))
 		return nil, err
 	}
 

@@ -660,6 +660,9 @@ describe("DocumentsService", () => {
     it.each([
       ["absent", undefined],
       ["null", null],
+      // BC3 can never render a blank title, so "" is malformed too — and it is
+      // the shape a missing/null check alone would let through.
+      ["blank", ""],
     ])("update refuses a %s title before writing", async (_label, value) => {
       const requests: string[] = [];
       const body: Record<string, unknown> = sampleDocument(5001, { title: value });
@@ -673,6 +676,7 @@ describe("DocumentsService", () => {
     it.each([
       ["absent", undefined],
       ["null", null],
+      ["blank", ""],
     ])("edit refuses a %s title before writing", async (_label, value) => {
       const requests: string[] = [];
       const body: Record<string, unknown> = sampleDocument(5001, { title: value });

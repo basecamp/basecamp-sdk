@@ -123,46 +123,39 @@ func (f *DocumentFields) fullBody() (map[string]any, error) {
 	}, nil
 }
 
-// fetchDocument GETs the document the composites read their writable state from,
-// normalizing a decode failure into the SPEC §6 shape.
+// normalizeDocumentDecodeError converts a response-decoder failure into the
+// SPEC §6 shape for a malformed 2xx body: a statusless, non-retryable api_error
+// naming the deliberate-overwrite escape hatch.
 //
 // Go's json.Unmarshal is the typed guard the dynamic SDKs write by hand, and it
-// rejects a wrong-typed field before this composite ever sees it — but it
-// reports that as a raw decoder error surfaced through the generated parser,
-// which is not the shape SPEC §6 defines for a malformed 2xx body: callers
-// switching on *Error would miss it entirely and it carries no hint. Wrap it, so
-// a malformed response looks the same in every SDK (the Swift composite does
-// this with DecodingError).
+// rejects a wrong-typed field before a composite ever sees it — but it reports
+// that as a raw decoder error, which callers switching on *Error would miss and
+// which carries no hint. (The Swift composite does the same with DecodingError.)
 //
 // Classified by EXCLUSION, not by an allowlist of decoder error types. An
 // allowlist has to enumerate every shape the generated model can produce and it
-// silently leaks the ones it forgets — this function had two such holes in
-// review. created_at/updated_at are time.Time, whose UnmarshalJSON returns
+// silently leaks the ones it forgets — this had two such holes in review.
+// created_at/updated_at are time.Time, whose UnmarshalJSON returns
 // *time.ParseError rather than an encoding/json sentinel; and
 // content_attachments carries *types.FlexInt dimensions, whose UnmarshalJSON
-// returns a plain fmt.Errorf that is no named type at all. There is no
-// enumerable set on that side.
+// rejects a non-integral value with a plain fmt.Errorf that is no named type at
+// all. There is no enumerable set on that side.
 //
-// The other side IS enumerable, and it is short: an error already carrying the
-// SDK taxonomy (checkResponse maps HTTP status onto *Error), a transport
-// failure, or a cancelled/expired context. Everything else reaching here came
-// out of the response decoder, so a 404 still surfaces as a 404 while any
-// malformed 2xx body — whatever produced it — becomes a statusless api_error.
-func (s *DocumentsService) fetchDocument(ctx context.Context, documentID int64) (*Document, error) {
-	current, getErr := s.Get(ctx, documentID)
-	if getErr == nil {
-		return current, nil
-	}
-
-	var sdkErr *Error
+// It is applied at the ONE call site where the only possible origins are the
+// transport and the decoder — GetDocumentWithResponse — rather than around the
+// whole of Get. A gating hook returns its own sentinel error before any request
+// runs, and wrapping that would break errors.Is and misreport why nothing was
+// sent; keeping the classifier below the gate removes it from the candidate set
+// entirely rather than trying to recognize it.
+func normalizeDocumentDecodeError(err error) error {
 	var urlErr *url.Error
-	if errors.As(getErr, &sdkErr) || errors.As(getErr, &urlErr) ||
-		errors.Is(getErr, context.Canceled) || errors.Is(getErr, context.DeadlineExceeded) {
-		return nil, getErr
+	if errors.As(err, &urlErr) ||
+		errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
 	}
-	return nil, &Error{
+	return &Error{
 		Code:    CodeAPI,
-		Message: truncate(fmt.Sprintf("GetDocument returned a body that does not decode as a document: %v", getErr)),
+		Message: truncate(fmt.Sprintf("GetDocument returned a body that does not decode as a document: %v", err)),
 		Hint: "The merge-safe Update/Edit resend this record's fields verbatim, so a malformed " +
 			"response cannot be written back safely. Use Replace to write the record deliberately.",
 		Retryable: false,
@@ -190,7 +183,7 @@ func (s *DocumentsService) Update(ctx context.Context, documentID int64, req *Up
 		return nil, ErrUsage("update request is required")
 	}
 
-	current, err := s.fetchDocument(ctx, documentID)
+	current, err := s.Get(ctx, documentID)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +214,7 @@ func (s *DocumentsService) Edit(ctx context.Context, documentID int64, fn func(*
 		return nil, ErrUsage("edit callback is required")
 	}
 
-	current, err := s.fetchDocument(ctx, documentID)
+	current, err := s.Get(ctx, documentID)
 	if err != nil {
 		return nil, err
 	}

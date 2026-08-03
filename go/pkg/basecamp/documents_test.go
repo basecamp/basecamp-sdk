@@ -805,3 +805,69 @@ func TestDocumentsService_UpdateNormalizesABadTimestamp(t *testing.T) {
 		}
 	}
 }
+
+// A GatingHooks implementation rejects the composite's GET before any request
+// is made — circuit breakers and bulkheads are explicitly allowed to do that
+// with an ordinary sentinel. That decision is local, so it must reach the
+// caller verbatim: classifying it as a malformed response would break
+// errors.Is and blame the server for a choice the client made.
+func TestDocumentsService_UpdatePreservesAGateError(t *testing.T) {
+	errGated := errors.New("circuit open")
+	fixture := loadDocumentsFixture(t, "get.json")
+	hooks := &testGatingHooks{
+		onGate: func(ctx context.Context, op OperationInfo) (context.Context, error) {
+			if op.Operation == "Get" {
+				return ctx, errGated
+			}
+			return ctx, nil
+		},
+	}
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, hooks)
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{
+		Content: "<div>New body.</div>",
+	})
+	if !errors.Is(err, errGated) {
+		t.Fatalf("expected the gate sentinel to survive errors.Is, got %T: %v", err, err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("a gate rejection must issue no request, got %+v", *reqs)
+	}
+}
+
+// gatingHooks refuses the operation before any request is made — a circuit
+// breaker or bulkhead, which SPEC §12 explicitly permits.
+type documentGatingHooks struct {
+	recordingHooks
+	err error
+}
+
+func (h *documentGatingHooks) OnOperationGate(ctx context.Context, op OperationInfo) (context.Context, error) {
+	return ctx, h.err
+}
+
+// A gate error is not a decode error. The classifier lives below the gate, at
+// the one call site whose only origins are the transport and the decoder, so a
+// gating hook's own sentinel travels back untouched and errors.Is still works.
+// Wrapping it would have reported a malformed body for a request that never ran.
+func TestDocumentsService_UpdatePreservesAGatingHookError(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	sentinel := errors.New("circuit breaker open")
+	hooks := &documentGatingHooks{err: sentinel}
+	svc, reqs := testDocumentsCaptureServer(t, fixture, fixture, hooks)
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{Title: "Q3 Plan"})
+	if err == nil {
+		t.Fatal("expected the gate to refuse the call")
+	}
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("expected the gate's own error to survive, got %T: %v", err, err)
+	}
+	var apiErr *Error
+	if errors.As(err, &apiErr) && apiErr.Code == CodeAPI {
+		t.Error("a gate refusal must not be reported as a malformed response")
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests when the gate refuses, got %+v", *reqs)
+	}
+}

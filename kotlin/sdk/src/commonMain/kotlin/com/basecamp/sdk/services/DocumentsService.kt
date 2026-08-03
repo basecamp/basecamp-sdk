@@ -123,9 +123,27 @@ class DocumentsService(client: AccountClient) :
      * cross-service gap tracked out of #576, not something this composite can
      * close.) `content` is nullable on the model — absent or JSON null is
      * genuinely empty, and `""` is what the server already holds.
+     *
+     * `title` is the exception, and it needs a hand-written check the decoder
+     * cannot supply. The field is non-nullable on the model, so an absent or
+     * null title is already refused — but `""` decodes fine, and BC3 can never
+     * render it blank (`Document#title` is `super.presence || "Untitled"`).
+     * A blank title on a 2xx read is therefore a malformed response, and
+     * carrying it into the full-replace PUT would blank the real title on a
+     * call that only touched `content`.
      */
-    private fun fieldsFromDocument(document: Document): DocumentFields =
-        DocumentFields(title = document.title, content = document.content ?: "")
+    private fun fieldsFromDocument(document: Document): DocumentFields {
+        if (document.title.isEmpty()) {
+            throw BasecampException.Api(
+                message = "GetDocument returned a document with a blank \"title\", " +
+                    "but the API never renders it blank",
+                hint = "The merge-safe update/edit resend this field verbatim, so a blank value " +
+                    "would blank the current one. Use replace to write the record deliberately.",
+                retryable = false,
+            )
+        }
+        return DocumentFields(title = document.title, content = document.content ?: "")
+    }
 
     /**
      * PUTs the full writable state via `replace`. Both fields are always sent,
