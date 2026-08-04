@@ -1,0 +1,19 @@
+typescript/src/index.ts
+  s_ae792ed0be3006::t_3c90f3bbbd544a 408,414-416,419,528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "fae3ed2fd02df3df53c49f026e3f8606c2a49256",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
