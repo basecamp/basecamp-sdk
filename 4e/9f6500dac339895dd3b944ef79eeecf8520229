@@ -1,0 +1,81 @@
+conformance/event-feed/fixtures/16-gap-410-accepted-resume.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-119
+conformance/event-feed/fixtures/22-overflow-accepted.json
+  s_62d102ac250358::t_e3ec3eefdf29b1 3,6-8,24-38,84-93,98-100,103-106,113-115,121-134,137-141,147-163,166-171
+  s_62d102ac250358::t_8cb145a704ff2d 1-2,4-5,9-23,39-83,94-97,101-102,107-112,116-120,135-136,142-146,164-165,172-174
+conformance/event-feed/fixtures/24-overflow-handler-terminate.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-100
+Makefile
+  s_62d102ac250358::t_e4e3b6e292b6ef 464,490-492,495-498,501-503,688,1226-1227
+  s_62d102ac250358::t_e3ec3eefdf29b1 493-494,499-500
+conformance/event-feed/fixtures/25-gap-handler-terminate.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-61
+conformance/event-feed/fixtures/04-terminal-rejection.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-23
+conformance/event-feed/fixtures/23-gap-410-default-terminal.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-90
+conformance/event-feed-digest/schema.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-140
+conformance/event-feed/fixtures/19-present-entry-buffered-lower-id.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-25
+conformance/event-feed-digest/README.md
+  s_62d102ac250358::t_85b4c08a8f802f 1-33
+conformance/event-feed/fixtures/03-confirmation-deadline-teardown.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-106
+conformance/event-feed/schema.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-819
+conformance/event-feed/fixtures/12-checkpoint-after-handoff.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-138
+conformance/event-feed/fixtures/28-checkpoint-load-failure.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-35
+conformance/event-feed/fixtures/02-confirmation-gating.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-122
+conformance/event-feed/fixtures/06-protocol-fatal-disconnect.json
+  s_62d102ac250358::t_74556c545a6933 2
+  s_62d102ac250358::t_8cb145a704ff2d 1,3-66
+SPEC.md
+  s_62d102ac250358::t_8cb145a704ff2d 2376-2379,2635-2638,2679,2804-2811,2852-2861,2868-2872
+  s_62d102ac250358::t_e3ec3eefdf29b1 2315,2330-2331,2735-2736
+conformance/event-feed/fixtures/27-hostile-resume-cross-origin.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-60
+conformance/event-feed/fixtures/07-unauthorized-disconnect-reconnects.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-120
+conformance/event-feed/fixtures/01-happy-path-confirm-catchup-stream.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-190
+conformance/event-feed/fixtures/05-fresh-ticket-reconnect-after-ttl.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-163
+conformance/event-feed/fixtures/20-present-entry-post-snapshot-straggler.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-138
+conformance/event-feed/fixtures/21-overflow-default-terminal.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-120
+conformance/event-feed/fixtures/17-remote-disconnect-remint.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-160
+conformance/event-feed/fixtures/26-hostile-next-cross-origin.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-103
+conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-114
+conformance/event-feed-digest/fixtures/srv1-vectors.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-198
+conformance/event-feed/fixtures/29-checkpoint-save-failure-continues.json
+  s_62d102ac250358::t_8cb145a704ff2d 1-6,11-65,69-108,112-124,128-129,134-143
+  s_62d102ac250358::t_74556c545a6933 7-10,66-68,109-111,125-127,130-133
+conformance/event-feed/README.md
+  s_62d102ac250358::t_74556c545a6933 233,244
+  s_62d102ac250358::t_8cb145a704ff2d 1-232,234-243,245-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4e9f6500dac339895dd3b944ef79eeecf8520229",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
