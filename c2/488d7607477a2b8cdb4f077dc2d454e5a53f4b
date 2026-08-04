@@ -1,0 +1,19 @@
+ruby/test/basecamp/services/reports_service_test.rb
+  s_ae792ed0be3006::t_a666d8177bd4f8 57,69,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c2488d7607477a2b8cdb4f077dc2d454e5a53f4b",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
