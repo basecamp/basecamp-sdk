@@ -1,0 +1,41 @@
+MIGRATING.md
+  s_ae792ed0be3006::t_97c604b208c6dc 854-858,863-877
+  s_ae792ed0be3006::t_791a90ef1cb57b 615,618-621
+  s_ae792ed0be3006::t_7f9f63641a2b9c 940-949
+  s_ae792ed0be3006::t_2d42c65cf18758 910
+  s_ae792ed0be3006::t_95fe39a260f39a 846-848
+  s_ae792ed0be3006::t_ab64d9c4707934 556-567,570-571,574-583
+  s_ae792ed0be3006::t_b109d9e3d61b28 1057-1071
+  s_ae792ed0be3006::t_396a1ebeac4f17 226,229-237
+  s_ae792ed0be3006::t_45ed9a55bf22fa 1936
+  s_ae792ed0be3006::t_ce47ff76d56d65 186-190
+  s_ae792ed0be3006::t_0c8df66ad6446c 35-44
+  s_ae792ed0be3006::t_618749715f633a 212-225,227-228,238-243
+  s_ae792ed0be3006::t_4bca2bf09fad7a 772-774,784-790
+  s_ae792ed0be3006::t_4351f1e81b2d8f 1899-1917
+  s_ae792ed0be3006::t_6153e68e7912c2 49
+  s_ae792ed0be3006::t_fff708ebeb4940 1937-1945,1964-1970
+  s_ae792ed0be3006::t_e3d274aa47bd77 19-24,45,47-48,50-55,59-60,63,66-69,167-180,584,622,878-881,1072-1077,1122-1123,1198-1199,1228-1240,1348-1350,1368-1373,1502-1504,1509-1513,1656-1663,1755-1757,1897-1898,1918-1921,1927-1935,1972-1998
+CONTRIBUTING.md
+  s_ae792ed0be3006::t_d9459dcb24ac70 266-270
+.github/workflows/release-github.yml
+  s_ae792ed0be3006::t_ba029c9f34bb55 157-167
+kotlin/README.md
+  s_ae792ed0be3006::t_7071743aa76635 30-58,60-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5525efb3aa5aaa0a1b2e6c6e4d3c957360a4fd71",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

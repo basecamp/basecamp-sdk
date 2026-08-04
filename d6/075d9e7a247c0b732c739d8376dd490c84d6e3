@@ -1,0 +1,47 @@
+MIGRATING.md
+  s_ae792ed0be3006::t_03c21dce01347b 724-730
+  s_ae792ed0be3006::t_32368df95f9491 145-153
+  s_ae792ed0be3006::t_f4b158d1a82a2b 1904-1928
+  s_ae792ed0be3006::t_de0bf44ca66d64 774-786,790-798
+  s_ae792ed0be3006::t_3364ce1f64d0b4 217-218,230-231
+  s_ae792ed0be3006::t_74f9e14f984034 219-221,227-229
+  s_ae792ed0be3006::t_fdb0868000dd58 232-234
+  s_ae792ed0be3006::t_d736f4707ba640 799
+  s_6671406c2cf010::t_70ec79c8152e53 27,29-32,34,211,222-226,235-239,243,245-264,399,442-459,474-484,497,506-509,518-538,542-549,551-553,555,564-581,595,607-617,852-854,1284-1287,1295-1298,1458,1610,1960,2301-2302,2305-2370
+README.md
+  s_ae792ed0be3006::t_48fc3c7a22f64f 7
+go/README.md
+  s_ae792ed0be3006::t_c35c0dcaa52123 9
+kotlin/README.md
+  s_ae792ed0be3006::t_b20a2bc5ba890d 9
+python/README.md
+  s_ae792ed0be3006::t_474a1ba7d0a5f2 9
+ruby/README.md
+  s_ae792ed0be3006::t_8daee834afbacd 5
+typescript/README.md
+  s_ae792ed0be3006::t_090a89782dee4a 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d6075d9e7a247c0b732c739d8376dd490c84d6e3",
+  "prompts": {},
+  "sessions": {
+    "s_6671406c2cf010": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6b9e3eabdfcfb659",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
