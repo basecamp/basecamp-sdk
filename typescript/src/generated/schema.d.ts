@@ -2473,8 +2473,43 @@ export interface paths {
          *     Use GetScheduleEntryOccurrence for recurring entries instead.
          */
         get: operations["GetScheduleEntry"];
-        /** @description Update an existing schedule entry */
-        put: operations["UpdateScheduleEntry"];
+        /**
+         * @description Replace a schedule entry with a new complete representation.
+         *     The request body is the entry's full writable state: a writable field
+         *     omitted from the request is cleared server-side, because BC3 builds a
+         *     brand-new Schedule::Entry from the permitted params and swaps the recordable
+         *     wholesale.
+         *     Three writable fields are carved out of that swap and preserved when the
+         *     request does not address them — participant_ids, url and highlighted, as
+         *     declared by preservedOnOmission. Each is a field a caller could not safely
+         *     resend from a read-back, which is why the guard is server-side: the response
+         *     carries participants (objects, not ids) and join_url (the entry's own url
+         *     key is its Basecamp API URL, a different value under a colliding name).
+         *     Addressing one applies it normally, so participant_ids: [] clears the
+         *     participants, url: "" clears the join link and highlighted: false removes
+         *     the highlight.
+         *     starts_at and ends_at are required: Schedule::Entry validates their presence
+         *     and Recording validates the associated recordable on update, so omitting
+         *     either is a 422 rather than a clear. summary carries no validation — omit it
+         *     and the entry reads back as "Untitled" (Schedule::Entry#summary falls back
+         *     when blank).
+         *     Recurring entries are unreachable here. ensure_non_recurring_event redirects
+         *     both show and update to the entry's occurrence, so this operation serves
+         *     non-recurring entries only; read a recurring entry through
+         *     GetScheduleEntryOccurrence.
+         *     time_zone_name, recurs_until and recurrence_schedule are not modeled: BC3
+         *     forces all three to nil for a non-recurring entry, which is the only kind
+         *     this route serves.
+         *     Subscribers follow the same carve-out logic one level up. A drafted entry
+         *     keeps its current subscribers when the request addresses neither
+         *     subscriptions, notify, nor the participant parameters.
+         *     To set some fields while preserving the rest, use the SDK's merge-safe
+         *     update or edit methods, which GET the current entry and PUT the full
+         *     representation back. Those read-modify-write helpers are not atomic:
+         *     a concurrent write between the GET and PUT is overwritten (last write
+         *     wins for the whole representation; the window is one round-trip).
+         */
+        put: operations["ReplaceScheduleEntry"];
         post?: never;
         delete?: never;
         options?: never;
@@ -5119,6 +5154,47 @@ export interface components {
             content?: string;
         };
         ReplaceDocumentResponseContent: components["schemas"]["Document"];
+        ReplaceScheduleEntryRequestContent: {
+            summary?: string;
+            starts_at: string;
+            ends_at: string;
+            description?: string;
+            /**
+             * @description Replaces the entry's participants.
+             *
+             *     Omitting this member preserves the current participants; sending an empty
+             *     array clears them. That guarantee is BC3-side and recent: until
+             *     basecamp/bc3#12425, `Schedules::EntriesController#update` called
+             *     `replace_participants` unconditionally, so any update omitting the key —
+             *     including the shape in BC3's own "Update a schedule entry" doc example —
+             *     silently removed every participant and notified each one. The controller
+             *     now guards on the request actually addressing participants.
+             */
+            participant_ids?: number[];
+            all_day?: boolean;
+            notify?: boolean;
+            /**
+             * @description The entry's join link — a video-call URL or similar, up to 2500
+             *     characters, validated as a URL when present.
+             *
+             *     Omitting this member preserves the current join link; sending an empty
+             *     string clears it. Read it back as `join_url`, never as `url`: the entry's
+             *     `url` is its own Basecamp API URL, written by a partial that renders
+             *     before this one, so BC3 emits the join link under a non-colliding key.
+             *     Echoing the response's `url` into this member would write the API URL into
+             *     the join link.
+             */
+            url?: string;
+            /**
+             * @description Whether the entry is highlighted on the schedule.
+             *
+             *     Omitting this member preserves the current highlight; sending false
+             *     removes it. Preserved on omission because until basecamp/bc3#12502 the
+             *     field was writable but never returned, so no caller could resend it.
+             */
+            highlighted?: boolean;
+        };
+        ReplaceScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
         ReplaceTodoRequestContent: {
             content: string;
             description?: string;
@@ -5249,10 +5325,43 @@ export interface components {
             summary: string;
             description?: string;
             description_attachments: components["schemas"]["RichTextAttachment"][];
-            all_day?: boolean;
-            starts_at?: string;
-            ends_at?: string;
+            /**
+             * @description Always sent. schedule_entries.all_day is NOT NULL with a false default,
+             *     and every partial that renders an entry emits it.
+             */
+            all_day: boolean;
+            /**
+             * @description Always sent, and a date rather than a timestamp for an all-day entry:
+             *     BC3 renders starts_at_date_or_time, which drops the time component when
+             *     all_day is set.
+             */
+            starts_at: string;
+            /** @description Always sent. See starts_at for the date-vs-timestamp rendering. */
+            ends_at: string;
             participants?: components["schemas"]["Person"][];
+            /**
+             * @description The entry's join link, or null when it has none.
+             *
+             *     Sent under this key rather than `url`, which is the entry's own Basecamp
+             *     API URL: recordings/_recording writes that key first and the entry partial
+             *     renders after it. Write it back through the `url` member of
+             *     ReplaceScheduleEntry — the two spellings are deliberate, not a typo.
+             *
+             *     Optional rather than required because this one structure covers two wire
+             *     shapes. GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
+             *     CreateScheduleEntry and ReplaceScheduleEntry all render
+             *     schedules/entries/_entry, which emits it unconditionally;
+             *     GetUpcomingSchedule renders the reduced schedules/calendar/_entry, which
+             *     does not.
+             */
+            join_url?: string;
+            /**
+             * @description Whether the entry is highlighted on the schedule.
+             *
+             *     Optional for the same reason as join_url: emitted unconditionally by the
+             *     entry partial, absent from the calendar partial GetUpcomingSchedule uses.
+             */
+            highlighted?: boolean;
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -5945,27 +6054,6 @@ export interface components {
             paused?: boolean;
         };
         UpdateQuestionResponseContent: components["schemas"]["Question"];
-        UpdateScheduleEntryRequestContent: {
-            summary?: string;
-            starts_at?: string;
-            ends_at?: string;
-            description?: string;
-            /**
-             * @description Replaces the entry's participants.
-             *
-             *     Omitting this member preserves the current participants; sending an empty
-             *     array clears them. That guarantee is BC3-side and recent: until
-             *     basecamp/bc3#12425, `Schedules::EntriesController#update` called
-             *     `replace_participants` unconditionally, so any update omitting the key —
-             *     including the shape in BC3's own "Update a schedule entry" doc example —
-             *     silently removed every participant and notified each one. The controller
-             *     now guards on the request actually addressing participants.
-             */
-            participant_ids?: number[];
-            all_day?: boolean;
-            notify?: boolean;
-        };
-        UpdateScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
         UpdateScheduleSettingsRequestContent: {
             include_due_assignments: boolean;
         };
@@ -17800,7 +17888,7 @@ export interface operations {
             };
         };
     };
-    UpdateScheduleEntry: {
+    ReplaceScheduleEntry: {
         parameters: {
             query?: never;
             header?: never;
@@ -17809,19 +17897,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateScheduleEntryRequestContent"];
+                "application/json": components["schemas"]["ReplaceScheduleEntryRequestContent"];
             };
         };
         responses: {
-            /** @description UpdateScheduleEntry 200 response */
+            /** @description ReplaceScheduleEntry 200 response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UpdateScheduleEntryResponseContent"];
+                    "application/json": components["schemas"]["ReplaceScheduleEntryResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

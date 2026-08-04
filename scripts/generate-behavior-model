@@ -71,7 +71,15 @@ def process_operation:
       if has_trait("basecamp.traits#basecampWriteSemantics") then
         get_trait("basecamp.traits#basecampWriteSemantics") |
         {mode: .mode} +
-        (if .clearsOmitted != null then {clearsOmitted: .clearsOmitted} else {} end)
+        (if .clearsOmitted != null then {clearsOmitted: .clearsOmitted} else {} end) +
+        # Carve-outs are not optional detail: an SDK reading only
+        # mode+clearsOmitted would conclude that every omitted field clears and
+        # resend all of them, which is the corruption the carve-out exists to
+        # prevent (see the url member on ReplaceScheduleEntry).
+        # check-write-semantics-parity fails when this clause drifts from the
+        # OpenAPI extension. Note this jq program is inside a single-quoted bash
+        # string, so comments here must avoid apostrophes.
+        (if .preservedOnOmission != null then {preservedOnOmission: .preservedOnOmission} else {} end)
       else null end
     ),
     retry: (

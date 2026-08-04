@@ -241,7 +241,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
   Schedule: {
     Schedules: [
       "GetSchedule", "UpdateScheduleSettings", "ListScheduleEntries",
-      "CreateScheduleEntry", "GetScheduleEntry", "UpdateScheduleEntry", "GetScheduleEntryOccurrence",
+      "CreateScheduleEntry", "GetScheduleEntry", "ReplaceScheduleEntry", "GetScheduleEntryOccurrence",
     ],
     Timesheets: ["GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport", "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry", "DestroyTimesheetEntry"],
   },
@@ -435,7 +435,11 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   GetSchedule: "get",
   UpdateScheduleSettings: "updateSettings",
   GetScheduleEntry: "getEntry",
-  UpdateScheduleEntry: "updateEntry",
+  // The plain `updateEntry` name belongs to the merge-safe composite; the raw
+  // single-PUT path keeps a name that says what it does. Without the override
+  // the algorithm yields a bare `replace` (scheduleentry is a SIMPLE_RESOURCE),
+  // which reads as "replace the schedule". See #547.
+  ReplaceScheduleEntry: "replaceEntry",
   CreateScheduleEntry: "createEntry",
   ListScheduleEntries: "listEntries",
   GetScheduleEntryOccurrence: "getEntryOccurrence",

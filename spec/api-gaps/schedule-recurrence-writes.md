@@ -13,7 +13,7 @@ bc3_refs:
     - app/controllers/schedules/entries_controller.rb
   related_existing_api:
     - CreateScheduleEntry
-    - UpdateScheduleEntry
+    - ReplaceScheduleEntry
     - GetScheduleEntry
 ---
 
@@ -112,7 +112,7 @@ cannot even tell that an entry it reads back is part of one.
 ## Suggested API shape
 
 Additive optional members on the existing `CreateScheduleEntry` /
-`UpdateScheduleEntry` inputs: a `recurrence_schedule` structure (enum-typed
+`ReplaceScheduleEntry` inputs: a `recurrence_schedule` structure (enum-typed
 `frequency`; integer list `days`; bounded integers per the table) plus
 top-level `recurs_until: ISO8601Date`.
 

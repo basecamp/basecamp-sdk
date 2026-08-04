@@ -1016,7 +1016,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1075,6 +1075,14 @@ test-enhance-request-reachability:
 # in the read-only ops). Bash+jq — runs anywhere, enforced in CI.
 check-idempotency-parity:
 	@./scripts/check-idempotency-parity
+
+# Verify every x-basecamp-write-semantics extension in openapi.json equals the
+# matching `write` clause in behavior-model.json, both directions. The two come
+# from different tools, and generate-behavior-model builds its clause key by
+# key, so a trait field it was never taught about is dropped silently. Bash+jq.
+check-write-semantics-parity:
+	@echo "==> Checking write-semantics parity..."
+	@./scripts/check-write-semantics-parity
 
 # Verify every SDK's emitted per-operation retry metadata equals
 # behavior-model.json, and that each SDK still consumes the fields it claims to.
@@ -1136,7 +1144,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

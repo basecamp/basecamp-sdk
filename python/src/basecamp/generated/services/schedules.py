@@ -19,20 +19,22 @@ class SchedulesService(BaseService):
             operation="GetScheduleEntry",
         )
 
-    def update_entry(
+    def replace_entry(
         self,
         *,
         entry_id: int,
+        starts_at: str,
+        ends_at: str,
         summary: str | None = None,
-        starts_at: str | None = None,
-        ends_at: str | None = None,
         description: str | None = None,
         participant_ids: list[int] | None = None,
         all_day: bool | None = None,
         notify: bool | None = None,
+        url: str | None = None,
+        highlighted: bool | None = None,
     ) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="schedules", operation="update_entry", is_mutation=True, resource_id=entry_id),
+            OperationInfo(service="schedules", operation="replace_entry", is_mutation=True, resource_id=entry_id),
             "PUT",
             f"/schedule_entries/{entry_id}",
             json_body=self._compact(
@@ -43,8 +45,10 @@ class SchedulesService(BaseService):
                 participant_ids=participant_ids,
                 all_day=all_day,
                 notify=notify,
+                url=url,
+                highlighted=highlighted,
             ),
-            operation="UpdateScheduleEntry",
+            operation="ReplaceScheduleEntry",
         )
 
     def get_entry_occurrence(self, *, entry_id: int, date: str) -> dict[str, Any]:
@@ -127,20 +131,22 @@ class AsyncSchedulesService(AsyncBaseService):
             operation="GetScheduleEntry",
         )
 
-    async def update_entry(
+    async def replace_entry(
         self,
         *,
         entry_id: int,
+        starts_at: str,
+        ends_at: str,
         summary: str | None = None,
-        starts_at: str | None = None,
-        ends_at: str | None = None,
         description: str | None = None,
         participant_ids: list[int] | None = None,
         all_day: bool | None = None,
         notify: bool | None = None,
+        url: str | None = None,
+        highlighted: bool | None = None,
     ) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="schedules", operation="update_entry", is_mutation=True, resource_id=entry_id),
+            OperationInfo(service="schedules", operation="replace_entry", is_mutation=True, resource_id=entry_id),
             "PUT",
             f"/schedule_entries/{entry_id}",
             json_body=self._compact(
@@ -151,8 +157,10 @@ class AsyncSchedulesService(AsyncBaseService):
                 participant_ids=participant_ids,
                 all_day=all_day,
                 notify=notify,
+                url=url,
+                highlighted=highlighted,
             ),
-            operation="UpdateScheduleEntry",
+            operation="ReplaceScheduleEntry",
         )
 
     async def get_entry_occurrence(self, *, entry_id: int, date: str) -> dict[str, Any]:

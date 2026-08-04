@@ -71,13 +71,13 @@ public final class SchedulesService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func updateEntry(entryId: Int, req: UpdateScheduleEntryRequest) async throws -> ScheduleEntry {
+    public func replaceEntry(entryId: Int, req: ReplaceScheduleEntryRequest) async throws -> ScheduleEntry {
         return try await request(
-            OperationInfo(service: "Schedules", operation: "UpdateScheduleEntry", resourceType: "schedule_entry", isMutation: true, resourceId: entryId),
+            OperationInfo(service: "Schedules", operation: "ReplaceScheduleEntry", resourceType: "schedule_entry", isMutation: true, resourceId: entryId),
             method: "PUT",
             path: "/schedule_entries/\(entryId)",
             body: req,
-            retryConfig: Metadata.retryConfig(for: "UpdateScheduleEntry")
+            retryConfig: Metadata.retryConfig(for: "ReplaceScheduleEntry")
         )
     }
 
