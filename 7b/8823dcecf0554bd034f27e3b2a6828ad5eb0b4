@@ -1,0 +1,152 @@
+SPEC.md
+  s_ae792ed0be3006::t_613cf40d32d1f3 459
+  s_ae792ed0be3006::t_adfb5468816f08 3322
+  s_ae792ed0be3006::t_07753be5cbeba4 1047-1085
+  s_ae792ed0be3006::t_d5eb5fa816aa82 2037
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  s_ae792ed0be3006::t_7046f1ad076049 19-22
+  s_ae792ed0be3006::t_cdedb3787b4280 552-605
+  s_ae792ed0be3006::t_6a439198742f94 205
+  s_ae792ed0be3006::t_d29bff5af7a0b4 48-52
+  s_ae792ed0be3006::t_d083543a98df6d 422-426
+go/pkg/basecamp/reports_test.go
+  s_ae792ed0be3006::t_48a97ff6a3da21 100-106,109
+  s_ae792ed0be3006::t_41d3ea12f902b0 5-6,10-22
+  s_ae792ed0be3006::t_6fdc3440d26008 99,108,113-114,116-117,119-120,122-127,129-130,132-133,135-138,140-141,143-144,146-147,150-154,156-157,159-160,162-163,166-176,178-188,191-202,204-205,207-222
+  s_ae792ed0be3006::t_28979c343992e8 23
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_ae792ed0be3006::t_e04d00980d16b3 104-141
+  s_ae792ed0be3006::t_3ce0845159f548 575-587
+spec/fixtures/manifest.yaml
+  s_ae792ed0be3006::t_3e0d94333649a3 267-272
+  s_ae792ed0be3006::t_29419db02dc810 126-171
+python/tests/services/test_reports_service.py
+  s_ae792ed0be3006::t_6abd75afc1b8ec 1-133
+go/pkg/basecamp/reports.go
+  s_ae792ed0be3006::t_55ced98ea86dfa 169-206,208-214,229-241,252
+swift/Tests/BasecampTests/UpcomingScheduleDecodeTests.swift
+  s_ae792ed0be3006::t_6a7d700755c560 1-167
+spec/basecamp.smithy
+  s_ae792ed0be3006::t_889ba83dc113f8 8198-8213,8218
+  s_ae792ed0be3006::t_3b3a4155a8b6a4 3660-3674,3678-3681
+  s_ae792ed0be3006::t_084e6518303d2e 8555-8565,8567-8568
+  s_ae792ed0be3006::t_b69052503b06d4 2844-2869,2872-2883
+  s_ae792ed0be3006::t_31295b52736f7c 8406-8417,8420-8454,8456-8551,8553,8569-8628
+  s_ae792ed0be3006::t_12e6ed563e8b06 2870-2871
+  s_ae792ed0be3006::t_c1395c9af35aa9 8176-8183,8190,8214,8219,8225-8239
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_87bec4c2a6ae09 1169-1173
+  s_ae792ed0be3006::t_63bbc9533309cf 324-335
+  s_ae792ed0be3006::t_02a8ea53e19fc2 535-576
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_46b678e7b81916 202-242
+  s_ae792ed0be3006::t_04b62dcc08df8e 470-481
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_ae792ed0be3006::t_1855bc3a1b9725 368-398
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_cc93975fd04c5b 602-611
+  s_ae792ed0be3006::t_61f820766d4244 198-244
+conformance/runner/go/main.go
+  s_ae792ed0be3006::t_f57c5e864c7eee 1017-1058
+  s_ae792ed0be3006::t_1514c6a82d7136 235-243
+spec/fixtures/schedules/upcoming.json
+  s_ae792ed0be3006::t_5c6308e9630a70 1-129
+scripts/enhance-openapi-go-types.sh
+  s_ae792ed0be3006::t_be15b0821d0ecc 258-273
+  s_ae792ed0be3006::t_7e873816eeaf3d 352-359
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_ae792ed0be3006::t_466d4fe60f52fa 24-61
+  s_ae792ed0be3006::t_ff17ebaaad6ab6 1205-1219
+ruby/test/basecamp/services/reports_service_test.rb
+  s_ae792ed0be3006::t_b9b0a653283481 33-41,43-46,48,51-74,77-86,88,91,93-94
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/UpcomingScheduleDecodeTest.kt
+  s_ae792ed0be3006::t_142fa01e9909a2 181
+  s_ae792ed0be3006::t_7d4ede0da28383 1-6,8-180,182-190
+  s_ae792ed0be3006::t_595d062d0e9d08 7
+behavior-model.json
+  s_ae792ed0be3006::t_b07f8ee477ea67 3152-3155
+conformance/tests/upcoming_schedule.json
+  s_ae792ed0be3006::t_ab8a77f9431715 1-404
+go/pkg/generated/client.gen.go
+  s_ae792ed0be3006::t_e6edb1bec67704 701-749,1616-1629,3222-3439,4366-4370,19076-19083,19088-19095,31410,45566-45571
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/UpcomingAssignable.kt
+  s_ae792ed0be3006::t_078a171bebae03 1-32
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/UpcomingAssignableCompletion.kt
+  s_ae792ed0be3006::t_87606618393d23 1-17
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/UpcomingAssignableParent.kt
+  s_ae792ed0be3006::t_0b9b066e603e3c 1-17
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/UpcomingScheduleBucket.kt
+  s_ae792ed0be3006::t_afd912667e8e27 1-17
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/UpcomingScheduleEntry.kt
+  s_ae792ed0be3006::t_8459bceecc6847 1-30
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/UpcomingSchedulePerson.kt
+  s_ae792ed0be3006::t_4070fc0a23f13f 1-18
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_ae792ed0be3006::t_5c9a28371f0943 879-881
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/reports.kt
+  s_ae792ed0be3006::t_75ba2dac2eaf34 6-7,18-24,70-71,73,83-84,89
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/schedules.kt
+  s_ae792ed0be3006::t_d28ddf8077f88a 178-180
+openapi.json
+  s_ae792ed0be3006::t_2967dacb132d87 18325,18342,18344-18347,18352,18354-18357,18371-18380,27506-27517,29410,29412,29417,29419,29424,29426,29428-29433,33267-33528
+python/src/basecamp/generated/services/reports.py
+  s_ae792ed0be3006::t_6d61694dac25b2 23,72
+python/src/basecamp/generated/services/schedules.py
+  s_ae792ed0be3006::t_2872a47d293fa5 103-105,121-123,221-223,239-241
+python/src/basecamp/generated/types.py
+  s_ae792ed0be3006::t_abf68ada80cacc 511,515,518,901-903,1809-1867
+ruby/lib/basecamp/generated/metadata.json
+  s_ae792ed0be3006::t_ef254939820efe 4
+ruby/lib/basecamp/generated/services/reports_service.rb
+  s_ae792ed0be3006::t_85b20f206d0c40 22-23,25
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_ae792ed0be3006::t_f98a36379d49fa 118-151,155,157
+ruby/lib/basecamp/generated/types.rb
+  s_ae792ed0be3006::t_f85d9288308221 4,4596-4815
+swift/Sources/Basecamp/Generated/Models/CreateScheduleEntryRequest.swift
+  s_ae792ed0be3006::t_7fb77aa49100de 8,12,15,22,26,29,35,39,42
+swift/Sources/Basecamp/Generated/Models/GetUpcomingScheduleResponseContent.swift
+  s_ae792ed0be3006::t_d72a3565b3c65e 5-13
+swift/Sources/Basecamp/Generated/Models/UpcomingAssignable.swift
+  s_ae792ed0be3006::t_bac8b658d387df 1-60
+swift/Sources/Basecamp/Generated/Models/UpcomingAssignableCompletion.swift
+  s_ae792ed0be3006::t_d1e4730c093b78 4-11
+swift/Sources/Basecamp/Generated/Models/UpcomingAssignableParent.swift
+  s_ae792ed0be3006::t_210c4b798fda9a 1-12
+swift/Sources/Basecamp/Generated/Models/UpcomingScheduleBucket.swift
+  s_ae792ed0be3006::t_c208f62a3a5a95 1-12
+swift/Sources/Basecamp/Generated/Models/UpcomingScheduleEntry.swift
+  s_ae792ed0be3006::t_d9af284442a9b4 1-54
+swift/Sources/Basecamp/Generated/Models/UpcomingSchedulePerson.swift
+  s_ae792ed0be3006::t_50f00eb12e5ae6 1-14
+swift/Sources/Basecamp/Generated/Services/ReportsService.swift
+  s_ae792ed0be3006::t_edb16d8fc504ee 99,101-102
+typescript/src/generated/metadata.ts
+  s_ae792ed0be3006::t_96350853ec89f3 40
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_96171e89380f2a 16339,16345,16347-16350,16355,16357-16360,16374-16383,24765-24776,26669,26671,26676,26678,26683,26685,26687-26692,30526-30787
+typescript/src/generated/schema.d.ts
+  s_ae792ed0be3006::t_72f19ba9f89e42 2368-2375,3834-3876,4493-4508,5999-6195,17731-17735,17752-17760
+typescript/src/generated/services/reports.ts
+  s_ae792ed0be3006::t_7fcf6ebb7a7972 85-86,91,94,105
+typescript/src/generated/services/schedules.ts
+  s_ae792ed0be3006::t_512b993756c0d3 112-148,415-417
+typescript/tests/services/reports.test.ts
+  s_ae792ed0be3006::t_6a5b30bda90e83 13,160-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7b8823dcecf0554bd034f27e3b2a6828ad5eb0b4",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
