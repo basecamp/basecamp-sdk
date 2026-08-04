@@ -4,6 +4,8 @@ Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-
 
 OpenAPI 3.1 spec included.
 
+**Upgrading?** Read [MIGRATING.md](MIGRATING.md) *before* you bump the version. v0.13.0 breaks all six SDKs, and a large share of those breaks are silent — no compile error, no exception, no decoder failure.
+
 ## Languages
 
 | Language | Path | Status | Package |

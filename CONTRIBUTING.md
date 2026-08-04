@@ -258,6 +258,16 @@ All SDKs are generated from a single Smithy specification. When adding support f
      by hand (Dependabot labels its own PRs), never by the path labeler — a
      feature that touches docs or a manifest should read as a feature.
 
+   - If the change breaks consumers, add a section to
+     [`MIGRATING.md`](MIGRATING.md). Label-generated notes list what merged;
+     they cannot say which changes a consumer must react to, what wrong
+     behaviour they get if they don't, or which breaks are silent. That is what
+     `MIGRATING.md` carries, and it is the only place it lives — there is no
+     CHANGELOG and the GitHub Release body is built entirely by
+     `.github/workflows/release-github.yml` (an Installation block plus
+     `generate_release_notes`). A breaking release should link its
+     `MIGRATING.md` section from the release description by hand.
+
 ## Spec-shape lints
 
 The repo enforces a small set of structural invariants on the OpenAPI spec
