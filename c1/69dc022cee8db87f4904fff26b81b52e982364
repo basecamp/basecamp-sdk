@@ -1,0 +1,39 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/DocumentsService.kt
+  s_7971b60690ffce::t_fd0588e7e20d29 98-100
+  s_7971b60690ffce::t_377c8b47bd3cea 121-122
+  s_7971b60690ffce::t_3d08412b916398 123-125
+conformance/tests/todos_write.json
+  s_7971b60690ffce::t_fc30a439d98770 553,717
+  s_7971b60690ffce::t_f8cabdf40f1bf8 767-928
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DocumentsServiceTest.kt
+  s_7971b60690ffce::t_1998bbadb17564 84-86
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DecoderStrictnessTest.kt
+  s_7971b60690ffce::t_03a0fcf4253f35 1-108
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodolistsService.kt
+  s_7971b60690ffce::t_6c3c7991534835 103-105
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodolistsServiceTest.kt
+  s_7971b60690ffce::t_fe1dff43731024 350,352-359,362-365,367-370,372-380
+  s_7971b60690ffce::t_a2275fe78c223b 317-321
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampClient.kt
+  s_7971b60690ffce::t_c258510b9c194a 156-168
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/SchedulesService.kt
+  s_7971b60690ffce::t_c5e0fed7c586a1 280-282
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/SchedulesServiceTest.kt
+  s_7971b60690ffce::t_44aa9061e24612 475-477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c169dc022cee8db87f4904fff26b81b52e982364",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
