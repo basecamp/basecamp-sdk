@@ -1,0 +1,123 @@
+python/src/basecamp/services/_merge_safe.py
+  s_ae792ed0be3006::t_a31a03b388f960 109-169
+spec/basecamp-traits.smithy
+  s_ae792ed0be3006::t_526a4207acd985 88-110
+spec/basecamp.smithy
+  s_ae792ed0be3006::t_f9f0409d4b05db 3583-3585,3587-3590,3592-3593,3596-3614
+  s_ae792ed0be3006::t_437533b846e6c0 2854-2887,2891,2893-2895,2899,2909-2910,2912-2913,2915,2929-2944,2947
+  s_ae792ed0be3006::t_4d6b8d00f813c2 3506
+  s_ae792ed0be3006::t_976227662df384 125
+  s_ae792ed0be3006::t_102f7edbbdeeb9 54
+scripts/check-write-semantics-parity
+  s_ae792ed0be3006::t_6ff5343ed25d72 1-70
+scripts/generate-behavior-model
+  s_ae792ed0be3006::t_e5d5ba161dceff 78-81
+  s_ae792ed0be3006::t_0fe9f2121f5026 74-77,82
+ruby/lib/basecamp/services/merge_safe.rb
+  s_ae792ed0be3006::t_2f3b803f078ef5 106-171
+typescript/src/services/merge-safe.ts
+  s_ae792ed0be3006::t_9bdba5b602c1c6 113-114,116,118-185
+  s_ae792ed0be3006::t_c965557b87fdf4 112,115,117
+COORDINATION.md
+  s_ae792ed0be3006::t_6973172b6c3605 12
+Makefile
+  s_ae792ed0be3006::t_61e573ead76056 1019,1079-1086
+SPEC.md
+  s_ae792ed0be3006::t_86ce1504d71cda 1216,3078
+behavior-model.json
+  s_ae792ed0be3006::t_d7454ea545f7ee 2444-2464
+conformance/tests/schedule_entries_write.json
+  s_ae792ed0be3006::t_683eeb5db78775 3-5,12-14,33-36,38-39,43-44,87-91,98-109,115-124,131-133,137-139,147-151,170-173,175-176,180-298,341-345,348-361,370-1503
+go/pkg/basecamp/api-provenance.json
+  s_ae792ed0be3006::t_f52e2142ff1468 4-5
+go/pkg/basecamp/url-routes.json
+  s_ae792ed0be3006::t_fde2a009e3df6c 2075
+go/pkg/basecamp/version.go
+  s_ae792ed0be3006::t_54149378308e6a 7
+go/pkg/generated/client.gen.go
+  s_ae792ed0be3006::t_2d75571be0de5d 2387-2428,2537-2539,2551-2591,4457-4458,5662-5663,5665,8473,8475,8478-8479,8483,8486-8487,19167-19168,19175,19178-19179,22787,23037,23285,24108-24109,24112-24113,24952-24953,24955,31379,31382,31391,31399,31407,35516-35518,35522,35525-35526,35530,45639-45640,45647,45654
+go/templates/client.tmpl
+  s_ae792ed0be3006::t_9b947f4ac74045 1832-1833,1837
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_ae792ed0be3006::t_7ef8694e4a1d9e 85,282-286
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_ae792ed0be3006::t_5113f8b53c1925 32
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_ae792ed0be3006::t_7cbc5747e940af 209
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ScheduleEntry.kt
+  s_ae792ed0be3006::t_d42dfd55ba889a 30-32,39-40
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_ae792ed0be3006::t_ce7157715dfbf1 848-849,851-852,856-858
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/schedules.kt
+  s_ae792ed0be3006::t_6d313ab0ad59f8 36,40,43,52-53,58-59
+openapi.json
+  s_ae792ed0be3006::t_97905cd50f06fc 5,18997-18998,19003,19006-19007,19033,19037,19107-19115,31592-31645,32009-32010,32014,32022,32035-32042,32052,32058,32062
+python/scripts/generate_services.py
+  s_ae792ed0be3006::t_58125c42b370ca 108,244-248
+python/src/basecamp/_version.py
+  s_ae792ed0be3006::t_aeb378f260d68d 2
+python/src/basecamp/generated/metadata.json
+  s_ae792ed0be3006::t_8c34aab39f9ce1 2074-2085
+python/src/basecamp/generated/services/schedules.py
+  s_ae792ed0be3006::t_0870a81318e296 22,26-27,33-34,37,48-49,51,134,138-139,145-146,149,160-161,163
+python/src/basecamp/generated/types.py
+  s_ae792ed0be3006::t_97a63c3c5c1c7d 1413-1424,1501,1513-1514,1517,1520
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_ae792ed0be3006::t_54da0f05abfcba 19,22-23,36-49,51-53
+ruby/lib/basecamp/generated/types.rb
+  s_ae792ed0be3006::t_70077b48f420b6 4,3779,3783,3787,3793,3797,3811-3812,3819,3825,3829,3843-3844
+ruby/lib/basecamp/version.rb
+  s_ae792ed0be3006::t_9334688cf4abbc 5
+ruby/scripts/generate-services.rb
+  s_ae792ed0be3006::t_6ad82592f371f6 107,239-243
+spec/api-gaps/schedule-recurrence-writes.md
+  s_ae792ed0be3006::t_1616cc64edfb45 16,115
+spec/api-provenance.json
+  s_ae792ed0be3006::t_7e87c92b4a36e3 4-5
+spec/bc3-routes.json
+  s_ae792ed0be3006::t_9a7e2e5b487c4e 8-9
+spec/overlays/tags.smithy
+  s_ae792ed0be3006::t_dc37d7766a252a 74
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_ae792ed0be3006::t_45bbf104c89f96 30
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_ae792ed0be3006::t_ee7e36bd9938cd 192,280
+swift/Sources/Basecamp/Generated/Models/ReplaceScheduleEntryRequest.swift
+  s_ae792ed0be3006::t_4eb9f1d9547c0a 4,7-8,11,13,18-19,22-24,29,34
+swift/Sources/Basecamp/Generated/Models/ScheduleEntry.swift
+  s_ae792ed0be3006::t_67a8b0cf76b6ad 5,11,15,29-30,35,41,45,59-60,64,70,74,88-89
+swift/Sources/Basecamp/Generated/Services/SchedulesService.swift
+  s_ae792ed0be3006::t_6bb37a7fcf13ac 74,76,80
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_ae792ed0be3006::t_11811441fe5f42 147-151
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  s_ae792ed0be3006::t_9e9e54067fee4d 84
+typescript/scripts/generate-services.ts
+  s_ae792ed0be3006::t_0d6299d17f5e39 244,438-442
+typescript/src/client.ts
+  s_ae792ed0be3006::t_c61fb3a14cfac1 264
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_5e401004f3b06a 5,16932-16933,16938,16941-16942,16957,16961,17031-17039,28851-28904,29268-29269,29273,29281,29294-29301,29311,29317,29321
+typescript/src/generated/path-mapping.ts
+  s_ae792ed0be3006::t_d040a5dd09dad4 150
+typescript/src/generated/schema.d.ts
+  s_ae792ed0be3006::t_6f11c4300b8be8 2476-2512,5157-5197,5328-5340,5342-5364,17891,17900,17902,17906,17912
+typescript/src/generated/services/schedules.ts
+  s_ae792ed0be3006::t_7fbcdd02783fa2 23,25,29,31,48-63,149,151,153,157,160-166,170,188-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2460c53ef1451acdbd2b98b6ead48f26ce7e61f1",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
