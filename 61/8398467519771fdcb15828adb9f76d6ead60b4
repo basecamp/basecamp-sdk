@@ -1,0 +1,55 @@
+go/pkg/generated/client.gen.go
+  s_ae792ed0be3006::t_00118ebc932b07 2605-2608,2620-2634
+openapi.json
+  s_ae792ed0be3006::t_a159cc1c6100ba 32023,32027
+ruby/lib/basecamp/generated/metadata.json
+  s_5628abaf507422::t_71012672110ff9 4
+ruby/lib/basecamp/generated/types.rb
+  s_5628abaf507422::t_625ac438da6eb9 4,4750,4754
+typescript/src/generated/metadata.ts
+  s_ae792ed0be3006::t_b502791b61d145 40
+typescript/src/generated/openapi-stripped.json
+  s_d32e62340bb1a3::t_07b2e90065ceec 29282,29286,30715,30717,30723,30725
+typescript/src/generated/schema.d.ts
+  s_391054c563ee20::t_a8a79dd583206c 5420-5434,5440-5443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "618398467519771fdcb15828adb9f76d6ead60b4",
+  "prompts": {},
+  "sessions": {
+    "s_391054c563ee20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f769480-88e1-47dd-8e6d-7d15faf063b2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_5628abaf507422": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc9ac-c16c-71a0-8cc8-4a7b8ce1d2ab",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d32e62340bb1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f4b5f9-808e-4d60-8f6e-5939f9b39469",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
