@@ -1,0 +1,22 @@
+AGENTS.md
+  s_ae792ed0be3006::t_f994cb1c066d5f 39
+typescript/tests/services/schedules.test.ts
+  s_ae792ed0be3006::t_bd7ac5170ae5d8 644-648,650-652
+  s_ae792ed0be3006::t_0efd601804056e 674,676-677
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "16fc80d79a5f9f0ae583fa23ea40c866c36c476b",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
