@@ -74,10 +74,18 @@ report() {
   fail=1
 }
 
-# Parse one shell-ish line and echo a reason for each npm invocation that is not
-# on the allowlist. Silent when every npm invocation in the line is permitted.
+# Parse one shell-ish line, appending to REASONS for each npm invocation that is
+# not on the allowlist. Leaves REASONS empty when every invocation is permitted.
+#
+# Writes to a global rather than echoing: a `< <(scan_line …)` process
+# substitution forks a subshell per call, and calling it on every tracked line
+# under scripts/ cost ~234s. Callers pre-filter to lines containing "npm", and
+# this runs in-process, which puts the whole gate back under a second.
+declare -a REASONS=()
+
 scan_line() {
   local line=$1
+  REASONS=()
   local -a words
   read -r -a words <<<"$line"
 
@@ -111,15 +119,21 @@ scan_line() {
         break
       done
 
-      if [[ -n $sub ]]; then
-        if [[ $ALLOWED_SUBCOMMANDS != *" $sub "* ]]; then
-          echo "\`npm $sub\` is not on the permitted-invocation allowlist"
-        elif [[ $sub == audit ]]; then
-          # `npm audit fix` writes the lockfile; plain `npm audit` reports.
-          local k=$((j + 1))
-          while ((k < n)) && [[ ${words[k]} == -* ]]; do ((k += 1)); done
-          ((k < n)) && [[ ${words[k]} =~ ^fix ]] && echo "\`npm audit fix\` rewrites the lockfile"
-        fi
+      if [[ -z $sub ]]; then
+        # Ran off the end of the line, or hit an operator, without reading a
+        # subcommand. A backslash continuation splits `npm --prefix \` from the
+        # `typescript install` on the next line, and each half alone looks
+        # harmless — so an npm invocation we cannot resolve is reported rather
+        # than assumed innocent. This is the fail-closed direction.
+        REASONS+=("npm invocation with no parsable subcommand (line continuation?)")
+      elif [[ $ALLOWED_SUBCOMMANDS != *" $sub "* ]]; then
+        REASONS+=("\`npm $sub\` is not on the permitted-invocation allowlist")
+      elif [[ $sub == audit ]]; then
+        # `npm audit fix` writes the lockfile; plain `npm audit` reports.
+        local k=$((j + 1))
+        while ((k < n)) && [[ ${words[k]} == -* ]]; do ((k += 1)); done
+        ((k < n)) && [[ ${words[k]} =~ ^fix ]] && \
+          REASONS+=("\`npm audit fix\` rewrites the lockfile")
       fi
     fi
     ((i += 1))
@@ -127,10 +141,13 @@ scan_line() {
 }
 
 check_text() {   # file, line-label, text
+  # Cheap reject first: the parser only has something to say about lines that
+  # mention npm at all, and almost none of them do.
+  [[ $3 == *npm* ]] || return 0
+  scan_line "$3"
+  ((${#REASONS[@]} == 0)) && return 0
   local reason
-  while IFS= read -r reason; do
-    [[ -n $reason ]] && report "$1" "$2" "$reason" "$3"
-  done < <(scan_line "$3")
+  for reason in "${REASONS[@]}"; do report "$1" "$2" "$reason" "$3"; done
 }
 
 # 1. package.json lifecycle scripts. This is where the #612 defect lived: the
@@ -149,12 +166,14 @@ done < <(git ls-files '*package.json' ':!:**/node_modules/**')
 
 # 2. Makefile recipes. Recipe lines are the tab-indented ones; comments and
 #    variable assignments are not executed and must not trip the gate.
+#    `grep -n npm` rather than `grep -n ''`: only lines mentioning npm can carry
+#    a violation, and the parser is far too slow to run on all 60k tracked lines.
 while IFS=: read -r lineno text; do
   [[ "$text" =~ ^$'\t' ]] || continue
   stripped="${text#"${text%%[![:space:]]*}"}"
   [[ "$stripped" == \#* ]] && continue
   check_text "Makefile" "$lineno" "$stripped"
-done < <(grep -n '' Makefile)
+done < <(grep -n npm Makefile)
 
 # 3. Scripts under scripts/, which is what those Makefile recipes actually run.
 #    Without this, the exemption above would be unreachable decoration and the
@@ -169,7 +188,7 @@ while IFS= read -r script; do
     stripped="${text#"${text%%[![:space:]]*}"}"
     [[ "$stripped" == \#* ]] && continue
     check_text "$script" "$lineno" "$stripped"
-  done < <(grep -n '' "$script" 2>/dev/null)
+  done < <(grep -n npm "$script" 2>/dev/null)
 done < <(git ls-files 'scripts/*')
 
 if [[ $fail -eq 0 ]]; then

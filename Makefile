@@ -1147,7 +1147,8 @@ test-check-readme-env-vars:
 # subcommand (`npm --prefix ../x install`), so a denylist cannot enumerate the
 # writers. Covers package.json lifecycle scripts, Makefile recipes, and
 # scripts/, exempting the one deliberate writer (scripts/bump-version.sh).
-# Bash+jq, static, 0.2s.
+# Bash+jq, static, ~0.6s: the parser runs in-process and only on lines that
+# mention npm, because a subshell per tracked line cost 234s.
 check-npm-lockfile-readonly:
 	@./scripts/check-npm-lockfile-readonly
 

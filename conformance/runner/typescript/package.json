@@ -6,7 +6,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "pretest": "node -e \"if(!require('fs').existsSync('../../../typescript/dist/index.js')){console.error('SDK not built. Run: make conformance-typescript (or make ts-build, then npm test here).');process.exit(1)}\"",
+    "pretest": "node assert-sdk-built.mjs",
     "test": "vitest run"
   },
   "devDependencies": {

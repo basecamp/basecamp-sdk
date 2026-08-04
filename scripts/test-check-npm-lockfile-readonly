@@ -128,6 +128,19 @@ expect_reject "npx-style npm@11 pin" \
   "$(make_fixture writer_pinned 'npx --yes npm@11 install --package-lock-only')" \
   'npm install'
 
+# A backslash continuation splits the invocation across two lines, and each half
+# alone looks harmless: `npm --prefix \` has no subcommand, and `typescript
+# install` has no npm. Reported because it cannot be resolved, not because it was
+# recognised — an npm invocation the parser cannot read is the failing case.
+expect_reject "npm --prefix \\ <newline> install (line continuation)" \
+  "$(make_fixture writer_continuation 'true' 'npm --prefix \\
+	typescript install')" \
+  'no parsable subcommand'
+
+expect_reject "a bare npm with its subcommand off the end of the line" \
+  "$(make_fixture writer_bare 'npm --prefix')" \
+  'no parsable subcommand'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \
