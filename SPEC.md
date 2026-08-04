@@ -2805,12 +2805,17 @@ RECORD PollPage         -- the body envelope IS the contract; never bind to resp
 END
 -- Poll errors carry a kind: transient | throttled(retry_after) | position_invalid |
 -- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url) |
--- unauthorized | unrecoverable(error).
+-- unauthorized | redirect_refused(location_origin) | unrecoverable(error).
 -- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
 -- 429/503 and §7-retryable outcomes exhausted inside the seam → transient/throttled;
 -- the feed's 400/409/410 matrix → its four kinds; 401/403 (after the seam's own token
--- refresh and retry budget) → unauthorized; anything else non-retryable (404, 405,
--- unexpected shapes) → unrecoverable, carrying the generated error verbatim.
+-- refresh and retry budget) → unauthorized; a 3xx whose Location fails the per-hop
+-- same-origin/no-downgrade validation (auto-follow is disabled — Continuation and
+-- Resume URL Validation) → redirect_refused, carrying the refused Location redacted to
+-- its origin → Terminal(`invalid_continuation`), NEVER unrecoverable; anything else
+-- non-retryable (404, 405, unexpected shapes) → unrecoverable, carrying the generated
+-- error verbatim. A same-origin Location may be followed inside the seam under the same
+-- per-hop rule (no error surfaces).
 
 INTERFACE CableTransport
   dial(ws_url, cancellation, max_frame_bytes) → CableConn
