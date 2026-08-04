@@ -6,7 +6,7 @@
 
 Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#kotlin) before you bump the version — Kotlin carries five breaks your compiler will not catch, all of which give no signal at all.
+**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#kotlin) before you bump the version — Kotlin carries seven breaks your compiler will not catch — six that give no signal at all, and one that throws only when the field is present and carries a JSON number or boolean where the model declares a string.
 
 ## Features
 
