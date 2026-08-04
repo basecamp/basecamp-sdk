@@ -2,6 +2,8 @@
 
 Official Ruby SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
+**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#ruby) before you bump the version — Ruby carries eleven breaks nothing catches at load time — ten with no signal at all, and one that raises only on a record where the field is populated.
+
 ## Requirements
 
 - Ruby 3.2+

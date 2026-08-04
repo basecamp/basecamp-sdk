@@ -154,6 +154,17 @@ jobs:
           SEMVER: ${{ steps.version.outputs.semver }}
         run: |
           {
+            # Upgrade notes are hand-written and live in MIGRATING.md. Link them
+            # from every release body: the label-generated notes below list what
+            # merged, not what a consumer has to change, and a link added by hand
+            # at tag time is a link that gets forgotten. Guarded on the file so a
+            # tag predating MIGRATING.md cannot emit a dead link.
+            if [ -f MIGRATING.md ]; then
+              echo "## Upgrading"
+              echo ""
+              echo "Read [MIGRATING.md](https://github.com/basecamp/basecamp-sdk/blob/${VERSION}/MIGRATING.md) before you bump the version — it lists the breaks a clean build will not catch: the silent ones that change behaviour with no error at all, and the ones that compile and then raise or fail to decode on one particular shape of response."
+              echo ""
+            fi
             echo "## Installation"
             echo ""
             echo "**Go**"

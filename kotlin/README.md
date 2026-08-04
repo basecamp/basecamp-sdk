@@ -6,6 +6,8 @@
 
 Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
+**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#kotlin) before you bump the version — Kotlin carries seven breaks your compiler will not catch — six that give no signal at all, and one that throws only when the field is present and carries a JSON number or boolean where the model declares a string.
+
 ## Features
 
 - Kotlin Multiplatform (JVM target)
@@ -25,21 +27,40 @@ Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 - JDK 17+
 - Kotlin 2.0+
 
-**Compatibility policy (pre-1.0).** Releases in the 0.x series guarantee
-*source* compatibility only: public APIs evolve append-only (new optional
-parameters are added after existing ones), so code compiles unchanged across
-minor versions, but recompile against each release — Kotlin default-argument
-and data-class synthetics make JVM *binary* compatibility infeasible to
-promise, and we don't. One exception: when Basecamp withdraws an endpoint,
-the SDK removes the corresponding operation rather than keeping a stub whose
-only possible response is an error. Such removals track the server, ship in
-a minor version bump, and are called out in the release notes.
+**Compatibility policy (pre-1.0).** The 0.x series makes no across-the-board
+source-compatibility promise. The default is append-only — new optional
+parameters go after existing ones, so most minor versions compile unchanged —
+but a minor version **may break source compatibility to correct the model**,
+and some have. The SDK is generated from a spec that describes a server it
+does not control; where the two disagree, the spec is wrong and gets fixed,
+even when the fix renames a type, removes one, makes a member required, or
+adds a required parameter ahead of existing ones. Shipping a knowingly wrong
+model to protect a signature is the worse trade before 1.0.
 
-Generated options classes are data classes with defaults, so their constructor
-positions are part of that promise. The generator pins the shipped order per
-class in `sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/options-param-order.json`
+Every such release documents its breaks in [MIGRATING.md](../MIGRATING.md) and
+carries the `breaking` label, so they arrive in the release notes under
+**⚠️ Breaking Changes**. v0.13.0 is one: it removed `TodolistGroup` and
+`UpdateScheduleEntryBody`, made `Todolist.description` and `ScheduleEntry`'s
+three timing members required, and added a leading `bucketId` to nine
+operations.
+
+**Binary** compatibility is not promised at all, in any release. Kotlin
+default-argument and data-class synthetics make it infeasible, so recompile
+against each version rather than dropping a new jar under an old build —
+`copy`/`componentN` signatures move whenever a data class gains or reorders a
+member, and a stale binary can hit `NoSuchMethodError` where the source would
+have compiled clean. There is deliberately no binary-compatibility-validator
+`.api` dump, because publishing one would imply a guarantee this project does
+not make.
+
+Generated **options** classes are the one place with a positional guarantee.
+The generator pins the shipped order per class in
+`sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/options-param-order.json`
 and appends new parameters after it, so a parameter added to an operation can
-never displace one you already pass positionally.
+never displace one you already pass positionally. That pin covers options
+classes only — response **models** like `ScheduleEntry` are not in it, and
+v0.13.0 moved three of its members to positions 13–15.
+
 ## Installation
 
 The SDK is published to [GitHub Packages](https://github.com/basecamp/basecamp-sdk/packages). GitHub Packages requires an access token for every download — including for public packages like this one — so there are three steps rather than one.

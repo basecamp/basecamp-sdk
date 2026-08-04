@@ -6,6 +6,8 @@
 
 Official Swift SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
+**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#swift) before you bump the version — Swift carries ten breaks your compiler will not catch, all of which give no signal at all.
+
 ## Features
 
 - Full Swift 6 concurrency support (strict `Sendable` throughout)
