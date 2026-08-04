@@ -19308,7 +19308,8 @@
                           "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
                         },
                         "comments_app_url": "https://3.basecamp.com/999/buckets/12345678/recordings/987654/comments",
-                        "groups_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json"
+                        "groups_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json",
+                        "color": "blue"
                       }
                     }
                   },
@@ -19350,7 +19351,8 @@
                           "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654"
                         },
                         "comments_app_url": "https://3.basecamp.com/999/buckets/12345678/recordings/111222/comments",
-                        "group_position_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json"
+                        "group_position_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json",
+                        "color": null
                       }
                     }
                   }

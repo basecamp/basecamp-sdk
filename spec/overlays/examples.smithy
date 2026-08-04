@@ -7,6 +7,16 @@ use smithy.api#examples
 // group_position_url. Both variants report type "Todolist" — BC3's recording
 // partial emits recordable_type, and a group is a Todolist whose parent is a
 // Todolist. Never branch on the type string.
+//
+// `color` is DELIBERATELY absent from both examples here and injected into the
+// OpenAPI projection by `jsonAdd` in spec/smithy-build.json — "blue" for the
+// list, an explicit `null` for the uncolored group. It is required-and-nullable
+// (see Todolist.color), and Smithy cannot put a `null` into an example for a
+// String shape, so writing it here would force the group to advertise a color
+// that uncolored groups do not have. Requiredness lives in the projection for
+// the same reason, so the example that satisfies it does too. Both halves must
+// move together: adding `color` to a Smithy example without removing its
+// `jsonAdd` pointer would leave the pointer overwriting the value.
 apply GetTodolistOrGroup @examples([
   {
     title: "Get a to-do list"
