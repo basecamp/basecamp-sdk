@@ -168,6 +168,18 @@ expect_reject "an option this parser cannot classify" \
   "$(make_fixture opt_unknown 'npm --some-future-option ci')" \
   'unrecognised npm option'
 
+# The shell strips quoting before resolving the command, so these run exactly as
+# the bare spellings do — but the quotes stay attached through `read -a` and the
+# token stops looking like npm.
+expect_reject 'a double-quoted executable: "npm" install' \
+  "$(make_fixture quote_dq 'true' '"npm" install --prefer-offline')" 'npm install'
+
+expect_reject "a single-quoted executable: 'npm' install" \
+  "$(make_fixture quote_sq 'true' "'npm' install --prefer-offline")" 'npm install'
+
+expect_reject "an escaped space: npm\\ install" \
+  "$(make_fixture quote_esc 'true' 'npm\ install')" 'npm install'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \
@@ -193,6 +205,13 @@ expect_accept "npm test in a Makefile recipe" \
 # closed its string, and "node/npm" in an advisory message is not a path to npm.
 expect_accept "a subcommand wearing a closing quote" \
   "$(make_fixture ok_quoted 'true' "echo \"run npm ci\" && echo 'then npm test'")"
+
+# Stripping quote characters wherever they appeared (rather than only when they
+# wrap a whole token) reached inside quoted strings and read their contents as
+# code — this exact line from scripts/check-runner-test-reachability was reported
+# as an npm invocation with no parsable subcommand.
+expect_accept "an npm mention inside a quoted regex" \
+  "$(make_fixture ok_regex 'true' "grep -Eq 'npm (run )?test' <<<\"\$ts_recipe\"")"
 
 expect_accept "prose naming node/npm, not invoking it" \
   "$(make_fixture ok_prose 'true' 'command -v node || echo "NOTE: node/npm is required for the TypeScript SDK"')"

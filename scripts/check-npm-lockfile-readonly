@@ -101,8 +101,7 @@ scan_line() {
   # Shell operators do not need surrounding whitespace, so `npm ci;npm install`
   # tokenises as `ci;npm` `install` and the second invocation is never seen as an
   # npm token at all. Pad every operator before splitting so each one becomes its
-  # own token and any npm following it starts a fresh command. Doing this to
-  # quoted text too is harmless: only npm tokens are ever looked at.
+  # own token and any npm following it starts a fresh command.
   local c
   for c in ';' '&' '|' '(' ')' '<' '>' '`'; do
     line=${line//"$c"/ "$c" }
@@ -114,6 +113,24 @@ scan_line() {
   local i=0 n=${#words[@]}
   while ((i < n)); do
     local w=${words[i]}
+
+    # The shell strips quoting before it resolves the command, so `"npm" install`
+    # runs exactly as the bare spelling does while `read -a` keeps the quotes
+    # attached. Unwrap a token quoted in its entirety, and drop a trailing escape
+    # backslash.
+    #
+    # Deliberately only when the quotes wrap the WHOLE token. Stripping quote
+    # characters wherever they appear would reach inside quoted strings and read
+    # their contents as code: `grep -Eq 'npm (run )?test'` became an npm token
+    # followed by `(`, reported as an invocation with no parsable subcommand.
+    # A half-quoted token like `'npm` opens a string rather than naming a
+    # command, so it is left alone.
+    w=${w%\\}
+    if ((${#w} >= 2)) && [[ ( ${w:0:1} == '"' && ${w: -1} == '"' ) \
+                         || ( ${w:0:1} == "'" && ${w: -1} == "'" ) ]]; then
+      w=${w:1:${#w}-2}
+    fi
+
     # `npm`, an npx-style `npm@11` pin, or a *path* ending in /npm. The path
     # form must actually look like one — `/`, `./`, `../`, `~/` or a variable —
     # so prose such as "node/npm is required" is not read as an invocation.
