@@ -527,12 +527,17 @@ jobs:
 
       - name: Validate conformance fixtures against schema
         # Authoritative enforcement of conformance/schema.json (incl. the
-        # mockResponses oneOf). uv is already installed, so `make
-        # conformance-fixtures-check` runs check-jsonschema via uvx. Runs from
-        # repo root regardless of this job's working-directory: python.
+        # mockResponses oneOf) and the event-feed families' schemas — the
+        # aggregate `make conformance` target is not run in PR CI, so the
+        # fixture gates are invoked here directly. uv is already installed, so
+        # these targets run check-jsonschema via uvx. Runs from repo root
+        # regardless of this job's working-directory: python.
         if: matrix.python == '3.13'
         working-directory: .
-        run: make conformance-fixtures-check
+        run: |
+          make conformance-fixtures-check
+          make event-feed-fixtures-check
+          make event-feed-digest-fixtures-check
 
       - name: Run Python conformance tests
         if: matrix.python == '3.13'
