@@ -100,9 +100,9 @@ class TodolistsService(client: AccountClient) :
      * entirely and it carries no hint. Wrap it, so a malformed response looks
      * the same in every SDK.
      *
-     * (The client-wide `coerceInputValues`/`isLenient` scalar hole means a bare
-     * JSON scalar is coerced rather than rejected. That is a cross-service gap
-     * tracked out of #576, not something this composite can close.)
+     * (Bare JSON scalars are refused as well as structural mismatches. They
+     * were not until #598 removed the client-wide `isLenient`, which rendered a
+     * number or boolean as a String before this composite could ever see it.)
      */
     private suspend fun fetchTodolist(id: Long): Todolist =
         try {

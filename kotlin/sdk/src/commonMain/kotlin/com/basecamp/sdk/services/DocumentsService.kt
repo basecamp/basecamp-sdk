@@ -95,9 +95,9 @@ class DocumentsService(client: AccountClient) :
      * catching [BasecampException] would miss it entirely and it carries no
      * hint. Wrap it, so a malformed response looks the same in every SDK.
      *
-     * (The client-wide `coerceInputValues`/`isLenient` scalar hole means a bare
-     * JSON scalar is coerced rather than rejected. That is a cross-service gap
-     * tracked out of #576, not something this composite can close.)
+     * (Bare JSON scalars are refused as well as structural mismatches. They
+     * were not until #598 removed the client-wide `isLenient`, which rendered a
+     * number or boolean as a String before this composite could ever see it.)
      */
     private suspend fun fetchDocument(documentId: Long): Document =
         try {
@@ -118,11 +118,11 @@ class DocumentsService(client: AccountClient) :
      *
      * No hand-written type guard here, unlike the Todolists composite: `get`
      * returns a decoded [Document], so kotlinx.serialization has already
-     * rejected a structurally wrong-typed field before this runs. (The
-     * client-wide `coerceInputValues`/`isLenient` scalar hole is a known
-     * cross-service gap tracked out of #576, not something this composite can
-     * close.) `content` is nullable on the model — absent or JSON null is
-     * genuinely empty, and `""` is what the server already holds.
+     * rejected a wrong-typed field before this runs — a bare scalar as well as
+     * a structural mismatch, since #598 removed the client-wide `isLenient`
+     * that used to render a number or boolean as a String. `content` is
+     * nullable on the model — absent or JSON null is genuinely empty, and `""`
+     * is what the server already holds.
      *
      * `title` is the exception, and it needs a hand-written check the decoder
      * cannot supply. The field is non-nullable on the model, so an absent or

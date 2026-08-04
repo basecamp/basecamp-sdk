@@ -314,11 +314,11 @@ class TodolistsServiceTest {
      * composite still owns is the SPEC §6 shape — a raw `SerializationException`
      * is not it, and a caller catching `BasecampException` would miss it.
      *
-     * ARRAYS and OBJECTS, not bare scalars: the client-wide
-     * `coerceInputValues`/`isLenient` settings coerce a bare JSON scalar into a
-     * String rather than rejecting it (a cross-service gap tracked out of #576;
-     * see `updateCoercesABareScalarDescription`). An array or object is
-     * refused.
+     * Arrays and objects here; bare scalars in the sibling below. Both are
+     * refused now. Structural mismatches always were, but a bare JSON scalar
+     * used to be coerced into a String by the client-wide `isLenient`, which
+     * #598 removed — see `updateRefusesABareScalarDescriptionBeforeWriting` for
+     * that half and `DecoderStrictnessTest` for which flag did what.
      */
     @Test
     fun updateRefusesAMalformedDescriptionBeforeWriting() = runTest {
@@ -347,27 +347,37 @@ class TodolistsServiceTest {
     }
 
     /**
-     * The bare-scalar half of the case above, pinned rather than dropped.
+     * The bare-scalar half of the case above — now refused, not coerced (#598).
      *
-     * A JSON number or boolean where a String belongs is still malformed, but
-     * the client-wide `isLenient`/`coerceInputValues` settings render it as
-     * text instead of refusing it, so the composite resends the coerced value.
-     * That is a CROSS-SERVICE gap (#576) — the Documents composite has it too —
-     * not something a todolist-specific guard should paper over: the pre-#544
-     * hand-written `JsonElement` reader closed it here and nowhere else. This
-     * test records the exact behavior so closing #576 flips it visibly.
+     * This test used to assert the opposite, and said so: it pinned the coerced
+     * PUT "so closing #576 flips it visibly." Dropping the client-wide
+     * `isLenient` flipped it. A JSON number or boolean where a String belongs no
+     * longer renders as text; it is refused before the PUT, exactly like the
+     * array and object cases above.
+     *
+     * Booleans as well as numbers, because `isLenient` accepted both, and each
+     * produced a differently-shaped fabrication ("42" vs "false").
      */
     @Test
-    fun updateCoercesABareScalarDescription() = runTest {
-        val capture = WriteCapture()
-        val client = captureClient(capture, getBody = todolistBody(description = "42"))
+    fun updateRefusesABareScalarDescriptionBeforeWriting() = runTest {
+        for (malformed in listOf("42", "false")) {
+            val capture = WriteCapture()
+            val client = captureClient(capture, getBody = todolistBody(description = malformed))
 
-        client.forAccount("12345").todolists.update(42, UpdateTodolistBody(name = "Renamed list"))
+            val error = assertFailsWith<BasecampException.Api> {
+                client.forAccount("12345").todolists
+                    .update(42, UpdateTodolistBody(name = "Renamed list"))
+            }
 
-        assertEquals(listOf("GET", "PUT"), capture.methods)
-        assertEquals("42", capture.putBody!!["description"]?.jsonPrimitive?.content)
-
-        client.close()
+            assertEquals(null, error.httpStatus)
+            assertEquals(false, error.retryable)
+            assertTrue(error.hint != null, "expected a hint naming the escape hatch")
+            assertEquals(
+                listOf("GET"), capture.methods,
+                "the PUT must never be issued for a bare-scalar description ($malformed)",
+            )
+            client.close()
+        }
     }
 
     /** The same guard protects the edit closure, which also resends the field. */

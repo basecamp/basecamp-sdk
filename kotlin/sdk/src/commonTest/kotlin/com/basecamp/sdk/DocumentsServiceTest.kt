@@ -81,9 +81,9 @@ class DocumentsServiceTest {
     // entirely. The composite normalizes it, so a malformed response looks the
     // same in every SDK.
     //
-    // An ARRAY, not a scalar: the client-wide `coerceInputValues`/`isLenient`
-    // settings coerce a bare JSON scalar into a String rather than rejecting
-    // it (a cross-service gap tracked out of #576). An array is refused.
+    // An ARRAY here, but a bare scalar would be refused too since #598 dropped
+    // the client-wide `isLenient`, which used to render a JSON number or
+    // boolean as a String instead of rejecting it. See `DecoderStrictnessTest`.
     @Test
     fun updateNormalizesADecodeFailure() = runTest {
         val capture = WriteCapture()

@@ -550,7 +550,7 @@
   },
   {
     "name": "update-kill: an array description is refused before the full-replace PUT",
-    "description": "The merge-safe update GETs the todo, reads every writable field, and PUTs the FULL representation back — so a value read is a value written, on a call that only set the content. A malformed one must be refused BEFORE the PUT, which is exactly what requestCount: 1 pins: the moment a second request appears, the malformed value has already landed on a full-replace endpoint.\n\nThis is the CORRUPTION half of #576. Neither `or \"\"` (Python) nor `|| \"\"` (Ruby) nor `?? \"\"` (TypeScript) coalesces a non-empty array, so on main all three PUT `\"description\": [\"x\"]` to the todo — an array where the rich-text body belongs.\n\nThe kill case for #576, and the reason it lives here rather than in six per-language test files: the defect survived five consecutive review passes because each pass fixed one instance. A shared fixture catches every instance at once, in every runner, permanently — and it did: writing it surfaced the Kotlin scalar-coercion hole above, which five language-specific passes had missed.\n\nAll six SDKs must refuse it, by two different mechanisms, which is why the value under test is a JSON array/object rather than a scalar. Go, Kotlin and Swift decode into a typed model: json.Unmarshal, kotlinx.serialization and Codable all reject a structural mismatch. TypeScript, Python and Ruby have no decoder at all — schema.d.ts is erased at build time, and the generated Python and Ruby services return an untyped dict/Hash — so they carry an explicit guard. A scalar (42, false) would NOT discriminate in Kotlin: its client-wide Json { isLenient = true } coerces one into a String field, so the composite decodes \"42\" and writes it back. That is the same defect one layer down and is tracked separately; it cannot be fixed by a per-composite guard, because by the time the composite runs the coercion has already happened.\n\nerrorRaised rather than errorType: a hand-written guard raises api_error while a decoder raises its own language's decode failure, so no single canonical code is assertable. What all six agree on is that the call fails at all — which, paired with requestCount: 1, is the whole contract.",
+    "description": "The merge-safe update GETs the todo, reads every writable field, and PUTs the FULL representation back — so a value read is a value written, on a call that only set the content. A malformed one must be refused BEFORE the PUT, which is exactly what requestCount: 1 pins: the moment a second request appears, the malformed value has already landed on a full-replace endpoint.\n\nThis is the CORRUPTION half of #576. Neither `or \"\"` (Python) nor `|| \"\"` (Ruby) nor `?? \"\"` (TypeScript) coalesces a non-empty array, so on main all three PUT `\"description\": [\"x\"]` to the todo — an array where the rich-text body belongs.\n\nThe kill case for #576, and the reason it lives here rather than in six per-language test files: the defect survived five consecutive review passes because each pass fixed one instance. A shared fixture catches every instance at once, in every runner, permanently — and it did: writing it surfaced the Kotlin scalar-coercion hole above, which five language-specific passes had missed.\n\nAll six SDKs must refuse it, by two different mechanisms. Go, Kotlin and Swift decode into a typed model: json.Unmarshal, kotlinx.serialization and Codable all reject a structural mismatch. TypeScript, Python and Ruby have no decoder at all — schema.d.ts is erased at build time, and the generated Python and Ruby services return an untyped dict/Hash — so they carry an explicit guard. The value under test is an array/object rather than a scalar for a reason that has since been removed: a scalar (42, false) did NOT discriminate in Kotlin, whose client-wide Json { isLenient = true } coerced one into a String field, so the composite decoded \"42\" and wrote it back. That was the same defect one layer down, and no per-composite guard could close it — by the time the composite ran, the coercion had already happened. #598 dropped isLenient, and the bare-scalar sibling below now pins the scalar half in all six runners.\n\nerrorRaised rather than errorType: a hand-written guard raises api_error while a decoder raises its own language's decode failure, so no single canonical code is assertable. What all six agree on is that the call fails at all — which, paired with requestCount: 1, is the whole contract.",
     "operation": "UpdateTodo",
     "method": "PUT",
     "path": "/todos/{todoId}",
@@ -714,7 +714,7 @@
   },
   {
     "name": "update-kill: an empty-object description is refused, not coalesced to empty",
-    "description": "The ERASURE half of #576, and the half whose absence produced this issue's original wrong verdict. Python's `or \"\"` turns every falsey non-string — {} included — into \"\", and on a full-replace endpoint that empty value is written back over the real description: the field the composite exists to preserve, wiped by a call that only set the content. Ruby and TypeScript reach the same endpoint by the other road and forward `{}` verbatim. Testing for corruption alone would miss the erasure; testing for erasure alone is what let TypeScript be called structurally safe.\n\nThe kill case for #576, and the reason it lives here rather than in six per-language test files: the defect survived five consecutive review passes because each pass fixed one instance. A shared fixture catches every instance at once, in every runner, permanently — and it did: writing it surfaced the Kotlin scalar-coercion hole above, which five language-specific passes had missed.\n\nAll six SDKs must refuse it, by two different mechanisms, which is why the value under test is a JSON array/object rather than a scalar. Go, Kotlin and Swift decode into a typed model: json.Unmarshal, kotlinx.serialization and Codable all reject a structural mismatch. TypeScript, Python and Ruby have no decoder at all — schema.d.ts is erased at build time, and the generated Python and Ruby services return an untyped dict/Hash — so they carry an explicit guard. A scalar (42, false) would NOT discriminate in Kotlin: its client-wide Json { isLenient = true } coerces one into a String field, so the composite decodes \"42\" and writes it back. That is the same defect one layer down and is tracked separately; it cannot be fixed by a per-composite guard, because by the time the composite runs the coercion has already happened.\n\nerrorRaised rather than errorType: a hand-written guard raises api_error while a decoder raises its own language's decode failure, so no single canonical code is assertable. What all six agree on is that the call fails at all — which, paired with requestCount: 1, is the whole contract.",
+    "description": "The ERASURE half of #576, and the half whose absence produced this issue's original wrong verdict. Python's `or \"\"` turns every falsey non-string — {} included — into \"\", and on a full-replace endpoint that empty value is written back over the real description: the field the composite exists to preserve, wiped by a call that only set the content. Ruby and TypeScript reach the same endpoint by the other road and forward `{}` verbatim. Testing for corruption alone would miss the erasure; testing for erasure alone is what let TypeScript be called structurally safe.\n\nThe kill case for #576, and the reason it lives here rather than in six per-language test files: the defect survived five consecutive review passes because each pass fixed one instance. A shared fixture catches every instance at once, in every runner, permanently — and it did: writing it surfaced the Kotlin scalar-coercion hole above, which five language-specific passes had missed.\n\nAll six SDKs must refuse it, by two different mechanisms. Go, Kotlin and Swift decode into a typed model: json.Unmarshal, kotlinx.serialization and Codable all reject a structural mismatch. TypeScript, Python and Ruby have no decoder at all — schema.d.ts is erased at build time, and the generated Python and Ruby services return an untyped dict/Hash — so they carry an explicit guard. The value under test is an array/object rather than a scalar for a reason that has since been removed: a scalar (42, false) did NOT discriminate in Kotlin, whose client-wide Json { isLenient = true } coerced one into a String field, so the composite decoded \"42\" and wrote it back. That was the same defect one layer down, and no per-composite guard could close it — by the time the composite ran, the coercion had already happened. #598 dropped isLenient, and the bare-scalar sibling below now pins the scalar half in all six runners.\n\nerrorRaised rather than errorType: a hand-written guard raises api_error while a decoder raises its own language's decode failure, so no single canonical code is assertable. What all six agree on is that the call fails at all — which, paired with requestCount: 1, is the whole contract.",
     "operation": "UpdateTodo",
     "method": "PUT",
     "path": "/todos/{todoId}",
@@ -744,6 +744,168 @@
           "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
           "content": "Buy milk",
           "description": {},
+          "due_on": "2024-03-01",
+          "starts_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 0,
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Todolist",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "assignees": [
+            {
+              "id": 100,
+              "name": "Jane Doe",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "completion_subscribers": [
+            {
+              "id": 555,
+              "name": "Sub Scriber",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "description_attachments": []
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Buy milk",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/999/buckets/1/todos/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todos/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "content": "Buy milk",
+          "description": "<p>From the store</p>",
+          "due_on": "2024-03-01",
+          "starts_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 0,
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Todolist",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "assignees": [
+            {
+              "id": 100,
+              "name": "Jane Doe",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "completion_subscribers": [
+            {
+              "id": 555,
+              "name": "Sub Scriber",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "description_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorRaised"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/456",
+        "index": 0
+      }
+    ],
+    "tags": [
+      "todos",
+      "write",
+      "merge",
+      "malformed"
+    ]
+  },
+  {
+    "name": "update-kill: a bare-scalar description is refused before the full-replace PUT",
+    "description": "The bare-scalar half of the two kill cases above, and the case that could not exist until #598.\n\nSame contract, same shape: the merge-safe update GETs the todo, reads every writable field, and PUTs the FULL representation back, so a malformed value must be refused BEFORE the PUT — which is what requestCount: 1 pins.\n\nWhat changed is that a bare JSON scalar now discriminates in all six runners. It used to discriminate in only five: Kotlin's client-wide Json carried isLenient = true, which relaxes RFC-4627 far enough to read a JSON number or boolean into a declared String, so `\"description\": 42` decoded to \"42\" and the composite PUT that fabricated value back on a call that only set the content. No per-composite guard could see it — by the time the composite ran, the value was an ordinary String — which is why the sibling cases above use an array and an object instead, and why this one had no home. #598 removed isLenient (keeping coerceInputValues, which never had anything to say about a scalar type; kotlin/.../DecoderStrictnessTest.kt pins which flag does what), so kotlinx.serialization now rejects the number exactly as json.Unmarshal and Codable already did, and as the hand-written writableString/write_string guards in TypeScript, Python and Ruby already did.\n\nSo this fixture is the cross-language regression guard for the fix: re-adding isLenient turns Kotlin green-to-red here, in the shared harness, rather than only in a Kotlin unit test.\n\nerrorRaised rather than errorType, for the same reason as its siblings: a hand-written guard raises api_error while a decoder raises its own language's decode failure, so no single canonical code is assertable. What all six agree on is that the call fails at all — which, paired with requestCount: 1, is the whole contract.",
+    "operation": "UpdateTodo",
+    "method": "PUT",
+    "path": "/todos/{todoId}",
+    "pathParams": {
+      "todoId": 456
+    },
+    "requestBody": {
+      "content": "New title"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Buy milk",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/999/buckets/1/todos/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todos/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "content": "Buy milk",
+          "description": 42,
           "due_on": "2024-03-01",
           "starts_on": "2024-02-01",
           "completed": false,
