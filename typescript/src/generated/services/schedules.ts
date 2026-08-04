@@ -41,7 +41,17 @@ including the shape in BC3's own "Update a schedule entry" doc example —
 silently removed every participant and notified each one. The controller
 now guards on the request actually addressing participants. */
   participantIds?: number[];
-  /** All day */
+  /** Whether the entry occupies whole days rather than a time range.
+
+Not carved out, and the carve-out list is what makes that dangerous to
+forget: `schedule_entries.all_day` is NOT NULL with a `false` default, so
+omitting this member on a replace resets it — silently converting an
+all-day entry into a midnight-to-midnight timed one. The SDK's merge-safe
+update and edit resend it from the read-back for exactly this reason.
+
+Sending an explicit null is worse than omitting it: the column rejects
+NULL, so BC3 raises rather than falling back to the default. The same is
+true of highlighted. */
   allDay?: boolean;
   /** Whether to send notifications to relevant people */
   notify?: boolean;

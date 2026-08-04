@@ -28880,7 +28880,8 @@
             "description": "Replaces the entry's participants.\n\nOmitting this member preserves the current participants; sending an empty\narray clears them. That guarantee is BC3-side and recent: until\nbasecamp/bc3#12425, `Schedules::EntriesController#update` called\n`replace_participants` unconditionally, so any update omitting the key —\nincluding the shape in BC3's own \"Update a schedule entry\" doc example —\nsilently removed every participant and notified each one. The controller\nnow guards on the request actually addressing participants."
           },
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the entry occupies whole days rather than a time range.\n\nNot carved out, and the carve-out list is what makes that dangerous to\nforget: `schedule_entries.all_day` is NOT NULL with a `false` default, so\nomitting this member on a replace resets it — silently converting an\nall-day entry into a midnight-to-midnight timed one. The SDK's merge-safe\nupdate and edit resend it from the read-back for exactly this reason.\n\nSending an explicit null is worse than omitting it: the column rejects\nNULL, so BC3 raises rather than falling back to the default. The same is\ntrue of highlighted."
           },
           "notify": {
             "type": "boolean"
@@ -29270,7 +29271,7 @@
           },
           "starts_at": {
             "type": "string",
-            "description": "Always sent, and a date rather than a timestamp for an all-day entry:\nBC3 renders starts_at_date_or_time, which drops the time component when\nall_day is set.",
+            "description": "Always sent, and a date rather than a timestamp for an all-day entry:\nBC3 renders starts_at_date_or_time, which is `starts_at.to_date` unless\nthe entry is timed, so an all-day entry reads back as `2016-06-01` and a\ntimed one as a full timestamp. The sibling all_day field discriminates.\n\nISO8601Timestamp is a plain string in this model, so both shapes decode;\ntreat the value as opaque and round-trip it verbatim rather than parsing\nit into a date type and re-rendering, which would rewrite an all-day\nentry's bounds.",
             "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"

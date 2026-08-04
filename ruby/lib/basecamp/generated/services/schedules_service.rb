@@ -31,7 +31,17 @@ module Basecamp
       #   including the shape in BC3's own "Update a schedule entry" doc example —
       #   silently removed every participant and notified each one. The controller
       #   now guards on the request actually addressing participants.
-      # @param all_day [Boolean, nil] all day
+      # @param all_day [Boolean, nil] Whether the entry occupies whole days rather than a time range.
+      #   
+      #   Not carved out, and the carve-out list is what makes that dangerous to
+      #   forget: `schedule_entries.all_day` is NOT NULL with a `false` default, so
+      #   omitting this member on a replace resets it — silently converting an
+      #   all-day entry into a midnight-to-midnight timed one. The SDK's merge-safe
+      #   update and edit resend it from the read-back for exactly this reason.
+      #   
+      #   Sending an explicit null is worse than omitting it: the column rejects
+      #   NULL, so BC3 raises rather than falling back to the default. The same is
+      #   true of highlighted.
       # @param notify [Boolean, nil] notify
       # @param url [String, nil] The entry's join link — a video-call URL or similar, up to 2500
       #   characters, validated as a URL when present.

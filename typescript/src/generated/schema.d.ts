@@ -5171,6 +5171,19 @@ export interface components {
              *     now guards on the request actually addressing participants.
              */
             participant_ids?: number[];
+            /**
+             * @description Whether the entry occupies whole days rather than a time range.
+             *
+             *     Not carved out, and the carve-out list is what makes that dangerous to
+             *     forget: `schedule_entries.all_day` is NOT NULL with a `false` default, so
+             *     omitting this member on a replace resets it — silently converting an
+             *     all-day entry into a midnight-to-midnight timed one. The SDK's merge-safe
+             *     update and edit resend it from the read-back for exactly this reason.
+             *
+             *     Sending an explicit null is worse than omitting it: the column rejects
+             *     NULL, so BC3 raises rather than falling back to the default. The same is
+             *     true of highlighted.
+             */
             all_day?: boolean;
             notify?: boolean;
             /**
@@ -5332,8 +5345,14 @@ export interface components {
             all_day: boolean;
             /**
              * @description Always sent, and a date rather than a timestamp for an all-day entry:
-             *     BC3 renders starts_at_date_or_time, which drops the time component when
-             *     all_day is set.
+             *     BC3 renders starts_at_date_or_time, which is `starts_at.to_date` unless
+             *     the entry is timed, so an all-day entry reads back as `2016-06-01` and a
+             *     timed one as a full timestamp. The sibling all_day field discriminates.
+             *
+             *     ISO8601Timestamp is a plain string in this model, so both shapes decode;
+             *     treat the value as opaque and round-trip it verbatim rather than parsing
+             *     it into a date type and re-rendering, which would rewrite an all-day
+             *     entry's bounds.
              */
             starts_at: string;
             /** @description Always sent. See starts_at for the date-vs-timestamp rendering. */
