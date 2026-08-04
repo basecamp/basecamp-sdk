@@ -19307,7 +19307,9 @@
                           "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
                           "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
                         },
-                        "groups_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json"
+                        "comments_app_url": "https://3.basecamp.com/999/buckets/12345678/recordings/987654/comments",
+                        "groups_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json",
+                        "color": "blue"
                       }
                     }
                   },
@@ -19348,7 +19350,9 @@
                           "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
                           "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654"
                         },
-                        "group_position_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json"
+                        "comments_app_url": "https://3.basecamp.com/999/buckets/12345678/recordings/111222/comments",
+                        "group_position_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json",
+                        "color": null
                       }
                     }
                   }
@@ -30313,12 +30317,12 @@
               "string",
               "null"
             ],
-            "description": "Color of the list or group, one of BC3's `Colored` enum values\n(`white red orange yellow green blue aqua purple gray pink brown`). For a\ntop-level list a hill-chart dot color takes precedence over the recording's\nown.\n\n**Nullable.** `recordings.color` is a nullable integer column, so the value is\nJSON `null` whenever it is unset — which, for a group, is the ordinary case.\nSmithy has no native nullable scalar, so the `[\"string\", \"null\"]` union is\napplied to the OpenAPI projection through `jsonAdd` in `spec/smithy-build.json`,\nthe same treatment `SearchResult.content` and `SearchType.key` get. Without it\nthe published schema and the generated static types would be non-nullable and\nevery uncolored list and group would violate them.\n\nModelled optional rather than `@required` even though\n`_todolist.json.jbuilder` calls `json.color` in both branches of its\n`todolist_group?` conditional and so always emits the key. Optional is the\nweaker, safer claim: it accepts both an explicit `null` and an absent key,\nwhere `@required` would additionally oblige every captured body and inline\ntest stub in the typed SDKs to carry a field that is cosmetic. Tightening it\nis a clean follow-up; publishing a non-nullable type was the actual defect.",
+            "description": "Color of the list or group, one of BC3's `Colored` enum values\n(`white red orange yellow green blue aqua purple gray pink brown`). For a\ntop-level list a hill-chart dot color takes precedence over the recording's\nown.\n\n**Required and nullable.** The key is always present and the value is often\n`null`. `_todolist.json.jbuilder` calls `json.color` in both branches of its\n`todolist_group?` conditional, so no projection of this shape omits it;\n`recordings.color` is a nullable integer column, so the value is JSON `null`\nwhenever it is unset — which, for a group, is the ordinary case.\n\nSmithy expresses neither half natively here, so both are layered onto the\nOpenAPI projection through `jsonAdd` in `spec/smithy-build.json`: the\n`[\"string\", \"null\"]` union for the value, the same treatment\n`SearchResult.content` and `SearchType.key` get, and an append to\n`Todolist.required` for the presence.\n\nThe member stays natively optional because `@required` collides with this\nshape's `@examples` (`GetTodolistOrGroup`): Smithy cannot express a `null`\nin an example for a `String` shape, so requiring the member would force the\ngroup example to advertise a color that uncolored groups do not have —\ntrading a faithful example for a type the projection can state anyway. The\nsibling shapes that carry the same field (`Wormhole`, `Folder`,\n`FolderWithProjects`) are natively `@required` because none of them carries\nexamples. Nullability is not the weaker claim about presence: absence and\n`null` are different wire facts, and BC3 only ever sends the second.",
             "x-go-type": "string"
           },
           "comments_app_url": {
             "type": "string",
-            "description": "In-app (non-API) URL for this recording's comments, alongside the API-host\n`comments_url`."
+            "description": "In-app (non-API) URL for this recording's comments, alongside the API-host\n`comments_url`. Required and never null: `_todolist.json.jbuilder` emits\n`json.comments_app_url` unconditionally, from the\n`bucket_recording_comments_url` route helper — which returns a String or\nraises, and has no nil path. Native `@required` is enough here precisely\nbecause the value is never null, so it costs the examples a real URL rather\nthan a fiction."
           },
           "boosts_count": {
             "type": "integer",
@@ -30332,6 +30336,7 @@
           "app_url",
           "bubble_up_url",
           "bucket",
+          "comments_app_url",
           "created_at",
           "creator",
           "description",
@@ -30345,7 +30350,8 @@
           "type",
           "updated_at",
           "url",
-          "visible_to_clients"
+          "visible_to_clients",
+          "color"
         ]
       },
       "Todoset": {

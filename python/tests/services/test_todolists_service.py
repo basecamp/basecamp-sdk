@@ -25,14 +25,20 @@ def _todolist(name: str) -> dict:
     payload shape — but a stub must not contradict the contract either.
     bubble_up_url is @required on Todolist (todolists/_todolist.json.jbuilder
     always passes bubbleupable: true), so it belongs here even though nothing
-    below reads it. Full-shape coverage lives in spec/fixtures, which
-    `make check-fixture-coverage` validates.
+    below reads it. color and comments_app_url are @required for the same
+    reason (#630): the jbuilder emits color in both branches of its
+    todolist_group? conditional and comments_app_url from a route helper.
+    Python's TypedDict does not decode strictly, so leaving them out would be
+    invisible here and still a body BC3 cannot produce. Full-shape coverage
+    lives in spec/fixtures, which `make check-fixture-coverage` validates.
     """
     return {
         "id": 2,
         "name": name,
         "description_attachments": [],
         "bubble_up_url": "https://3.basecampapi.com/12345/buckets/1/recordings/2/bubble_up.json",
+        "color": "blue",
+        "comments_app_url": "https://3.basecamp.com/12345/buckets/1/recordings/2/comments",
     }
 
 

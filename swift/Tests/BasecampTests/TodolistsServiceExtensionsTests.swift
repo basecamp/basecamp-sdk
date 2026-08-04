@@ -56,10 +56,15 @@ private final class TodolistOperationRecorder: BasecampHooks, @unchecked Sendabl
 /// envelope around it (spec/fixtures/todolists/get.json). `groups_url` is
 /// present because this recording's parent is a Todoset — see
 /// ``flatTodolistGroupJSON`` for the group spelling of the same shape.
+/// `color` is `Any` rather than `String?` on purpose: it is required-AND-nullable,
+/// so an uncolored list carries an explicit JSON `null` (`NSNull()`) and never a
+/// missing key. A `String?` default would omit the key instead, which is a body
+/// BC3 never sends.
 private func flatTodolistJSON(
     id: Int = 2,
     name: String = "Hardware",
-    description: String = "<p>Ship the hardware</p>"
+    description: String = "<p>Ship the hardware</p>",
+    color: Any = "blue"
 ) -> [String: Any] {
     [
         "id": id,
@@ -96,6 +101,9 @@ private func flatTodolistJSON(
         "todos_url": "https://3.basecampapi.com/999999999/buckets/1/todolists/\(id)/todos.json",
         "groups_url": "https://3.basecampapi.com/999999999/buckets/1/todolists/\(id)/groups.json",
         "app_todos_url": "https://3.basecamp.com/999999999/buckets/1/todolists/\(id)/todos",
+        "color": color,
+        "comments_app_url":
+            "https://3.basecamp.com/999999999/buckets/1/recordings/\(id)/comments",
     ]
 }
 
@@ -106,13 +114,16 @@ private func flatTodolistJSON(
 /// `description_attachments`. The only structural difference is that
 /// `group_position_url` stands in for `groups_url`, because the parent is a
 /// Todolist rather than a Todoset. Nothing in the SDK may branch on the `type`
-/// string.
+/// string. `color` is an explicit `null` here: `recordings.color` is unset for
+/// an uncolored group, which per bc3 is the ordinary case, and the key is still
+/// emitted.
 private func flatTodolistGroupJSON(
     id: Int = 7,
     name: String = "Phase 1",
     description: String = "<p>Phase one hardware work</p>"
 ) -> [String: Any] {
-    var group = flatTodolistJSON(id: id, name: name, description: description)
+    var group = flatTodolistJSON(
+        id: id, name: name, description: description, color: NSNull())
     group.removeValue(forKey: "groups_url")
     group["group_position_url"] =
         "https://3.basecampapi.com/999999999/buckets/1/todolists/groups/\(id)/position.json"

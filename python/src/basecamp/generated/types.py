@@ -1739,8 +1739,8 @@ class Todolist(TypedDict):
     boosts_url: NotRequired[str]
     bubble_up_url: str
     bucket: TodoBucket
-    color: NotRequired[str | None]
-    comments_app_url: NotRequired[str]
+    color: str | None
+    comments_app_url: str
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     completed: NotRequired[bool]

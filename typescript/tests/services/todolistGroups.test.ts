@@ -30,9 +30,21 @@ describe("TodolistGroupsService", () => {
   describe("list", () => {
     it("should list all groups in a todolist", async () => {
       const todolistId = 222;
+      // color and comments_app_url are required on Todolist (#630), and a
+      // group IS a Todolist. color is null on both: an uncolored group is the
+      // ordinary case, and required-and-nullable means an absent key and an
+      // explicit null are different wire facts.
       const mockGroups = [
-        { id: 1, name: "Phase 1", completed: false, completed_ratio: "3/10" },
-        { id: 2, name: "Phase 2", completed: false, completed_ratio: "0/5" },
+        {
+          id: 1, name: "Phase 1", completed: false, completed_ratio: "3/10",
+          color: null,
+          comments_app_url: "https://3.basecamp.com/12345/buckets/1/recordings/1/comments",
+        },
+        {
+          id: 2, name: "Phase 2", completed: false, completed_ratio: "0/5",
+          color: null,
+          comments_app_url: "https://3.basecamp.com/12345/buckets/1/recordings/2/comments",
+        },
       ];
 
       server.use(
@@ -81,6 +93,12 @@ describe("TodolistGroupsService", () => {
       // WebhookTypeTodolistGroup — and never appears in this payload.) So the
       // truthful stub carries a description and discriminates structurally:
       // group_position_url (parent is a Todolist), and no groups_url.
+      // color and comments_app_url are required on Todolist (#630) — the
+      // jbuilder emits color in both branches of its todolist_group?
+      // conditional and comments_app_url from a route helper. color is null
+      // here because an uncolored group is the ordinary case; the key is
+      // still always emitted, and required-and-nullable means absent and null
+      // are different wire facts.
       const mockGroup = {
         id: 444,
         name: "New Phase",
@@ -88,6 +106,9 @@ describe("TodolistGroupsService", () => {
         completed: false,
         description: "<div>Second half of the build</div>",
         description_attachments: [],
+        color: null,
+        comments_app_url:
+          "https://3.basecamp.com/12345/buckets/1/recordings/444/comments",
         group_position_url:
           "https://3.basecampapi.com/12345/buckets/1/todolists/groups/444/position.json",
       };

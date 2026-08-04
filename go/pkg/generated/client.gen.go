@@ -3054,26 +3054,37 @@ type Todolist struct {
 	// top-level list a hill-chart dot color takes precedence over the recording's
 	// own.
 	//
-	// **Nullable.** `recordings.color` is a nullable integer column, so the value is
-	// JSON `null` whenever it is unset — which, for a group, is the ordinary case.
-	// Smithy has no native nullable scalar, so the `["string", "null"]` union is
-	// applied to the OpenAPI projection through `jsonAdd` in `spec/smithy-build.json`,
-	// the same treatment `SearchResult.content` and `SearchType.key` get. Without it
-	// the published schema and the generated static types would be non-nullable and
-	// every uncolored list and group would violate them.
+	// **Required and nullable.** The key is always present and the value is often
+	// `null`. `_todolist.json.jbuilder` calls `json.color` in both branches of its
+	// `todolist_group?` conditional, so no projection of this shape omits it;
+	// `recordings.color` is a nullable integer column, so the value is JSON `null`
+	// whenever it is unset — which, for a group, is the ordinary case.
 	//
-	// Modelled optional rather than `@required` even though
-	// `_todolist.json.jbuilder` calls `json.color` in both branches of its
-	// `todolist_group?` conditional and so always emits the key. Optional is the
-	// weaker, safer claim: it accepts both an explicit `null` and an absent key,
-	// where `@required` would additionally oblige every captured body and inline
-	// test stub in the typed SDKs to carry a field that is cosmetic. Tightening it
-	// is a clean follow-up; publishing a non-nullable type was the actual defect.
-	Color *string `json:"color,omitempty"`
+	// Smithy expresses neither half natively here, so both are layered onto the
+	// OpenAPI projection through `jsonAdd` in `spec/smithy-build.json`: the
+	// `["string", "null"]` union for the value, the same treatment
+	// `SearchResult.content` and `SearchType.key` get, and an append to
+	// `Todolist.required` for the presence.
+	//
+	// The member stays natively optional because `@required` collides with this
+	// shape's `@examples` (`GetTodolistOrGroup`): Smithy cannot express a `null`
+	// in an example for a `String` shape, so requiring the member would force the
+	// group example to advertise a color that uncolored groups do not have —
+	// trading a faithful example for a type the projection can state anyway. The
+	// sibling shapes that carry the same field (`Wormhole`, `Folder`,
+	// `FolderWithProjects`) are natively `@required` because none of them carries
+	// examples. Nullability is not the weaker claim about presence: absence and
+	// `null` are different wire facts, and BC3 only ever sends the second.
+	Color *string `json:"color"`
 
 	// CommentsAppUrl In-app (non-API) URL for this recording's comments, alongside the API-host
-	// `comments_url`.
-	CommentsAppUrl *string   `json:"comments_app_url,omitempty"`
+	// `comments_url`. Required and never null: `_todolist.json.jbuilder` emits
+	// `json.comments_app_url` unconditionally, from the
+	// `bucket_recording_comments_url` route helper — which returns a String or
+	// raises, and has no nil path. Native `@required` is enough here precisely
+	// because the value is never null, so it costs the examples a real URL rather
+	// than a fiction.
+	CommentsAppUrl string    `json:"comments_app_url"`
 	CommentsCount  *int32    `json:"comments_count,omitempty"`
 	CommentsUrl    *string   `json:"comments_url,omitempty"`
 	Completed      *bool     `json:"completed,omitempty"`

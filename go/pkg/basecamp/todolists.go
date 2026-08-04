@@ -696,8 +696,11 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		BubbleUpURL:      gtl.BubbleUpUrl,
 		CommentsCount:    int(deref(gtl.CommentsCount)),
 		CommentsURL:      deref(gtl.CommentsUrl),
-		CommentsAppURL:   deref(gtl.CommentsAppUrl),
-		Position:         int(deref(gtl.Position)),
+		// CommentsAppURL is @required and never null on the wire — the jbuilder
+		// emits it from a route helper, which returns a String or raises. No
+		// deref; it is a plain string.
+		CommentsAppURL: gtl.CommentsAppUrl,
+		Position:       int(deref(gtl.Position)),
 		// Description is @required and never null on the wire:
 		// format_api_content funnels a blank rich text through call_pipeline,
 		// which returns "" rather than nil. No deref — it is a plain string.

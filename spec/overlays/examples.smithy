@@ -7,6 +7,16 @@ use smithy.api#examples
 // group_position_url. Both variants report type "Todolist" — BC3's recording
 // partial emits recordable_type, and a group is a Todolist whose parent is a
 // Todolist. Never branch on the type string.
+//
+// `color` is DELIBERATELY absent from both examples here and injected into the
+// OpenAPI projection by `jsonAdd` in spec/smithy-build.json — "blue" for the
+// list, an explicit `null` for the uncolored group. It is required-and-nullable
+// (see Todolist.color), and Smithy cannot put a `null` into an example for a
+// String shape, so writing it here would force the group to advertise a color
+// that uncolored groups do not have. Requiredness lives in the projection for
+// the same reason, so the example that satisfies it does too. Both halves must
+// move together: adding `color` to a Smithy example without removing its
+// `jsonAdd` pointer would leave the pointer overwriting the value.
 apply GetTodolistOrGroup @examples([
   {
     title: "Get a to-do list"
@@ -23,6 +33,7 @@ apply GetTodolistOrGroup @examples([
       creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
       bucket: { id: 12345678, name: "My Project", type: "Project" },
       parent: { id: 99999, title: "To-dos", type: "Todoset", url: "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json", app_url: "https://3.basecamp.com/999/buckets/12345678/todosets/99999" },
+      comments_app_url: "https://3.basecamp.com/999/buckets/12345678/recordings/987654/comments",
       groups_url: "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json"
     } }
   },
@@ -41,6 +52,7 @@ apply GetTodolistOrGroup @examples([
       creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
       bucket: { id: 12345678, name: "My Project", type: "Project" },
       parent: { id: 987654, title: "Launch Tasks", type: "Todolist", url: "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json", app_url: "https://3.basecamp.com/999/buckets/12345678/todolists/987654" },
+      comments_app_url: "https://3.basecamp.com/999/buckets/12345678/recordings/111222/comments",
       group_position_url: "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json"
     } }
   }

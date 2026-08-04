@@ -17,7 +17,11 @@ class TodolistGroupsServiceTest < Minitest::Test
   end
 
   def test_list
-    response = [ { "id" => 1, "name" => "Phase 1" } ]
+    # color and comments_app_url are @required on Todolist (#630), and a group
+    # IS a Todolist. color is null here because an uncolored group is the
+    # ordinary case — the key is still always emitted.
+    response = [ { "id" => 1, "name" => "Phase 1", "color" => nil,
+                   "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/1/comments" } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todolists/\d+/groups\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -28,7 +32,8 @@ class TodolistGroupsServiceTest < Minitest::Test
   end
 
   def test_create
-    response = { "id" => 1, "name" => "New Group" }
+    response = { "id" => 1, "name" => "New Group", "color" => nil,
+                 "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/1/comments" }
 
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/todolists/\d+/groups\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })

@@ -52,7 +52,14 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_list
-    response = [ { "id" => 1, "name" => "Sprint Tasks", "completed_ratio" => "3/10", "description_attachments" => [] } ]
+    # color and comments_app_url are @required on Todolist (#630) —
+    # _todolist.json.jbuilder emits color in both branches of its
+    # todolist_group? conditional and comments_app_url from a route helper — so
+    # they belong in even a minimal stub, like description_attachments already
+    # does. Ruby does not strictly decode, so their absence would go unnoticed
+    # while leaving a payload BC3 cannot produce in the suite.
+    response = [ { "id" => 1, "name" => "Sprint Tasks", "completed_ratio" => "3/10", "description_attachments" => [],
+                   "color" => "blue", "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/1/comments" } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todosets/\d+/todolists\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -63,7 +70,8 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_list_with_status
-    response = [ { "id" => 1, "name" => "Archived List", "status" => "archived", "description_attachments" => [] } ]
+    response = [ { "id" => 1, "name" => "Archived List", "status" => "archived", "description_attachments" => [],
+                   "color" => "blue", "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/1/comments" } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todosets/\d+/todolists\.json\?status=archived})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -92,7 +100,8 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_create
-    response = { "id" => 1, "name" => "New List", "description_attachments" => [] }
+    response = { "id" => 1, "name" => "New List", "description_attachments" => [],
+                 "color" => "blue", "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/1/comments" }
 
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/todosets/\d+/todolists\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -111,7 +120,8 @@ class TodolistsServiceTest < Minitest::Test
   # ---------------------------------------------------------------------
 
   def test_replace_sends_exactly_one_verbatim_put
-    response = { "id" => 2, "name" => "Updated List", "description" => "", "description_attachments" => [] }
+    response = { "id" => 2, "name" => "Updated List", "description" => "", "description_attachments" => [],
+                 "color" => "blue", "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/2/comments" }
     captured = capture_put(response)
 
     result = @account.todolists.replace(id: 2, name: "Updated List")
@@ -127,7 +137,8 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_replace_sends_an_explicit_empty_description
-    response = { "id" => 2, "name" => "Updated List", "description" => "", "description_attachments" => [] }
+    response = { "id" => 2, "name" => "Updated List", "description" => "", "description_attachments" => [],
+                 "color" => "blue", "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/2/comments" }
     captured = capture_put(response)
 
     @account.todolists.replace(id: 2, name: "Updated List", description: "")
@@ -590,7 +601,8 @@ class TodolistsServiceTest < Minitest::Test
     events = []
     account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
 
-    response = { "id" => 2, "name" => "Sprint Tasks", "description_attachments" => [] }
+    response = { "id" => 2, "name" => "Sprint Tasks", "description_attachments" => [],
+                 "color" => "blue", "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/2/comments" }
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
@@ -610,7 +622,8 @@ class TodolistsServiceTest < Minitest::Test
     events = []
     account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
 
-    response = { "id" => 2, "name" => "Updated List", "description_attachments" => [] }
+    response = { "id" => 2, "name" => "Updated List", "description_attachments" => [],
+                 "color" => "blue", "comments_app_url" => "https://3.basecamp.com/12345/buckets/1/recordings/2/comments" }
     stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
