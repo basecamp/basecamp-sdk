@@ -1,0 +1,45 @@
+scripts/enhance-openapi-go-types.sh
+  s_7971b60690ffce::t_559f9a6e511746 259-261,263-269,274-276,278-281
+  s_7971b60690ffce::t_1d2890d311c440 262,270-273,277,282-293
+  s_7971b60690ffce::t_e5c19c1ea0867f 247-248
+go/pkg/basecamp/schedules.go
+  s_7971b60690ffce::t_16619b186ce930 115-122,124-125
+  s_7971b60690ffce::t_8965bd06bb395d 864-868,871-872
+spec/basecamp.smithy
+  s_7971b60690ffce::t_1200a8921e36eb 3274-3276,3280
+  s_7971b60690ffce::t_e0d3f8c03d581a 3143-3155,3159
+SPEC.md
+  s_7971b60690ffce::t_169b864ddec242 467
+conformance/tests/schedule_entries_write.json
+  s_7971b60690ffce::t_f3764487d0ee67 1756-1873
+go/pkg/basecamp/schedules_test.go
+  s_7971b60690ffce::t_82bc7ad41fabfc 1761-1829
+go/pkg/generated/client.gen.go
+  s_7971b60690ffce::t_62b0499320e519 816-820,827-844,2609-2613,2632-2638
+openapi.json
+  s_7971b60690ffce::t_cdc783292071a4 28502,28506,32717,32721
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_7971b60690ffce::t_11c40408e8fc92 22-25,114-127
+typescript/src/generated/openapi-stripped.json
+  s_7971b60690ffce::t_8f2bb4583c9c25 25695,25699,29910,29914
+typescript/src/generated/schema.d.ts
+  s_7971b60690ffce::t_5fd735453ac754 4046-4060,4062,5485-5489,5491
+typescript/src/generated/services/schedules.ts
+  s_7971b60690ffce::t_03665a74e78555 28-30,32,102-114,116,218,395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1226080c6cfa7d5c45c8d628f98a3d3e3c3a3179",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
