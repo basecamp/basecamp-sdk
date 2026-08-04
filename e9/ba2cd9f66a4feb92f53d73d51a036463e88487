@@ -1,0 +1,26 @@
+.github/workflows/test.yml
+  s_7971b60690ffce::t_539a3a35abb736 103-127
+scripts/check-known-defect-issues-open
+  s_7971b60690ffce::t_8916f8da478ba5 1-103
+Makefile
+  s_7971b60690ffce::t_f80cef68d93f6d 87
+  s_7971b60690ffce::t_595b5924423ece 106-117
+scripts/check-bc3-route-parity
+  s_7971b60690ffce::t_b7502a029d2f90 127-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "e9ba2cd9f66a4feb92f53d73d51a036463e88487",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
