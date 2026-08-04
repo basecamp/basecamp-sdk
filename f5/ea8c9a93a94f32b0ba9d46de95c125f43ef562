@@ -1,0 +1,23 @@
+scripts/check-fixture-coverage.rb
+  s_ae792ed0be3006::t_c816386df465b4 30-35
+  s_ae792ed0be3006::t_d4f8836105061f 107-112
+  s_ae792ed0be3006::t_6c48274e781cba 41-43,50-54
+scripts/schema_instance_validator.rb
+  s_ae792ed0be3006::t_f90cd4350c86b6 1-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f5ea8c9a93a94f32b0ba9d46de95c125f43ef562",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
