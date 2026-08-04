@@ -1,0 +1,31 @@
+Makefile
+  s_ae792ed0be3006::t_777a6958c148c7 1214-1218,1221-1226
+scripts/assert-lockfiles-unchanged
+  s_e2c04ab7ad8e59::t_113e43b49c01f1 48-52,62-66
+scripts/test-assert-lockfiles-unchanged
+  s_ae792ed0be3006::t_0d554fe0eb5fd3 99-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5f34e2bd437070fb94cfa3084f2bed088d196c4f",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e2c04ab7ad8e59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ed01fad-9069-4385-8185-a8c599de69fb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
