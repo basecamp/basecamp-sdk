@@ -94,14 +94,36 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `2c0dafba13` (2026-08-02). <!-- @bc3-pin -->
+> The provenance pin is `4dd2926f8a` (2026-08-03). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `d0edc1283b..2c0dafba13` range (11 commits) contains exactly **one**
+> The `2c0dafba13..4dd2926f8a` range (6 commits) contains exactly **one**
+> API-contract change, and it is the one this repin exists to absorb: BC3
+> **#12502** (`4dd2926f8a`) preserves a schedule entry's join link and
+> highlight across a sparse update — `PRESERVED_ON_OMISSION = %i[ url
+> highlighted ]` in `Schedules::EntriesController`, plus the other half, which
+> is *emitting* them: `highlighted`, and the join link as **`join_url`** under
+> a non-colliding key, in `api/schedules/entries/_entry.json.jbuilder` and
+> `api/schedules/entries/occurrences/show.json.jbuilder`. It is the only commit
+> in the range touching `doc/api` (8 added lines in
+> `schedule_entries.md`) or `config/routes.rb` (none), so `spec/bc3-routes.json`
+> regenerates with no route delta — the change is to a payload and an omission
+> rule on an already-modelled endpoint, absorbed here as `ReplaceScheduleEntry`
+> and its `preservedOnOmission` carve-out. The remaining five commits are one
+> mail-infrastructure map, two CSS-only, one account-calendar authorization
+> reassessment on profile change, and one authentication-cache crash fix; none
+> touches `doc/api`, `config/routes.rb`, or an API view.
+>
+> Earlier pins, kept as the triage record. Each names the pin it was written
+> against, in the past tense, because that is what it is — a range triaged
+> once, at the repin that set its end. Only the sentence above is a claim
+> about today.
+>
+> The pin was `2c0dafba13` (2026-08-02). The `d0edc1283b..2c0dafba13` range (11 commits) contained exactly **one**
 > API-contract change: BC3 **#12384** (`dc6cd10714`, the Folders API),
 > absorbed here as `FoldersService` and recorded in
 > [`folders-api.md`](folders-api.md). BC3 **#12494** (`344581a379`) and
@@ -117,11 +139,6 @@ making the absorption journey publicly auditable.
 > `DELETE /my/priorities/{id}.json` still targets exactly the id in the URL and
 > still answers `204`. The remaining seven commits are four dev-tooling, two
 > Turbo-morph web-only, and one push-notification backend swap.
->
-> Earlier pins, kept as the triage record. Each names the pin it was written
-> against, in the past tense, because that is what it is — a range triaged
-> once, at the repin that set its end. Only the sentence above is a claim
-> about today.
 >
 > The pin was `d0edc128` (2026-07-31). The `e83b2733..d0edc128` range was
 > triaged at the Up Next priority-writes repin (SDK #528): the only `doc/api`
