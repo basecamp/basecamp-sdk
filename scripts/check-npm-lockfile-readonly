@@ -38,6 +38,19 @@
 # Fail-closed is the point: a false alarm costs one line of allowlist, a missed
 # writer costs the churn this gate exists to prevent.
 #
+# What this is and is not
+#
+# A regression guard against a lockfile writer being reintroduced by accident —
+# the `pretest` hook in #612 was one line, written in good faith, and cost every
+# developer a dirty tree. It reads text with a small shell-shaped parser, not a
+# shell. Review drove that parser through prefixes, flags before the subcommand,
+# unknown value-taking options, unpadded operators, line continuations, multiline
+# script values, and quoting that splits the command name; each is pinned in the
+# self-test. But a parser that is not a shell can always be out-argued by
+# something sufficiently determined — `eval` on an assembled string, a variable
+# holding the subcommand — and chasing that is not the job. Treat a green run as
+# "nobody reintroduced this by accident", not as a security boundary.
+#
 # The one deliberate writer, scripts/bump-version.sh, is exempt by name below:
 # bumping the version is exactly when the lockfile is supposed to change, it is a
 # reviewed release step, and no `make check` target invokes it.
@@ -73,6 +86,13 @@ readonly ALLOWED_SUBCOMMANDS=" ci run run-script test start stop restart exec au
 readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfig --globalconfig --cache --script-shell --shell --omit --include --tag --otp --before --node-options --user-agent --workspaces --depth --searchopts --init-module "
 
 readonly VALUELESS_FLAGS=" --silent -s --quiet --verbose -d --json --long -l --parseable -p --global -g --force -f --dry-run --ignore-scripts --no-save --save --save-dev --save-exact --no-audit --no-fund --no-package-lock --package-lock-only --prefer-offline --prefer-online --offline --if-present --include-workspace-root --legacy-peer-deps --strict-peer-deps --no-progress --no-color --yes -y "
+
+# Which lines are worth handing to the parser. Deliberately looser than `npm`:
+# the shell removes quoting before resolving a command, so `n"p"m install` runs
+# npm while carrying no literal `npm` substring. Allowing a couple of non-letters
+# between the letters catches the quoted and escaped spellings. Over-matching
+# only costs a parse — the parser decides — while under-matching is a bypass.
+readonly NPM_GREP='n[^a-zA-Z]{0,2}p[^a-zA-Z]{0,2}m'
 
 # Deliberate lockfile writers, exempt by design.
 readonly ALLOWED_FILES='^scripts/bump-version\.sh$'
@@ -121,20 +141,22 @@ scan_line() {
     local w=${words[i]}
 
     # The shell strips quoting before it resolves the command, so `"npm" install`
-    # runs exactly as the bare spelling does while `read -a` keeps the quotes
-    # attached. Unwrap a token quoted in its entirety, and drop a trailing escape
-    # backslash.
+    # and even `n"p"m install` run exactly as the bare spelling does, while
+    # `read -a` keeps the quotes attached. Drop a trailing escape backslash, then
+    # remove quote characters when they are BALANCED within the token.
     #
-    # Deliberately only when the quotes wrap the WHOLE token. Stripping quote
-    # characters wherever they appear would reach inside quoted strings and read
-    # their contents as code: `grep -Eq 'npm (run )?test'` became an npm token
-    # followed by `(`, reported as an invocation with no parsable subcommand.
-    # A half-quoted token like `'npm` opens a string rather than naming a
-    # command, so it is left alone.
+    # Balance is the test that separates a quoted command from a quoted string.
+    # `n"p"m` and `"npm"` close every quote they open, so removing them yields the
+    # command the shell would run. `'npm` leaves one open — it begins a string
+    # whose contents are data, not code — and is left alone. Removing quotes
+    # unconditionally instead made `grep -Eq 'npm (run )?test'` parse as an npm
+    # token followed by `(`, reported as an invocation with no subcommand.
     w=${w%\\}
-    if ((${#w} >= 2)) && [[ ( ${w:0:1} == '"' && ${w: -1} == '"' ) \
-                         || ( ${w:0:1} == "'" && ${w: -1} == "'" ) ]]; then
-      w=${w:1:${#w}-2}
+    dq=${w//[^\"]/}
+    sq=${w//[^\']/}
+    if (( ${#dq} % 2 == 0 && ${#sq} % 2 == 0 )); then
+      w=${w//\"/}
+      w=${w//\'/}
     fi
 
     # `npm`, an npx-style `npm@11` pin, or a *path* ending in /npm. The path
@@ -197,8 +219,11 @@ scan_line() {
 
 check_text() {   # file, line-label, text
   # Cheap reject first: the parser only has something to say about lines that
-  # mention npm at all, and almost none of them do.
-  [[ $3 == *npm* ]] || return 0
+  # mention npm at all, and almost none of them do. Quote characters are dropped
+  # for this test only — `n"p"m install` runs npm but carries no literal `npm`
+  # substring, and skipping it here would beat the parser before it ran. Being
+  # permissive costs a parse; being strict costs a bypass.
+  [[ ${3//[\"\']/} == *npm* || $3 =~ $NPM_GREP ]] || return 0
   scan_line "$3"
   ((${#REASONS[@]} == 0)) && return 0
   local reason
@@ -230,14 +255,15 @@ done < <(git ls-files '*package.json' ':!:**/node_modules/**')
 
 # 2. Makefile recipes. Recipe lines are the tab-indented ones; comments and
 #    variable assignments are not executed and must not trip the gate.
-#    `grep -n npm` rather than `grep -n ''`: only lines mentioning npm can carry
-#    a violation, and the parser is far too slow to run on all 60k tracked lines.
+#    Pre-filtered with NPM_GREP rather than scanning every line: only lines that
+#    could name npm can carry a violation, and the parser is far too slow to run
+#    on all 60k tracked lines.
 while IFS=: read -r lineno text; do
   [[ "$text" =~ ^$'\t' ]] || continue
   stripped="${text#"${text%%[![:space:]]*}"}"
   [[ "$stripped" == \#* ]] && continue
   check_text "Makefile" "$lineno" "$stripped"
-done < <(grep -n npm Makefile)
+done < <(grep -nE "$NPM_GREP" Makefile)
 
 # 3. Scripts under scripts/, which is what those Makefile recipes actually run.
 #    Without this, the exemption above would be unreachable decoration and the
@@ -252,7 +278,7 @@ while IFS= read -r script; do
     stripped="${text#"${text%%[![:space:]]*}"}"
     [[ "$stripped" == \#* ]] && continue
     check_text "$script" "$lineno" "$stripped"
-  done < <(grep -n npm "$script" 2>/dev/null)
+  done < <(grep -nE "$NPM_GREP" "$script" 2>/dev/null)
 done < <(git ls-files 'scripts/*')
 
 if [[ $fail -eq 0 ]]; then

@@ -180,6 +180,17 @@ expect_reject "a single-quoted executable: 'npm' install" \
 expect_reject "an escaped space: npm\\ install" \
   "$(make_fixture quote_esc 'true' 'npm\ install')" 'npm install'
 
+# Quoting may also split the command name itself. The shell runs this as
+# `npm install`, but the line carries no literal `npm` substring, so the cheap
+# pre-filter used to return before the parser ever saw it.
+expect_reject 'a command name split by quoting: n"p"m install' \
+  "$(make_fixture quote_split 'true' 'n"p"m install --package-lock-only')" \
+  'npm install'
+
+expect_reject "the same with single quotes: n'p'm install" \
+  "$(make_fixture quote_split_sq 'true' "n'p'm install")" \
+  'npm install'
+
 # JSON permits a literal newline inside a script value, and npm runs every line
 # of it. A newline-delimited read of jq's output handed only the first line to
 # the parser and dropped the rest, so the writer on line two scanned clean.
