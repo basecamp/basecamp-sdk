@@ -100,6 +100,10 @@ readonly VALUELESS_FLAGS=" --silent -s --quiet --verbose -d --json --long -l --p
 # as code until the next operator.
 readonly SHELL_WRAPPERS=" sh bash zsh dash ksh env "
 
+# Commands that run another command, so the word after them is still a command
+# position: `npx --yes npm@11 install` really does invoke npm.
+readonly COMMAND_PREFIXES=" npx env command exec time nohup sudo doas xargs sh bash zsh dash ksh "
+
 # Which lines are worth handing to the parser. Deliberately looser than `npm`:
 # the shell removes quoting before resolving a command, so `n"p"m install` runs
 # npm while carrying no literal `npm` substring. Allowing a couple of non-letters
@@ -189,7 +193,7 @@ scan_line() {
   read -r -a words <<<"$line"
 
   local i=0 n=${#words[@]}
-  local shell_seen=0 code_mode=0 in_dq=0 in_sq=0
+  local shell_seen=0 code_mode=0 in_dq=0 in_sq=0 at_cmd=1
   while ((i < n)); do
     local w=${words[i]}
 
@@ -227,6 +231,7 @@ scan_line() {
        || $w == '<' || $w == '>' || $w == '`' ]]; then
       shell_seen=0
       code_mode=0
+      at_cmd=1
       ((i += 1))
       continue
     fi
@@ -242,12 +247,22 @@ scan_line() {
     # whose contents are data, not code — and is left alone. Removing quotes
     # unconditionally instead made `grep -Eq 'npm (run )?test'` parse as an npm
     # token followed by `(`, reported as an invocation with no subcommand.
-    w=${w%\\}
     dq=${w//[^\"]/}
     sq=${w//[^\']/}
     if ((code_mode)) || (( ${#dq} % 2 == 0 && ${#sq} % 2 == 0 )); then
       w=${w//\"/}
       w=${w//\'/}
+    fi
+    # The shell removes escape backslashes before resolving the command, so
+    # `np\m install` runs npm. Only a trailing one was being dropped.
+    w=${w//\\/}
+
+    # Only a word in COMMAND POSITION can be the executable. `echo "npm" install`
+    # passes "npm" to echo — reading it as a command was a false alarm that no
+    # allowlist entry could fix.
+    if ((! at_cmd)); then
+      ((i += 1))
+      continue
     fi
 
     # `sh -c '...'` hands its argument to a shell, so from the `-c` onward the
@@ -258,6 +273,12 @@ scan_line() {
       code_mode=1
     elif [[ $SHELL_WRAPPERS == *" ${w##*/} "* ]]; then
       shell_seen=1
+    fi
+
+    # Flags and command-running prefixes leave the next word still in command
+    # position; anything else takes it.
+    if [[ $w != -* && $COMMAND_PREFIXES != *" ${w##*/} "* ]]; then
+      at_cmd=0
     fi
 
     # `npm`, an npx-style `npm@11` pin, or a *path* ending in /npm. The path

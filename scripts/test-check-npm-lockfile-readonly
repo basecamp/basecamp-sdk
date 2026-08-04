@@ -255,6 +255,12 @@ expect_reject 'bash -c "npm install"' \
 expect_reject "/bin/sh -c with a writer" \
   "$(make_fixture wrap_path "/bin/sh -c 'npm dedupe'")" 'npm dedupe'
 
+# Bash removes an embedded escape before resolving the command, so this runs the
+# real npm. Only a trailing backslash was being dropped.
+expect_reject "an embedded escape: np\\m install" \
+  "$(make_fixture esc_embedded 'np\m install --package-lock-only')" \
+  'npm install'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \
@@ -333,6 +339,14 @@ expect_accept "a delegated Makefile with only permitted commands" \
 # false alarm with no honest fix — allowlisting `install` would gut the gate.
 # A quoted span running across words is data the shell hands to the command, not
 # a command itself. Flagging it is a false alarm with no honest remedy.
+# A fully quoted token is only a command when it stands in command position.
+# `echo "npm" install` passes "npm" to echo.
+expect_accept "a quoted npm as an ARGUMENT, not a command" \
+  "$(make_fixture quoted_arg 'echo "npm" install')"
+
+expect_accept "npm named in the middle of a command line" \
+  "$(make_fixture midline 'true' 'echo checking npm install support')"
+
 expect_accept "npm install inside a quoted echo argument" \
   "$(make_fixture quoted_data 'echo "please npm install here"')"
 
