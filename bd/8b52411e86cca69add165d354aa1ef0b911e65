@@ -1,0 +1,22 @@
+ruby/test/scripts/generate_services_test.rb
+  s_7971b60690ffce::t_98d99def86eb84 22-28
+SPEC.md
+  s_7971b60690ffce::t_02158af0fba56b 3332
+  s_7971b60690ffce::t_5ce2574939f138 476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "bd8b52411e86cca69add165d354aa1ef0b911e65",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
