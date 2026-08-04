@@ -45,7 +45,18 @@ export LC_ALL=C
 
 cd "${CHECK_NPM_ROOT:-$(dirname "$0")/..}" || exit 1
 
-SNAPSHOT=${LOCKFILE_SNAPSHOT:-${TMPDIR:-/tmp}/basecamp-sdk-lockfiles.$(id -u).sha}
+# One snapshot per invocation. `make check` allocates it with mktemp and passes
+# the same path to --record and --verify, because this repo is worked in from
+# ~30 worktrees at once: a path keyed only on the user was shared between
+# concurrent runs, and the second --record overwrote the first run's baseline.
+# The fallback is keyed on the repo root so a bare manual run still cannot
+# collide with a sibling worktree.
+if [[ -n "${LOCKFILE_SNAPSHOT:-}" ]]; then
+  SNAPSHOT=$LOCKFILE_SNAPSHOT
+else
+  root_key=$(pwd -P | cksum | tr -d ' ')
+  SNAPSHOT=${TMPDIR:-/tmp}/basecamp-sdk-lockfiles.$(id -u).${root_key}.sha
+fi
 
 # Walk the filesystem, not the index. `git ls-files` lists only what is already
 # tracked, so a lockfile CREATED during the checks — a root package-lock.json,

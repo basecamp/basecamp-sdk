@@ -29,7 +29,10 @@ make_repo() {
   local name=$1
   local dir="$TMPROOT/$name"
   mkdir -p "$dir/typescript" "$dir/ruby" "$dir/python" "$dir/conformance/runner/typescript"
-  printf '{"lockfileVersion":3,"name":"a"}\n' > "$dir/typescript/package-lock.json"
+  # Content differs per repo, so a baseline recorded by one is detectably wrong
+  # for another — otherwise identical fixtures would hide a shared snapshot path.
+  printf '{"lockfileVersion":3,"name":"a","repo":"%s"}\n' "$name" \
+    > "$dir/typescript/package-lock.json"
   printf '{"lockfileVersion":3,"name":"b"}\n' > "$dir/conformance/runner/typescript/package-lock.json"
   printf 'GEM\n  specs:\n' > "$dir/ruby/Gemfile.lock"
   printf 'version = 1\n' > "$dir/python/uv.lock"
@@ -118,6 +121,44 @@ expect fail "a NEW untracked lockfile created at the repo root" \
 
 expect fail "a new lockfile in a directory that had none" \
   "mkdir -p extra && printf '{}' > extra/package-lock.json"
+
+echo "== concurrent runs must not share a baseline =="
+
+# ~30 worktrees are worked in at once here. With a snapshot path keyed only on
+# the user, a second run's --record overwrote the first run's baseline.
+cases=$((cases + 1))
+d1=$(make_repo "conc1"); d2=$(make_repo "conc2")
+s1="$TMPROOT/snapc1"; s2="$TMPROOT/snapc2"
+( cd "$d1" && CHECK_NPM_ROOT="$d1" LOCKFILE_SNAPSHOT="$s1" "$ASSERT" --record >/dev/null )
+( cd "$d2" && CHECK_NPM_ROOT="$d2" LOCKFILE_SNAPSHOT="$s2" "$ASSERT" --record >/dev/null )
+( cd "$d2" && printf 'x' >> typescript/package-lock.json )
+o1=$( cd "$d1" && CHECK_NPM_ROOT="$d1" LOCKFILE_SNAPSHOT="$s1" "$ASSERT" --verify 2>&1 ); r1=$?
+o2=$( cd "$d2" && CHECK_NPM_ROOT="$d2" LOCKFILE_SNAPSHOT="$s2" "$ASSERT" --verify 2>&1 ); r2=$?
+if [[ $r1 -eq 0 && $r2 -ne 0 ]]; then
+  echo "  ok    each run keeps its own baseline (clean one passes, dirty one fails)"
+else
+  echo "  FAIL  concurrent baselines crossed — clean=$r1 dirty=$r2" >&2
+  failures=$((failures + 1))
+fi
+
+# And the DEFAULT path (no LOCKFILE_SNAPSHOT) must not be shared either: drive
+# the script itself in two repo roots, record in both, dirty only the second.
+# With one path per user, the second --record clobbers the first's baseline and
+# the clean repo starts failing.
+cases=$((cases + 1))
+d3=$(make_repo "conc3"); d4=$(make_repo "conc4")
+( cd "$d3" && CHECK_NPM_ROOT="$d3" "$ASSERT" --record >/dev/null )
+( cd "$d4" && CHECK_NPM_ROOT="$d4" "$ASSERT" --record >/dev/null )
+( cd "$d4" && printf 'x' >> typescript/package-lock.json )
+o3=$( cd "$d3" && CHECK_NPM_ROOT="$d3" "$ASSERT" --verify 2>&1 ); r3=$?
+o4=$( cd "$d4" && CHECK_NPM_ROOT="$d4" "$ASSERT" --verify 2>&1 ); r4=$?
+if [[ $r3 -eq 0 && $r4 -ne 0 ]]; then
+  echo "  ok    the default path is per repo root, so baselines do not cross"
+else
+  echo "  FAIL  default-path baselines crossed — clean=$r3 dirty=$r4" >&2
+  printf '        %s\n' "$o3" >&2
+  failures=$((failures + 1))
+fi
 
 echo "== the wrapper runs --verify even when the checks fail =="
 

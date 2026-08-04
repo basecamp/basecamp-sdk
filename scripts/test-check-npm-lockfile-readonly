@@ -276,6 +276,23 @@ expect_reject "two assignments then a writer" \
   "$(make_fixture env_assign2 'true' 'CI=1 NODE_ENV=test npm update')" \
   'npm update'
 
+# Shell keywords are syntax, not commands. A conditional that is false in CI but
+# true on a developer's machine is exactly where the static gate has to catch
+# what the runtime tripwire would only notice after the fact.
+expect_reject "if false; then npm install; fi" \
+  "$(make_fixture kw_if 'if false; then npm install --package-lock-only; fi')" \
+  'npm install'
+
+expect_reject "while ...; do npm install ...; done" \
+  "$(make_fixture kw_while 'true' 'while read f; do npm install --package-lock-only; done < list')" \
+  'npm install'
+
+expect_reject "! npm install (negated)" \
+  "$(make_fixture kw_bang '! npm install --package-lock-only')" 'npm install'
+
+expect_reject "a writer inside an else branch" \
+  "$(make_fixture kw_else 'if true; then echo ok; else npm update; fi')" 'npm update'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \

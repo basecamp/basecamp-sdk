@@ -1212,14 +1212,20 @@ generate:
 # would be a no-op; this one cannot say what went wrong, only that something
 # did — but no spelling, `eval` or delegation can talk it out of noticing.
 #
+# The snapshot path is allocated per invocation with mktemp and threaded through
+# both calls: this repo is worked in from ~30 worktrees at once, and a path keyed
+# only on the user let a concurrent run overwrite this one's baseline.
+#
 # --verify runs whether or not the checks passed, and the sub-make's exit status
 # is preserved. A target that writes a lockfile and THEN fails is the case that
 # most needs the diagnostic, and aborting the recipe on the first failure would
 # have left the dirty tree unexplained.
 check:
-	@./scripts/assert-lockfiles-unchanged --record
-	@rc=0; $(MAKE) check-targets || rc=$$?; \
-	 if ! ./scripts/assert-lockfiles-unchanged --verify; then \
+	@snap=$$(mktemp "$${TMPDIR:-/tmp}/basecamp-sdk-lockfiles.XXXXXX"); \
+	 trap 'rm -f "$$snap"' EXIT; \
+	 LOCKFILE_SNAPSHOT=$$snap ./scripts/assert-lockfiles-unchanged --record; \
+	 rc=0; $(MAKE) check-targets || rc=$$?; \
+	 if ! LOCKFILE_SNAPSHOT=$$snap ./scripts/assert-lockfiles-unchanged --verify; then \
 	   if [ $$rc -eq 0 ]; then rc=1; fi; \
 	 fi; \
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \

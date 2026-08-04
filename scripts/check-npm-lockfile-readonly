@@ -111,6 +111,13 @@ readonly SHELL_WRAPPERS=" sh bash zsh dash ksh env "
 # position: `npx --yes npm@11 install` really does invoke npm.
 readonly COMMAND_PREFIXES=" npx env command exec time nohup sudo doas xargs sh bash zsh dash ksh "
 
+# Shell keywords are syntax, not commands: in `if false; then npm install; fi`
+# the command position belongs to the word after `then`, not to `then` itself.
+# Treating them as commands cleared it and hid the writer — and a conditional
+# that is false in CI but true on a developer's machine is exactly where the
+# static gate has to catch what the runtime tripwire would only see afterwards.
+readonly SHELL_KEYWORDS=" if then elif else fi while until do done case esac in function select ! { } time coproc "
+
 # Which lines are worth handing to the parser. Deliberately looser than `npm`:
 # the shell removes quoting before resolving a command, so `n"p"m install` runs
 # npm while carrying no literal `npm` substring. Allowing a couple of non-letters
@@ -288,6 +295,7 @@ scan_line() {
     # executable skipped the npm that followed it.
     if [[ $w != -* \
        && ! $w =~ ^[A-Za-z_][A-Za-z0-9_]*= \
+       && $SHELL_KEYWORDS != *" $w "* \
        && $COMMAND_PREFIXES != *" ${w##*/} "* ]]; then
       at_cmd=0
     fi
