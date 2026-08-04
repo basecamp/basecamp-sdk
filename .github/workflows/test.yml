@@ -347,6 +347,13 @@ jobs:
         working-directory: .
         run: make test-assert-sdk-built
 
+      # The lockfile tripwire in `make check` only ever sees lockfiles that did
+      # not move. This shows it reacts when one does — including writes made via
+      # `eval` or a command held in a variable, which no text parser resolves.
+      - name: Lockfile tripwire self-test
+        working-directory: .
+        run: make test-assert-lockfiles-unchanged
+
   test-ruby:
     name: Ruby ${{ matrix.ruby }}
     runs-on: ubuntu-latest

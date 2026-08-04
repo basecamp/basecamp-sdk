@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+#
+# Self-test for scripts/assert-lockfiles-unchanged.
+#
+# Its live run in `make check` only ever sees lockfiles that did not move, so
+# nothing there proves it notices when one does. The whole point of this check is
+# that it cannot be argued out of noticing — so that has to be demonstrated, not
+# asserted.
+#
+# Each case builds a synthetic repo with real lockfiles, records, mutates (or
+# does not), and verifies.
+#
+# ASSERT_LOCKFILES names the script under test, so a mutated copy can be driven
+# through the same cases.
+
+set -uo pipefail
+export LC_ALL=C
+
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ASSERT=${ASSERT_LOCKFILES:-$REPO_ROOT/scripts/assert-lockfiles-unchanged}
+
+failures=0
+cases=0
+
+TMPROOT=$(mktemp -d)
+trap 'rm -rf "$TMPROOT"' EXIT
+
+make_repo() {
+  local name=$1
+  local dir="$TMPROOT/$name"
+  mkdir -p "$dir/typescript" "$dir/ruby" "$dir/python" "$dir/conformance/runner/typescript"
+  printf '{"lockfileVersion":3,"name":"a"}\n' > "$dir/typescript/package-lock.json"
+  printf '{"lockfileVersion":3,"name":"b"}\n' > "$dir/conformance/runner/typescript/package-lock.json"
+  printf 'GEM\n  specs:\n' > "$dir/ruby/Gemfile.lock"
+  printf 'version = 1\n' > "$dir/python/uv.lock"
+  git -C "$dir" init --quiet
+  git -C "$dir" add -A
+  echo "$dir"
+}
+
+run() {   # dir, snapshot, mode
+  ( cd "$1" && CHECK_NPM_ROOT="$1" LOCKFILE_SNAPSHOT="$2" "$ASSERT" "$3" 2>&1 )
+}
+
+expect() {   # want(pass|fail), label, mutate-command
+  local want=$1 label=$2 mutate=$3
+  local dir snap out status
+  cases=$((cases + 1))
+  dir=$(make_repo "case$cases")
+  snap="$TMPROOT/snap$cases"
+
+  run "$dir" "$snap" --record >/dev/null
+  ( cd "$dir" && eval "$mutate" )
+  out=$(run "$dir" "$snap" --verify); status=$?
+
+  if [[ $want == pass && $status -ne 0 ]]; then
+    echo "  FAIL  $label — exited $status; it must accept this:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  elif [[ $want == fail && $status -eq 0 ]]; then
+    echo "  FAIL  $label — exited 0; it must reject this" >&2
+    failures=$((failures + 1))
+  elif [[ $want == fail && "$out" != *"modified a dependency lockfile"* ]]; then
+    echo "  FAIL  $label — rejected without naming the problem:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  else
+    echo "  ok    $label — $([[ $want == pass ]] && echo accepted || echo "rejected (exit $status)")"
+  fi
+}
+
+echo "== nothing moved =="
+
+expect pass "lockfiles untouched" "true"
+expect pass "an unrelated file changed" "echo x > README.md"
+
+echo "== something moved, however it got there =="
+
+expect fail "an npm lockfile rewritten" \
+  "printf '{\"lockfileVersion\":3,\"name\":\"a\",\"x\":1}\n' > typescript/package-lock.json"
+
+expect fail "the conformance runner's lockfile rewritten" \
+  "printf '{\"lockfileVersion\":3,\"name\":\"b\",\"x\":1}\n' > conformance/runner/typescript/package-lock.json"
+
+expect fail "Gemfile.lock rewritten" "printf 'GEM\n  specs:\n    x\n' > ruby/Gemfile.lock"
+
+expect fail "uv.lock rewritten" "printf 'version = 2\n' > python/uv.lock"
+
+expect fail "a lockfile deleted" "rm typescript/package-lock.json"
+
+# The point of this check: it observes bytes, so the mechanism does not matter.
+# None of these spellings is one the static gate's parser resolves.
+expect fail "written via eval of an assembled string" \
+  "cmd='printf x >> typescript/package-lock.json'; eval \"\$cmd\""
+
+expect fail "written by a command held in a variable" \
+  "w=printf; \$w 'y' >> typescript/package-lock.json"
+
+echo
+if [[ $failures -eq 0 ]]; then
+  echo "assert-lockfiles-unchanged self-test passed ($cases cases)."
+else
+  echo "assert-lockfiles-unchanged self-test FAILED ($failures of $cases cases)." >&2
+fi
+exit $((failures > 0))

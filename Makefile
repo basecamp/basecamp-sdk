@@ -1025,7 +1025,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built test-assert-lockfiles-unchanged
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1173,11 +1173,20 @@ test-check-npm-lockfile-readonly:
 test-assert-sdk-built:
 	@./scripts/test-assert-sdk-built
 
+# Prove the lockfile tripwire notices. Its live run in `check` only ever sees
+# lockfiles that did not move, so nothing there shows it reacts when one does —
+# and "cannot be argued out of noticing" is the whole claim. Includes writes made
+# through `eval` and through a command held in a variable: spellings the static
+# gate's parser cannot resolve, and does not need to, because this one reads
+# bytes rather than text.
+test-assert-lockfiles-unchanged:
+	@./scripts/test-assert-lockfiles-unchanged
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
 
-.PHONY: generate
+.PHONY: generate check check-targets
 
 # Regenerate every machine-derived artifact in the repo, in dependency order.
 # Run after editing spec/basecamp.smithy or spec/api-provenance.json.
@@ -1195,8 +1204,21 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built
+#
+# Wrapped rather than a bare dependency list so the lockfiles can be hashed
+# before the checks and again after. check-npm-lockfile-readonly predicts that
+# nothing here writes one; this observes it. The static gate names the file and
+# line at the commit that introduces a writer, and works even where the write
+# would be a no-op; this one cannot say what went wrong, only that something
+# did — but no spelling, `eval` or delegation can talk it out of noticing.
+check:
+	@./scripts/assert-lockfiles-unchanged --record
+	@$(MAKE) check-targets
+	@./scripts/assert-lockfiles-unchanged --verify
 	@echo "==> All checks passed"
+
+check-targets: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built test-assert-lockfiles-unchanged
+	@:
 
 # Clean all build artifacts
 clean: smithy-clean go-clean ts-clean rb-clean kt-clean swift-clean py-clean
