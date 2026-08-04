@@ -2,41 +2,45 @@
 
 module Basecamp
   module Services
-    # Merge-safe +update+ for cards, prepended onto the generated
+    # Tri-state +due_on+ for card updates, prepended onto the generated
     # {CardsService} (see the +on_load+ hook in +basecamp.rb+).
     #
-    # BC3 builds the card's update params as
-    # <tt>{ due_on: nil }.merge(card_params)</tt>
-    # (+kanban/cards_controller.rb+), so *any* update whose body omits +due_on+
-    # erases the card's due date. A sparse PUT — the natural thing to write —
-    # is therefore destructive on the raw endpoint, which remains available as
-    # {#update_verbatim}.
+    # BC3's card controller is presence-aware on the JSON representation
+    # (+kanban/cards_controller.rb+, basecamp/bc3#12521): +card_update_params+
+    # is plain +card_params+, so an update writes exactly the keys the body
+    # carries. An omitted +due_on+ leaves the card's due date UNCHANGED; an
+    # explicit <tt>""</tt> (or +null+) clears it. The
+    # <tt>{ due_on: nil }.merge(card_params)</tt> default survives only for the
+    # HTML/turbo_stream web forms, which post every field on every submit.
     #
-    # +update+ composes the public +get+ and +update_verbatim+ methods, so
-    # hooks observe the two wire operations, not a synthetic composite.
+    # A clear therefore has to be *stated*, never encoded as an omission —
+    # omitting +due_on+ to clear it is a silent no-op. <tt>""</tt> is the
+    # spelling that travels: JSON +null+ cannot reach the wire from here at
+    # all, because +compact_params+ is +kwargs.compact+ and drops nils (SPEC
+    # section 18 body compaction). Rails casts the blank string to nil on the
+    # date column, so <tt>""</tt> is what a clear looks like end to end.
     #
-    # Not atomic: a concurrent due-date change landing between the GET and the
-    # PUT is overwritten with the value this call read. The window is one
-    # round-trip.
+    # There is no read-before-write. An earlier version GET the card and resent
+    # its due date, because the server then nil'd an unmentioned one and a
+    # sparse PUT was destructive. Presence-awareness removed the hazard the
+    # extra round-trip covered, and with it the race the round-trip opened
+    # between the read and the write. Every case is a single PUT.
     module CardsExtensions
-      # The deliberate-overwrite escape hatch named in every malformed-response
-      # hint raised out of this composite.
-      ESCAPE_HATCH = "update_verbatim"
-
-      # Updates a card without disturbing fields the caller did not mention.
+      # Updates a card, addressing only what the caller named.
       #
-      # +due_on+ is tri-state, which is what makes this safe:
+      # +due_on+ is tri-state:
       #
-      # * +nil+ (omitted) — the current due date is fetched and resent
-      # * <tt>""</tt> — the due date is cleared
+      # * +nil+ (unaddressed) — no +due_on+ key is sent; BC3 leaves the current
+      #   due date alone
+      # * <tt>""</tt> — a stated clear, sent as <tt>""</tt>
       # * a date — the due date is set
       #
-      # The extra GET is only paid for in the +nil+ case, the one where the
-      # API would otherwise destroy something.
+      # Every other argument is plain send-when-set: +nil+ leaves the field off
+      # the body, and BC3 leaves the stored value untouched.
       #
-      # Assignees are never resent on the caller's behalf: BC3 filters incoming
-      # IDs through +reachable_people+, so echoing back an id belonging to
-      # someone who has since lost board access would silently unassign them.
+      # This is the same single PUT as {#update_verbatim}, which stays as the
+      # unnormalised path; +update+ differs only in mapping an empty +due_on+ to
+      # the <tt>""</tt> the server reads as a clear.
       #
       # @param card_id [Integer] card id
       # @param title [String, nil] new title (nil = keep current)
@@ -47,13 +51,13 @@ module Basecamp
       def update(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
         resolved_due_on =
           if due_on.nil?
-            current_due_on(get(card_id: card_id))
-          elsif due_on.to_s.empty?
-            # Clearing is encoded by OMITTING due_on — compact_params strips the
-            # nil below, and BC3 nils an omitted due date. Sending an explicit
-            # null would violate body compaction (SPEC §18), and sending ""
-            # risks a date-format error.
+            # Unaddressed. +compact_params+ drops the nil, so no key is sent and
+            # the presence-aware update never touches the stored date.
             nil
+          elsif due_on.to_s.empty?
+            # A stated clear. "" survives +compact_params+ (it removes only
+            # nils) and reaches the wire as {"due_on": ""}.
+            ""
           else
             due_on
           end
@@ -65,27 +69,6 @@ module Basecamp
           due_on: resolved_due_on,
           assignee_ids: assignee_ids
         )
-      end
-
-      private
-
-      # Reads the fetched card's due date, refusing to resend a malformed one.
-      #
-      # +compact_params+ is +kwargs.compact+, which removes only +nil+, so
-      # before this guard +false+, +0+, +[]+, <tt>{}</tt>, +42+, +true+ and
-      # <tt>["x"]</tt> all reached the replacement request and were written to
-      # the card. This composite exists precisely to stop an omitted +due_on+
-      # from erasing the date, so resending an unvalidated one defeats it.
-      # Ruby has no typed decoder between the GET and this read (+get+ returns
-      # a raw Hash), so the check is explicit work here. See {MergeSafe}
-      # and #576.
-      #
-      # An empty date is normalised to +nil+ rather than sent: <tt>""</tt> is
-      # not a date BC3 accepts, and omission is how the clear is encoded.
-      def current_due_on(card)
-        body = MergeSafe.require_hash(card, record: "Card", operation: "GetCard", escape: ESCAPE_HATCH)
-        value = MergeSafe.writable_string(body, "due_on", record: "Card", escape: ESCAPE_HATCH)
-        value.empty? ? nil : value
       end
     end
   end

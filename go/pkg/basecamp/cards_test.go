@@ -673,7 +673,7 @@ func TestCreateStepRequest_Marshal(t *testing.T) {
 func TestUpdateStepRequest_Marshal(t *testing.T) {
 	req := UpdateStepRequest{
 		Title: "Updated step title",
-		DueOn: "2024-02-20",
+		DueOn: Ptr("2024-02-20"),
 	}
 
 	out, err := json.Marshal(req)
@@ -877,6 +877,68 @@ func TestCardStepsService_UpdateClearsAssignees(t *testing.T) {
 	}
 }
 
+// TestCardStepsService_UpdateClearsDueOn pins the presence-bearing DueOn added
+// for basecamp/bc3#12521: a pointer to the empty string is an explicit clear
+// and must reach the wire as "". Before the server became presence-aware this
+// was inexpressible — an omitted due_on and a clear were the same request
+// (basecamp/basecamp-cli#604).
+func TestCardStepsService_UpdateClearsDueOn(t *testing.T) {
+	fixture := loadCardsFixture(t, "step.json")
+	var receivedBody map[string]any
+	svc := testCardStepsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateStepRequest{
+		DueOn: Ptr(""),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	v, ok := receivedBody["due_on"]
+	if !ok {
+		t.Fatalf("due_on must be PRESENT as \"\" to clear; omission leaves it unchanged, got body %+v", receivedBody)
+	}
+	if v != "" {
+		t.Errorf("due_on = %#v, want the empty string", v)
+	}
+}
+
+// TestCardStepsService_UpdateLeavesDueOnAloneWhenNil pins the other half of the
+// tri-state: nil must omit the key so BC3 leaves the date alone.
+func TestCardStepsService_UpdateLeavesDueOnAloneWhenNil(t *testing.T) {
+	fixture := loadCardsFixture(t, "step.json")
+	var receivedBody map[string]any
+	svc := testCardStepsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateStepRequest{
+		AssigneeIDs: []int64{1049715914},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if v, ok := receivedBody["due_on"]; ok {
+		t.Errorf("due_on must be absent when DueOn is nil, got %#v", v)
+	}
+	// An assignee-only body is a valid partial update since basecamp/bc3#12521;
+	// it used to 400 because title was required.
+	if _, ok := receivedBody["title"]; ok {
+		t.Errorf("title must be absent when unaddressed, got %v", receivedBody["title"])
+	}
+}
+
 func TestCardStepsService_UpdatePartial(t *testing.T) {
 	fixture := loadCardsFixture(t, "step.json")
 	var receivedBody map[string]any
@@ -1007,11 +1069,14 @@ func TestCardColumnsService_DisableOnHold(t *testing.T) {
 	}
 }
 
-// --- merge-safe Update (#467) ------------------------------------------------
+// --- presence-aware Update (#467, basecamp/bc3#12521) ------------------------
 //
-// BC3 builds card_update_params as `{ due_on: nil }.merge(card_params)`, so a
-// sparse verbatim PUT erases the due date. Update fetches first and resends the
-// existing value when the caller did not address due_on.
+// BC3 used to build card_update_params as `{ due_on: nil }.merge(card_params)`,
+// so a sparse PUT erased the due date and Update had to fetch first and resend
+// the existing value. Since basecamp/bc3#12521 the JSON representation is
+// presence-aware: an omitted key is left unchanged, an explicit "" clears. The
+// preservation GET is gone; Update is a single PUT that sends exactly what the
+// caller addressed.
 
 // recordingCardsServer records every request (method + decoded body) so a test
 // can assert on the whole exchange, not just the last request.
@@ -1035,7 +1100,7 @@ func recordingCardsServer(t *testing.T, recorded *[]recordedRequest, cardJSON []
 	})
 }
 
-func TestCardsService_UpdatePreservesDueOnWhenUnaddressed(t *testing.T) {
+func TestCardsService_UpdateSendsOnlyWhatTheCallerAddressed(t *testing.T) {
 	// cards/get.json carries due_on 2024-02-01.
 	fixture := loadCardsFixture(t, "get.json")
 	var recorded []recordedRequest
@@ -1048,38 +1113,60 @@ func TestCardsService_UpdatePreservesDueOnWhenUnaddressed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(recorded) != 2 {
-		t.Fatalf("expected 2 requests (GET then PUT), got %d: %+v", len(recorded), recorded)
+	// One PUT, no preservation GET: BC3 leaves an omitted key alone, so there is
+	// nothing to read back and resend.
+	if len(recorded) != 1 {
+		t.Fatalf("expected exactly 1 request (no preservation GET), got %d: %+v", len(recorded), recorded)
 	}
-	if recorded[0].method != http.MethodGet {
-		t.Errorf("expected request 0 to be a GET, got %s", recorded[0].method)
+	if recorded[0].method != http.MethodPut {
+		t.Errorf("expected a PUT, got %s", recorded[0].method)
 	}
-	if recorded[1].method != http.MethodPut {
-		t.Errorf("expected request 1 to be a PUT, got %s", recorded[1].method)
-	}
-	if got := recorded[1].body["due_on"]; got != "2024-02-01" {
-		t.Errorf("due_on = %v, want the fetched 2024-02-01 resent — otherwise BC3 clears it", got)
-	}
-	if got := recorded[1].body["title"]; got != "new title" {
+	if got := recorded[0].body["title"]; got != "new title" {
 		t.Errorf("title = %v, want 'new title'", got)
+	}
+	// due_on must NOT be echoed back. Sending it would reintroduce the
+	// read-modify-write race the GET's removal exists to eliminate.
+	if v, ok := recorded[0].body["due_on"]; ok {
+		t.Errorf("due_on must be absent when unaddressed, got %v", v)
 	}
 	// The caller said nothing about assignees. Resending them would run BC3's
 	// reachable_people filter and could unassign someone who lost board access.
-	if _, ok := recorded[1].body["assignee_ids"]; ok {
-		t.Errorf("assignee_ids must be absent when unaddressed, got %v", recorded[1].body["assignee_ids"])
+	if v, ok := recorded[0].body["assignee_ids"]; ok {
+		t.Errorf("assignee_ids must be absent when unaddressed, got %v", v)
 	}
-	if _, ok := recorded[1].body["content"]; ok {
-		t.Errorf("content must be absent when unaddressed, got %v", recorded[1].body["content"])
+	if v, ok := recorded[0].body["content"]; ok {
+		t.Errorf("content must be absent when unaddressed, got %v", v)
 	}
 }
 
-func TestCardsService_UpdateExplicitClearOmitsDueOn(t *testing.T) {
+// TestCardsService_UnaddressedDueOnSurvivesAgainstPresenceAwareBC3 proves the
+// omission is SAFE against the live server: a title-only update leaves the
+// stored due date untouched without the SDK ever reading it back.
+func TestCardsService_UnaddressedDueOnSurvivesAgainstPresenceAwareBC3(t *testing.T) {
+	fixture := loadCardsFixture(t, "get.json")
+	stored := "2024-02-01"
+	svc := presenceAwareCardsServer(t, fixture, &stored)
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+		Title: cardStrPtr("new title"),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if stored != "2024-02-01" {
+		t.Errorf("a title-only update must not disturb the due date; server now holds %q", stored)
+	}
+}
+
+func TestCardsService_UpdateExplicitClearSendsEmptyDueOn(t *testing.T) {
 	fixture := loadCardsFixture(t, "get.json")
 	var recorded []recordedRequest
 	svc := recordingCardsServer(t, &recorded, fixture)
 
 	// A pointer to the empty string is an explicit clear. It needs no GET, and
-	// it is encoded by OMITTING due_on — BC3 nils an omitted due date.
+	// it goes on the wire AS "" — BC3 blank-casts that to nil, which clears on
+	// both the presence-aware server and the older omit-clears `four` branch.
 	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
 		DueOn: cardStrPtr(""),
 	})
@@ -1093,8 +1180,74 @@ func TestCardsService_UpdateExplicitClearOmitsDueOn(t *testing.T) {
 	if recorded[0].method != http.MethodPut {
 		t.Errorf("expected a PUT, got %s", recorded[0].method)
 	}
-	if v, ok := recorded[0].body["due_on"]; ok {
-		t.Errorf("due_on must be omitted to clear (never null — SPEC section 18), got %v", v)
+	v, ok := recorded[0].body["due_on"]
+	if !ok {
+		t.Fatalf("due_on must be PRESENT as \"\" to clear; omission no-ops against presence-aware BC3, got body %+v", recorded[0].body)
+	}
+	if v != "" {
+		t.Errorf("due_on must be the empty string to clear (never null — SPEC section 18), got %#v", v)
+	}
+}
+
+// presenceAwareCardsServer models current BC3 (basecamp/bc3#12521) on the JSON
+// representation: an omitted due_on is left UNCHANGED, and only an explicit ""
+// or null clears it. It answers GETs with the card's live state, so a
+// read-modify-write composite sees what it actually stored.
+func presenceAwareCardsServer(t *testing.T, cardJSON []byte, dueOn *string) *CardsService {
+	t.Helper()
+	var card map[string]any
+	if err := json.Unmarshal(cardJSON, &card); err != nil {
+		t.Fatalf("failed to unmarshal card fixture: %v", err)
+	}
+	return testCardsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			body := decodeRequestBody(t, r)
+			if raw, present := body["due_on"]; present {
+				// Explicit null or "" clears; any other value sets.
+				if s, isStr := raw.(string); !isStr || s == "" {
+					*dueOn = ""
+				} else {
+					*dueOn = s
+				}
+			}
+			// Omitted => left unchanged. This is the whole point.
+		}
+		if *dueOn == "" {
+			card["due_on"] = nil
+		} else {
+			card["due_on"] = *dueOn
+		}
+		out, err := json.Marshal(card)
+		if err != nil {
+			t.Fatalf("failed to marshal card: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(out)
+	})
+}
+
+// TestCardsService_ExplicitClearActuallyClearsAgainstPresenceAwareBC3 is the
+// regression proof for basecamp/bc3#12521. Against a server that treats an
+// omitted due_on as "unchanged", the previous omission encoding silently
+// no-ops: the PUT succeeds and the date survives. Only "" clears.
+func TestCardsService_ExplicitClearActuallyClearsAgainstPresenceAwareBC3(t *testing.T) {
+	fixture := loadCardsFixture(t, "get.json")
+	stored := "2024-02-01" // what cards/get.json carries
+	svc := presenceAwareCardsServer(t, fixture, &stored)
+
+	card, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+		DueOn: cardStrPtr(""),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if stored != "" {
+		t.Errorf("explicit clear did not clear: server still holds due_on %q — the omission encoding no-ops against presence-aware BC3", stored)
+	}
+	if card.DueOn != "" {
+		t.Errorf("expected the returned card to carry no due date, got %q", card.DueOn)
 	}
 }
 
