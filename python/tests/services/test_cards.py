@@ -1,9 +1,14 @@
-"""Tests for the cards merge-safe update surface (sync + async).
+"""Tests for the cards update surface (sync + async).
 
-BC3 builds a card's update params as ``{ due_on: nil }.merge(card_params)``
-(``kanban/cards_controller.rb``), so any update whose body omits ``due_on``
-erases the card's due date. ``update`` reads first and resends it;
-``update_verbatim`` is the raw single PUT.
+BC3 permits a card's JSON update params exactly as submitted (bc3#12521), so an
+omitted ``due_on`` leaves the stored due date unchanged and only an explicit
+``""`` or null clears it.
+
+Both halves of that contract are pinned here. A clear must be spelled ``""`` on
+the wire, because an omission now means "leave it alone" and would silently
+no-op. And an unaddressed ``due_on`` must be a plain single PUT that omits the
+key — no read-modify-write, which the old ``{ due_on: nil }.merge(card_params)``
+behaviour required and this one does not.
 """
 
 from __future__ import annotations
@@ -15,7 +20,6 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp.errors import ApiError
 
 BASE = "https://3.basecampapi.com/12345"
 
@@ -52,33 +56,37 @@ def _async_cards():
 
 class TestSyncUpdate:
     @respx.mock
-    def test_preserves_due_on_when_unaddressed(self):
+    def test_leaves_due_on_off_the_wire_when_unaddressed(self):
         get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
         put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
 
         _sync_cards().update(card_id=42, title="Renamed")
 
-        assert get_route.called, "the composite must read before writing"
+        assert not get_route.called, "an unaddressed due_on is left alone by the server; nothing to read"
+        assert put_route.call_count == 1, "one request, not a read-modify-write pair"
         body = _put_body(put_route)
-        assert body["due_on"] == "2024-02-01"
+        assert "due_on" not in body, "a key the body never mentions is never written"
         assert body["title"] == "Renamed"
         # Never echoed back: BC3 filters ids through reachable_people.
         assert "assignee_ids" not in body
         assert "content" not in body
 
     @respx.mock
-    def test_explicit_clear_omits_due_on_and_skips_the_read(self):
+    def test_explicit_clear_sends_an_empty_due_on(self):
         get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
         put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
 
         _sync_cards().update(card_id=42, due_on="")
 
-        assert not get_route.called, "an explicit clear needs no read"
-        # Clearing is omission, never a literal null (SPEC section 18).
-        assert "due_on" not in _put_body(put_route)
+        assert not get_route.called
+        body = _put_body(put_route)
+        # Clearing is an explicit empty string — never an omission, which BC3
+        # reads as "unchanged", and never a literal null (SPEC section 18).
+        assert "due_on" in body, "an omitted due_on no-ops against a presence-aware BC3"
+        assert body["due_on"] == ""
 
     @respx.mock
-    def test_explicit_date_skips_the_read(self):
+    def test_explicit_date_is_sent(self):
         get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
         put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
 
@@ -97,6 +105,7 @@ class TestSyncUpdate:
         body = _put_body(put_route)
         assert body["content"] == "", "an explicitly-empty content clears the body and must be sent"
         assert body["assignee_ids"] == [], "an empty list unassigns everyone and must be sent"
+        assert body["due_on"] == "", "an explicitly-empty due date clears it and must be sent"
 
 
 class TestSyncUpdateVerbatim:
@@ -115,27 +124,30 @@ class TestSyncUpdateVerbatim:
 class TestAsyncUpdate:
     @pytest.mark.asyncio
     @respx.mock
-    async def test_preserves_due_on_when_unaddressed(self):
+    async def test_leaves_due_on_off_the_wire_when_unaddressed(self):
         get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
         put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
 
         await _async_cards().update(card_id=42, title="Renamed")
 
-        assert get_route.called
+        assert not get_route.called
+        assert put_route.call_count == 1
         body = _put_body(put_route)
-        assert body["due_on"] == "2024-02-01"
+        assert "due_on" not in body
         assert "assignee_ids" not in body
 
     @pytest.mark.asyncio
     @respx.mock
-    async def test_explicit_clear_omits_due_on_and_skips_the_read(self):
+    async def test_explicit_clear_sends_an_empty_due_on(self):
         get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
         put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
 
         await _async_cards().update(card_id=42, due_on="")
 
         assert not get_route.called
-        assert "due_on" not in _put_body(put_route)
+        body = _put_body(put_route)
+        assert "due_on" in body, "an omitted due_on no-ops against a presence-aware BC3"
+        assert body["due_on"] == ""
 
     @pytest.mark.asyncio
     @respx.mock
@@ -149,88 +161,97 @@ class TestAsyncUpdate:
         assert put_route.call_count == 1
 
 
-# --- #576: a malformed GET due_on must never reach the replacement PUT -------
+# --- The due date the caller asked for is the one the card ends up with ------
 #
-# `update` reads the card only to resend its due date, so that one value is the
-# whole reason the composite exists. Before the guard it was forwarded
-# unvalidated: `_compact` strips only `None`, so `False`, `0`, `[]`, `{}`, `42`,
-# `True` and `["x"]` all reached the wire and were written to the card. Python
-# has no typed decoder between the GET and the read — the generated `get`
-# returns `dict[str, Any]`.
-#
-# The assertion that matters is the ORDERING: `put_route.called` must be False.
-
-_MALFORMED_DUE_ON = [
-    pytest.param(False, id="false"),
-    pytest.param(0, id="zero"),
-    pytest.param([], id="empty-list"),
-    pytest.param({}, id="empty-dict"),
-    pytest.param(42, id="number"),
-    pytest.param(True, id="true"),
-    pytest.param(["x"], id="list"),
-    pytest.param({"a": 1}, id="dict"),
-]
+# Everything above inspects the request body. These model the server that reads
+# it and assert on the STORED value, so a wire spelling that parses fine but
+# no-ops still fails.
 
 
-class TestMalformedDueOn:
+class _PresenceAwareCards:
+    """BC3: ``card_update_params`` is the submitted ``card_params``.
+
+    A key the JSON body never mentions is never written, so an omitted
+    ``due_on`` leaves the stored due date alone. An explicit ``""`` or null
+    clears it — Rails casts a blank date to nil (bc3#12521).
+    """
+
+    def __init__(self, due_on: str | None = "2024-02-01") -> None:
+        self.due_on = due_on
+
+    def get(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_card(due_on=self.due_on))
+
+    def put(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if "due_on" in body:
+            self.due_on = body["due_on"] or None
+        return httpx.Response(200, json=_card(due_on=self.due_on))
+
+
+def _serve(server: _PresenceAwareCards):
+    get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(side_effect=server.get)
+    put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(side_effect=server.put)
+    return get_route, put_route
+
+
+class TestAgainstAPresenceAwareServer:
     @respx.mock
-    @pytest.mark.parametrize("value", _MALFORMED_DUE_ON)
-    def test_update_refuses_a_non_string_due_on_before_writing(self, value):
-        get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(
-            return_value=httpx.Response(200, json=_card(due_on=value))
-        )
-        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+    def test_explicit_clear_actually_clears_the_stored_due_date(self):
+        server = _PresenceAwareCards()
+        _serve(server)
 
-        with pytest.raises(ApiError) as excinfo:
-            _sync_cards().update(card_id=42, title="Renamed")
+        _sync_cards().update(card_id=42, due_on="")
 
-        assert "Card field 'due_on' is not a string" in str(excinfo.value)
-        # api_error, not usage: the value arrived in a successful response.
-        assert excinfo.value.code == "api_error"
-        assert get_route.called
-        assert not put_route.called, "the guard must fire BEFORE the replacement PUT"
-
-    @respx.mock
-    @pytest.mark.asyncio
-    async def test_async_update_refuses_a_non_string_due_on_before_writing(self):
-        get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(
-            return_value=httpx.Response(200, json=_card(due_on=42))
-        )
-        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
-
-        with pytest.raises(ApiError):
-            await _async_cards().update(card_id=42, title="Renamed")
-
-        assert get_route.called
-        assert not put_route.called
+        assert server.due_on is None, "the clear must land; an omitted due_on silently no-ops here"
 
     @respx.mock
-    @pytest.mark.parametrize("value", [None, "absent"])
-    def test_absent_and_null_stay_genuinely_empty(self, value):
-        # The other half of the rule: a card with no due date is not malformed.
-        card = _card()
-        if value is None:
-            card["due_on"] = None
-        else:
-            card.pop("due_on")
-        respx.get(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=card))
-        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+    def test_an_unaddressed_update_keeps_the_stored_due_date_without_resending_it(self):
+        server = _PresenceAwareCards()
+        get_route, put_route = _serve(server)
 
         _sync_cards().update(card_id=42, title="Renamed")
 
-        assert "due_on" not in _put_body(put_route)
+        assert "due_on" not in _put_body(put_route), "the server preserves it; the SDK must not restate it"
+        assert not get_route.called, "there is nothing to read back"
+        assert server.due_on == "2024-02-01"
 
     @respx.mock
-    @pytest.mark.parametrize("raw", [b"[]", b'"card"', b"42", b"null", b"true"])
-    def test_update_refuses_a_non_object_response_before_writing(self, raw):
-        get_route = respx.get(f"{BASE}/card_tables/cards/42").mock(
-            return_value=httpx.Response(200, content=raw, headers={"Content-Type": "application/json"})
-        )
-        put_route = respx.put(f"{BASE}/card_tables/cards/42").mock(return_value=httpx.Response(200, json=_card()))
+    def test_an_explicit_date_actually_lands(self):
+        server = _PresenceAwareCards()
+        _serve(server)
 
-        with pytest.raises(ApiError) as excinfo:
-            _sync_cards().update(card_id=42, title="Renamed")
+        _sync_cards().update(card_id=42, due_on="2026-09-01")
 
-        assert "GetCard returned" in str(excinfo.value)
-        assert get_route.called
-        assert not put_route.called
+        assert server.due_on == "2026-09-01"
+
+    @respx.mock
+    def test_clearing_an_already_empty_due_date_is_a_no_op(self):
+        server = _PresenceAwareCards(due_on=None)
+        _serve(server)
+
+        _sync_cards().update(card_id=42, due_on="")
+
+        assert server.due_on is None
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_explicit_clear_actually_clears_the_stored_due_date(self):
+        server = _PresenceAwareCards()
+        _serve(server)
+
+        await _async_cards().update(card_id=42, due_on="")
+
+        assert server.due_on is None
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_unaddressed_update_keeps_the_stored_due_date(self):
+        server = _PresenceAwareCards()
+        get_route, put_route = _serve(server)
+
+        await _async_cards().update(card_id=42, title="Renamed")
+
+        assert "due_on" not in _put_body(put_route)
+        assert not get_route.called
+        assert server.due_on == "2024-02-01"

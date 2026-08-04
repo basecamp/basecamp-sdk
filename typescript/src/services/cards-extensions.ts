@@ -1,17 +1,14 @@
 import { CardsService as GeneratedCardsService } from "../generated/services/cards.js";
 import type { Card } from "../generated/services/cards.js";
-import { requireRecord, writableString } from "./merge-safe.js";
-
-/** The deliberate-overwrite escape hatch named in this composite's error hints. */
-const ESCAPE = "updateVerbatim()";
 
 /**
  * Request parameters for `update`.
  *
  * Every field is presence-bearing: omitting it leaves that part of the card
  * alone. `dueOn` additionally accepts `null`, which is how you ask for the due
- * date to be *cleared* — a distinction the raw API cannot express, because
- * there an absent `due_on` already means "clear".
+ * date to be *cleared* — a distinction the raw generated shape cannot express,
+ * because its `dueOn` is a plain optional string and absence now means "leave
+ * it alone".
  */
 export interface UpdateCardRequest {
   /** Card title. Omit to leave unchanged. */
@@ -21,8 +18,8 @@ export interface UpdateCardRequest {
   /**
    * Due date (YYYY-MM-DD).
    *
-   * - omitted → the current due date is preserved
-   * - `null` → the due date is cleared
+   * - omitted → the current due date is left unchanged
+   * - `null` → the due date is cleared, sent on the wire as `"due_on": ""`
    * - a date → the due date is set
    */
   dueOn?: string | null;
@@ -38,39 +35,43 @@ export interface UpdateCardRequest {
 }
 
 /**
- * CardsService with a merge-safe `update` on top of the generated surface
+ * CardsService with a presence-aware `update` on top of the generated surface
  * (`get`, `updateVerbatim`, `move`, ...).
  *
- * BC3 builds the card's update params as `{ due_on: nil }.merge(card_params)`
- * (`kanban/cards_controller.rb`), so **any** update whose body omits `due_on`
- * erases the card's due date. A sparse PUT — the natural thing to write — is
- * therefore destructive on the raw endpoint.
+ * BC3's `kanban/cards_controller.rb` builds a JSON card update's params
+ * straight from `card_params` (basecamp/bc3#12521), so on the JSON
+ * representation an omitted key means **leave unchanged** — `due_on` included.
+ * Clearing the due date is asked for explicitly: the server accepts JSON `null`
+ * or `""`, and this SDK sends `""`, because a null would violate body
+ * compaction (SPEC §18). Only the HTML/turbo_stream web forms still default an
+ * omitted `due_on` to nil (`card_params.with_defaults(due_on: nil)`), which is
+ * how the JSON path could be made presence-aware without disturbing the web
+ * contract.
  *
- * `update` composes the public `get` and `updateVerbatim` methods, so hooks
- * observe the two real wire operations rather than a synthetic composite.
+ * `update` therefore sends exactly what the caller addressed, in a single PUT.
+ * It differs from `updateVerbatim` only in accepting `dueOn: null` and encoding
+ * it as the wire spelling of a clear.
  */
 export class CardsService extends GeneratedCardsService {
   /**
    * Updates a card without disturbing fields you did not mention.
    *
-   * Fetches the card first and resends its existing due date when you left
-   * `dueOn` unaddressed — so the extra GET is paid for only in the case where
-   * the API would otherwise destroy something. Naming `dueOn` explicitly (a
-   * date, or `null` to clear) skips the fetch entirely.
+   * One request. A field you omit is omitted from the body and the server
+   * leaves it alone; `dueOn: null` clears the due date.
    *
-   * Not atomic: a concurrent due-date change landing between the GET and the
-   * PUT is overwritten with the value this call read. The window is one
-   * round-trip. Use `updateVerbatim` to send a single request and manage
-   * `due_on` yourself.
+   * Earlier releases read the card back first and resent its due date, because
+   * a JSON update that omitted `due_on` used to erase it. bc3#12521 removed
+   * that behaviour, so the extra round-trip — and the race between the read and
+   * the write — is gone.
    *
    * @param cardId - The card ID
-   * @param req - Fields to set; omitted fields are preserved
+   * @param req - Fields to set; omitted fields are left unchanged
    * @returns The updated Card
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * // Retitle without losing the due date.
+   * // Retitle without touching the due date.
    * await client.cards.update(123, { title: "New title" });
    *
    * // Clear the due date.
@@ -89,33 +90,12 @@ export class CardsService extends GeneratedCardsService {
     if (req.content !== undefined) body.content = req.content;
     if (req.assigneeIds !== undefined) body.assigneeIds = req.assigneeIds;
 
-    if (req.dueOn === undefined) {
-      // Unaddressed: preserve whatever is there now.
-      //
-      // The fetched date is validated before it is resent. `if (current.due_on)`
-      // was the worst instance of #576 and failed in both directions at once:
-      // a falsey non-string was DROPPED, and an omitted `due_on` is exactly how
-      // BC3 erases a card's due date — the behaviour this composite exists to
-      // prevent — while a truthy non-string (`42`, `true`, `["x"]`, `{a:1}`)
-      // was forwarded verbatim and written to the card. Nothing below this
-      // rejects either: `schema.d.ts` is erased at build time, so `Card` is a
-      // compile-time claim about runtime data. See `merge-safe.ts`.
-      const current = requireRecord(await this.get(cardId), {
-        record: "Card",
-        operation: "GetCard",
-        escape: ESCAPE,
-      });
-      // The Card response carries wire-shaped keys; the request builder takes
-      // camelCase. An absent or null date stays absent — omission is how the
-      // API expresses "no due date", and `""` is not a date it accepts.
-      const dueOn = writableString(current, "due_on", { record: "Card", escape: ESCAPE });
-      if (dueOn !== "") body.dueOn = dueOn;
-    } else if (req.dueOn !== null) {
-      body.dueOn = req.dueOn;
-    }
-    // req.dueOn === null falls through with dueOn unset: an omitted due_on is
-    // how the API clears the date, so omission IS the clear encoding. Sending
-    // `{"due_on": null}` would violate body compaction (SPEC §18).
+    // `due_on` stays off the wire unless the caller addressed it, which the
+    // server reads as "leave the due date alone". A date sets it; `null` asks
+    // for a clear and is sent as `""` — the server casts the blank to nil (a
+    // BC3 server test pins it), while `{"due_on": null}` would violate body
+    // compaction (SPEC §18) and omission would now be silently ignored.
+    if (req.dueOn !== undefined) body.dueOn = req.dueOn ?? "";
 
     return this.updateVerbatim(cardId, body);
   }

@@ -250,12 +250,22 @@ type CreateStepRequest struct {
 }
 
 // UpdateStepRequest specifies the parameters for updating a step.
+//
+// DueOn is presence-bearing, matching UpdateCardRequest: nil leaves the due
+// date alone, a pointer to the empty string clears it, and a pointer to a date
+// sets it. BC3 became presence-aware on step updates in basecamp/bc3#12521 —
+// before that an omitted due_on was indistinguishable from a clear on the
+// wire, so the pointer would have bought nothing (basecamp/basecamp-cli#604).
+// Use Ptr to build one: Ptr(""), Ptr("2026-08-14").
 type UpdateStepRequest struct {
-	// Title is the step title (optional).
+	// Title is the step title. Empty leaves it unchanged — BC3 made title
+	// optional on update in basecamp/bc3#12521.
 	Title string `json:"title,omitempty"`
-	// DueOn is the due date in ISO 8601 format (optional).
-	DueOn string `json:"due_on,omitempty"`
-	// AssigneeIDs is a list of person IDs to assign this step to (optional).
+	// DueOn is the due date in ISO 8601 format. Nil leaves it unchanged; a
+	// pointer to "" clears it.
+	DueOn *string `json:"due_on,omitempty"`
+	// AssigneeIDs is a list of person IDs to assign this step to. Nil leaves
+	// assignees unchanged; a non-nil empty slice removes everyone.
 	AssigneeIDs []int64 `json:"assignee_ids,omitempty"`
 }
 
@@ -491,49 +501,35 @@ func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCa
 
 // Update updates a card without disturbing fields the caller did not mention.
 //
-// BC3 builds the card's update params as `{ due_on: nil }.merge(card_params)`
-// (kanban/cards_controller.rb), so ANY update whose body omits due_on erases
-// the card's due date. A sparse PUT — the natural thing to write, and what
-// every generated SDK produces — therefore silently destroys data.
+// BC3 is presence-aware on the JSON representation (basecamp/bc3#12521): an
+// omitted key is left unchanged, so sending only what the caller addressed is
+// already the merge-safe thing to do. Update is therefore a single PUT.
 //
-// Update works around that by fetching the card first and resending the
-// existing due date when the caller did not address it. It deliberately does
-// NOT resend everything: BC3 filters assignee IDs through reachable_people, so
-// echoing back assignees would unassign anyone who has since lost board access.
-// Only the caller's own title/content/assignee_ids go out, plus due_on.
+// It costs one request and has no read-modify-write race. Earlier releases
+// fetched the card first and resent the existing due date, because BC3 built
+// its update params as `{ due_on: nil }.merge(card_params)` and any body
+// omitting due_on erased the date. That default is gone for JSON callers, so
+// the preservation GET is gone with it.
 //
-// Costs one extra GET. There is a race: a concurrent due-date change landing
-// between the GET and the PUT is overwritten with the value this call read. Use
-// UpdateVerbatim if you want the single-request behaviour and will manage
-// due_on yourself.
+// To clear a due date, set DueOn to a pointer to the empty string; leaving it
+// nil means "leave the due date alone". Update deliberately does not resend
+// anything the caller did not set: BC3 filters assignee IDs through
+// reachable_people, so echoing back assignees would unassign anyone who has
+// since lost board access.
 func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCardRequest) (result *Card, err error) {
-	if req == nil {
-		return nil, ErrUsage("update request is required")
-	}
-	// Only pay for the GET when the caller left due_on unaddressed — that is
-	// the only case where BC3's default would destroy something.
-	if req.DueOn == nil {
-		current, getErr := s.Get(ctx, cardID)
-		if getErr != nil {
-			return nil, getErr
-		}
-		if current.DueOn != "" {
-			preserved := current.DueOn
-			merged := *req
-			merged.DueOn = &preserved
-			return s.UpdateVerbatim(ctx, cardID, &merged)
-		}
-	}
 	return s.UpdateVerbatim(ctx, cardID, req)
 }
 
-// UpdateVerbatim sends exactly the fields the caller set, in a single PUT, with
-// no preceding GET.
+// UpdateVerbatim sends exactly the fields the caller set, in a single PUT.
 //
-// This is the raw API behaviour, and it is sharp: because BC3 merges the body
-// over `{ due_on: nil }`, omitting DueOn CLEARS the card's due date rather than
-// leaving it alone. Reach for Update unless you specifically want one request
-// and are managing due_on yourself.
+// This is the raw API behaviour. Since BC3 became presence-aware
+// (basecamp/bc3#12521) it is also what Update does — an omitted key is left
+// unchanged server-side, so there is nothing left for a composite to defend
+// against. The two are kept distinct because the names are load-bearing in the
+// generated surface, not because they differ.
+//
+// Set DueOn to a pointer to the empty string to clear the date deliberately;
+// that is spelled `"due_on": ""` on the wire.
 func (s *CardsService) UpdateVerbatim(ctx context.Context, cardID int64, req *UpdateCardRequest) (result *Card, err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "UpdateVerbatim",
@@ -562,20 +558,21 @@ func (s *CardsService) UpdateVerbatim(ctx context.Context, cardID int64, req *Up
 		body["content"] = *req.Content
 	}
 	if req.DueOn != nil {
-		// A pointer to the empty string is an explicit clear. It is encoded by
-		// OMITTING due_on, because BC3 nils an omitted due date — the same
-		// behaviour Update exists to defend against is exactly what a caller
-		// asking to clear wants. Sending {"due_on": null} would violate the
-		// body-compaction rule in SPEC section 18, and five of the six SDKs
-		// strip nulls before the wire anyway, so omission is also the only
-		// encoding every SDK can express identically.
+		// A pointer to the empty string is an explicit clear, and it goes on the
+		// wire AS the empty string. BC3 blank-casts "" to nil on the date
+		// attribute (basecamp/bc3#12521 pins this by test), so "" clears.
+		// Omission would NOT: since that change an absent due_on means "leave
+		// it alone". Sending {"due_on": null} would violate the body-compaction
+		// rule in SPEC section 18, and five of the six SDKs strip nulls before
+		// the wire anyway, so "" is the only clear encoding every SDK can
+		// express identically.
 		if *req.DueOn != "" {
 			if _, parseErr := types.ParseDate(*req.DueOn); parseErr != nil {
 				err = ErrUsage("card due_on must be in YYYY-MM-DD format")
 				return nil, err
 			}
-			body["due_on"] = *req.DueOn
 		}
+		body["due_on"] = *req.DueOn
 	}
 	if req.AssigneeIDs != nil {
 		body["assignee_ids"] = req.AssigneeIDs
@@ -1195,12 +1192,17 @@ func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *Update
 	if req.AssigneeIDs != nil {
 		body["assignee_ids"] = req.AssigneeIDs
 	}
-	if req.DueOn != "" {
-		if _, parseErr := types.ParseDate(req.DueOn); parseErr != nil {
-			err = ErrUsage("step due_on must be in YYYY-MM-DD format")
-			return nil, err
+	if req.DueOn != nil {
+		// Same encoding as cards: a pointer to the empty string is an explicit
+		// clear and goes on the wire as "", which BC3 blank-casts to nil.
+		// Omission means "leave it alone" since basecamp/bc3#12521.
+		if *req.DueOn != "" {
+			if _, parseErr := types.ParseDate(*req.DueOn); parseErr != nil {
+				err = ErrUsage("step due_on must be in YYYY-MM-DD format")
+				return nil, err
+			}
 		}
-		body["due_on"] = req.DueOn
+		body["due_on"] = *req.DueOn
 	}
 
 	bodyReader, err := marshalBody(body)

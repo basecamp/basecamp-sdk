@@ -192,8 +192,10 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "RepositionCardStep" to "reposition",
     "CreateCardStep" to "create",
     "UpdateCardStep" to "update",
-    // The plain `update` name belongs to the merge-safe composite; the raw
-    // single-PUT path keeps a name that says what it does. See #467.
+    // The plain `update` name belongs to the composite; the raw single-PUT
+    // path keeps a distinct name. The composite defended against BC3 clearing an
+    // omitted due_on (#467); basecamp/bc3#12521 made that representation
+    // presence-aware, so the two now behave identically.
     "UpdateCard" to "updateVerbatim",
     "SetCardStepCompletion" to "setCompletion",
     "GetQuestionnaire" to "getQuestionnaire",

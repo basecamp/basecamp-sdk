@@ -305,29 +305,38 @@ The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The
 
 ### Merge-Safe Write Surface (Cards)
 
-BC3 builds a card's update params as `{ due_on: nil }.merge(card_params)`
-(`kanban/cards_controller.rb`), so **any** update whose body omits `due_on` erases the card's due
-date. A sparse PUT — the natural thing to write, and what every generated SDK produced — is
-therefore destructive.
+BC3's JSON card update is **presence-aware** (basecamp/bc3#12521): an omitted key is left unchanged,
+an explicit `""` or `null` clears. `card_update_params` forks on representation — JSON gets
+`card_params` untouched, while the HTML/turbo_stream leg keeps `card_params.with_defaults(due_on: nil)`
+because the web form omits `due_on` entirely when "No due date" is picked. API callers only ever see
+the JSON leg.
 
-- **`update`** — merge-safe. GETs the card and resends the existing `due_on` when the caller left it
-  unaddressed, then PUTs. The extra GET is paid for only in that case; naming the due date
-  explicitly skips it. `due_on` is tri-state: unaddressed preserves, an explicit empty clears, a
-  date sets. Clearing is encoded by **omitting** `due_on` — never by sending null (§18).
-- **`updateVerbatim`** — the raw single PUT, no read-before-write. Sharp by construction: omitting
-  `due_on` clears it.
+This reversed a destructive default. BC3 used to build the params as `{ due_on: nil }.merge(card_params)`
+for every representation, so **any** update whose body omitted `due_on` erased the card's due date, and
+the composite had to defend against it with a read-modify-write. That defence is gone.
 
-The composite deliberately does **not** resend everything. BC3 filters incoming assignee IDs through
-`reachable_people`, so echoing assignees back would silently unassign anyone who has since lost board
-access; only the caller's own `title`/`content`/`assignee_ids` go out, plus `due_on`.
+- **`update`** — a single PUT sending exactly the fields the caller addressed. No read-before-write, no
+  race. `due_on` is tri-state: unaddressed omits the key (BC3 leaves the date alone), an explicit empty
+  sends `"due_on": ""` (BC3 blank-casts to nil and clears), a date sets it.
+- **`updateVerbatim`** — the raw single PUT. Since the server became presence-aware this is behaviourally
+  identical to `update`; both names are retained because they are load-bearing in the generated surface.
 
-Not atomic: a concurrent due-date change landing between the GET and the PUT is overwritten with the
-value the call read. The window is one round-trip.
+Clearing is encoded as `"due_on": ""` — never as null (§18). The empty string is the only clear spelling
+all six SDKs can express identically, since five of them strip nulls structurally before the wire, and
+it is pinned by a BC3 server test so it cannot regress.
 
-Presence detection is language-native: Go `*string` (nil preserves, pointer-to-empty clears),
+The composite deliberately does **not** resend anything the caller did not set. BC3 filters incoming
+assignee IDs through `reachable_people`, so echoing assignees back would silently unassign anyone who
+has since lost board access.
+
+Presence detection is language-native: Go `*string` (nil omits, pointer-to-empty clears),
 TypeScript `dueOn?: string | null`, Ruby/Python `nil`/`None` kwarg defaults with `""` to clear,
 Kotlin nullable parameters with `""` to clear, Swift a `DueDate` enum (`.preserve`/`.clear`/`.on`)
 because an optional cannot carry three states.
+
+Card **steps** share the contract: `title` is optional on update, an omitted key is unchanged,
+`"assignee_ids": []` removes everyone, and an assignee-only body is a valid partial update where it
+used to 400. `UpdateStepRequest.DueOn` is presence-bearing for the same reason as the card's.
 
 ### Merge-Safe Write Surface (Todos)
 
@@ -1943,7 +1952,7 @@ A wire operation is named for what the server does with the body, not for what t
   `summary`, `description`, `all_day`, `starts_at` and `ends_at` are readable and writable, so they are *not* carved out and a merge-safe composite must resend them. `all_day` is the sharp edge: the column is NOT NULL with a `false` default, so omitting it converts an all-day entry into a midnight-to-midnight timed one.
 
   The trait field is `preservedOnOmission` on `@basecampWriteSemantics`, and it is carried into `behavior-model.json` as well as the OpenAPI extension. `make check-write-semantics-parity` compares the two artifacts in both directions, because they are produced by different tools and the behavior-model generator builds its clause key by key — a trait field nobody taught it about is dropped silently, which is exactly how `preservedOnOmission` would otherwise have shipped as a no-op.
-- **`Update*`** when the endpoint merges — the server preserves fields the body omits (`Recordable#changing` and friends), as Messages does — or when it is genuinely hybrid, as Cards is: merge for `title`/`content`, key-guarded for `assignee_ids`, forced-replace for `due_on` (#467).
+- **`Update*`** when the endpoint merges — the server preserves fields the body omits (`Recordable#changing` and friends), as Messages does. Cards was the one hybrid — merge for `title`/`content`, key-guarded for `assignee_ids`, forced-replace for `due_on` (#467) — until basecamp/bc3#12521 made its JSON representation uniformly merge-semantic; it is now an ordinary `Update*`.
 
 One shipped operation is replace-semantic but still named `Update*`: `UpdateTodolistOrGroup` reached the honest *method* name through `METHOD_NAME_OVERRIDES` (rule 6) rather than a wire rename, so its SDK surface reads `replace` while the operationId does not. That is naming debt, not a second sanctioned pattern; the wave that closes it is #374. New replace-semantic operations take the wire rename.
 
@@ -1957,7 +1966,9 @@ Current composites:
 - **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
 - **Uploads** `download` — composes the generated `get` (GetUpload) with the client-level `downloadURL` primitive (§14), erroring when the upload carries no `download_url`; the result's filename prefers the upload metadata's `filename`.
 
-**Body compaction is not relaxed for composites.** A composite never sends `{"field": null}` to express "clear" (§18 rule). Where the server treats an omitted key as a clear — as BC3 does for `due_on` — omission *is* the clear encoding, and it is the only one all six SDKs can express identically: five strip nulls structurally before the wire (Python `_compact`, Ruby `compact_params`, Kotlin `?.let`, TypeScript's `JSON.stringify` dropping `undefined`, Swift `encodeIfPresent`).
+**Body compaction is not relaxed for composites.** A composite never sends `{"field": null}` to express "clear" (§18 rule). Where a server accepts a blank-cast — as BC3 does for `due_on`, which it casts to nil and which a server test pins — the **empty string** is the clear encoding, and it is the only one all six SDKs can express identically: five strip nulls structurally before the wire (Python `_compact`, Ruby `compact_params`, Kotlin `?.let`, TypeScript's `JSON.stringify` dropping `undefined`, Swift `encodeIfPresent`), but none of them strip `""`.
+
+Omission is **not** a clear encoding. It once was for `due_on`, when BC3 merged card params over `{ due_on: nil }`; basecamp/bc3#12521 removed that default, so an absent key now means "leave unchanged" and an omission-encoded clear silently no-ops.
 
 ---
 
@@ -1996,7 +2007,7 @@ undocumented:
 | `requestPath` | URL path of the outgoing request |
 | `requestMethod` | HTTP method of the outgoing request |
 | `requestBody` | Value at `path` (dot-notation key) inside the captured JSON request body. A request that sent no JSON body fails, as does a body that omits the key. |
-| `requestBodyAbsent` | The `path` key is **not** present in the captured JSON request body — the assertion that pins omission-as-clear and body compaction (§18). A request with no JSON body at all satisfies it. |
+| `requestBodyAbsent` | The `path` key is **not** present in the captured JSON request body — the assertion that pins body compaction (§18) and, for a merge-semantic endpoint, that an unaddressed field is left off the wire rather than echoed back. A request with no JSON body at all satisfies it. |
 | `errorCode` | Error code in structured error |
 | `errorMessage` | Error message text |
 | `errorField` | Specific field value on the error object |
@@ -3317,7 +3328,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `todos_write.json` | update-merge / edit-clear / replace-omission-clears | §5 (Todos), §18 |
 | `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `todolists_read.json` | list-read / group-read / group-list-read (one flat shape decodes for both variants) | §5 (Todolists) |
-| `cards_write.json` | Merge-safe update composite (5 cases: due-on preservation, verbatim raw path, explicit clears/empties) | §5 (Cards), §18 |
+| `cards_write.json` | Presence-aware update composite (5 cases: unaddressed fields stay off the wire, verbatim raw path, explicit `due_on` clear as `""`, explicit empty content/assignees) | §5 (Cards), §18 |
 | `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad (9 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched) | §5 (Schedule Entries), §18 |
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
