@@ -3288,7 +3288,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `todos_write.json` | update-merge / edit-clear / replace-omission-clears | §5 (Todos), §18 |
 | `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `todolists_read.json` | list-read / group-read / group-list-read (one flat shape decodes for both variants) | §5 (Todolists) |
-| `cards_write.json` | Merge-safe update composite (5 cases: due-on preservation, verbatim raw path, explicit clears/empties) | §5 (Cards), §18 |
+| `cards_write.json` | Presence-aware update composite (5 cases: unaddressed fields stay off the wire, verbatim raw path, explicit `due_on` clear as `""`, explicit empty content/assignees) | §5 (Cards), §18 |
 | `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad (9 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched) | §5 (Schedule Entries), §18 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 
