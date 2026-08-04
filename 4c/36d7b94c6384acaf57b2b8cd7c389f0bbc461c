@@ -1,0 +1,31 @@
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_ae792ed0be3006::t_5d9bcc7656406d 123-124,140-141
+  s_ae792ed0be3006::t_c72b620bc2cbea 625-626
+  s_ae792ed0be3006::t_07e99f7d158939 604-605
+  s_ae792ed0be3006::t_2db3c1010a6ed2 103-104
+  s_ae792ed0be3006::t_25be8f413e5c68 73-74
+  s_ae792ed0be3006::t_871c1f7daf2b63 55-62
+typescript/tests/services/todolistGroups.test.ts
+  s_ae792ed0be3006::t_6043f57b8921bf 84-89,97-99
+ruby/test/basecamp/services/todolist_groups_service_test.rb
+  s_ae792ed0be3006::t_742ee1dc1ade69 20-24
+  s_ae792ed0be3006::t_6e8fa4f1e1fa1a 35-36
+python/tests/services/test_todolists_service.py
+  s_ae792ed0be3006::t_24a1fac03c6bea 28-33,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4c36d7b94c6384acaf57b2b8cd7c389f0bbc461c",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
