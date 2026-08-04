@@ -2441,6 +2441,27 @@
         ]
       }
     },
+    "ReplaceScheduleEntry": {
+      "idempotent": true,
+      "write": {
+        "mode": "replace",
+        "clearsOmitted": true,
+        "preservedOnOmission": [
+          "participant_ids",
+          "url",
+          "highlighted"
+        ]
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "ReplaceTodo": {
       "idempotent": true,
       "write": {
@@ -2965,18 +2986,6 @@
       }
     },
     "UpdateQuestionNotificationSettings": {
-      "idempotent": true,
-      "retry": {
-        "max": 3,
-        "base_delay_ms": 1000,
-        "backoff": "exponential",
-        "retry_on": [
-          429,
-          503
-        ]
-      }
-    },
-    "UpdateScheduleEntry": {
       "idempotent": true,
       "retry": {
         "max": 3,

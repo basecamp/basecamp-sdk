@@ -103,6 +103,99 @@ module Basecamp
         end
       end
 
+      # Reads a writable string the record is *required* to carry.
+      #
+      # {writable_string} treats an absent key or an explicit +nil+ as genuinely
+      # empty, which is right for an optional field — <tt>""</tt> is what the
+      # server already holds. It is wrong for a required one. Where the spec
+      # marks a response member <tt>@required</tt> and BC3 can never render it
+      # blank, an absent, nil or blank value in a 2xx body is a *malformed
+      # response*, not an empty field. Coalescing it to <tt>""</tt> and sending
+      # that in the full-replace PUT would blank the real value on a call that
+      # never mentioned it — #576's defect exactly.
+      #
+      # Two records rely on this today and for the same reason: +Document#title+
+      # is <tt>super.presence || "Untitled"</tt> and +Schedule::Entry#summary+ is
+      # <tt>super.presence || "Untitled"</tt>, so neither can come back blank
+      # from a healthy server.
+      #
+      # The wrong-type branch is delegated to {writable_string}, so a required
+      # field and an optional one report a non-string identically.
+      def required_writable_string(body, key, record:, escape:)
+        value = body[key]
+        if value.nil? || (value.is_a?(String) && value.strip.empty?)
+          raise malformed(
+            %(#{record} field "#{key}" is required but the response carried #{describe(value)}),
+            "The merge-safe update/edit resend this field verbatim, so a missing or blank " \
+              "value would blank the current one. Use #{escape} to write the record deliberately."
+          )
+        end
+
+        writable_string(body, key, record: record, escape: escape)
+      end
+
+      # Reads a writable boolean the record is *required* to carry.
+      #
+      # The boolean analogue of {required_writable_string}, and it cannot be
+      # expressed with a truthiness test: the value this guard most needs to
+      # admit is +false+, which every <tt>||</tt> idiom would treat as missing
+      # and replace with a default. +Schedule::Entry#all_day+ is NOT NULL with a
+      # +false+ default in BC3 and every partial emits it, so absent or nil is a
+      # malformed response — and defaulting it to +false+ would silently convert
+      # an all-day event into a midnight-to-midnight timed one on a call that
+      # only changed the summary.
+      #
+      # +0+/+1+ are refused rather than coerced, for the same reason
+      # {writable_string} refuses +42+: JSON has a boolean type and the server
+      # uses it.
+      def required_writable_boolean(body, key, record:, escape:)
+        value = body[key]
+
+        if value.nil?
+          raise malformed(
+            %(#{record} field "#{key}" is required but the response carried #{describe(value)}),
+            "The merge-safe update/edit resend this field verbatim, so a missing value would " \
+              "replace the current one with a default. Use #{escape} to write the record deliberately."
+          )
+        end
+
+        unless [ true, false ].include?(value)
+          raise malformed(
+            "#{record} field #{key.inspect} is not a boolean: #{describe(value)}",
+            format(RESEND_HINT, escape: escape)
+          )
+        end
+
+        value
+      end
+
+      # Reads an *optional* writable boolean, refusing to coerce a malformed one.
+      #
+      # {writable_string}'s boolean sibling, standing in the same relation to
+      # {required_writable_boolean} that +writable_string+ does to
+      # +required_writable_string+: a missing key or an explicit +nil+ is
+      # genuinely "not set" and returns +false+, because that is what the server
+      # already holds.
+      #
+      # +ScheduleEntry#highlighted+ is the case it exists for. The entry partial
+      # emits it unconditionally, but the reduced calendar partial behind
+      # GetUpcomingSchedule does not, and both render through the same schema —
+      # so the member is optional and absence is legitimate rather than
+      # malformed.
+      #
+      # What still cannot be tolerated is the *wrong type*: a <tt>"yes"</tt> or a
+      # +1+ must be refused, not coerced, because a caller who assigns the seeded
+      # value straight back sends whatever it was seeded with. That branch is
+      # delegated to {required_writable_boolean}, so an optional boolean and a
+      # required one report a non-boolean identically.
+      def writable_boolean(body, key, record:, escape:)
+        if body[key].nil?
+          false
+        else
+          required_writable_boolean(body, key, record: record, escape: escape)
+        end
+      end
+
       # Reads a list of person records and projects it to their Integer ids.
       #
       # The analogue of {writable_string} for the id-list fields. The +map+ it

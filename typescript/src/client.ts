@@ -60,7 +60,7 @@ import { AttachmentsService } from "./generated/services/attachments.js";
 import { VaultsService } from "./generated/services/vaults.js";
 import { DocumentsService } from "./services/documents-extensions.js";
 import { UploadsService } from "./services/uploads-extensions.js";
-import { SchedulesService } from "./generated/services/schedules.js";
+import { SchedulesService } from "./services/schedules-extensions.js";
 import { EventsService } from "./generated/services/events.js";
 import { RecordingsService } from "./generated/services/recordings.js";
 import { SearchService } from "./generated/services/search.js";
@@ -261,7 +261,7 @@ export interface BasecampClientOptions {
 }
 
 export const VERSION = "0.12.0";
-export const API_VERSION = "2026-08-02";
+export const API_VERSION = "2026-08-03";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**

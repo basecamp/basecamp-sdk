@@ -3776,22 +3776,25 @@ module Basecamp
     # ScheduleEntry
     class ScheduleEntry
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :summary, :title, :type, :updated_at, :url, :visible_to_clients, :all_day, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :description, :ends_at, :participants, :starts_at, :subscription_url
+      attr_accessor :all_day, :app_url, :bucket, :created_at, :creator, :description_attachments, :ends_at, :id, :inherits_status, :parent, :starts_at, :status, :summary, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :description, :highlighted, :join_url, :participants, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator description_attachments id inherits_status parent status summary title type updated_at url visible_to_clients].freeze
+        %i[all_day app_url bucket created_at creator description_attachments ends_at id inherits_status parent starts_at status summary title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
+        @all_day = parse_boolean(data["all_day"])
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
+        @ends_at = data["ends_at"]
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "RecordingParent")
+        @starts_at = data["starts_at"]
         @status = data["status"]
         @summary = data["summary"]
         @title = data["title"]
@@ -3799,29 +3802,31 @@ module Basecamp
         @updated_at = parse_datetime(data["updated_at"])
         @url = data["url"]
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
-        @all_day = parse_boolean(data["all_day"])
         @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @description = data["description"]
-        @ends_at = data["ends_at"]
+        @highlighted = parse_boolean(data["highlighted"])
+        @join_url = data["join_url"]
         @participants = parse_array(data["participants"], "Person")
-        @starts_at = data["starts_at"]
         @subscription_url = data["subscription_url"]
       end
 
       def to_h
         {
+          "all_day" => @all_day,
           "app_url" => @app_url,
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,
           "description_attachments" => @description_attachments,
+          "ends_at" => @ends_at,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "parent" => @parent,
+          "starts_at" => @starts_at,
           "status" => @status,
           "summary" => @summary,
           "title" => @title,
@@ -3829,16 +3834,15 @@ module Basecamp
           "updated_at" => @updated_at,
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
-          "all_day" => @all_day,
           "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "description" => @description,
-          "ends_at" => @ends_at,
+          "highlighted" => @highlighted,
+          "join_url" => @join_url,
           "participants" => @participants,
-          "starts_at" => @starts_at,
           "subscription_url" => @subscription_url,
         }.compact
       end

@@ -743,17 +743,72 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
-        // Participants are presence-bearing: an absent key must not become an
-        // empty list on the wire, or BC3 clears the participants.
+        // Raw single PUT, no read-before-write. Presence-bearing: only the keys
+        // the fixture carries may reach the wire. participant_ids, url and
+        // highlighted are the operation's preservedOnOmission carve-out, so an
+        // absent key must not become [] / "" / false on the wire — that would
+        // clear the value BC3 is holding — while an explicit empty must be sent.
+        "ReplaceScheduleEntry" -> {
+            val entryId = tc.pathParams.longParam("entryId")
+            val rb = tc.requestBody
+            account.schedules.replaceEntry(entryId, ReplaceScheduleEntryBody(
+                summary = rb?.get("summary")?.jsonPrimitive?.contentOrNull,
+                startsAt = tc.requestBody.stringParam("starts_at"),
+                endsAt = tc.requestBody.stringParam("ends_at"),
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                participantIds = rb?.get("participant_ids")?.jsonArray
+                    ?.map { element -> element.jsonPrimitive.long },
+                allDay = rb?.get("all_day")?.jsonPrimitive?.booleanOrNull,
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull,
+                url = rb?.get("url")?.jsonPrimitive?.contentOrNull,
+                highlighted = rb?.get("highlighted")?.jsonPrimitive?.booleanOrNull,
+            ))
+            DispatchResult()
+        }
+
+        // Synthetic scenario key (not a wire operation): the merge-safe
+        // composite, GET then a full PUT of the five full-state fields plus
+        // whichever carve-outs the caller addressed. A null argument is "not
+        // addressed"; an explicit "", emptyList() or false is an address.
         "UpdateScheduleEntry" -> {
             val entryId = tc.pathParams.longParam("entryId")
             val rb = tc.requestBody
-            account.schedules.updateEntry(entryId, UpdateScheduleEntryBody(
+            account.schedules.updateEntry(
+                entryId,
                 summary = rb?.get("summary")?.jsonPrimitive?.contentOrNull,
                 startsAt = rb?.get("starts_at")?.jsonPrimitive?.contentOrNull,
                 endsAt = rb?.get("ends_at")?.jsonPrimitive?.contentOrNull,
-                participantIds = rb?.get("participant_ids")?.jsonArray?.map { it.jsonPrimitive.long },
-            ))
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                allDay = rb?.get("all_day")?.jsonPrimitive?.booleanOrNull,
+                participantIds = rb?.get("participant_ids")?.jsonArray
+                    ?.map { element -> element.jsonPrimitive.long },
+                url = rb?.get("url")?.jsonPrimitive?.contentOrNull,
+                highlighted = rb?.get("highlighted")?.jsonPrimitive?.booleanOrNull,
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull,
+            )
+            DispatchResult()
+        }
+
+        // Synthetic scenario key (not a wire operation): exercises the
+        // read-modify-write edit closure by assigning each fixture key onto the
+        // same-named ScheduleEntryFields member, so a key the fixture omits is
+        // never assigned and the carve-out stays untouched.
+        "EditScheduleEntry" -> {
+            val entryId = tc.pathParams.longParam("entryId")
+            val rb = tc.requestBody
+            account.schedules.editEntry(entryId) {
+                rb?.get("summary")?.jsonPrimitive?.contentOrNull?.let { summary = it }
+                rb?.get("starts_at")?.jsonPrimitive?.contentOrNull?.let { startsAt = it }
+                rb?.get("ends_at")?.jsonPrimitive?.contentOrNull?.let { endsAt = it }
+                rb?.get("description")?.jsonPrimitive?.contentOrNull?.let { description = it }
+                rb?.get("all_day")?.jsonPrimitive?.booleanOrNull?.let { allDay = it }
+                rb?.get("participant_ids")?.jsonArray
+                    ?.map { element -> element.jsonPrimitive.long }
+                    ?.let { participantIds = it }
+                rb?.get("notify")?.jsonPrimitive?.booleanOrNull?.let { notify = it }
+                rb?.get("url")?.jsonPrimitive?.contentOrNull?.let { url = it }
+                rb?.get("highlighted")?.jsonPrimitive?.booleanOrNull?.let { highlighted = it }
+            }
             DispatchResult()
         }
 

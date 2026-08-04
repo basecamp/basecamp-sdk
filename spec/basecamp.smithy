@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-08-02"
+  version: "2026-08-03"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -122,7 +122,7 @@ service Basecamp {
     GetScheduleEntry,
     GetScheduleEntryOccurrence,
     CreateScheduleEntry,
-    UpdateScheduleEntry,
+    ReplaceScheduleEntry,
     GetTimesheetReport,
     GetProjectTimesheet,
     GetRecordingTimesheet,
@@ -2851,18 +2851,52 @@ structure CreateScheduleEntryOutput {
   entry: ScheduleEntry
 }
 
-/// Update an existing schedule entry
+/// Replace a schedule entry with a new complete representation.
+/// The request body is the entry's full writable state: a writable field
+/// omitted from the request is cleared server-side, because BC3 builds a
+/// brand-new Schedule::Entry from the permitted params and swaps the recordable
+/// wholesale.
+/// Three writable fields are carved out of that swap and preserved when the
+/// request does not address them — participant_ids, url and highlighted, as
+/// declared by preservedOnOmission. Each is a field a caller could not safely
+/// resend from a read-back, which is why the guard is server-side: the response
+/// carries participants (objects, not ids) and join_url (the entry's own url
+/// key is its Basecamp API URL, a different value under a colliding name).
+/// Addressing one applies it normally, so participant_ids: [] clears the
+/// participants, url: "" clears the join link and highlighted: false removes
+/// the highlight.
+/// starts_at and ends_at are required: Schedule::Entry validates their presence
+/// and Recording validates the associated recordable on update, so omitting
+/// either is a 422 rather than a clear. summary carries no validation — omit it
+/// and the entry reads back as "Untitled" (Schedule::Entry#summary falls back
+/// when blank).
+/// Recurring entries are unreachable here. ensure_non_recurring_event redirects
+/// both show and update to the entry's occurrence, so this operation serves
+/// non-recurring entries only; read a recurring entry through
+/// GetScheduleEntryOccurrence.
+/// time_zone_name, recurs_until and recurrence_schedule are not modeled: BC3
+/// forces all three to nil for a non-recurring entry, which is the only kind
+/// this route serves.
+/// Subscribers follow the same carve-out logic one level up. A drafted entry
+/// keeps its current subscribers when the request addresses neither
+/// subscriptions, notify, nor the participant parameters.
+/// To set some fields while preserving the rest, use the SDK's merge-safe
+/// update or edit methods, which GET the current entry and PUT the full
+/// representation back. Those read-modify-write helpers are not atomic:
+/// a concurrent write between the GET and PUT is overwritten (last write
+/// wins for the whole representation; the window is one round-trip).
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
+@basecampWriteSemantics(mode: "replace", clearsOmitted: true, preservedOnOmission: ["participant_ids", "url", "highlighted"])
 @http(method: "PUT", uri: "/{accountId}/schedule_entries/{entryId}")
-operation UpdateScheduleEntry {
-  input: UpdateScheduleEntryInput
-  output: UpdateScheduleEntryOutput
+operation ReplaceScheduleEntry {
+  input: ReplaceScheduleEntryInput
+  output: ReplaceScheduleEntryOutput
   errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
-structure UpdateScheduleEntryInput {
+structure ReplaceScheduleEntryInput {
   @required
   @httpLabel
   accountId: AccountId
@@ -2872,8 +2906,13 @@ structure UpdateScheduleEntryInput {
   entryId: ScheduleEntryId
 
   summary: ScheduleEntrySummary
+
+  @required
   starts_at: ISO8601Timestamp
+
+  @required
   ends_at: ISO8601Timestamp
+
   description: ScheduleEntryDescription
   /// Replaces the entry's participants.
   ///
@@ -2885,11 +2924,38 @@ structure UpdateScheduleEntryInput {
   /// silently removed every participant and notified each one. The controller
   /// now guards on the request actually addressing participants.
   participant_ids: PersonIdList
+  /// Whether the entry occupies whole days rather than a time range.
+  ///
+  /// Not carved out, and the carve-out list is what makes that dangerous to
+  /// forget: `schedule_entries.all_day` is NOT NULL with a `false` default, so
+  /// omitting this member on a replace resets it — silently converting an
+  /// all-day entry into a midnight-to-midnight timed one. The SDK's merge-safe
+  /// update and edit resend it from the read-back for exactly this reason.
+  ///
+  /// Sending an explicit null is worse than omitting it: the column rejects
+  /// NULL, so BC3 raises rather than falling back to the default. The same is
+  /// true of highlighted.
   all_day: Boolean
   notify: Boolean
+  /// The entry's join link — a video-call URL or similar, up to 2500
+  /// characters, validated as a URL when present.
+  ///
+  /// Omitting this member preserves the current join link; sending an empty
+  /// string clears it. Read it back as `join_url`, never as `url`: the entry's
+  /// `url` is its own Basecamp API URL, written by a partial that renders
+  /// before this one, so BC3 emits the join link under a non-colliding key.
+  /// Echoing the response's `url` into this member would write the API URL into
+  /// the join link.
+  url: ScheduleEntryJoinUrl
+  /// Whether the entry is highlighted on the schedule.
+  ///
+  /// Omitting this member preserves the current highlight; sending false
+  /// removes it. Preserved on omission because until basecamp/bc3#12502 the
+  /// field was writable but never returned, so no caller could resend it.
+  highlighted: Boolean
 }
 
-structure UpdateScheduleEntryOutput {
+structure ReplaceScheduleEntryOutput {
 
   entry: ScheduleEntry
 }
@@ -3448,6 +3514,7 @@ long ScheduleId
 long ScheduleEntryId
 string ScheduleEntrySummary
 string ScheduleEntryDescription
+string ScheduleEntryJoinUrl
 
 @documentation("active|archived|trashed")
 string ScheduleEntryStatus
@@ -3524,10 +3591,44 @@ structure ScheduleEntry {
   description: ScheduleEntryDescription
   @required
   description_attachments: RichTextAttachmentList
+  /// Always sent. schedule_entries.all_day is NOT NULL with a false default,
+  /// and every partial that renders an entry emits it.
+  @required
   all_day: Boolean
+  /// Always sent, and a date rather than a timestamp for an all-day entry:
+  /// BC3 renders starts_at_date_or_time, which is `starts_at.to_date` unless
+  /// the entry is timed, so an all-day entry reads back as `2016-06-01` and a
+  /// timed one as a full timestamp. The sibling all_day field discriminates.
+  ///
+  /// ISO8601Timestamp is a plain string in this model, so both shapes decode;
+  /// treat the value as opaque and round-trip it verbatim rather than parsing
+  /// it into a date type and re-rendering, which would rewrite an all-day
+  /// entry's bounds.
+  @required
   starts_at: ISO8601Timestamp
+  /// Always sent. See starts_at for the date-vs-timestamp rendering.
+  @required
   ends_at: ISO8601Timestamp
   participants: PersonList
+  /// The entry's join link, or null when it has none.
+  ///
+  /// Sent under this key rather than `url`, which is the entry's own Basecamp
+  /// API URL: recordings/_recording writes that key first and the entry partial
+  /// renders after it. Write it back through the `url` member of
+  /// ReplaceScheduleEntry — the two spellings are deliberate, not a typo.
+  ///
+  /// Optional rather than required because this one structure covers two wire
+  /// shapes. GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
+  /// CreateScheduleEntry and ReplaceScheduleEntry all render
+  /// schedules/entries/_entry, which emits it unconditionally;
+  /// GetUpcomingSchedule renders the reduced schedules/calendar/_entry, which
+  /// does not.
+  join_url: ScheduleEntryJoinUrl
+  /// Whether the entry is highlighted on the schedule.
+  ///
+  /// Optional for the same reason as join_url: emitted unconditionally by the
+  /// entry partial, absent from the calendar partial GetUpcomingSchedule uses.
+  highlighted: Boolean
   boosts_count: Integer
   boosts_url: String
 }

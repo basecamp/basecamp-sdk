@@ -2440,7 +2440,7 @@ const metadata: MetadataOutput = {
         ]
       }
     },
-    "UpdateScheduleEntry": {
+    "ReplaceScheduleEntry": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,

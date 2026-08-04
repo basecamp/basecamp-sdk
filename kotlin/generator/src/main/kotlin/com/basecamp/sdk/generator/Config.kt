@@ -82,7 +82,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     "Schedule" to mapOf(
         "Schedules" to listOf(
             "GetSchedule", "UpdateScheduleSettings", "ListScheduleEntries",
-            "CreateScheduleEntry", "GetScheduleEntry", "UpdateScheduleEntry", "GetScheduleEntryOccurrence",
+            "CreateScheduleEntry", "GetScheduleEntry", "ReplaceScheduleEntry", "GetScheduleEntryOccurrence",
         ),
         "Timesheets" to listOf("GetRecordingTimesheet", "GetProjectTimesheet", "GetTimesheetReport", "GetTimesheetEntry", "CreateTimesheetEntry", "UpdateTimesheetEntry", "DestroyTimesheetEntry"),
     ),
@@ -117,7 +117,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
  * com.basecamp.sdk.services can add convenience methods (e.g. Todos
  * gains merge-safe update/edit on top of the generated replace).
  */
-val EXTENSIBLE_SERVICES = setOf("Todos", "Todolists", "Cards", "Uploads", "Documents")
+val EXTENSIBLE_SERVICES = setOf("Todos", "Todolists", "Cards", "Uploads", "Documents", "Schedules")
 
 /**
  * Services whose accessor constructs and declares a hand-written subclass
@@ -131,6 +131,7 @@ val HAND_WRITTEN_SERVICES = mapOf(
     "Cards" to "com.basecamp.sdk.services.CardsService",
     "Uploads" to "com.basecamp.sdk.services.UploadsService",
     "Documents" to "com.basecamp.sdk.services.DocumentsService",
+    "Schedules" to "com.basecamp.sdk.services.SchedulesService",
 )
 
 /**
@@ -279,7 +280,11 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "GetHillChart" to "get",
     "UpdateHillChartSettings" to "updateSettings",
     "GetScheduleEntry" to "getEntry",
-    "UpdateScheduleEntry" to "updateEntry",
+    // The plain `updateEntry` name belongs to the merge-safe composite; the raw
+    // single-PUT path keeps a name that says what it does. Without the override
+    // the algorithm yields a bare `replace` (scheduleentry is a SIMPLE_RESOURCE),
+    // which reads as "replace the schedule". See #547.
+    "ReplaceScheduleEntry" to "replaceEntry",
     "CreateScheduleEntry" to "createEntry",
     "ListScheduleEntries" to "listEntries",
     "GetScheduleEntryOccurrence" to "getEntryOccurrence",

@@ -116,6 +116,110 @@ export function writableString(
 }
 
 /**
+ * Reads a writable string the record is *required* to carry.
+ *
+ * {@link writableString} treats an absent key or an explicit `null` as
+ * genuinely empty, which is right for an optional field — `""` is what the
+ * server already holds. It is wrong for a required one. Where the spec marks a
+ * response member `@required` and BC3 can never render it blank, an absent,
+ * null or blank value in a 2xx body is a **malformed response**, not an empty
+ * field. Coalescing it to `""` and sending that in the full-replace PUT would
+ * blank the real value on a call that never mentioned it — #576's defect
+ * exactly.
+ *
+ * Two records rely on this today and for the same reason: `Document#title` is
+ * `super.presence || "Untitled"` and `Schedule::Entry#summary` is
+ * `super.presence || "Untitled"`, so neither can come back blank from a healthy
+ * server.
+ *
+ * The wrong-type branch is delegated to {@link writableString}, so a required
+ * field and an optional one report a non-string identically.
+ */
+export function requiredWritableString(
+  body: Record<string, unknown>,
+  key: string,
+  opts: { record: string; escape: string }
+): string {
+  const value = body[key];
+  if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
+    throw malformedResponse(
+      `${opts.record} field "${key}" is required but the response carried ${describeValue(value)}`,
+      `The merge-safe update/edit resend this field verbatim, so a missing or blank value would ` +
+        `blank the current one. Use ${opts.escape} to write the record deliberately.`
+    );
+  }
+  return writableString(body, key, opts);
+}
+
+/**
+ * Reads a writable boolean the record is *required* to carry.
+ *
+ * The boolean analogue of {@link requiredWritableString}, and it cannot be
+ * expressed with a truthiness test: the value this guard most needs to admit is
+ * `false`, which every `||`/`if (!x)` idiom would treat as missing and replace
+ * with a default. `ScheduleEntry.all_day` is `NOT NULL` with a `false` default
+ * in BC3 and every partial emits it, so absent or null is a malformed
+ * response — and defaulting it to `false` would silently convert an all-day
+ * event into a midnight-to-midnight timed one on a call that only changed the
+ * summary.
+ *
+ * `0`/`1` are refused rather than coerced, for the same reason
+ * {@link writableString} refuses `42`: JSON has a boolean type and the server
+ * uses it.
+ */
+export function requiredWritableBoolean(
+  body: Record<string, unknown>,
+  key: string,
+  opts: { record: string; escape: string }
+): boolean {
+  const value = body[key];
+  if (value === undefined || value === null) {
+    throw malformedResponse(
+      `${opts.record} field "${key}" is required but the response carried ${describeValue(value)}`,
+      `The merge-safe update/edit resend this field verbatim, so a missing value would replace ` +
+        `the current one with a default. Use ${opts.escape} to write the record deliberately.`
+    );
+  }
+  if (typeof value !== "boolean") {
+    throw malformedResponse(
+      `${opts.record} field "${key}" is not a boolean: ${describeValue(value)}`,
+      resendHint(opts.escape)
+    );
+  }
+  return value;
+}
+
+/**
+ * Reads an *optional* writable boolean, refusing to coerce a malformed one.
+ *
+ * {@link writableString}'s boolean sibling, standing in the same relation to
+ * {@link requiredWritableBoolean} that `writableString` does to
+ * {@link requiredWritableString}: an absent key or an explicit `null` is
+ * genuinely "not set" and returns `false`, because that is what the server
+ * already holds.
+ *
+ * `ScheduleEntry.highlighted` is the case it exists for. The entry partial
+ * emits it unconditionally, but the reduced calendar partial behind
+ * `GetUpcomingSchedule` does not, and both render through the same schema — so
+ * the member is optional and absence is legitimate rather than malformed.
+ *
+ * What still cannot be tolerated is the *wrong type*: a `"yes"` or a `1` must be
+ * refused, not coerced, because a caller who assigns the seeded value straight
+ * back sends whatever it was seeded with. That branch is delegated to
+ * {@link requiredWritableBoolean}, so an optional boolean and a required one
+ * report a non-boolean identically.
+ */
+export function writableBoolean(
+  body: Record<string, unknown>,
+  key: string,
+  opts: { record: string; escape: string }
+): boolean {
+  const value = body[key];
+  if (value === undefined || value === null) return false;
+  return requiredWritableBoolean(body, key, opts);
+}
+
+/**
  * Reads a list of person records and projects it to their integer IDs.
  *
  * The analogue of {@link writableString} for the ID-list fields. The `.map()`

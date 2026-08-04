@@ -237,7 +237,7 @@ class AsyncAccountClient:
 
     @property
     def schedules(self):
-        from basecamp.generated.services.schedules import AsyncSchedulesService
+        from basecamp.services.schedules import AsyncSchedulesService
 
         return self._service("schedules", lambda: AsyncSchedulesService(self))
 

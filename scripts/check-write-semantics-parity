@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#
+# Assert that every operation's write semantics survive the whole pipeline:
+# the Smithy trait emits an `x-basecamp-write-semantics` extension into
+# openapi.json, and `scripts/generate-behavior-model` carries the SAME clause
+# into behavior-model.json's `write` key.
+#
+# Why a gate rather than a unit test: the two artifacts are produced by
+# different tools (the Smithy OpenAPI mapper, and a jq script), and the jq
+# script builds its `write` object key-by-key. A trait field nobody taught jq
+# about is silently dropped — the extension is right, the behavior model is
+# quietly short, and every SDK reads the behavior model. That is exactly how
+# `preservedOnOmission` would have shipped as a no-op.
+#
+# Both directions are checked, so neither artifact can lead the other.
+#
+# Usage: ./scripts/check-write-semantics-parity [openapi.json] [behavior-model.json]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+OPENAPI_FILE="${1:-$PROJECT_ROOT/openapi.json}"
+BEHAVIOR_FILE="${2:-$PROJECT_ROOT/behavior-model.json}"
+
+for f in "$OPENAPI_FILE" "$BEHAVIOR_FILE"; do
+    if [[ ! -f "$f" ]]; then
+        echo "ERROR: not found: $f" >&2
+        exit 2
+    fi
+done
+
+# operationId -> the x-basecamp-write-semantics object, from OpenAPI.
+openapi_semantics=$(jq -S '
+  [ .paths | to_entries[] | .value | to_entries[]
+    | select(.value | type == "object")
+    | select(.value["x-basecamp-write-semantics"] != null)
+    | { key: .value.operationId, value: .value["x-basecamp-write-semantics"] }
+  ] | from_entries
+' "$OPENAPI_FILE")
+
+# operationId -> the `write` clause, from the behavior model.
+behavior_semantics=$(jq -S '
+  [ .operations | to_entries[]
+    | select(.value.write != null)
+    | { key: .key, value: .value.write }
+  ] | from_entries
+' "$BEHAVIOR_FILE")
+
+if [[ "$openapi_semantics" == "$behavior_semantics" ]]; then
+    count=$(jq 'length' <<<"$openapi_semantics")
+    echo "write semantics parity holds for $count operation(s)"
+
+    # Name them, so a reviewer sees the carve-out sets without opening either
+    # artifact — and so a set silently emptying is visible in the log.
+    jq -r 'to_entries[]
+        | "  \(.key): mode=\(.value.mode) clearsOmitted=\(.value.clearsOmitted // false)"
+          + (if .value.preservedOnOmission then " preservedOnOmission=\(.value.preservedOnOmission | join(","))" else "" end)' \
+        <<<"$openapi_semantics"
+    exit 0
+fi
+
+echo "ERROR: x-basecamp-write-semantics and behavior-model.json disagree." >&2
+echo >&2
+echo "This is usually scripts/generate-behavior-model not carrying a trait field" >&2
+echo "through. Diff (< openapi.json, > behavior-model.json):" >&2
+echo >&2
+diff <(printf '%s\n' "$openapi_semantics") <(printf '%s\n' "$behavior_semantics") >&2 || true
+exit 1

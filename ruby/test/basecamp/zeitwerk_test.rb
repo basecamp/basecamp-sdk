@@ -65,4 +65,24 @@ class ZeitwerkTest < Minitest::Test
     assert_equal Basecamp::Services::DocumentsService, \
                  Basecamp::Services::DocumentsService.instance_method(:replace).owner
   end
+
+  # And for schedule entries: PUT /schedule_entries/{id} is a full replace, so
+  # the generated class owns `replace_entry` and the prepended module
+  # contributes the merge-safe `update_entry`/`edit_entry`.
+  def test_schedules_extensions_prepended
+    assert_includes Basecamp::Services::SchedulesService.ancestors, \
+                    Basecamp::Services::SchedulesExtensions
+    assert Basecamp::Services::SchedulesService.ancestors.index(Basecamp::Services::SchedulesExtensions) <
+           Basecamp::Services::SchedulesService.ancestors.index(Basecamp::Services::SchedulesService),
+           "extensions must be prepended (before the class in the ancestor chain)"
+  end
+
+  def test_schedules_composite_surface_is_reachable
+    assert_equal Basecamp::Services::SchedulesExtensions, \
+                 Basecamp::Services::SchedulesService.instance_method(:update_entry).owner
+    assert_equal Basecamp::Services::SchedulesExtensions, \
+                 Basecamp::Services::SchedulesService.instance_method(:edit_entry).owner
+    assert_equal Basecamp::Services::SchedulesService, \
+                 Basecamp::Services::SchedulesService.instance_method(:replace_entry).owner
+  end
 end

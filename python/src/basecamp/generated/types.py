@@ -1410,6 +1410,18 @@ class ReplaceDocumentRequestContent(TypedDict):
     title: NotRequired[str]
 
 
+class ReplaceScheduleEntryRequestContent(TypedDict):
+    all_day: NotRequired[bool]
+    description: NotRequired[str]
+    ends_at: str
+    highlighted: NotRequired[bool]
+    notify: NotRequired[bool]
+    participant_ids: NotRequired[list[int]]
+    starts_at: str
+    summary: NotRequired[str]
+    url: NotRequired[str]
+
+
 class ReplaceTodoRequestContent(TypedDict):
     assignee_ids: NotRequired[list[int]]
     completion_subscriber_ids: NotRequired[list[int]]
@@ -1486,7 +1498,7 @@ class ScheduleAttributes(TypedDict):
 
 
 class ScheduleEntry(TypedDict):
-    all_day: NotRequired[bool]
+    all_day: bool
     app_url: str
     bookmark_url: NotRequired[str]
     boosts_count: NotRequired[int]
@@ -1498,12 +1510,14 @@ class ScheduleEntry(TypedDict):
     creator: Person
     description: NotRequired[str]
     description_attachments: list[RichTextAttachment]
-    ends_at: NotRequired[str]
+    ends_at: str
+    highlighted: NotRequired[bool]
     id: int
     inherits_status: bool
+    join_url: NotRequired[str]
     parent: RecordingParent
     participants: NotRequired[list[Person]]
-    starts_at: NotRequired[str]
+    starts_at: str
     status: str
     subscription_url: NotRequired[str]
     summary: str
@@ -1917,16 +1931,6 @@ class UpdateQuestionRequestContent(TypedDict):
     paused: NotRequired[bool]
     schedule: NotRequired[QuestionSchedule]
     title: NotRequired[str]
-
-
-class UpdateScheduleEntryRequestContent(TypedDict):
-    all_day: NotRequired[bool]
-    description: NotRequired[str]
-    ends_at: NotRequired[str]
-    notify: NotRequired[bool]
-    participant_ids: NotRequired[list[int]]
-    starts_at: NotRequired[str]
-    summary: NotRequired[str]
 
 
 class UpdateScheduleSettingsRequestContent(TypedDict):

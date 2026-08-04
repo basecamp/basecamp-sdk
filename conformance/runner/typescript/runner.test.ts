@@ -11,7 +11,7 @@ import { describe, it, expect, afterEach, afterAll, beforeAll } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { createBasecampClient, BasecampError } from "@37signals/basecamp";
-import type { BasecampClient } from "@37signals/basecamp";
+import type { BasecampClient, UpdateScheduleEntryRequest } from "@37signals/basecamp";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -158,6 +158,41 @@ function mapTodolistWireFields(body: Record<string, unknown>): Record<string, un
     if (wire in body) mapped[sdk] = body[wire];
   }
   return mapped;
+}
+
+/**
+ * Fixture wire keys → SDK schedule-entry write params. The writable set on
+ * `PUT /{accountId}/schedule_entries/{entryId}` is the five full-state fields
+ * (summary, starts_at, ends_at, description, all_day) plus the four
+ * addressed-only ones (participant_ids, notify, url, highlighted).
+ */
+const SCHEDULE_ENTRY_WIRE_TO_SDK = {
+  summary: "summary",
+  starts_at: "startsAt",
+  ends_at: "endsAt",
+  description: "description",
+  all_day: "allDay",
+  participant_ids: "participantIds",
+  notify: "notify",
+  url: "url",
+  highlighted: "highlighted",
+} as const satisfies Record<string, keyof UpdateScheduleEntryRequest>;
+
+/**
+ * Map only the keys present in the fixture requestBody onto SDK param names.
+ *
+ * Presence-bearing on purpose, and `in` rather than a value test: `url: ""`,
+ * `highlighted: false` and `participant_ids: []` are addresses that must reach
+ * the wire, while a key the fixture omits must never appear in the body at all
+ * — BC3 preserves those three on omission, so a spurious key would clear what
+ * the server is holding.
+ */
+function mapScheduleEntryWireFields(body: Record<string, unknown>): UpdateScheduleEntryRequest {
+  const mapped: Record<string, unknown> = {};
+  for (const [wire, sdk] of Object.entries(SCHEDULE_ENTRY_WIRE_TO_SDK)) {
+    if (wire in body) mapped[sdk] = body[wire];
+  }
+  return mapped as UpdateScheduleEntryRequest;
 }
 
 /**
@@ -338,14 +373,39 @@ async function executeOperation(
         await client.todolists.update(Number(params.id), mapTodolistWireFields(body));
         break;
 
+      case "ReplaceScheduleEntry":
+        // Verbatim sparse PUT — no GET. Presence-bearing: only the keys the
+        // fixture carries reach the wire, so an unaddressed `url` stays absent
+        // (BC3 preserves it) while an explicit `""` is sent (BC3 clears it).
+        // starts_at/ends_at are required, so fixtures always carry them.
+        await client.schedules.replaceEntry(
+          Number(params.entryId),
+          mapScheduleEntryWireFields(body) as { startsAt: string; endsAt: string },
+        );
+        break;
+
       case "UpdateScheduleEntry":
-        // Only spread participantIds when the fixture carries the key: an
-        // absent key must not become [] or null on the wire.
-        await client.schedules.updateEntry(Number(params.entryId), {
-          ...(body.summary !== undefined ? { summary: String(body.summary) } : {}),
-          ...(body.participant_ids !== undefined
-            ? { participantIds: body.participant_ids as number[] }
-            : {}),
+        // Synthetic scenario key: the merge-safe composite, not a wire
+        // operation. GET then full PUT; only fixture-present keys are passed,
+        // because addressedness is property presence.
+        await client.schedules.updateEntry(
+          Number(params.entryId),
+          mapScheduleEntryWireFields(body),
+        );
+        break;
+
+      case "EditScheduleEntry":
+        // Synthetic scenario key: read-modify-write via the edit callback,
+        // assigning each fixture-present key onto the mapped
+        // ScheduleEntryFields member. Assignment is what marks a carve-out
+        // dirty, so a key the fixture omits is never assigned and never
+        // reaches the wire — and a key it carries is sent even when the
+        // assigned value equals what the GET returned.
+        await client.schedules.editEntry(Number(params.entryId), (e) => {
+          const mapped = mapScheduleEntryWireFields(body);
+          for (const [key, value] of Object.entries(mapped)) {
+            (e as unknown as Record<string, unknown>)[key] = value;
+          }
         });
         break;
 

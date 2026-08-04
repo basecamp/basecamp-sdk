@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class SchedulesService(client: AccountClient) : BaseService(client) {
+open class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single schedule entry by id.
@@ -33,14 +33,14 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Update an existing schedule entry
+     * Replace a schedule entry with a new complete representation.
      * @param entryId The entry ID
      * @param body Request body
      */
-    suspend fun updateEntry(entryId: Long, body: UpdateScheduleEntryBody): ScheduleEntry {
+    suspend fun replaceEntry(entryId: Long, body: ReplaceScheduleEntryBody): ScheduleEntry {
         val info = OperationInfo(
             service = "Schedules",
-            operation = "UpdateScheduleEntry",
+            operation = "ReplaceScheduleEntry",
             resourceType = "schedule_entry",
             isMutation = true,
             projectId = null,
@@ -49,12 +49,14 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpPut("/schedule_entries/${entryId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.summary?.let { put("summary", kotlinx.serialization.json.JsonPrimitive(it)) }
-                body.startsAt?.let { put("starts_at", kotlinx.serialization.json.JsonPrimitive(it)) }
-                body.endsAt?.let { put("ends_at", kotlinx.serialization.json.JsonPrimitive(it)) }
+                put("starts_at", kotlinx.serialization.json.JsonPrimitive(body.startsAt))
+                put("ends_at", kotlinx.serialization.json.JsonPrimitive(body.endsAt))
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.participantIds?.let { put("participant_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
                 body.allDay?.let { put("all_day", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.notify?.let { put("notify", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.url?.let { put("url", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.highlighted?.let { put("highlighted", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<ScheduleEntry>(body)

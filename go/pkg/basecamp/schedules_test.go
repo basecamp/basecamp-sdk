@@ -3,10 +3,15 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -472,84 +477,67 @@ func TestCreateScheduleEntryRequest_MarshalMinimal(t *testing.T) {
 	}
 }
 
-func TestUpdateScheduleEntryRequest_Marshal(t *testing.T) {
-	req := UpdateScheduleEntryRequest{
-		Summary:        "Updated Meeting",
-		StartsAt:       "2022-11-11T10:00:00.000Z",
-		EndsAt:         "2022-11-11T11:00:00.000Z",
-		Description:    "<div>Changed time</div>",
-		ParticipantIDs: []int64{1049715914},
-		Notify:         true,
-	}
+// TestScheduleEntryWriteRequests_WritableSetMatchesTheOperation pins the
+// writable set of the schedule-entry write surface — exactly the nine members
+// ReplaceScheduleEntryInput declares — across both request shapes, so a caller
+// can move between the merge-safe composite and the verbatim replace without
+// rewriting the call site.
+//
+// It also pins that every member is a POINTER. That is not style: three of the
+// nine are addressed BY their zero value (participant_ids [] removes everyone,
+// url "" drops the join link, highlighted false stops highlighting) and two more
+// have zero values that are legitimate writes (description "" clears it, all_day
+// false converts an all-day entry into a timed one). A zero-value guard — the
+// shape UpdateDocumentRequest and UpdateTodolistRequest use — would make all
+// five unreachable, and would silently hand each carve-out clear back to BC3's
+// preserve-on-omission.
+func TestScheduleEntryWriteRequests_WritableSetMatchesTheOperation(t *testing.T) {
+	want := []string{"all_day", "description", "ends_at", "highlighted", "notify", "participant_ids", "starts_at", "summary", "url"}
 
-	out, err := json.Marshal(req)
-	if err != nil {
-		t.Fatalf("failed to marshal UpdateScheduleEntryRequest: %v", err)
-	}
-
-	var data map[string]any
-	if err := json.Unmarshal(out, &data); err != nil {
-		t.Fatalf("failed to unmarshal to map: %v", err)
-	}
-
-	if data["summary"] != "Updated Meeting" {
-		t.Errorf("unexpected summary: %v", data["summary"])
-	}
-	if data["starts_at"] != "2022-11-11T10:00:00.000Z" {
-		t.Errorf("unexpected starts_at: %v", data["starts_at"])
-	}
-	if data["ends_at"] != "2022-11-11T11:00:00.000Z" {
-		t.Errorf("unexpected ends_at: %v", data["ends_at"])
-	}
-	if data["description"] != "<div>Changed time</div>" {
-		t.Errorf("unexpected description: %v", data["description"])
-	}
-	if data["notify"] != true {
-		t.Errorf("unexpected notify: %v", data["notify"])
-	}
-
-	// Round-trip test
-	var roundtrip UpdateScheduleEntryRequest
-	if err := json.Unmarshal(out, &roundtrip); err != nil {
-		t.Fatalf("failed to unmarshal round-trip: %v", err)
-	}
-
-	if roundtrip.Summary != req.Summary {
-		t.Errorf("expected summary %q, got %q", req.Summary, roundtrip.Summary)
+	for _, tc := range []struct {
+		name  string
+		value any
+	}{
+		{"UpdateScheduleEntryRequest", UpdateScheduleEntryRequest{}},
+		{"ReplaceScheduleEntryRequest", ReplaceScheduleEntryRequest{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			typ := reflect.TypeOf(tc.value)
+			got := make([]string, 0, typ.NumField())
+			for i := 0; i < typ.NumField(); i++ {
+				field := typ.Field(i)
+				name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+				got = append(got, name)
+				if field.Type.Kind() != reflect.Pointer {
+					t.Errorf("%s.%s is %s, but every member must be presence-bearing: nil is \"not addressed\" and the zero value is a legal write",
+						tc.name, field.Name, field.Type)
+				}
+			}
+			slices.Sort(got)
+			if !slices.Equal(got, want) {
+				t.Errorf("writable set is %v, want %v", got, want)
+			}
+		})
 	}
 }
 
-func TestUpdateScheduleEntryRequest_MarshalPartial(t *testing.T) {
-	// Test with only some fields
-	req := UpdateScheduleEntryRequest{
-		Summary: "Just updating title",
+// TestScheduleEntryFields_CarveOutsAreNotPlainMembers pins the other half of the
+// shape: the four addressed-only fields are behind setters, so assignment — not
+// value — is what puts them on the wire. A plain exported member could not
+// express that, because "left alone" and "assigned the same value" would be the
+// same struct.
+func TestScheduleEntryFields_CarveOutsAreNotPlainMembers(t *testing.T) {
+	typ := reflect.TypeOf(ScheduleEntryFields{})
+	exported := make([]string, 0, typ.NumField())
+	for i := 0; i < typ.NumField(); i++ {
+		if typ.Field(i).IsExported() {
+			exported = append(exported, typ.Field(i).Name)
+		}
 	}
-
-	out, err := json.Marshal(req)
-	if err != nil {
-		t.Fatalf("failed to marshal UpdateScheduleEntryRequest: %v", err)
-	}
-
-	var data map[string]any
-	if err := json.Unmarshal(out, &data); err != nil {
-		t.Fatalf("failed to unmarshal to map: %v", err)
-	}
-
-	if data["summary"] != "Just updating title" {
-		t.Errorf("unexpected summary: %v", data["summary"])
-	}
-	// Optional fields should be omitted
-	if _, ok := data["starts_at"]; ok {
-		t.Error("expected starts_at to be omitted")
-	}
-	if _, ok := data["ends_at"]; ok {
-		t.Error("expected ends_at to be omitted")
-	}
-	if _, ok := data["description"]; ok {
-		t.Error("expected description to be omitted")
-	}
-	if _, ok := data["participant_ids"]; ok {
-		t.Error("expected participant_ids to be omitted")
+	slices.Sort(exported)
+	want := []string{"AllDay", "Description", "EndsAt", "StartsAt", "Summary"}
+	if !slices.Equal(exported, want) {
+		t.Errorf("exported ScheduleEntryFields members are %v, want exactly the full-state set %v", exported, want)
 	}
 }
 
@@ -618,95 +606,1005 @@ func testSchedulesServer(t *testing.T, handler http.HandlerFunc) *SchedulesServi
 	return account.Schedules()
 }
 
-func TestSchedulesService_UpdateEntryPartial(t *testing.T) {
-	fixture := loadSchedulesFixture(t, "entry_get.json")
-	var receivedBody map[string]any
-	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
-		receivedBody = decodeRequestBody(t, r)
+// The schedule-entry write surface: the merge-safe UpdateEntry, the
+// read-modify-write EditEntry, and the verbatim ReplaceEntry.
+//
+// PUT /schedule_entries/{id} is a FULL REPLACE — Schedules::EntriesController#update
+// rebuilds the recordable from only the submitted params — so what these tests
+// pin is which bytes reach the wire. Three writable fields are exempt:
+// PRESERVED_ON_OMISSION = %i[url highlighted] plus participant_ids (guarded
+// since bc3#12425) are seeded from the existing record when the body does not
+// address them. That makes omission MEANINGFUL for those three and destructive
+// for every other field, and nothing but the request body distinguishes a
+// preserve from a clear — both are 200s.
 
+// The fixture's writable state, which every merge-safe call must carry back out
+// untouched unless the caller says otherwise.
+const (
+	fixtureEntrySummary     = "Project Kickoff Meeting"
+	fixtureEntryStartsAt    = "2022-11-01T10:00:00.000Z"
+	fixtureEntryEndsAt      = "2022-11-01T11:00:00.000Z"
+	fixtureEntryDescription = "<div>Discuss project goals and timeline.</div>"
+	// The entry's own Basecamp API URL — emitted under "url", which is NOT the
+	// join link. Echoing it into the request's url member would store the API
+	// URL as the join link, so no PUT in this file may ever carry it.
+	fixtureEntryAPIURL  = "https://3.basecampapi.com/195539477/buckets/2085958499/schedule_entries/1069479400.json"
+	fixtureEntryJoinURL = "https://meet.example.com/team"
+)
+
+// patchScheduleEntryFixture returns the fixture JSON with the given fields
+// replaced. A nil value deletes the key, which is how the read-side guards get
+// an ABSENT field rather than a null one.
+func patchScheduleEntryFixture(t *testing.T, base []byte, patch map[string]any) []byte {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal(base, &m); err != nil {
+		t.Fatalf("failed to unmarshal fixture: %v", err)
+	}
+	for k, v := range patch {
+		if v == nil {
+			delete(m, k)
+			continue
+		}
+		m[k] = v
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("failed to marshal patched fixture: %v", err)
+	}
+	return b
+}
+
+// scheduleEntryReadBack is the GET body the composites read: the spec fixture
+// plus a populated join link and highlight. The fixture predates bc3#12502 and
+// carries neither, and both must be present for the carve-out tests to mean
+// anything — a composite that echoes the read-back needs something to echo.
+func scheduleEntryReadBack(t *testing.T) []byte {
+	t.Helper()
+	return patchScheduleEntryFixture(t, loadSchedulesFixture(t, "entry_get.json"), map[string]any{
+		"join_url":    fixtureEntryJoinURL,
+		"highlighted": true,
+	})
+}
+
+// capturedScheduleRequest records one request seen by testSchedulesCaptureServer.
+type capturedScheduleRequest struct {
+	method string
+	path   string
+	body   map[string]any
+}
+
+// testSchedulesCaptureServer serves getBody for GETs and putBody for PUTs while
+// recording every request's method, path, and (for PUTs) decoded body. The
+// hooks, when non-nil, are installed on the client.
+func testSchedulesCaptureServer(t *testing.T, getBody, putBody []byte, hooks Hooks) (*SchedulesService, *[]capturedScheduleRequest) {
+	t.Helper()
+	reqs := &[]capturedScheduleRequest{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cr := capturedScheduleRequest{method: r.Method, path: r.URL.Path}
+		if r.Method == http.MethodPut {
+			cr.body = decodeRequestBody(t, r)
+		}
+		*reqs = append(*reqs, cr)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write(fixture)
-	})
+		if r.Method == http.MethodGet {
+			w.Write(getBody)
+		} else {
+			w.Write(putBody)
+		}
+	}))
+	t.Cleanup(server.Close)
 
-	_, err := svc.UpdateEntry(context.Background(), 12345, &UpdateScheduleEntryRequest{
-		Summary: "Just the title",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	var opts []ClientOption
+	if hooks != nil {
+		opts = append(opts, WithHooks(hooks))
 	}
+	client := NewClient(cfg, token, opts...)
+	return client.ForAccount("99999").Schedules(), reqs
+}
 
-	if receivedBody["summary"] != "Just the title" {
-		t.Errorf("expected summary 'Just the title', got %v", receivedBody["summary"])
+// lastPUT returns the body of the final PUT, failing if there was none.
+func lastPUT(t *testing.T, reqs *[]capturedScheduleRequest) map[string]any {
+	t.Helper()
+	for i := len(*reqs) - 1; i >= 0; i-- {
+		if (*reqs)[i].method == http.MethodPut {
+			return (*reqs)[i].body
+		}
 	}
+	t.Fatalf("expected a PUT, got %+v", *reqs)
+	return nil
+}
 
-	for _, field := range []string{"description", "participant_ids", "all_day", "notify", "starts_at", "ends_at"} {
-		if _, ok := receivedBody[field]; ok {
-			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+// assertNoPUT is the ordering assertion the read-side guards live or die by: a
+// guard that fires after the PUT has already lost the field.
+func assertNoPUT(t *testing.T, reqs *[]capturedScheduleRequest) {
+	t.Helper()
+	for _, r := range *reqs {
+		if r.method == http.MethodPut {
+			t.Fatalf("expected no PUT before the guard fired, got %+v", r)
 		}
 	}
 }
 
-func TestSchedulesService_UpdateEntryClearsParticipants(t *testing.T) {
-	fixture := loadSchedulesFixture(t, "entry_get.json")
-	var receivedBody map[string]any
-	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
-		receivedBody = decodeRequestBody(t, r)
+// idsOf reads a decoded participant_ids array. decodeRequestBody uses
+// json.Number, so the elements are not float64.
+func idsOf(t *testing.T, value any) []int64 {
+	t.Helper()
+	arr, ok := value.([]any)
+	if !ok {
+		t.Fatalf("expected participant_ids to be an array, got %T (%v)", value, value)
+	}
+	ids := make([]int64, 0, len(arr))
+	for _, item := range arr {
+		n, ok := item.(json.Number)
+		if !ok {
+			t.Fatalf("expected a JSON number in participant_ids, got %T (%v)", item, item)
+		}
+		i, err := n.Int64()
+		if err != nil {
+			t.Fatalf("participant id %v is not an integer: %v", n, err)
+		}
+		ids = append(ids, i)
+	}
+	return ids
+}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		w.Write(fixture)
-	})
+func strPtr(s string) *string     { return &s }
+func boolPtr(b bool) *bool        { return &b }
+func idsPtr(ids []int64) *[]int64 { return &ids }
 
-	// An empty non-nil slice means "clear all participants" — this must be sent
-	// to the API as participant_ids:[], not omitted.
-	_, err := svc.UpdateEntry(context.Background(), 12345, &UpdateScheduleEntryRequest{
-		Summary:        "keep summary",
-		ParticipantIDs: []int64{},
+// A summary-only update must carry the four unmentioned full-state fields back
+// out. Omitting any of them is a silent erase, not a preserve — and omitting
+// all_day would reset the NOT NULL DEFAULT false column, converting an all-day
+// entry into a midnight-to-midnight timed one.
+func TestSchedulesService_UpdateEntryMergesUnsetFields(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	entry, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+		Summary: strPtr("Kickoff, moved"),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if entry.ID != 1069479400 {
+		t.Errorf("expected ID 1069479400, got %d", entry.ID)
+	}
 
-	ids, ok := receivedBody["participant_ids"]
-	if !ok {
-		t.Fatal("expected participant_ids to be present in request body, but it was omitted")
+	if len(*reqs) != 2 {
+		t.Fatalf("expected 2 requests (GET then PUT), got %d: %+v", len(*reqs), *reqs)
 	}
-	arr, ok := ids.([]any)
-	if !ok {
-		t.Fatalf("expected participant_ids to be an array, got %T", ids)
+	if (*reqs)[0].method != http.MethodGet || (*reqs)[1].method != http.MethodPut {
+		t.Fatalf("expected GET then PUT, got %s then %s", (*reqs)[0].method, (*reqs)[1].method)
 	}
-	if len(arr) != 0 {
-		t.Errorf("expected empty participant_ids array, got %v", arr)
+
+	body := (*reqs)[1].body
+	if body["summary"] != "Kickoff, moved" {
+		t.Errorf("expected the caller's summary, got %v", body["summary"])
+	}
+	if body["starts_at"] != fixtureEntryStartsAt {
+		t.Errorf("expected preserved starts_at %q, got %v", fixtureEntryStartsAt, body["starts_at"])
+	}
+	if body["ends_at"] != fixtureEntryEndsAt {
+		t.Errorf("expected preserved ends_at %q, got %v", fixtureEntryEndsAt, body["ends_at"])
+	}
+	if body["description"] != fixtureEntryDescription {
+		t.Errorf("expected preserved description, got %v", body["description"])
+	}
+	allDay, ok := body["all_day"]
+	if !ok {
+		t.Error("expected all_day present: omitting it resets the column and un-all-days the entry")
+	}
+	if allDay != false {
+		t.Errorf("expected preserved all_day false, got %v", allDay)
+	}
+
+	// The three carve-outs BC3 preserves server-side. The read-back carried a
+	// populated join link, a true highlight and two participants; none may be
+	// echoed, because resending is redundant at best and wrong if the read
+	// raced a concurrent change.
+	for _, key := range []string{"participant_ids", "url", "highlighted"} {
+		if value, ok := body[key]; ok {
+			t.Errorf("expected %q absent from an update that did not address it, got %v", key, value)
+		}
+	}
+	if len(body) != 5 {
+		t.Errorf("expected exactly the five full-state fields in the body, got %v", body)
 	}
 }
 
-func TestSchedulesService_UpdateEntryAllDay(t *testing.T) {
-	fixture := loadSchedulesFixture(t, "entry_get.json")
-	var receivedBody map[string]any
-	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
-		receivedBody = decodeRequestBody(t, r)
+// The specific way echoing goes wrong: the response spells the join link
+// join_url, and its "url" is the entry's own API URL. A composite that seeded
+// the request's url member from the response's url would store an API URL as
+// the entry's join link.
+func TestSchedulesService_UpdateEntryNeverEchoesTheResponseAPIURL(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		w.Write(fixture)
-	})
+	if _, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+		Summary: strPtr("Kickoff"),
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-	// Setting AllDay to false must send false (not omit it)
-	allDayFalse := false
-	_, err := svc.UpdateEntry(context.Background(), 12345, &UpdateScheduleEntryRequest{
-		AllDay: &allDayFalse,
+	for key, value := range lastPUT(t, reqs) {
+		if value == fixtureEntryAPIURL {
+			t.Errorf("the entry's own API URL reached the wire under %q; join_url is the join link, url is not", key)
+		}
+	}
+}
+
+// An explicitly empty value in the carve-out class is an ADDRESS, not an
+// absence: [] removes everyone, "" drops the join link, false stops
+// highlighting. Every one must survive body compaction, because BC3 preserves
+// what the request does not address — a compactor that dropped these would turn
+// three clears into three no-ops.
+func TestSchedulesService_UpdateEntryClearsCarveOuts(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+		URL:            strPtr(""),
+		Highlighted:    boolPtr(false),
+		ParticipantIDs: idsPtr([]int64{}),
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The three are checked independently, and none of them fatal: they are the
+	// same defect three times over, and a run that stopped at the first would
+	// hide how wide the hole is.
+	assertCarveOutsCleared(t, lastPUT(t, reqs))
+}
+
+// assertCarveOutsCleared checks that all three carve-out clears reached the
+// wire as present, explicitly-empty values.
+func assertCarveOutsCleared(t *testing.T, body map[string]any) {
+	t.Helper()
+	for _, key := range []string{"url", "highlighted", "participant_ids"} {
+		value, ok := body[key]
+		if !ok {
+			t.Errorf("expected %q present on the wire: an explicit empty value is an address, not an absence — BC3 preserves what the body does not address", key)
+			continue
+		}
+		if value == nil {
+			t.Errorf("expected %q to carry an explicit empty value, got JSON null", key)
+			continue
+		}
+		switch key {
+		case "url":
+			if value != "" {
+				t.Errorf("expected url \"\", got %v", value)
+			}
+		case "highlighted":
+			if value != false {
+				t.Errorf("expected highlighted false, got %v", value)
+			}
+		case "participant_ids":
+			if got := idsOf(t, value); len(got) != 0 {
+				t.Errorf("expected an empty participant_ids array, got %v", got)
+			}
+		}
+	}
+}
+
+// Addressing a carve-out applies it normally, and the three are independent
+// rather than all-or-nothing: this caller said nothing about participants, so
+// participant_ids stays off the wire while url and highlighted go on it.
+func TestSchedulesService_UpdateEntryAddressesCarveOutsIndependently(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+		URL:         strPtr("https://meet.example.com/new-room"),
+		Highlighted: boolPtr(true),
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := lastPUT(t, reqs)
+	if body["url"] != "https://meet.example.com/new-room" {
+		t.Errorf("expected the caller's join link under url, got %v", body["url"])
+	}
+	if body["highlighted"] != true {
+		t.Errorf("expected highlighted true, got %v", body["highlighted"])
+	}
+	if value, ok := body["participant_ids"]; ok {
+		t.Errorf("expected participant_ids absent, got %v", value)
+	}
+	// The full state still rides along in full.
+	if body["summary"] != fixtureEntrySummary || body["starts_at"] != fixtureEntryStartsAt {
+		t.Errorf("expected the fetched full state resent, got %v", body)
+	}
+}
+
+// The clear DocumentsService.Update cannot express. description is full state,
+// so "" is not "unaddressed" here — it reaches the wire as a present, empty key.
+// JSON null is out (SPEC §18) and omission would hand the clear back to the
+// server's own rebuild, arriving as an accident rather than an intent.
+func TestSchedulesService_UpdateEntryClearsDescription(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+		Description: strPtr(""),
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := lastPUT(t, reqs)
+	description, ok := body["description"]
+	if !ok {
+		t.Fatal("expected description present in the PUT body, but it was omitted")
+	}
+	if description == nil {
+		t.Fatal("expected description \"\", got JSON null")
+	}
+	if description != "" {
+		t.Errorf("expected description \"\", got %v", description)
+	}
+	if body["summary"] != fixtureEntrySummary {
+		t.Errorf("expected preserved summary, got %v", body["summary"])
+	}
+}
+
+// all_day false through the composite is a real write — it converts an all-day
+// entry into a timed one — so the pointer must carry it rather than collapsing
+// it into "unset".
+func TestSchedulesService_UpdateEntrySendsExplicitAllDayFalse(t *testing.T) {
+	get := patchScheduleEntryFixture(t, scheduleEntryReadBack(t), map[string]any{"all_day": true})
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+		AllDay: boolPtr(false),
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := lastPUT(t, reqs)
+	value, ok := body["all_day"]
+	if !ok {
+		t.Fatal("expected all_day present when explicitly set to false")
+	}
+	if value != false {
+		t.Errorf("expected all_day false, got %v", value)
+	}
+}
+
+func TestSchedulesService_UpdateEntryNilRequestIsUsageError(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	_, err := svc.UpdateEntry(context.Background(), 1069479400, nil)
+	if err == nil {
+		t.Fatal("expected usage error for a nil update request")
+	}
+	var usageErr *Error
+	if !errors.As(err, &usageErr) || usageErr.Code != CodeUsage {
+		t.Fatalf("expected CodeUsage, got %T %v", err, err)
+	}
+	// Refused before the read-before-write, so not even the GET is spent.
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+func TestSchedulesService_UpdateEntryHooksObserveGetEntryAndReplaceEntry(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	recorder := &recordingHooks{}
+	svc, _ := testSchedulesCaptureServer(t, get, get, recorder)
+
+	if _, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+		Summary: strPtr("x"),
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The composite composes the public GetEntry and ReplaceEntry paths, so
+	// hooks see the two wire operations under their native identities rather
+	// than one synthetic composite.
+	ops := make([]string, 0, len(recorder.opStartCalls))
+	for _, op := range recorder.opStartCalls {
+		ops = append(ops, op.Service+"."+op.Operation)
+	}
+	if len(ops) != 2 || ops[0] != "Schedules.GetEntry" || ops[1] != "Schedules.ReplaceEntry" {
+		t.Errorf("expected operations [Schedules.GetEntry Schedules.ReplaceEntry], got %v", ops)
+	}
+	if len(recorder.opEndCalls) != 2 {
+		t.Errorf("expected 2 OnOperationEnd calls, got %d", len(recorder.opEndCalls))
+	}
+}
+
+func TestSchedulesService_EditEntrySeedsFullStateFromTheRead(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	entry, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		if f.Summary != fixtureEntrySummary {
+			t.Errorf("expected Summary from the GET, got %q", f.Summary)
+		}
+		if f.StartsAt != fixtureEntryStartsAt {
+			t.Errorf("expected StartsAt from the GET, got %q", f.StartsAt)
+		}
+		if f.Description != fixtureEntryDescription {
+			t.Errorf("expected Description from the GET, got %q", f.Description)
+		}
+		// The carve-out getters expose the read-back so a caller can inspect
+		// before deciding. Reading is not writing.
+		if f.URL() != fixtureEntryJoinURL {
+			t.Errorf("expected URL() to report the read-back join link, got %q", f.URL())
+		}
+		if !f.Highlighted() {
+			t.Error("expected Highlighted() to report the read-back highlight")
+		}
+		if got := f.ParticipantIDs(); !slices.Equal(got, []int64{1049715914, 1049715915}) {
+			t.Errorf("expected ParticipantIDs() to report the read-back participants, got %v", got)
+		}
+		f.Summary = "🚨 " + f.Summary
+		return nil
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	val, ok := receivedBody["all_day"]
-	if !ok {
-		t.Fatal("expected all_day to be present when explicitly set to false")
+	if entry.ID != 1069479400 {
+		t.Errorf("expected ID 1069479400, got %d", entry.ID)
 	}
-	if val != false {
-		t.Errorf("expected all_day=false, got %v", val)
+
+	body := lastPUT(t, reqs)
+	if body["summary"] != "🚨 "+fixtureEntrySummary {
+		t.Errorf("expected the prefixed summary, got %v", body["summary"])
+	}
+	if body["ends_at"] != fixtureEntryEndsAt {
+		t.Errorf("expected preserved ends_at, got %v", body["ends_at"])
+	}
+}
+
+// The untouched half of the dirty-set contract. The callback read all three
+// carve-outs and assigned none, so none may appear in the PUT: the edit view
+// cannot simply serialize whatever it was seeded with.
+func TestSchedulesService_EditEntryUntouchedCarveOutsStayOffTheWire(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		_, _, _ = f.URL(), f.Highlighted(), f.ParticipantIDs()
+		f.Summary = "Team Sync"
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := lastPUT(t, reqs)
+	if body["summary"] != "Team Sync" {
+		t.Errorf("expected the assigned summary, got %v", body["summary"])
+	}
+	for _, key := range []string{"participant_ids", "url", "highlighted"} {
+		if value, ok := body[key]; ok {
+			t.Errorf("expected %q absent after a block that never assigned it, got %v", key, value)
+		}
+	}
+}
+
+// The touched half, and the reason the contract is setter-invocation dirty
+// tracking rather than a snapshot diff. The block assigns exactly the join link
+// and highlight the GET returned, so a value-comparison implementation would
+// conclude nothing changed and omit both — handing the write back to BC3's
+// preserve-on-omission. Intent is not recoverable from the value:
+// SetURL(f.URL()) is a write.
+func TestSchedulesService_EditEntryTouchedCarveOutsAreSentEvenWhenUnchanged(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		f.SetURL(f.URL())
+		f.SetHighlighted(f.Highlighted())
+		f.SetParticipantIDs(f.ParticipantIDs())
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Checked independently and non-fatally: a value-comparison implementation
+	// drops all three, and the proof of that is seeing all three.
+	body := lastPUT(t, reqs)
+	for _, key := range []string{"url", "highlighted", "participant_ids"} {
+		if _, ok := body[key]; !ok {
+			t.Errorf("expected %q on the wire: assigning the value the read returned is still a write, and value comparison is explicitly rejected", key)
+		}
+	}
+	if url, ok := body["url"]; ok && url != fixtureEntryJoinURL {
+		t.Errorf("expected url %q, got %v", fixtureEntryJoinURL, url)
+	}
+	if highlighted, ok := body["highlighted"]; ok && highlighted != true {
+		t.Errorf("expected highlighted true, got %v", highlighted)
+	}
+	if ids, ok := body["participant_ids"]; ok {
+		if got := idsOf(t, ids); !slices.Equal(got, []int64{1049715914, 1049715915}) {
+			t.Errorf("expected the assigned participant ids, got %v", got)
+		}
+	}
+}
+
+// SetParticipantIDs(nil) is the same address as SetParticipantIDs([]int64{}):
+// remove everyone. It must serialize as [], never as JSON null — null is not
+// the documented clear, and a nil slice is what Go marshals to null.
+func TestSchedulesService_EditEntryNilParticipantIDsSerializeAsEmptyArray(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		f.SetParticipantIDs(nil)
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ids, ok := lastPUT(t, reqs)["participant_ids"]
+	if !ok {
+		t.Fatal("expected participant_ids present")
+	}
+	if ids == nil {
+		t.Fatal("expected participant_ids [], got JSON null")
+	}
+	if got := idsOf(t, ids); len(got) != 0 {
+		t.Errorf("expected [], got %v", got)
+	}
+}
+
+// The getter hands back a copy, so mutating it is not a write and does not
+// corrupt the seeded state either.
+func TestSchedulesService_EditEntryParticipantIDsGetterIsACopy(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		got := f.ParticipantIDs()
+		got[0] = 42
+		if again := f.ParticipantIDs(); again[0] == 42 {
+			t.Error("mutating the returned slice changed the seeded state")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if value, ok := lastPUT(t, reqs)["participant_ids"]; ok {
+		t.Errorf("expected participant_ids absent after a getter-only block, got %v", value)
+	}
+}
+
+func TestSchedulesService_EditEntryCallbackErrorAbortsWithoutPUT(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	wantErr := errors.New("nope")
+	_, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		f.Summary = "should never be written"
+		f.SetURL("")
+		return wantErr
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected the callback error, got %v", err)
+	}
+	assertNoPUT(t, reqs)
+}
+
+func TestSchedulesService_EditEntryNilCallbackIsUsageError(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	_, err := svc.EditEntry(context.Background(), 1069479400, nil)
+	if err == nil {
+		t.Fatal("expected usage error for a nil edit callback")
+	}
+	var usageErr *Error
+	if !errors.As(err, &usageErr) || usageErr.Code != CodeUsage {
+		t.Fatalf("expected CodeUsage, got %T %v", err, err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+func TestSchedulesService_EditEntryHooksObserveGetEntryAndReplaceEntry(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	recorder := &recordingHooks{}
+	svc, _ := testSchedulesCaptureServer(t, get, get, recorder)
+
+	if _, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ops := make([]string, 0, len(recorder.opStartCalls))
+	for _, op := range recorder.opStartCalls {
+		ops = append(ops, op.Service+"."+op.Operation)
+	}
+	if len(ops) != 2 || ops[0] != "Schedules.GetEntry" || ops[1] != "Schedules.ReplaceEntry" {
+		t.Errorf("expected operations [Schedules.GetEntry Schedules.ReplaceEntry], got %v", ops)
+	}
+}
+
+// bc3 renders starts_at_date_or_time, which is starts_at.to_date unless the
+// entry is timed, so an all-day entry reads back as a BARE DATE. The composites
+// carry that string through untouched.
+//
+// The trap this pins: ScheduleEntry.StartsAt is types.FlexibleTime, whose
+// UnmarshalJSON accepts the bare date by treating it as midnight UTC, and whose
+// MarshalJSON then renders time.Time's RFC3339 form. Round-tripping the DECODED
+// value would therefore rewrite "2026-06-01" into "2026-06-01T00:00:00Z", which
+// BC3 re-parses in the account's own zone — west of UTC that lands on the
+// previous day and moves the entry. ScheduleEntryFields carries strings for
+// exactly this reason, sourced from the raw response bytes rather than the
+// decoded time.
+func TestSchedulesService_EditEntryRoundTripsAnAllDayBareDate(t *testing.T) {
+	get := patchScheduleEntryFixture(t, scheduleEntryReadBack(t), map[string]any{
+		"all_day":   true,
+		"starts_at": "2026-06-01",
+		"ends_at":   "2026-06-03",
+	})
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		if f.StartsAt != "2026-06-01" {
+			t.Errorf("expected the bare date verbatim, got %q", f.StartsAt)
+		}
+		f.Summary = "Offsite"
+		return nil
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := lastPUT(t, reqs)
+	if body["starts_at"] != "2026-06-01" {
+		t.Errorf("expected starts_at \"2026-06-01\" verbatim, got %v", body["starts_at"])
+	}
+	if body["ends_at"] != "2026-06-03" {
+		t.Errorf("expected ends_at \"2026-06-03\" verbatim, got %v", body["ends_at"])
+	}
+	if body["all_day"] != true {
+		t.Errorf("expected all_day true, got %v", body["all_day"])
+	}
+}
+
+// The other half of that finding, stated directly: this is what the composite
+// would have sent had it re-rendered the decoded value. If FlexibleTime ever
+// learns to preserve its source text, this test is the thing that says so.
+func TestFlexibleTimeMarshalRewritesABareDate(t *testing.T) {
+	var entry ScheduleEntry
+	if err := json.Unmarshal([]byte(`{"starts_at":"2026-06-01","all_day":true}`), &entry); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out, err := json.Marshal(entry.StartsAt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(out) == `"2026-06-01"` {
+		t.Skip("FlexibleTime now round-trips its source text; ScheduleEntryFields could carry the decoded value")
+	}
+	if string(out) != `"2026-06-01T00:00:00Z"` {
+		t.Errorf("expected the midnight-UTC rewrite %q, got %s", "2026-06-01T00:00:00Z", out)
+	}
+}
+
+func TestSchedulesService_ReplaceEntryIsExactlyOneRequest(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	recorder := &recordingHooks{}
+	svc, reqs := testSchedulesCaptureServer(t, get, get, recorder)
+
+	entry, err := svc.ReplaceEntry(context.Background(), 1069479400, &ReplaceScheduleEntryRequest{
+		Summary:  strPtr("Team Meeting"),
+		StartsAt: strPtr("2026-06-05T06:00:00Z"),
+		EndsAt:   strPtr("2026-06-05T08:30:00Z"),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if entry.ID != 1069479400 {
+		t.Errorf("expected ID 1069479400, got %d", entry.ID)
+	}
+
+	// No GET: replace is the server-native verbatim PUT.
+	if len(*reqs) != 1 || (*reqs)[0].method != http.MethodPut {
+		t.Fatalf("expected exactly one PUT, got %+v", *reqs)
+	}
+	body := (*reqs)[0].body
+	if body["summary"] != "Team Meeting" {
+		t.Errorf("expected the summary sent verbatim, got %v", body["summary"])
+	}
+	// Unaddressed carve-outs must not appear at all. A compactor that emitted
+	// null, or a default that emitted [] or false, would clear the value BC3 is
+	// holding for us.
+	for _, key := range []string{"participant_ids", "url", "highlighted", "description", "all_day", "notify"} {
+		if value, ok := body[key]; ok {
+			t.Errorf("expected %q omitted from a sparse replace, got %v", key, value)
+		}
+	}
+	if len(body) != 3 {
+		t.Errorf("expected exactly {summary, starts_at, ends_at}, got %v", body)
+	}
+
+	if len(recorder.opStartCalls) != 1 ||
+		recorder.opStartCalls[0].Service != "Schedules" || recorder.opStartCalls[0].Operation != "ReplaceEntry" {
+		t.Errorf("expected a single Schedules.ReplaceEntry operation, got %+v", recorder.opStartCalls)
+	}
+}
+
+func TestSchedulesService_ReplaceEntrySendsExplicitEmptyCarveOuts(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	if _, err := svc.ReplaceEntry(context.Background(), 1069479400, &ReplaceScheduleEntryRequest{
+		Summary:        strPtr("Team Meeting"),
+		StartsAt:       strPtr("2026-06-05T06:00:00Z"),
+		EndsAt:         strPtr("2026-06-05T08:30:00Z"),
+		ParticipantIDs: idsPtr([]int64{}),
+		URL:            strPtr(""),
+		Highlighted:    boolPtr(false),
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[0].body
+	if url, ok := body["url"]; !ok || url != "" {
+		t.Errorf("expected url \"\" present, got %v (present=%v)", url, ok)
+	}
+	if highlighted, ok := body["highlighted"]; !ok || highlighted != false {
+		t.Errorf("expected highlighted false present, got %v (present=%v)", highlighted, ok)
+	}
+	ids, ok := body["participant_ids"]
+	if !ok {
+		t.Fatal("expected participant_ids [] present")
+	}
+	if got := idsOf(t, ids); len(got) != 0 {
+		t.Errorf("expected [], got %v", got)
+	}
+}
+
+// starts_at and ends_at are @required and are NOT on BC3's preserve list, and
+// both columns are NOT NULL — so a body omitting either cannot succeed. Refuse
+// it locally rather than spend a round-trip discovering that.
+func TestSchedulesService_ReplaceEntryRequiresTheTimes(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	for _, tc := range []struct {
+		name string
+		req  *ReplaceScheduleEntryRequest
+	}{
+		{"no starts_at", &ReplaceScheduleEntryRequest{EndsAt: strPtr("2026-06-05T08:30:00Z")}},
+		{"no ends_at", &ReplaceScheduleEntryRequest{StartsAt: strPtr("2026-06-05T06:00:00Z")}},
+		{"neither", &ReplaceScheduleEntryRequest{Summary: strPtr("Team Meeting")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			recorder := &recordingHooks{}
+			svc, reqs := testSchedulesCaptureServer(t, get, get, recorder)
+
+			_, err := svc.ReplaceEntry(context.Background(), 1069479400, tc.req)
+			if err == nil {
+				t.Fatal("expected a usage error, but the call succeeded")
+			}
+			var usageErr *Error
+			if !errors.As(err, &usageErr) || usageErr.Code != CodeUsage {
+				t.Fatalf("expected CodeUsage, got %T %v", err, err)
+			}
+			if len(*reqs) != 0 {
+				t.Fatalf("expected no requests, got %+v", *reqs)
+			}
+			// The body is built inside the hook envelope, so the refusal is
+			// observable.
+			if len(recorder.opStartCalls) != 1 || len(recorder.opEndCalls) != 1 {
+				t.Errorf("expected the usage error to be observable to hooks, got %d starts / %d ends",
+					len(recorder.opStartCalls), len(recorder.opEndCalls))
+			}
+		})
+	}
+}
+
+func TestSchedulesService_ReplaceEntryNilRequestIsUsageError(t *testing.T) {
+	get := scheduleEntryReadBack(t)
+	svc, reqs := testSchedulesCaptureServer(t, get, get, nil)
+
+	_, err := svc.ReplaceEntry(context.Background(), 1069479400, nil)
+	if err == nil {
+		t.Fatal("expected usage error for a nil replace request")
+	}
+	var usageErr *Error
+	if !errors.As(err, &usageErr) || usageErr.Code != CodeUsage {
+		t.Fatalf("expected CodeUsage, got %T %v", err, err)
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
+	}
+}
+
+// The read-side guards. summary, starts_at, ends_at and all_day are @required on
+// the response, and the generated model carries all four as VALUES, so an absent
+// key decodes to the zero value and encoding/json says nothing — the one shape a
+// typed decoder does not catch. Writing that zero value back on a full-replace
+// endpoint is the defect: a missing all_day would un-all-day the entry, a
+// missing starts_at would erase its bounds, a missing summary would blank it.
+//
+// The assertion that matters is the ORDERING: no PUT. A guard that fires after
+// the PUT has already lost the field.
+func TestSchedulesService_UpdateEntryRefusesAMalformedReadBeforeWriting(t *testing.T) {
+	base := scheduleEntryReadBack(t)
+	for _, tc := range []struct {
+		name  string
+		patch map[string]any
+	}{
+		{"summary absent", map[string]any{"summary": nil}},
+		{"summary empty", map[string]any{"summary": ""}},
+		{"summary whitespace", map[string]any{"summary": "   "}},
+		{"all_day absent", map[string]any{"all_day": nil}},
+		{"starts_at absent", map[string]any{"starts_at": nil}},
+		{"ends_at absent", map[string]any{"ends_at": nil}},
+		{"starts_at empty", map[string]any{"starts_at": ""}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			get := patchScheduleEntryFixture(t, base, tc.patch)
+			svc, reqs := testSchedulesCaptureServer(t, get, base, nil)
+
+			_, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+				Description: strPtr("<div>New agenda.</div>"),
+			})
+			if err == nil {
+				t.Fatal("expected the call to fail, but it succeeded")
+			}
+			var apiErr *Error
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("expected *Error, got %T: %v", err, err)
+			}
+			// api_error, not usage: the value arrived in a successful API
+			// response, so nothing the caller passed is at fault.
+			if apiErr.Code != CodeAPI {
+				t.Errorf("expected code %q, got %q", CodeAPI, apiErr.Code)
+			}
+			if apiErr.HTTPStatus != 0 {
+				t.Errorf("expected a statusless error, got HTTP %d", apiErr.HTTPStatus)
+			}
+			if apiErr.Retryable {
+				t.Error("re-requesting cannot repair a malformed body")
+			}
+			if apiErr.Hint == "" {
+				t.Error("expected a hint naming the deliberate-overwrite escape hatch")
+			}
+			assertNoPUT(t, reqs)
+		})
+	}
+}
+
+// A JSON null on an @required field is malformed for the same reason absence is,
+// and it takes a separate path: encoding/json decodes null into a value-typed
+// bool or FlexibleTime as the zero value without complaint.
+func TestSchedulesService_UpdateEntryRefusesNullRequiredFields(t *testing.T) {
+	base := scheduleEntryReadBack(t)
+	rawNull := json.RawMessage("null")
+	for _, key := range []string{"all_day", "starts_at", "ends_at"} {
+		t.Run(key, func(t *testing.T) {
+			get := patchScheduleEntryFixture(t, base, map[string]any{key: rawNull})
+			svc, reqs := testSchedulesCaptureServer(t, get, base, nil)
+
+			_, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+				Summary: strPtr("New summary"),
+			})
+			if err == nil {
+				t.Fatal("expected the call to fail, but it succeeded")
+			}
+			var apiErr *Error
+			if !errors.As(err, &apiErr) || apiErr.Code != CodeAPI {
+				t.Fatalf("expected an api_error, got %T: %v", err, err)
+			}
+			assertNoPUT(t, reqs)
+		})
+	}
+}
+
+func TestSchedulesService_EditEntryRefusesAMalformedReadBeforeTheCallback(t *testing.T) {
+	base := scheduleEntryReadBack(t)
+	get := patchScheduleEntryFixture(t, base, map[string]any{"all_day": nil})
+	svc, reqs := testSchedulesCaptureServer(t, get, base, nil)
+
+	called := false
+	_, err := svc.EditEntry(context.Background(), 1069479400, func(f *ScheduleEntryFields) error {
+		called = true
+		f.Description = "<div>New agenda.</div>"
+		return nil
+	})
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+	if called {
+		t.Error("the callback must not run on a malformed read")
+	}
+	assertNoPUT(t, reqs)
+}
+
+// The wrong-TYPED shapes, which encoding/json DOES catch — but reports as a raw
+// decoder error, not the shape SPEC §6 defines for a malformed 2xx body. A
+// caller switching on *Error would miss it entirely and it carries no hint. The
+// composite normalizes it the way the Swift one normalizes DecodingError, so a
+// malformed response looks the same in every SDK.
+//
+// The table spans several decoder error types on purpose, because
+// getEntryWithBody classifies by ORIGIN rather than by an allowlist: created_at
+// is time.Time, whose UnmarshalJSON returns *time.ParseError rather than an
+// encoding/json sentinel, and a non-integral attachment dimension is rejected by
+// types.FlexInt with a plain fmt.Errorf that is no named type at all.
+func TestSchedulesService_UpdateEntryWrapsADecodeFailureAsStatuslessAPIError(t *testing.T) {
+	base := scheduleEntryReadBack(t)
+	for _, tc := range []struct {
+		name  string
+		patch map[string]any
+	}{
+		{"description is an object", map[string]any{"description": map[string]any{"a": 1}}},
+		{"summary is a number", map[string]any{"summary": 42}},
+		{"all_day is a string", map[string]any{"all_day": "yes"}},
+		{"starts_at is unparseable", map[string]any{"starts_at": "the ides of March"}},
+		{"created_at is not a timestamp", map[string]any{"created_at": "not-a-timestamp"}},
+		{"attachment height is non-integral", map[string]any{
+			"description_attachments": []any{map[string]any{"height": 1024.5}},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			get := patchScheduleEntryFixture(t, base, tc.patch)
+			svc, reqs := testSchedulesCaptureServer(t, get, base, nil)
+
+			_, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+				Summary: strPtr("Q3 Kickoff"),
+			})
+			if err == nil {
+				t.Fatal("expected the call to fail, but it succeeded")
+			}
+			var apiErr *Error
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("expected *Error, got %T: %v", err, err)
+			}
+			if apiErr.Code != CodeAPI {
+				t.Errorf("expected code %q, got %q", CodeAPI, apiErr.Code)
+			}
+			if apiErr.HTTPStatus != 0 {
+				t.Errorf("expected a statusless error, got HTTP %d", apiErr.HTTPStatus)
+			}
+			if apiErr.Retryable {
+				t.Error("re-requesting cannot repair a malformed body")
+			}
+			if apiErr.Hint == "" {
+				t.Error("expected a hint naming the deliberate-overwrite escape hatch")
+			}
+			assertNoPUT(t, reqs)
+		})
+	}
+}
+
+// A transport or HTTP error must pass through untouched — the wrapper is for
+// decode failures only, and swallowing everything would hide a 404 behind a
+// "does not decode" message.
+func TestSchedulesService_UpdateEntryPassesNonDecodeErrorsThrough(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, `{"error":"Not Found"}`)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	_, err := client.ForAccount("999").Schedules().UpdateEntry(context.Background(), 1069479400,
+		&UpdateScheduleEntryRequest{Summary: strPtr("Q3 Kickoff")})
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	if apiErr.HTTPStatus != http.StatusNotFound {
+		t.Errorf("expected the 404 to survive, got HTTP %d (%s)", apiErr.HTTPStatus, apiErr.Message)
 	}
 }
 

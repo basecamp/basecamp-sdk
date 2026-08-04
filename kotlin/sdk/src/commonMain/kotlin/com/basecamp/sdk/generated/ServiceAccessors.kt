@@ -156,8 +156,8 @@ val AccountClient.reports: ReportsService
     get() = service("Reports") { ReportsService(this) }
 
 /** Schedules operations. */
-val AccountClient.schedules: SchedulesService
-    get() = service("Schedules") { SchedulesService(this) }
+val AccountClient.schedules: com.basecamp.sdk.services.SchedulesService
+    get() = service("Schedules") { com.basecamp.sdk.services.SchedulesService(this) }
 
 /** Search operations. */
 val AccountClient.search: SearchService

@@ -92,5 +92,7 @@
       "can_manage_people": true
     }
   ],
+  "join_url": "https://meet.example.com/weekly-sync",
+  "highlighted": true,
   "description_attachments": []
 }

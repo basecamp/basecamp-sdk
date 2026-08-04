@@ -1,15 +1,17 @@
 [
   {
-    "name": "update-omits-participant-ids: an unaddressed participant list stays off the wire",
-    "description": "BC3 preserves the entry's participants only because the key is absent \u2014 until basecamp/bc3#12425 the controller called replace_participants unconditionally, so an omitted key wiped every participant and notified them. The SDK's job is narrow but load-bearing: when the caller says nothing about participants, participant_ids must not appear in the body at all. A compactor that emitted null, or a default that emitted [], would clear the list on the server.",
-    "operation": "UpdateScheduleEntry",
+    "name": "replace-omission-clears: an unaddressed participant list, join link and highlight stay off the wire",
+    "description": "The raw replace sends exactly what the caller passed, in one request, with no read-before-write. BC3 clears every writable field the body omits, EXCEPT the three named by this operation's preservedOnOmission carve-out (participant_ids, url, highlighted), which it seeds from the existing recordable. The SDK's job is narrow but load-bearing: when the caller says nothing about a carve-out, that key must not appear in the body at all. A compactor that emitted null, or a default that emitted [] or false, would clear the value the server is holding for us.",
+    "operation": "ReplaceScheduleEntry",
     "method": "PUT",
     "path": "/schedule_entries/{entryId}",
     "pathParams": {
       "entryId": 1069479523
     },
     "requestBody": {
-      "summary": "Team Meeting"
+      "summary": "Team Meeting",
+      "starts_at": "2026-06-05T06:00:00Z",
+      "ends_at": "2026-06-05T08:30:00Z"
     },
     "mockResponses": [
       {
@@ -28,10 +30,18 @@
           "type": "Schedule::Entry",
           "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
           "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
           "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
           "all_day": false,
           "starts_at": "2026-06-05T06:00:00Z",
           "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
           "participants": [
             {
               "id": 1049715914,
@@ -42,7 +52,6 @@
               "name": "Annie Bryan"
             }
           ],
-          "description_attachments": [],
           "parent": {
             "id": 1069479521,
             "title": "Schedule",
@@ -76,9 +85,26 @@
         "index": 0
       },
       {
+        "type": "requestPath",
+        "expected": "/999/schedule_entries/1069479523",
+        "index": 0
+      },
+      {
         "type": "requestBody",
         "path": "summary",
         "expected": "Team Meeting",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "starts_at",
+        "expected": "2026-06-05T06:00:00Z",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "ends_at",
+        "expected": "2026-06-05T08:30:00Z",
         "index": 0
       },
       {
@@ -87,19 +113,30 @@
         "index": 0
       },
       {
+        "type": "requestBodyAbsent",
+        "path": "url",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "highlighted",
+        "index": 0
+      },
+      {
         "type": "noError"
       }
     ],
     "tags": [
       "schedule-entries",
-      "participants",
-      "omission"
+      "replace",
+      "omission",
+      "carve-out"
     ]
   },
   {
-    "name": "update-empty-participant-ids: an explicit empty list reaches the wire",
-    "description": "The counterpart to omission: passing an explicitly empty list means \"remove everyone\" and must be sent as participant_ids: []. Ruby's compact_params and Python's _compact strip nil/None but not empty collections, so this distinguishes \"not addressed\" from \"addressed and cleared\" \u2014 the whole point of the BC3 guard.",
-    "operation": "UpdateScheduleEntry",
+    "name": "replace-clears-carve-outs: explicit empty values reach the wire",
+    "description": "The counterpart to omission. An empty participant list means \"remove everyone\", an empty url means \"drop the join link\" and highlighted false means \"stop highlighting\" \u2014 each must be sent, because the server preserves what the request does not address. Ruby's compact_params and Python's _compact strip nil/None but not empty collections, empty strings or false, so this distinguishes \"not addressed\" from \"addressed and cleared\": the whole point of the BC3 guard.",
+    "operation": "ReplaceScheduleEntry",
     "method": "PUT",
     "path": "/schedule_entries/{entryId}",
     "pathParams": {
@@ -107,6 +144,645 @@
     },
     "requestBody": {
       "summary": "Team Meeting",
+      "starts_at": "2026-06-05T06:00:00Z",
+      "ends_at": "2026-06-05T08:30:00Z",
+      "participant_ids": [],
+      "url": "",
+      "highlighted": false
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": null,
+          "highlighted": false,
+          "participants": [],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/schedule_entries/1069479523",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "participant_ids",
+        "expected": [],
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "url",
+        "expected": "",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "highlighted",
+        "expected": false,
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "replace",
+      "clear",
+      "carve-out"
+    ]
+  },
+  {
+    "name": "replace-single-request: the raw path never reads before writing",
+    "description": "SPEC section 18 rule 6: when a composite takes over the plain method name, the generated single-request method stays reachable under a name that says what it does \u2014 here `replace`, from the ReplaceScheduleEntry wire rename. This case exists so later generator drift cannot quietly turn both public methods into composite behavior. A full payload, and still exactly one PUT: no GET at index 0.",
+    "operation": "ReplaceScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "summary": "Offsite",
+      "starts_at": "2026-07-01T09:00:00Z",
+      "ends_at": "2026-07-01T17:00:00Z",
+      "description": "<div>Whole day.</div>",
+      "all_day": true,
+      "participant_ids": [
+        1049715914
+      ],
+      "url": "https://meet.example.com/offsite",
+      "highlighted": true
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Offsite",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": true,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/schedule_entries/1069479523",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Offsite",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "all_day",
+        "expected": true,
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "url",
+        "expected": "https://meet.example.com/offsite",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "replace",
+      "single-request"
+    ]
+  },
+  {
+    "name": "update-merge: a summary-only update preserves the times, description and all-day flag",
+    "description": "The merge-safe update GETs the current entry, overlays only the explicitly-set fields, and PUTs the full representation back, so the four fields the caller never mentioned survive a full-replace endpoint. The read-back deliberately carries a populated join_url, highlighted and participants: none of the three may be echoed into the PUT. BC3 preserves them server-side, so resending them is redundant at best and wrong if the read raced a concurrent change \u2014 and echoing the response's `url` instead of `join_url` would write the entry's own API URL into its join link.",
+    "operation": "UpdateScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "summary": "Team Meeting & Kickoff"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting & Kickoff",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/schedule_entries/1069479523",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/schedule_entries/1069479523",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Team Meeting & Kickoff",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "starts_at",
+        "expected": "2026-06-05T06:00:00Z",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "ends_at",
+        "expected": "2026-06-05T08:30:00Z",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "<div>Agenda in the doc.</div>",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "all_day",
+        "expected": false,
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "participant_ids",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "url",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "highlighted",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "update",
+      "merge",
+      "carve-out"
+    ]
+  },
+  {
+    "name": "update-addresses-carve-outs: a caller-set join link and highlight reach the wire",
+    "description": "Addressing a carve-out applies it normally. The caller's url goes on the wire under `url` \u2014 the request spelling \u2014 even though the response returns it as `join_url`. participant_ids stays absent, because this caller said nothing about participants, so the three carve-outs are independent rather than all-or-nothing.",
+    "operation": "UpdateScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "url": "https://meet.example.com/new-room",
+      "highlighted": true
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": null,
+          "highlighted": false,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/new-room",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "url",
+        "expected": "https://meet.example.com/new-room",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "highlighted",
+        "expected": true,
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Team Meeting",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "starts_at",
+        "expected": "2026-06-05T06:00:00Z",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "participant_ids",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "update",
+      "carve-out"
+    ]
+  },
+  {
+    "name": "update-clears-carve-outs: an explicitly empty join link, empty participant list and false highlight are sent",
+    "description": "The falsey-value trap, on the composite this time. An empty string, an empty array and false are all \"addressed and cleared\" and must survive every SDK's body compaction \u2014 a `??`, `||` or `.compact` that treats them as absent would hand the clear back to BC3's carve-out, which preserves instead.",
+    "operation": "UpdateScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "url": "",
+      "highlighted": false,
       "participant_ids": []
     },
     "mockResponses": [
@@ -126,10 +802,18 @@
           "type": "Schedule::Entry",
           "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
           "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
           "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
           "all_day": false,
           "starts_at": "2026-06-05T06:00:00Z",
           "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
           "participants": [
             {
               "id": 1049715914,
@@ -140,7 +824,56 @@
               "name": "Annie Bryan"
             }
           ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
           "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": null,
+          "highlighted": false,
+          "participants": [],
           "parent": {
             "id": 1069479521,
             "title": "Schedule",
@@ -166,18 +899,35 @@
     "assertions": [
       {
         "type": "requestCount",
-        "expected": 1
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
       },
       {
         "type": "requestMethod",
         "expected": "PUT",
-        "index": 0
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "url",
+        "expected": "",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "highlighted",
+        "expected": false,
+        "index": 1
       },
       {
         "type": "requestBody",
         "path": "participant_ids",
         "expected": [],
-        "index": 0
+        "index": 1
       },
       {
         "type": "noError"
@@ -185,8 +935,572 @@
     ],
     "tags": [
       "schedule-entries",
-      "participants",
+      "update",
+      "clear",
+      "carve-out"
+    ]
+  },
+  {
+    "name": "edit-clear: clearing the description keeps every other field",
+    "description": "The read-modify-write closure seeds the entry's full writable state from the GET, the block mutates what it wants, and the whole representation is PUT back. Setting description empty clears it; summary, starts_at, ends_at and all_day ride through untouched.",
+    "operation": "EditScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "description": ""
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Team Meeting",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "starts_at",
+        "expected": "2026-06-05T06:00:00Z",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "ends_at",
+        "expected": "2026-06-05T08:30:00Z",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "all_day",
+        "expected": false,
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "participant_ids",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "url",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "highlighted",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "edit",
       "clear"
+    ]
+  },
+  {
+    "name": "edit-untouched-carve-outs: a block that never assigns them leaves them off the wire",
+    "description": "The untouched half of the dirty-set contract. The GET returns a join link, a highlight and two participants; the block assigns only summary. None of the three carve-outs may appear in the PUT, so the edit view cannot simply serialize whatever it was seeded with.",
+    "operation": "EditScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "summary": "Team Sync"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Sync",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Team Sync",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "participant_ids",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "url",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "highlighted",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "edit",
+      "carve-out",
+      "omission"
+    ]
+  },
+  {
+    "name": "edit-touched-carve-outs: assigning the value the read already returned still sends it",
+    "description": "The touched half, and the reason the contract is setter-invocation dirty tracking rather than a snapshot diff. The block assigns exactly the join link and highlight the GET returned, so a value-comparison implementation would conclude nothing changed and omit both \u2014 handing the write back to BC3's carve-out. Intent is not recoverable from the value: `entry.url = entry.join_url` is a write, and this case fails for any SDK that decides otherwise.",
+    "operation": "EditScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "url": "https://meet.example.com/team",
+      "highlighted": true
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "url",
+        "expected": "https://meet.example.com/team",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "highlighted",
+        "expected": true,
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Team Meeting",
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "participant_ids",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "edit",
+      "carve-out",
+      "dirty-tracking"
     ]
   }
 ]

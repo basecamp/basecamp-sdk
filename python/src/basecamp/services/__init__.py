@@ -5,6 +5,12 @@ from basecamp.services.documents import (
     DocumentEdit,
     DocumentsService,
 )
+from basecamp.services.schedules import (
+    AsyncScheduleEntryEdit,
+    AsyncSchedulesService,
+    ScheduleEntryEdit,
+    SchedulesService,
+)
 from basecamp.services.todolists import (
     AsyncTodolistEdit,
     AsyncTodolistsService,
@@ -21,6 +27,10 @@ __all__ = [
     "AsyncDocumentsService",
     "DocumentEdit",
     "AsyncDocumentEdit",
+    "SchedulesService",
+    "AsyncSchedulesService",
+    "ScheduleEntryEdit",
+    "AsyncScheduleEntryEdit",
     "TodolistsService",
     "AsyncTodolistsService",
     "TodolistEdit",

@@ -424,6 +424,48 @@ Full-state serialization (update/edit): both `title` and `content` are always se
 
 Conformance: `conformance/tests/documents_write.json` (`update-merge`, `edit-clear`, `replace-omission-clears`).
 
+### Merge-Safe Write Surface (Schedule Entries)
+
+`PUT /{accountId}/schedule_entries/{entryId}` is **full replace with declared carve-outs** (spec operation `ReplaceScheduleEntry`, `x-basecamp-write-semantics: {mode: "replace", clearsOmitted: true, preservedOnOmission: ["participant_ids", "url", "highlighted"]}`, mirrored into the `write` clause of `behavior-model.json`). BC3's `Schedules::EntriesController#update` runs `@recording.update! recording_attributes.merge(recordable: new_schedule_entry_for_update)`, building a *brand-new* `Schedule::Entry` from the permitted params and swapping the recordable wholesale.
+
+This is the only composite whose server contract is not uniform across its writable fields, so the writable set splits in two:
+
+| class | fields | on omission |
+|---|---|---|
+| **replaced** | `summary`, `description`, `all_day`, `starts_at`, `ends_at` | **cleared** |
+| **carved out** | `participant_ids`, `url`, `highlighted` | **preserved** |
+
+The carve-out is BC3-side: `PRESERVED_ON_OMISSION = %i[ url highlighted ]` seeds those two from the existing recordable when `params[:schedule_entry]` does not `key?` them, and `update_participants?` guards `participant_ids` separately. §18 states the bound that keeps this a `Replace*` rather than a merge, and the per-field justification.
+
+**The composites must not resend the carve-outs.** This is the inverse of the Documents rule and the point of the surface:
+
+- `url` is **identity-colliding**. On write it is the entry's join link; on read, `url` is the entry's own Basecamp API URL, because `recordings/_recording.json.jbuilder` writes that key before the entry partial renders. BC3 emits the join link as **`join_url`**. Echoing the response's `url` into the request's `url` writes the API URL into the join link.
+- `highlighted` was accepted on write but never emitted before basecamp/bc3#12502, so no caller had a value to resend.
+- `participant_ids` reads back as `participants` (objects, not IDs) and BC3 re-screens a submitted list through the bucket's reachable people, so a resent projection can silently drop a participant who has since become unreachable.
+
+Resending any of the three would be redundant at best — BC3 already preserves them — and wrong if the read raced a concurrent change. So a carve-out reaches the wire **only when the caller addressed it**, and then it applies normally: `participant_ids: []` clears the participants, `url: ""` clears the join link, `highlighted: false` removes the highlight.
+
+The three-method surface:
+
+- **`replaceEntry`** — the generated wire method: verbatim single PUT, no GET. Renamed from `updateEntry` by renaming the wire operation (`UpdateScheduleEntry` → `ReplaceScheduleEntry`), the `ReplaceTodo`/`ReplaceDocument` route, and it ships **without a deprecated alias**.
+- **`updateEntry`** — merge-safe. GET → resend the five replaced fields from the read-back, overlay the caller's explicitly-set values, add any caller-addressed carve-out → PUT. Set-detection is language-native, and a passed `false`/`""`/`[]` on a carve-out **is** a set.
+- **`editEntry`** — read-modify-write closure over the same two hops. The five replaced fields are always sent. The carve-outs are seeded for *reading* (`url` from the response's `join_url`, `participant_ids` projected from `participants`, `highlighted` from `highlighted`) but reach the wire only when the setter was invoked — **setter-invocation dirty tracking, not value comparison**. Assigning the value the read already returned still sends it; snapshot/diff is explicitly rejected, because value comparison cannot express intent.
+
+**Read-side requiredness is a separate fact from request optionality**, as for Documents:
+
+- `summary` is optional on the request but `@required` on the response — `Schedule::Entry#summary` is `super.presence || "Untitled"`, so a healthy server can never render it blank, and an absent/null/blank `summary` in a 2xx body is a malformed response. Coalescing it to `""` and PUTting that back would blank a real summary on a call that only moved the entry.
+- `all_day` is `@required` on the response (`schedule_entries.all_day` is NOT NULL, default `false`) and it is **not** carved out, so it must be resent. Its guard is the one that cannot be written as a truthiness test: the value it most needs to admit is `false`. Defaulting a missing `all_day` to `false` converts an all-day entry into a midnight-to-midnight timed one.
+- `starts_at`/`ends_at` are `@required` on both sides — `Schedule::Entry` presence-validates both and `Recording` validates the associated recordable on update, so omitting either is a `422` rather than a clear. Their wire value is a bare **date** (`2016-06-01`) for an all-day entry and a full timestamp otherwise, because BC3 renders `starts_at_date_or_time`. `ISO8601Timestamp` is a plain string in this model so both shapes decode; the composites round-trip the value verbatim rather than parsing and re-rendering it.
+- `join_url` and `highlighted` are optional on the response — emitted unconditionally by `api/schedules/entries/_entry.json.jbuilder`, but absent from the reduced `api/schedules/calendar/_entry.json.jbuilder` that `GetUpcomingSchedule` renders through the same `ScheduleEntry` shape.
+
+**Recurring entries are unreachable on this route.** `ensure_non_recurring_event` 302-redirects both `show` and `update` to the entry's occurrence, so `ReplaceScheduleEntry` and its composites serve non-recurring entries only; read a recurring entry through `GetScheduleEntryOccurrence`. `time_zone_name`, `recurs_until` and `recurrence_schedule` are deliberately **not modeled** — BC3 forces `time_zone_name` to nil for any entry that is not both recurring and timed, and recurrence absorption is tracked separately.
+
+**Hook contract:** update/edit compose the public `getEntry` + `replaceEntry`, so hooks observe the wire operations under each SDK's native identities — never a synthetic composite.
+
+**Race:** update/edit are read-modify-write, not atomic. A concurrent write between the GET and PUT is overwritten — last write wins for the whole representation, window of one round-trip. Use `replaceEntry` to overwrite deliberately.
+
+Conformance: `conformance/tests/schedule_entries_write.json` (`replace-omission-clears`, `replace-clears-carve-outs`, `replace-single-request`, `update-merge`, `update-addresses-carve-outs`, `update-clears-carve-outs`, `edit-clear`, `edit-untouched-carve-outs`, `edit-touched-carve-outs`).
+
 ### Known Gaps (informational, not prescriptive)
 
 - Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`
@@ -1213,7 +1255,7 @@ Every JSON API request must include all four headers below. Download requests (�
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
 - `{VERSION}` is the SDK version (e.g., `0.6.0`)
-- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-02`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
+- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-03`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
 
 ### Redirect Handling
 
@@ -1847,10 +1889,24 @@ All wire operations are generated (rubric 1A.6). One narrow exception is sanctio
 
 A wire operation is named for what the server does with the body, not for what the caller usually intends:
 
-- **`Replace*`** when the endpoint takes a complete representation and clears what the body omits — `ReplaceTodo`, `ReplaceDocument`. This holds even where the replacement carries *declared carve-outs*: `ReplaceDocument` does not touch a drafted document's subscribers, and that does not make the operation a merge. A carve-out is one named field the server excludes from the swap; a merge is the server preserving anything the body omits. The rule keys on the default, and the carve-out is documented on the operation.
+- **`Replace*`** when the endpoint takes a complete representation and clears what the body omits — `ReplaceTodo`, `ReplaceDocument`, `ReplaceScheduleEntry`. This holds even where the replacement carries *declared carve-outs*: `ReplaceDocument` does not touch a drafted document's subscribers, and that does not make the operation a merge. A carve-out is one named field the server excludes from the swap; a merge is the server preserving anything the body omits. The rule keys on the default, and the carve-out is documented on the operation.
+
+  **The carve-out set is bounded, and the bound is what keeps the distinction honest.** `Replace*` survives declared carve-outs only while the preserved set is limited to fields a client *could not safely resend from a read-back* — write-only, system-managed, or identity-colliding. Every field that is both readable and writable still clears on omission. Widen the set past that and the operation has become a merge wearing a replace's name.
+
+  `ReplaceScheduleEntry` is the worked example. It declares `preservedOnOmission: ["participant_ids", "url", "highlighted"]`, and each of the three earns its place:
+
+  | field | why a client cannot resend it |
+  |---|---|
+  | `url` | **identity-colliding.** On write it is the entry's join link; on read, `url` is the entry's own Basecamp API URL — `recordings/_recording.json.jbuilder` writes that key first and the entry partial renders after it, so BC3 emits the join link as `join_url`. Echoing the response's `url` back into this member writes the API URL into the join link. |
+  | `highlighted` | **was write-only.** Accepted on write but never emitted until basecamp/bc3#12502, so no caller had a value to resend. |
+  | `participant_ids` | **system-managed on read-back.** The response carries `participants` (objects, not IDs), and BC3 re-screens a submitted list through the bucket's reachable people, so resending a projection can silently drop a participant who has since become unreachable. |
+
+  `summary`, `description`, `all_day`, `starts_at` and `ends_at` are readable and writable, so they are *not* carved out and a merge-safe composite must resend them. `all_day` is the sharp edge: the column is NOT NULL with a `false` default, so omitting it converts an all-day entry into a midnight-to-midnight timed one.
+
+  The trait field is `preservedOnOmission` on `@basecampWriteSemantics`, and it is carried into `behavior-model.json` as well as the OpenAPI extension. `make check-write-semantics-parity` compares the two artifacts in both directions, because they are produced by different tools and the behavior-model generator builds its clause key by key — a trait field nobody taught it about is dropped silently, which is exactly how `preservedOnOmission` would otherwise have shipped as a no-op.
 - **`Update*`** when the endpoint merges — the server preserves fields the body omits (`Recordable#changing` and friends), as Messages does — or when it is genuinely hybrid, as Cards is: merge for `title`/`content`, key-guarded for `assignee_ids`, forced-replace for `due_on` (#467).
 
-Two shipped operations are replace-semantic but still named `Update*`. `UpdateTodolistOrGroup` reached the honest *method* name through `METHOD_NAME_OVERRIDES` (rule 6) rather than a wire rename, so its SDK surface reads `replace` while the operationId does not. `UpdateScheduleEntry` has neither yet — its method is still `updateEntry` and its composite is unbuilt (#546/#547). Both are naming debt, not a second sanctioned pattern; the wave that closes them is #374. New replace-semantic operations take the wire rename.
+One shipped operation is replace-semantic but still named `Update*`: `UpdateTodolistOrGroup` reached the honest *method* name through `METHOD_NAME_OVERRIDES` (rule 6) rather than a wire rename, so its SDK surface reads `replace` while the operationId does not. That is naming debt, not a second sanctioned pattern; the wave that closes it is #374. New replace-semantic operations take the wire rename.
 
 A rename is breaking and ships **without a deprecated alias** (`ReplaceTodo`, #375; `ReplaceDocument`, #543). An alias would keep the destructive method reachable under the name that misdescribes it, which is the defect the rename exists to remove.
 
@@ -1858,6 +1914,7 @@ Current composites:
 - **Todos** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
 - **Todolists** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todolists)". The raw path is `replace`, renamed from `update` via `METHOD_NAME_OVERRIDES` (rule 6) rather than by renaming the wire operation.
 - **Documents** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Documents)". The raw path is `replace`, and it needs no override: the wire operation is `ReplaceDocument`, so the ordinary naming algorithm produces it.
+- **Schedule entries** `updateEntry` (merge-safe) and `editEntry` (read-modify-write) — see §5 "Merge-Safe Write Surface (Schedule Entries)". The raw path is `replaceEntry`. Alone among the composites it is **carve-out-aware**: it resends the five readable-and-writable fields from the read-back but leaves `participant_ids`, `url` and `highlighted` off the wire unless the caller addressed them, because BC3 preserves those server-side and resending them is redundant at best and wrong if the read raced a change.
 - **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
 - **Uploads** `download` — composes the generated `get` (GetUpload) with the client-level `downloadURL` primitive (§14), erroring when the upload carries no `download_url`; the result's filename prefers the upload metadata's `filename`.
 
@@ -1932,7 +1989,7 @@ index past the number of recorded requests fails rather than passing vacuously.
 | pagination | `pagination.json` | §8 Pagination |
 | paths | `paths.json` | §3 Client Architecture (account path construction) |
 | retry | `retry.json` | §7 Retry |
-| schedule-entries-write | `schedule_entries_write.json` | §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
+| schedule-entries-write | `schedule_entries_write.json` | §5 Merge-Safe Write Surface (Schedule Entries), §18 Hand-Written Composite Methods, §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
 | security | `security.json` | §9 Security |
 | status-codes | `status-codes.json` | §11 Response Semantics |
 | todolists-read | `todolists_read.json` | §5 Merge-Safe Write Surface (Todolists) — the flat read shape the composites read through |
@@ -3075,7 +3132,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
-| `API_VERSION` | `2026-08-02` | — | `openapi.json` `info.version` <!-- @api-version --> |
+| `API_VERSION` | `2026-08-03` | — | `openapi.json` `info.version` <!-- @api-version --> |
 | `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
 | `EVENT_FEED_HANDSHAKE_DEADLINE` | 10 | seconds | §23 timers — dial-to-`welcome` deadline |
 | `EVENT_FEED_CONFIRMATION_DEADLINE` | 10 | seconds | §23 (configurable; default) |
@@ -3221,7 +3278,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `todolists_read.json` | list-read / group-read / group-list-read (one flat shape decodes for both variants) | §5 (Todolists) |
 | `cards_write.json` | Merge-safe update composite (5 cases: due-on preservation, verbatim raw path, explicit clears/empties) | §5 (Cards), §18 |
-| `schedule_entries_write.json` | update-omits-participant-ids / update-empty-participant-ids | §10 |
+| `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad (9 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched) | §5 (Schedule Entries), §18 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 
 ---

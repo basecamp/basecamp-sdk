@@ -104,7 +104,7 @@ class ServiceGenerator
     'Schedule' => {
       'Schedules' => %w[
         GetSchedule UpdateScheduleSettings ListScheduleEntries
-        CreateScheduleEntry GetScheduleEntry UpdateScheduleEntry
+        CreateScheduleEntry GetScheduleEntry ReplaceScheduleEntry
         GetScheduleEntryOccurrence
       ],
       'Timesheets' => %w[GetRecordingTimesheet GetProjectTimesheet GetTimesheetReport GetTimesheetEntry CreateTimesheetEntry UpdateTimesheetEntry DestroyTimesheetEntry]
@@ -236,7 +236,11 @@ class ServiceGenerator
     'GetSchedule' => 'get',
     'UpdateScheduleSettings' => 'update_settings',
     'GetScheduleEntry' => 'get_entry',
-    'UpdateScheduleEntry' => 'update_entry',
+    # The plain `update_entry` name belongs to the merge-safe composite; the raw
+    # single-PUT path keeps a name that says what it does. Without the override
+    # the algorithm yields a bare `replace` (scheduleentry is a SIMPLE_RESOURCE),
+    # which reads as "replace the schedule". See #547.
+    'ReplaceScheduleEntry' => 'replace_entry',
     'CreateScheduleEntry' => 'create_entry',
     'ListScheduleEntries' => 'list_entries',
     'GetScheduleEntryOccurrence' => 'get_entry_occurrence',

@@ -20,15 +20,15 @@ export type ScheduleEntry = components["schemas"]["ScheduleEntry"];
 export type Schedule = components["schemas"]["Schedule"];
 
 /**
- * Request parameters for updateEntry.
+ * Request parameters for replaceEntry.
  */
-export interface UpdateEntryScheduleRequest {
+export interface ReplaceEntryScheduleRequest {
   /** Summary text */
   summary?: string;
   /** Starts at (RFC3339 (e.g., 2024-12-15T09:00:00Z)) */
-  startsAt?: string;
+  startsAt: string;
   /** Ends at (RFC3339 (e.g., 2024-12-15T09:00:00Z)) */
-  endsAt?: string;
+  endsAt: string;
   /** Rich text description (HTML) */
   description?: string;
   /** Replaces the entry's participants.
@@ -41,10 +41,36 @@ including the shape in BC3's own "Update a schedule entry" doc example —
 silently removed every participant and notified each one. The controller
 now guards on the request actually addressing participants. */
   participantIds?: number[];
-  /** All day */
+  /** Whether the entry occupies whole days rather than a time range.
+
+Not carved out, and the carve-out list is what makes that dangerous to
+forget: `schedule_entries.all_day` is NOT NULL with a `false` default, so
+omitting this member on a replace resets it — silently converting an
+all-day entry into a midnight-to-midnight timed one. The SDK's merge-safe
+update and edit resend it from the read-back for exactly this reason.
+
+Sending an explicit null is worse than omitting it: the column rejects
+NULL, so BC3 raises rather than falling back to the default. The same is
+true of highlighted. */
   allDay?: boolean;
   /** Whether to send notifications to relevant people */
   notify?: boolean;
+  /** The entry's join link — a video-call URL or similar, up to 2500
+characters, validated as a URL when present.
+
+Omitting this member preserves the current join link; sending an empty
+string clears it. Read it back as `join_url`, never as `url`: the entry's
+`url` is its own Basecamp API URL, written by a partial that renders
+before this one, so BC3 emits the join link under a non-colliding key.
+Echoing the response's `url` into this member would write the API URL into
+the join link. */
+  url?: string;
+  /** Whether the entry is highlighted on the schedule.
+
+Omitting this member preserves the current highlight; sending false
+removes it. Preserved on omission because until basecamp/bc3#12502 the
+field was writable but never returned, so no caller could resend it. */
+  highlighted?: boolean;
 }
 
 /**
@@ -130,22 +156,28 @@ export class SchedulesService extends BaseService {
   }
 
   /**
-   * Update an existing schedule entry
+   * Replace a schedule entry with a new complete representation.
    * @param entryId - The entry ID
-   * @param req - Schedule_entry update parameters
+   * @param req - Schedule_entry request parameters
    * @returns The ScheduleEntry
-   * @throws {BasecampError} If the resource is not found or fields are invalid
+   * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.schedules.updateEntry(123, { });
+   * const result = await client.schedules.replaceEntry(123, { startsAt: "2025-06-01T09:00:00Z", endsAt: "2025-06-01T09:00:00Z" });
    * ```
    */
-  async updateEntry(entryId: number, req: UpdateEntryScheduleRequest): Promise<ScheduleEntry> {
+  async replaceEntry(entryId: number, req: ReplaceEntryScheduleRequest): Promise<ScheduleEntry> {
+    if (!req.startsAt) {
+      throw Errors.validation("Starts at is required");
+    }
+    if (!req.endsAt) {
+      throw Errors.validation("Ends at is required");
+    }
     const response = await this.request(
       {
         service: "Schedules",
-        operation: "UpdateScheduleEntry",
+        operation: "ReplaceScheduleEntry",
         resourceType: "schedule_entry",
         isMutation: true,
         resourceId: entryId,
@@ -163,6 +195,8 @@ export class SchedulesService extends BaseService {
             participant_ids: req.participantIds,
             all_day: req.allDay,
             notify: req.notify,
+            url: req.url,
+            highlighted: req.highlighted,
           },
         })
     );

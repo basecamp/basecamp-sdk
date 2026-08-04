@@ -25,6 +25,12 @@ end
 loader.on_load("Basecamp::Services::DocumentsService") do |klass, _abspath|
   klass.prepend(Basecamp::Services::DocumentsExtensions)
 end
+# And for schedule entries: PUT /schedule_entries/{id} is a full replace, so
+# the generated class owns `replace_entry` and the merge-safe
+# `update_entry`/`edit_entry` surface is prepended.
+loader.on_load("Basecamp::Services::SchedulesService") do |klass, _abspath|
+  klass.prepend(Basecamp::Services::SchedulesExtensions)
+end
 loader.setup
 
 # Load generated types if available

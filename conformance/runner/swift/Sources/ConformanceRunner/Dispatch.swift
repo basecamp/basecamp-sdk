@@ -254,16 +254,75 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
                 title: rb.optString("title")))
         return DispatchResult()
 
-    // Participants are presence-bearing: an absent key must not become an
-    // empty list on the wire, or BC3 clears the participants.
+    // Raw single PUT, no read-before-write. Presence-bearing throughout: only
+    // the keys the fixture's requestBody carries may reach the wire, because
+    // BC3 seeds participant_ids, url and highlighted from the existing
+    // recordable whenever the request does not address them. An absent key that
+    // became null, [] or false would clear what the server is holding.
+    // `starts_at`/`ends_at` are required by the schema.
+    case "ReplaceScheduleEntry":
+        _ = try await account.schedules.replaceEntry(
+            entryId: pathParams.longParam("entryId"),
+            req: ReplaceScheduleEntryRequest(
+                allDay: rb.optBool("all_day"),
+                description: rb.optString("description"),
+                endsAt: rb.stringParam("ends_at"),
+                highlighted: rb.optBool("highlighted"),
+                notify: rb.optBool("notify"),
+                participantIds: rb.intArray("participant_ids"),
+                startsAt: rb.stringParam("starts_at"),
+                summary: rb.optString("summary"),
+                url: rb.optString("url")))
+        return DispatchResult()
+
+    // Synthetic scenario key (not a wire operation): the merge-safe composite,
+    // GET then a full PUT. The five full-state fields are always resent; the
+    // four carve-outs reach the wire only when the fixture addressed them.
     case "UpdateScheduleEntry":
         _ = try await account.schedules.updateEntry(
             entryId: pathParams.longParam("entryId"),
             req: UpdateScheduleEntryRequest(
+                allDay: rb.optBool("all_day"),
+                description: rb.optString("description"),
                 endsAt: rb.optString("ends_at"),
+                highlighted: rb.optBool("highlighted"),
+                notify: rb.optBool("notify"),
                 participantIds: rb.intArray("participant_ids"),
                 startsAt: rb.optString("starts_at"),
-                summary: rb.optString("summary")))
+                summary: rb.optString("summary"),
+                url: rb.optString("url")))
+        return DispatchResult()
+
+    // Synthetic scenario key (not a wire operation): exercises the
+    // read-modify-write edit closure by assigning each fixture key onto the
+    // corresponding ScheduleEntryFields member. The assignment is what puts a
+    // carve-out on the wire — dirty tracking is by setter invocation, so a
+    // fixture that assigns exactly the value the GET returned still sends it.
+    case "EditScheduleEntry":
+        // Read every fixture key before the call: the edit closure is
+        // non-throwing, and validating up front means a malformed parameter
+        // fails the test instead of reaching the wire half-applied.
+        let editEntrySummary = try rb.optString("summary")
+        let editEntryStartsAt = try rb.optString("starts_at")
+        let editEntryEndsAt = try rb.optString("ends_at")
+        let editEntryDescription = try rb.optString("description")
+        let editEntryAllDay = try rb.optBool("all_day")
+        let editEntryParticipantIds = try rb.intArray("participant_ids")
+        let editEntryNotify = try rb.optBool("notify")
+        let editEntryURL = try rb.optString("url")
+        let editEntryHighlighted = try rb.optBool("highlighted")
+        _ = try await account.schedules.editEntry(entryId: pathParams.longParam("entryId")) {
+            fields in
+            if let editEntrySummary { fields.summary = editEntrySummary }
+            if let editEntryStartsAt { fields.startsAt = editEntryStartsAt }
+            if let editEntryEndsAt { fields.endsAt = editEntryEndsAt }
+            if let editEntryDescription { fields.description = editEntryDescription }
+            if let editEntryAllDay { fields.allDay = editEntryAllDay }
+            if let editEntryParticipantIds { fields.participantIds = editEntryParticipantIds }
+            if let editEntryNotify { fields.notify = editEntryNotify }
+            if let editEntryURL { fields.url = editEntryURL }
+            if let editEntryHighlighted { fields.highlighted = editEntryHighlighted }
+        }
         return DispatchResult()
 
     // Merge-safe composite: GET then PUT, resending the fetched due_on.

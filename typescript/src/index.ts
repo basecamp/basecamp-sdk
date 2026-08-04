@@ -374,13 +374,17 @@ export {
   type UpdateUploadRequest,
 } from "./generated/services/uploads.js";
 
-// Schedule & Time services - generated
+// Schedule & Time services
 export {
   SchedulesService,
+  type UpdateScheduleEntryRequest,
+  type ScheduleEntryFields,
+} from "./services/schedules-extensions.js";
+export {
   type Schedule,
   type ScheduleEntry,
   type CreateEntryScheduleRequest,
-  type UpdateEntryScheduleRequest,
+  type ReplaceEntryScheduleRequest,
   type UpdateSettingsScheduleRequest,
   type ListEntriesScheduleOptions,
 } from "./generated/services/schedules.js";
