@@ -29,6 +29,8 @@ data class Todolist(
     val description: String,
     @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>,
     val name: String,
+    val color: String?,
+    @SerialName("comments_app_url") val commentsAppUrl: String,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     @SerialName("comments_count") val commentsCount: Int? = null,
@@ -40,8 +42,6 @@ data class Todolist(
     @SerialName("groups_url") val groupsUrl: String? = null,
     @SerialName("group_position_url") val groupPositionUrl: String? = null,
     @SerialName("app_todos_url") val appTodosUrl: String? = null,
-    val color: String? = null,
-    @SerialName("comments_app_url") val commentsAppUrl: String? = null,
     @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

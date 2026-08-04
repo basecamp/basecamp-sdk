@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-03T22:07:14Z
+# Generated: 2026-08-04T04:04:08Z
 
 require "json"
 require "time"
@@ -4431,17 +4431,19 @@ module Basecamp
     # Todolist
     class Todolist
       include TypeHelpers
-      attr_accessor :app_url, :bubble_up_url, :bucket, :created_at, :creator, :description, :description_attachments, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :color, :comments_app_url, :comments_count, :comments_url, :completed, :completed_ratio, :group_position_url, :groups_url, :position, :subscription_url, :todos_url
+      attr_accessor :app_url, :bubble_up_url, :bucket, :color, :comments_app_url, :created_at, :creator, :description, :description_attachments, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_ratio, :group_position_url, :groups_url, :position, :subscription_url, :todos_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bubble_up_url bucket created_at creator description description_attachments id inherits_status name parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bubble_up_url bucket color comments_app_url created_at creator description description_attachments id inherits_status name parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bubble_up_url = data["bubble_up_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @color = data["color"]
+        @comments_app_url = data["comments_app_url"]
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @description = data["description"]
@@ -4460,8 +4462,6 @@ module Basecamp
         @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
-        @color = data["color"]
-        @comments_app_url = data["comments_app_url"]
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @completed = parse_boolean(data["completed"])
@@ -4478,6 +4478,8 @@ module Basecamp
           "app_url" => @app_url,
           "bubble_up_url" => @bubble_up_url,
           "bucket" => @bucket,
+          "color" => @color,
+          "comments_app_url" => @comments_app_url,
           "created_at" => @created_at,
           "creator" => @creator,
           "description" => @description,
@@ -4496,8 +4498,6 @@ module Basecamp
           "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
-          "color" => @color,
-          "comments_app_url" => @comments_app_url,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "completed" => @completed,
@@ -4507,7 +4507,7 @@ module Basecamp
           "position" => @position,
           "subscription_url" => @subscription_url,
           "todos_url" => @todos_url,
-        }.compact
+        }.reject { |k, v| v.nil? && !["color"].include?(k) }
       end
 
       def to_json(*args)
