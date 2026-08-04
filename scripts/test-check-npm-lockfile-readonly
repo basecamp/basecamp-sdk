@@ -141,6 +141,21 @@ expect_reject "a bare npm with its subcommand off the end of the line" \
   "$(make_fixture writer_bare 'npm --prefix')" \
   'no parsable subcommand'
 
+# Shell operators need no surrounding whitespace. Without padding them before
+# tokenising, `ci;npm` is one word, its `ci` prefix is allowlisted, and the
+# second invocation is never seen as an npm token at all.
+expect_reject "npm ci;npm install (no space around ;)" \
+  "$(make_fixture op_semi 'npm ci;npm install')" 'npm install'
+
+expect_reject "npm ci&&npm install (no space around &&)" \
+  "$(make_fixture op_and 'npm ci&&npm install')" 'npm install'
+
+expect_reject "npm ci|npm install (no space around |)" \
+  "$(make_fixture op_pipe 'npm ci|npm install')" 'npm install'
+
+expect_reject "an install inside a command substitution" \
+  "$(make_fixture op_subst 'echo $(npm install --package-lock-only)')" 'npm install'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \

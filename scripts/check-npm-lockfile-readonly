@@ -86,6 +86,17 @@ declare -a REASONS=()
 scan_line() {
   local line=$1
   REASONS=()
+
+  # Shell operators do not need surrounding whitespace, so `npm ci;npm install`
+  # tokenises as `ci;npm` `install` and the second invocation is never seen as an
+  # npm token at all. Pad every operator before splitting so each one becomes its
+  # own token and any npm following it starts a fresh command. Doing this to
+  # quoted text too is harmless: only npm tokens are ever looked at.
+  local c
+  for c in ';' '&' '|' '(' ')' '<' '>' '`'; do
+    line=${line//"$c"/ "$c" }
+  done
+
   local -a words
   read -r -a words <<<"$line"
 
@@ -101,7 +112,10 @@ scan_line() {
       while ((j < n)); do
         local t=${words[j]}
         # A shell operator ends this command before any subcommand appeared.
-        [[ $t == '&&' || $t == '||' || $t == ';' || $t == '|' || $t == '>' || $t == '2>' ]] && break
+        # Padding above split `&&` and `||` into single characters, so match
+        # those rather than the two-character spellings.
+        [[ $t == ';' || $t == '&' || $t == '|' || $t == '(' || $t == ')' \
+           || $t == '<' || $t == '>' || $t == '`' ]] && break
         if [[ $t == -* ]]; then
           if [[ $t != *=* && $VALUE_FLAGS == *" $t "* ]]; then
             ((j += 2))   # flag plus its value

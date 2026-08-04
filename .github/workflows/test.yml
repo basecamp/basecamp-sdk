@@ -325,14 +325,27 @@ jobs:
           echo "$FILES" | grep -q '^typescript/dist/index\.js$'
           echo "$FILES" | grep -q '^typescript/dist/index\.d\.ts$'
 
-      # npx vitest run, not npm test: the runner's pretest script rebuilds
-      # the SDK, which this job just built two steps up. The runner's
-      # dist-freshness globalSetup still fails loudly if dist/ were stale.
+      # npx vitest run, not npm test: this skips the runner's pretest, which
+      # asserts the SDK build is fresh — a check this job satisfies by
+      # construction, having built it in the "Build" step above.
+      #
+      # The previous comment here claimed a "dist-freshness globalSetup" backed
+      # this up. There is none, and never was; the runner resolves the SDK
+      # through its package exports, so a stale dist/ would simply have been
+      # tested. conformance/runner/typescript/assert-sdk-built.mjs is that
+      # missing guard, and it now runs on every `npm test` in that directory.
       - name: Run TypeScript conformance tests
         working-directory: conformance/runner/typescript
         run: |
           npm ci
           npx vitest run
+
+      # The freshness guard's own live run only ever sees a fresh tree. Its
+      # first cut passed any existing dist/, its second passed a build whose
+      # source had been deleted — so the rejections need synthetic trees.
+      - name: SDK build-freshness guard self-test
+        working-directory: .
+        run: make test-assert-sdk-built
 
   test-ruby:
     name: Ruby ${{ matrix.ruby }}

@@ -16,7 +16,10 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const SDK = "../../../typescript";
+// Overridable so scripts/test-assert-sdk-built can drive this at synthetic
+// trees — including the deleted-source case, which cannot be staged in the real
+// checkout without destroying it.
+const SDK = process.env.CONFORMANCE_SDK_ROOT ?? "../../../typescript";
 const ENTRY = join(SDK, "dist", "index.js");
 
 function die(reason) {
@@ -29,6 +32,11 @@ if (!existsSync(ENTRY)) die(`SDK is not built — ${ENTRY} is missing.`);
 
 // Newest mtime anywhere in the SDK's sources, plus the inputs that change what
 // tsc emits. A dist older than any of them cannot reflect the current tree.
+//
+// Directory mtimes count, not just file mtimes. Deleting a source leaves every
+// remaining file older than dist while dist still carries the deleted module —
+// no extant file records the change, but the parent directory's mtime does.
+// Additions and renames land the same way.
 function newestMtime(path) {
   let newest = 0;
   const stack = [path];
@@ -40,10 +48,9 @@ function newestMtime(path) {
     } catch {
       continue;
     }
+    if (stats.mtimeMs > newest) newest = stats.mtimeMs;
     if (stats.isDirectory()) {
       for (const entry of readdirSync(current)) stack.push(join(current, entry));
-    } else if (stats.mtimeMs > newest) {
-      newest = stats.mtimeMs;
     }
   }
   return newest;

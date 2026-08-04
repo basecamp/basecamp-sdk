@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+#
+# Self-test for conformance/runner/typescript/assert-sdk-built.mjs.
+#
+# That assertion is what stops a bare `npm test` in the conformance runner from
+# reporting green against an SDK build that no longer matches src. Its first cut
+# only checked that dist/index.js existed, which passed for any stale build; its
+# second compared the newest *file* mtime, which still passed after a source was
+# deleted — no remaining file records a deletion, so nothing looked newer than
+# dist while dist still carried the removed module.
+#
+# Both of those are pinned below, against synthetic SDK trees driven through
+# CONFORMANCE_SDK_ROOT. The deleted-source case in particular cannot be staged in
+# the real checkout without destroying it.
+#
+# ASSERT_SDK_BUILT names the script under test, so a mutated copy can be driven
+# through the same cases.
+
+set -uo pipefail
+export LC_ALL=C
+
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ASSERT=${ASSERT_SDK_BUILT:-$REPO_ROOT/conformance/runner/typescript/assert-sdk-built.mjs}
+
+failures=0
+cases=0
+
+TMPROOT=$(mktemp -d)
+trap 'rm -rf "$TMPROOT"' EXIT
+
+# A synthetic SDK: sources first, then a dist built strictly afterwards.
+make_sdk() {
+  local name=$1
+  local dir="$TMPROOT/$name"
+  mkdir -p "$dir/src/oauth" "$dir/dist"
+  printf 'export const a = 1;\n' > "$dir/src/index.ts"
+  printf 'export const b = 2;\n' > "$dir/src/oauth/index.ts"
+  printf '{}\n' > "$dir/tsconfig.json"
+  printf '{"name":"sdk"}\n' > "$dir/package.json"
+  sleep 0.02
+  printf 'export const a = 1;\n' > "$dir/dist/index.js"
+  echo "$dir"
+}
+
+run_assert() {   # sdk-dir
+  ( cd "$REPO_ROOT/conformance/runner/typescript" \
+    && CONFORMANCE_SDK_ROOT="$1" node "$ASSERT" 2>&1 )
+}
+
+expect() {   # want(pass|fail), label, sdk-dir, fragment
+  local want=$1 label=$2 dir=$3 fragment=${4:-}
+  local out status
+  cases=$((cases + 1))
+  out=$(run_assert "$dir"); status=$?
+  if [[ $want == pass && $status -ne 0 ]]; then
+    echo "  FAIL  $label — exited $status; it must accept this:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  elif [[ $want == fail && $status -eq 0 ]]; then
+    echo "  FAIL  $label — exited 0; it must reject this" >&2
+    failures=$((failures + 1))
+  elif [[ $want == fail && -n $fragment && "$out" != *"$fragment"* ]]; then
+    echo "  FAIL  $label — rejected, but no '$fragment' in output:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  else
+    echo "  ok    $label — $([[ $want == pass ]] && echo accepted || echo "rejected (exit $status)")"
+  fi
+}
+
+echo "== the states a build can be in =="
+
+expect pass "dist built after every source" "$(make_sdk fresh)"
+
+stale=$(make_sdk stale); sleep 0.02; touch "$stale/src/index.ts"
+expect fail "a source touched after the build" "$stale" "stale"
+
+missing=$(make_sdk missing); rm -rf "$missing/dist"
+expect fail "dist absent entirely" "$missing" "not built"
+
+cfg=$(make_sdk cfg); sleep 0.02; touch "$cfg/tsconfig.json"
+expect fail "tsconfig newer than the build" "$cfg" "stale"
+
+pkg=$(make_sdk pkg); sleep 0.02; touch "$pkg/package.json"
+expect fail "package.json newer than the build" "$pkg" "stale"
+
+echo "== the cases that false-greened earlier cuts =="
+
+# Existence-only would pass this; so would a newest-file comparison, because the
+# deletion leaves every surviving file older than dist. The parent directory's
+# mtime is the only record, which is why directories are walked too.
+deleted=$(make_sdk deleted); sleep 0.02; rm "$deleted/src/oauth/index.ts"
+expect fail "a source DELETED after the build" "$deleted" "stale"
+
+added=$(make_sdk added); sleep 0.02; printf 'export const c = 3;\n' > "$added/src/added.ts"
+expect fail "a source ADDED after the build" "$added" "stale"
+
+renamed=$(make_sdk renamed); sleep 0.02; mv "$renamed/src/index.ts" "$renamed/src/renamed.ts"
+expect fail "a source RENAMED after the build" "$renamed" "stale"
+
+nested=$(make_sdk nested); sleep 0.02; rm -rf "$nested/src/oauth"
+expect fail "a whole source DIRECTORY removed" "$nested" "stale"
+
+echo
+if [[ $failures -eq 0 ]]; then
+  echo "assert-sdk-built self-test passed ($cases cases)."
+else
+  echo "assert-sdk-built self-test FAILED ($failures of $cases cases)." >&2
+fi
+exit $((failures > 0))

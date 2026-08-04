@@ -1025,7 +1025,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1162,6 +1162,17 @@ check-npm-lockfile-readonly:
 test-check-npm-lockfile-readonly:
 	@./scripts/test-check-npm-lockfile-readonly
 
+# Drive conformance/runner/typescript/assert-sdk-built.mjs at synthetic SDK
+# trees. That assertion is what stops a bare `npm test` in the runner from
+# reporting green against a build that no longer matches src, and its live run
+# only ever sees a fresh tree. Its first cut passed any existing dist/; its
+# second compared only file mtimes and so passed a build whose source had been
+# deleted — no surviving file records a deletion, only the parent directory's
+# mtime does. Both are pinned here, along with add and rename. Needs node, so it
+# rides in the TypeScript job rather than spec-gates.
+test-assert-sdk-built:
+	@./scripts/test-assert-sdk-built
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
@@ -1184,7 +1195,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
