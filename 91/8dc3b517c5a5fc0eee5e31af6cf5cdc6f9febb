@@ -1,0 +1,25 @@
+.github/workflows/security.yml
+  s_ae792ed0be3006::t_169aa0c4777190 61-69,116-124,153-161,197-205,231-239,286-294,325-333,365-373,405-413
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_01a8cc55171a85 93-101,200-208,299-307,384-392,458-466,551-559,600-608,667-675,703-711,737-745,770-778,876-884
+scripts/assert-lockfiles-unchanged
+  s_ae792ed0be3006::t_e8b0139bf6f8b6 8-15,116-135,137
+scripts/test-assert-lockfiles-unchanged
+  s_ae792ed0be3006::t_ea66f095f8403a 125-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "918dc3b517c5a5fc0eee5e31af6cf5cdc6f9febb",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
