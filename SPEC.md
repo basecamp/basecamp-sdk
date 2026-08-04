@@ -473,7 +473,7 @@ The three-method surface:
 
 **Race:** update/edit are read-modify-write, not atomic. A concurrent write between the GET and PUT is overwritten — last write wins for the whole representation, window of one round-trip. Use `replaceEntry` to overwrite deliberately.
 
-Conformance: `conformance/tests/schedule_entries_write.json` (`replace-omission-clears`, `replace-clears-carve-outs`, `replace-single-request`, `update-merge`, `update-addresses-carve-outs`, `update-clears-carve-outs`, `edit-clear`, `edit-untouched-carve-outs`, `edit-touched-carve-outs`).
+Conformance: `conformance/tests/schedule_entries_write.json`, 11 cases. Nine cover this surface: `replace-omission-clears`, `replace-clears-carve-outs`, `replace-single-request`, `update-merge`, `update-addresses-carve-outs`, `update-clears-carve-outs`, `edit-clear`, `edit-untouched-carve-outs`, `edit-touched-carve-outs`. The other two, `create-join-link` and `create-omits-unset`, do not: `CreateScheduleEntry` is a plain wire write with no read-back and nothing to preserve, and the pair pins that `url`, `highlighted` and `status` (#641) reach the wire when the caller sets them and stay off it when they are unset — the same absent-versus-zero-value distinction as the carve-outs, one operation earlier. They share the file because they share the fixture's entry shapes, not because create is merge-safe.
 
 ### Known Gaps (informational, not prescriptive)
 
@@ -3329,7 +3329,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `todolists_read.json` | list-read / group-read / group-list-read (one flat shape decodes for both variants) | §5 (Todolists) |
 | `cards_write.json` | Presence-aware update composite (5 cases: unaddressed fields stay off the wire, verbatim raw path, explicit `due_on` clear as `""`, explicit empty content/assignees) | §5 (Cards), §18 |
-| `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad (9 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched) | §5 (Schedule Entries), §18 |
+| `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad, plus the create-side #641 fields (11 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched, and `url`/`highlighted`/`status` present-when-set vs absent-when-unset on `CreateScheduleEntry`) | §5 (Schedule Entries), §18 |
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 

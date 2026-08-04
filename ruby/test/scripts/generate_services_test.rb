@@ -19,8 +19,13 @@ require "test_helper"
 require_relative "../../scripts/generate-services"
 
 class GenerateServicesYardParamTest < Minitest::Test
-  # A blank interior line, a trailing-space line, and a CRLF pair — so the
-  # assertions below have something real to bite on.
+  # One blank interior line and nothing else exotic — the case the fix exists
+  # for, kept clean enough that the line-by-line assertion below can name every
+  # rendered line. The other spellings of a break, and the CRLF pair, carry their
+  # own literals in the tests further down: trailing-space and tab-only in
+  # `test_no_emitted_line_carries_trailing_whitespace`, spaces-only in
+  # `test_whitespace_only_line_is_treated_as_a_break`, `\r\n` in
+  # `test_carriage_returns_do_not_leak`.
   MULTILINE = "The entry's join link.\n\nRead it back as `join_url`.\nNever as `url`."
 
   def setup
