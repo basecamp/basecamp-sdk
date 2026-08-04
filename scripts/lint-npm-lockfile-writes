@@ -1,0 +1,459 @@
+#!/usr/bin/env bash
+#
+# lint-npm-lockfile-writes — best-effort diagnostic: which npm invocations in this
+# repo could write a lockfile?
+#
+# NOT the guarantee. scripts/assert-lockfiles-unchanged holds that, by comparing
+# the bytes of every dependency manifest before and after the checks — locally in
+# `make check`, and in CI at the end of every job that installs anything. That
+# comparison cannot be out-spelled, because it does not read source at all.
+#
+# This reads source, and therefore can be. Review drove it through eleven
+# spellings — unambiguous prefixes, flags before the subcommand, unknown
+# value-taking options, unpadded operators, line continuations, multiline script
+# values, quoting that splits the command name, `sh -c`, `npm exec` delegation,
+# assignment prefixes, control keywords — and each round found the next one. That
+# is not a game worth continuing to play for a *guarantee*, because separating
+# code from data is shell parsing and this is not a shell.
+#
+# It is worth playing for a *message*. When someone reintroduces `npm install` in
+# a lifecycle script, this names the file, the line and the reason, at the commit
+# that does it — while the byte comparison can only say that something changed,
+# and only once some npm's output actually diverges from the committed lockfile.
+# Right now it would not even say that: the committed lockfile is a fixed point
+# under npm 10.9.8, 11.5.1 and 11.19.0, so a reintroduced install writes back
+# identical bytes. This diagnostic is the early warning for exactly that window.
+#
+# So: it prints and exits 0. A spelling it misses is a weaker message, never a
+# shipped hole. `--strict` makes it exit non-zero, which is how its own self-test
+# drives it.
+#
+# ---------------------------------------------------------------------------
+# How it reads a line
+#
+# An allowlist of PERMITTED invocations, not a denylist of writers: npm accepts
+# any unambiguous prefix, so `npm in` / `npm ins` / `npm inst` are all
+# `npm install` and no denylist can enumerate them. Anything not on the list is
+# reported, as is any option it cannot classify and any invocation whose
+# subcommand it cannot resolve. Getting the tables wrong costs a noisy message,
+# never a silent one.
+#
+# The one deliberate writer, scripts/bump-version.sh, is exempt by name: bumping
+# the version is exactly when the lockfile is supposed to change, it is a reviewed
+# release step, and no `make check` target invokes it.
+#
+# scripts/test-lint-npm-lockfile-writes drives this from outside with synthetic
+# repos — every spelling above, plus the false alarms that matter as much
+# (comments, quoted data, npm named mid-sentence). `make test-lint-npm-lockfile-writes`.
+
+set -uo pipefail
+export LC_ALL=C
+
+strict=0
+[[ ${1:-} == --strict ]] && strict=1
+
+cd "${CHECK_NPM_ROOT:-$(dirname "$0")/..}" || exit 1
+
+# npm subcommands that cannot write a lockfile. Anything absent here fails.
+# `install`/`i`/`add`/`update`/`dedupe`/`prune`/`version` are absent on purpose;
+# so is every abbreviation of them, by construction.
+#
+# `exec` is absent too, and deliberately: it runs an arbitrary delegated command,
+# so `npm exec -- npm install --package-lock-only` writes a lockfile behind a
+# subcommand that looks harmless. Approving the wrapper while ignoring what it
+# wraps is not something an allowlist entry can express. Nothing in this repo
+# uses it; if something needs to, the delegated command has to be parsed rather
+# than the wrapper waved through.
+readonly ALLOWED_SUBCOMMANDS=" ci run run-script test start stop restart audit view ls list outdated ping whoami config help pack publish "
+
+# Options are allowlisted for the same reason subcommands are. npm accepts any
+# config key as `--key value`, so an unrecognised bare option cannot be assumed
+# valueless: `npm --shell ci install` consumes `ci` as --shell's value and really
+# runs `install`, which writes the lockfile. Reading it as "subcommand ci" is
+# exactly the false green this gate exists to prevent.
+#
+# Three cases, in order:
+#   * `--anything=value`   one token, unambiguous, skip it whatever it is
+#   * VALUE_FLAGS          consumes the next token too
+#   * VALUELESS_FLAGS      consumes nothing
+# Anything else is an option this parser cannot classify, and is reported rather
+# than guessed at. Extending either list is a one-line change.
+#
+# Singular and plural differ, and only the singular takes a value: `npm config
+# ls -l` reports `workspace = []` (a list, `--workspace <name>`/`-w <name>`)
+# against `workspaces = null` (a boolean toggle for "every workspace"). Reading
+# the plural as value-taking swallows the following token, so `npm --workspaces
+# ci` parses to no subcommand at all and is reported as unparsable — fail-closed,
+# so never a missed writer, but a false alarm on a read-only invocation.
+readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfig --globalconfig --cache --script-shell --shell --omit --include --tag --otp --before --node-options --user-agent --depth --searchopts --init-module --audit-level "
+
+readonly VALUELESS_FLAGS=" --silent -s --quiet --verbose -d --json --long -l --parseable -p --global -g --force -f --dry-run --ignore-scripts --no-save --save --save-dev --save-exact --no-audit --no-fund --no-package-lock --package-lock-only --prefer-offline --prefer-online --offline --if-present --workspaces --include-workspace-root --legacy-peer-deps --strict-peer-deps --no-progress --no-color --yes -y "
+
+# Commands that take code as an argument. `sh -c 'npm install'` runs npm, and
+# the quoted text is a program, not data — the one place where an unbalanced
+# quote must still be stripped. Anything after `-c` on such a command is scanned
+# as code until the next operator.
+readonly SHELL_WRAPPERS=" sh bash zsh dash ksh env "
+
+# Commands that run another command, so the word after them is still a command
+# position: `npx --yes npm@11 install` really does invoke npm.
+readonly COMMAND_PREFIXES=" npx env command exec time nohup sudo doas xargs sh bash zsh dash ksh "
+
+# Shell keywords are syntax, not commands: in `if false; then npm install; fi`
+# the command position belongs to the word after `then`, not to `then` itself.
+# Treating them as commands cleared it and hid the writer — and a conditional
+# that is false in CI but true on a developer's machine is exactly where the
+# static gate has to catch what the runtime tripwire would only see afterwards.
+readonly SHELL_KEYWORDS=" if then elif else fi while until do done case esac in function select ! { } time coproc "
+
+# `env` and friends take options of their own before the command they run, and
+# some consume a value: `env -C . npm install` put `.` where the command was.
+readonly PREFIX_VALUE_FLAGS=" -C --chdir -u --unset -S --split-string "
+
+# Which lines are worth handing to the parser. Deliberately looser than `npm`:
+# the shell removes quoting before resolving a command, so `n"p"m install` runs
+# npm while carrying no literal `npm` substring. Allowing a couple of non-letters
+# between the letters catches the quoted and escaped spellings. Over-matching
+# only costs a parse — the parser decides — while under-matching is a bypass.
+readonly NPM_GREP='n[^a-zA-Z]{0,2}p[^a-zA-Z]{0,2}m'
+
+# Deliberate lockfile writers, exempt by design.
+readonly ALLOWED_FILES='^scripts/bump-version\.sh$'
+
+fail=0
+
+report() {
+  printf '%s\n' "FAIL: $1:$2 — $3" >&2
+  printf '%s\n' "      $4" >&2
+  fail=1
+}
+
+# Parse one shell-ish line, appending to REASONS for each npm invocation that is
+# not on the allowlist. Leaves REASONS empty when every invocation is permitted.
+#
+# Writes to a global rather than echoing: a `< <(scan_line …)` process
+# substitution forks a subshell per call, and calling it on every tracked line
+# under scripts/ cost ~234s. Callers pre-filter to lines containing "npm", and
+# this runs in-process, which puts the whole gate back under a second.
+declare -a REASONS=()
+
+# Advance past option tokens starting at index $1, using the same three-case
+# classification everywhere. Sets OPT_IDX to the first index that is not an
+# option, and OPT_UNKNOWN to an option it cannot classify (OPT_IDX is then
+# meaningless). Stops at a shell operator, leaving OPT_IDX on it.
+#
+# Factored out because the two call sites drifted: the subcommand scan consumed
+# `--key value` pairs while the `npm audit fix` lookahead did not, so
+# `npm audit --audit-level high fix` stopped on `high` and never saw the `fix`
+# that writes the lockfile.
+OPT_IDX=0
+OPT_UNKNOWN=""
+skip_options() {
+  local k=$1
+  OPT_UNKNOWN=""
+  while ((k < n)); do
+    local t=${words[k]}
+    [[ $t == ';' || $t == '&' || $t == '|' || $t == '(' || $t == ')' \
+       || $t == '<' || $t == '>' || $t == '`' ]] && break
+    [[ $t != -* ]] && break
+    if [[ $t == *=* ]]; then
+      ((k += 1))                          # --key=value: one token
+    elif [[ $VALUE_FLAGS == *" $t "* ]]; then
+      ((k += 2))                          # --key value: two
+    elif [[ $VALUELESS_FLAGS == *" $t "* ]]; then
+      ((k += 1))
+    else
+      OPT_UNKNOWN=$t
+      break
+    fi
+  done
+  OPT_IDX=$k
+}
+
+scan_line() {
+  local line=$1
+  REASONS=()
+
+  # A backslash-newline is a line continuation: the shell removes both and runs
+  # one command. Join those first, or the backslash survives as a token and
+  # stands where the next word should be — `npm audit --audit-level high \` +
+  # `fix` left `\` in the action's position and the `fix` was never reached.
+  line=${line//\\$'\n'/}
+
+  # `read -a` stops at the first newline, so a package.json script value spanning
+  # several lines would have had only its first line tokenised — the writer on
+  # line two was never seen. A remaining newline IS a command separator, so turn
+  # it into the one the padding below already understands.
+  line=${line//$'\n'/;}
+
+  # Shell operators do not need surrounding whitespace, so `npm ci;npm install`
+  # tokenises as `ci;npm` `install` and the second invocation is never seen as an
+  # npm token at all. Pad every operator before splitting so each one becomes its
+  # own token and any npm following it starts a fresh command.
+  local c
+  for c in ';' '&' '|' '(' ')' '<' '>' '`'; do
+    line=${line//"$c"/ "$c" }
+  done
+
+  local -a words
+  read -r -a words <<<"$line"
+
+  local i=0 n=${#words[@]}
+  local shell_seen=0 code_mode=0 in_dq=0 in_sq=0 at_cmd=1 skip_next=0
+  while ((i < n)); do
+    local w=${words[i]}
+
+    # A quoted span that runs across several words is DATA — the shell hands it
+    # to the command as one argument. `echo "please npm install here"` splits
+    # into words that make `npm` look like an executable, and flagging that is a
+    # false alarm with no honest remedy, since allowlisting `install` would gut
+    # the invariant. So track open spans and skip their contents.
+    #
+    # Not inside `sh -c '…'`, where the quoted text is a program: code_mode wins,
+    # and the span is scanned as code.
+    if ((! code_mode)); then
+      local odq=${w//[^\"]/} osq=${w//[^\']/}
+      if ((in_dq)); then
+        (( ${#odq} % 2 == 1 )) && in_dq=0
+        ((i += 1)); continue
+      elif ((in_sq)); then
+        (( ${#osq} % 2 == 1 )) && in_sq=0
+        ((i += 1)); continue
+      elif (( ${#odq} % 2 == 1 )); then
+        in_dq=1; ((i += 1)); continue
+      elif (( ${#osq} % 2 == 1 )); then
+        in_sq=1; ((i += 1)); continue
+      fi
+    fi
+
+    # An unquoted `#` at the start of a word begins a comment, and nothing after
+    # it runs. Without this, `echo ok # npm install is for local setup` was
+    # reported as a forbidden invocation — a false alarm with no honest fix
+    # available, since allowlisting `install` would gut the invariant.
+    [[ $w == '#'* ]] && break
+
+    # An operator ends the command, and with it any shell-wrapper context.
+    if [[ $w == ';' || $w == '&' || $w == '|' || $w == '(' || $w == ')' \
+       || $w == '<' || $w == '>' || $w == '`' ]]; then
+      shell_seen=0
+      code_mode=0
+      at_cmd=1
+      ((i += 1))
+      continue
+    fi
+
+    # The shell strips quoting before it resolves the command, so `"npm" install`
+    # and even `n"p"m install` run exactly as the bare spelling does, while
+    # `read -a` keeps the quotes attached. Drop a trailing escape backslash, then
+    # remove quote characters when they are BALANCED within the token.
+    #
+    # Balance is the test that separates a quoted command from a quoted string.
+    # `n"p"m` and `"npm"` close every quote they open, so removing them yields the
+    # command the shell would run. `'npm` leaves one open — it begins a string
+    # whose contents are data, not code — and is left alone. Removing quotes
+    # unconditionally instead made `grep -Eq 'npm (run )?test'` parse as an npm
+    # token followed by `(`, reported as an invocation with no subcommand.
+    dq=${w//[^\"]/}
+    sq=${w//[^\']/}
+    if ((code_mode)) || (( ${#dq} % 2 == 0 && ${#sq} % 2 == 0 )); then
+      w=${w//\"/}
+      w=${w//\'/}
+    fi
+    # The shell removes escape backslashes before resolving the command, so
+    # `np\m install` runs npm. Only a trailing one was being dropped.
+    w=${w//\\/}
+    # GNU make strips `@`, `-` and `+` from the front of a recipe before handing
+    # it to the shell, so `@npm install` really is `npm install` — the standard
+    # silent-recipe form, and the one this most needed to see.
+    ((at_cmd)) && [[ $w == [@+]* ]] && w=${w#[@+]}
+
+    # Only a word in COMMAND POSITION can be the executable. `echo "npm" install`
+    # passes "npm" to echo — reading it as a command was a false alarm that no
+    # allowlist entry could fix.
+    if ((! at_cmd)); then
+      ((i += 1))
+      continue
+    fi
+
+    # `sh -c '...'` hands its argument to a shell, so from the `-c` onward the
+    # tokens are code and their quoting is syntax rather than content. Without
+    # this, `sh -c 'npm install'` left `'npm` unbalanced and deliberately
+    # unnormalised — the gate certified a command that rewrites the lockfile.
+    if ((shell_seen)) && [[ $w == -*c ]]; then
+      code_mode=1
+    elif [[ $SHELL_WRAPPERS == *" ${w##*/} "* ]]; then
+      shell_seen=1
+    fi
+
+    # Flags, environment assignments and command-running prefixes leave the next
+    # word still in command position; anything else takes it. `CI=1 npm install`
+    # is an ordinary way to write a command, and treating `CI=1` as the
+    # executable skipped the npm that followed it.
+    if [[ $w == -* && $PREFIX_VALUE_FLAGS == *" $w "* ]]; then
+      skip_next=1          # e.g. `env -C <dir>`: the value is not the command
+    elif ((skip_next)); then
+      skip_next=0
+    elif [[ $w != -* \
+       && ! $w =~ ^[A-Za-z_][A-Za-z0-9_]*= \
+       && $SHELL_KEYWORDS != *" $w "* \
+       && $COMMAND_PREFIXES != *" ${w##*/} "* ]]; then
+      at_cmd=0
+    fi
+
+    # `npm`, an npx-style `npm@11` pin, or a *path* ending in /npm. The path
+    # form must actually look like one — `/`, `./`, `../`, `~/` or a variable —
+    # so prose such as "node/npm is required" is not read as an invocation.
+    if [[ $w == npm || $w == npm@* \
+       || $w == /*/npm || $w == ./*npm || $w == ../*npm || $w == '~'/*npm || $w == '$'*/npm ]]; then
+      local j sub=""
+      skip_options $((i + 1))
+      j=$OPT_IDX
+      if [[ -n $OPT_UNKNOWN ]]; then
+        sub="!$OPT_UNKNOWN"
+      elif ((j < n)); then
+        local t=${words[j]}
+        # An operator here means the command ended before naming a subcommand.
+        if [[ $t == ';' || $t == '&' || $t == '|' || $t == '(' || $t == ')' \
+              || $t == '<' || $t == '>' || $t == '`' ]]; then
+          sub=""
+        else
+          # Keep the leading word only: these lines are scanned as text, so a
+          # subcommand can arrive wearing the quote that closed the string it sat
+          # in (`npm ci'`, `npm test"`). Anything with no leading word — a path
+          # left behind by an unrecognised value-flag, say — is not a subcommand,
+          # and an npm invocation whose subcommand we cannot read is reported.
+          [[ $t =~ ^[a-zA-Z][a-zA-Z-]* ]] && sub=${BASH_REMATCH[0]} || sub="?$t"
+        fi
+      fi
+
+      if [[ -z $sub ]]; then
+        # Ran off the end of the line, or hit an operator, without reading a
+        # subcommand. A backslash continuation splits `npm --prefix \` from the
+        # `typescript install` on the next line, and each half alone looks
+        # harmless — so an npm invocation we cannot resolve is reported rather
+        # than assumed innocent. This is the fail-closed direction.
+        REASONS+=("npm invocation with no parsable subcommand (line continuation?)")
+      elif [[ $sub == '!'* ]]; then
+        REASONS+=("unrecognised npm option \`${sub#!}\` — cannot tell whether it consumes the next token, so the real subcommand is unknown")
+      elif [[ $ALLOWED_SUBCOMMANDS != *" $sub "* ]]; then
+        REASONS+=("\`npm $sub\` is not on the permitted-invocation allowlist")
+      elif [[ $sub == audit ]]; then
+        # `npm audit fix` writes the lockfile; plain `npm audit` reports. The
+        # action is positional and may sit behind options, including
+        # `--audit-level high`, so the value has to be consumed to reach it.
+        skip_options $((j + 1))
+        if [[ -n $OPT_UNKNOWN ]]; then
+          REASONS+=("unrecognised npm option \`$OPT_UNKNOWN\` after \`audit\` — cannot tell whether the action is \`fix\`")
+        elif ((OPT_IDX < n)) && [[ ${words[OPT_IDX]} =~ ^fix ]]; then
+          REASONS+=("\`npm audit fix\` rewrites the lockfile")
+        elif ((OPT_IDX < n)) && [[ ! ${words[OPT_IDX]} =~ ^[a-zA-Z] ]] \
+             && [[ ${words[OPT_IDX]} != ';' && ${words[OPT_IDX]} != '&' \
+                && ${words[OPT_IDX]} != '|' && ${words[OPT_IDX]} != '(' \
+                && ${words[OPT_IDX]} != ')' && ${words[OPT_IDX]} != '<' \
+                && ${words[OPT_IDX]} != '>' && ${words[OPT_IDX]} != '`' ]]; then
+          # Something stands where the action would be but is not a word, so we
+          # cannot tell whether it resolves to `fix`.
+          REASONS+=("cannot resolve the \`npm audit\` action from \`${words[OPT_IDX]}\`")
+        fi
+      fi
+    fi
+    ((i += 1))
+  done
+}
+
+check_text() {   # file, line-label, text
+  # Cheap reject first: the parser only has something to say about lines that
+  # mention npm at all, and almost none of them do. Quote characters are dropped
+  # for this test only — `n"p"m install` runs npm but carries no literal `npm`
+  # substring, and skipping it here would beat the parser before it ran. Being
+  # permissive costs a parse; being strict costs a bypass.
+  [[ ${3//[\"\']/} == *npm* || $3 =~ $NPM_GREP ]] || return 0
+  scan_line "$3"
+  ((${#REASONS[@]} == 0)) && return 0
+  local reason
+  for reason in "${REASONS[@]}"; do report "$1" "$2" "$reason" "$3"; done
+}
+
+# 1. package.json lifecycle scripts. This is where the #612 defect lived: the
+#    conformance runner's `pretest` shelled into typescript/ and ran
+#    `npm install`, so every `make check` rewrote a lockfile as a side effect.
+#    jq, not node: this gate runs in the toolchain-light spec-gates job, which
+#    sets up no node and must not depend on whatever the runner image ships.
+#
+#    Records are NUL-terminated, not newline-terminated. A script value may
+#    contain a literal newline — JSON allows it and npm runs every line — and a
+#    newline-delimited read hands the first line to check_text and drops the
+#    rest, so `echo ok\nnpm install --package-lock-only` scanned clean. `jq -j`
+#    with an explicit NUL keeps each script whole however many lines it spans;
+#    scan_line splits on whitespace, so embedded newlines parse fine.
+while IFS= read -r pkg; do
+  while IFS= read -r -d '' record; do
+    [[ -z "$record" ]] && continue
+    name=${record%%$'\t'*}
+    cmd=${record#*$'\t'}
+    check_text "$pkg" "scripts.$name" "$cmd"
+  done < <(jq -j '(.scripts // {}) | to_entries[]
+                  | select(.value | type == "string")
+                  | "\(.key)\t\(.value)\u0000"' "$pkg" 2>/dev/null)
+done < <(git ls-files '*package.json' ':!:**/node_modules/**')
+
+# 2. Makefile recipes. Recipe lines are the tab-indented ones; comments and
+#    variable assignments are not executed and must not trip the gate.
+#    Pre-filtered with NPM_GREP rather than scanning every line: only lines that
+#    could name npm can carry a violation, and the parser is far too slow to run
+#    on all 60k tracked lines.
+#
+#    EVERY tracked Makefile, not just the root one: `make check` delegates into
+#    go/Makefile and swift/Makefile via `$(MAKE) -C`, so a writer in a delegated
+#    recipe would have been invisible to a root-only scan.
+while IFS= read -r mk; do
+  while IFS=: read -r lineno text; do
+    [[ "$text" =~ ^$'\t' ]] || continue
+    stripped="${text#"${text%%[![:space:]]*}"}"
+    [[ "$stripped" == \#* ]] && continue
+    check_text "$mk" "$lineno" "$stripped"
+    # Physical lines are joined on a trailing backslash first: a recipe split as
+    # `np\` + `m install` has no npm-shaped token on either half.
+  done < <(awk '{ line = line $0
+                  if (line ~ /\\$/) { sub(/\\$/, "", line); if (!ln) ln = NR; next }
+                  print (ln ? ln : NR) ":" line; line = ""; ln = 0 }
+                END { if (line != "") print (ln ? ln : NR) ":" line }' "$mk" 2>/dev/null \
+           | grep -E ":.*$NPM_GREP")
+done < <(git ls-files 'Makefile' '*/Makefile' '*.mk' '*/*.mk')
+
+# 3. Scripts under scripts/, which is what those Makefile recipes actually run.
+#    Without this, the exemption above would be unreachable decoration and the
+#    only real lockfile writer in the tree would go unscanned.
+while IFS= read -r script; do
+  [[ "$script" =~ $ALLOWED_FILES ]] && continue
+  [[ -f "$script" ]] || continue
+  # This file names the forbidden spellings in its own prose and allowlist.
+  [[ "$script" == scripts/lint-npm-lockfile-writes ]] && continue
+  [[ "$script" == scripts/test-lint-npm-lockfile-writes ]] && continue
+  while IFS=: read -r lineno text; do
+    stripped="${text#"${text%%[![:space:]]*}"}"
+    [[ "$stripped" == \#* ]] && continue
+    check_text "$script" "$lineno" "$stripped"
+  done < <(grep -nE "$NPM_GREP" "$script" 2>/dev/null)
+done < <(git ls-files 'scripts/*')
+
+if [[ $fail -eq 0 ]]; then
+  echo "npm lockfile writes: every npm invocation in package.json scripts, Makefile recipes, and scripts/ is on the permitted allowlist."
+else
+  printf '%s\n' "" \
+    "Every npm invocation reachable from \`make check\` should be one that cannot" \
+    "rewrite a lockfile. Use \`npm ci\` to install. If the flagged invocation" \
+    "genuinely cannot write package-lock.json, add its subcommand to" \
+    "ALLOWED_SUBCOMMANDS in $0 and say why." \
+    "" \
+    "This is a diagnostic and does not fail the build. The guarantee is" \
+    "scripts/assert-lockfiles-unchanged, which compares the bytes." >&2
+fi
+
+# Advisory by default: a spelling this misses must never be a shipped hole, so it
+# does not gate. scripts/assert-lockfiles-unchanged holds the guarantee.
+# --strict is for the self-test, which has to observe the rejections.
+if ((strict)); then
+  exit $fail
+fi
+exit 0

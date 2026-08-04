@@ -52,6 +52,8 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "Uploads" to listOf("GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"),
         "Vaults" to listOf("GetVault", "UpdateVault", "ListVaults", "CreateVault"),
         "Documents" to listOf("GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"),
+        "CloudFiles" to listOf("GetCloudFile", "CreateCloudFile", "UpdateCloudFile"),
+        "GoogleDocuments" to listOf("GetGoogleDocument", "CreateGoogleDocument", "UpdateGoogleDocument"),
     ),
     "Automation" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),

@@ -1,0 +1,454 @@
+#!/usr/bin/env bash
+#
+# Self-test for scripts/lint-npm-lockfile-writes.
+#
+# The gate's own `make check` run only ever exercises the passing case, so
+# nothing there proves it rejects anything. Its first cut was a denylist of
+# writing subcommands, and four ordinary spellings walked straight through it:
+#
+#   npm in                              npm accepts unambiguous prefixes
+#   npm ins                             ditto
+#   npm --prefix ../typescript install  a flag between npm and its subcommand
+#   npm --prefix=../typescript install  the `=` form of the same
+#
+# Each is a real lockfile writer. They are the reason the gate is now an
+# allowlist of permitted invocations rather than a denylist of forbidden ones,
+# and they are pinned here so the shape cannot quietly regress.
+#
+# Every case builds a synthetic repo under a temp dir — its own git repo, so the
+# gate's `git ls-files` walk sees exactly the fixture and nothing else — and
+# drives the real checker at it via CHECK_NPM_ROOT. Nothing here touches the
+# working tree.
+#
+# CHECK_NPM_GATE names the checker under test (default
+# scripts/lint-npm-lockfile-writes) so a deliberately-mutated copy can be
+# driven through the same cases.
+
+set -uo pipefail
+export LC_ALL=C
+
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+GATE=${CHECK_NPM_GATE:-$REPO_ROOT/scripts/lint-npm-lockfile-writes}
+
+failures=0
+cases=0
+
+TMPROOT=$(mktemp -d)
+trap 'rm -rf "$TMPROOT"' EXIT
+
+# make_fixture <name> <pretest-command> [extra-makefile-recipe]
+# Builds a minimal repo: one package.json whose `pretest` holds the command
+# under test, plus a Makefile whose recipe holds the optional second one.
+make_fixture() {
+  local name=$1 pretest=$2 recipe=${3:-true}
+  local dir="$TMPROOT/$name"
+  mkdir -p "$dir/scripts"
+  jq -n --arg p "$pretest" '{name:"fixture", private:true, scripts:{pretest:$p, test:"vitest run"}}' \
+    > "$dir/package.json"
+  printf 'probe:\n\t%s\n' "$recipe" > "$dir/Makefile"
+  git -C "$dir" init --quiet
+  git -C "$dir" add -A
+  echo "$dir"
+}
+
+run_gate() {   # dir -> prints output, returns gate's exit status
+  ( cd "$1" && CHECK_NPM_ROOT="$1" "$GATE" --strict 2>&1 )
+}
+
+# A fixture with a second, delegated Makefile, the way `make check` reaches
+# go/Makefile and swift/Makefile through `$(MAKE) -C`.
+make_delegating_fixture() {
+  local name=$1 nested_recipe=$2
+  local dir="$TMPROOT/$name"
+  mkdir -p "$dir/scripts" "$dir/go"
+  jq -n '{name:"fixture", private:true, scripts:{test:"vitest run"}}' > "$dir/package.json"
+  printf 'check:\n\t$(MAKE) -C go check\n' > "$dir/Makefile"
+  printf 'check:\n\t%s\n' "$nested_recipe" > "$dir/go/Makefile"
+  git -C "$dir" init --quiet
+  git -C "$dir" add -A
+  echo "$dir"
+}
+
+expect_reject() {   # label, dir, expected-fragment
+  local label=$1 dir=$2 fragment=$3 out status
+  cases=$((cases + 1))
+  out=$(run_gate "$dir"); status=$?
+  if [[ $status -eq 0 ]]; then
+    echo "  FAIL  $label — gate exited 0; it must reject this" >&2
+    failures=$((failures + 1))
+  elif [[ "$out" != *"$fragment"* ]]; then
+    echo "  FAIL  $label — rejected, but no '$fragment' in output:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  else
+    echo "  ok    $label — rejected (exit $status)"
+  fi
+}
+
+expect_accept() {   # label, dir
+  local label=$1 dir=$2 out status
+  cases=$((cases + 1))
+  out=$(run_gate "$dir"); status=$?
+  if [[ $status -ne 0 ]]; then
+    echo "  FAIL  $label — gate exited $status; it must accept this:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  else
+    echo "  ok    $label — accepted"
+  fi
+}
+
+echo "== the four spellings that bypassed the denylist =="
+
+expect_reject "npm in (unambiguous prefix)" \
+  "$(make_fixture prefix_in 'cd ../../../typescript && npm in --prefer-offline')" \
+  'npm in'
+
+expect_reject "npm ins (unambiguous prefix)" \
+  "$(make_fixture prefix_ins 'cd ../../../typescript && npm ins')" \
+  'npm ins'
+
+expect_reject "npm --prefix <path> install (flag before subcommand)" \
+  "$(make_fixture flag_space 'npm --prefix ../../../typescript install')" \
+  'npm install'
+
+expect_reject "npm --prefix=<path> install (equals form)" \
+  "$(make_fixture flag_equals 'npm --prefix=../../../typescript install')" \
+  'npm install'
+
+echo "== the original #612 defect, and its neighbours =="
+
+expect_reject "the #612 pretest verbatim" \
+  "$(make_fixture pretest_612 'cd ../../../typescript && npm install --prefer-offline --silent && npm run build')" \
+  'npm install'
+
+expect_reject "a lockfile-writing Makefile recipe" \
+  "$(make_fixture makefile_writer 'true' 'cd typescript && npm install --prefer-offline')" \
+  'npm install'
+
+expect_reject "npm update" \
+  "$(make_fixture writer_update 'npm update')" 'npm update'
+
+expect_reject "npm dedupe" \
+  "$(make_fixture writer_dedupe 'npm dedupe')" 'npm dedupe'
+
+expect_reject "npm version patch (writes package.json + lockfile)" \
+  "$(make_fixture writer_version 'npm version patch')" 'npm version'
+
+expect_reject "npm audit fix (writes; plain audit does not)" \
+  "$(make_fixture writer_auditfix 'npm audit fix --force')" 'npm audit fix'
+
+expect_reject "npx-style npm@11 pin" \
+  "$(make_fixture writer_pinned 'npx --yes npm@11 install --package-lock-only')" \
+  'npm install'
+
+# A backslash continuation splits the invocation across two lines, and each half
+# alone looks harmless: `npm --prefix \` has no subcommand, and `typescript
+# install` has no npm. Reported because it cannot be resolved, not because it was
+# recognised — an npm invocation the parser cannot read is the failing case.
+# Continued recipe lines are joined before scanning, so this now resolves all the
+# way to the real subcommand rather than merely being unreadable.
+expect_reject "npm --prefix \\ <newline> install (line continuation)" \
+  "$(make_fixture writer_continuation 'true' 'npm --prefix \
+	typescript install')" \
+  'npm install'
+
+expect_reject "a bare npm with its subcommand off the end of the line" \
+  "$(make_fixture writer_bare 'npm --prefix')" \
+  'no parsable subcommand'
+
+# Shell operators need no surrounding whitespace. Without padding them before
+# tokenising, `ci;npm` is one word, its `ci` prefix is allowlisted, and the
+# second invocation is never seen as an npm token at all.
+expect_reject "npm ci;npm install (no space around ;)" \
+  "$(make_fixture op_semi 'npm ci;npm install')" 'npm install'
+
+expect_reject "npm ci&&npm install (no space around &&)" \
+  "$(make_fixture op_and 'npm ci&&npm install')" 'npm install'
+
+expect_reject "npm ci|npm install (no space around |)" \
+  "$(make_fixture op_pipe 'npm ci|npm install')" 'npm install'
+
+expect_reject "an install inside a command substitution" \
+  "$(make_fixture op_subst 'echo $(npm install --package-lock-only)')" 'npm install'
+
+# npm accepts any config key as `--key value`, so an option this parser does not
+# know cannot be assumed valueless. `--shell` takes a value, so `ci` is its
+# argument and the real subcommand is `install` — reading "subcommand ci" is the
+# false green. Reported as unclassifiable rather than guessed at.
+expect_reject "npm --shell ci install (value swallows a fake subcommand)" \
+  "$(make_fixture opt_shell 'npm --shell ci install --package-lock-only')" \
+  'install'
+
+expect_reject "an option this parser cannot classify" \
+  "$(make_fixture opt_unknown 'npm --some-future-option ci')" \
+  'unrecognised npm option'
+
+# `fix` is a positional action and may sit behind options. The lookahead used to
+# skip option NAMES but not their values, so it stopped on `high` and never saw
+# the `fix` that writes the lockfile.
+expect_reject "npm audit --audit-level high fix (value hides the action)" \
+  "$(make_fixture audit_level 'npm audit --audit-level high fix')" \
+  'npm audit fix'
+
+expect_reject "npm audit --json fix" \
+  "$(make_fixture audit_json 'npm audit --json fix')" 'npm audit fix'
+
+expect_accept "npm audit --audit-level high (no action)" \
+  "$(make_fixture ok_audit_level 'npm audit --audit-level high')"
+
+# A backslash-newline is a continuation: the shell joins the lines and runs
+# `npm audit --audit-level high fix`. Rewriting the newline to `;` without
+# consuming the backslash left `\` standing where the action should be.
+expect_reject "npm audit ... \\ <newline> fix (continuation hides the action)" \
+  "$(make_fixture audit_cont 'npm audit --audit-level high \
+  fix')" \
+  'npm audit fix'
+
+# The shell strips quoting before resolving the command, so these run exactly as
+# the bare spellings do — but the quotes stay attached through `read -a` and the
+# token stops looking like npm.
+expect_reject 'a double-quoted executable: "npm" install' \
+  "$(make_fixture quote_dq 'true' '"npm" install --prefer-offline')" 'npm install'
+
+expect_reject "a single-quoted executable: 'npm' install" \
+  "$(make_fixture quote_sq 'true' "'npm' install --prefer-offline")" 'npm install'
+
+expect_reject "an escaped space: npm\\ install" \
+  "$(make_fixture quote_esc 'true' 'npm\ install')" 'npm install'
+
+# Quoting may also split the command name itself. The shell runs this as
+# `npm install`, but the line carries no literal `npm` substring, so the cheap
+# pre-filter used to return before the parser ever saw it.
+expect_reject 'a command name split by quoting: n"p"m install' \
+  "$(make_fixture quote_split 'true' 'n"p"m install --package-lock-only')" \
+  'npm install'
+
+expect_reject "the same with single quotes: n'p'm install" \
+  "$(make_fixture quote_split_sq 'true' "n'p'm install")" \
+  'npm install'
+
+# JSON permits a literal newline inside a script value, and npm runs every line
+# of it. A newline-delimited read of jq's output handed only the first line to
+# the parser and dropped the rest, so the writer on line two scanned clean.
+# Records are NUL-terminated now.
+expect_reject "a multiline lifecycle script whose second line writes" \
+  "$(make_fixture multiline 'echo ok
+npm install --package-lock-only')" \
+  'npm install'
+
+expect_reject "a writer on the third line of a script" \
+  "$(make_fixture multiline3 'echo one
+echo two
+npm update')" \
+  'npm update'
+
+# `sh -c '...'` hands its argument to a shell, so the quoted text is a program.
+# That is the one place an unbalanced quote must still be normalised — the
+# balance rule alone declined `'npm` and certified the writer.
+expect_reject "sh -c 'npm install ...'" \
+  "$(make_fixture wrap_sh "sh -c 'npm install --package-lock-only'")" \
+  'npm install'
+
+expect_reject 'bash -c "npm install"' \
+  "$(make_fixture wrap_bash 'true' 'bash -c "npm install --prefer-offline"')" \
+  'npm install'
+
+expect_reject "/bin/sh -c with a writer" \
+  "$(make_fixture wrap_path "/bin/sh -c 'npm dedupe'")" 'npm dedupe'
+
+# Bash removes an embedded escape before resolving the command, so this runs the
+# real npm. Only a trailing backslash was being dropped.
+expect_reject "an embedded escape: np\\m install" \
+  "$(make_fixture esc_embedded 'np\m install --package-lock-only')" \
+  'npm install'
+
+# `npm exec` runs an arbitrary delegated command, so approving the wrapper hides
+# whatever it wraps. It is off the allowlist rather than special-cased.
+expect_reject "npm exec -- npm install (writer behind a wrapper)" \
+  "$(make_fixture exec_delegate 'npm exec -- npm install --package-lock-only')" \
+  'npm exec'
+
+# An environment assignment prefix is not the command.
+expect_reject "CI=1 npm install (assignment prefix)" \
+  "$(make_fixture env_assign 'CI=1 npm install --package-lock-only')" \
+  'npm install'
+
+expect_reject "two assignments then a writer" \
+  "$(make_fixture env_assign2 'true' 'CI=1 NODE_ENV=test npm update')" \
+  'npm update'
+
+# Shell keywords are syntax, not commands. A conditional that is false in CI but
+# true on a developer's machine is exactly where the static gate has to catch
+# what the runtime tripwire would only notice after the fact.
+expect_reject "if false; then npm install; fi" \
+  "$(make_fixture kw_if 'if false; then npm install --package-lock-only; fi')" \
+  'npm install'
+
+expect_reject "while ...; do npm install ...; done" \
+  "$(make_fixture kw_while 'true' 'while read f; do npm install --package-lock-only; done < list')" \
+  'npm install'
+
+expect_reject "! npm install (negated)" \
+  "$(make_fixture kw_bang '! npm install --package-lock-only')" 'npm install'
+
+expect_reject "a writer inside an else branch" \
+  "$(make_fixture kw_else 'if true; then echo ok; else npm update; fi')" 'npm update'
+
+# GNU make strips `@`, `-` and `+` from the front of a recipe before the shell
+# sees it, so the standard silent-recipe form really is a plain invocation.
+expect_reject "@npm install (silent recipe prefix)" \
+  "$(make_fixture mk_at 'true' '@npm install --package-lock-only')" 'npm install'
+
+expect_reject "+npm update (always-run prefix)" \
+  "$(make_fixture mk_plus 'true' '+npm update')" 'npm update'
+
+# A recipe split MID-TOKEN has no npm-shaped token on either physical line.
+expect_reject 'a recipe split mid-token: np\ + m install' \
+  "$(make_fixture mk_split 'true' 'np\
+m install --package-lock-only')" \
+  'npm install'
+
+# `env` takes options of its own, and some consume a value.
+expect_reject "env -C . npm install (value taken as the command)" \
+  "$(make_fixture env_chdir 'env -C . npm install --package-lock-only')" 'npm install'
+
+expect_reject "env --chdir=. npm install" \
+  "$(make_fixture env_chdir2 'env --chdir=. npm install')" 'npm install'
+
+echo "== permitted invocations must still pass =="
+
+expect_accept "npm ci + npm run (the fix)" \
+  "$(make_fixture ok_ci 'cd ../../../typescript && npm ci --prefer-offline --silent && npm run build')"
+
+expect_accept "npm ci with an = flag" \
+  "$(make_fixture ok_ci_eq 'cd typescript && npm ci --include=dev --ignore-scripts && npm run build')"
+
+expect_accept "plain npm audit" \
+  "$(make_fixture ok_audit 'npm audit --audit-level=high')"
+
+expect_accept "known valueless options before the subcommand" \
+  "$(make_fixture ok_flags_pre 'npm --silent --prefer-offline ci')"
+
+# `--workspaces` is the boolean "every workspace" toggle; `--workspace`/`-w` is
+# the singular that names one. Classifying the plural as value-taking swallowed
+# the subcommand behind it, so this read-only invocation was reported as having
+# no parsable subcommand — fail-closed, so never a missed writer, but a false
+# alarm. The pair is pinned so the two cannot be conflated again in either
+# direction.
+expect_accept "npm --workspaces ci (plural is a boolean toggle)" \
+  "$(make_fixture ok_workspaces 'npm --workspaces ci')"
+
+expect_accept "npm --workspace <name> ci (singular consumes its value)" \
+  "$(make_fixture ok_workspace_value 'npm --workspace pkg-a ci')"
+
+# The singular must keep eating the next token: if it stopped, the workspace
+# name would be read as the subcommand and this writer would slip through as
+# an unrecognised-subcommand report instead of the install it really is.
+expect_reject "npm --workspace <name> install (singular still writes)" \
+  "$(make_fixture writer_workspace 'npm --workspace pkg-a install')" \
+  'npm install'
+
+expect_accept "an unknown option in --key=value form is unambiguous" \
+  "$(make_fixture ok_flag_eq 'npm --some-future-option=1 ci')"
+
+expect_accept "npm test in a Makefile recipe" \
+  "$(make_fixture ok_test 'true' 'cd conformance/runner/typescript && npm ci && npm test')"
+
+# These lines are scanned as text, so prose and quoted strings pass through the
+# same parser as real commands. A subcommand can arrive wearing the quote that
+# closed its string, and "node/npm" in an advisory message is not a path to npm.
+expect_accept "a subcommand wearing a closing quote" \
+  "$(make_fixture ok_quoted 'true' "echo \"run npm ci\" && echo 'then npm test'")"
+
+# Stripping quote characters wherever they appeared (rather than only when they
+# wrap a whole token) reached inside quoted strings and read their contents as
+# code — this exact line from scripts/check-runner-test-reachability was reported
+# as an npm invocation with no parsable subcommand.
+expect_accept "sh -c with a permitted command" \
+  "$(make_fixture wrap_ok "sh -c 'npm ci --prefer-offline'")"
+
+expect_accept "wrapper context ends at the operator before a quoted regex" \
+  "$(make_fixture wrap_scope 'true' "sh -c 'npm ci' && grep -Eq 'npm (run )?test' f")"
+
+expect_accept "an npm mention inside a quoted regex" \
+  "$(make_fixture ok_regex 'true' "grep -Eq 'npm (run )?test' <<<\"\$ts_recipe\"")"
+
+expect_accept "prose naming node/npm, not invoking it" \
+  "$(make_fixture ok_prose 'true' 'command -v node || echo "NOTE: node/npm is required for the TypeScript SDK"')"
+
+expect_reject "an absolute path to npm still counts" \
+  "$(make_fixture path_npm '/usr/local/bin/npm install --prefer-offline')" \
+  'npm install'
+
+# `make check` delegates into go/Makefile and swift/Makefile. A root-only scan
+# could not see a writer in a delegated recipe.
+expect_reject "a writer in a delegated Makefile" \
+  "$(make_delegating_fixture delegated 'cd ../typescript && npm install --package-lock-only')" \
+  'npm install'
+
+expect_accept "a delegated Makefile with only permitted commands" \
+  "$(make_delegating_fixture delegated_ok 'cd ../typescript && npm ci')"
+
+# An unquoted `#` starts a comment; nothing after it runs. Reporting it is a
+# false alarm with no honest fix — allowlisting `install` would gut the gate.
+# A quoted span running across words is data the shell hands to the command, not
+# a command itself. Flagging it is a false alarm with no honest remedy.
+# A fully quoted token is only a command when it stands in command position.
+# `echo "npm" install` passes "npm" to echo.
+expect_accept "an assignment prefix before a permitted command" \
+  "$(make_fixture env_ok 'CI=1 npm ci --prefer-offline')"
+
+expect_accept "a quoted npm as an ARGUMENT, not a command" \
+  "$(make_fixture quoted_arg 'echo "npm" install')"
+
+expect_accept "npm named in the middle of a command line" \
+  "$(make_fixture midline 'true' 'echo checking npm install support')"
+
+expect_accept "npm install inside a quoted echo argument" \
+  "$(make_fixture quoted_data 'echo "please npm install here"')"
+
+expect_accept "the same in single quotes, in a Makefile recipe" \
+  "$(make_fixture quoted_data2 'true' "echo 'run npm install by hand'")"
+
+# But a quoted span handed to `sh -c` is a program, and must still be scanned.
+expect_reject "the same text handed to sh -c is code, not data" \
+  "$(make_fixture quoted_code "sh -c 'npm install --package-lock-only'")" \
+  'npm install'
+
+expect_accept "an inline shell comment mentioning npm install" \
+  "$(make_fixture inline_comment 'echo ok # npm install is for local setup')"
+
+expect_accept "a trailing comment after a permitted command" \
+  "$(make_fixture inline_comment2 'true' 'npm ci   # not npm install')"
+
+echo "== the deliberate exemption =="
+
+# bump-version.sh is the one script allowed to write a lockfile. Prove the
+# exemption is real (the same content is rejected under any other name), so it
+# cannot rot into decoration that exempts nothing.
+exempt_dir="$TMPROOT/exempt"
+mkdir -p "$exempt_dir/scripts"
+jq -n '{name:"fixture", private:true, scripts:{test:"vitest run"}}' > "$exempt_dir/package.json"
+printf 'probe:\n\ttrue\n' > "$exempt_dir/Makefile"
+printf '#!/usr/bin/env bash\n(cd typescript && npm install --package-lock-only --ignore-scripts)\n' \
+  > "$exempt_dir/scripts/bump-version.sh"
+git -C "$exempt_dir" init --quiet && git -C "$exempt_dir" add -A
+expect_accept "scripts/bump-version.sh may write" "$exempt_dir"
+
+notexempt_dir="$TMPROOT/notexempt"
+mkdir -p "$notexempt_dir/scripts"
+jq -n '{name:"fixture", private:true, scripts:{test:"vitest run"}}' > "$notexempt_dir/package.json"
+printf 'probe:\n\ttrue\n' > "$notexempt_dir/Makefile"
+printf '#!/usr/bin/env bash\n(cd typescript && npm install --package-lock-only --ignore-scripts)\n' \
+  > "$notexempt_dir/scripts/sync-lockfiles.sh"
+git -C "$notexempt_dir" init --quiet && git -C "$notexempt_dir" add -A
+expect_reject "the same content under any other name is not" "$notexempt_dir" 'npm install'
+
+echo
+if [[ $failures -eq 0 ]]; then
+  echo "lint-npm-lockfile-writes self-test passed ($cases cases)."
+else
+  echo "lint-npm-lockfile-writes self-test FAILED ($failures of $cases cases)." >&2
+fi
+exit $((failures > 0))

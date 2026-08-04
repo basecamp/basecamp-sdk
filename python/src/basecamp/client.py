@@ -261,6 +261,18 @@ class AccountClient:
         return self._service("documents", lambda: DocumentsService(self))
 
     @property
+    def cloud_files(self):
+        from basecamp.generated.services.cloud_files import CloudFilesService
+
+        return self._service("cloud_files", lambda: CloudFilesService(self))
+
+    @property
+    def google_documents(self):
+        from basecamp.generated.services.google_documents import GoogleDocumentsService
+
+        return self._service("google_documents", lambda: GoogleDocumentsService(self))
+
+    @property
     def uploads(self):
         from basecamp.services.uploads import UploadsService
 

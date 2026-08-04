@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+#
+# assert-lockfiles-unchanged — observe, rather than predict, that `make check`
+# left every dependency manifest byte-identical: npm lockfiles, Gemfile.lock,
+# uv.lock, and the Go checksum files, which `go` rewrites as readily as `npm`
+# rewrites a lockfile.
+#
+# `--record` before the checks, `--verify` after: both are wired into the `check`
+# target, so `make check` proves the property on every local run.
+#
+# `--verify-clean` is the CI form. A CI checkout starts pristine, so the committed
+# tree is already the baseline and no snapshot is needed — it simply asserts that
+# no dependency manifest differs from HEAD and that none has appeared. It runs at
+# the end of every job that installs dependencies, with `if: always()`, so a job
+# cannot both fail and hide what it dirtied.
+#
+# ---------------------------------------------------------------------------
+# This is the guarantee. scripts/lint-npm-lockfile-writes is not.
+#
+# That one reads source and decides whether each npm invocation could write.
+# Review drove it through eleven spellings — `n"p"m`, `np\m`, `CI=1 npm`,
+# `sh -c '…'`, `npm exec -- …`, `@npm`, `env -C . npm`, a recipe split mid-token
+# — and each round found the next, because separating code from data is shell
+# parsing and it is not a shell. Every miss was a SILENT hole, which is the worst
+# failure mode a gate can have. Inverting it to fail on anything unclassifiable
+# does not work either: review reported two false alarms of that kind
+# (`echo ok # npm install …`, `echo "please npm install here"`) and neither had
+# an allowlist remedy, because prose and diagnostics mention npm constantly.
+#
+# So that one is now a diagnostic that prints and exits 0, and this one holds the
+# guarantee. It parses nothing. It hashes every dependency manifest before the
+# checks and again afterwards — and in CI, compares against the committed tree —
+# so `eval` on an assembled string, a subcommand held in a variable, a writer
+# three Makefiles deep, a lockfile CREATED where none was tracked, and any
+# spelling nobody has thought of yet all trip it. None of them can talk a byte
+# comparison out of noticing.
+#
+# The diagnostic is still worth running, for the one thing this cannot do: name
+# the file and line at the commit that reintroduces a writer. This is silent
+# while a write is byte-neutral, and today it would be — the committed lockfile
+# is a fixed point under npm 10.9.8, 11.5.1 and 11.19.0, so a reintroduced
+# install writes back identical bytes until some npm's output diverges.
+
+set -uo pipefail
+export LC_ALL=C
+
+cd "${CHECK_NPM_ROOT:-$(dirname "$0")/..}" || exit 1
+
+# One snapshot per invocation. `make check` allocates it with mktemp and passes
+# the same path to --record and --verify, because this repo is worked in from
+# ~30 worktrees at once: a path keyed only on the user was shared between
+# concurrent runs, and the second --record overwrote the first run's baseline.
+# The fallback is keyed on the repo root so a bare manual run still cannot
+# collide with a sibling worktree.
+if [[ -n "${LOCKFILE_SNAPSHOT:-}" ]]; then
+  SNAPSHOT=$LOCKFILE_SNAPSHOT
+else
+  root_key=$(pwd -P | cksum | tr -d ' ')
+  SNAPSHOT=${TMPDIR:-/tmp}/basecamp-sdk-lockfiles.$(id -u).${root_key}.sha
+fi
+
+# Walk the filesystem, not the index. `git ls-files` lists only what is already
+# tracked, so a lockfile CREATED during the checks — a root package-lock.json,
+# say — appeared in neither snapshot and the comparison passed while the tree was
+# left dirty. A file that did not exist before and does now is exactly the thing
+# this is looking for.
+hash_lockfiles() {
+  local f
+  while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
+    if command -v sha256sum >/dev/null 2>&1; then
+      sha256sum "$f"
+    else
+      shasum -a 256 "$f"
+    fi
+  done < <(find . \
+             \( -name node_modules -o -name .git -o -name dist -o -name build \) -prune \
+             -o -type f \( -name 'package-lock.json' -o -name 'Gemfile.lock' \
+                           -o -name 'uv.lock' -o -name 'go.sum' \
+                           -o -name 'go.work.sum' \) -print \
+           | LC_ALL=C sort)
+}
+
+case "${1:-}" in
+  --record)
+    hash_lockfiles > "$SNAPSHOT"
+    exit 0
+    ;;
+  --verify)
+    if [[ ! -f "$SNAPSHOT" ]]; then
+      echo "assert-lockfiles-unchanged: no snapshot at $SNAPSHOT — run --record first." >&2
+      exit 1
+    fi
+    after=$(hash_lockfiles)
+    if [[ "$after" == "$(cat "$SNAPSHOT")" ]]; then
+      count=$(printf '%s\n' "$after" | grep -c . || true)
+      echo "Lockfiles unchanged by the checks ($count files, byte-identical)."
+      exit 0
+    fi
+    echo "FAIL: the checks modified a dependency lockfile." >&2
+    echo >&2
+    diff <(cat "$SNAPSHOT") <(printf '%s\n' "$after") \
+      | sed -n 's/^[<>] /      /p' | sort -u >&2
+    echo >&2
+    printf '%s\n' \
+      "Nothing \`make check\` runs may write a lockfile — a dirty tree blocks the" \
+      "release flow, and what gets written depends on which npm ran it (#612)." \
+      "Use \`npm ci\`, which installs from the lockfile without writing it back." >&2
+    exit 1
+    ;;
+  --verify-clean)
+    # No snapshot needed: a CI checkout starts pristine, so the committed tree is
+    # the baseline. Catches a manifest that was MODIFIED and one that was
+    # CREATED where none was tracked — `git status` reports both, and the second
+    # is the case a tracked-files-only comparison can never see.
+    dirty=$(git status --porcelain --untracked-files=all -- \
+              '*package-lock.json' '*Gemfile.lock' '*uv.lock' \
+              '*go.sum' 'go.work.sum' 2>/dev/null)
+    if [[ -z "$dirty" ]]; then
+      echo "Dependency manifests match the committed tree."
+      exit 0
+    fi
+    echo "FAIL: this job left a dependency manifest different from the committed tree." >&2
+    printf '%s\n' "$dirty" | sed 's/^/      /' >&2
+    echo >&2
+    printf '%s\n' \
+      "Nothing in CI may write a lockfile. A dirty tree blocks the release flow," \
+      "and what gets written depends on which npm ran it (#612). Use \`npm ci\`." >&2
+    exit 1
+    ;;
+  *)
+    echo "usage: $0 --record | --verify | --verify-clean" >&2
+    exit 2
+    ;;
+esac

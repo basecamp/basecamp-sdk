@@ -113,6 +113,12 @@ service Basecamp {
     CreateUpload,
     UpdateUpload,
     ListUploadVersions,
+    GetCloudFile,
+    CreateCloudFile,
+    UpdateCloudFile,
+    GetGoogleDocument,
+    CreateGoogleDocument,
+    UpdateGoogleDocument,
     CreateAttachment,
 
     // Batch 3 - Schedules, Timesheets
@@ -395,6 +401,35 @@ map FieldErrorMap {
 
 list FieldErrorMessages {
   member: String
+}
+
+/// 400 whose body is a *bare* field map ({"payload_url": ["must be HTTPS"]}) —
+/// `render json: record.errors` with no wrapper at all. Distinct from
+/// BadRequestError, whose body is the flat {error} string, and from
+/// FieldValidationError, which wraps the same map in an "errors" key at 422.
+/// Emitted by WebhooksController#create/#update and CategoryActions#create/
+/// #update (bc3 renders these at :bad_request, not :unprocessable_entity).
+@error("client")
+@httpError(400)
+structure BareFieldBadRequestError {
+  /// Single member that is itself a *map*, so the OpenAPI unwrap resolves to
+  /// FieldErrorMap — the bare wire shape. Contrast FieldValidationError, whose
+  /// single member is a structure and therefore keeps the "errors" wrapper.
+  @required
+  field_errors: FieldErrorMap
+}
+
+/// 422 whose body is a *bare* field map ({"date": ["There's already a marker on
+/// that date"]}) — the same wrapperless `record.errors` rendering as
+/// BareFieldBadRequestError, at the validation status. Emitted by
+/// Lineup::MarkersController#create/#update.
+@error("client")
+@httpError(422)
+structure BareFieldValidationError {
+  /// Single map member — unwraps to the bare FieldErrorMap. See
+  /// BareFieldBadRequestError.
+  @required
+  field_errors: FieldErrorMap
 }
 
 @error("client")
@@ -2142,7 +2177,7 @@ structure GetMessageTypeOutput {
 operation CreateMessageType {
   input: CreateMessageTypeInput
   output: CreateMessageTypeOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BareFieldBadRequestError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateMessageTypeInput {
@@ -2174,7 +2209,7 @@ structure CreateMessageTypeOutput {
 operation UpdateMessageType {
   input: UpdateMessageTypeInput
   output: UpdateMessageTypeOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, BareFieldBadRequestError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateMessageTypeInput {
@@ -2643,6 +2678,269 @@ structure ListUploadVersionsOutput {
 
   uploads: UploadList
 }
+
+// ===== Cloud File Operations =====
+
+/// Get a single cloud file by id
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/cloud_files/{cloudFileId}")
+operation GetCloudFile {
+  input: GetCloudFileInput
+  output: GetCloudFileOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetCloudFileInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  cloudFileId: CloudFileId
+}
+
+structure GetCloudFileOutput {
+
+  cloud_file: CloudFile
+}
+
+/// Create a new cloud file in a vault.
+/// `url` is validated against the selected service's patterns, so it must be a
+/// real link for that service; use service "other" for anything that matches no
+/// recognized service. Omitting `title` is allowed and reads back as
+/// "Untitled".
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/vaults/{vaultId}/cloud_files.json", code: 201)
+operation CreateCloudFile {
+  input: CreateCloudFileInput
+  output: CreateCloudFileOutput
+  errors: [FieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateCloudFileInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
+  vaultId: VaultId
+
+  @required
+  url: String
+
+  @required
+  service: CloudFileServiceCode
+
+  title: CloudFileTitle
+
+  description: CloudFileDescription
+
+  subscriptions: PersonIdList
+
+  /// Whether the cloud file is visible to the project's clients. Applies only
+  /// when creating directly in the tool's vault — an item created inside a
+  /// folder inherits the folder's visibility and ignores this. A client caller
+  /// always creates client-visible records regardless of what is sent.
+  visible_to_clients: Boolean
+}
+
+structure CreateCloudFileOutput {
+
+  cloud_file: CloudFile
+}
+
+/// Replace a cloud file with a new complete representation.
+/// BC3 builds a brand-new CloudFile from the permitted params and swaps the
+/// recordable wholesale, so the request body is the full writable state:
+/// omitting `title` clears it (and the cloud file then reads back as
+/// "Untitled"), and omitting `description` clears it. `url` and `service` carry
+/// presence/format validations, so they are required here rather than
+/// clearable — a request without them is a 422, not a silent wipe.
+/// Updating a drafted cloud file also publishes it.
+/// Subscribers are the exception to omission-clears: a drafted cloud file keeps
+/// its current subscribers when the request addresses neither `subscriptions`
+/// nor `notify`. The creator is always on the list.
+/// The legacy bucket-scoped path PUT /buckets/{bucketId}/cloud_files/{id}.json
+/// is also accepted by BC3; this flat spelling is the documented one.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@basecampWriteSemantics(mode: "replace", clearsOmitted: true)
+@http(method: "PUT", uri: "/{accountId}/cloud_files/{cloudFileId}")
+operation UpdateCloudFile {
+  input: UpdateCloudFileInput
+  output: UpdateCloudFileOutput
+  errors: [NotFoundError, FieldValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateCloudFileInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  cloudFileId: CloudFileId
+
+  @required
+  url: String
+
+  @required
+  service: CloudFileServiceCode
+
+  title: CloudFileTitle
+  description: CloudFileDescription
+  subscriptions: PersonIdList
+}
+
+structure UpdateCloudFileOutput {
+
+  cloud_file: CloudFile
+}
+
+// Note: Use TrashRecording to trash cloud files
+
+// ===== Google Document Operations =====
+
+/// Get a single Google document by id
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/google_documents/{googleDocumentId}")
+operation GetGoogleDocument {
+  input: GetGoogleDocumentInput
+  output: GetGoogleDocumentOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetGoogleDocumentInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  googleDocumentId: GoogleDocumentId
+}
+
+structure GetGoogleDocumentOutput {
+
+  google_document: GoogleDocument
+}
+
+/// Create a new Google document in a vault.
+/// An unrecognized `document_type` is rejected before validation with the
+/// field-keyed 422 {"errors": {"document_type": ["is not a valid document
+/// type"]}} — the enum would otherwise raise rather than add an error.
+/// Omitting `title` is allowed and reads back as "Untitled".
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/vaults/{vaultId}/google_documents.json", code: 201)
+operation CreateGoogleDocument {
+  input: CreateGoogleDocumentInput
+  output: CreateGoogleDocumentOutput
+  errors: [FieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateGoogleDocumentInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
+  vaultId: VaultId
+
+  @required
+  url: String
+
+  @required
+  document_type: GoogleDocumentType
+
+  title: GoogleDocumentTitle
+
+  description: GoogleDocumentDescription
+
+  @documentation("active|drafted — defaults to drafted")
+  status: String
+
+  subscriptions: PersonIdList
+
+  /// Whether the document is visible to the project's clients. Applies only
+  /// when creating directly in the tool's vault — an item created inside a
+  /// folder inherits the folder's visibility and ignores this. A client caller
+  /// always creates client-visible records regardless of what is sent.
+  visible_to_clients: Boolean
+}
+
+structure CreateGoogleDocumentOutput {
+
+  google_document: GoogleDocument
+}
+
+/// Replace a Google document with a new complete representation.
+/// BC3 builds a brand-new GoogleDocument from the permitted params and swaps
+/// the recordable wholesale, so the request body is the full writable state:
+/// omitting `title` clears it (and the document then reads back as "Untitled"),
+/// and omitting `description` clears it. `url` and `document_type` are required
+/// here — `document_type` because an absent or unrecognized value is a 422, and
+/// `url` because it carries a presence validation.
+/// Subscribers are the exception to omission-clears: a drafted document keeps
+/// its current subscribers when the request addresses neither `subscriptions`
+/// nor `notify`. The creator is always on the list.
+/// The legacy bucket-scoped path
+/// PUT /buckets/{bucketId}/google_documents/{id}.json is also accepted by BC3;
+/// this flat spelling is the documented one.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@basecampWriteSemantics(mode: "replace", clearsOmitted: true)
+@http(method: "PUT", uri: "/{accountId}/google_documents/{googleDocumentId}")
+operation UpdateGoogleDocument {
+  input: UpdateGoogleDocumentInput
+  output: UpdateGoogleDocumentOutput
+  errors: [NotFoundError, FieldValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateGoogleDocumentInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  googleDocumentId: GoogleDocumentId
+
+  @required
+  url: String
+
+  @required
+  document_type: GoogleDocumentType
+
+  title: GoogleDocumentTitle
+  description: GoogleDocumentDescription
+
+  @documentation("active|drafted")
+  status: String
+
+  subscriptions: PersonIdList
+}
+
+structure UpdateGoogleDocumentOutput {
+
+  google_document: GoogleDocument
+}
+
+// Note: Use TrashRecording to trash Google documents
 
 // ===== Attachment Operations (Batch 2) =====
 
@@ -3516,6 +3814,151 @@ structure Upload {
   @basecampAuthRoutableUrl
   download_url: String
   filename: String
+  boosts_count: Integer
+  boosts_url: String
+}
+
+// ===== Cloud File Shapes =====
+
+long CloudFileId
+string CloudFileTitle
+string CloudFileDescription
+
+/// Short identifier for the external service — "dropbox", "google_doc",
+/// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
+/// is always present. `other` accepts any well-formed HTTPS URL.
+string CloudFileServiceCode
+
+list CloudFileServicePatternList {
+  member: String
+}
+
+/// The external service a cloud file points at, embedded in every cloud file
+/// response so clients can render the service's name, supporting text, and
+/// example URL without shipping a hard-coded catalogue. Serialized by
+/// CloudFile::Service#as_json.
+structure CloudFileService {
+  @required
+  name: String
+
+  /// A representative URL for the service, suitable as an input placeholder.
+  @required
+  example_url: String
+
+  @required
+  code: CloudFileServiceCode
+
+  /// Regular expressions the cloud file's `url` is validated against. Sending a
+  /// `url` that matches none of the selected service's patterns is a 422.
+  @required
+  valid_patterns: CloudFileServicePatternList
+
+  /// Human-readable hint ("a file or folder on Dropbox"). Absent for services
+  /// that declare none — CloudFile::Service::Services::Other, for one.
+  supporting_text: String
+}
+
+structure CloudFile {
+  @required
+  id: CloudFileId
+  @required
+  status: String
+  @required
+  visible_to_clients: Boolean
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  @required
+  title: CloudFileTitle
+  @required
+  inherits_status: Boolean
+  @required
+  type: String
+
+  /// The link on the external service — NOT this record's API URL. The
+  /// cloud_files jbuilder renders the shared recording partial first and then
+  /// `json.(recording.recordable, :url, :service)`, which overwrites the
+  /// recording's `url` key with the recordable's. `app_url` is still this
+  /// record's Basecamp URL.
+  @required
+  url: String
+
+  @required
+  app_url: String
+  bookmark_url: String
+  subscription_url: String
+  comments_count: Integer
+  comments_url: String
+  position: Integer
+  @required
+  parent: RecordingParent
+  @required
+  bucket: TodoBucket
+  @required
+  creator: Person
+  description: CloudFileDescription
+  @required
+  description_attachments: RichTextAttachmentList
+  @required
+  service: CloudFileService
+  boosts_count: Integer
+  boosts_url: String
+}
+
+// ===== Google Document Shapes =====
+
+long GoogleDocumentId
+string GoogleDocumentTitle
+string GoogleDocumentDescription
+
+/// One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
+/// unrecognized value is rejected up front with a field-keyed 422
+/// ({"errors": {"document_type": ["is not a valid document type"]}}) rather
+/// than reaching validation.
+string GoogleDocumentType
+
+structure GoogleDocument {
+  @required
+  id: GoogleDocumentId
+  @required
+  status: String
+  @required
+  visible_to_clients: Boolean
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  @required
+  title: GoogleDocumentTitle
+  @required
+  inherits_status: Boolean
+  @required
+  type: String
+
+  /// The Google Workspace document link — NOT this record's API URL. Same
+  /// recordable-overwrites-recording rendering as CloudFile#url.
+  @required
+  url: String
+
+  @required
+  app_url: String
+  bookmark_url: String
+  subscription_url: String
+  comments_count: Integer
+  comments_url: String
+  position: Integer
+  @required
+  parent: RecordingParent
+  @required
+  bucket: TodoBucket
+  @required
+  creator: Person
+  description: GoogleDocumentDescription
+  @required
+  description_attachments: RichTextAttachmentList
+  @required
+  document_type: GoogleDocumentType
   boosts_count: Integer
   boosts_url: String
 }
@@ -6254,7 +6697,7 @@ structure GetWebhookOutput {
 operation CreateWebhook {
   input: CreateWebhookInput
   output: CreateWebhookOutput
-  errors: [BadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BareFieldBadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateWebhookInput {
@@ -6288,7 +6731,7 @@ structure CreateWebhookOutput {
 operation UpdateWebhook {
   input: UpdateWebhookInput
   output: UpdateWebhookOutput
-  errors: [NotFoundError, BadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, BareFieldBadRequestError, WebhookLimitError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateWebhookInput {
@@ -7904,7 +8347,7 @@ structure ListLineupMarkersOutput {
 operation CreateLineupMarker {
   input: CreateLineupMarkerInput
   output: CreateLineupMarkerOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BareFieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateLineupMarkerInput {
@@ -7929,7 +8372,7 @@ structure CreateLineupMarkerOutput {}
 operation UpdateLineupMarker {
   input: UpdateLineupMarkerInput
   output: UpdateLineupMarkerOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, BareFieldValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateLineupMarkerInput {

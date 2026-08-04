@@ -368,6 +368,20 @@ export {
   type ReplaceDocumentRequest,
 } from "./generated/services/documents.js";
 
+export {
+  CloudFilesService,
+  type CloudFile,
+  type CreateCloudFileCloudFileRequest,
+  type UpdateCloudFileCloudFileRequest,
+} from "./generated/services/cloud-files.js";
+
+export {
+  GoogleDocumentsService,
+  type GoogleDocument,
+  type CreateGoogleDocumentGoogleDocumentRequest,
+  type UpdateGoogleDocumentGoogleDocumentRequest,
+} from "./generated/services/google-documents.js";
+
 export { UploadsService } from "./services/uploads-extensions.js";
 export {
   type Upload,
@@ -392,13 +406,18 @@ export {
 
 export {
   TimesheetsService,
+  type TimesheetEntry,
   type ForRecordingTimesheetOptions,
   type ForProjectTimesheetOptions,
   type ReportTimesheetOptions,
 } from "./generated/services/timesheets.js";
 
+// TimelineEvent is declared by both timeline.ts and reports.ts (ReportsService
+// returns the same entity). It is re-exported here once — from either module a
+// second export would be a duplicate identifier.
 export {
   TimelineService,
+  type TimelineEvent,
 } from "./generated/services/timeline.js";
 
 // Everything aggregates service - generated
@@ -507,6 +526,7 @@ export {
 // My Notifications service - generated
 export {
   MyNotificationsService,
+  type Notification,
 } from "./generated/services/my-notifications.js";
 
 // OpenTelemetry hooks

@@ -90,6 +90,16 @@ jobs:
   #
   # Invoke via `make <target>` so the recipe has exactly one definition and CI
   # cannot drift from the Makefile.
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
   spec-gates:
     name: Spec Gates
     runs-on: ubuntu-latest
@@ -174,6 +184,30 @@ jobs:
       # (#553). This is the static answer to the same question.
       - name: Replay decoders cover every live fixture operation
         run: make check-replay-decoder-parity
+
+      # Advisory: prints and exits 0. The guarantee is the byte comparison that
+      # runs at the end of every job that installs anything. This is the early
+      # warning the byte comparison cannot give — it names the file and line at
+      # the commit that reintroduces a writer, while the bytes stay identical
+      # until some npm's output diverges from the committed lockfile (#612).
+      - name: Diagnostic — npm invocations that could write a lockfile
+        run: make lint-npm-lockfile-writes
+
+      # The gate's live run only exercises the passing case. Its first cut was a
+      # denylist that `npm in`, `npm ins`, and `npm --prefix <path> install` all
+      # walked through — so the rejections need their own tests.
+      - name: npm lockfile diagnostic self-test (synthetic repos)
+        run: make test-lint-npm-lockfile-writes
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   test-go:
     name: Go Tests
@@ -265,6 +299,16 @@ jobs:
           go build -o conformance-runner .
           ./conformance-runner
 
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   test-typescript:
     name: TypeScript Tests
     runs-on: ubuntu-latest
@@ -312,14 +356,44 @@ jobs:
           echo "$FILES" | grep -q '^typescript/dist/index\.js$'
           echo "$FILES" | grep -q '^typescript/dist/index\.d\.ts$'
 
-      # npx vitest run, not npm test: the runner's pretest script rebuilds
-      # the SDK, which this job just built two steps up. The runner's
-      # dist-freshness globalSetup still fails loudly if dist/ were stale.
+      # npx vitest run, not npm test: this skips the runner's pretest, which
+      # asserts the SDK build is fresh — a check this job satisfies by
+      # construction, having built it in the "Build" step above.
+      #
+      # The previous comment here claimed a "dist-freshness globalSetup" backed
+      # this up. There is none, and never was; the runner resolves the SDK
+      # through its package exports, so a stale dist/ would simply have been
+      # tested. conformance/runner/typescript/assert-sdk-built.mjs is that
+      # missing guard, and it now runs on every `npm test` in that directory.
       - name: Run TypeScript conformance tests
         working-directory: conformance/runner/typescript
         run: |
           npm ci
           npx vitest run
+
+      # The freshness guard's own live run only ever sees a fresh tree. Its
+      # first cut passed any existing dist/, its second passed a build whose
+      # source had been deleted — so the rejections need synthetic trees.
+      - name: SDK build-freshness guard self-test
+        working-directory: .
+        run: make test-assert-sdk-built
+
+      # The lockfile tripwire in `make check` only ever sees lockfiles that did
+      # not move. This shows it reacts when one does — including writes made via
+      # `eval` or a command held in a variable, which no text parser resolves.
+      - name: Lockfile tripwire self-test
+        working-directory: .
+        run: make test-assert-lockfiles-unchanged
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   test-ruby:
     name: Ruby ${{ matrix.ruby }}
@@ -385,6 +459,16 @@ jobs:
         if: matrix.ruby == '3.3'
         working-directory: .
         run: make conformance-runner-tests-ruby
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   test-python:
     name: Python ${{ matrix.python }}
@@ -470,6 +554,16 @@ jobs:
           UV_PYTHON: ${{ matrix.python }}
         run: make conformance-runner-tests-python
 
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   test-swift:
     name: Swift Tests
     runs-on: macos-15
@@ -510,6 +604,16 @@ jobs:
         # satisfies it. The target must run from repo root.
         working-directory: .
         run: make conformance-swift
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
   test-kotlin:
     name: Kotlin Tests
     runs-on: ubuntu-latest
@@ -568,6 +672,16 @@ jobs:
       - name: Run Kotlin conformance tests
         run: ./gradlew :conformance:run
 
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   conformance:
     # Fan-in gate: each language's conformance suite now runs inside its own
     # test job (warm toolchain, built SDK), which removes the serial
@@ -620,6 +734,16 @@ jobs:
           version: latest
           args: --config .golangci.yml
 
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   race:
     name: Race Detection
     runs-on: ubuntu-latest
@@ -643,6 +767,16 @@ jobs:
 
       - name: Test with race detector
         run: go test -race -v ./...
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   api-compat:
     name: API Compatibility
@@ -741,3 +875,13 @@ jobs:
           else
             echo "No API changes detected."
           fi
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean

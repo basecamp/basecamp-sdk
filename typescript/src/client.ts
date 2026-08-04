@@ -60,6 +60,8 @@ import { AttachmentsService } from "./generated/services/attachments.js";
 import { VaultsService } from "./generated/services/vaults.js";
 import { DocumentsService } from "./services/documents-extensions.js";
 import { UploadsService } from "./services/uploads-extensions.js";
+import { CloudFilesService } from "./generated/services/cloud-files.js";
+import { GoogleDocumentsService } from "./generated/services/google-documents.js";
 import { SchedulesService } from "./services/schedules-extensions.js";
 import { EventsService } from "./generated/services/events.js";
 import { RecordingsService } from "./generated/services/recordings.js";
@@ -186,6 +188,10 @@ export interface BasecampClient extends RawClient {
   readonly documents: DocumentsService;
   /** Uploads service - manage files in vaults */
   readonly uploads: UploadsService;
+  /** Cloud files service - manage links to files on external services in vaults */
+  readonly cloudFiles: CloudFilesService;
+  /** Google documents service - manage links to Google Workspace documents in vaults */
+  readonly googleDocuments: GoogleDocumentsService;
   /** Schedules service - manage schedules and calendar entries */
   readonly schedules: SchedulesService;
   /** Events service - view recording change events */
@@ -467,6 +473,11 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("attachments", () => new AttachmentsService(client, hooks, fetchPage, maxPages));
   defineService("vaults", () => new VaultsService(client, hooks, fetchPage, maxPages));
   defineService("documents", () => new DocumentsService(client, hooks, fetchPage, maxPages));
+  defineService("cloudFiles", () => new CloudFilesService(client, hooks, fetchPage, maxPages));
+  defineService(
+    "googleDocuments",
+    () => new GoogleDocumentsService(client, hooks, fetchPage, maxPages),
+  );
   defineService("uploads", () =>
     // Positional args mirror BaseService (incl. authenticatedFetch/baseUrl slots the
     // factory leaves unset), with downloadURLFn appended at the end.
@@ -871,6 +882,8 @@ export function normalizeUrlPath(url: string): string {
     comments: "{commentId}",
     tools: "{toolId}",  // dock/tools/{toolId}
     documents: "{documentId}",
+    cloud_files: "{cloudFileId}",
+    google_documents: "{googleDocumentId}",
     inbox_forwards: "{forwardId}",
     inboxes: "{inboxId}",
     message_boards: "{boardId}",

@@ -19,6 +19,7 @@ from basecamp.generated.services.client_correspondences import (
 )
 from basecamp.generated.services.client_replies import ClientRepliesService, AsyncClientRepliesService
 from basecamp.generated.services.client_visibility import ClientVisibilityService, AsyncClientVisibilityService
+from basecamp.generated.services.cloud_files import CloudFilesService, AsyncCloudFilesService
 from basecamp.generated.services.comments import CommentsService, AsyncCommentsService
 from basecamp.generated.services.documents import DocumentsService, AsyncDocumentsService
 from basecamp.generated.services.drafts import DraftsService, AsyncDraftsService
@@ -27,6 +28,7 @@ from basecamp.generated.services.everything import EverythingService, AsyncEvery
 from basecamp.generated.services.folders import FoldersService, AsyncFoldersService
 from basecamp.generated.services.forwards import ForwardsService, AsyncForwardsService
 from basecamp.generated.services.gauges import GaugesService, AsyncGaugesService
+from basecamp.generated.services.google_documents import GoogleDocumentsService, AsyncGoogleDocumentsService
 from basecamp.generated.services.hill_charts import HillChartsService, AsyncHillChartsService
 from basecamp.generated.services.lineup import LineupService, AsyncLineupService
 from basecamp.generated.services.message_boards import MessageBoardsService, AsyncMessageBoardsService
@@ -88,6 +90,8 @@ __all__ = [
     "AsyncClientRepliesService",
     "ClientVisibilityService",
     "AsyncClientVisibilityService",
+    "CloudFilesService",
+    "AsyncCloudFilesService",
     "CommentsService",
     "AsyncCommentsService",
     "DocumentsService",
@@ -104,6 +108,8 @@ __all__ = [
     "AsyncForwardsService",
     "GaugesService",
     "AsyncGaugesService",
+    "GoogleDocumentsService",
+    "AsyncGoogleDocumentsService",
     "HillChartsService",
     "AsyncHillChartsService",
     "LineupService",

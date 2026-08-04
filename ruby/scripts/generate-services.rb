@@ -67,7 +67,9 @@ class ServiceGenerator
       'Attachments' => %w[CreateAttachment],
       'Uploads' => %w[GetUpload UpdateUpload ListUploads CreateUpload ListUploadVersions],
       'Vaults' => %w[GetVault UpdateVault ListVaults CreateVault],
-      'Documents' => %w[GetDocument ReplaceDocument ListDocuments CreateDocument]
+      'Documents' => %w[GetDocument ReplaceDocument ListDocuments CreateDocument],
+      'CloudFiles' => %w[GetCloudFile CreateCloudFile UpdateCloudFile],
+      'GoogleDocuments' => %w[GetGoogleDocument CreateGoogleDocument UpdateGoogleDocument]
     },
     'Automation' => {
       'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool],
