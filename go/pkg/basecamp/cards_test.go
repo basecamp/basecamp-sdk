@@ -1164,9 +1164,9 @@ func TestCardsService_UpdateExplicitClearSendsEmptyDueOn(t *testing.T) {
 	var recorded []recordedRequest
 	svc := recordingCardsServer(t, &recorded, fixture)
 
-	// A pointer to the empty string is an explicit clear. It needs no GET, and
-	// it goes on the wire AS "" — BC3 blank-casts that to nil, which clears on
-	// both the presence-aware server and the older omit-clears `four` branch.
+	// A pointer to the empty string is an explicit clear, and it goes on the
+	// wire AS "" — BC3 blank-casts that to nil. Omission would NOT clear:
+	// since basecamp/bc3#12521 an absent due_on means "leave it alone".
 	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
 		DueOn: cardStrPtr(""),
 	})
