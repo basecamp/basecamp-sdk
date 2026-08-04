@@ -1,0 +1,29 @@
+scripts/test-check-known-defect-issues-open
+  s_7971b60690ffce::t_e70e6f3f89daf3 65-68,75-77
+  s_7971b60690ffce::t_7b25748816e75d 147-153
+  s_7971b60690ffce::t_c82c82165c5980 1-29,44-64,69-74,78-146,154-291
+  s_7971b60690ffce::t_43f09bf0b1e599 30-43
+.github/workflows/test.yml
+  s_7971b60690ffce::t_86c8b869985e45 123-127
+scripts/check-known-defect-issues-open
+  s_7971b60690ffce::t_a3b07a35d9deb3 32-35,41-50
+Makefile
+  s_7971b60690ffce::t_5f2211dd61bbf7 87
+  s_7971b60690ffce::t_8333c987e361fc 118-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1a2dfe5d1fe14fb8e079501c7abff79d8c1cd434",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
