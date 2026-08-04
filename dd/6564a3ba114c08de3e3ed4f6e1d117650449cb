@@ -1,0 +1,22 @@
+.github/workflows/release-github.yml
+  s_7971b60690ffce::t_68070e967d24f8 165
+MIGRATING.md
+  s_7971b60690ffce::t_13db96557e1632 58,62-66,68-69,72
+  s_7971b60690ffce::t_819be1d5392372 38-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "dd6564a3ba114c08de3e3ed4f6e1d117650449cb",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
