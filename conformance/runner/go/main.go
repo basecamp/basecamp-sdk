@@ -672,6 +672,32 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todos().Update(ctx, todoID, req)
 		return operationResult{err: err}
 
+	// Threads the three #641 members through the PUBLIC create request, which is
+	// where they were missing: the spec, the generated client and five other
+	// SDKs all carried them while basecamp.CreateScheduleEntryRequest did not,
+	// and every gate looked at the generated layer.
+	case "CreateScheduleEntry":
+		scheduleID := getInt64Param(tc.PathParams, "scheduleId")
+		w := scheduleEntryWriteFrom(tc.RequestBody)
+		req := &basecamp.CreateScheduleEntryRequest{
+			Summary:     deref(w.summary),
+			StartsAt:    deref(w.startsAt),
+			EndsAt:      deref(w.endsAt),
+			Description: deref(w.description),
+			AllDay:      w.allDay,
+			URL:         w.url,
+			Highlighted: w.highlighted,
+			Status:      w.status,
+		}
+		if w.participantIDs != nil {
+			req.ParticipantIDs = *w.participantIDs
+		}
+		if w.notify != nil {
+			req.Notify = *w.notify
+		}
+		_, err := account.Schedules().CreateEntry(ctx, scheduleID, req)
+		return operationResult{err: err}
+
 	case "ReplaceScheduleEntry":
 		// The raw wire method: one verbatim PUT, no read-before-write.
 		// Presence-bearing, so only the keys the fixture carries reach the wire
@@ -1837,6 +1863,7 @@ type scheduleEntryWrite struct {
 	endsAt         *string
 	description    *string
 	url            *string
+	status         *string
 	allDay         *bool
 	notify         *bool
 	highlighted    *bool
@@ -1873,6 +1900,7 @@ func scheduleEntryWriteFrom(body map[string]interface{}) scheduleEntryWrite {
 		endsAt:      str("ends_at"),
 		description: str("description"),
 		url:         str("url"),
+		status:      str("status"),
 		allDay:      flag("all_day"),
 		notify:      flag("notify"),
 		highlighted: flag("highlighted"),
@@ -1919,4 +1947,15 @@ func getStringSliceParam(params map[string]interface{}, key string) []string {
 		}
 	}
 	return nil
+}
+
+// deref returns the pointed-to value, or the zero value for nil. The create
+// request takes plain strings where replace takes pointers, so the shared
+// presence-bearing extraction has to be flattened for it.
+func deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
 }

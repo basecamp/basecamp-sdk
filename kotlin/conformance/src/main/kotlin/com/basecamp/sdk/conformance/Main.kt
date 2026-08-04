@@ -786,6 +786,28 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         // highlighted are the operation's preservedOnOmission carve-out, so an
         // absent key must not become [] / "" / false on the wire — that would
         // clear the value BC3 is holding — while an explicit empty must be sent.
+        // `url`, `highlighted` and `status` are the three #641 members. The
+        // write spelling is `url`; `join_url` is read-only and BC3 drops it from
+        // a write body without complaining.
+        "CreateScheduleEntry" -> {
+            val scheduleId = tc.pathParams.longParam("scheduleId")
+            val rb = tc.requestBody
+            account.schedules.createEntry(scheduleId, CreateScheduleEntryBody(
+                summary = tc.requestBody.stringParam("summary"),
+                startsAt = tc.requestBody.stringParam("starts_at"),
+                endsAt = tc.requestBody.stringParam("ends_at"),
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                participantIds = rb?.get("participant_ids")?.jsonArray
+                    ?.map { element -> element.jsonPrimitive.long },
+                allDay = rb?.get("all_day")?.jsonPrimitive?.booleanOrNull,
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull,
+                url = rb?.get("url")?.jsonPrimitive?.contentOrNull,
+                highlighted = rb?.get("highlighted")?.jsonPrimitive?.booleanOrNull,
+                status = rb?.get("status")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
         "ReplaceScheduleEntry" -> {
             val entryId = tc.pathParams.longParam("entryId")
             val rb = tc.requestBody

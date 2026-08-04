@@ -358,6 +358,14 @@ class OperationMapper
     # EditScheduleEntry are SYNTHETIC scenario keys. All three ride the one wire
     # operation (PUT /schedule_entries/{id}) and name the three SDK surfaces
     # over it, so the fixture can pin each one's request shape.
+    # `url`, `highlighted` and `status` are the three #641 members. The write
+    # spelling is `url`; `join_url` is read-only and BC3 drops it from a write
+    # body without complaining.
+    when "CreateScheduleEntry"
+      @account.schedules.create_entry(
+        schedule_id: path_params["scheduleId"],
+        **schedule_entry_create_kwargs(body)
+      )
     when "ReplaceScheduleEntry"
       # Raw single PUT, no read-before-write. Presence-bearing: only keys the
       # fixture carries are passed, so an absent url stays off the wire while an
@@ -585,6 +593,16 @@ class OperationMapper
   SCHEDULE_ENTRY_WRITE_KEYS = %w[
     summary starts_at ends_at description all_day participant_ids notify url highlighted
   ].freeze
+
+  # Create takes `status` too — it is a Recording column, so BC3 reads it
+  # outside the schedule_entry envelope and it is not a ReplaceScheduleEntry
+  # member.
+  SCHEDULE_ENTRY_CREATE_KEYS = (SCHEDULE_ENTRY_WRITE_KEYS + %w[ status ]).freeze
+
+  def schedule_entry_create_kwargs(body)
+    SCHEDULE_ENTRY_CREATE_KEYS.select { |key| (body || {}).key?(key) } \
+      .to_h { |key| [key.to_sym, body[key]] }
+  end
 
   def schedule_entry_write_kwargs(body)
     SCHEDULE_ENTRY_WRITE_KEYS.select { |key| (body || {}).key?(key) } \

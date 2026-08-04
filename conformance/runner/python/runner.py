@@ -32,6 +32,9 @@ _TODO_WRITE_FIELDS = ("content", "description", "assignee_ids", "completion_subs
 _TODOLIST_WRITE_FIELDS = ("name", "description")
 _DOCUMENT_WRITE_FIELDS = ("title", "content")
 _SCHEDULE_ENTRY_WRITE_FIELDS = ("summary", "starts_at", "ends_at", "description", "all_day", "participant_ids", "notify", "url", "highlighted")
+# Create takes `status` too — it is a Recording column, so BC3 reads it outside
+# the schedule_entry envelope and it is not a ReplaceScheduleEntry member.
+_SCHEDULE_ENTRY_CREATE_FIELDS = _SCHEDULE_ENTRY_WRITE_FIELDS + ("status",)
 _CARD_WRITE_FIELDS = ("title", "content", "due_on", "assignee_ids")
 
 # Sentinel distinguishing "key absent from the JSON body" from a present None.
@@ -345,6 +348,14 @@ class OperationMapper:
                 return self._account.todolists.update(
                     id=path_params["id"],
                     **{k: body[k] for k in _TODOLIST_WRITE_FIELDS if k in body},
+                )
+            # `url`, `highlighted` and `status` are the three #641 members. The
+            # write spelling is `url`; `join_url` is read-only and BC3 drops it
+            # from a write body without complaining.
+            case "CreateScheduleEntry":
+                return self._account.schedules.create_entry(
+                    schedule_id=path_params["scheduleId"],
+                    **{k: body[k] for k in _SCHEDULE_ENTRY_CREATE_FIELDS if k in body},
                 )
             case "ReplaceScheduleEntry":
                 # The raw single PUT, no read-before-write. Presence-bearing:

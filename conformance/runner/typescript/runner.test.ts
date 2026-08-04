@@ -11,7 +11,11 @@ import { describe, it, expect, afterEach, afterAll, beforeAll } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { createBasecampClient, BasecampError } from "@37signals/basecamp";
-import type { BasecampClient, UpdateScheduleEntryRequest } from "@37signals/basecamp";
+import type {
+  BasecampClient,
+  CreateEntryScheduleRequest,
+  UpdateScheduleEntryRequest,
+} from "@37signals/basecamp";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -187,6 +191,15 @@ const SCHEDULE_ENTRY_WIRE_TO_SDK = {
  * — BC3 preserves those three on omission, so a spurious key would clear what
  * the server is holding.
  */
+// Create takes `status` too — a Recording column BC3 reads outside the
+// schedule_entry envelope, so it is not a ReplaceScheduleEntry member and does
+// not belong in the shared map above.
+function mapScheduleEntryCreateFields(body: Record<string, unknown>): CreateEntryScheduleRequest {
+  const mapped = mapScheduleEntryWireFields(body) as Record<string, unknown>;
+  if ("status" in body) mapped.status = body.status;
+  return mapped as unknown as CreateEntryScheduleRequest;
+}
+
 function mapScheduleEntryWireFields(body: Record<string, unknown>): UpdateScheduleEntryRequest {
   const mapped: Record<string, unknown> = {};
   for (const [wire, sdk] of Object.entries(SCHEDULE_ENTRY_WIRE_TO_SDK)) {
@@ -418,6 +431,16 @@ async function executeOperation(
         // operation. GET then full PUT; only fixture-present keys are passed.
         // Variant-agnostic — the same call covers a list and a group.
         await client.todolists.update(Number(params.id), mapTodolistWireFields(body));
+        break;
+
+      // `url`, `highlighted` and `status` are the three #641 members. The write
+      // spelling is `url`; `join_url` is read-only and BC3 drops it from a
+      // write body without complaining.
+      case "CreateScheduleEntry":
+        await client.schedules.createEntry(
+          Number(params.scheduleId),
+          mapScheduleEntryCreateFields(body),
+        );
         break;
 
       case "ReplaceScheduleEntry":

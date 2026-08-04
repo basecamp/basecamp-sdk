@@ -298,6 +298,25 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     // recordable whenever the request does not address them. An absent key that
     // became null, [] or false would clear what the server is holding.
     // `starts_at`/`ends_at` are required by the schema.
+    // `url`, `highlighted` and `status` are the three #641 members. The write
+    // spelling is `url`; `join_url` is read-only and BC3 drops it from a write
+    // body without complaining.
+    case "CreateScheduleEntry":
+        _ = try await account.schedules.createEntry(
+            scheduleId: pathParams.longParam("scheduleId"),
+            req: CreateScheduleEntryRequest(
+                allDay: rb.optBool("all_day"),
+                description: rb.optString("description"),
+                endsAt: rb.stringParam("ends_at"),
+                highlighted: rb.optBool("highlighted"),
+                notify: rb.optBool("notify"),
+                participantIds: rb.intArray("participant_ids"),
+                startsAt: rb.stringParam("starts_at"),
+                status: rb.optString("status"),
+                summary: rb.stringParam("summary"),
+                url: rb.optString("url")))
+        return DispatchResult()
+
     case "ReplaceScheduleEntry":
         _ = try await account.schedules.replaceEntry(
             entryId: pathParams.longParam("entryId"),
