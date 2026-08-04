@@ -1,0 +1,40 @@
+spec/basecamp.smithy
+  s_ae792ed0be3006::t_fb5bc363b315d4 1707-1711,1713-1727,1731-1737
+spec/overlays/examples.smithy
+  s_ae792ed0be3006::t_2b60d8cb653816 45
+  s_ae792ed0be3006::t_1ab524f8051e04 26
+spec/smithy-build.json
+  s_ae792ed0be3006::t_0ec7e3e6464ef0 38
+go/pkg/generated/client.gen.go
+  s_ae792ed0be3006::t_55efef40a0e6e6 3057-3061,3063-3078,3081-3087
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todolist.kt
+  s_ae792ed0be3006::t_cd337a84b5859c 32-33
+openapi.json
+  s_ae792ed0be3006::t_97c3dbdbf2bafb 21666,21708,33059,33064,33078,33092-33093
+python/src/basecamp/generated/types.py
+  s_ae792ed0be3006::t_d5d9ec6f7b2429 1742-1743
+ruby/lib/basecamp/generated/types.rb
+  s_ae792ed0be3006::t_c5dd9c505574e5 4,4434,4438,4445-4446,4481-4482,4510
+swift/Sources/Basecamp/Generated/Models/Todolist.swift
+  s_ae792ed0be3006::t_4f032ab04488a2 8-9,42-43,75-76,105-211
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_50c2a520f35ab1 19310,19352,30318,30323,30337,30351-30352
+typescript/src/generated/schema.d.ts
+  s_ae792ed0be3006::t_10bf3d3c7e3432 5861-5865,5867-5881,5883,5886-5891,5893
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f9b9c92a55cc7eab33add121082c87e028a1afda",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
