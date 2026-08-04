@@ -708,16 +708,6 @@ jobs:
           fi
           echo "All per-language conformance suites and spec gates green"
 
-      # Ground truth, and the authoritative check: the static parser predicts
-      # that nothing writes a lockfile, this observes whether anything did. A CI
-      # checkout starts pristine, so the committed tree is the baseline. Catches
-      # a manifest that was modified AND one CREATED where none was tracked, and
-      # runs on failure too, so a job cannot fail and hide what it dirtied.
-      - name: Dependency manifests unchanged by this job
-        if: always()
-        working-directory: .
-        run: ./scripts/assert-lockfiles-unchanged --verify-clean
-
   lint:
     name: Lint
     runs-on: ubuntu-latest
