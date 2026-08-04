@@ -117,7 +117,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
  * com.basecamp.sdk.services can add convenience methods (e.g. Todos
  * gains merge-safe update/edit on top of the generated replace).
  */
-val EXTENSIBLE_SERVICES = setOf("Todos", "Todolists", "Cards", "Uploads", "Documents")
+val EXTENSIBLE_SERVICES = setOf("Todos", "Todolists", "Cards", "Uploads", "Documents", "Schedules")
 
 /**
  * Services whose accessor constructs and declares a hand-written subclass
@@ -131,6 +131,7 @@ val HAND_WRITTEN_SERVICES = mapOf(
     "Cards" to "com.basecamp.sdk.services.CardsService",
     "Uploads" to "com.basecamp.sdk.services.UploadsService",
     "Documents" to "com.basecamp.sdk.services.DocumentsService",
+    "Schedules" to "com.basecamp.sdk.services.SchedulesService",
 )
 
 /**

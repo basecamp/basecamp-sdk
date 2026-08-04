@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class SchedulesService(client: AccountClient) : BaseService(client) {
+open class SchedulesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single schedule entry by id.
