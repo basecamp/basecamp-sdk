@@ -28,7 +28,7 @@ data class BasecampConfig(
     val baseRetryDelay: Duration = 1.seconds,
 ) {
     companion object {
-        const val VERSION = "0.12.0"
+        const val VERSION = "0.13.0"
         const val API_VERSION = "2026-08-03"
         const val DEFAULT_BASE_URL = "https://3.basecampapi.com"
         const val DEFAULT_USER_AGENT = "basecamp-sdk-kotlin/$VERSION (api:$API_VERSION)"

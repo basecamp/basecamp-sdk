@@ -35,7 +35,7 @@ it passes your tests and fails in production.
 | [Kotlin](#kotlin) | 17 | 6 | 1 |
 
 61 breaks the compiler will not catch, across the six: 55 with no signal at all
-and 6 that fail at runtime. These are counts at `2afc97707` — the last commit of
+and 6 that fail at runtime. These are counts at `931c36ad7` — the last commit of
 release content, and the baseline every count here was measured against, not the
 commit the tag is cut from. v0.13.0 is tagged from `main` after this guide
 merges, so the tagged tree contains this file; the counts carry over unchanged
@@ -52,24 +52,29 @@ rather than adding one, and that is where this guide documents it.
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
 body.
 
-> **As of `2afc97707`.** Base `v0.12.0` = `7e2925d25`. Every count in this
+> **As of `931c36ad7`.** Base `v0.12.0` = `7e2925d25`. Every count in this
 > document is a measurement at that commit, not a constant. If you are reading
 > this from a later tag, re-run the derivations below — they are cheap, and a
-> hand-incremented count is how these go wrong. The release spans 55 merged
+> hand-incremented count is how these go wrong. The release spans 56 merged
 > pull requests, 15 of them labelled `breaking`:
 >
 > ```bash
-> # Compare as instants, not as strings. `mergedAt` is Z-formatted UTC while
-> # `git log %cI` carries a local offset, and jq's `>` on two strings is
-> # lexicographic — that comparison silently counts PRs merged in the hours
-> # before the tag. Use %ct and fromdateiso8601 so both sides are epoch seconds.
-> epoch=$(git log -1 --format=%ct v0.12.0)
-> gh pr list --repo basecamp/basecamp-sdk --state merged --limit 300 \
->   --json number,mergedAt \
->   --jq "[.[]|select((.mergedAt|fromdateiso8601) > $epoch)]|length"
+> # Count by ANCESTRY, not by merge timestamp. A timestamp filter has an
+> # off-by-one at the boundary: #556's squash commit IS `7e2925d25`, the commit
+> # v0.12.0 tags, and its `mergedAt` lands a moment after that commit's own
+> # timestamp — so `mergedAt > tag_time` attributes a PR that SHIPPED IN v0.12.0
+> # to this release. `v0.12.0..HEAD` excludes it correctly, as the range
+> # boundary. Every PR here is squash-merged, so one commit is one PR.
+> git log v0.12.0..HEAD --oneline | wc -l
+>
+> # Same range rule for the breaking subset: in this release means reachable
+> # from HEAD and NOT reachable from v0.12.0.
 > gh pr list --repo basecamp/basecamp-sdk --state merged --label breaking \
->   --limit 300 --json number,mergedAt \
->   --jq "[.[]|select((.mergedAt|fromdateiso8601) > $epoch)]|length"
+>   --limit 300 --json mergeCommit --jq '.[].mergeCommit.oid' |
+>   while read sha; do
+>     git merge-base --is-ancestor "$sha" HEAD 2>/dev/null &&
+>     ! git merge-base --is-ancestor "$sha" v0.12.0 2>/dev/null && echo "$sha"
+>   done | wc -l
 > ```
 >
 > A labelled PR is not the same unit as an entry below: one PR can break four
@@ -2800,7 +2805,7 @@ oversight, and it should be stated rather than assumed.
 # Not in this release
 
 **Nothing is in flight.** Every change this guide describes is merged at
-`2afc97707`, and every count above is a measurement at that commit rather than a
+`931c36ad7`, and every count above is a measurement at that commit rather than a
 projection. Earlier drafts carried an "if it lands" list; all of it landed, and
 the counts were re-derived rather than incremented.
 
