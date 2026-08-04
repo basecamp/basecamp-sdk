@@ -1,0 +1,21 @@
+.github/workflows/security.yml
+  s_ae792ed0be3006::t_95aad6d1077afc 68,124,162,207,242,298,338,379,420
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_2e32d2e1d49682 101,208,308,394,469,563,614,681,718,753,787,895
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "b6f0daf02c9cd7d621d0ad41fdcd655d030a4aa2",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
