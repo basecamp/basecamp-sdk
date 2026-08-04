@@ -514,6 +514,31 @@ class HTTPGovernedRetryTest < Minitest::Test
     assert_requested(:get, "https://3.basecampapi.com/test.json", times: 1)
   end
 
+  # #532: max_retries: 0 must still put one request on the wire. The count is
+  # the assertion that matters — the un-fixed path raises the same error class
+  # from the same method, so only "did a request happen" separates them.
+  def test_ungoverned_get_with_zero_max_retries_still_makes_one_request
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 200, body: '{"id": 1}')
+
+    response = http_with_max_retries(0).get("/test.json")
+
+    assert_equal 200, response.status
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 1)
+  end
+
+  # The governed branch already floored the cap at one attempt; pinning it here
+  # keeps the two branches from drifting apart again.
+  def test_governed_get_with_zero_max_retries_still_makes_one_request
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 200, body: '{"id": 1}')
+
+    response = http_with_max_retries(0).get("/test.json", operation: "GetProject")
+
+    assert_equal 200, response.status
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 1)
+  end
+
   def test_governed_get_does_not_retry_500
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 500, body: "{}")

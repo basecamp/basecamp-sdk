@@ -411,8 +411,8 @@ class DownloadTest < Minitest::Test
       .to_return(status: 503, body: "{}", headers: { "Content-Type" => "application/json" })
 
     # The download attempt budget is floored at one: max_retries: 0 still
-    # sends exactly one request. (The general ungoverned GET path's
-    # zero-attempt behavior is tracked separately as #532.)
+    # sends exactly one request. The same floor now applies on every Ruby
+    # request path, governed or ungoverned (#532).
     account = create_account_client(config: fast_download_config(max_retries: 0))
     assert_raises(Basecamp::ApiError) { account.download_url(HOP1_URL) }
 

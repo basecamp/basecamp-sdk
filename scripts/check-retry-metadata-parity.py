@@ -33,11 +33,11 @@ Two acceptance criteria:
       Fields emitted but never read are guarded for PARITY only (criterion 1) and
       classified emitted-but-runtime-inert — NOT claimed as runtime parity:
         * TypeScript / Swift / Kotlin: consume the full tuple.
-        * Go / Python:                 consume `max` (per-op ceiling) AND
+        * Go / Python / Ruby:          consume `max` (per-op ceiling) AND
                                        `retry_on` (the status gate); base_delay
-                                       and backoff are emitted-but-inert.
-        * Ruby:                        consumes NONE (GET-only retry); every
-                                       emitted retry field is inert.
+                                       and backoff are emitted-but-inert. Ruby
+                                       applies both on its governed GET path
+                                       only — mutations never retry there.
 
 Exit non-zero on any parity mismatch.
 """

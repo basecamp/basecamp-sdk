@@ -169,10 +169,10 @@ module Basecamp
     # Performs the authenticated hop-1 GET for the download flow (SPEC §14).
     #
     # Retries network errors plus the declared {DOWNLOAD_RETRY_ON} statuses —
-    # never 500 — under the public max_retries total-attempt cap, floored at
-    # one for downloads (+max_retries: 0+ still sends one attempt). DownloadURL
-    # has no behavior-model entry, so the policy is passed directly rather than
-    # looked up by operation.
+    # never 500 — under the public max_retries total-attempt cap, which is
+    # floored at one attempt on every path, not just this one (+max_retries: 0+
+    # still sends one request). DownloadURL has no behavior-model entry, so the
+    # policy is passed directly rather than looked up by operation.
     # @param url [String] absolute URL
     # @return [Response]
     def get_download(url)
@@ -389,18 +389,12 @@ module Basecamp
     def request_with_retry(method, url, params: {}, allow_cross_origin: false, operation: nil, retry_on: nil,
       accept: "application/json")
       op_retry = operation && Http.operation_retry(operation)
+      # The cap is floored at one attempt on every path: whether a request
+      # reaches the wire at all must not depend on whether the operation
+      # carries a declared retry block (#532). A declared operation ceiling
+      # still clamps the floored cap downward.
       caller_cap = [ @config.max_retries, 1 ].max
-      # An explicit declared set (the download flow) shares the governed budget
-      # shape — the public cap floored at one. The ungoverned general path
-      # keeps its unfloored cap; its zero-attempt behavior is tracked
-      # separately (#532).
-      max_attempts = if op_retry
-        [ caller_cap, op_retry.fetch("maxAttempts") ].min
-      elsif retry_on
-        caller_cap
-      else
-        @config.max_retries
-      end
+      max_attempts = op_retry ? [ caller_cap, op_retry.fetch("maxAttempts") ].min : caller_cap
       attempt = 0
       refreshed_once = false
       last_error = nil
