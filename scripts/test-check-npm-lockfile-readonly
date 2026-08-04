@@ -55,6 +55,20 @@ run_gate() {   # dir -> prints output, returns gate's exit status
   ( cd "$1" && CHECK_NPM_ROOT="$1" "$GATE" 2>&1 )
 }
 
+# A fixture with a second, delegated Makefile, the way `make check` reaches
+# go/Makefile and swift/Makefile through `$(MAKE) -C`.
+make_delegating_fixture() {
+  local name=$1 nested_recipe=$2
+  local dir="$TMPROOT/$name"
+  mkdir -p "$dir/scripts" "$dir/go"
+  jq -n '{name:"fixture", private:true, scripts:{test:"vitest run"}}' > "$dir/package.json"
+  printf 'check:\n\t$(MAKE) -C go check\n' > "$dir/Makefile"
+  printf 'check:\n\t%s\n' "$nested_recipe" > "$dir/go/Makefile"
+  git -C "$dir" init --quiet
+  git -C "$dir" add -A
+  echo "$dir"
+}
+
 expect_reject() {   # label, dir, expected-fragment
   local label=$1 dir=$2 fragment=$3 out status
   cases=$((cases + 1))
@@ -305,6 +319,23 @@ expect_accept "prose naming node/npm, not invoking it" \
 expect_reject "an absolute path to npm still counts" \
   "$(make_fixture path_npm '/usr/local/bin/npm install --prefer-offline')" \
   'npm install'
+
+# `make check` delegates into go/Makefile and swift/Makefile. A root-only scan
+# could not see a writer in a delegated recipe.
+expect_reject "a writer in a delegated Makefile" \
+  "$(make_delegating_fixture delegated 'cd ../typescript && npm install --package-lock-only')" \
+  'npm install'
+
+expect_accept "a delegated Makefile with only permitted commands" \
+  "$(make_delegating_fixture delegated_ok 'cd ../typescript && npm ci')"
+
+# An unquoted `#` starts a comment; nothing after it runs. Reporting it is a
+# false alarm with no honest fix — allowlisting `install` would gut the gate.
+expect_accept "an inline shell comment mentioning npm install" \
+  "$(make_fixture inline_comment 'echo ok # npm install is for local setup')"
+
+expect_accept "a trailing comment after a permitted command" \
+  "$(make_fixture inline_comment2 'true' 'npm ci   # not npm install')"
 
 echo "== the deliberate exemption =="
 

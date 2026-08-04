@@ -193,6 +193,12 @@ scan_line() {
   while ((i < n)); do
     local w=${words[i]}
 
+    # An unquoted `#` at the start of a word begins a comment, and nothing after
+    # it runs. Without this, `echo ok # npm install is for local setup` was
+    # reported as a forbidden invocation — a false alarm with no honest fix
+    # available, since allowlisting `install` would gut the invariant.
+    [[ $w == '#'* ]] && break
+
     # An operator ends the command, and with it any shell-wrapper context.
     if [[ $w == ';' || $w == '&' || $w == '|' || $w == '(' || $w == ')' \
        || $w == '<' || $w == '>' || $w == '`' ]]; then
@@ -333,12 +339,18 @@ done < <(git ls-files '*package.json' ':!:**/node_modules/**')
 #    Pre-filtered with NPM_GREP rather than scanning every line: only lines that
 #    could name npm can carry a violation, and the parser is far too slow to run
 #    on all 60k tracked lines.
-while IFS=: read -r lineno text; do
-  [[ "$text" =~ ^$'\t' ]] || continue
-  stripped="${text#"${text%%[![:space:]]*}"}"
-  [[ "$stripped" == \#* ]] && continue
-  check_text "Makefile" "$lineno" "$stripped"
-done < <(grep -nE "$NPM_GREP" Makefile)
+#
+#    EVERY tracked Makefile, not just the root one: `make check` delegates into
+#    go/Makefile and swift/Makefile via `$(MAKE) -C`, so a writer in a delegated
+#    recipe would have been invisible to a root-only scan.
+while IFS= read -r mk; do
+  while IFS=: read -r lineno text; do
+    [[ "$text" =~ ^$'\t' ]] || continue
+    stripped="${text#"${text%%[![:space:]]*}"}"
+    [[ "$stripped" == \#* ]] && continue
+    check_text "$mk" "$lineno" "$stripped"
+  done < <(grep -nE "$NPM_GREP" "$mk" 2>/dev/null)
+done < <(git ls-files 'Makefile' '*/Makefile' '*.mk' '*/*.mk')
 
 # 3. Scripts under scripts/, which is what those Makefile recipes actually run.
 #    Without this, the exemption above would be unreachable decoration and the

@@ -52,6 +52,16 @@ if (!existsSync(MARKER)) {
 // remaining file older than dist while dist still carries the deleted module —
 // no extant file records the change, but the parent directory's mtime does.
 // Additions and renames land the same way.
+// The mtime of one path, without descending into it. Used for the SDK root: a
+// recursive walk there would sweep dist/ and node_modules/ and always look new.
+function newestMtime2(path) {
+  try {
+    return statSync(path).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
 function newestMtime(path) {
   let newest = 0;
   const stack = [path];
@@ -71,14 +81,23 @@ function newestMtime(path) {
   return newest;
 }
 
+// Every one of these must exist. newestMtime() reports 0 for a missing path,
+// so a deleted tsconfig.json would have *lowered* the computed source time and
+// left the build looking fresh — output built against a configuration that is
+// no longer there. Absence is staleness, not freshness.
+const REQUIRED = ["tsconfig.json", "package.json", "package-lock.json"];
+for (const input of REQUIRED) {
+  if (!existsSync(join(SDK, input))) {
+    die(`SDK build input ${input} is missing, so dist cannot reflect the current tree.`);
+  }
+}
+
 const sourceMtime = Math.max(
   newestMtime(join(SDK, "src")),
-  newestMtime(join(SDK, "tsconfig.json")),
-  newestMtime(join(SDK, "package.json")),
-  // The lockfile too: a dependency update can change the compiler itself, and
-  // therefore the emitted JavaScript and declarations, without any source file
-  // being touched. dist would look current while being built by another tsc.
-  newestMtime(join(SDK, "package-lock.json")),
+  // The SDK root's own mtime, which is what records one of these being deleted
+  // or renamed after the build.
+  newestMtime2(SDK),
+  ...REQUIRED.map((input) => newestMtime(join(SDK, input))),
 );
 const builtMtime = statSync(MARKER).mtimeMs;
 

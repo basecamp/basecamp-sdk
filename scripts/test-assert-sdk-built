@@ -93,6 +93,14 @@ echo "== the cases that false-greened earlier cuts =="
 lock=$(make_sdk lock); sleep 0.02; touch "$lock/package-lock.json"
 expect fail "the lockfile changed after the build" "$lock" "stale"
 
+# newestMtime() reports 0 for a missing path, so a deleted input LOWERED the
+# computed source time and left the build looking fresh.
+cfgdel=$(make_sdk cfgdel); sleep 0.02; rm "$cfgdel/tsconfig.json"
+expect fail "tsconfig.json deleted after the build" "$cfgdel" "missing"
+
+lockdel=$(make_sdk lockdel); sleep 0.02; rm "$lockdel/package-lock.json"
+expect fail "package-lock.json deleted after the build" "$lockdel" "missing"
+
 # tsconfig does not set noEmitOnError, so tsc can write dist/index.js and still
 # exit non-zero — which skips postbuild and its marker. Entry-point mtime alone
 # calls that a good build.
