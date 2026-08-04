@@ -164,10 +164,16 @@ scan_line() {
   local line=$1
   REASONS=()
 
+  # A backslash-newline is a line continuation: the shell removes both and runs
+  # one command. Join those first, or the backslash survives as a token and
+  # stands where the next word should be — `npm audit --audit-level high \` +
+  # `fix` left `\` in the action's position and the `fix` was never reached.
+  line=${line//\\$'\n'/}
+
   # `read -a` stops at the first newline, so a package.json script value spanning
   # several lines would have had only its first line tokenised — the writer on
-  # line two was never seen. A newline IS a command separator, so turn it into
-  # the one the padding below already understands.
+  # line two was never seen. A remaining newline IS a command separator, so turn
+  # it into the one the padding below already understands.
   line=${line//$'\n'/;}
 
   # Shell operators do not need surrounding whitespace, so `npm ci;npm install`
@@ -271,6 +277,14 @@ scan_line() {
           REASONS+=("unrecognised npm option \`$OPT_UNKNOWN\` after \`audit\` — cannot tell whether the action is \`fix\`")
         elif ((OPT_IDX < n)) && [[ ${words[OPT_IDX]} =~ ^fix ]]; then
           REASONS+=("\`npm audit fix\` rewrites the lockfile")
+        elif ((OPT_IDX < n)) && [[ ! ${words[OPT_IDX]} =~ ^[a-zA-Z] ]] \
+             && [[ ${words[OPT_IDX]} != ';' && ${words[OPT_IDX]} != '&' \
+                && ${words[OPT_IDX]} != '|' && ${words[OPT_IDX]} != '(' \
+                && ${words[OPT_IDX]} != ')' && ${words[OPT_IDX]} != '<' \
+                && ${words[OPT_IDX]} != '>' && ${words[OPT_IDX]} != '`' ]]; then
+          # Something stands where the action would be but is not a word, so we
+          # cannot tell whether it resolves to `fix`.
+          REASONS+=("cannot resolve the \`npm audit\` action from \`${words[OPT_IDX]}\`")
         fi
       fi
     fi

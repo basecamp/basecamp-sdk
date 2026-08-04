@@ -37,6 +37,7 @@ make_sdk() {
   printf 'export const b = 2;\n' > "$dir/src/oauth/index.ts"
   printf '{}\n' > "$dir/tsconfig.json"
   printf '{"name":"sdk"}\n' > "$dir/package.json"
+  printf '{"lockfileVersion":3}\n' > "$dir/package-lock.json"
   sleep 0.02
   printf 'export const a = 1;\n' > "$dir/dist/index.js"
   : > "$dir/dist/.build-complete"        # what postbuild leaves on success
@@ -86,6 +87,11 @@ pkg=$(make_sdk pkg); sleep 0.02; touch "$pkg/package.json"
 expect fail "package.json newer than the build" "$pkg" "stale"
 
 echo "== the cases that false-greened earlier cuts =="
+
+# A dependency bump can change the compiler and so the emitted output, with no
+# source file touched. dist built by the previous tsc is stale.
+lock=$(make_sdk lock); sleep 0.02; touch "$lock/package-lock.json"
+expect fail "the lockfile changed after the build" "$lock" "stale"
 
 # tsconfig does not set noEmitOnError, so tsc can write dist/index.js and still
 # exit non-zero — which skips postbuild and its marker. Entry-point mtime alone

@@ -181,6 +181,14 @@ expect_reject "npm audit --json fix" \
 expect_accept "npm audit --audit-level high (no action)" \
   "$(make_fixture ok_audit_level 'npm audit --audit-level high')"
 
+# A backslash-newline is a continuation: the shell joins the lines and runs
+# `npm audit --audit-level high fix`. Rewriting the newline to `;` without
+# consuming the backslash left `\` standing where the action should be.
+expect_reject "npm audit ... \\ <newline> fix (continuation hides the action)" \
+  "$(make_fixture audit_cont 'npm audit --audit-level high \
+  fix')" \
+  'npm audit fix'
+
 # The shell strips quoting before resolving the command, so these run exactly as
 # the bare spellings do — but the quotes stay attached through `read -a` and the
 # token stops looking like npm.

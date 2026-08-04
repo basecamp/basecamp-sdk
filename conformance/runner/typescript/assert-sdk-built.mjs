@@ -75,6 +75,10 @@ const sourceMtime = Math.max(
   newestMtime(join(SDK, "src")),
   newestMtime(join(SDK, "tsconfig.json")),
   newestMtime(join(SDK, "package.json")),
+  // The lockfile too: a dependency update can change the compiler itself, and
+  // therefore the emitted JavaScript and declarations, without any source file
+  // being touched. dist would look current while being built by another tsc.
+  newestMtime(join(SDK, "package-lock.json")),
 );
 const builtMtime = statSync(MARKER).mtimeMs;
 
