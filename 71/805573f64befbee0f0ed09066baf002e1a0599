@@ -1,0 +1,23 @@
+go/pkg/basecamp/webhooks_test.go
+  s_7971b60690ffce::t_5adc6100a7b171 177-179
+go/pkg/basecamp/checkins_test.go
+  s_7971b60690ffce::t_51dc5bf9a82e90 1364-1366
+go/pkg/basecamp/timeline_test.go
+  s_7971b60690ffce::t_79ed9a34206a8c 81-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "71805573f64befbee0f0ed09066baf002e1a0599",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
