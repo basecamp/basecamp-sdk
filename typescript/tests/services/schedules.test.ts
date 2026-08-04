@@ -641,9 +641,15 @@ describe("SchedulesService", () => {
         }),
       );
 
+      // Read first, then assign the same value back. Written as a destructure
+      // rather than `e.url = e.url` so it does not read as an accidental
+      // self-assignment (CodeQL flags that shape, and it is right to): the
+      // point is that only the *setter* marks a carve-out dirty, so assigning
+      // the seeded value is a deliberate write that must reach the wire.
       await service.editEntry(4101, (e) => {
-        e.url = e.url;
-        e.highlighted = e.highlighted;
+        const { url, highlighted } = e;
+        e.url = url;
+        e.highlighted = highlighted;
       });
 
       expect(putBody).toHaveProperty("url");
@@ -665,8 +671,10 @@ describe("SchedulesService", () => {
         }),
       );
 
+      // Read-then-assign, for the reason given on the join-link case above.
       await service.editEntry(4101, (e) => {
-        e.participantIds = e.participantIds;
+        const { participantIds } = e;
+        e.participantIds = participantIds;
       });
 
       expect(putBody.participant_ids).toEqual([1049715914, 1049715915]);
