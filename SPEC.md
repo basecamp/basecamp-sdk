@@ -1316,7 +1316,7 @@ Attempt budget per SDK — disabling retry (each SDK's spelling of `enable_retry
 |-----|--------|
 | Go | `MaxRetries` as total attempts (hand-written client rejects < 1) |
 | Python | `max_retries` as total attempts, floored at one (`max_retries: 0` still sends one attempt) |
-| Ruby | `max_retries` as total attempts, floored at one for downloads (`max_retries: 0` still sends one attempt; the general ungoverned GET path's zero-attempt behavior is tracked separately) |
+| Ruby | `max_retries` as total attempts, floored at one on every path — downloads, governed GETs and ungoverned GETs alike (`max_retries: 0` still sends one attempt) |
 | Kotlin | `maxRetries` as total attempts, floored at one, gated on `enableRetry`; an accepted `maxRetries = 0` still sends exactly one attempt |
 | TypeScript | Fixed three-attempt policy when `enableRetry` is true; one attempt when false. No public numeric knob. |
 | Swift | Fixed three-attempt policy when `enableRetry` is true; one attempt when false. No public numeric knob. |
