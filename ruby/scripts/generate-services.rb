@@ -580,6 +580,34 @@ class ServiceGenerator
        .downcase
   end
 
+  # Folds a multi-line description into the body of a YARD `@param` tag.
+  #
+  # The first line is returned bare — the caller has already written
+  # `# @param name [Type] ` in front of it. Every later line is indented under
+  # it, EXCEPT a blank one: a paragraph break must emit a bare `#`, not `#`
+  # followed by the continuation padding. Padding an empty line is trailing
+  # whitespace, which `git diff --check` fails on, and it stayed fixed only
+  # because this lives in the generator — patching the emitted file put it back
+  # on the next `make generate`.
+  #
+  # Any trailing whitespace already in the description is stripped for the same
+  # reason: a Smithy doc comment can carry it, and the generator should not
+  # launder it into a generated file.
+  YARD_CONTINUATION_INDENT = '      #   '
+
+  def yard_param_description(text)
+    text.to_s.split("\n", -1).each_with_index.map do |line, index|
+      stripped = line.rstrip
+      if index.zero?
+        stripped
+      elsif stripped.empty?
+        '      #'
+      else
+        "#{YARD_CONTINUATION_INDENT}#{stripped}"
+      end
+    end.join("\n")
+  end
+
   def generate_service(service)
     lines = []
 
@@ -656,7 +684,7 @@ class ServiceGenerator
         ruby_name = to_snake_case(b[:name])
         type = b[:type] || 'Object'
         type = "#{type}, nil" unless b[:required]
-        desc = (b[:description] || ruby_name.gsub('_', ' ')).gsub("\n", "\n      #   ")
+        desc = yard_param_description(b[:description] || ruby_name.gsub('_', ' '))
         format_hint = b[:format_hint] ? " (#{b[:format_hint]})" : ''
         lines << "      # @param #{ruby_name} [#{type}] #{desc}#{format_hint}"
       end
@@ -667,7 +695,7 @@ class ServiceGenerator
       ruby_name = to_snake_case(q[:name])
       type = q[:type] || 'String'
       type = "#{type}, nil" unless q[:required]
-      desc = (q[:description] || ruby_name.gsub('_', ' ')).gsub("\n", "\n      #   ")
+      desc = yard_param_description(q[:description] || ruby_name.gsub('_', ' '))
       lines << "      # @param #{ruby_name} [#{type}] #{desc}"
     end
 
