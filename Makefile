@@ -1211,11 +1211,19 @@ generate:
 # line at the commit that introduces a writer, and works even where the write
 # would be a no-op; this one cannot say what went wrong, only that something
 # did — but no spelling, `eval` or delegation can talk it out of noticing.
+#
+# --verify runs whether or not the checks passed, and the sub-make's exit status
+# is preserved. A target that writes a lockfile and THEN fails is the case that
+# most needs the diagnostic, and aborting the recipe on the first failure would
+# have left the dirty tree unexplained.
 check:
 	@./scripts/assert-lockfiles-unchanged --record
-	@$(MAKE) check-targets
-	@./scripts/assert-lockfiles-unchanged --verify
-	@echo "==> All checks passed"
+	@rc=0; $(MAKE) check-targets || rc=$$?; \
+	 if ! ./scripts/assert-lockfiles-unchanged --verify; then \
+	   if [ $$rc -eq 0 ]; then rc=1; fi; \
+	 fi; \
+	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
+	 echo "==> All checks passed"
 
 check-targets: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built test-assert-lockfiles-unchanged
 	@:

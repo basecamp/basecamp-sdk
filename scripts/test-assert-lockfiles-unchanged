@@ -96,6 +96,42 @@ expect fail "written via eval of an assembled string" \
 expect fail "written by a command held in a variable" \
   "w=printf; \$w 'y' >> typescript/package-lock.json"
 
+# A lockfile that did not exist before is not in the index, so an index-based
+# snapshot listed it in neither side and the comparison passed over it.
+expect fail "a NEW untracked lockfile created at the repo root" \
+  "printf '{}' > package-lock.json"
+
+expect fail "a new lockfile in a directory that had none" \
+  "mkdir -p extra && printf '{}' > extra/package-lock.json"
+
+echo "== the wrapper runs --verify even when the checks fail =="
+
+# Mirrors the `check:` recipe: record, run a step that writes a lockfile and then
+# fails, verify regardless. The developer must see the tripwire diagnostic, not
+# only the original failure, and the exit status must stay non-zero.
+cases=$((cases + 1))
+wdir=$(make_repo "wrapper")
+wsnap="$TMPROOT/snapwrapper"
+wout=$( {
+  cd "$wdir" || exit 1
+  export CHECK_NPM_ROOT="$wdir" LOCKFILE_SNAPSHOT="$wsnap"
+  "$ASSERT" --record >/dev/null
+  # Exactly the shape of the `check:` recipe.
+  rc=0
+  ( printf 'x' >> typescript/package-lock.json; exit 7 ) || rc=$?
+  if ! "$ASSERT" --verify; then
+    if [ $rc -eq 0 ]; then rc=1; fi
+  fi
+  echo "WRAPPER_EXIT=$rc"
+} 2>&1 )
+if [[ "$wout" == *"modified a dependency lockfile"* && "$wout" == *"WRAPPER_EXIT=7"* ]]; then
+  echo "  ok    failing checks still get the tripwire diagnostic, exit preserved"
+else
+  echo "  FAIL  wrapper contract — expected the diagnostic and WRAPPER_EXIT=7:" >&2
+  printf '        %s\n' "$wout" >&2
+  failures=$((failures + 1))
+fi
+
 echo
 if [[ $failures -eq 0 ]]; then
   echo "assert-lockfiles-unchanged self-test passed ($cases cases)."

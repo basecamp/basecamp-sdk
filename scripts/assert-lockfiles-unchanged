@@ -45,6 +45,11 @@ cd "${CHECK_NPM_ROOT:-$(dirname "$0")/..}" || exit 1
 
 SNAPSHOT=${LOCKFILE_SNAPSHOT:-${TMPDIR:-/tmp}/basecamp-sdk-lockfiles.$(id -u).sha}
 
+# Walk the filesystem, not the index. `git ls-files` lists only what is already
+# tracked, so a lockfile CREATED during the checks — a root package-lock.json,
+# say — appeared in neither snapshot and the comparison passed while the tree was
+# left dirty. A file that did not exist before and does now is exactly the thing
+# this is looking for.
 hash_lockfiles() {
   local f
   while IFS= read -r f; do
@@ -54,8 +59,11 @@ hash_lockfiles() {
     else
       shasum -a 256 "$f"
     fi
-  done < <(git ls-files '*package-lock.json' '*Gemfile.lock' '*uv.lock' \
-           ':!:**/node_modules/**' | sort)
+  done < <(find . \
+             \( -name node_modules -o -name .git -o -name dist -o -name build \) -prune \
+             -o -type f \( -name 'package-lock.json' -o -name 'Gemfile.lock' \
+                           -o -name 'uv.lock' \) -print \
+           | LC_ALL=C sort)
 }
 
 case "${1:-}" in
