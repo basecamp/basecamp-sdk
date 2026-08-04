@@ -1,0 +1,26 @@
+.github/workflows/release-typescript.yml
+  s_7971b60690ffce::t_62673de4295576 146,152
+.github/workflows/release-kotlin.yml
+  s_7971b60690ffce::t_10031c12835956 140-141,145
+.github/workflows/release-swift.yml
+  s_7971b60690ffce::t_0c380eff3b9123 53-67,73-83,85-95
+  s_7971b60690ffce::t_ff5ff9c24dc8c4 84
+.github/workflows/release-go.yml
+  s_7971b60690ffce::t_83ca62ecd796cb 73-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "27be87317c796e4f7eb1e2cb35e6ebe3bed95f90",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
