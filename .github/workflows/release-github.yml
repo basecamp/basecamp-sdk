@@ -162,7 +162,7 @@ jobs:
             if [ -f MIGRATING.md ]; then
               echo "## Upgrading"
               echo ""
-              echo "Read [MIGRATING.md](https://github.com/basecamp/basecamp-sdk/blob/${VERSION}/MIGRATING.md) before you bump the version — it lists the breaks that give you no compile error, no exception and no decoder failure."
+              echo "Read [MIGRATING.md](https://github.com/basecamp/basecamp-sdk/blob/${VERSION}/MIGRATING.md) before you bump the version — it lists the breaks a clean build will not catch: the silent ones that change behaviour with no error at all, and the ones that compile and then raise or fail to decode on one particular shape of response."
               echo ""
             fi
             echo "## Installation"

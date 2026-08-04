@@ -35,8 +35,11 @@ it passes your tests and fails in production.
 | [Kotlin](#kotlin) | 17 | 6 | 1 |
 
 61 breaks the compiler will not catch, across the six: 55 with no signal at all
-and 6 that fail at runtime. These are counts at `2afc97707`, the commit this
-release is cut from; nothing described here is still in flight.
+and 6 that fail at runtime. These are counts at `2afc97707` — the last commit of
+release content, and the baseline every count here was measured against, not the
+commit the tag is cut from. v0.13.0 is tagged from `main` after this guide
+merges, so the tagged tree contains this file; the counts carry over unchanged
+because nothing described here is still in flight.
 
 #637 does **not** add a row to either column, despite landing after the first
 draft of this table. It made `Todolist.color` and `.comments_app_url` required —
@@ -52,16 +55,21 @@ body.
 > **As of `2afc97707`.** Base `v0.12.0` = `7e2925d25`. Every count in this
 > document is a measurement at that commit, not a constant. If you are reading
 > this from a later tag, re-run the derivations below — they are cheap, and a
-> hand-incremented count is how these go wrong. The release spans 67 merged
+> hand-incremented count is how these go wrong. The release spans 55 merged
 > pull requests, 15 of them labelled `breaking`:
 >
 > ```bash
-> v12=$(git log -1 --format=%cI v0.12.0)
+> # Compare as instants, not as strings. `mergedAt` is Z-formatted UTC while
+> # `git log %cI` carries a local offset, and jq's `>` on two strings is
+> # lexicographic — that comparison silently counts PRs merged in the hours
+> # before the tag. Use %ct and fromdateiso8601 so both sides are epoch seconds.
+> epoch=$(git log -1 --format=%ct v0.12.0)
 > gh pr list --repo basecamp/basecamp-sdk --state merged --limit 300 \
->   --json number,mergedAt --jq "[.[]|select(.mergedAt > \"$v12\")]|length"
+>   --json number,mergedAt \
+>   --jq "[.[]|select((.mergedAt|fromdateiso8601) > $epoch)]|length"
 > gh pr list --repo basecamp/basecamp-sdk --state merged --label breaking \
 >   --limit 300 --json number,mergedAt \
->   --jq "[.[]|select(.mergedAt > \"$v12\")]|length"
+>   --jq "[.[]|select((.mergedAt|fromdateiso8601) > $epoch)]|length"
 > ```
 >
 > A labelled PR is not the same unit as an entry below: one PR can break four
