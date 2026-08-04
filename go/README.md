@@ -387,6 +387,37 @@ cfg.LoadConfigFromEnv()
 cfg, err := basecamp.LoadConfig("/path/to/config.json")
 ```
 
+## Optional Fields
+
+Optional fields are pointers, so that "not addressed" stays distinguishable from
+a value. Nil omits the field; a non-nil pointer sends the value verbatim,
+including the zero value. `basecamp.Ptr` builds one for any type:
+
+```go
+entry, err := account.Schedules().UpdateEntry(ctx, entryID, &basecamp.UpdateScheduleEntryRequest{
+    Summary:        basecamp.Ptr("Kickoff, moved"),
+    AllDay:         basecamp.Ptr(false),     // an explicit false, not "unset"
+    ParticipantIDs: basecamp.Ptr([]int64{}), // an explicit empty list: remove everyone
+    // Description stays nil, so the entry's description is left alone.
+})
+```
+
+Reading one is the half that fails quietly: Go auto-dereferences a value-receiver
+method call, so `hc.UpdatedAt.IsZero()` compiles against a `*time.Time` and
+panics at run time on a chart that has never moved. Nil-check it, or let
+`basecamp.Deref` return the zero value for you:
+
+```go
+hc, err := account.HillCharts().Get(ctx, todosetID)
+if updated := basecamp.Deref(hc.UpdatedAt); !updated.IsZero() {
+    fmt.Println("last moved", updated)
+}
+```
+
+Collapsing absence to the zero value is only safe where the caller cannot tell
+the two apart. Where the difference carries meaning — a string the server really
+sent as empty versus a field it omitted — compare against nil instead.
+
 ## API Coverage
 
 ### Projects & Organization

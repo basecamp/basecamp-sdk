@@ -2,12 +2,14 @@ package basecamp_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
@@ -402,4 +404,44 @@ func ExampleCampfiresService_CreateLine() {
 	}
 
 	fmt.Printf("Message posted: %s\n", line.Content)
+}
+
+func ExamplePtr() {
+	// Optional request fields are pointers so that "not addressed" stays
+	// distinguishable from a value. Ptr sets one; leaving it nil omits it.
+	req := &basecamp.UpdateScheduleEntryRequest{
+		Summary:        basecamp.Ptr("Kickoff, moved"),
+		AllDay:         basecamp.Ptr(false),     // an explicit false, not "unset"
+		ParticipantIDs: basecamp.Ptr([]int64{}), // an explicit empty list: remove everyone
+		// Description stays nil, so the entry's description is left alone.
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(string(body))
+	// Output: {"summary":"Kickoff, moved","all_day":false,"participant_ids":[]}
+}
+
+func ExampleDeref() {
+	// A hill chart that has never moved omits updated_at, so UpdatedAt is nil.
+	// Calling hc.UpdatedAt.IsZero() directly compiles and panics; Deref is total.
+	never := &basecamp.HillChart{Enabled: true}
+	moved := &basecamp.HillChart{
+		Enabled:   true,
+		UpdatedAt: basecamp.Ptr(time.Date(2026, 8, 3, 9, 30, 0, 0, time.UTC)),
+	}
+
+	for _, hc := range []*basecamp.HillChart{never, moved} {
+		if updated := basecamp.Deref(hc.UpdatedAt); updated.IsZero() {
+			fmt.Println("never moved")
+		} else {
+			fmt.Println("last moved", updated.Format(time.RFC3339))
+		}
+	}
+	// Output:
+	// never moved
+	// last moved 2026-08-03T09:30:00Z
 }

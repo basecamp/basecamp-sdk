@@ -289,12 +289,13 @@ func truncate(s string) string {
 
 // deref safely dereferences an optional-field pointer, returning the zero
 // value when the field was absent.
+//
+// The internal spelling of the exported [Deref], kept as the vocabulary the
+// hundreds of existing conversion sites already read in. Forwarding rather than
+// reimplementing keeps one definition, so the contract callers get cannot drift
+// from the contract this package relies on.
 func deref[T any](p *T) T {
-	if p == nil {
-		var zero T
-		return zero
-	}
-	return *p
+	return Deref(p)
 }
 
 // omitzero converts a value-typed wrapper option to a generated request's
@@ -310,8 +311,11 @@ func omitzero[T comparable](v T) *T {
 
 // ptr returns a pointer to v, for optional fields where the value — zero
 // included — must be sent.
+//
+// The internal spelling of the exported [Ptr]; see deref for why it forwards
+// rather than reimplements.
 func ptr[T any](v T) *T {
-	return &v
+	return Ptr(v)
 }
 
 // intPtrFrom converts an optional generated int32 pointer to the SDK's *int,

@@ -66,6 +66,27 @@
 //   - [AccountClient.Attachments] - File attachments
 //   - [Client.Authorization] - Account-agnostic authorization info
 //
+// # Optional Fields
+//
+// Optional fields are pointers, so that "not addressed" stays distinguishable
+// from a value. Nil omits the field; a non-nil pointer sends the value
+// verbatim, including the zero value. [Ptr] builds one for any type:
+//
+//	entry, err := account.Schedules().UpdateEntry(ctx, entryID, &basecamp.UpdateScheduleEntryRequest{
+//	    Summary:        basecamp.Ptr("Kickoff, moved"),
+//	    AllDay:         basecamp.Ptr(false),     // an explicit false, not "unset"
+//	    ParticipantIDs: basecamp.Ptr([]int64{}), // an explicit empty list: remove everyone
+//	})
+//
+// Reading one is the half that fails quietly: Go auto-dereferences a
+// value-receiver method call, so hc.UpdatedAt.IsZero() compiles against a
+// *time.Time and panics at run time on a chart that has never moved. Nil-check
+// it, or let [Deref] return the zero value for you:
+//
+//	if updated := basecamp.Deref(hc.UpdatedAt); !updated.IsZero() {
+//	    fmt.Println("last moved", updated)
+//	}
+//
 // # Working with Projects
 //
 // List all projects:
