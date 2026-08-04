@@ -238,7 +238,7 @@ class AccountClient:
 
     @property
     def schedules(self):
-        from basecamp.generated.services.schedules import SchedulesService
+        from basecamp.services.schedules import SchedulesService
 
         return self._service("schedules", lambda: SchedulesService(self))
 

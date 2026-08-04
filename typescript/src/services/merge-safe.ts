@@ -190,6 +190,36 @@ export function requiredWritableBoolean(
 }
 
 /**
+ * Reads an *optional* writable boolean, refusing to coerce a malformed one.
+ *
+ * {@link writableString}'s boolean sibling, standing in the same relation to
+ * {@link requiredWritableBoolean} that `writableString` does to
+ * {@link requiredWritableString}: an absent key or an explicit `null` is
+ * genuinely "not set" and returns `false`, because that is what the server
+ * already holds.
+ *
+ * `ScheduleEntry.highlighted` is the case it exists for. The entry partial
+ * emits it unconditionally, but the reduced calendar partial behind
+ * `GetUpcomingSchedule` does not, and both render through the same schema — so
+ * the member is optional and absence is legitimate rather than malformed.
+ *
+ * What still cannot be tolerated is the *wrong type*: a `"yes"` or a `1` must be
+ * refused, not coerced, because a caller who assigns the seeded value straight
+ * back sends whatever it was seeded with. That branch is delegated to
+ * {@link requiredWritableBoolean}, so an optional boolean and a required one
+ * report a non-boolean identically.
+ */
+export function writableBoolean(
+  body: Record<string, unknown>,
+  key: string,
+  opts: { record: string; escape: string }
+): boolean {
+  const value = body[key];
+  if (value === undefined || value === null) return false;
+  return requiredWritableBoolean(body, key, opts);
+}
+
+/**
  * Reads a list of person records and projects it to their integer IDs.
  *
  * The analogue of {@link writableString} for the ID-list fields. The `.map()`

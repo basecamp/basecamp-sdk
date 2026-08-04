@@ -105,37 +105,9 @@ module Basecamp
           document, record: "Document", operation: "GetDocument", escape: ESCAPE_HATCH
         )
         DocumentFields.new(
-          title: required_writable_string(body, "title"),
+          title: MergeSafe.required_writable_string(body, "title", record: "Document", escape: ESCAPE_HATCH),
           content: MergeSafe.writable_string(body, "content", record: "Document", escape: ESCAPE_HATCH)
         )
-      end
-
-      # Reads a writable string the record is *required* to carry.
-      #
-      # +MergeSafe.writable_string+ treats an absent key or an explicit +nil+ as
-      # genuinely empty, which is right for an optional field — <tt>""</tt> is
-      # what the server already holds. It is wrong for a required one.
-      # +Document.title+ is <tt>@required</tt> in the spec and BC3 can never
-      # render it blank (+Document#title+ is
-      # <tt>super.presence || "Untitled"</tt>), so an absent or nil +title+ in a
-      # 2xx body is a malformed response, not an empty title. Coalescing it to
-      # <tt>""</tt> and sending that in the full-replace PUT would blank the real
-      # title on a call that only touched +content+ — #576's defect exactly: a
-      # value the caller never mentioned, silently substituted.
-      #
-      # The wrong-type branch is delegated to +MergeSafe.writable_string+, so a
-      # required field and an optional one report a non-string identically.
-      def required_writable_string(body, key)
-        value = body[key]
-        if value.nil? || (value.is_a?(String) && value.strip.empty?)
-          raise MergeSafe.malformed(
-            %(Document field "#{key}" is required but the response carried #{MergeSafe.describe(value)}),
-            "The merge-safe update/edit resend this field verbatim, so a missing or blank value " \
-            "would blank the current one. Use #{ESCAPE_HATCH} to write the record deliberately."
-          )
-        end
-
-        MergeSafe.writable_string(body, key, record: "Document", escape: ESCAPE_HATCH)
       end
 
       # PUTs the full writable state via +replace+. Both fields are always

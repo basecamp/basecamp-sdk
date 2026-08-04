@@ -169,6 +169,33 @@ module Basecamp
         value
       end
 
+      # Reads an *optional* writable boolean, refusing to coerce a malformed one.
+      #
+      # {writable_string}'s boolean sibling, standing in the same relation to
+      # {required_writable_boolean} that +writable_string+ does to
+      # +required_writable_string+: a missing key or an explicit +nil+ is
+      # genuinely "not set" and returns +false+, because that is what the server
+      # already holds.
+      #
+      # +ScheduleEntry#highlighted+ is the case it exists for. The entry partial
+      # emits it unconditionally, but the reduced calendar partial behind
+      # GetUpcomingSchedule does not, and both render through the same schema —
+      # so the member is optional and absence is legitimate rather than
+      # malformed.
+      #
+      # What still cannot be tolerated is the *wrong type*: a <tt>"yes"</tt> or a
+      # +1+ must be refused, not coerced, because a caller who assigns the seeded
+      # value straight back sends whatever it was seeded with. That branch is
+      # delegated to {required_writable_boolean}, so an optional boolean and a
+      # required one report a non-boolean identically.
+      def writable_boolean(body, key, record:, escape:)
+        if body[key].nil?
+          false
+        else
+          required_writable_boolean(body, key, record: record, escape: escape)
+        end
+      end
+
       # Reads a list of person records and projects it to their Integer ids.
       #
       # The analogue of {writable_string} for the id-list fields. The +map+ it

@@ -342,10 +342,27 @@ class OperationMapper
         todo_id: path_params["todoId"],
         **todo_write_kwargs(body)
       )
+    # ReplaceScheduleEntry is the real operationId; UpdateScheduleEntry and
+    # EditScheduleEntry are SYNTHETIC scenario keys. All three ride the one wire
+    # operation (PUT /schedule_entries/{id}) and name the three SDK surfaces
+    # over it, so the fixture can pin each one's request shape.
+    when "ReplaceScheduleEntry"
+      # Raw single PUT, no read-before-write. Presence-bearing: only keys the
+      # fixture carries are passed, so an absent url stays off the wire while an
+      # explicit "" survives compact_params (which strips only nil).
+      @account.schedules.replace_entry(entry_id: path_params["entryId"], **schedule_entry_write_kwargs(body))
     when "UpdateScheduleEntry"
-      # Only pass keys the fixture carries: compact_params strips nil, so an
-      # absent participant_ids stays off the wire while [] survives.
+      # Merge-safe composite: GET then PUT of the five full-state members, plus
+      # only the carve-outs the caller addressed.
       @account.schedules.update_entry(entry_id: path_params["entryId"], **schedule_entry_write_kwargs(body))
+    when "EditScheduleEntry"
+      # Read-modify-write closure. Assigning by name is what makes the carve-out
+      # dirty tracking observable: a key the fixture omits is never assigned, so
+      # it never reaches the wire, while a key whose value equals the read-back
+      # is assigned and therefore does.
+      @account.schedules.edit_entry(entry_id: path_params["entryId"]) do |entry|
+        (body || {}).each { |key, value| entry.public_send("#{key}=", value) }
+      end
     when "UpdateCard"
       # Merge-safe composite: GET then PUT, resending the fetched due_on.
       @account.cards.update(card_id: path_params["cardId"], **card_write_kwargs(body))
@@ -508,7 +525,12 @@ class OperationMapper
     content description assignee_ids completion_subscriber_ids due_on starts_on notify
   ].freeze
 
-  SCHEDULE_ENTRY_WRITE_KEYS = %w[summary starts_at ends_at description participant_ids all_day notify].freeze
+  # The full writable vocabulary of PUT /schedule_entries/{id}: five full-state
+  # members plus the four addressed-only ones (participant_ids, url and
+  # highlighted are BC3's preservedOnOmission carve-out; notify is a directive).
+  SCHEDULE_ENTRY_WRITE_KEYS = %w[
+    summary starts_at ends_at description all_day participant_ids notify url highlighted
+  ].freeze
 
   def schedule_entry_write_kwargs(body)
     SCHEDULE_ENTRY_WRITE_KEYS.select { |key| (body || {}).key?(key) } \

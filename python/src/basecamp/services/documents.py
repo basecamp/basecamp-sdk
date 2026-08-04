@@ -27,35 +27,13 @@ from basecamp.generated.services.documents import (
     AsyncDocumentsService as _GeneratedAsyncDocumentsService,
 )
 from basecamp.generated.services.documents import DocumentsService as _GeneratedDocumentsService
-from basecamp.services._merge_safe import describe, malformed, require_mapping, writable_string
+from basecamp.services._merge_safe import (
+    require_mapping,
+    required_writable_string,
+    writable_string,
+)
 
 _ESCAPE = "replace()"
-
-
-def _required_writable_string(body: dict[str, Any], key: str, *, record: str, escape: str) -> str:
-    """Read a writable string the record is *required* to carry.
-
-    :func:`writable_string` treats an absent key or an explicit ``None`` as
-    genuinely empty, which is right for an optional field — ``""`` is what the
-    server already holds. It is wrong for a required one. ``Document.title`` is
-    ``@required`` in the spec and BC3 can never render it blank (``Document#title``
-    is ``super.presence || "Untitled"``), so an absent or null ``title`` in a 2xx
-    body is a malformed response, not an empty title. Coalescing it to ``""`` and
-    sending that in the full-replace PUT would blank the real title on a call that
-    only touched ``content`` — #576's defect exactly: a value the caller never
-    mentioned, silently substituted.
-
-    The wrong-type branch is delegated to :func:`writable_string`, so a required
-    field and an optional one report a non-string identically.
-    """
-    value = body.get(key)
-    if value is None or (isinstance(value, str) and not value.strip()):
-        raise malformed(
-            f'{record} field "{key}" is required but the response carried {describe(value)}',
-            "The merge-safe update/edit resend this field verbatim, so a missing or blank value "
-            f"would blank the current one. Use {escape} to write the record deliberately.",
-        )
-    return writable_string(body, key, record=record, escape=escape)
 
 
 def _fields_from_document(document: dict[str, Any]) -> dict[str, Any]:
@@ -76,7 +54,7 @@ def _fields_from_document(document: dict[str, Any]) -> dict[str, Any]:
     """
     body = require_mapping(document, record="Document", operation="GetDocument", escape=_ESCAPE)
     return {
-        "title": _required_writable_string(body, "title", record="Document", escape=_ESCAPE),
+        "title": required_writable_string(body, "title", record="Document", escape=_ESCAPE),
         "content": writable_string(body, "content", record="Document", escape=_ESCAPE),
     }
 

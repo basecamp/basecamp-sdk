@@ -1,41 +1,9 @@
 import { DocumentsService as GeneratedDocumentsService } from "../generated/services/documents.js";
 import type { Document } from "../generated/services/documents.js";
-import { describeValue, malformedResponse, requireRecord, writableString } from "./merge-safe.js";
+import { requireRecord, requiredWritableString, writableString } from "./merge-safe.js";
 
 /** The deliberate-overwrite escape hatch named in this composite's error hints. */
 const ESCAPE = "replace()";
-
-/**
- * Reads a writable string the record is *required* to carry.
- *
- * `writableString` treats an absent key or an explicit `null` as genuinely
- * empty, which is right for an optional field — `""` is what the server already
- * holds. It is wrong for a required one. `Document.title` is `@required` in the
- * spec and BC3 can never render it blank (`Document#title` is
- * `super.presence || "Untitled"`), so an absent or null `title` in a 2xx body is
- * a malformed response, not an empty title. Coalescing it to `""` and sending
- * that in the full-replace PUT would blank the real title on a call that only
- * touched `content` — #576's defect exactly: a value the caller never mentioned,
- * silently substituted.
- *
- * The wrong-type branch is delegated to `writableString`, so a required field
- * and an optional one report a non-string identically.
- */
-function requiredWritableString(
-  body: Record<string, unknown>,
-  key: string,
-  opts: { record: string; escape: string }
-): string {
-  const value = body[key];
-  if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
-    throw malformedResponse(
-      `${opts.record} field "${key}" is required but the response carried ${describeValue(value)}`,
-      `The merge-safe update/edit resend this field verbatim, so a missing or blank value would ` +
-        `blank the current one. Use ${opts.escape} to write the record deliberately.`
-    );
-  }
-  return writableString(body, key, opts);
-}
 
 /**
  * Request parameters for update. Both fields are optional: an omitted field

@@ -31,7 +31,7 @@ _TODO_WRITE_FIELDS = ("content", "description", "assignee_ids", "completion_subs
 # downstream branches on which shape came back from the GET.
 _TODOLIST_WRITE_FIELDS = ("name", "description")
 _DOCUMENT_WRITE_FIELDS = ("title", "content")
-_SCHEDULE_ENTRY_WRITE_FIELDS = ("summary", "starts_at", "ends_at", "description", "participant_ids", "all_day", "notify")
+_SCHEDULE_ENTRY_WRITE_FIELDS = ("summary", "starts_at", "ends_at", "description", "all_day", "participant_ids", "notify", "url", "highlighted")
 _CARD_WRITE_FIELDS = ("title", "content", "due_on", "assignee_ids")
 
 # Sentinel distinguishing "key absent from the JSON body" from a present None.
@@ -305,13 +305,34 @@ class OperationMapper:
                     id=path_params["id"],
                     **{k: body[k] for k in _TODOLIST_WRITE_FIELDS if k in body},
                 )
+            case "ReplaceScheduleEntry":
+                # The raw single PUT, no read-before-write. Presence-bearing:
+                # only keys the fixture carries are passed, so an unaddressed
+                # carve-out (participant_ids, url, highlighted) stays off the
+                # wire and BC3 preserves it, while an explicit [] / "" / false
+                # survives _compact and clears.
+                return self._account.schedules.replace_entry(
+                    entry_id=path_params["entryId"],
+                    **{k: body[k] for k in _SCHEDULE_ENTRY_WRITE_FIELDS if k in body},
+                )
             case "UpdateScheduleEntry":
-                # Only pass keys the fixture carries: _compact strips None, so
-                # an absent participant_ids stays off the wire while [] survives.
+                # Synthetic scenario key (not a wire op): the merge-safe
+                # composite, GET then PUT of the full state, with only the
+                # addressed carve-outs merged in.
                 return self._account.schedules.update_entry(
                     entry_id=path_params["entryId"],
                     **{k: body[k] for k in _SCHEDULE_ENTRY_WRITE_FIELDS if k in body},
                 )
+            case "EditScheduleEntry":
+                # Synthetic scenario key (not a wire op): drive the edit
+                # context manager, assigning each fixture requestBody key
+                # onto the same-named attribute. Assignment is what marks a
+                # carve-out dirty, so absence stays absence.
+                with self._account.schedules.edit_entry(entry_id=path_params["entryId"]) as entry:
+                    for key in _SCHEDULE_ENTRY_WRITE_FIELDS:
+                        if key in body:
+                            setattr(entry, key, body[key])
+                return entry.result
             case "UpdateCard":
                 # Merge-safe composite: GET then PUT, resending the fetched due_on.
                 return self._account.cards.update(
