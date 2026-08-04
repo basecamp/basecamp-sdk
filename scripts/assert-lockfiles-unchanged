@@ -5,8 +5,14 @@
 # uv.lock, and the Go checksum files, which `go` rewrites as readily as `npm`
 # rewrites a lockfile.
 #
-# `--record` before the checks, `--verify` after. Both are wired into the `check`
-# target, so `make check` proves the property on every run.
+# `--record` before the checks, `--verify` after: both are wired into the `check`
+# target, so `make check` proves the property on every local run.
+#
+# `--verify-clean` is the CI form. A CI checkout starts pristine, so the committed
+# tree is already the baseline and no snapshot is needed — it simply asserts that
+# no dependency manifest differs from HEAD and that none has appeared. It runs at
+# the end of every job that installs dependencies, with `if: always()`, so a job
+# cannot both fail and hide what it dirtied.
 #
 # ---------------------------------------------------------------------------
 # Why this exists alongside check-npm-lockfile-readonly
@@ -107,8 +113,28 @@ case "${1:-}" in
       "Use \`npm ci\`, which installs from the lockfile without writing it back." >&2
     exit 1
     ;;
+  --verify-clean)
+    # No snapshot needed: a CI checkout starts pristine, so the committed tree is
+    # the baseline. Catches a manifest that was MODIFIED and one that was
+    # CREATED where none was tracked — `git status` reports both, and the second
+    # is the case a tracked-files-only comparison can never see.
+    dirty=$(git status --porcelain --untracked-files=all -- \
+              '*package-lock.json' '*Gemfile.lock' '*uv.lock' \
+              '*go.sum' 'go.work.sum' 2>/dev/null)
+    if [[ -z "$dirty" ]]; then
+      echo "Dependency manifests match the committed tree."
+      exit 0
+    fi
+    echo "FAIL: this job left a dependency manifest different from the committed tree." >&2
+    printf '%s\n' "$dirty" | sed 's/^/      /' >&2
+    echo >&2
+    printf '%s\n' \
+      "Nothing in CI may write a lockfile. A dirty tree blocks the release flow," \
+      "and what gets written depends on which npm ran it (#612). Use \`npm ci\`." >&2
+    exit 1
+    ;;
   *)
-    echo "usage: $0 --record | --verify" >&2
+    echo "usage: $0 --record | --verify | --verify-clean" >&2
     exit 2
     ;;
 esac

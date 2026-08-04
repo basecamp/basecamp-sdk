@@ -122,6 +122,36 @@ expect fail "a NEW untracked lockfile created at the repo root" \
 expect fail "a new lockfile in a directory that had none" \
   "mkdir -p extra && printf '{}' > extra/package-lock.json"
 
+echo "== --verify-clean: the CI form, baselined on the committed tree =="
+
+# CI checks out pristine, so git is the baseline and no snapshot is needed.
+# `git status` reports untracked appearance as well as tracked mutation, which is
+# the case a tracked-files-only comparison can never see.
+vc() {   # want(pass|fail), label, mutate
+  local want=$1 label=$2 mutate=$3 dir out status
+  cases=$((cases + 1))
+  dir=$(make_repo "vc$cases")
+  git -C "$dir" -c user.email=t@t -c user.name=t commit -qm init
+  ( cd "$dir" && eval "$mutate" )
+  out=$( cd "$dir" && CHECK_NPM_ROOT="$dir" "$ASSERT" --verify-clean 2>&1 ); status=$?
+  if [[ $want == pass && $status -ne 0 ]]; then
+    echo "  FAIL  $label — exited $status; it must accept this:" >&2
+    printf '        %s\n' "$out" >&2; failures=$((failures + 1))
+  elif [[ $want == fail && $status -eq 0 ]]; then
+    echo "  FAIL  $label — exited 0; it must reject this" >&2; failures=$((failures + 1))
+  else
+    echo "  ok    $label — $([[ $want == pass ]] && echo accepted || echo "rejected (exit $status)")"
+  fi
+}
+
+vc pass "a pristine checkout" "true"
+vc fail "a tracked lockfile modified" "printf 'x' >> typescript/package-lock.json"
+vc fail "a NEW untracked lockfile created" "printf '{}' > package-lock.json"
+vc fail "a new lockfile in a new directory" "mkdir -p n && printf '{}' > n/package-lock.json"
+vc fail "go.sum modified" "printf 'x' >> go/go.sum"
+vc fail "a tracked lockfile deleted" "rm python/uv.lock"
+vc pass "an unrelated file changed" "echo x > README.md"
+
 echo "== concurrent runs must not share a baseline =="
 
 # ~30 worktrees are worked in at once here. With a snapshot path keyed only on
