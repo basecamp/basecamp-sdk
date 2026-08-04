@@ -1,0 +1,27 @@
+go/templates/client.tmpl
+  s_ae792ed0be3006::t_6d8e2645f73bc6 1605-1611
+go/pkg/basecamp/cards_test.go
+  s_ae792ed0be3006::t_b8d7ff3ff03c25 1167-1169
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_ae792ed0be3006::t_7a1337cf0cb4b2 195-198
+python/scripts/generate_services.py
+  s_ae792ed0be3006::t_ff89324646f7a1 159-162
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_ae792ed0be3006::t_660aa6a354a9eb 59-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a3c772574ab0a3c673bd34c8594cfcc085900b99",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
