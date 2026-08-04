@@ -1,0 +1,25 @@
+spec/smithy-build.json
+  s_ae792ed0be3006::t_921e19bddebff6 39-40
+spec/overlays/examples.smithy
+  s_ae792ed0be3006::t_ea0416c765a8de 10-19
+openapi.json
+  s_ae792ed0be3006::t_4045f02789d145 21667-21668,21710-21711
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_cbe35d12e44060 19311-19312,19354-19355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "12b02cda8c4dd58e44e94cdb276d8b0de921def4",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
