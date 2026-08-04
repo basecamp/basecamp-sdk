@@ -30,6 +30,10 @@ require "set"
 #   * anyOf/oneOf as AT-LEAST-ONE (the value must satisfy some branch; a group is
 #     nullable only if a branch is)
 #
+# Partial is not the same as permissive. A `$ref` this validator cannot resolve
+# is an ERROR, never an absent constraint — see `UnresolvableRef`. "I did not
+# check this" and "this checks out" must not share an exit code.
+#
 # Intentionally NOT implemented (out of scope unless a case is reached by the
 # actual generated schemas): exact-one `oneOf` selection, `enum`, `const`,
 # discriminators, `pattern`, `format`, numeric bounds, `additionalProperties`,
@@ -41,6 +45,17 @@ require "set"
 # receiverless call style the extraction moved out of; `SchemaInstanceValidator.x`
 # works too.
 module SchemaInstanceValidator
+  # Raised when a schema-position `$ref` cannot be resolved to a component schema
+  # object. Resolution failure is FATAL rather than "this node adds no
+  # constraints": see the resolution block in `merged_constraints`.
+  #
+  # `instance_errors` converts it into an ordinary path-tagged validation error,
+  # so both gates report it beside every other finding and exit non-zero. A
+  # caller that reaches `merged_constraints` directly gets the raise, which is
+  # also correct — the validator cannot answer a question about a schema it
+  # cannot read.
+  class UnresolvableRef < StandardError; end
+
   module_function
 
   # Ruby name of a `$ref`, or nil.
@@ -155,11 +170,38 @@ module SchemaInstanceValidator
       alt_groups.concat(a2)
     end
 
-    name = ref_name(schema)
-    if name && !visited.include?(name)
-      visited << name
-      absorb.call(components[name])
-      # fall through to local keywords (OpenAPI 3.1 permits $ref siblings)
+    # `$ref` resolution is fatal on failure, not silent.
+    #
+    # This used to be `absorb.call(components[name])` with no check, and a nil
+    # (or otherwise non-Hash) target takes the `!schema.is_a?(Hash)` return
+    # above: no required fields, no type constraints, no items, and
+    # `nullable = true`. Absorbed into the enclosing conjunction that is not
+    # "unknown", it is "unconstrained" — EVERY value validates against a broken
+    # pointer, root nulls included, and the gate counts the example as checked
+    # and exits 0. A validator that reports success for a schema it never read is
+    # the failure mode both callers exist to prevent, so say the pointer is
+    # broken instead of agreeing with whatever it points at.
+    #
+    # A `$ref` that names an already-`visited` component is a cycle, not a
+    # failure — it resolved once on the way in and the guard stops the recursion.
+    if schema["$ref"].is_a?(String)
+      ref = schema["$ref"]
+      name = ref_name(schema)
+      raise UnresolvableRef, "unresolvable `$ref` `#{ref}`: not a `#/components/schemas/<name>` pointer" unless name
+
+      unless visited.include?(name)
+        target = components[name]
+        raise UnresolvableRef, "unresolvable `$ref` `#{ref}`: no such entry in components/schemas" if target.nil?
+
+        unless target.is_a?(Hash)
+          raise UnresolvableRef,
+                "unresolvable `$ref` `#{ref}`: components/schemas/#{name} is #{target.class}, not a schema object"
+        end
+
+        visited << name
+        absorb.call(target)
+        # fall through to local keywords (OpenAPI 3.1 permits $ref siblings)
+      end
     end
 
     t, nn = allowed_types(schema)
@@ -209,8 +251,15 @@ module SchemaInstanceValidator
   # behind the exemption, so it is checked here. Skipping it let a published
   # example of `value: null` under a non-nullable schema be counted as VALIDATED
   # — the gate approving exactly the class of contradiction it exists to catch.
+  #
+  # An unresolvable `$ref` anywhere in the schema is reported here as a finding
+  # rather than propagating: the rescue sits at every recursion level, so the
+  # innermost frame that touched the broken pointer names it with the most
+  # specific path it has.
   def instance_errors(prefix, value, schema, components, depth = 0)
     return [] if depth > 60
+
+    label = prefix.empty? ? "(root)" : prefix
 
     if value.nil?
       return [] unless depth.zero?
@@ -218,7 +267,6 @@ module SchemaInstanceValidator
       _, _, _, root_nullable, = merged_constraints(schema, components)
       return [] if root_nullable
 
-      label = prefix.empty? ? "(root)" : prefix
       return ["#{label}: value is null but the schema is not nullable"]
     end
 
@@ -230,7 +278,6 @@ module SchemaInstanceValidator
     type_sets.each do |ts|
       next if type_matches?(ts, value)
 
-      label = prefix.empty? ? "(root)" : prefix
       return ["#{label}: expected #{ts.to_a.sort.join('|')}, got #{json_type(value)}"]
     end
 
@@ -242,7 +289,6 @@ module SchemaInstanceValidator
     alt_groups.each do |branches|
       next if branches.any? { |branch| instance_errors(prefix, value, branch, components, depth + 1).empty? }
 
-      label = prefix.empty? ? "(root)" : prefix
       errs << "#{label}: value matches none of the #{branches.length} allowed alternatives (anyOf/oneOf)"
     end
 
@@ -275,5 +321,7 @@ module SchemaInstanceValidator
     end
 
     errs
+  rescue UnresolvableRef => e
+    ["#{label}: #{e.message}"]
   end
 end

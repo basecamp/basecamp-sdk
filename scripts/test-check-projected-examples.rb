@@ -38,7 +38,8 @@
 #   guard removed in the copy                  cases that go red
 #   ----------------------------------------   ------------------------------
 #   response-example walk                      control, 1, 2, 3, 4, 7, 8, 9,
-#                                              11, 12, 13, 14, 15a, 16
+#                                              11, 12, 13, 14, 15a, 16, 17a,
+#                                              17b
 #   request-body-example walk                  5
 #   parameter-example walk                     6, 15b
 #   liveness floor (>= 1 response example)     10
@@ -48,23 +49,31 @@
 #   Example Object type check                  14
 #   triage keeps :error distinct from :skip    11, 13, 14
 #   instance_errors result discarded           1, 2, 3, 4, 5, 6, 7, 8, 9,
-#                                              15a, 15b
+#                                              15a, 15b, 17a, 17b
 #   root-null check (schema_instance_validator) 15a, 15b
 #   ...and its nullability test, i.e. a version
 #   that bans EVERY root null                  16
+#   schema `$ref` resolution check
+#     (schema_instance_validator)              17a, 17b
 #
 # `instance_errors result discarded` is the row that matters most: it unwires the
 # validator itself while leaving every walk in place, so a gate that visits all
 # 37 examples and concludes nothing still goes red. Coverage and judgement are
 # pinned separately.
 #
-# The last two rows are one guard and its over-correction, pinned in both
+# The root-null rows are one guard and its over-correction, pinned in both
 # directions on purpose. Root nulls were the third hole a reviewer found in this
-# gate, and all three were the same shape: A PATH THAT RETURNS SUCCESS WITHOUT
+# gate, and all four were the same shape: A PATH THAT RETURNS SUCCESS WITHOUT
 # EXAMINING THE THING. The cheapest way to close it — reject every root null —
 # would pass 15a/15b and start rejecting legitimate examples for
 # required-and-nullable shapes, which is the class `Todolist.color` belongs to.
 # So 16 pins that the check consults nullability rather than banning nulls.
+#
+# The last row is the fourth hole, and the widest: an unresolvable schema `$ref`
+# used to yield an UNCONSTRAINED schema rather than an error, so every example
+# under a broken pointer passed. See case 17. Every one of these four was found
+# by adversarial review, and none by this self-test — which is the argument for
+# keeping the table honest rather than decorative.
 #
 # Note what is NOT in this table any more. Until #644 the projection published
 # response examples still carrying the Smithy output wrapper their schema no
@@ -422,10 +431,54 @@ out, status = with_mutated_spec do |doc|
 end
 expect_pass(failures, "16. root null IS allowed where the schema permits null", out, status)
 
+# --- 17. A `$ref` the validator cannot resolve -----------------------------------
+#
+# The fourth hole, and the same shape as the other three: A PATH THAT RETURNS
+# SUCCESS WITHOUT EXAMINING THE THING — this one wide enough to swallow the whole
+# gate. `merged_constraints` resolved a `$ref` as `components[name]` and absorbed
+# the result unchecked; a miss handed it nil, which takes the non-Hash return —
+# no required fields, no type constraints, and NULLABLE. Not "unknown":
+# "unconstrained". So every example under a broken pointer validated, root nulls
+# included, and the run reported them among the checked.
+#
+# 17a is the adversarial-review reproduction, unchanged, and it is deliberately a
+# composite: the bad pointer PLUS the two defects this gate exists to catch —
+# case 1's missing `color` (#637) and case 15a's root null. Measured against the
+# pre-fix validator, all three together produced:
+#
+#     ==> Projected examples validate — 37 checked (10 response, 5 request-body,
+#         22 parameter)
+#     exit 0
+#
+# which is why one case carries all three. Drop the resolution check and 17a goes
+# red for the only reason that matters — not because the message changed, but
+# because the checker finds NOTHING WHATSOEVER to say about two examples that
+# contradict their schema twice over.
+
+out, status = with_mutated_spec do |doc|
+  anchor(doc, "paths", TODOLIST_PATH, "get", "responses", "200", "content", "application/json")["schema"] =
+    { "$ref" => "#/components/schemas/NoSuchSchema" }
+  todolist_payload(doc, "GetTodolistOrGroup_example1").delete("color")
+  todolist_response_examples(doc).fetch("GetTodolistOrGroup_example2")["value"] = nil
+end
+expect_fail(failures, "17a. unresolvable $ref is an error, not an unconstrained schema", out, status,
+            "unresolvable `$ref` `#/components/schemas/NoSuchSchema`: no such entry in components/schemas")
+
+# 17b. Present but not a schema object. Same class, same silent outcome before
+# the fix — the non-Hash return does not care WHY the target was not a Hash.
+
+out, status = with_mutated_spec do |doc|
+  doc["components"]["schemas"]["NotASchema"] = "this is a string, not a schema object"
+  anchor(doc, "paths", TODOLIST_PATH, "get", "responses", "200", "content", "application/json")["schema"] =
+    { "$ref" => "#/components/schemas/NotASchema" }
+end
+expect_fail(failures, "17b. $ref resolving to a non-object is an error", out, status,
+            "components/schemas/NotASchema is String, not a schema object")
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> projected-example self-test passed — 2 positive + 16 negative/skip cases"
+  puts "==> projected-example self-test passed — 2 positive + 18 negative/skip cases"
   exit 0
 else
   warn "projected-example self-test FAILED:"
