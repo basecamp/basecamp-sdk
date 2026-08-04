@@ -110,8 +110,8 @@ describe("CardsService", () => {
           methods.push("PUT");
           const body = (await request.json()) as Record<string, unknown>;
           expect(body.title).toBe("Updated card");
-          // The raw path is sharp: an unset due_on stays off the wire, and BC3
-          // reads that as a clear.
+          // An unset due_on stays off the wire. Since bc3#12521 the JSON
+          // representation reads that as "leave the due date unchanged".
           expect(body.due_on).toBeUndefined();
           return HttpResponse.json(sampleCard(cardId));
         })
@@ -125,50 +125,138 @@ describe("CardsService", () => {
     });
   });
 
-  describe("update (merge-safe)", () => {
-    it("refetches and resends due_on when the caller does not address it", async () => {
-      const cardId = 42;
+  // bc3#12521 made the JSON card representation presence-aware: an omitted key
+  // is left unchanged, and the due date is cleared by an explicit `""` or null.
+  // These handlers MODEL that server, so the assertions are about the card that
+  // ends up stored rather than only about the bytes that went out.
+  describe("update (presence-aware)", () => {
+    const presenceAwareServer = (initial: { due_on: string | null }) => {
+      const stored: { title: string; due_on: string | null } = {
+        title: "Original title",
+        due_on: initial.due_on,
+      };
       const methods: string[] = [];
 
       server.use(
-        http.get(`${BASE_URL}/card_tables/cards/${cardId}`, () => {
+        http.get(`${BASE_URL}/card_tables/cards/42`, () => {
           methods.push("GET");
-          return HttpResponse.json({ ...sampleCard(cardId), due_on: "2024-02-01" });
+          return HttpResponse.json({ ...sampleCard(42), ...stored });
         }),
-        http.put(`${BASE_URL}/card_tables/cards/${cardId}`, async ({ request }) => {
+        http.put(`${BASE_URL}/card_tables/cards/42`, async ({ request }) => {
           methods.push("PUT");
           const body = (await request.json()) as Record<string, unknown>;
-          expect(body.title).toBe("Updated card");
-          // BC3 merges the body over `{ due_on: nil }`, so omitting due_on
-          // would erase the date.
-          expect(body.due_on).toBe("2024-02-01");
-          expect(body.assignee_ids).toBeUndefined();
-          return HttpResponse.json(sampleCard(cardId));
+          // Presence, not truthiness — `"due_on" in body` is the whole point.
+          if ("title" in body) stored.title = String(body.title);
+          if ("due_on" in body) {
+            const value = body.due_on;
+            stored.due_on = value === null || value === "" ? null : String(value);
+          }
+          return HttpResponse.json({ ...sampleCard(42), ...stored });
         })
       );
 
-      const card = await client.cards.update(cardId, { title: "Updated card" });
-      expect(card.id).toBe(cardId);
-      expect(methods).toEqual(["GET", "PUT"]);
+      return { stored, methods };
+    };
+
+    it("leaves the stored due date alone when the caller does not address it", async () => {
+      const { stored, methods } = presenceAwareServer({ due_on: "2024-02-01" });
+
+      const card = await client.cards.update(42, { title: "Updated card" });
+
+      expect(stored.title).toBe("Updated card");
+      // The date survives an update that never mentioned it — and survives
+      // without a read-modify-write, which is what the single PUT pins.
+      expect(stored.due_on).toBe("2024-02-01");
+      expect(card.due_on).toBe("2024-02-01");
+      expect(methods).toEqual(["PUT"]);
     });
 
-    it("clears the due date by omitting due_on, with no GET", async () => {
-      const cardId = 42;
-      const methods: string[] = [];
+    it("actually clears the stored due date when asked explicitly", async () => {
+      const { stored, methods } = presenceAwareServer({ due_on: "2024-02-01" });
+
+      const card = await client.cards.update(42, { dueOn: null });
+
+      // The regression this pins: encoding the clear as an OMISSION leaves the
+      // date standing on a presence-aware server, so the call silently no-ops.
+      // Only a body that carries due_on clears it.
+      expect(stored.due_on).toBeNull();
+      expect(card.due_on).toBeNull();
+      expect(methods).toEqual(["PUT"]);
+    });
+
+    it("sets the stored due date when given one", async () => {
+      const { stored, methods } = presenceAwareServer({ due_on: null });
+
+      await client.cards.update(42, { dueOn: "2024-03-15" });
+
+      expect(stored.due_on).toBe("2024-03-15");
+      expect(methods).toEqual(["PUT"]);
+    });
+  });
+
+  // The wire-level half of the same contract. A GET handler is registered but
+  // must never fire: `methods` is the assertion that `update` is a single PUT.
+  describe("update (wire encoding)", () => {
+    const capture = () => {
+      const captured = { body: {} as Record<string, unknown>, methods: [] as string[] };
 
       server.use(
-        http.put(`${BASE_URL}/card_tables/cards/${cardId}`, async ({ request }) => {
-          methods.push("PUT");
-          const body = (await request.json()) as Record<string, unknown>;
-          // Never `{"due_on": null}` — that would violate body compaction.
-          expect(body.due_on).toBeUndefined();
-          expect("due_on" in body).toBe(false);
-          return HttpResponse.json(sampleCard(cardId));
+        http.get(`${BASE_URL}/card_tables/cards/42`, () => {
+          captured.methods.push("GET");
+          return HttpResponse.json(sampleCard(42));
+        }),
+        http.put(`${BASE_URL}/card_tables/cards/42`, async ({ request }) => {
+          captured.methods.push("PUT");
+          captured.body = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleCard(42));
         })
       );
 
-      await client.cards.update(cardId, { dueOn: null });
-      expect(methods).toEqual(["PUT"]);
+      return captured;
+    };
+
+    it("sends an explicit clear as an empty string, present on the wire", async () => {
+      const captured = capture();
+
+      await client.cards.update(42, { dueOn: null });
+
+      // Present AND empty. `""` is the spelling BC3 casts to nil; `null` would
+      // violate body compaction (SPEC §18), and an omission would now be read
+      // as "leave unchanged". JSON.stringify keeps `""` where it drops
+      // `undefined`, so this is a genuine wire assertion.
+      expect("due_on" in captured.body).toBe(true);
+      expect(captured.body.due_on).toBe("");
+      expect(captured.methods).toEqual(["PUT"]);
+    });
+
+    it("keeps due_on off the wire when the caller does not address it", async () => {
+      const captured = capture();
+
+      await client.cards.update(42, { title: "Renamed" });
+
+      expect(captured.body).not.toHaveProperty("due_on");
+      expect(captured.body.title).toBe("Renamed");
+      expect(captured.methods).toEqual(["PUT"]);
+    });
+
+    it("never resends assignees on the caller's behalf", async () => {
+      const captured = capture();
+
+      await client.cards.update(42, { title: "Renamed" });
+
+      // BC3 filters incoming ids through reachable_people, so echoing them
+      // back could unassign someone who has since lost board access.
+      expect(captured.body).not.toHaveProperty("assignee_ids");
+    });
+
+    it("sends an explicitly empty content, which is a clear", async () => {
+      const captured = capture();
+
+      await client.cards.update(42, { content: "", dueOn: null });
+
+      expect(captured.body.content).toBe("");
+      expect(captured.body.due_on).toBe("");
+      expect(captured.methods).toEqual(["PUT"]);
     });
   });
 
@@ -187,109 +275,6 @@ describe("CardsService", () => {
       await expect(
         client.cards.move(cardId, { columnId: 300 })
       ).resolves.toBeUndefined();
-    });
-  });
-
-  // --- #576: a malformed GET due_on must never reach the replacement PUT ----
-  //
-  // `update` reads the card only to resend its due date, so that one value is
-  // the whole reason the composite exists -- and `if (current.due_on)` failed
-  // in both directions at once. A falsey non-string was DROPPED, and an
-  // omitted `due_on` is exactly how BC3 erases a card's due date
-  // (`{ due_on: nil }.merge(card_params)`), the behaviour this composite
-  // exists to prevent. A truthy non-string was forwarded VERBATIM and written
-  // to the card.
-  //
-  // TypeScript has no runtime decoder to catch either -- `schema.d.ts` is
-  // erased at build time, so `Card` is a compile-time claim nothing validates.
-  //
-  // The assertion that matters is the ORDERING: `requests` must be ["GET"].
-  describe("malformed due_on (#576)", () => {
-    const malformed: [string, unknown][] = [
-      ["false", false],
-      ["zero", 0],
-      ["empty array", []],
-      ["empty object", {}],
-      ["number", 42],
-      ["true", true],
-      ["array", ["x"]],
-      ["object", { a: 1 }],
-    ];
-
-    const serve = (body: unknown, requests: string[]) => {
-      server.use(
-        http.get(`${BASE_URL}/card_tables/cards/42`, () => {
-          requests.push("GET");
-          return HttpResponse.json(body);
-        }),
-        http.put(`${BASE_URL}/card_tables/cards/42`, () => {
-          requests.push("PUT");
-          return HttpResponse.json(sampleCard(42));
-        })
-      );
-    };
-
-    const rejection = async (promise: Promise<unknown>): Promise<unknown> =>
-      promise.then(
-        () => {
-          throw new Error("expected the call to reject, but it resolved");
-        },
-        (error: unknown) => error
-      );
-
-    it.each(malformed)("update refuses a %s due_on before writing", async (_label, value) => {
-      const requests: string[] = [];
-      serve({ ...sampleCard(42), due_on: value }, requests);
-
-      const error = await rejection(client.cards.update(42, { title: "Renamed" }));
-
-      expect(error).toBeInstanceOf(BasecampError);
-      // api_error, not usage: the value arrived in a successful response.
-      expect((error as BasecampError).code).toBe("api_error");
-      expect((error as BasecampError).message).toMatch(/Card field "due_on" is not a string/);
-      expect(requests).toEqual(["GET"]);
-    });
-
-    // The other half of the rule: a card with no due date is not malformed.
-    it.each([
-      ["absent", undefined],
-      ["null", null],
-    ])("treats a %s due_on as genuinely empty", async (_label, value) => {
-      let putBody: Record<string, unknown> = {};
-      const body: Record<string, unknown> = { ...sampleCard(42), due_on: value };
-      if (value === undefined) delete body.due_on;
-      server.use(
-        http.get(`${BASE_URL}/card_tables/cards/42`, () => HttpResponse.json(body)),
-        http.put(`${BASE_URL}/card_tables/cards/42`, async ({ request }) => {
-          putBody = (await request.json()) as Record<string, unknown>;
-          return HttpResponse.json(sampleCard(42));
-        })
-      );
-
-      await client.cards.update(42, { title: "Renamed" });
-
-      expect(putBody).not.toHaveProperty("due_on");
-    });
-
-    // One level up from the field guard: a successful GET can return a scalar,
-    // an array or null, and reading `current.due_on` off null throws a raw
-    // TypeError instead of the documented statusless api_error.
-    it.each([
-      ["array", []],
-      ["string", "card"],
-      ["number", 42],
-      ["null", null],
-      ["boolean", true],
-    ])("update refuses a %s response body before writing", async (_label, body) => {
-      const requests: string[] = [];
-      serve(body, requests);
-
-      const error = await rejection(client.cards.update(42, { title: "Renamed" }));
-
-      expect(error).toBeInstanceOf(BasecampError);
-      expect((error as BasecampError).code).toBe("api_error");
-      expect((error as BasecampError).message).toMatch(/GetCard returned/);
-      expect(requests).toEqual(["GET"]);
     });
   });
 });

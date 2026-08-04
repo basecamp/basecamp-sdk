@@ -5,40 +5,36 @@ import com.basecamp.sdk.generated.models.Card
 import com.basecamp.sdk.generated.services.UpdateCardBody
 
 /**
- * CardsService with a merge-safe [update] on top of the generated surface
+ * CardsService with a named-argument [update] on top of the generated surface
  * ([updateVerbatim], `get`, `move`, ...).
  *
- * BC3 builds the card's update params as `{ due_on: nil }.merge(card_params)`
- * (`kanban/cards_controller.rb`), so **any** update whose body omits `due_on`
- * erases the card's due date. A sparse PUT — the natural thing to write — is
- * therefore destructive on the raw endpoint, which stays available as
- * [updateVerbatim].
+ * BC3 (basecamp/bc3#12521) builds a card update from the JSON params exactly as
+ * they arrive, so the body reads as a patch: a field the caller leaves out is
+ * left alone, and only a field that is present changes. [update] takes the
+ * caller at their word and sends one PUT carrying what they addressed and
+ * nothing else — no field is read back and echoed.
  *
- * [update] composes the public `get` and [updateVerbatim] methods, so hooks
- * observe the two wire operations rather than a synthetic composite.
+ * Clearing the due date is therefore something to *say*, not something to leave
+ * unsaid: `dueOn = ""` puts `"due_on": ""` on the wire, which BC3 casts to nil.
+ * Omitting the key changes nothing.
  */
 class CardsService(client: AccountClient) :
     com.basecamp.sdk.generated.services.CardsService(client) {
 
     /**
-     * Updates a card without disturbing fields the caller did not mention.
+     * Updates a card, touching only the fields the caller names.
      *
-     * [dueOn] is tri-state, which is what makes this safe:
+     * [dueOn] is tri-state:
      *
-     * - `null` (omitted) — the current due date is fetched and resent
-     * - `""` — the due date is cleared
+     * - `null` (omitted) — `due_on` stays off the wire and the card's due date
+     *   is left as it is
+     * - `""` — sent as `"due_on": ""`, which clears the due date
      * - a date — the due date is set
      *
-     * The extra GET is only paid for in the `null` case, the one where the API
-     * would otherwise destroy something.
-     *
-     * Assignees are never resent on the caller's behalf: BC3 filters incoming
-     * IDs through `reachable_people`, so echoing back an id belonging to
-     * someone who has since lost board access would silently unassign them.
-     *
-     * Not atomic: a concurrent due-date change landing between the GET and the
-     * PUT is overwritten with the value this call read. The window is one
-     * round-trip.
+     * [assigneeIds] reads the same way, and leaving it null is the only safe
+     * default: BC3 filters incoming ids through `reachable_people`, so sending
+     * back a list read from the card would silently unassign anyone who has
+     * since lost board access.
      */
     suspend fun update(
         cardId: Long,
@@ -46,24 +42,19 @@ class CardsService(client: AccountClient) :
         content: String? = null,
         dueOn: String? = null,
         assigneeIds: List<Long>? = null,
-    ): Card {
-        // Clearing is encoded by OMITTING due_on — the generated body builder
-        // drops nulls via `?.let`, and BC3 nils an omitted due date. Sending an
-        // explicit null would violate body compaction (SPEC §18), and sending
-        // "" risks a date-format error.
-        val resolvedDueOn = when {
-            dueOn == null -> get(cardId).dueOn?.takeIf { it.isNotEmpty() }
-            dueOn.isEmpty() -> null
-            else -> dueOn
-        }
-        return updateVerbatim(
+    ): Card =
+        // dueOn goes to the wire verbatim, `""` included: the generated body
+        // builder drops only nulls (`?.let`), so the blank survives as
+        // `"due_on": ""` — the explicit clear. A literal null is not an
+        // alternative; body compaction (SPEC §18) would drop it back to an
+        // omission, which now means "leave it alone".
+        updateVerbatim(
             cardId,
             UpdateCardBody(
                 title = title,
                 content = content,
-                dueOn = resolvedDueOn,
+                dueOn = dueOn,
                 assigneeIds = assigneeIds,
             ),
         )
-    }
 }

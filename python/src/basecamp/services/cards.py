@@ -1,16 +1,23 @@
-"""Cards service with a merge-safe ``update``.
+"""Cards service with a presence-aware ``update``.
 
-BC3 builds the card's update params as ``{ due_on: nil }.merge(card_params)``
-(``kanban/cards_controller.rb``), so **any** update whose body omits ``due_on``
-erases the card's due date. A sparse PUT — the natural thing to write — is
-therefore destructive on the raw endpoint, which remains available as
-``update_verbatim``.
+BC3 permits a card's JSON update params exactly as submitted (bc3#12521):
+``kanban/cards_controller`` builds them from ``card_params`` alone, so a key the
+body never mentions is never written. An omitted ``due_on`` therefore leaves the
+card's due date **unchanged**, and only an explicit ``""`` or null clears it. The
+``{ due_on: nil }.merge(card_params)`` default that used to make every sparse
+PUT destructive survives for HTML and turbo_stream web forms alone, which this
+SDK never speaks.
 
-``update`` composes the public ``get`` and ``update_verbatim`` methods, so
-hooks observe the two wire operations, not a synthetic composite.
+A sparse PUT is consequently the correct thing to write, so ``update`` sends
+exactly the fields the caller addressed in a single request. The
+read-modify-write that used to guard ``due_on`` is gone with the behaviour it
+guarded: it now costs a round-trip to preserve a value nothing threatens, and
+its GET-then-PUT window was a race a single request does not have.
 
-Not atomic: a concurrent due-date change landing between the GET and the PUT is
-overwritten with the value this call read. The window is one round-trip.
+A clear is spelled ``""`` rather than a JSON null — null would violate body
+compaction (SPEC section 18), and Rails casts a blank date to nil regardless.
+
+``update_verbatim`` remains as the unadorned name for the same single PUT.
 """
 
 from __future__ import annotations
@@ -19,55 +26,24 @@ from typing import Any
 
 from basecamp.generated.services.cards import AsyncCardsService as _GeneratedAsyncCardsService
 from basecamp.generated.services.cards import CardsService as _GeneratedCardsService
-from basecamp.services._merge_safe import require_mapping, writable_string
-
-_ESCAPE = "update_verbatim()"
 
 _UPDATE_DOC = """Update a card without disturbing fields you did not mention.
 
-``due_on`` is tri-state, which is what makes this safe:
+``due_on`` is tri-state:
 
-* ``None`` (omitted) — the current due date is fetched and resent
-* ``""`` — the due date is cleared
+* ``None`` (unaddressed) — the key is omitted and the due date is left alone
+* ``""`` — the due date is cleared, sent as an explicit empty string
 * a date — the due date is set
 
-The extra GET is only paid for in the ``None`` case, the one where the API
-would otherwise destroy something.
-
-Assignees are never resent on your behalf: BC3 filters incoming IDs through
-``reachable_people``, so echoing back an id belonging to someone who has since
-lost board access would silently unassign them.
+Nothing is resent on your behalf: the request body carries only the arguments
+you passed. Echoing a field back would be actively wrong for assignees — BC3
+filters incoming IDs through ``reachable_people``, so replaying an id belonging
+to someone who has since lost board access would silently unassign them.
 """
 
 
-def _resolve_due_on(due_on: str | None, current: dict[str, Any] | None) -> str | None:
-    """Map the caller's tri-state ``due_on`` onto a wire value.
-
-    Clearing is encoded by OMITTING ``due_on`` — the generated service's
-    ``_compact`` strips ``None``, and BC3 nils an omitted due date. Sending an
-    explicit null would violate body compaction (SPEC §18), and sending ``""``
-    risks a date-format error.
-
-    The fetched value is validated before it is resent, because this composite
-    exists precisely to stop an omitted ``due_on`` from erasing the date and
-    resending an unvalidated one defeats that. The bare ``or None`` this
-    replaced failed in both directions: a falsey non-string (``False``, ``0``,
-    ``[]``, ``{}``) collapsed to ``None``, which ``_compact`` then stripped —
-    so the PUT went out with ``due_on`` absent and BC3 erased the date — while
-    a truthy one (``42``, ``True``, ``["x"]``) rode through verbatim and was
-    written to the card. ``get`` returns ``dict[str, Any]``, so nothing below
-    this validates it (#576).
-    """
-    if due_on is None:
-        body = require_mapping(current, record="Card", operation="GetCard", escape=_ESCAPE)
-        return writable_string(body, "due_on", record="Card", escape=_ESCAPE) or None
-    if due_on == "":
-        return None
-    return due_on
-
-
 class CardsService(_GeneratedCardsService):
-    """Sync cards service with a merge-safe ``update``."""
+    """Sync cards service with a presence-aware ``update``."""
 
     def update(
         self,
@@ -78,12 +54,11 @@ class CardsService(_GeneratedCardsService):
         due_on: str | None = None,
         assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
-        current = self.get(card_id=card_id) if due_on is None else None
         return self.update_verbatim(
             card_id=card_id,
             title=title,
             content=content,
-            due_on=_resolve_due_on(due_on, current),
+            due_on=due_on,
             assignee_ids=assignee_ids,
         )
 
@@ -91,7 +66,7 @@ class CardsService(_GeneratedCardsService):
 
 
 class AsyncCardsService(_GeneratedAsyncCardsService):
-    """Async cards service with a merge-safe ``update``."""
+    """Async cards service with a presence-aware ``update``."""
 
     async def update(
         self,
@@ -102,12 +77,11 @@ class AsyncCardsService(_GeneratedAsyncCardsService):
         due_on: str | None = None,
         assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
-        current = await self.get(card_id=card_id) if due_on is None else None
         return await self.update_verbatim(
             card_id=card_id,
             title=title,
             content=content,
-            due_on=_resolve_due_on(due_on, current),
+            due_on=due_on,
             assignee_ids=assignee_ids,
         )
 

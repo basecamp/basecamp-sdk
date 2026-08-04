@@ -94,34 +94,59 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `4dd2926f8a` (2026-08-03). <!-- @bc3-pin -->
+> The provenance pin is `4e34dc83eb` (2026-08-03). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `2c0dafba13..4dd2926f8a` range (6 commits) contains exactly **one**
+> The `4dd2926f8a..4e34dc83eb` range (2 commits) contains exactly **one**
 > API-contract change, and it is the one this repin exists to absorb: BC3
-> **#12502** (`4dd2926f8a`) preserves a schedule entry's join link and
-> highlight across a sparse update — `PRESERVED_ON_OMISSION = %i[ url
-> highlighted ]` in `Schedules::EntriesController`, plus the other half, which
-> is *emitting* them: `highlighted`, and the join link as **`join_url`** under
-> a non-colliding key, in `api/schedules/entries/_entry.json.jbuilder` and
-> `api/schedules/entries/occurrences/show.json.jbuilder`. It is the only commit
-> in the range touching `doc/api` (8 added lines in
-> `schedule_entries.md`) or `config/routes.rb` (none), so `spec/bc3-routes.json`
-> regenerates with no route delta — the change is to a payload and an omission
-> rule on an already-modelled endpoint, absorbed here as `ReplaceScheduleEntry`
-> and its `preservedOnOmission` carve-out. The remaining five commits are one
-> mail-infrastructure map, two CSS-only, one account-calendar authorization
-> reassessment on profile change, and one authentication-cache crash fix; none
-> touches `doc/api`, `config/routes.rb`, or an API view.
+> **#12521** (`4e34dc83eb`) makes card and card table step updates
+> presence-aware on the **JSON representation only** — `card_update_params`
+> returns bare `card_params` under `request.format.json?` instead of merging
+> over `{ due_on: nil }`, and `steps#update` changes the existing recordable
+> rather than rebuilding it, replacing assignees only when an assignee key is
+> present. An omitted field is now left unchanged; `"due_on": null` or `""`
+> clears; `"assignee_ids": []` removes everyone; `title` becomes optional on
+> step update. The HTML/turbo_stream leg keeps `with_defaults(due_on: nil)`,
+> so this is a representation-level fork invisible to web callers.
+>
+> It is the only commit in the range touching `doc/api` (2 lines in
+> `card_table_cards.md`, 8 in `card_table_steps.md`) and it touches neither
+> `config/routes.rb` nor any view under `app/views/api`, so
+> `spec/bc3-routes.json` regenerates with no route delta — the change is to an
+> omission rule on already-modelled endpoints, absorbed here as the
+> `"due_on": ""` clear encoding across all six SDKs and the removal of the
+> Cards preservation GET. This repin was **reactive, not preventive**: the
+> commit reached production before the compatibility release, so every released
+> SDK's explicit card due-date clear silently no-opped until the absorption
+> landed. The other commit is a single HTML view change hiding the boost emoji
+> picker on narrow columns; it touches no `doc/api`, no `config/routes.rb` and
+> no API view.
 >
 > Earlier pins, kept as the triage record. Each names the pin it was written
 > against, in the past tense, because that is what it is — a range triaged
 > once, at the repin that set its end. Only the sentence above is a claim
 > about today.
+>
+> The pin was `4dd2926f8a` (2026-08-03). The `2c0dafba13..4dd2926f8a` range (6 commits) contained exactly **one**
+> API-contract change, and it was the one that repin absorbed: BC3
+> **#12502** (`4dd2926f8a`) preserved a schedule entry's join link and
+> highlight across a sparse update — `PRESERVED_ON_OMISSION = %i[ url
+> highlighted ]` in `Schedules::EntriesController`, plus the other half, which
+> was *emitting* them: `highlighted`, and the join link as **`join_url`** under
+> a non-colliding key, in `api/schedules/entries/_entry.json.jbuilder` and
+> `api/schedules/entries/occurrences/show.json.jbuilder`. It was the only commit
+> in the range touching `doc/api` (8 added lines in
+> `schedule_entries.md`) or `config/routes.rb` (none), so `spec/bc3-routes.json`
+> regenerated with no route delta — the change was to a payload and an omission
+> rule on an already-modelled endpoint, absorbed here as `ReplaceScheduleEntry`
+> and its `preservedOnOmission` carve-out. The remaining five commits were one
+> mail-infrastructure map, two CSS-only, one account-calendar authorization
+> reassessment on profile change, and one authentication-cache crash fix; none
+> touched `doc/api`, `config/routes.rb`, or an API view.
 >
 > The pin was `2c0dafba13` (2026-08-02). The `d0edc1283b..2c0dafba13` range (11 commits) contained exactly **one**
 > API-contract change: BC3 **#12384** (`dc6cd10714`, the Folders API),

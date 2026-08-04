@@ -6,21 +6,32 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 /**
- * BC3 builds a card's update params as `{ due_on: nil }.merge(card_params)`
- * (`kanban/cards_controller.rb`), so any update whose body omits `due_on`
- * erases the card's due date. `update` reads first and resends it;
- * `updateVerbatim` is the raw single PUT.
+ * BC3 (basecamp/bc3#12521) updates a card from the JSON params as they arrive,
+ * so an omitted `due_on` leaves the due date UNCHANGED and only an explicitly
+ * sent value moves it. Clearing has to be stated: `""` casts to nil server-side.
+ *
+ * `update` is the named-argument face of that contract — one PUT, carrying the
+ * fields the caller addressed — and `updateVerbatim` is the same PUT taking a
+ * body object. [CardServer] applies a PUT the way BC3 does, so the tests below
+ * pin the effect on the card and not merely the bytes.
  */
 class CardsServiceTest {
 
-    private val cardJson = """{
+    private val json = Json { ignoreUnknownKeys = true }
+
+    private fun cardJson(dueOn: String? = "2024-02-01"): String = """{
         "id": 42,
         "status": "active",
         "visible_to_clients": false,
@@ -31,7 +42,7 @@ class CardsServiceTest {
         "type": "Kanban::Card",
         "url": "https://3.basecampapi.com/12345/card_tables/cards/42",
         "app_url": "https://3.basecamp.com/12345/card_tables/cards/42",
-        "due_on": "2024-02-01",
+        "due_on": ${dueOn?.let { "\"$it\"" } ?: "null"},
         "description_attachments": [],
         "parent": {
             "id": 2,
@@ -55,14 +66,32 @@ class CardsServiceTest {
         var lastPutBody: String? = null
     }
 
-    private fun clientFor(exchange: Exchange): AccountClient {
+    /**
+     * The card as the server holds it, updated the way BC3 updates it: the due
+     * date moves only when `due_on` is present in the body, and a blank (or an
+     * explicit null) clears it.
+     */
+    private class CardServer(var dueOn: String? = "2024-02-01") {
+        fun applyPut(body: String, json: Json) {
+            val member = json.parseToJsonElement(body).jsonObject["due_on"]
+            dueOn = when {
+                member == null -> dueOn
+                member is JsonNull -> null
+                else -> member.jsonPrimitive.content.takeIf { it.isNotEmpty() }
+            }
+        }
+    }
+
+    private fun clientFor(exchange: Exchange, server: CardServer = CardServer()): AccountClient {
         val engine = MockEngine { request ->
             exchange.methods.add(request.method.value)
             if (request.method == HttpMethod.Put) {
-                exchange.lastPutBody = (request.body as? io.ktor.http.content.TextContent)?.text
+                val text = (request.body as? io.ktor.http.content.TextContent)?.text.orEmpty()
+                exchange.lastPutBody = text
+                server.applyPut(text, json)
             }
             respond(
-                content = cardJson,
+                content = cardJson(server.dueOn),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
@@ -73,36 +102,74 @@ class CardsServiceTest {
         }.forAccount("12345")
     }
 
-    @Test
-    fun updatePreservesDueOnWhenUnaddressed() = runTest {
-        val exchange = Exchange()
-        clientFor(exchange).cards.update(42, title = "Renamed")
+    /** The `due_on` member of the PUT that was sent, or null if the key was absent. */
+    private fun Exchange.sentDueOn() = json.parseToJsonElement(lastPutBody!!).jsonObject["due_on"]
 
-        assertEquals(listOf("GET", "PUT"), exchange.methods, "the composite must read before writing")
-        val body = exchange.lastPutBody!!
-        assertContains(body, "\"due_on\":\"2024-02-01\"")
-        assertContains(body, "\"title\":\"Renamed\"")
+    @Test
+    fun updateLeavesAnUnaddressedDueOnOffTheWire() = runTest {
+        val exchange = Exchange()
+        val server = CardServer()
+        clientFor(exchange, server).cards.update(42, title = "Renamed")
+
+        assertEquals(listOf("PUT"), exchange.methods, "one request, no read-before-write")
+        assertContains(exchange.lastPutBody!!, "\"title\":\"Renamed\"")
+        assertNull(exchange.sentDueOn(), "an unaddressed due date must not be sent at all")
+        assertEquals("2024-02-01", server.dueOn, "and so the card keeps the date it had")
         // Never echoed back: BC3 filters ids through reachable_people.
-        assertFalse(body.contains("assignee_ids"), "assignees must stay absent when unaddressed")
+        assertFalse(
+            exchange.lastPutBody!!.contains("assignee_ids"),
+            "assignees must stay absent when unaddressed",
+        )
     }
 
     @Test
-    fun updateExplicitClearOmitsDueOnAndSkipsTheRead() = runTest {
+    fun updateExplicitClearSendsBlankDueOn() = runTest {
         val exchange = Exchange()
         clientFor(exchange).cards.update(42, dueOn = "")
 
-        assertEquals(listOf("PUT"), exchange.methods, "an explicit clear needs no read")
-        // Clearing is omission, never a literal null (SPEC section 18).
-        assertFalse(exchange.lastPutBody!!.contains("due_on"))
+        assertEquals(listOf("PUT"), exchange.methods)
+        // The key must be PRESENT and blank. Omitting it is a no-op against
+        // BC3; a literal null is unavailable under body compaction (SPEC §18)
+        // and would compact away to that same omission.
+        val sent = assertNotNull(exchange.sentDueOn(), "an explicit clear must send due_on")
+        assertFalse(sent is JsonNull, "the clear is a blank string, never a literal null")
+        assertEquals("", sent.jsonPrimitive.content)
+        assertContains(exchange.lastPutBody!!, "\"due_on\":\"\"")
+    }
+
+    /**
+     * The behavioural half: against a server that only touches the due date when
+     * the key is present, an explicit clear must actually leave the card with no
+     * due date — and a title-only update must leave it alone.
+     */
+    @Test
+    fun explicitClearClearsAndOmissionDoesNot() = runTest {
+        val server = CardServer()
+        val cards = clientFor(Exchange(), server).cards
+
+        // The model really is presence-aware: a PUT with no due_on changes
+        // nothing. Without this, the clear below could pass for free.
+        cards.update(42, title = "Renamed")
+        assertEquals("2024-02-01", server.dueOn, "an omitted due_on must not clear the date")
+
+        val cleared = cards.update(42, dueOn = "")
+        assertNull(server.dueOn, "an explicit clear must land as a clear on the server")
+        assertNull(cleared.dueOn, "and the card handed back must carry the cleared date")
+
+        // Nor does a later update resurrect what was cleared.
+        cards.update(42, title = "Renamed again")
+        assertNull(server.dueOn, "a later unrelated update must not restore a cleared date")
     }
 
     @Test
-    fun updateExplicitDateSkipsTheRead() = runTest {
+    fun updateExplicitDateSetsTheDueDate() = runTest {
         val exchange = Exchange()
-        clientFor(exchange).cards.update(42, dueOn = "2026-09-01")
+        val server = CardServer()
+        clientFor(exchange, server).cards.update(42, dueOn = "2026-09-01")
 
         assertEquals(listOf("PUT"), exchange.methods)
         assertContains(exchange.lastPutBody!!, "\"due_on\":\"2026-09-01\"")
+        assertEquals("2026-09-01", server.dueOn)
     }
 
     @Test
@@ -113,14 +180,17 @@ class CardsServiceTest {
         val body = exchange.lastPutBody!!
         assertContains(body, "\"content\":\"\"")
         assertContains(body, "\"assignee_ids\":[]")
+        assertContains(body, "\"due_on\":\"\"")
     }
 
     @Test
-    fun updateVerbatimSendsOnePutWithNoRead() = runTest {
+    fun updateVerbatimSendsOnePut() = runTest {
         val exchange = Exchange()
-        clientFor(exchange).cards.updateVerbatim(42, UpdateCardBody(title = "Renamed"))
+        val server = CardServer()
+        clientFor(exchange, server).cards.updateVerbatim(42, UpdateCardBody(title = "Renamed"))
 
-        assertEquals(listOf("PUT"), exchange.methods, "verbatim must not read before writing")
-        assertFalse(exchange.lastPutBody!!.contains("due_on"))
+        assertEquals(listOf("PUT"), exchange.methods)
+        assertNull(exchange.sentDueOn(), "an unmentioned due_on stays off the wire")
+        assertEquals("2024-02-01", server.dueOn)
     }
 }

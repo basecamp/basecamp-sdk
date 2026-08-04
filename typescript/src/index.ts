@@ -186,9 +186,10 @@ export {
   type MoveCardRequest,
 } from "./generated/services/cards.js";
 
-// The plain names belong to the merge-safe composite. UpdateCardRequest keeps
-// working and is strictly wider than before (dueOn accepts null, to ask for an
-// explicit clear); UpdateVerbatimCardRequest above is the raw generated shape.
+// The plain names belong to the presence-aware composite. UpdateCardRequest is
+// strictly wider than the generated shape: its dueOn also accepts null, to ask
+// for an explicit clear, which goes on the wire as "due_on": "".
+// UpdateVerbatimCardRequest above is the raw generated shape.
 export {
   CardsService,
   type UpdateCardRequest,
