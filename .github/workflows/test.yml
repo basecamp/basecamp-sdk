@@ -185,6 +185,21 @@ jobs:
       - name: Replay decoders cover every live fixture operation
         run: make check-replay-decoder-parity
 
+      # `smithy validate` checks `@examples` against the SMITHY model, where a
+      # member that `jsonAdd` later appends to a schema's `required` array is
+      # still natively optional. Nothing compared the projected examples to the
+      # projected schema, so #637 published two `GetTodolistOrGroup` examples
+      # that could not satisfy their own contract and a bot reviewer, not CI,
+      # caught it. The target also runs the gate's self-test, whose first case
+      # is that defect reproduced exactly.
+      #
+      # Under LC_ALL=C so CI exercises the non-UTF-8-locale path (the reads are
+      # pinned to UTF-8; this proves it stays that way).
+      - name: Published examples satisfy the schema the projection publishes
+        run: make check-projected-examples
+        env:
+          LC_ALL: C
+
       # Advisory: prints and exits 0. The guarantee is the byte comparison that
       # runs at the end of every job that installs anything. This is the early
       # warning the byte comparison cannot give — it names the file and line at
