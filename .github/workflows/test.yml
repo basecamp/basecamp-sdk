@@ -98,6 +98,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
   spec-gates:
     name: Spec Gates
@@ -204,6 +205,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   test-go:
@@ -303,6 +305,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   test-typescript:
@@ -388,6 +391,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   test-ruby:
@@ -462,6 +466,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   test-python:
@@ -555,6 +560,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   test-swift:
@@ -605,6 +611,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
   test-kotlin:
     name: Kotlin Tests
@@ -671,6 +678,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   conformance:
@@ -707,6 +715,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   lint:
@@ -741,6 +750,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   race:
@@ -774,6 +784,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   api-compat:
@@ -881,4 +892,5 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean

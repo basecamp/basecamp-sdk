@@ -65,6 +65,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   trivy-typescript:
@@ -120,6 +121,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   govulncheck:
@@ -157,6 +159,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   gosec:
@@ -201,6 +204,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   npm-audit:
@@ -235,6 +239,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   trivy-ruby:
@@ -290,6 +295,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   bundler-audit:
@@ -329,6 +335,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   gradle-dependency-check:
@@ -369,6 +376,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   swift-audit:
@@ -409,6 +417,7 @@ jobs:
       # runs on failure too, so a job cannot fail and hide what it dirtied.
       - name: Dependency manifests unchanged by this job
         if: always()
+        working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
   secrets:
