@@ -36,8 +36,13 @@ class BareArrayResponseMapperTest {
         assertTrue(mapper.shouldTransform("ListProjectsResponseContent", schema));
     }
 
+    /**
+     * The operation-name prefix is irrelevant — what selects this mapper is the
+     * single property being an ARRAY. A Get* route that answers with a bare
+     * array (the everything/report feeds do) is unwrapped just the same.
+     */
     @Test
-    void shouldTransform_rejectsNonListPrefix() {
+    void shouldTransform_ignoresTheOperationNamePrefix() {
         ObjectNode schema = ObjectNode.builder()
                 .withMember("type", "object")
                 .withMember("properties", ObjectNode.builder()
@@ -47,7 +52,7 @@ class BareArrayResponseMapperTest {
                         .build())
                 .build();
 
-        assertFalse(mapper.shouldTransform("GetProjectsResponseContent", schema));
+        assertTrue(mapper.shouldTransform("GetProjectsResponseContent", schema));
     }
 
     @Test

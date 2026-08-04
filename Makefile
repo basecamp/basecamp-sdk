@@ -11,7 +11,7 @@ all: check
 # Smithy targets
 #------------------------------------------------------------------------------
 
-.PHONY: smithy-validate smithy-build smithy-check smithy-clean smithy-mapper behavior-model behavior-model-check
+.PHONY: smithy-validate smithy-build smithy-check smithy-clean smithy-mapper smithy-mapper-test behavior-model behavior-model-check
 
 # Validate Smithy spec
 smithy-validate: smithy-mapper
@@ -22,6 +22,17 @@ smithy-validate: smithy-mapper
 smithy-mapper:
 	@echo "==> Building Smithy OpenAPI mapper..."
 	cd spec/smithy-bare-arrays && ./gradlew publishToMavenLocal --quiet
+
+# Unit-test the custom Smithy OpenAPI mappers.
+#
+# Wired into `make check` on purpose. The mappers own the difference between
+# what Smithy's protocol forces (wrapped outputs) and what BC3 actually sends
+# (bare bodies), and their tests were unrunnable for long enough that three of
+# them had drifted out of agreement with the code: `./gradlew test` here could
+# not even resolve JUnit, so nothing reported it.
+smithy-mapper-test:
+	@echo "==> Testing Smithy OpenAPI mappers..."
+	cd spec/smithy-bare-arrays && ./gradlew test --quiet
 
 # Build OpenAPI from Smithy (also regenerates behavior model + syncs API version)
 smithy-build: behavior-model smithy-mapper
@@ -1241,7 +1252,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged
+check-targets: lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged
 	@:
 
 # Clean all build artifacts

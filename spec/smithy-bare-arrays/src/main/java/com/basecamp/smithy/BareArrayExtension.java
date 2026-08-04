@@ -14,11 +14,22 @@ import java.util.List;
  *
  * <p>This class is discovered via Java SPI and automatically registers
  * the mapper when Smithy builds OpenAPI specifications.
+ *
+ * <p>BareResponseExampleMapper is listed alongside the two schema mappers
+ * deliberately: it mirrors their unwrapping onto the projected response
+ * examples, which live under {@code paths} rather than
+ * {@code components.schemas} and were therefore left wrapped. It runs first
+ * (order 90), because the wrapper property name is only readable while the
+ * schema is still wrapped.
  */
 public final class BareArrayExtension implements Smithy2OpenApiExtension {
 
     @Override
     public List<OpenApiMapper> getOpenApiMappers() {
-        return List.of(new BareArrayResponseMapper(), new BareObjectResponseMapper(), new MultipartRequestBodyMapper());
+        return List.of(
+                new BareResponseExampleMapper(),
+                new BareArrayResponseMapper(),
+                new BareObjectResponseMapper(),
+                new MultipartRequestBodyMapper());
     }
 }
