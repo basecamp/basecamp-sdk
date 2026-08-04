@@ -110,6 +110,26 @@ jobs:
           gem build basecamp-sdk.gemspec
           ls -l "basecamp-sdk-${VERSION}.gem"
 
+      # `gem push` has no dry run, so verify the built artifact instead. The
+      # gemspec collects its file list from `git ls-files`, so a checkout that
+      # did not produce one would yield a well-formed gem with no library in it
+      # — which RubyGems accepts and users cannot require.
+      - name: Verify packaged gem
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          ruby -e '
+            require "rubygems/package"
+            spec = Gem::Package.new(ARGV[0]).spec
+            abort "::error::Packaged name is #{spec.name}, expected basecamp-sdk" unless spec.name == "basecamp-sdk"
+            abort "::error::Packaged version is #{spec.version}, expected #{ARGV[1]}" unless spec.version.to_s == ARGV[1]
+            lib = spec.files.grep(%r{\Alib/})
+            abort "::error::Packaged gem contains no lib/ files" if lib.empty?
+            abort "::error::Packaged gem is missing lib/basecamp.rb" unless lib.include?("lib/basecamp.rb")
+            puts "Packaged #{spec.full_name}: #{spec.files.size} files, #{lib.size} under lib/"
+            puts "Runtime dependencies: #{spec.runtime_dependencies.map(&:to_s).join(", ")}"
+          ' "basecamp-sdk-${VERSION}.gem" "$VERSION"
+
       - name: Dry-run report
         if: github.event_name == 'workflow_dispatch'
         env:

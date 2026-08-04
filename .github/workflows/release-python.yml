@@ -125,6 +125,12 @@ jobs:
       - name: Build package
         run: uv build
 
+      # PyPI rejects uploads whose metadata or long description will not render,
+      # and that rejection would otherwise land mid-release. twine check is the
+      # same validation, run before the tag exists.
+      - name: Check distribution metadata
+        run: uvx twine check --strict dist/*
+
       - name: Dry-run build verification
         if: github.event_name == 'workflow_dispatch'
         run: |
