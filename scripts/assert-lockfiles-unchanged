@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
 # assert-lockfiles-unchanged — observe, rather than predict, that `make check`
-# left every dependency lockfile byte-identical.
+# left every dependency manifest byte-identical: npm lockfiles, Gemfile.lock,
+# uv.lock, and the Go checksum files, which `go` rewrites as readily as `npm`
+# rewrites a lockfile.
 #
 # `--record` before the checks, `--verify` after. Both are wired into the `check`
 # target, so `make check` proves the property on every run.
@@ -62,7 +64,8 @@ hash_lockfiles() {
   done < <(find . \
              \( -name node_modules -o -name .git -o -name dist -o -name build \) -prune \
              -o -type f \( -name 'package-lock.json' -o -name 'Gemfile.lock' \
-                           -o -name 'uv.lock' \) -print \
+                           -o -name 'uv.lock' -o -name 'go.sum' \
+                           -o -name 'go.work.sum' \) -print \
            | LC_ALL=C sort)
 }
 

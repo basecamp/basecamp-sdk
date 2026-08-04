@@ -33,6 +33,10 @@ make_repo() {
   printf '{"lockfileVersion":3,"name":"b"}\n' > "$dir/conformance/runner/typescript/package-lock.json"
   printf 'GEM\n  specs:\n' > "$dir/ruby/Gemfile.lock"
   printf 'version = 1\n' > "$dir/python/uv.lock"
+  mkdir -p "$dir/go" "$dir/conformance/runner/go"
+  printf 'example.com/x v1.0.0 h1:aaa=\n' > "$dir/go/go.sum"
+  printf 'example.com/y v1.0.0 h1:bbb=\n' > "$dir/conformance/runner/go/go.sum"
+  printf 'example.com/z v1.0.0 h1:ccc=\n' > "$dir/go.work.sum"
   git -C "$dir" init --quiet
   git -C "$dir" add -A
   echo "$dir"
@@ -85,6 +89,17 @@ expect fail "the conformance runner's lockfile rewritten" \
 expect fail "Gemfile.lock rewritten" "printf 'GEM\n  specs:\n    x\n' > ruby/Gemfile.lock"
 
 expect fail "uv.lock rewritten" "printf 'version = 2\n' > python/uv.lock"
+
+# `go` rewrites go.sum as readily as `npm` rewrites a lockfile, and `make check`
+# runs Go targets.
+expect fail "go/go.sum rewritten" \
+  "printf 'example.com/x v1.0.1 h1:zzz=\n' > go/go.sum"
+
+expect fail "the conformance runner's go.sum rewritten" \
+  "printf 'example.com/y v1.0.1 h1:zzz=\n' > conformance/runner/go/go.sum"
+
+expect fail "go.work.sum rewritten" \
+  "printf 'example.com/z v1.0.1 h1:zzz=\n' > go.work.sum"
 
 expect fail "a lockfile deleted" "rm typescript/package-lock.json"
 
