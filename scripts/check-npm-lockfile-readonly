@@ -69,7 +69,14 @@ cd "${CHECK_NPM_ROOT:-$(dirname "$0")/..}" || exit 1
 # npm subcommands that cannot write a lockfile. Anything absent here fails.
 # `install`/`i`/`add`/`update`/`dedupe`/`prune`/`version` are absent on purpose;
 # so is every abbreviation of them, by construction.
-readonly ALLOWED_SUBCOMMANDS=" ci run run-script test start stop restart exec audit view ls list outdated ping whoami config help pack publish "
+#
+# `exec` is absent too, and deliberately: it runs an arbitrary delegated command,
+# so `npm exec -- npm install --package-lock-only` writes a lockfile behind a
+# subcommand that looks harmless. Approving the wrapper while ignoring what it
+# wraps is not something an allowlist entry can express. Nothing in this repo
+# uses it; if something needs to, the delegated command has to be parsed rather
+# than the wrapper waved through.
+readonly ALLOWED_SUBCOMMANDS=" ci run run-script test start stop restart audit view ls list outdated ping whoami config help pack publish "
 
 # Options are allowlisted for the same reason subcommands are. npm accepts any
 # config key as `--key value`, so an unrecognised bare option cannot be assumed
@@ -275,9 +282,13 @@ scan_line() {
       shell_seen=1
     fi
 
-    # Flags and command-running prefixes leave the next word still in command
-    # position; anything else takes it.
-    if [[ $w != -* && $COMMAND_PREFIXES != *" ${w##*/} "* ]]; then
+    # Flags, environment assignments and command-running prefixes leave the next
+    # word still in command position; anything else takes it. `CI=1 npm install`
+    # is an ordinary way to write a command, and treating `CI=1` as the
+    # executable skipped the npm that followed it.
+    if [[ $w != -* \
+       && ! $w =~ ^[A-Za-z_][A-Za-z0-9_]*= \
+       && $COMMAND_PREFIXES != *" ${w##*/} "* ]]; then
       at_cmd=0
     fi
 

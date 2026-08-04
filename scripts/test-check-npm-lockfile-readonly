@@ -261,6 +261,21 @@ expect_reject "an embedded escape: np\\m install" \
   "$(make_fixture esc_embedded 'np\m install --package-lock-only')" \
   'npm install'
 
+# `npm exec` runs an arbitrary delegated command, so approving the wrapper hides
+# whatever it wraps. It is off the allowlist rather than special-cased.
+expect_reject "npm exec -- npm install (writer behind a wrapper)" \
+  "$(make_fixture exec_delegate 'npm exec -- npm install --package-lock-only')" \
+  'npm exec'
+
+# An environment assignment prefix is not the command.
+expect_reject "CI=1 npm install (assignment prefix)" \
+  "$(make_fixture env_assign 'CI=1 npm install --package-lock-only')" \
+  'npm install'
+
+expect_reject "two assignments then a writer" \
+  "$(make_fixture env_assign2 'true' 'CI=1 NODE_ENV=test npm update')" \
+  'npm update'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \
@@ -341,6 +356,9 @@ expect_accept "a delegated Makefile with only permitted commands" \
 # a command itself. Flagging it is a false alarm with no honest remedy.
 # A fully quoted token is only a command when it stands in command position.
 # `echo "npm" install` passes "npm" to echo.
+expect_accept "an assignment prefix before a permitted command" \
+  "$(make_fixture env_ok 'CI=1 npm ci --prefer-offline')"
+
 expect_accept "a quoted npm as an ARGUMENT, not a command" \
   "$(make_fixture quoted_arg 'echo "npm" install')"
 
