@@ -1,0 +1,22 @@
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_ae792ed0be3006::t_20372e1afb769b 134
+  s_ae792ed0be3006::t_731499e39d995c 120
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/schedules.kt
+  s_ae792ed0be3006::t_df301c0d0081c7 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d9daf22833eea2d54bd03361563b5965829fd583",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

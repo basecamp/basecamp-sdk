@@ -1,0 +1,92 @@
+python/src/basecamp/services/__init__.py
+  s_ae792ed0be3006::t_0a92fb51fcde84 8-13
+  s_ae792ed0be3006::t_4b6a27c15111bd 30-33
+ruby/lib/basecamp/services/merge_safe.rb
+  s_ae792ed0be3006::t_b9dc48c4f017f9 172-198
+conformance/runner/typescript/runner.test.ts
+  s_ae792ed0be3006::t_c081b7a7b3726f 14
+  s_ae792ed0be3006::t_6593174fa838bc 376-386,388-408
+  s_ae792ed0be3006::t_f4fa601ee6bbb7 163-197
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_ae792ed0be3006::t_2b25ed8e683b27 257-280,285-286,288-289,292-325
+python/src/basecamp/services/schedules.py
+  s_ae792ed0be3006::t_c2096858da9a66 1-169,171-417
+  s_ae792ed0be3006::t_b68d2eaf34ed3b 170
+typescript/src/services/schedules-extensions.ts
+  s_ae792ed0be3006::t_c665f5181b3000 1-414
+  s_ae792ed0be3006::t_c214fc2e377be6 415
+typescript/src/index.ts
+  s_ae792ed0be3006::t_54a685a1beed7d 377,380-383,387
+ruby/lib/basecamp/services/schedules_extensions.rb
+  s_ae792ed0be3006::t_1c38663e80b645 94
+  s_ae792ed0be3006::t_416f62f872d18c 1-93,95-349
+conformance/runner/python/runner.py
+  s_ae792ed0be3006::t_76a4d5401aa106 34
+  s_ae792ed0be3006::t_fba66b0314aa62 308-317,319-321,326-335
+python/src/basecamp/async_client.py
+  s_ae792ed0be3006::t_45512a7b4bde1d 240
+typescript/src/services/merge-safe.ts
+  s_ae792ed0be3006::t_9e8ae474774bd2 193-221
+  s_ae792ed0be3006::t_e38548cea53a23 192
+typescript/src/services/documents-extensions.ts
+  s_ae792ed0be3006::t_07a2ddd296a3b5 3
+conformance/runner/ruby/runner.rb
+  s_ae792ed0be3006::t_2f43421f4f1242 345-353,355-356,358-365
+  s_ae792ed0be3006::t_bdc1c0ad79a809 528-533
+ruby/lib/basecamp/services/documents_extensions.rb
+  s_ae792ed0be3006::t_9d3fb721f1674a 108
+ruby/lib/basecamp.rb
+  s_ae792ed0be3006::t_e26dc5d2e1f6db 28-33
+python/tests/services/test_schedules.py
+  s_ae792ed0be3006::t_7dde581463274d 486
+  s_ae792ed0be3006::t_16aa6ce25031a0 1-375,381-485,487-854
+  s_ae792ed0be3006::t_c8805427801a05 376-380
+python/src/basecamp/services/_merge_safe.py
+  s_ae792ed0be3006::t_dd1870def47802 170-194
+typescript/src/client.ts
+  s_ae792ed0be3006::t_d17be1bdd66160 63
+ruby/test/basecamp/zeitwerk_test.rb
+  s_ae792ed0be3006::t_fb8ef421ae58fc 68-87
+swift/Tests/BasecampTests/SchedulesServiceExtensionsTests.swift
+  s_ae792ed0be3006::t_a6b2e4b501ddc6 376-379
+  s_ae792ed0be3006::t_fc61516e6f4fcb 1-375,380-475
+python/src/basecamp/services/documents.py
+  s_ae792ed0be3006::t_cd06bfc308f1cd 30-34
+  s_ae792ed0be3006::t_aa1147a15ec960 57
+python/src/basecamp/client.py
+  s_ae792ed0be3006::t_c5d2dbe98252d2 241
+typescript/tests/services/schedules.test.ts
+  s_ae792ed0be3006::t_1813d4c27bf52c 2,4,8-23,28,34-62,164,173-175,273-359,361-363,366-752,754-774,778-779,782-783,786-809,876-1209
+  s_9d281ef8778f4d::t_990f49af95f97d 1210
+swift/Sources/Basecamp/SchedulesServiceExtensions.swift
+  s_ae792ed0be3006::t_884b859e11c6e3 1-303
+ruby/test/basecamp/services/schedules_service_test.rb
+  s_ae792ed0be3006::t_a2da241c2df614 474-477
+  s_ae792ed0be3006::t_1e91556790843a 3,5-22,29-34,53-124,242-473,478-815,819-820,832-847
+spec/fixtures/schedules/entry_get.json
+  s_ae792ed0be3006::t_ff4988ded76055 95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "aa214040851a7eb4128354be19bcab184c639ed0",
+  "prompts": {},
+  "sessions": {
+    "s_9d281ef8778f4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a030553-14a1-4a2d-b90b-a7f14be985ae",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
