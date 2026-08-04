@@ -6,6 +6,7 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonObject
@@ -13,6 +14,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -31,7 +33,11 @@ class CardsServiceTest {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun cardJson(dueOn: String? = "2024-02-01"): String = """{
+    private fun cardJson(dueOn: String? = "2024-02-01"): String =
+        cardJsonRawDueOn(dueOn?.let { "\"$it\"" } ?: "null")
+
+    /** [cardJson] with `due_on` spliced in as raw JSON, so it can be a non-string. */
+    private fun cardJsonRawDueOn(dueOn: String): String = """{
         "id": 42,
         "status": "active",
         "visible_to_clients": false,
@@ -42,7 +48,7 @@ class CardsServiceTest {
         "type": "Kanban::Card",
         "url": "https://3.basecampapi.com/12345/card_tables/cards/42",
         "app_url": "https://3.basecamp.com/12345/card_tables/cards/42",
-        "due_on": ${dueOn?.let { "\"$it\"" } ?: "null"},
+        "due_on": $dueOn,
         "description_attachments": [],
         "parent": {
             "id": 2,
@@ -181,6 +187,46 @@ class CardsServiceTest {
         assertContains(body, "\"content\":\"\"")
         assertContains(body, "\"assignee_ids\":[]")
         assertContains(body, "\"due_on\":\"\"")
+    }
+
+    /**
+     * The Cards half of #598, in the only shape it still has.
+     *
+     * The issue framed this as a read-modify-write hazard: a `due_on` read back
+     * off a preservation GET was coerced into `"42"` and PUT forward. #647
+     * deleted that GET — `update` is one PUT now, and the three Cards kill cases
+     * went with it — so what is left is the response decode. `Card.dueOn` is a
+     * `String?`, and under the client-wide `isLenient` a bare-scalar `due_on`
+     * coming back from the server decoded into `"42"`/`"false"` and reached the
+     * caller as an ordinary String, indistinguishable from a real date. The
+     * shared decoder refuses it now, which is what makes the fix reach Cards and
+     * not only the Todolists composite that still does a genuine read-back.
+     */
+    @Test
+    fun updateRefusesABareScalarDueOnFromTheWire() = runTest {
+        for (malformed in listOf("42", "false")) {
+            val methods = mutableListOf<String>()
+            val client = testBasecampClient {
+                accessToken("test-token")
+                engine = MockEngine { request ->
+                    methods.add(request.method.value)
+                    respond(
+                        content = cardJsonRawDueOn(malformed),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            }
+
+            assertFailsWith<SerializationException>(
+                "a bare-scalar due_on ($malformed) must be refused, not rendered as text",
+            ) {
+                client.forAccount("12345").cards.update(42, title = "Renamed")
+            }
+
+            assertEquals(listOf("PUT"), methods, "the refusal is in the decode, so the PUT still happens once")
+            client.close()
+        }
     }
 
     @Test

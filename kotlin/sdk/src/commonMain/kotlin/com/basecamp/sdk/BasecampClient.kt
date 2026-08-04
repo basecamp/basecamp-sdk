@@ -164,8 +164,10 @@ class BasecampClient internal constructor(
     //
     // `coerceInputValues` stays. It is a different mechanism (an explicit null
     // becomes the declared default for a non-nullable property) and is not
-    // implicated: DecoderStrictnessTest pins both behaviours so this comment
-    // cannot drift from the semantics.
+    // implicated. DecoderStrictnessTest pins what each flag does on its own
+    // instances, and `theClientsOwnDecoderRefusesAWrongTypedScalar` decodes
+    // through THIS one, so re-adding `isLenient` here goes red rather than
+    // leaving the guarantee resting on this comment.
     internal val json: Json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true

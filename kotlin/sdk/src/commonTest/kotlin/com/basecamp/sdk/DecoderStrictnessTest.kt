@@ -1,5 +1,8 @@
 package com.basecamp.sdk
 
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respondOk
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
@@ -48,21 +51,21 @@ class DecoderStrictnessTest {
     // culprit and dropping `isLenient` alone would not be enough.
     @Test
     fun coerceInputValuesDoesNotCoerceAScalarType() {
-        assertFailsWith<Exception> {
+        assertFailsWith<SerializationException> {
             coercing.decodeFromString<Probe>("""{"description": 42}""")
         }
     }
 
     @Test
     fun strictRejectsNumberForString() {
-        assertFailsWith<Exception> {
+        assertFailsWith<SerializationException> {
             strict.decodeFromString<Probe>("""{"description": 42}""")
         }
     }
 
     @Test
     fun strictRejectsBooleanForString() {
-        assertFailsWith<Exception> {
+        assertFailsWith<SerializationException> {
             strict.decodeFromString<Probe>("""{"description": false}""")
         }
     }
@@ -79,7 +82,7 @@ class DecoderStrictnessTest {
 
     @Test
     fun withoutCoerceInputValuesAnExplicitNullIsRejected() {
-        assertFailsWith<Exception> {
+        assertFailsWith<SerializationException> {
             strict.decodeFromString<NonNullProbe>("""{"description": null}""")
         }
     }
@@ -98,11 +101,43 @@ class DecoderStrictnessTest {
     // correctly called safe, and it must stay that way.
     @Test
     fun structuralMismatchIsRejectedEvenWhenLenient() {
-        assertFailsWith<Exception> {
+        assertFailsWith<SerializationException> {
             lenient.decodeFromString<Probe>("""{"description": []}""")
         }
-        assertFailsWith<Exception> {
+        assertFailsWith<SerializationException> {
             lenient.decodeFromString<Probe>("""{"description": {}}""")
+        }
+    }
+
+    /**
+     * Everything above decodes through a `Json` built in this file, which pins
+     * kotlinx.serialization's flag semantics but says nothing about how the SDK
+     * is configured. This one decodes through the instance `BasecampClient`
+     * actually builds and hands to every service, so re-adding `isLenient`
+     * there turns it red rather than leaving the fix pinned only by a comment.
+     */
+    @Test
+    fun theClientsOwnDecoderRefusesAWrongTypedScalar() {
+        val client = testBasecampClient {
+            accessToken("test-token")
+            engine = MockEngine { respondOk() }
+        }
+        try {
+            assertFailsWith<SerializationException> {
+                client.json.decodeFromString<Probe>("""{"description": 42}""")
+            }
+            assertFailsWith<SerializationException> {
+                client.json.decodeFromString<Probe>("""{"description": false}""")
+            }
+            // And `coerceInputValues` is still on, which is the other half of
+            // the configuration the comment claims: an explicit null becomes the
+            // declared default for a non-nullable property.
+            assertEquals(
+                "default",
+                client.json.decodeFromString<NonNullProbe>("""{"description": null}""").description,
+            )
+        } finally {
+            client.close()
         }
     }
 }
