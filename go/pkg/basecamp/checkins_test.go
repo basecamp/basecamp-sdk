@@ -1361,7 +1361,9 @@ func TestCheckinsService_ListQuestionReminders(t *testing.T) {
 	if r1.GroupOn != "2022-10-28" {
 		t.Errorf("expected GroupOn '2022-10-28', got %q", r1.GroupOn)
 	}
-	if r1.RemindAt.IsZero() {
+	if r1.RemindAt == nil {
+		t.Error("expected RemindAt to be non-nil")
+	} else if r1.RemindAt.IsZero() {
 		t.Error("expected RemindAt to be non-zero")
 	}
 	if r1.ReminderID == nil || *r1.ReminderID != 123 {
