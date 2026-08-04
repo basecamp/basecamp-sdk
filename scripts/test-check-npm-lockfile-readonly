@@ -247,6 +247,25 @@ expect_accept "plain npm audit" \
 expect_accept "known valueless options before the subcommand" \
   "$(make_fixture ok_flags_pre 'npm --silent --prefer-offline ci')"
 
+# `--workspaces` is the boolean "every workspace" toggle; `--workspace`/`-w` is
+# the singular that names one. Classifying the plural as value-taking swallowed
+# the subcommand behind it, so this read-only invocation was reported as having
+# no parsable subcommand — fail-closed, so never a missed writer, but a false
+# alarm. The pair is pinned so the two cannot be conflated again in either
+# direction.
+expect_accept "npm --workspaces ci (plural is a boolean toggle)" \
+  "$(make_fixture ok_workspaces 'npm --workspaces ci')"
+
+expect_accept "npm --workspace <name> ci (singular consumes its value)" \
+  "$(make_fixture ok_workspace_value 'npm --workspace pkg-a ci')"
+
+# The singular must keep eating the next token: if it stopped, the workspace
+# name would be read as the subcommand and this writer would slip through as
+# an unrecognised-subcommand report instead of the install it really is.
+expect_reject "npm --workspace <name> install (singular still writes)" \
+  "$(make_fixture writer_workspace 'npm --workspace pkg-a install')" \
+  'npm install'
+
 expect_accept "an unknown option in --key=value form is unambiguous" \
   "$(make_fixture ok_flag_eq 'npm --some-future-option=1 ci')"
 

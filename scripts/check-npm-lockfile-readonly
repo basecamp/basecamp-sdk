@@ -83,9 +83,16 @@ readonly ALLOWED_SUBCOMMANDS=" ci run run-script test start stop restart exec au
 #   * VALUELESS_FLAGS      consumes nothing
 # Anything else is an option this parser cannot classify, and is reported rather
 # than guessed at. Extending either list is a one-line change.
-readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfig --globalconfig --cache --script-shell --shell --omit --include --tag --otp --before --node-options --user-agent --workspaces --depth --searchopts --init-module --audit-level "
+#
+# Singular and plural differ, and only the singular takes a value: `npm config
+# ls -l` reports `workspace = []` (a list, `--workspace <name>`/`-w <name>`)
+# against `workspaces = null` (a boolean toggle for "every workspace"). Reading
+# the plural as value-taking swallows the following token, so `npm --workspaces
+# ci` parses to no subcommand at all and is reported as unparsable — fail-closed,
+# so never a missed writer, but a false alarm on a read-only invocation.
+readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfig --globalconfig --cache --script-shell --shell --omit --include --tag --otp --before --node-options --user-agent --depth --searchopts --init-module --audit-level "
 
-readonly VALUELESS_FLAGS=" --silent -s --quiet --verbose -d --json --long -l --parseable -p --global -g --force -f --dry-run --ignore-scripts --no-save --save --save-dev --save-exact --no-audit --no-fund --no-package-lock --package-lock-only --prefer-offline --prefer-online --offline --if-present --include-workspace-root --legacy-peer-deps --strict-peer-deps --no-progress --no-color --yes -y "
+readonly VALUELESS_FLAGS=" --silent -s --quiet --verbose -d --json --long -l --parseable -p --global -g --force -f --dry-run --ignore-scripts --no-save --save --save-dev --save-exact --no-audit --no-fund --no-package-lock --package-lock-only --prefer-offline --prefer-online --offline --if-present --workspaces --include-workspace-root --legacy-peer-deps --strict-peer-deps --no-progress --no-color --yes -y "
 
 # Commands that take code as an argument. `sh -c 'npm install'` runs npm, and
 # the quoted text is a program, not data — the one place where an unbalanced
