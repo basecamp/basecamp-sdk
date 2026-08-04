@@ -663,20 +663,88 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todos().Update(ctx, todoID, req)
 		return operationResult{err: err}
 
-	case "UpdateScheduleEntry":
-		// Participants are presence-bearing: absent means "leave them alone"
-		// (BC3 preserves only because the key is missing), an empty non-nil
-		// slice means "remove everyone".
+	case "ReplaceScheduleEntry":
+		// The raw wire method: one verbatim PUT, no read-before-write.
+		// Presence-bearing, so only the keys the fixture carries reach the wire
+		// — an absent url stays absent (BC3 preserves the join link) and an
+		// explicit "" is sent (BC3 clears it).
 		entryID := getInt64Param(tc.PathParams, "entryId")
-		req := &basecamp.UpdateScheduleEntryRequest{
-			Summary:  getStringParam(tc.RequestBody, "summary"),
-			StartsAt: getStringParam(tc.RequestBody, "starts_at"),
-			EndsAt:   getStringParam(tc.RequestBody, "ends_at"),
-		}
-		if ids, ok := getInt64SliceParam(tc.RequestBody, "participant_ids"); ok {
-			req.ParticipantIDs = ids
-		}
-		_, err := account.Schedules().UpdateEntry(ctx, entryID, req)
+		w := scheduleEntryWriteFrom(tc.RequestBody)
+		_, err := account.Schedules().ReplaceEntry(ctx, entryID, &basecamp.ReplaceScheduleEntryRequest{
+			Summary:        w.summary,
+			StartsAt:       w.startsAt,
+			EndsAt:         w.endsAt,
+			Description:    w.description,
+			AllDay:         w.allDay,
+			ParticipantIDs: w.participantIDs,
+			Notify:         w.notify,
+			URL:            w.url,
+			Highlighted:    w.highlighted,
+		})
+		return operationResult{err: err}
+
+	case "UpdateScheduleEntry":
+		// Synthetic scenario key (not a wire operation): drives the SDK's
+		// merge-safe composite, which GETs the current entry, overlays only the
+		// addressed fields, and PUTs the full representation back. The five
+		// full-state fields are resent from the read; the four addressed-only
+		// ones (participant_ids, url, highlighted, notify) go on the wire only
+		// when this fixture named them.
+		entryID := getInt64Param(tc.PathParams, "entryId")
+		w := scheduleEntryWriteFrom(tc.RequestBody)
+		_, err := account.Schedules().UpdateEntry(ctx, entryID, &basecamp.UpdateScheduleEntryRequest{
+			Summary:        w.summary,
+			StartsAt:       w.startsAt,
+			EndsAt:         w.endsAt,
+			Description:    w.description,
+			AllDay:         w.allDay,
+			ParticipantIDs: w.participantIDs,
+			Notify:         w.notify,
+			URL:            w.url,
+			Highlighted:    w.highlighted,
+		})
+		return operationResult{err: err}
+
+	case "EditScheduleEntry":
+		// Synthetic scenario key (not a wire operation): drives the SDK's edit
+		// closure, assigning each fixture requestBody key onto the same-named
+		// member (data-driven mutation). Absence stays absence, so an untouched
+		// full-state field keeps its fetched value and an untouched carve-out
+		// never reaches the wire. The carve-outs go through setters because
+		// assignment — not value — is what marks them dirty: assigning exactly
+		// what the GET returned still sends them.
+		entryID := getInt64Param(tc.PathParams, "entryId")
+		w := scheduleEntryWriteFrom(tc.RequestBody)
+		_, err := account.Schedules().EditEntry(ctx, entryID, func(f *basecamp.ScheduleEntryFields) error {
+			if w.summary != nil {
+				f.Summary = *w.summary
+			}
+			if w.startsAt != nil {
+				f.StartsAt = *w.startsAt
+			}
+			if w.endsAt != nil {
+				f.EndsAt = *w.endsAt
+			}
+			if w.description != nil {
+				f.Description = *w.description
+			}
+			if w.allDay != nil {
+				f.AllDay = *w.allDay
+			}
+			if w.participantIDs != nil {
+				f.SetParticipantIDs(*w.participantIDs)
+			}
+			if w.url != nil {
+				f.SetURL(*w.url)
+			}
+			if w.highlighted != nil {
+				f.SetHighlighted(*w.highlighted)
+			}
+			if w.notify != nil {
+				f.SetNotify(*w.notify)
+			}
+			return nil
+		})
 		return operationResult{err: err}
 
 	case "UpdateCard":
@@ -1705,6 +1773,63 @@ func cardUpdateRequest(body map[string]interface{}) *basecamp.UpdateCardRequest 
 		req.AssigneeIDs = ids
 	}
 	return req
+}
+
+// scheduleEntryWrite is the schedule-entry write vocabulary lifted out of a
+// fixture body, one presence-bearing member per writable field:
+// {summary, starts_at, ends_at, description, all_day, participant_ids, notify,
+// url, highlighted}. Both request shapes and the edit closure share it, so all
+// three scenario keys read the fixture the same way.
+type scheduleEntryWrite struct {
+	summary        *string
+	startsAt       *string
+	endsAt         *string
+	description    *string
+	url            *string
+	allDay         *bool
+	notify         *bool
+	highlighted    *bool
+	participantIDs *[]int64
+}
+
+// scheduleEntryWriteFrom reads the fixture by PRESENCE, not non-emptiness.
+// Every member of ReplaceScheduleEntryRequest and UpdateScheduleEntryRequest is
+// a pointer exactly so "explicitly set to empty" differs from "not set", and
+// three of them are ADDRESSED by their zero value: participant_ids [] removes
+// everyone, url "" drops the join link, highlighted false stops highlighting.
+// Testing v != "" would collapse the two and let an explicit-clear fixture pass
+// as an omission — which is the whole distinction BC3's preserve-on-omission
+// carve-out makes.
+func scheduleEntryWriteFrom(body map[string]interface{}) scheduleEntryWrite {
+	str := func(key string) *string {
+		if _, ok := body[key]; !ok {
+			return nil
+		}
+		s := getStringParam(body, key)
+		return &s
+	}
+	flag := func(key string) *bool {
+		if _, ok := body[key]; !ok {
+			return nil
+		}
+		b := getBoolParam(body, key)
+		return &b
+	}
+
+	w := scheduleEntryWrite{
+		summary:     str("summary"),
+		startsAt:    str("starts_at"),
+		endsAt:      str("ends_at"),
+		description: str("description"),
+		url:         str("url"),
+		allDay:      flag("all_day"),
+		notify:      flag("notify"),
+		highlighted: flag("highlighted"),
+	}
+	if ids, ok := getInt64SliceParam(body, "participant_ids"); ok {
+		w.participantIDs = &ids
+	}
+	return w
 }
 
 func getInt64SliceParam(params map[string]interface{}, key string) ([]int64, bool) {
