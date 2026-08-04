@@ -185,18 +185,19 @@ jobs:
       - name: Replay decoders cover every live fixture operation
         run: make check-replay-decoder-parity
 
-      # CI runs `npm ci` everywhere, so it cannot observe this defect itself: the
-      # lockfile only oscillates when an `npm install` in a lifecycle script is
-      # run by an npm on the other side of the 11.11.0 `libc` threshold (#612).
-      # Static, so it catches the reintroduction rather than the symptom.
-      - name: No `make check` path can rewrite an npm lockfile
-        run: make check-npm-lockfile-readonly
+      # Advisory: prints and exits 0. The guarantee is the byte comparison that
+      # runs at the end of every job that installs anything. This is the early
+      # warning the byte comparison cannot give — it names the file and line at
+      # the commit that reintroduces a writer, while the bytes stay identical
+      # until some npm's output diverges from the committed lockfile (#612).
+      - name: Diagnostic — npm invocations that could write a lockfile
+        run: make lint-npm-lockfile-writes
 
       # The gate's live run only exercises the passing case. Its first cut was a
       # denylist that `npm in`, `npm ins`, and `npm --prefix <path> install` all
       # walked through — so the rejections need their own tests.
-      - name: npm lockfile gate self-test (synthetic repos)
-        run: make test-check-npm-lockfile-readonly
+      - name: npm lockfile diagnostic self-test (synthetic repos)
+        run: make test-lint-npm-lockfile-writes
 
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI

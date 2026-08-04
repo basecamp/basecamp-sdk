@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Self-test for scripts/check-npm-lockfile-readonly.
+# Self-test for scripts/lint-npm-lockfile-writes.
 #
 # The gate's own `make check` run only ever exercises the passing case, so
 # nothing there proves it rejects anything. Its first cut was a denylist of
@@ -21,14 +21,14 @@
 # working tree.
 #
 # CHECK_NPM_GATE names the checker under test (default
-# scripts/check-npm-lockfile-readonly) so a deliberately-mutated copy can be
+# scripts/lint-npm-lockfile-writes) so a deliberately-mutated copy can be
 # driven through the same cases.
 
 set -uo pipefail
 export LC_ALL=C
 
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-GATE=${CHECK_NPM_GATE:-$REPO_ROOT/scripts/check-npm-lockfile-readonly}
+GATE=${CHECK_NPM_GATE:-$REPO_ROOT/scripts/lint-npm-lockfile-writes}
 
 failures=0
 cases=0
@@ -52,7 +52,7 @@ make_fixture() {
 }
 
 run_gate() {   # dir -> prints output, returns gate's exit status
-  ( cd "$1" && CHECK_NPM_ROOT="$1" "$GATE" 2>&1 )
+  ( cd "$1" && CHECK_NPM_ROOT="$1" "$GATE" --strict 2>&1 )
 }
 
 # A fixture with a second, delegated Makefile, the way `make check` reaches
@@ -146,10 +146,12 @@ expect_reject "npx-style npm@11 pin" \
 # alone looks harmless: `npm --prefix \` has no subcommand, and `typescript
 # install` has no npm. Reported because it cannot be resolved, not because it was
 # recognised — an npm invocation the parser cannot read is the failing case.
+# Continued recipe lines are joined before scanning, so this now resolves all the
+# way to the real subcommand rather than merely being unreadable.
 expect_reject "npm --prefix \\ <newline> install (line continuation)" \
-  "$(make_fixture writer_continuation 'true' 'npm --prefix \\
+  "$(make_fixture writer_continuation 'true' 'npm --prefix \
 	typescript install')" \
-  'no parsable subcommand'
+  'npm install'
 
 expect_reject "a bare npm with its subcommand off the end of the line" \
   "$(make_fixture writer_bare 'npm --prefix')" \
@@ -293,6 +295,27 @@ expect_reject "! npm install (negated)" \
 expect_reject "a writer inside an else branch" \
   "$(make_fixture kw_else 'if true; then echo ok; else npm update; fi')" 'npm update'
 
+# GNU make strips `@`, `-` and `+` from the front of a recipe before the shell
+# sees it, so the standard silent-recipe form really is a plain invocation.
+expect_reject "@npm install (silent recipe prefix)" \
+  "$(make_fixture mk_at 'true' '@npm install --package-lock-only')" 'npm install'
+
+expect_reject "+npm update (always-run prefix)" \
+  "$(make_fixture mk_plus 'true' '+npm update')" 'npm update'
+
+# A recipe split MID-TOKEN has no npm-shaped token on either physical line.
+expect_reject 'a recipe split mid-token: np\ + m install' \
+  "$(make_fixture mk_split 'true' 'np\
+m install --package-lock-only')" \
+  'npm install'
+
+# `env` takes options of its own, and some consume a value.
+expect_reject "env -C . npm install (value taken as the command)" \
+  "$(make_fixture env_chdir 'env -C . npm install --package-lock-only')" 'npm install'
+
+expect_reject "env --chdir=. npm install" \
+  "$(make_fixture env_chdir2 'env --chdir=. npm install')" 'npm install'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \
@@ -424,8 +447,8 @@ expect_reject "the same content under any other name is not" "$notexempt_dir" 'n
 
 echo
 if [[ $failures -eq 0 ]]; then
-  echo "check-npm-lockfile-readonly self-test passed ($cases cases)."
+  echo "lint-npm-lockfile-writes self-test passed ($cases cases)."
 else
-  echo "check-npm-lockfile-readonly self-test FAILED ($failures of $cases cases)." >&2
+  echo "lint-npm-lockfile-writes self-test FAILED ($failures of $cases cases)." >&2
 fi
 exit $((failures > 0))

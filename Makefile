@@ -1025,7 +1025,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built test-assert-lockfiles-unchanged
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1131,7 +1131,17 @@ check-readme-env-vars:
 test-check-readme-env-vars:
 	@python3 ./scripts/test-check-readme-env-vars.py
 
-# Assert nothing `make check` runs can rewrite an npm lockfile. `npm install`
+# Best-effort DIAGNOSTIC, not the guarantee: which npm invocations could write a
+# lockfile? It prints and exits 0. The guarantee is assert-lockfiles-unchanged,
+# which compares the bytes of every manifest before and after — here and at the
+# end of every CI job — and cannot be out-spelled because it reads no source.
+#
+# Review drove this parser through eleven spellings and each round found the next;
+# separating code from data is shell parsing and this is not a shell. As a gate
+# that shipped silent holes. As a message it is worth keeping: it names the file,
+# line and reason at the commit that reintroduces a writer, which the byte
+# comparison cannot do — and today would not even notice, since the committed
+# lockfile is a fixed point under every npm in play. `npm install`
 # writes package-lock.json back, and *what* it writes depends on the npm version
 # running it, not the platform — npm >= 11.11.0 records a `libc` array on
 # Linux-only optional dependencies and every npm below that drops it (bisected:
@@ -1149,8 +1159,8 @@ test-check-readme-env-vars:
 # scripts/, exempting the one deliberate writer (scripts/bump-version.sh).
 # Bash+jq, static, ~0.6s: the parser runs in-process and only on lines that
 # mention npm, because a subshell per tracked line cost 234s.
-check-npm-lockfile-readonly:
-	@./scripts/check-npm-lockfile-readonly
+lint-npm-lockfile-writes:
+	@./scripts/lint-npm-lockfile-writes
 
 # Drive that gate from outside with synthetic repos whose correct answer is
 # known. Its live run only ever exercises the passing case, so nothing there
@@ -1159,8 +1169,8 @@ check-npm-lockfile-readonly:
 # `npm --prefix <path> install`, `npm --prefix=<path> install`). Those four are
 # pinned here, alongside the deliberate bump-version.sh exemption and a control
 # proving the same content is rejected under any other name.
-test-check-npm-lockfile-readonly:
-	@./scripts/test-check-npm-lockfile-readonly
+test-lint-npm-lockfile-writes:
+	@./scripts/test-lint-npm-lockfile-writes
 
 # Drive conformance/runner/typescript/assert-sdk-built.mjs at synthetic SDK
 # trees. That assertion is what stops a bare `npm test` in the runner from
@@ -1206,7 +1216,7 @@ generate:
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
 #
 # Wrapped rather than a bare dependency list so the lockfiles can be hashed
-# before the checks and again after. check-npm-lockfile-readonly predicts that
+# before the checks and again after. lint-npm-lockfile-writes predicts that
 # nothing here writes one; this observes it. The static gate names the file and
 # line at the commit that introduces a writer, and works even where the write
 # would be a no-op; this one cannot say what went wrong, only that something
@@ -1231,7 +1241,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly test-assert-sdk-built test-assert-lockfiles-unchanged
+check-targets: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged
 	@:
 
 # Clean all build artifacts

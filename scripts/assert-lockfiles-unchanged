@@ -15,36 +15,31 @@
 # cannot both fail and hide what it dirtied.
 #
 # ---------------------------------------------------------------------------
-# Why this exists alongside check-npm-lockfile-readonly
+# This is the guarantee. scripts/lint-npm-lockfile-writes is not.
 #
-# That gate is static: it reads recipes and lifecycle scripts and decides whether
-# each npm invocation can write. It is fail-closed wherever it *classifies*
-# something — an unknown subcommand, an unrecognised option, an unresolvable
-# subcommand are all reported — but there is one place it cannot be, and review
-# found spelling after spelling there: deciding whether a word IS a command in
-# the first place. `n"p"m`, `np\m`, `CI=1 npm`, `sh -c '…'`, `npm exec -- …`.
-# Each was a real hole, each got a rule, and the next spelling is always
-# available, because separating code from data is shell parsing and this is not a
-# shell.
+# That one reads source and decides whether each npm invocation could write.
+# Review drove it through eleven spellings — `n"p"m`, `np\m`, `CI=1 npm`,
+# `sh -c '…'`, `npm exec -- …`, `@npm`, `env -C . npm`, a recipe split mid-token
+# — and each round found the next, because separating code from data is shell
+# parsing and it is not a shell. Every miss was a SILENT hole, which is the worst
+# failure mode a gate can have. Inverting it to fail on anything unclassifiable
+# does not work either: review reported two false alarms of that kind
+# (`echo ok # npm install …`, `echo "please npm install here"`) and neither had
+# an allowlist remedy, because prose and diagnostics mention npm constantly.
 #
-# The obvious inversion — treat anything unclassifiable as a failure — does not
-# work at that layer. Review independently reported two false alarms of exactly
-# that kind (`echo ok # npm install …`, `echo "please npm install here"`), and
-# neither had an allowlist remedy: prose and diagnostics mention npm constantly.
-# A gate that fails on every quoted mention would be turned off within a week.
+# So that one is now a diagnostic that prints and exits 0, and this one holds the
+# guarantee. It parses nothing. It hashes every dependency manifest before the
+# checks and again afterwards — and in CI, compares against the committed tree —
+# so `eval` on an assembled string, a subcommand held in a variable, a writer
+# three Makefiles deep, a lockfile CREATED where none was tracked, and any
+# spelling nobody has thought of yet all trip it. None of them can talk a byte
+# comparison out of noticing.
 #
-# So the static gate stays what it is — a regression guard that catches the
-# accidental reintroduction, which is what actually happened in #612 — and this
-# check covers what it cannot. It does not parse anything. It hashes the
-# lockfiles before the checks run and again afterwards, and any difference is a
-# failure. `eval` on an assembled string, a subcommand held in a variable, a
-# writer three Makefiles deep, a spelling nobody has thought of yet: all of them
-# change bytes on disk, and none of them can evade a comparison of those bytes.
-#
-# The two are complementary and neither is redundant. The static gate fails at
-# the commit that introduces the writer, naming the file and line, and it works
-# on machines where the write happens to be a no-op. This one cannot say what
-# went wrong, only that something did — but nothing can talk it out of noticing.
+# The diagnostic is still worth running, for the one thing this cannot do: name
+# the file and line at the commit that reintroduces a writer. This is silent
+# while a write is byte-neutral, and today it would be — the committed lockfile
+# is a fixed point under npm 10.9.8, 11.5.1 and 11.19.0, so a reintroduced
+# install writes back identical bytes until some npm's output diverges.
 
 set -uo pipefail
 export LC_ALL=C

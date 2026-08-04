@@ -1,68 +1,56 @@
 #!/usr/bin/env bash
 #
-# check-npm-lockfile-readonly — assert nothing `make check` runs can rewrite an
-# npm lockfile.
+# lint-npm-lockfile-writes — best-effort diagnostic: which npm invocations in this
+# repo could write a lockfile?
 #
-# `npm install` reconciles package-lock.json in place and writes the result.
-# What it writes depends on the npm version doing the writing, not on the
-# platform and not on the lockfile's contents: npm >= 11.11.0 records a `libc`
-# array on Linux-only optional dependencies, and every npm below that drops it.
-# Bisected on this package.json — 11.10.0 writes none, 11.11.0 writes 18.
+# NOT the guarantee. scripts/assert-lockfiles-unchanged holds that, by comparing
+# the bytes of every dependency manifest before and after the checks — locally in
+# `make check`, and in CI at the end of every job that installs anything. That
+# comparison cannot be out-spelled, because it does not read source at all.
 #
-# Measured on the same bytes, the split is by version alone: npm 10.9.8 produces
-# byte-identical lockfiles on macOS and on Linux, and so does 11.19.0. They just
-# differ from each other by 24 lines.
+# This reads source, and therefore can be. Review drove it through eleven
+# spellings — unambiguous prefixes, flags before the subcommand, unknown
+# value-taking options, unpadded operators, line continuations, multiline script
+# values, quoting that splits the command name, `sh -c`, `npm exec` delegation,
+# assignment prefixes, control keywords — and each round found the next one. That
+# is not a game worth continuing to play for a *guarantee*, because separating
+# code from data is shell parsing and this is not a shell.
 #
-# The repo pins node 22 (npm 10.9.8), CI installs node 24 (npm 11.5.1), and
-# Dependabot runs whatever npm is current (11.19.x). Those straddle 11.11.0, so
-# any routine `npm install` turns the lockfile into a file that oscillates by
-# whoever ran it last (#612).
+# It is worth playing for a *message*. When someone reintroduces `npm install` in
+# a lifecycle script, this names the file, the line and the reason, at the commit
+# that does it — while the byte comparison can only say that something changed,
+# and only once some npm's output actually diverges from the committed lockfile.
+# Right now it would not even say that: the committed lockfile is a fixed point
+# under npm 10.9.8, 11.5.1 and 11.19.0, so a reintroduced install writes back
+# identical bytes. This diagnostic is the early warning for exactly that window.
 #
-# `npm ci` is the read-only install: it installs *from* the lockfile, never
-# writes it back, and fails loudly when the lockfile and package.json disagree —
-# which is the drift an `npm install` would have papered over.
+# So: it prints and exits 0. A spelling it misses is a weaker message, never a
+# shipped hole. `--strict` makes it exit non-zero, which is how its own self-test
+# drives it.
 #
 # ---------------------------------------------------------------------------
-# Why this is an allowlist
+# How it reads a line
 #
-# The first cut denied a list of writing subcommands. That shape cannot hold: it
-# has to enumerate every spelling of every writer forever, and npm accepts any
-# unambiguous prefix, so `npm in` / `npm ins` / `npm inst` are all `npm install`.
-# Flags may also sit between the command and its subcommand, so
-# `npm --prefix ../x install` never matches an `npm install` pattern at all.
+# An allowlist of PERMITTED invocations, not a denylist of writers: npm accepts
+# any unambiguous prefix, so `npm in` / `npm ins` / `npm inst` are all
+# `npm install` and no denylist can enumerate them. Anything not on the list is
+# reported, as is any option it cannot classify and any invocation whose
+# subcommand it cannot resolve. Getting the tables wrong costs a noisy message,
+# never a silent one.
 #
-# So the inventory here is of PERMITTED invocations, and anything not on it
-# fails. A new npm subcommand, a novel abbreviation, or a flag form this parser
-# does not understand all land in the failing branch — the error tells you to
-# extend ALLOWED_SUBCOMMANDS if the invocation genuinely cannot write a lockfile.
-# Fail-closed is the point: a false alarm costs one line of allowlist, a missed
-# writer costs the churn this gate exists to prevent.
+# The one deliberate writer, scripts/bump-version.sh, is exempt by name: bumping
+# the version is exactly when the lockfile is supposed to change, it is a reviewed
+# release step, and no `make check` target invokes it.
 #
-# What this is and is not
-#
-# A regression guard against a lockfile writer being reintroduced by accident —
-# the `pretest` hook in #612 was one line, written in good faith, and cost every
-# developer a dirty tree. It reads text with a small shell-shaped parser, not a
-# shell. Review drove that parser through prefixes, flags before the subcommand,
-# unknown value-taking options, unpadded operators, line continuations, multiline
-# script values, and quoting that splits the command name; each is pinned in the
-# self-test. But a parser that is not a shell can always be out-argued by
-# something sufficiently determined — `eval` on an assembled string, a variable
-# holding the subcommand — and chasing that is not the job. Treat a green run as
-# "nobody reintroduced this by accident", not as a security boundary.
-#
-# The one deliberate writer, scripts/bump-version.sh, is exempt by name below:
-# bumping the version is exactly when the lockfile is supposed to change, it is a
-# reviewed release step, and no `make check` target invokes it.
-#
-# scripts/test-check-npm-lockfile-readonly drives this from outside with
-# synthetic fixtures — including the four bypasses that sank the denylist — and
-# asserts each is rejected. `make test-check-npm-lockfile-readonly`.
-#
-# Exits 1 listing every offending file, line, and text.
+# scripts/test-lint-npm-lockfile-writes drives this from outside with synthetic
+# repos — every spelling above, plus the false alarms that matter as much
+# (comments, quoted data, npm named mid-sentence). `make test-lint-npm-lockfile-writes`.
 
 set -uo pipefail
 export LC_ALL=C
+
+strict=0
+[[ ${1:-} == --strict ]] && strict=1
 
 cd "${CHECK_NPM_ROOT:-$(dirname "$0")/..}" || exit 1
 
@@ -117,6 +105,10 @@ readonly COMMAND_PREFIXES=" npx env command exec time nohup sudo doas xargs sh b
 # that is false in CI but true on a developer's machine is exactly where the
 # static gate has to catch what the runtime tripwire would only see afterwards.
 readonly SHELL_KEYWORDS=" if then elif else fi while until do done case esac in function select ! { } time coproc "
+
+# `env` and friends take options of their own before the command they run, and
+# some consume a value: `env -C . npm install` put `.` where the command was.
+readonly PREFIX_VALUE_FLAGS=" -C --chdir -u --unset -S --split-string "
 
 # Which lines are worth handing to the parser. Deliberately looser than `npm`:
 # the shell removes quoting before resolving a command, so `n"p"m install` runs
@@ -207,7 +199,7 @@ scan_line() {
   read -r -a words <<<"$line"
 
   local i=0 n=${#words[@]}
-  local shell_seen=0 code_mode=0 in_dq=0 in_sq=0 at_cmd=1
+  local shell_seen=0 code_mode=0 in_dq=0 in_sq=0 at_cmd=1 skip_next=0
   while ((i < n)); do
     local w=${words[i]}
 
@@ -270,6 +262,10 @@ scan_line() {
     # The shell removes escape backslashes before resolving the command, so
     # `np\m install` runs npm. Only a trailing one was being dropped.
     w=${w//\\/}
+    # GNU make strips `@`, `-` and `+` from the front of a recipe before handing
+    # it to the shell, so `@npm install` really is `npm install` — the standard
+    # silent-recipe form, and the one this most needed to see.
+    ((at_cmd)) && [[ $w == [@+]* ]] && w=${w#[@+]}
 
     # Only a word in COMMAND POSITION can be the executable. `echo "npm" install`
     # passes "npm" to echo — reading it as a command was a false alarm that no
@@ -293,7 +289,11 @@ scan_line() {
     # word still in command position; anything else takes it. `CI=1 npm install`
     # is an ordinary way to write a command, and treating `CI=1` as the
     # executable skipped the npm that followed it.
-    if [[ $w != -* \
+    if [[ $w == -* && $PREFIX_VALUE_FLAGS == *" $w "* ]]; then
+      skip_next=1          # e.g. `env -C <dir>`: the value is not the command
+    elif ((skip_next)); then
+      skip_next=0
+    elif [[ $w != -* \
        && ! $w =~ ^[A-Za-z_][A-Za-z0-9_]*= \
        && $SHELL_KEYWORDS != *" $w "* \
        && $COMMAND_PREFIXES != *" ${w##*/} "* ]]; then
@@ -412,7 +412,13 @@ while IFS= read -r mk; do
     stripped="${text#"${text%%[![:space:]]*}"}"
     [[ "$stripped" == \#* ]] && continue
     check_text "$mk" "$lineno" "$stripped"
-  done < <(grep -nE "$NPM_GREP" "$mk" 2>/dev/null)
+    # Physical lines are joined on a trailing backslash first: a recipe split as
+    # `np\` + `m install` has no npm-shaped token on either half.
+  done < <(awk '{ line = line $0
+                  if (line ~ /\\$/) { sub(/\\$/, "", line); if (!ln) ln = NR; next }
+                  print (ln ? ln : NR) ":" line; line = ""; ln = 0 }
+                END { if (line != "") print (ln ? ln : NR) ":" line }' "$mk" 2>/dev/null \
+           | grep -E ":.*$NPM_GREP")
 done < <(git ls-files 'Makefile' '*/Makefile' '*.mk' '*/*.mk')
 
 # 3. Scripts under scripts/, which is what those Makefile recipes actually run.
@@ -422,8 +428,8 @@ while IFS= read -r script; do
   [[ "$script" =~ $ALLOWED_FILES ]] && continue
   [[ -f "$script" ]] || continue
   # This file names the forbidden spellings in its own prose and allowlist.
-  [[ "$script" == scripts/check-npm-lockfile-readonly ]] && continue
-  [[ "$script" == scripts/test-check-npm-lockfile-readonly ]] && continue
+  [[ "$script" == scripts/lint-npm-lockfile-writes ]] && continue
+  [[ "$script" == scripts/test-lint-npm-lockfile-writes ]] && continue
   while IFS=: read -r lineno text; do
     stripped="${text#"${text%%[![:space:]]*}"}"
     [[ "$stripped" == \#* ]] && continue
@@ -432,13 +438,22 @@ while IFS= read -r script; do
 done < <(git ls-files 'scripts/*')
 
 if [[ $fail -eq 0 ]]; then
-  echo "npm lockfile read-only: every npm invocation in package.json scripts, Makefile recipes, and scripts/ is on the permitted allowlist."
+  echo "npm lockfile writes: every npm invocation in package.json scripts, Makefile recipes, and scripts/ is on the permitted allowlist."
 else
   printf '%s\n' "" \
-    "Every npm invocation reachable from \`make check\` must be one that cannot" \
+    "Every npm invocation reachable from \`make check\` should be one that cannot" \
     "rewrite a lockfile. Use \`npm ci\` to install. If the flagged invocation" \
     "genuinely cannot write package-lock.json, add its subcommand to" \
-    "ALLOWED_SUBCOMMANDS in $0 and say why." >&2
+    "ALLOWED_SUBCOMMANDS in $0 and say why." \
+    "" \
+    "This is a diagnostic and does not fail the build. The guarantee is" \
+    "scripts/assert-lockfiles-unchanged, which compares the bytes." >&2
 fi
 
-exit $fail
+# Advisory by default: a spelling this misses must never be a shipped hole, so it
+# does not gate. scripts/assert-lockfiles-unchanged holds the guarantee.
+# --strict is for the self-test, which has to observe the rejections.
+if ((strict)); then
+  exit $fail
+fi
+exit 0
