@@ -123,6 +123,17 @@
       ]
     }
   },
+  "CreateCloudFile": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateComment": {
     "retry": {
       "backoff": "exponential",
@@ -168,6 +179,17 @@
     }
   },
   "CreateGaugeNeedle": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "CreateGoogleDocument": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,
@@ -823,6 +845,17 @@
       ]
     }
   },
+  "GetCloudFile": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "GetComment": {
     "retry": {
       "backoff": "exponential",
@@ -1055,6 +1088,17 @@
     }
   },
   "GetGaugeNeedle": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "GetGoogleDocument": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,
@@ -2441,6 +2485,18 @@
       ]
     }
   },
+  "UpdateCloudFile": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "UpdateComment": {
     "idempotent": true,
     "retry": {
@@ -2471,6 +2527,18 @@
       "backoff": "exponential",
       "base_delay_ms": 1000,
       "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "UpdateGoogleDocument": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
       "retry_on": [
         429,
         503

@@ -392,6 +392,40 @@ class ClientSide(TypedDict):
     url: NotRequired[str]
 
 
+class CloudFile(TypedDict):
+    app_url: str
+    bookmark_url: NotRequired[str]
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
+    bucket: TodoBucket
+    comments_count: NotRequired[int]
+    comments_url: NotRequired[str]
+    created_at: str
+    creator: Person
+    description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
+    id: int
+    inherits_status: bool
+    parent: RecordingParent
+    position: NotRequired[int]
+    service: CloudFileService
+    status: str
+    subscription_url: NotRequired[str]
+    title: str
+    type: str
+    updated_at: str
+    url: str
+    visible_to_clients: bool
+
+
+class CloudFileService(TypedDict):
+    code: str
+    example_url: str
+    name: str
+    supporting_text: NotRequired[str]
+    valid_patterns: list[str]
+
+
 class Comment(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -445,6 +479,15 @@ class CreateChatbotRequestContent(TypedDict):
     service_name: str
 
 
+class CreateCloudFileRequestContent(TypedDict):
+    description: NotRequired[str]
+    service: str
+    subscriptions: NotRequired[list[int]]
+    title: NotRequired[str]
+    url: str
+    visible_to_clients: NotRequired[bool]
+
+
 class CreateCommentRequestContent(TypedDict):
     content: str
 
@@ -470,6 +513,16 @@ class CreateGaugeNeedleRequestContent(TypedDict):
     gauge_needle: GaugeNeedlePayload
     notify: NotRequired[str]
     subscriptions: NotRequired[list[int]]
+
+
+class CreateGoogleDocumentRequestContent(TypedDict):
+    description: NotRequired[str]
+    document_type: str
+    status: NotRequired[str]
+    subscriptions: NotRequired[list[int]]
+    title: NotRequired[str]
+    url: str
+    visible_to_clients: NotRequired[bool]
 
 
 class CreateLineupMarkerRequestContent(TypedDict):
@@ -911,6 +964,32 @@ class GetUpcomingScheduleResponseContent(TypedDict):
     assignables: NotRequired[list[Assignable]]
     recurring_schedule_entry_occurrences: NotRequired[list[ScheduleEntry]]
     schedule_entries: NotRequired[list[ScheduleEntry]]
+
+
+class GoogleDocument(TypedDict):
+    app_url: str
+    bookmark_url: NotRequired[str]
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
+    bucket: TodoBucket
+    comments_count: NotRequired[int]
+    comments_url: NotRequired[str]
+    created_at: str
+    creator: Person
+    description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
+    document_type: str
+    id: int
+    inherits_status: bool
+    parent: RecordingParent
+    position: NotRequired[int]
+    status: str
+    subscription_url: NotRequired[str]
+    title: str
+    type: str
+    updated_at: str
+    url: str
+    visible_to_clients: bool
 
 
 class HillChart(TypedDict):
@@ -1851,6 +1930,14 @@ class UpdateChatbotRequestContent(TypedDict):
     service_name: str
 
 
+class UpdateCloudFileRequestContent(TypedDict):
+    description: NotRequired[str]
+    service: str
+    subscriptions: NotRequired[list[int]]
+    title: NotRequired[str]
+    url: str
+
+
 class UpdateCommentRequestContent(TypedDict):
     content: str
 
@@ -1861,6 +1948,15 @@ class UpdateFolderRequestContent(TypedDict):
 
 class UpdateGaugeNeedleRequestContent(TypedDict):
     gauge_needle: NotRequired[GaugeNeedleUpdatePayload]
+
+
+class UpdateGoogleDocumentRequestContent(TypedDict):
+    description: NotRequired[str]
+    document_type: str
+    status: NotRequired[str]
+    subscriptions: NotRequired[list[int]]
+    title: NotRequired[str]
+    url: str
 
 
 class UpdateHillChartSettingsRequestContent(TypedDict):

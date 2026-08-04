@@ -369,6 +369,48 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/vaults/{vaultId}/cloud_files",
+      "resource": "Files",
+      "operations": {
+        "POST": "CreateCloudFile"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "vaultId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/vaults/{vaultId}/google_documents",
+      "resource": "Files",
+      "operations": {
+        "POST": "CreateGoogleDocument"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "vaultId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/webhooks",
       "resource": "Automation",
       "operations": {
@@ -841,6 +883,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/cloud_files/{cloudFileId}",
+      "resource": "Files",
+      "operations": {
+        "GET": "GetCloudFile",
+        "PUT": "UpdateCloudFile"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "cloudFileId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/comments",
       "resource": "Everything",
       "operations": {
@@ -948,6 +1008,24 @@
           "type": "string"
         },
         "needleId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/google_documents/{googleDocumentId}",
+      "resource": "Files",
+      "operations": {
+        "GET": "GetGoogleDocument",
+        "PUT": "UpdateGoogleDocument"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "googleDocumentId": {
           "role": "recording",
           "type": "int64"
         }

@@ -211,6 +211,8 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
     Uploads: ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"],
     Vaults: ["GetVault", "UpdateVault", "ListVaults", "CreateVault"],
     Documents: ["GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"],
+    CloudFiles: ["GetCloudFile", "CreateCloudFile", "UpdateCloudFile"],
+    GoogleDocuments: ["GetGoogleDocument", "CreateGoogleDocument", "UpdateGoogleDocument"],
   },
   Automation: {
     Tools: ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
@@ -471,6 +473,8 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Vault: ["Vault", "entity"],
   Document: ["Document", "entity"],
   Upload: ["Upload", "entity"],
+  CloudFile: ["CloudFile", "entity"],
+  GoogleDocument: ["GoogleDocument", "entity"],
   Schedule: ["Schedule", "entity"],
   ScheduleEntry: ["ScheduleEntry", "entity"],
   Recording: ["Recording", "entity"],

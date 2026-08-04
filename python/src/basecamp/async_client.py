@@ -260,6 +260,18 @@ class AsyncAccountClient:
         return self._service("documents", lambda: AsyncDocumentsService(self))
 
     @property
+    def cloud_files(self):
+        from basecamp.generated.services.cloud_files import AsyncCloudFilesService
+
+        return self._service("cloud_files", lambda: AsyncCloudFilesService(self))
+
+    @property
+    def google_documents(self):
+        from basecamp.generated.services.google_documents import AsyncGoogleDocumentsService
+
+        return self._service("google_documents", lambda: AsyncGoogleDocumentsService(self))
+
+    @property
     def uploads(self):
         from basecamp.services.uploads import AsyncUploadsService
 

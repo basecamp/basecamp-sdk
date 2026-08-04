@@ -51,6 +51,8 @@ let serviceSplits: [String: [String: [String]]] = [
         "Uploads": ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"],
         "Vaults": ["GetVault", "UpdateVault", "ListVaults", "CreateVault"],
         "Documents": ["GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"],
+        "CloudFiles": ["GetCloudFile", "CreateCloudFile", "UpdateCloudFile"],
+        "GoogleDocuments": ["GetGoogleDocument", "CreateGoogleDocument", "UpdateGoogleDocument"],
     ],
     "Automation": [
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],

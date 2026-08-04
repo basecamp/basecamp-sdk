@@ -10,6 +10,8 @@ export { ClientCorrespondencesService } from "./client-correspondences.js";
 export { ClientRepliesService } from "./client-replies.js";
 export { ToolsService } from "./tools.js";
 export { TodosService } from "./todos.js";
+export { CloudFilesService } from "./cloud-files.js";
+export { GoogleDocumentsService } from "./google-documents.js";
 export { WebhooksService } from "./webhooks.js";
 export { CalendarsService } from "./calendars.js";
 export { CardsService } from "./cards.js";

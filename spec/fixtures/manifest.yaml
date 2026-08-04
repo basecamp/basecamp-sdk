@@ -119,6 +119,14 @@ targets:
     fixture: uploads/get.json
     pointer: ""
     schema: Upload
+  - id: cloud-file-get
+    fixture: cloud_files/get.json
+    pointer: ""
+    schema: CloudFile
+  - id: google-document-get
+    fixture: google_documents/get.json
+    pointer: ""
+    schema: GoogleDocument
   - id: schedule-entry-get
     fixture: schedules/entry_get.json
     pointer: ""
@@ -217,6 +225,8 @@ covered_schemas:
   Card: [card-get]
   Todolist: [todolist-get, todolist-group-get]
   Upload: [upload-get]
+  CloudFile: [cloud-file-get]
+  GoogleDocument: [google-document-get]
   ScheduleEntry: [schedule-entry-get]
   Forward: [forward-get]
   ForwardReply: [forward-reply-get]

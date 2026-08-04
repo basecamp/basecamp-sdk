@@ -303,6 +303,25 @@ data class SetClientVisibilityBody(
     val visibleToClients: Boolean
 )
 
+/** Request body for CreateCloudFile. */
+data class CreateCloudFileBody(
+    val url: String,
+    val service: String,
+    val title: String? = null,
+    val description: String? = null,
+    val subscriptions: List<Long>? = null,
+    val visibleToClients: Boolean? = null
+)
+
+/** Request body for UpdateCloudFile. */
+data class UpdateCloudFileBody(
+    val url: String,
+    val service: String,
+    val title: String? = null,
+    val description: String? = null,
+    val subscriptions: List<Long>? = null
+)
+
 /** Request body for UpdateComment. */
 data class UpdateCommentBody(
     val content: String
@@ -617,6 +636,27 @@ data class ListGaugesOptions(
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
+
+/** Request body for CreateGoogleDocument. */
+data class CreateGoogleDocumentBody(
+    val url: String,
+    val documentType: String,
+    val title: String? = null,
+    val description: String? = null,
+    val status: String? = null,
+    val subscriptions: List<Long>? = null,
+    val visibleToClients: Boolean? = null
+)
+
+/** Request body for UpdateGoogleDocument. */
+data class UpdateGoogleDocumentBody(
+    val url: String,
+    val documentType: String,
+    val title: String? = null,
+    val description: String? = null,
+    val status: String? = null,
+    val subscriptions: List<Long>? = null
+)
 
 /** Request body for UpdateHillChartSettings. */
 data class UpdateHillChartSettingsBody(

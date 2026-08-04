@@ -199,27 +199,6 @@ bc3_routes_not_modeled:
       user OAuth token or PAT. It sits outside this SDK's auth model (SPEC §16),
       so modeling it would imply a credential type the client cannot hold.
 
-  # -- cloud_files + google_documents --
-
-  - method: GET
-    path: /cloud_files/:id
-    tracking_issue: 551
-  - method: PUT
-    path: /cloud_files/:id
-    tracking_issue: 551
-  - method: POST
-    path: /vaults/:id/cloud_files
-    tracking_issue: 551
-  - method: GET
-    path: /google_documents/:id
-    tracking_issue: 551
-  - method: PUT
-    path: /google_documents/:id
-    tracking_issue: 551
-  - method: POST
-    path: /vaults/:id/google_documents
-    tracking_issue: 551
-
   # -- dock doors: the two door-scoped routes get DIFFERENT dispositions, decided
   #    2026-08-03. The show route is a redirector and can never be modeled, so it
   #    is out_of_scope, not registered. Only create remains open, and it stays

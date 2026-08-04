@@ -377,6 +377,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{bucketId}/vaults/{vaultId}/cloud_files.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Create a new cloud file in a vault.
+         *     `url` is validated against the selected service's patterns, so it must be a
+         *     real link for that service; use service "other" for anything that matches no
+         *     recognized service. Omitting `title` is allowed and reads back as
+         *     "Untitled".
+         */
+        post: operations["CreateCloudFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{bucketId}/vaults/{vaultId}/google_documents.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Create a new Google document in a vault.
+         *     An unrecognized `document_type` is rejected before validation with the
+         *     field-keyed 422 {"errors": {"document_type": ["is not a valid document
+         *     type"]}} — the enum would otherwise raise rather than add an error.
+         *     Omitting `title` is allowed and reads back as "Untitled".
+         */
+        post: operations["CreateGoogleDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{bucketId}/webhooks.json": {
         parameters: {
             query?: never;
@@ -936,6 +982,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cloud_files/{cloudFileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single cloud file by id */
+        get: operations["GetCloudFile"];
+        /**
+         * @description Replace a cloud file with a new complete representation.
+         *     BC3 builds a brand-new CloudFile from the permitted params and swaps the
+         *     recordable wholesale, so the request body is the full writable state:
+         *     omitting `title` clears it (and the cloud file then reads back as
+         *     "Untitled"), and omitting `description` clears it. `url` and `service` carry
+         *     presence/format validations, so they are required here rather than
+         *     clearable — a request without them is a 422, not a silent wipe.
+         *     Updating a drafted cloud file also publishes it.
+         *     Subscribers are the exception to omission-clears: a drafted cloud file keeps
+         *     its current subscribers when the request addresses neither `subscriptions`
+         *     nor `notify`. The creator is always on the list.
+         *     The legacy bucket-scoped path PUT /buckets/{bucketId}/cloud_files/{id}.json
+         *     is also accepted by BC3; this flat spelling is the documented one.
+         */
+        put: operations["UpdateCloudFile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comments.json": {
         parameters: {
             query?: never;
@@ -1092,6 +1170,38 @@ export interface paths {
         post?: never;
         /** @description Destroy a gauge needle */
         delete: operations["DestroyGaugeNeedle"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/google_documents/{googleDocumentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a single Google document by id */
+        get: operations["GetGoogleDocument"];
+        /**
+         * @description Replace a Google document with a new complete representation.
+         *     BC3 builds a brand-new GoogleDocument from the permitted params and swaps
+         *     the recordable wholesale, so the request body is the full writable state:
+         *     omitting `title` clears it (and the document then reads back as "Untitled"),
+         *     and omitting `description` clears it. `url` and `document_type` are required
+         *     here — `document_type` because an absent or unrecognized value is a 422, and
+         *     `url` because it carries a presence validation.
+         *     Subscribers are the exception to omission-clears: a drafted document keeps
+         *     its current subscribers when the request addresses neither `subscriptions`
+         *     nor `notify`. The creator is always on the list.
+         *     The legacy bucket-scoped path
+         *     PUT /buckets/{bucketId}/google_documents/{id}.json is also accepted by BC3;
+         *     this flat spelling is the documented one.
+         */
+        put: operations["UpdateGoogleDocument"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3323,6 +3433,8 @@ export interface components {
             error: string;
             message?: string;
         };
+        BareFieldBadRequestErrorResponseContent: components["schemas"]["FieldErrorMap"];
+        BareFieldValidationErrorResponseContent: components["schemas"]["FieldErrorMap"];
         /**
          * @description A personal bookmark: the current user's link to a single recording.
          *     The wrapped recording is the shared recording projection, whose `parent`
@@ -3680,6 +3792,69 @@ export interface components {
             url?: string;
             app_url?: string;
         };
+        CloudFile: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            /**
+             * @description The link on the external service — NOT this record's API URL. The
+             *     cloud_files jbuilder renders the shared recording partial first and then
+             *     `json.(recording.recordable, :url, :service)`, which overwrites the
+             *     recording's `url` key with the recordable's. `app_url` is still this
+             *     record's Basecamp URL.
+             */
+            url: string;
+            app_url: string;
+            bookmark_url?: string;
+            subscription_url?: string;
+            /** Format: int32 */
+            comments_count?: number;
+            comments_url?: string;
+            /** Format: int32 */
+            position?: number;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            description?: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
+            service: components["schemas"]["CloudFileService"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
+        };
+        /**
+         * @description The external service a cloud file points at, embedded in every cloud file
+         *     response so clients can render the service's name, supporting text, and
+         *     example URL without shipping a hard-coded catalogue. Serialized by
+         *     CloudFile::Service#as_json.
+         */
+        CloudFileService: {
+            name: string;
+            /** @description A representative URL for the service, suitable as an input placeholder. */
+            example_url: string;
+            /**
+             * @description Short identifier for the external service — "dropbox", "google_doc",
+             *     "figma", "other", … Derived from the CloudFile::Service subclass name, so it
+             *     is always present. `other` accepts any well-formed HTTPS URL.
+             */
+            code: string;
+            /**
+             * @description Regular expressions the cloud file's `url` is validated against. Sending a
+             *     `url` that matches none of the selected service's patterns is a 422.
+             */
+            valid_patterns: string[];
+            /**
+             * @description Human-readable hint ("a file or folder on Dropbox"). Absent for services
+             *     that declare none — CloudFile::Service::Services::Other, for one.
+             */
+            supporting_text?: string;
+        };
         Comment: {
             /** Format: int64 */
             id: number;
@@ -3742,6 +3917,26 @@ export interface components {
             command_url?: string;
         };
         CreateChatbotResponseContent: components["schemas"]["Chatbot"];
+        CreateCloudFileRequestContent: {
+            url: string;
+            /**
+             * @description Short identifier for the external service — "dropbox", "google_doc",
+             *     "figma", "other", … Derived from the CloudFile::Service subclass name, so it
+             *     is always present. `other` accepts any well-formed HTTPS URL.
+             */
+            service: string;
+            title?: string;
+            description?: string;
+            subscriptions?: number[];
+            /**
+             * @description Whether the cloud file is visible to the project's clients. Applies only
+             *     when creating directly in the tool's vault — an item created inside a
+             *     folder inherits the folder's visibility and ignores this. A client caller
+             *     always creates client-visible records regardless of what is sent.
+             */
+            visible_to_clients?: boolean;
+        };
+        CreateCloudFileResponseContent: components["schemas"]["CloudFile"];
         CreateCommentRequestContent: {
             content: string;
         };
@@ -3779,6 +3974,29 @@ export interface components {
             subscriptions?: number[];
         };
         CreateGaugeNeedleResponseContent: components["schemas"]["GaugeNeedle"];
+        CreateGoogleDocumentRequestContent: {
+            url: string;
+            /**
+             * @description One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
+             *     unrecognized value is rejected up front with a field-keyed 422
+             *     ({"errors": {"document_type": ["is not a valid document type"]}}) rather
+             *     than reaching validation.
+             */
+            document_type: string;
+            title?: string;
+            description?: string;
+            /** @description active|drafted — defaults to drafted */
+            status?: string;
+            subscriptions?: number[];
+            /**
+             * @description Whether the document is visible to the project's clients. Applies only
+             *     when creating directly in the tool's vault — an item created inside a
+             *     folder inherits the folder's visibility and ignores this. A client caller
+             *     always creates client-visible records regardless of what is sent.
+             */
+            visible_to_clients?: boolean;
+        };
+        CreateGoogleDocumentResponseContent: components["schemas"]["GoogleDocument"];
         CreateLineupMarkerRequestContent: {
             name: string;
             date: string;
@@ -4347,6 +4565,7 @@ export interface components {
         GetClientApprovalResponseContent: components["schemas"]["ClientApproval"];
         GetClientCorrespondenceResponseContent: components["schemas"]["ClientCorrespondence"];
         GetClientReplyResponseContent: components["schemas"]["ClientReply"];
+        GetCloudFileResponseContent: components["schemas"]["CloudFile"];
         GetCommentResponseContent: components["schemas"]["Comment"];
         GetDocumentResponseContent: components["schemas"]["Document"];
         GetEverythingCheckinsResponseContent: components["schemas"]["Recording"][];
@@ -4369,6 +4588,7 @@ export interface components {
         GetForwardReplyResponseContent: components["schemas"]["ForwardReply"];
         GetForwardResponseContent: components["schemas"]["Forward"];
         GetGaugeNeedleResponseContent: components["schemas"]["GaugeNeedle"];
+        GetGoogleDocumentResponseContent: components["schemas"]["GoogleDocument"];
         GetHillChartResponseContent: components["schemas"]["HillChart"];
         GetInboxResponseContent: components["schemas"]["Inbox"];
         GetMessageBoardResponseContent: components["schemas"]["MessageBoard"];
@@ -4459,6 +4679,45 @@ export interface components {
         GetUploadResponseContent: components["schemas"]["Upload"];
         GetVaultResponseContent: components["schemas"]["Vault"];
         GetWebhookResponseContent: components["schemas"]["Webhook"];
+        GoogleDocument: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            /**
+             * @description The Google Workspace document link — NOT this record's API URL. Same
+             *     recordable-overwrites-recording rendering as CloudFile#url.
+             */
+            url: string;
+            app_url: string;
+            bookmark_url?: string;
+            subscription_url?: string;
+            /** Format: int32 */
+            comments_count?: number;
+            comments_url?: string;
+            /** Format: int32 */
+            position?: number;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            description?: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
+            /**
+             * @description One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
+             *     unrecognized value is rejected up front with a field-keyed 422
+             *     ({"errors": {"document_type": ["is not a valid document type"]}}) rather
+             *     than reaching validation.
+             */
+            document_type: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
+        };
         HillChart: {
             enabled: boolean;
             stale: boolean;
@@ -5992,6 +6251,19 @@ export interface components {
             command_url?: string;
         };
         UpdateChatbotResponseContent: components["schemas"]["Chatbot"];
+        UpdateCloudFileRequestContent: {
+            url: string;
+            /**
+             * @description Short identifier for the external service — "dropbox", "google_doc",
+             *     "figma", "other", … Derived from the CloudFile::Service subclass name, so it
+             *     is always present. `other` accepts any well-formed HTTPS URL.
+             */
+            service: string;
+            title?: string;
+            description?: string;
+            subscriptions?: number[];
+        };
+        UpdateCloudFileResponseContent: components["schemas"]["CloudFile"];
         UpdateCommentRequestContent: {
             content: string;
         };
@@ -6008,6 +6280,22 @@ export interface components {
             gauge_needle?: components["schemas"]["GaugeNeedleUpdatePayload"];
         };
         UpdateGaugeNeedleResponseContent: components["schemas"]["GaugeNeedle"];
+        UpdateGoogleDocumentRequestContent: {
+            url: string;
+            /**
+             * @description One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
+             *     unrecognized value is rejected up front with a field-keyed 422
+             *     ({"errors": {"document_type": ["is not a valid document type"]}}) rather
+             *     than reaching validation.
+             */
+            document_type: string;
+            title?: string;
+            description?: string;
+            /** @description active|drafted */
+            status?: string;
+            subscriptions?: number[];
+        };
+        UpdateGoogleDocumentResponseContent: components["schemas"]["GoogleDocument"];
         UpdateHillChartSettingsRequestContent: {
             tracked?: number[];
             untracked?: number[];
@@ -7265,6 +7553,15 @@ export interface operations {
                     "application/json": components["schemas"]["CreateMessageTypeResponseContent"];
                 };
             };
+            /** @description BareFieldBadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BareFieldBadRequestErrorResponseContent"];
+                };
+            };
             /** @description UnauthorizedError 401 response */
             401: {
                 headers: {
@@ -7281,15 +7578,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -7396,6 +7684,15 @@ export interface operations {
                     "application/json": components["schemas"]["UpdateMessageTypeResponseContent"];
                 };
             };
+            /** @description BareFieldBadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BareFieldBadRequestErrorResponseContent"];
+                };
+            };
             /** @description UnauthorizedError 401 response */
             401: {
                 headers: {
@@ -7421,15 +7718,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
-            };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -8217,6 +8505,150 @@ export interface operations {
             };
         };
     };
+    CreateCloudFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+                vaultId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCloudFileRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateCloudFile 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateCloudFileResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateGoogleDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+                vaultId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGoogleDocumentRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateGoogleDocument 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateGoogleDocumentResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     ListWebhooks: {
         parameters: {
             query?: never;
@@ -8299,13 +8731,13 @@ export interface operations {
                     "application/json": components["schemas"]["CreateWebhookResponseContent"];
                 };
             };
-            /** @description BadRequestError 400 response */
+            /** @description BareFieldBadRequestError 400 response */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                    "application/json": components["schemas"]["BareFieldBadRequestErrorResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
@@ -10832,6 +11264,135 @@ export interface operations {
             };
         };
     };
+    GetCloudFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cloudFileId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetCloudFile 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetCloudFileResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateCloudFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cloudFileId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCloudFileRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateCloudFile 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateCloudFileResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetEverythingComments: {
         parameters: {
             query?: {
@@ -11659,6 +12220,135 @@ export interface operations {
             };
         };
     };
+    GetGoogleDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                googleDocumentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetGoogleDocument 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetGoogleDocumentResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateGoogleDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                googleDocumentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGoogleDocumentRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateGoogleDocument 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateGoogleDocumentResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetForward: {
         parameters: {
             query?: never;
@@ -12054,13 +12744,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description BareFieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["BareFieldValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -12132,13 +12822,13 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description BareFieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["BareFieldValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -21725,13 +22415,13 @@ export interface operations {
                     "application/json": components["schemas"]["UpdateWebhookResponseContent"];
                 };
             };
-            /** @description BadRequestError 400 response */
+            /** @description BareFieldBadRequestError 400 response */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                    "application/json": components["schemas"]["BareFieldBadRequestErrorResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
