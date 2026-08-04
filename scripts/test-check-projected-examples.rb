@@ -38,20 +38,33 @@
 #   guard removed in the copy                  cases that go red
 #   ----------------------------------------   ------------------------------
 #   response-example walk                      control, 1, 2, 3, 4, 7, 8, 9,
-#                                              11, 12, 13, 14
+#                                              11, 12, 13, 14, 15a, 16
 #   request-body-example walk                  5
-#   parameter-example walk                     6
+#   parameter-example walk                     6, 15b
 #   liveness floor (>= 1 response example)     10
 #   components/examples `$ref` resolution      11
 #   `externalValue` skip                       12
 #   value-less Example Object rejection        13
 #   Example Object type check                  14
 #   triage keeps :error distinct from :skip    11, 13, 14
-#   instance_errors result discarded           1, 2, 3, 4, 5, 6, 7, 8, 9
+#   instance_errors result discarded           1, 2, 3, 4, 5, 6, 7, 8, 9,
+#                                              15a, 15b
+#   root-null check (schema_instance_validator) 15a, 15b
+#   ...and its nullability test, i.e. a version
+#   that bans EVERY root null                  16
 #
-# The last row is the one that matters most: it unwires the validator itself
-# while leaving every walk in place, so a gate that visits all 37 examples and
-# concludes nothing still goes red. Coverage and judgement are pinned separately.
+# `instance_errors result discarded` is the row that matters most: it unwires the
+# validator itself while leaving every walk in place, so a gate that visits all
+# 37 examples and concludes nothing still goes red. Coverage and judgement are
+# pinned separately.
+#
+# The last two rows are one guard and its over-correction, pinned in both
+# directions on purpose. Root nulls were the third hole a reviewer found in this
+# gate, and all three were the same shape: A PATH THAT RETURNS SUCCESS WITHOUT
+# EXAMINING THE THING. The cheapest way to close it — reject every root null —
+# would pass 15a/15b and start rejecting legitimate examples for
+# required-and-nullable shapes, which is the class `Todolist.color` belongs to.
+# So 16 pins that the check consults nullability rather than banning nulls.
 #
 # Note what is NOT in this table any more. Until #644 the projection published
 # response examples still carrying the Smithy output wrapper their schema no
@@ -371,10 +384,48 @@ end
 expect_fail(failures, "14. examples map entry that is not an Example Object", out, status,
             "example is not an Example Object")
 
+# --- 15. Root null against a non-nullable schema ---------------------------------
+#
+# `instance_errors` tolerates a null because the ENCLOSING context has already
+# judged it — a required-but-null field is caught by the required loop in its
+# parent, a null element by the items check in its array. A root value has no
+# enclosing context, so before the fix this returned no errors and the example
+# was COUNTED AS VALIDATED: the gate approving exactly the contradiction it
+# exists to catch. Both a response and a parameter example, because the early
+# return sat below every kind of caller alike.
+
+out, status = with_mutated_spec do |doc|
+  todolist_response_examples(doc).fetch("GetTodolistOrGroup_example1")["value"] = nil
+end
+expect_fail(failures, "15a. response example value:null against a non-nullable schema", out, status,
+            "GetTodolistOrGroup_example1: (root): value is null but the schema is not nullable")
+
+out, status = with_mutated_spec do |doc|
+  anchor(doc, "paths", RECORDINGS_PATH, "get", "parameters")
+    .find { |p| p["name"] == "accountId" }["examples"]["ListRecordings_example1"]["value"] = nil
+end
+expect_fail(failures, "15b. parameter example value:null against a non-nullable schema", out, status,
+            "parameters/accountId/examples/ListRecordings_example1: (root): value is null but the schema is not nullable")
+
+# --- 16. Root null against a NULLABLE schema is still fine -------------------------
+#
+# The guard for case 15 has to check nullability, not ban root nulls. Without
+# this case the cheapest way to pass 15 — reject every null — would look correct
+# and would start failing legitimate examples the moment the spec publishes one
+# for a required-and-nullable shape, which is the exact class `Todolist.color`
+# belongs to.
+
+out, status = with_mutated_spec do |doc|
+  param = anchor(doc, "paths", RECORDINGS_PATH, "get", "parameters").find { |p| p["name"] == "accountId" }
+  param["schema"] = { "type" => %w[string null] }
+  param["examples"]["ListRecordings_example1"]["value"] = nil
+end
+expect_pass(failures, "16. root null IS allowed where the schema permits null", out, status)
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> projected-example self-test passed — 1 positive + 14 negative/skip cases"
+  puts "==> projected-example self-test passed — 2 positive + 16 negative/skip cases"
   exit 0
 else
   warn "projected-example self-test FAILED:"

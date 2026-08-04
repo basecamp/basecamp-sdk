@@ -194,13 +194,33 @@ module SchemaInstanceValidator
   # Composition-aware validation of `value` against `schema`. Reports
   # (path-tagged) errors for a missing required field, a required field present as
   # null against a non-nullable schema, a null array element against a non-nullable
-  # item schema, and a present value whose JSON type contradicts the declared type.
-  # Optional object-field nulls are tolerated: the Smithy-derived OpenAPI
-  # under-marks some nullable optionals (e.g. Person.bio/location are `type:string`
-  # yet the wire sends null), so flagging them would be a false positive.
+  # item schema, a ROOT null against a non-nullable schema, and a present value
+  # whose JSON type contradicts the declared type.
+  #
+  # NESTED nulls are tolerated: the Smithy-derived OpenAPI under-marks some
+  # nullable optionals (e.g. Person.bio/location are `type:string` yet the wire
+  # sends null), so flagging them would be a false positive. That exemption is
+  # only sound because something above HAS looked — a required-but-null field is
+  # caught by the required loop in its parent, a null array element by the items
+  # check in its array. It is an "the enclosing context already judged this"
+  # rule, not an "any null is fine" rule.
+  #
+  # A ROOT null (depth 0) has no enclosing context and therefore nothing standing
+  # behind the exemption, so it is checked here. Skipping it let a published
+  # example of `value: null` under a non-nullable schema be counted as VALIDATED
+  # — the gate approving exactly the class of contradiction it exists to catch.
   def instance_errors(prefix, value, schema, components, depth = 0)
     return [] if depth > 60
-    return [] if value.nil? # optional-null tolerated; required-/element-null handled in context
+
+    if value.nil?
+      return [] unless depth.zero?
+
+      _, _, _, root_nullable, = merged_constraints(schema, components)
+      return [] if root_nullable
+
+      label = prefix.empty? ? "(root)" : prefix
+      return ["#{label}: value is null but the schema is not nullable"]
+    end
 
     req, props, _types, _nullable, items, alt_groups, type_sets = merged_constraints(schema, components)
 
