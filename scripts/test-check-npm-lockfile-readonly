@@ -1,0 +1,187 @@
+#!/usr/bin/env bash
+#
+# Self-test for scripts/check-npm-lockfile-readonly.
+#
+# The gate's own `make check` run only ever exercises the passing case, so
+# nothing there proves it rejects anything. Its first cut was a denylist of
+# writing subcommands, and four ordinary spellings walked straight through it:
+#
+#   npm in                              npm accepts unambiguous prefixes
+#   npm ins                             ditto
+#   npm --prefix ../typescript install  a flag between npm and its subcommand
+#   npm --prefix=../typescript install  the `=` form of the same
+#
+# Each is a real lockfile writer. They are the reason the gate is now an
+# allowlist of permitted invocations rather than a denylist of forbidden ones,
+# and they are pinned here so the shape cannot quietly regress.
+#
+# Every case builds a synthetic repo under a temp dir — its own git repo, so the
+# gate's `git ls-files` walk sees exactly the fixture and nothing else — and
+# drives the real checker at it via CHECK_NPM_ROOT. Nothing here touches the
+# working tree.
+#
+# CHECK_NPM_GATE names the checker under test (default
+# scripts/check-npm-lockfile-readonly) so a deliberately-mutated copy can be
+# driven through the same cases.
+
+set -uo pipefail
+export LC_ALL=C
+
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+GATE=${CHECK_NPM_GATE:-$REPO_ROOT/scripts/check-npm-lockfile-readonly}
+
+failures=0
+cases=0
+
+TMPROOT=$(mktemp -d)
+trap 'rm -rf "$TMPROOT"' EXIT
+
+# make_fixture <name> <pretest-command> [extra-makefile-recipe]
+# Builds a minimal repo: one package.json whose `pretest` holds the command
+# under test, plus a Makefile whose recipe holds the optional second one.
+make_fixture() {
+  local name=$1 pretest=$2 recipe=${3:-true}
+  local dir="$TMPROOT/$name"
+  mkdir -p "$dir/scripts"
+  jq -n --arg p "$pretest" '{name:"fixture", private:true, scripts:{pretest:$p, test:"vitest run"}}' \
+    > "$dir/package.json"
+  printf 'probe:\n\t%s\n' "$recipe" > "$dir/Makefile"
+  git -C "$dir" init --quiet
+  git -C "$dir" add -A
+  echo "$dir"
+}
+
+run_gate() {   # dir -> prints output, returns gate's exit status
+  ( cd "$1" && CHECK_NPM_ROOT="$1" "$GATE" 2>&1 )
+}
+
+expect_reject() {   # label, dir, expected-fragment
+  local label=$1 dir=$2 fragment=$3 out status
+  cases=$((cases + 1))
+  out=$(run_gate "$dir"); status=$?
+  if [[ $status -eq 0 ]]; then
+    echo "  FAIL  $label — gate exited 0; it must reject this" >&2
+    failures=$((failures + 1))
+  elif [[ "$out" != *"$fragment"* ]]; then
+    echo "  FAIL  $label — rejected, but no '$fragment' in output:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  else
+    echo "  ok    $label — rejected (exit $status)"
+  fi
+}
+
+expect_accept() {   # label, dir
+  local label=$1 dir=$2 out status
+  cases=$((cases + 1))
+  out=$(run_gate "$dir"); status=$?
+  if [[ $status -ne 0 ]]; then
+    echo "  FAIL  $label — gate exited $status; it must accept this:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  else
+    echo "  ok    $label — accepted"
+  fi
+}
+
+echo "== the four spellings that bypassed the denylist =="
+
+expect_reject "npm in (unambiguous prefix)" \
+  "$(make_fixture prefix_in 'cd ../../../typescript && npm in --prefer-offline')" \
+  'npm in'
+
+expect_reject "npm ins (unambiguous prefix)" \
+  "$(make_fixture prefix_ins 'cd ../../../typescript && npm ins')" \
+  'npm ins'
+
+expect_reject "npm --prefix <path> install (flag before subcommand)" \
+  "$(make_fixture flag_space 'npm --prefix ../../../typescript install')" \
+  'npm install'
+
+expect_reject "npm --prefix=<path> install (equals form)" \
+  "$(make_fixture flag_equals 'npm --prefix=../../../typescript install')" \
+  'npm install'
+
+echo "== the original #612 defect, and its neighbours =="
+
+expect_reject "the #612 pretest verbatim" \
+  "$(make_fixture pretest_612 'cd ../../../typescript && npm install --prefer-offline --silent && npm run build')" \
+  'npm install'
+
+expect_reject "a lockfile-writing Makefile recipe" \
+  "$(make_fixture makefile_writer 'true' 'cd typescript && npm install --prefer-offline')" \
+  'npm install'
+
+expect_reject "npm update" \
+  "$(make_fixture writer_update 'npm update')" 'npm update'
+
+expect_reject "npm dedupe" \
+  "$(make_fixture writer_dedupe 'npm dedupe')" 'npm dedupe'
+
+expect_reject "npm version patch (writes package.json + lockfile)" \
+  "$(make_fixture writer_version 'npm version patch')" 'npm version'
+
+expect_reject "npm audit fix (writes; plain audit does not)" \
+  "$(make_fixture writer_auditfix 'npm audit fix --force')" 'npm audit fix'
+
+expect_reject "npx-style npm@11 pin" \
+  "$(make_fixture writer_pinned 'npx --yes npm@11 install --package-lock-only')" \
+  'npm install'
+
+echo "== permitted invocations must still pass =="
+
+expect_accept "npm ci + npm run (the fix)" \
+  "$(make_fixture ok_ci 'cd ../../../typescript && npm ci --prefer-offline --silent && npm run build')"
+
+expect_accept "npm ci with an = flag" \
+  "$(make_fixture ok_ci_eq 'cd typescript && npm ci --include=dev --ignore-scripts && npm run build')"
+
+expect_accept "plain npm audit" \
+  "$(make_fixture ok_audit 'npm audit --audit-level=high')"
+
+expect_accept "npm test in a Makefile recipe" \
+  "$(make_fixture ok_test 'true' 'cd conformance/runner/typescript && npm ci && npm test')"
+
+# These lines are scanned as text, so prose and quoted strings pass through the
+# same parser as real commands. A subcommand can arrive wearing the quote that
+# closed its string, and "node/npm" in an advisory message is not a path to npm.
+expect_accept "a subcommand wearing a closing quote" \
+  "$(make_fixture ok_quoted 'true' "echo \"run npm ci\" && echo 'then npm test'")"
+
+expect_accept "prose naming node/npm, not invoking it" \
+  "$(make_fixture ok_prose 'true' 'command -v node || echo "NOTE: node/npm is required for the TypeScript SDK"')"
+
+expect_reject "an absolute path to npm still counts" \
+  "$(make_fixture path_npm '/usr/local/bin/npm install --prefer-offline')" \
+  'npm install'
+
+echo "== the deliberate exemption =="
+
+# bump-version.sh is the one script allowed to write a lockfile. Prove the
+# exemption is real (the same content is rejected under any other name), so it
+# cannot rot into decoration that exempts nothing.
+exempt_dir="$TMPROOT/exempt"
+mkdir -p "$exempt_dir/scripts"
+jq -n '{name:"fixture", private:true, scripts:{test:"vitest run"}}' > "$exempt_dir/package.json"
+printf 'probe:\n\ttrue\n' > "$exempt_dir/Makefile"
+printf '#!/usr/bin/env bash\n(cd typescript && npm install --package-lock-only --ignore-scripts)\n' \
+  > "$exempt_dir/scripts/bump-version.sh"
+git -C "$exempt_dir" init --quiet && git -C "$exempt_dir" add -A
+expect_accept "scripts/bump-version.sh may write" "$exempt_dir"
+
+notexempt_dir="$TMPROOT/notexempt"
+mkdir -p "$notexempt_dir/scripts"
+jq -n '{name:"fixture", private:true, scripts:{test:"vitest run"}}' > "$notexempt_dir/package.json"
+printf 'probe:\n\ttrue\n' > "$notexempt_dir/Makefile"
+printf '#!/usr/bin/env bash\n(cd typescript && npm install --package-lock-only --ignore-scripts)\n' \
+  > "$notexempt_dir/scripts/sync-lockfiles.sh"
+git -C "$notexempt_dir" init --quiet && git -C "$notexempt_dir" add -A
+expect_reject "the same content under any other name is not" "$notexempt_dir" 'npm install'
+
+echo
+if [[ $failures -eq 0 ]]; then
+  echo "check-npm-lockfile-readonly self-test passed ($cases cases)."
+else
+  echo "check-npm-lockfile-readonly self-test FAILED ($failures of $cases cases)." >&2
+fi
+exit $((failures > 0))

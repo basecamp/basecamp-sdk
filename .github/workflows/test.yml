@@ -182,6 +182,12 @@ jobs:
       - name: No `make check` path can rewrite an npm lockfile
         run: make check-npm-lockfile-readonly
 
+      # The gate's live run only exercises the passing case. Its first cut was a
+      # denylist that `npm in`, `npm ins`, and `npm --prefix <path> install` all
+      # walked through — so the rejections need their own tests.
+      - name: npm lockfile gate self-test (synthetic repos)
+        run: make test-check-npm-lockfile-readonly
+
   test-go:
     name: Go Tests
     runs-on: ubuntu-latest

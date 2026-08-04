@@ -637,8 +637,17 @@ conformance-kotlin-replay:
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
 	cd kotlin && ./gradlew --quiet :conformance:runReplay
 
-# Run TypeScript conformance tests
-conformance-typescript:
+# Run TypeScript conformance tests.
+#
+# Depends on ts-build rather than reinstalling the SDK from the runner's own
+# pretest hook. The runner consumes typescript/ through a `file:` link, so it
+# needs the SDK installed and built — but typescript/node_modules is SHARED with
+# ts-check, and `npm ci` deletes node_modules before it installs. A reinstall
+# driven from here would race a sibling TypeScript target under `make -j` and
+# delete dependencies out from under it. Routing through ts-build puts the
+# install behind the ts-install stamp, which make serialises for us; the runner's
+# own `npm ci` then touches only its private node_modules.
+conformance-typescript: ts-build
 	@echo "==> Running TypeScript conformance tests..."
 	cd conformance/runner/typescript && npm ci && npm test
 
@@ -649,7 +658,7 @@ conformance-typescript:
 # runner appends /{accountId}); BASECAMP_BACKEND=bc4|bc5 to namespace
 # snapshots; LIVE_RECORD_DIR to persist wire snapshots for downstream
 # replay/compare. Opt-in: not invoked by `make check`.
-conformance-typescript-live:
+conformance-typescript-live: ts-build
 	@echo "==> Running TypeScript live canary..."
 	cd conformance/runner/typescript && npm ci && BASECAMP_LIVE=1 npm test
 
@@ -1016,7 +1025,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1125,16 +1134,32 @@ test-check-readme-env-vars:
 # Assert nothing `make check` runs can rewrite an npm lockfile. `npm install`
 # writes package-lock.json back, and *what* it writes depends on the npm version
 # running it, not the platform — npm >= 11.11.0 records a `libc` array on
-# Linux-only optional dependencies and every older npm drops it. The pinned
-# toolchain (10.9.8), CI's node 24 npm, and Dependabot's npm straddle that
+# Linux-only optional dependencies and every npm below that drops it (bisected:
+# 11.10.0 none, 11.11.0 eighteen). The pinned toolchain (10.9.8), CI's node 24
+# npm (11.5.1), and Dependabot's npm (11.19.x) straddle that
 # threshold, so a single `npm install` in a lifecycle script made the lockfile
 # oscillate by whoever ran it last (#612). `npm ci` installs from the lockfile
 # without writing it, and fails loudly on the package.json drift `npm install`
-# would have absorbed silently. Covers package.json lifecycle scripts, Makefile
-# recipes, and scripts/, exempting the one deliberate writer
-# (scripts/bump-version.sh). Bash+jq, static, 0.2s.
+# would have absorbed silently.
+#
+# An ALLOWLIST of permitted invocations, not a denylist of writers: npm accepts
+# any unambiguous prefix (`npm in`, `npm ins`) and tolerates flags before the
+# subcommand (`npm --prefix ../x install`), so a denylist cannot enumerate the
+# writers. Covers package.json lifecycle scripts, Makefile recipes, and
+# scripts/, exempting the one deliberate writer (scripts/bump-version.sh).
+# Bash+jq, static, 0.2s.
 check-npm-lockfile-readonly:
 	@./scripts/check-npm-lockfile-readonly
+
+# Drive that gate from outside with synthetic repos whose correct answer is
+# known. Its live run only ever exercises the passing case, so nothing there
+# proves it rejects anything — and its first cut was a denylist that four
+# ordinary spellings walked straight through (`npm in`, `npm ins`,
+# `npm --prefix <path> install`, `npm --prefix=<path> install`). Those four are
+# pinned here, alongside the deliberate bump-version.sh exemption and a control
+# proving the same content is rejected under any other name.
+test-check-npm-lockfile-readonly:
+	@./scripts/test-check-npm-lockfile-readonly
 
 #------------------------------------------------------------------------------
 # Combined targets
@@ -1158,7 +1183,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-npm-lockfile-readonly test-check-npm-lockfile-readonly
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
