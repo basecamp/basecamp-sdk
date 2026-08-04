@@ -19,8 +19,11 @@ Breaking across all six SDKs — Go, TypeScript, Python, Ruby, Kotlin, Swift.
 first.** A large share of this release survives a clean build. Most of that
 share gives you no signal at all — the call keeps working against a live server
 and does something different. A smaller part compiles and then panics or raises,
-but only on a payload where a particular field is absent, so it passes your
-tests and fails in production.
+but only on a payload of one particular shape — and the shape is not the same
+one in every SDK. The three Go entries need a field to be **absent**; Ruby's
+single entry needs its field to be **populated**, and stays quiet when it is
+nil. A fixture built for one direction proves nothing about the other, and
+either way it passes your tests and fails in production.
 
 | SDK | breaking changes | no signal at all | fails at runtime |
 |---|---:|---:|---:|
@@ -236,7 +239,22 @@ tested it against realistic data" is not evidence:
   fixture that leaves it nil never trips it — and against an absent field the
   behaviour is unchanged, because both versions raised there anyway.
 
-Class A has no such dependency: those break on every response.
+Class A has no dependency on a *field's* presence — but that is not the same as
+"every response", and the distinction matters when you go looking for one. Most
+class-A entries do fire on every call of the affected method: the URL
+corrections (#586), the `page` selector (#617), the merge-safe composites (#574,
+#601, #632), the empty-slice marshalling change (#560). Two groups do not, and
+their precondition is a property of the *response*, not of a field you can
+populate:
+
+- **The error-message and validation entries (#541, #549)** need an error status
+  to reach the code at all — a 2xx never composes an error message — and the
+  field-map half additionally needs the body to be of a particular shape
+  (recognition is all-or-nothing; see the Python entry). A suite that only
+  exercises happy paths sees none of it.
+- **`downloadURL`'s hop-1 retry (#563)** changes nothing until a network error
+  or one of `{429, 502, 503, 504}` actually occurs. Against a healthy server it
+  is indistinguishable from v0.12.0.
 
 | SDK | class A | class B |
 |---|---:|---:|
@@ -833,7 +851,12 @@ not one any more — Todos is.
 - **#563 — the authenticated download hop retries** under a declared set (`429,
   502, 503, 504` plus network errors; never 500) in every SDK. Downloads that
   used to fail fast now recover, and single-shot download mocks now see up to
-  three requests. Python's hop 1 also stopped sending `Accept: application/json`.
+  three requests. **Python and Ruby** additionally stopped sending
+  `Accept: application/json` on hop 1 — `accept=None` in
+  `python/src/basecamp/_http.py`, `accept: nil` in `ruby/lib/basecamp/http.rb` —
+  so a VCR cassette or WebMock stub that matches on `Accept` stops matching. The
+  other four never sent it on that hop, at v0.12.0 or now, so nothing moved
+  there.
 - **#592 — the backoff formula gained a 30 s ceiling** in all six SDKs. Swift
   additionally retries a custom `Transport`'s own `BasecampError.network`
   instead of failing on sight.
@@ -928,10 +951,20 @@ serialization and downstream strict decoders.
 ### `pkg/generated`: ~107 struct- and time-typed optional fields became pointers (#560)
 
 ```go
-// both lines still COMPILE on main; the first one panics
+// both lines still COMPILE on main, and BOTH panic when the field is nil
 _ = a.Limits.CanUploadFiles     // Account.Limits is now *AccountLimits
 fmt.Println(t.DueOn.String())   // Todo.DueOn is now *types.Date
 ```
+
+The method call is no safer than the field selector. `types.Date.String` has a
+**value** receiver (`func (d Date) String() string`, `go/pkg/types/date.go`), so
+Go rewrites `t.DueOn.String()` to `(*t.DueOn).String()` and the dereference of a
+nil pointer panics before `String` is entered. The same holds for every
+value-receiver method on these types — `IsZero`, `Before`, `After`, `Weekday` on
+`types.Date`; `Format`, `Sub`, `Unix`, `Year` on `time.Time`. Only a
+*pointer*-receiver method would survive a nil receiver, and it would then have to
+handle nil in its own body; none of these do. Audit the method calls with the
+same care as the field selectors.
 
 Of 653 value→pointer flips in `pkg/generated`, 527 scalars and 19 slices break
 at compile time. The other ~107 have a named or struct type with fields or
