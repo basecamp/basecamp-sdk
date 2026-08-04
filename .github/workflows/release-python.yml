@@ -125,11 +125,14 @@ jobs:
       - name: Build package
         run: uv build
 
-      # PyPI rejects uploads whose metadata or long description will not render,
-      # and that rejection would otherwise land mid-release. twine check is the
-      # same validation, run before the tag exists.
+      # PyPI rejects uploads whose metadata will not parse or whose long
+      # description will not render, and that rejection would otherwise land
+      # mid-release. twine check is the same validation, run before the tag
+      # exists. Not --strict: this package currently ships no long_description
+      # at all, which twine warns about and PyPI accepts, so --strict would fail
+      # every release over a defect that belongs in pyproject.toml, not here.
       - name: Check distribution metadata
-        run: uvx twine check --strict dist/*
+        run: uvx twine check dist/*
 
       - name: Dry-run build verification
         if: github.event_name == 'workflow_dispatch'

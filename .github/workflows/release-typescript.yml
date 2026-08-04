@@ -148,6 +148,13 @@ jobs:
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           ls -l "$TARBALL"
 
+      # The same invocation the publish job runs on a tag, flags and all, with
+      # --dry-run added: npm resolves the manifest out of the tarball, lists the
+      # exact file set it would upload, and negotiates with the registry, but
+      # writes nothing. Verified to exit 0 with --provenance on npm 11.16.0 /
+      # Node 24.18.0 in a job with no `id-token: write`, so the shape is
+      # exercised here; the attestation itself is minted from the OIDC token at
+      # publish time and is the one part a dry run cannot prove.
       - name: Dry-run publish
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -157,17 +164,7 @@ jobs:
         run: |
           echo "::notice::Dry run mode - not actually publishing"
           echo "Would publish: @37signals/basecamp@${VERSION} under npm tag ${NPM_TAG} from ${TARBALL}"
-          echo "PROBE npm $(npm --version) node $(node --version)"
-          set +e
-          out=$(npm publish "$TARBALL" --access public --tag "$NPM_TAG" --dry-run --provenance 2>&1)
-          status=$?
-          set -e
-          echo "$out"
-          echo "PROBE provenance dry-run exit: $status"
-          if [ "$status" -ne 0 ]; then
-            echo "PROBE falling back to dry-run without --provenance"
-            npm publish "$TARBALL" --access public --tag "$NPM_TAG" --dry-run
-          fi
+          npm publish "$TARBALL" --access public --tag "$NPM_TAG" --dry-run --provenance
 
       - name: Upload tarball
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
