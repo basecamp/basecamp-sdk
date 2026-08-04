@@ -28,3 +28,13 @@ paths-ignore:
 query-filters:
   - exclude:
       kind: [diagnostic, metric]
+  # Kotlin composites deliberately share a name with the generated service they
+  # extend (SPEC.md §18 "Hand-Written Composite Methods"). This Java naming query
+  # flags the convention itself, so it fires for every current and future
+  # composite. The filter is global, but the id is Java-specific and the only
+  # .java sources here (spec/smithy-bare-arrays/) are outside `paths:` above and
+  # outside the java-kotlin build, so no other analysis loses coverage. That
+  # holds only while those two conditions do: adding a Java tree to `paths:` or
+  # to the build would silently suppress this query there too.
+  - exclude:
+      id: java/class-name-matches-super-class
