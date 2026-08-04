@@ -331,6 +331,19 @@ expect_accept "a delegated Makefile with only permitted commands" \
 
 # An unquoted `#` starts a comment; nothing after it runs. Reporting it is a
 # false alarm with no honest fix — allowlisting `install` would gut the gate.
+# A quoted span running across words is data the shell hands to the command, not
+# a command itself. Flagging it is a false alarm with no honest remedy.
+expect_accept "npm install inside a quoted echo argument" \
+  "$(make_fixture quoted_data 'echo "please npm install here"')"
+
+expect_accept "the same in single quotes, in a Makefile recipe" \
+  "$(make_fixture quoted_data2 'true' "echo 'run npm install by hand'")"
+
+# But a quoted span handed to `sh -c` is a program, and must still be scanned.
+expect_reject "the same text handed to sh -c is code, not data" \
+  "$(make_fixture quoted_code "sh -c 'npm install --package-lock-only'")" \
+  'npm install'
+
 expect_accept "an inline shell comment mentioning npm install" \
   "$(make_fixture inline_comment 'echo ok # npm install is for local setup')"
 

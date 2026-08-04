@@ -189,9 +189,32 @@ scan_line() {
   read -r -a words <<<"$line"
 
   local i=0 n=${#words[@]}
-  local shell_seen=0 code_mode=0
+  local shell_seen=0 code_mode=0 in_dq=0 in_sq=0
   while ((i < n)); do
     local w=${words[i]}
+
+    # A quoted span that runs across several words is DATA — the shell hands it
+    # to the command as one argument. `echo "please npm install here"` splits
+    # into words that make `npm` look like an executable, and flagging that is a
+    # false alarm with no honest remedy, since allowlisting `install` would gut
+    # the invariant. So track open spans and skip their contents.
+    #
+    # Not inside `sh -c '…'`, where the quoted text is a program: code_mode wins,
+    # and the span is scanned as code.
+    if ((! code_mode)); then
+      local odq=${w//[^\"]/} osq=${w//[^\']/}
+      if ((in_dq)); then
+        (( ${#odq} % 2 == 1 )) && in_dq=0
+        ((i += 1)); continue
+      elif ((in_sq)); then
+        (( ${#osq} % 2 == 1 )) && in_sq=0
+        ((i += 1)); continue
+      elif (( ${#odq} % 2 == 1 )); then
+        in_dq=1; ((i += 1)); continue
+      elif (( ${#osq} % 2 == 1 )); then
+        in_sq=1; ((i += 1)); continue
+      fi
+    fi
 
     # An unquoted `#` at the start of a word begins a comment, and nothing after
     # it runs. Without this, `echo ok # npm install is for local setup` was
