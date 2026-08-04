@@ -45,7 +45,7 @@ python/src/basecamp/async_client.py
 ruby/test/basecamp/services/cloud_files_service_test.rb
   s_ae792ed0be3006::t_bb933c0130c064 1-119
 typescript/src/generated/services/google-documents.ts
-  s_ae792ed0be3006::t_7f541e61faefbd 1-196
+  s_ae792ed0be3006::t_7f541e61faefbd 1-196,1-14,17-79,81-87,89-125,127-132,134-155,157-163,165-196
 go/pkg/basecamp/url-routes.json
   s_ae792ed0be3006::t_f2bf3eada6b4c0 371-412,885-902,1016-1033
 ruby/lib/basecamp/generated/services/cloud_files_service.rb
@@ -131,7 +131,7 @@ kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/cloud-files.kt
   s_ae792ed0be3006::t_0e96b6a5ebda81 1-90
 typescript/src/generated/services/cloud-files.ts
-  s_ae792ed0be3006::t_189dbe18ab7449 1-188
+  s_ae792ed0be3006::t_189dbe18ab7449 1-188,1-14,17-73,75-81,83-118,120-125,127-148,150-156,158-188
 typescript/src/generated/path-mapping.ts
   s_ae792ed0be3006::t_6a01ca3b45bec9 38-39,79-80,94-95
 AGENTS.md
