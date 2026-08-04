@@ -19,10 +19,10 @@ module Basecamp
       end
 
       # Get upcoming schedule entries and assignable items within a date window.
-      # @param window_starts_on [String, nil] window starts on
-      # @param window_ends_on [String, nil] window ends on
+      # @param window_starts_on [String] Inclusive first day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
+      # @param window_ends_on [String] Inclusive last day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
       # @return [Hash] response data
-      def upcoming(window_starts_on: nil, window_ends_on: nil)
+      def upcoming(window_starts_on:, window_ends_on:)
         with_operation(service: "reports", operation: "upcoming", is_mutation: false) do
           http_get("/reports/schedules/upcoming.json", params: compact_query_params(window_starts_on: window_starts_on, window_ends_on: window_ends_on), operation: "GetUpcomingSchedule").json
         end

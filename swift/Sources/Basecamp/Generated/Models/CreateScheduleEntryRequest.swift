@@ -5,32 +5,41 @@ public struct CreateScheduleEntryRequest: Codable, Sendable {
     public var allDay: Bool?
     public var description: String?
     public let endsAt: String
+    public var highlighted: Bool?
     public var notify: Bool?
     public var participantIds: [Int]?
     public let startsAt: String
+    public var status: String?
     public var subscriptions: [Int]?
     public let summary: String
+    public var url: String?
     public var visibleToClients: Bool?
 
     public init(
         allDay: Bool? = nil,
         description: String? = nil,
         endsAt: String,
+        highlighted: Bool? = nil,
         notify: Bool? = nil,
         participantIds: [Int]? = nil,
         startsAt: String,
+        status: String? = nil,
         subscriptions: [Int]? = nil,
         summary: String,
+        url: String? = nil,
         visibleToClients: Bool? = nil
     ) {
         self.allDay = allDay
         self.description = description
         self.endsAt = endsAt
+        self.highlighted = highlighted
         self.notify = notify
         self.participantIds = participantIds
         self.startsAt = startsAt
+        self.status = status
         self.subscriptions = subscriptions
         self.summary = summary
+        self.url = url
         self.visibleToClients = visibleToClients
     }
 }

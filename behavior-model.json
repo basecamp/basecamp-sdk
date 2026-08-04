@@ -3227,6 +3227,10 @@
     "PersonCompany": [
       "$.name"
     ],
+    "UpcomingSchedulePerson": [
+      "$.name",
+      "$.avatar_url"
+    ],
     "UpdateMyProfileInput": [
       "$.name",
       "$.email_address",

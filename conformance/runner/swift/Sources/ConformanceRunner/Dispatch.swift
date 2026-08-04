@@ -101,6 +101,44 @@ private func resultJSON<T: Encodable>(_ value: T) throws -> JSON? {
     JSON.parse(try BaseService.encoder.encode(value))
 }
 
+/// The date window every GetUpcomingSchedule case is dispatched with. Fixed in
+/// the runner because no mock runner consumes queryParams and no assertion type
+/// can pin a query string — every runner records the path with the query
+/// stripped.
+private let upcomingWindowStart = "2026-06-01"
+private let upcomingWindowEnd = "2026-06-30"
+
+/// Flattens the upcoming-schedule envelope into top-level scalars.
+///
+/// Go and TypeScript resolve a responseBody path as a top-level key only, so the
+/// assertions read scalars rather than walk into the arrays. Every value here
+/// comes off the decoded model, which is what makes the case a decode test and
+/// not a transport test.
+private func summarizeUpcoming(_ envelope: GetUpcomingScheduleResponseContent) -> JSON {
+    var summary: [String: JSON] = [
+        "schedule_entries_count": .int(Int64(envelope.scheduleEntries.count)),
+        "recurring_occurrences_count": .int(Int64(envelope.recurringScheduleEntryOccurrences.count)),
+        "assignables_count": .int(Int64(envelope.assignables.count)),
+    ]
+    if let entry = envelope.scheduleEntries.first {
+        summary["entry_summary"] = .string(entry.summary)
+        summary["entry_recurring"] = .bool(entry.recurring)
+        summary["entry_bucket_name"] = .string(entry.bucket.name)
+    }
+    if let occurrence = envelope.recurringScheduleEntryOccurrences.first {
+        summary["occurrence_recurring"] = .bool(occurrence.recurring)
+        summary["occurrence_all_day"] = .bool(occurrence.allDay)
+        summary["occurrence_starts_at"] = .string(occurrence.startsAt)
+    }
+    if let assignable = envelope.assignables.first {
+        summary["assignable_content"] = .string(assignable.content)
+        summary["assignable_type"] = .string(assignable.type)
+        summary["assignable_parent_title"] = .string(assignable.parent.title)
+        summary["assignable_completion_url"] = .string(assignable.completionUrl)
+    }
+    return .object(summary)
+}
+
 /// Dispatches the test operation against the SDK and returns observed metadata.
 /// Direct port of the Kotlin dispatch table.
 func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws -> DispatchResult {
@@ -533,6 +571,19 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     case "GetPersonProgress":
         _ = try await account.reports.personProgress(personId: pathParams.longParam("personId"))
         return DispatchResult()
+
+    // The window is fixed here rather than read from the case: no mock runner
+    // consumes queryParams, and no assertion type can pin a query string. Both
+    // bounds are required, so the call cannot be made without them.
+    //
+    // Swift is the tier where the pre-#635 contract actually threw: this returns
+    // the typed content and BaseService decodes it strictly, so every value in
+    // the summary below is read back off a decoded model.
+    case "GetUpcomingSchedule":
+        let upcoming = try await account.reports.upcoming(
+            windowStartsOn: upcomingWindowStart,
+            windowEndsOn: upcomingWindowEnd)
+        return DispatchResult(resultJSON: summarizeUpcoming(upcoming))
 
     case "GetProjectTimesheet":
         _ = try await account.timesheets.forProject(projectId: pathParams.longParam("projectId"))

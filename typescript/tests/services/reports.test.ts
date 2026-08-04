@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
+import { readFileSync } from "node:fs";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
 
@@ -154,5 +155,104 @@ describe("TimesheetsService", () => {
       expect(entries).toHaveLength(1);
       expect(entries[0]!.hours).toBe("1.5");
     });
+  });
+});
+
+/**
+ * `GetUpcomingSchedule` renders BC3's reduced calendar partials
+ * (`app/views/api/schedules/calendar/`), not the per-resource ones. Until #635
+ * the spec declared the shared `ScheduleEntry` and a half-modelled `Assignable`
+ * instead, which in TypeScript was a compile-time lie rather than a throw:
+ * `title` typed non-optional and arrived `undefined`, while `content`,
+ * `recurring`, `completed`, `repeating`, `completion_url` and `comments_count`
+ * were unreachable through the types.
+ *
+ * The body here is the shared fixture, which
+ * `make check-fixture-coverage` validates against the generated schema.
+ */
+describe("ReportsService.upcoming", () => {
+  let client: BasecampClient;
+
+  beforeEach(() => {
+    client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      enableRetry: false,
+    });
+  });
+
+  const fixture = JSON.parse(
+    readFileSync(
+      new URL("../../../spec/fixtures/schedules/upcoming.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  it("types and returns the reduced calendar projection", async () => {
+    let seenUrl = "";
+    server.use(
+      http.get(`${BASE_URL}/reports/schedules/upcoming.json`, ({ request }) => {
+        seenUrl = request.url;
+        return HttpResponse.json(fixture);
+      }),
+    );
+
+    const result = await client.reports.upcoming("2026-06-01", "2026-06-30");
+
+    // Both bounds are required, so they are positional parameters rather than an
+    // options bag and always reach the query string.
+    expect(seenUrl).toContain("window_starts_on=2026-06-01");
+    expect(seenUrl).toContain("window_ends_on=2026-06-30");
+
+    const entry = result.schedule_entries[0]!;
+    expect(entry.summary).toBe("Team Meeting");
+    // Emitted only by the calendar partial, and the flag that separates the two
+    // entry arrays.
+    expect(entry.recurring).toBe(false);
+    // id + name only — no `type`, which is what broke a strict decode against
+    // TodoBucket.
+    expect(entry.bucket).toEqual({ id: 2085958499, name: "The Leto Laptop" });
+    expect(entry.creator.avatar_url).toBeTruthy();
+
+    const occurrence = result.recurring_schedule_entry_occurrences[0]!;
+    expect(occurrence.recurring).toBe(true);
+    expect(occurrence.all_day).toBe(true);
+    // An all-day entry reads back as a bare date, not a timestamp.
+    expect(occurrence.starts_at).toBe("2026-06-08");
+
+    // BC3 spells the item text `content`. The retired schema declared `title`.
+    const [todo, card] = result.assignables;
+    expect(todo!.content).toBe("Ship the hardware");
+    expect(todo!.type).toBe("todo");
+    expect(todo!.parent.title).toBe("Launch: Hardware");
+    expect(todo!.completed).toBe(true);
+    expect(todo!.completion?.creator.name).toBe("Steve Marsh");
+
+    // Kanban::Card and Step both define starts_on as a literal nil to duck-type
+    // Todo, and the partial reads it unconditionally.
+    expect(card!.starts_on).toBeNull();
+    expect(card!.due_on).toBeNull();
+    // The partial's one conditional key: absent, not null.
+    expect(card!.completion).toBeUndefined();
+    // Non-to-dos get a `_path` helper, which emits no host.
+    expect(card!.completion_url).toBe("/999/buckets/2085958499/steps/1069479526/completions.json");
+  });
+
+  it("decodes an empty window as three empty arrays", async () => {
+    server.use(
+      http.get(`${BASE_URL}/reports/schedules/upcoming.json`, () =>
+        HttpResponse.json({
+          schedule_entries: [],
+          recurring_schedule_entry_occurrences: [],
+          assignables: [],
+        }),
+      ),
+    );
+
+    const result = await client.reports.upcoming("2026-01-01", "2026-01-31");
+
+    expect(result.schedule_entries).toEqual([]);
+    expect(result.recurring_schedule_entry_occurrences).toEqual([]);
+    expect(result.assignables).toEqual([]);
   });
 });

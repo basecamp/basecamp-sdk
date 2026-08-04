@@ -199,6 +199,47 @@ class ErrorMapper:
         raise self._error
 
 
+# The date window every GetUpcomingSchedule case is dispatched with. Fixed in
+# the runner because no mock runner consumes query_params and no assertion type
+# can pin a query string — every runner records the path with the query stripped.
+UPCOMING_WINDOW_START = "2026-06-01"
+UPCOMING_WINDOW_END = "2026-06-30"
+
+
+def _summarize_upcoming(envelope: dict) -> dict:
+    """Flatten the upcoming-schedule envelope into top-level scalars.
+
+    Go and TypeScript resolve a responseBody path as a top-level key only, so
+    the assertions have to read scalars rather than walk into the arrays. Python
+    is lenient — `upcoming` hands back the parsed body verbatim — so this reads
+    the wire keys directly; the strict tiers (Swift, Kotlin) build the same
+    summary out of decoded models, which is where the contract is enforced.
+    """
+    entries = envelope["schedule_entries"]
+    occurrences = envelope["recurring_schedule_entry_occurrences"]
+    assignables = envelope["assignables"]
+
+    summary: dict[str, Any] = {
+        "schedule_entries_count": len(entries),
+        "recurring_occurrences_count": len(occurrences),
+        "assignables_count": len(assignables),
+    }
+    if entries:
+        summary["entry_summary"] = entries[0]["summary"]
+        summary["entry_recurring"] = entries[0]["recurring"]
+        summary["entry_bucket_name"] = entries[0]["bucket"]["name"]
+    if occurrences:
+        summary["occurrence_recurring"] = occurrences[0]["recurring"]
+        summary["occurrence_all_day"] = occurrences[0]["all_day"]
+        summary["occurrence_starts_at"] = occurrences[0]["starts_at"]
+    if assignables:
+        summary["assignable_content"] = assignables[0]["content"]
+        summary["assignable_type"] = assignables[0]["type"]
+        summary["assignable_parent_title"] = assignables[0]["parent"]["title"]
+        summary["assignable_completion_url"] = assignables[0]["completion_url"]
+    return summary
+
+
 class OperationMapper:
     """Maps conformance operation names to SDK calls."""
 
@@ -426,6 +467,18 @@ class OperationMapper:
                 return self._account.reports.progress()
             case "GetPersonProgress":
                 return self._account.reports.person_progress(person_id=path_params["personId"])
+            # The window is fixed here rather than read from the case: no mock
+            # runner consumes query_params, and no assertion type can pin a
+            # query string. Both bounds are required, so the call cannot be made
+            # without them. The flat summary keeps the responseBody assertions
+            # portable to Go and TypeScript, which resolve only top-level keys.
+            case "GetUpcomingSchedule":
+                return _summarize_upcoming(
+                    self._account.reports.upcoming(
+                        window_starts_on=UPCOMING_WINDOW_START,
+                        window_ends_on=UPCOMING_WINDOW_END,
+                    )
+                )
             case "GetTool":
                 return self._account.tools.get(tool_id=path_params["toolId"])
             case "CreateTool":

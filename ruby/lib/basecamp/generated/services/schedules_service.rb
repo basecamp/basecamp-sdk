@@ -115,12 +115,46 @@ module Basecamp
       # @param participant_ids [Array, nil] participant ids
       # @param all_day [Boolean, nil] all day
       # @param notify [Boolean, nil] notify
+      # @param url [String, nil] The entry's join link — a video-call URL or similar, up to 2500
+      #   characters, validated as a URL when present. A scheme-less value is
+      #   normalized to `https://`.
+      #   
+      #   Spell it `url` on the way in and read it back as `join_url`: the response
+      #   key `url` is the entry's own Basecamp API URL, written by a partial that
+      #   renders before this field, so BC3 emits the join link under a
+      #   non-colliding name. Sending `join_url` instead is silently dropped by
+      #   strong parameters — the create succeeds with no join link.
+      #   
+      #   Accepted on create since long before it was documented:
+      #   `Schedules::Entries::BaseController#base_schedule_entry_params` permits it
+      #   and `new_schedule_entry_params` passes it through unchanged for API
+      #   requests. Modeling it only on ReplaceScheduleEntry forced callers into a
+      #   three-request read-modify-write for a field the create already took — and
+      #   create is the notifying write, so participants learned about a video call
+      #   before its link existed.
+      # @param highlighted [Boolean, nil] Whether the entry is highlighted on the schedule. Defaults to false.
+      #   
+      #   Do not send an explicit null: `schedule_entries.highlighted` is NOT NULL,
+      #   so BC3 raises rather than falling back to the default. Omit it instead —
+      #   every SDK's request compactor already drops unset members.
+      # @param status [String, nil] Publication state at creation — `active|drafted`, defaulting to `active`
+      #   for an API create.
+      #   
+      #   A top-level parameter, not part of the entry's attributes: `status` is a
+      #   Recording column, so `wrap_parameters` leaves it outside the
+      #   `schedule_entry` envelope and `Recording::StatusParam#status_param` reads
+      #   it directly. On create it accepts `drafted`, `active`, `archived` or
+      #   `trashed` and raises `ActionController::BadRequest` — a 400, not a 422 —
+      #   for anything else; the two documented values are the two worth sending.
+      #   
+      #   Unlike messages and documents, schedule-entry drafts are not listed by
+      #   GetMyDrafts.
       # @param subscriptions [Array, nil] subscriptions
       # @param visible_to_clients [Boolean, nil] visible to clients
       # @return [Hash] response data
-      def create_entry(schedule_id:, summary:, starts_at:, ends_at:, description: nil, participant_ids: nil, all_day: nil, notify: nil, subscriptions: nil, visible_to_clients: nil)
+      def create_entry(schedule_id:, summary:, starts_at:, ends_at:, description: nil, participant_ids: nil, all_day: nil, notify: nil, url: nil, highlighted: nil, status: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "schedules", operation: "create_entry", is_mutation: true, resource_id: schedule_id) do
-          http_post("/schedules/#{schedule_id}/entries.json", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
+          http_post("/schedules/#{schedule_id}/entries.json", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, url: url, highlighted: highlighted, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
         end
       end
     end

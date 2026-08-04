@@ -166,29 +166,52 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 	return result, nil
 }
 
-// Assignable represents an assignable item (todo or schedule entry).
-type Assignable struct {
-	ID        int64    `json:"id"`
-	Title     string   `json:"title"`
-	Type      string   `json:"type"`
-	URL       string   `json:"url"`
-	AppURL    string   `json:"app_url"`
-	Bucket    *Bucket  `json:"bucket,omitempty"`
-	Parent    *Parent  `json:"parent,omitempty"`
-	DueOn     string   `json:"due_on,omitempty"`
-	StartsOn  string   `json:"starts_on,omitempty"`
-	Assignees []Person `json:"assignees,omitempty"`
-}
+// The upcoming-schedule report renders BC3's reduced calendar partials
+// (app/views/api/schedules/calendar/), not the per-resource ones, so its items
+// are NOT ScheduleEntry and Todo values with some fields left empty — they are
+// different shapes with a different key set. These aliases publish the
+// generated projections verbatim.
+//
+// They are aliases rather than hand-written mirrors on purpose. Converting a
+// reduced projection into a full type is what hid the mismatch in the first
+// place: a converter compiles happily while it zero-fills every field the
+// endpoint never sends, so the missing `created_at`, `title`, `parent` and
+// friends read back as "" and nobody learns the response never carried them.
+// Aliasing removes the conversion, so the spec is the only place the shape is
+// stated. See UpcomingScheduleEntry / UpcomingAssignable in spec/basecamp.smithy.
+type (
+	// UpcomingScheduleResponse is the report envelope: three arrays, always
+	// present, possibly empty.
+	UpcomingScheduleResponse = generated.GetUpcomingScheduleResponseContent
+	// UpcomingScheduleEntry is a schedule entry as the calendar partial renders
+	// it. Notably it carries Recurring, which no other schedule-entry
+	// projection has, and it does NOT carry CreatedAt, UpdatedAt, Title,
+	// InheritsStatus, Parent or DescriptionAttachments.
+	UpcomingScheduleEntry = generated.UpcomingScheduleEntry
+	// UpcomingAssignable is a dated to-do, card or step as the calendar partial
+	// renders it. Its text is Content, not Title, and its Type is lowercase
+	// ("todo", "card", "step").
+	UpcomingAssignable = generated.UpcomingAssignable
+	// UpcomingScheduleBucket is the project reference both calendar partials
+	// emit: Id and Name only, no Type.
+	UpcomingScheduleBucket = generated.UpcomingScheduleBucket
+	// UpcomingSchedulePerson is the three-field person the calendar partials
+	// emit: Id, Name, AvatarUrl.
+	UpcomingSchedulePerson = generated.UpcomingSchedulePerson
+	// UpcomingAssignableParent is the parent reference an assignable carries:
+	// Id and Title only.
+	UpcomingAssignableParent = generated.UpcomingAssignableParent
+	// UpcomingAssignableCompletion is present only on a completed assignable.
+	UpcomingAssignableCompletion = generated.UpcomingAssignableCompletion
+)
 
-// UpcomingScheduleResponse contains upcoming schedule entries.
-type UpcomingScheduleResponse struct {
-	ScheduleEntries      []ScheduleEntry `json:"schedule_entries"`
-	RecurringOccurrences []ScheduleEntry `json:"recurring_schedule_entry_occurrences"`
-	Assignables          []Assignable    `json:"assignables"`
-}
-
-// UpcomingSchedule returns schedule entries within a date window.
-// startDate and endDate should be in YYYY-MM-DD format.
+// UpcomingSchedule returns the schedule entries, recurring occurrences and
+// dated assignables falling in a date window. Both bounds are required and must
+// be YYYY-MM-DD: BC3 reads them with params.require and answers 400 when either
+// is missing, so an unbounded call has never been a thing.
+//
+// The returned items are the report's reduced calendar projections, not the
+// full ScheduleEntry / Todo shapes — see the type aliases above.
 func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDate string) (result *UpcomingScheduleResponse, err error) {
 	op := OperationInfo{
 		Service: "Reports", Operation: "UpcomingSchedule",
@@ -203,25 +226,19 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	var params *generated.GetUpcomingScheduleParams
-	if startDate != "" || endDate != "" {
-		params = &generated.GetUpcomingScheduleParams{}
-		if startDate != "" {
-			// Validate date format
-			if _, parseErr := types.ParseDate(startDate); parseErr != nil {
-				err = ErrUsage("window_starts_on must be in YYYY-MM-DD format")
-				return nil, err
-			}
-			params.WindowStartsOn = &startDate
-		}
-		if endDate != "" {
-			// Validate date format
-			if _, parseErr := types.ParseDate(endDate); parseErr != nil {
-				err = ErrUsage("window_ends_on must be in YYYY-MM-DD format")
-				return nil, err
-			}
-			params.WindowEndsOn = &endDate
-		}
+	// Both bounds are required, so refuse an empty or malformed one locally
+	// rather than spending a round-trip to be told 400.
+	if _, parseErr := types.ParseDate(startDate); parseErr != nil {
+		err = ErrUsage("window_starts_on is required and must be in YYYY-MM-DD format")
+		return nil, err
+	}
+	if _, parseErr := types.ParseDate(endDate); parseErr != nil {
+		err = ErrUsage("window_ends_on is required and must be in YYYY-MM-DD format")
+		return nil, err
+	}
+	params := &generated.GetUpcomingScheduleParams{
+		WindowStartsOn: startDate,
+		WindowEndsOn:   endDate,
 	}
 
 	resp, err := s.client.parent.gen.GetUpcomingScheduleWithResponse(ctx, s.client.accountID, params)
@@ -231,67 +248,6 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
 
-	result = &UpcomingScheduleResponse{}
-
-	for _, gs := range resp.JSON200.ScheduleEntries {
-		result.ScheduleEntries = append(result.ScheduleEntries, scheduleEntryFromGenerated(gs))
-	}
-	for _, gs := range resp.JSON200.RecurringScheduleEntryOccurrences {
-		result.RecurringOccurrences = append(result.RecurringOccurrences, scheduleEntryFromGenerated(gs))
-	}
-	for _, ga := range resp.JSON200.Assignables {
-		result.Assignables = append(result.Assignables, assignableFromGenerated(ga))
-	}
-
-	return result, nil
-}
-
-// assignableFromGenerated converts a generated Assignable to our clean type.
-func assignableFromGenerated(ga generated.Assignable) Assignable {
-	a := Assignable{
-		Title:  deref(ga.Title),
-		Type:   deref(ga.Type),
-		URL:    deref(ga.Url),
-		AppURL: deref(ga.AppUrl),
-	}
-
-	if ga.Id != nil {
-		a.ID = *ga.Id
-	}
-
-	// Convert date fields to strings
-	if ga.DueOn != nil && !ga.DueOn.IsZero() {
-		a.DueOn = ga.DueOn.String()
-	}
-	if ga.StartsOn != nil && !ga.StartsOn.IsZero() {
-		a.StartsOn = ga.StartsOn.String()
-	}
-
-	if ga.Bucket != nil {
-		a.Bucket = &Bucket{
-			ID:   ga.Bucket.Id,
-			Name: ga.Bucket.Name,
-			Type: ga.Bucket.Type,
-		}
-	}
-
-	if ga.Parent != nil {
-		a.Parent = &Parent{
-			ID:     ga.Parent.Id,
-			Title:  ga.Parent.Title,
-			Type:   ga.Parent.Type,
-			URL:    ga.Parent.Url,
-			AppURL: ga.Parent.AppUrl,
-		}
-	}
-
-	for _, gp := range ga.Assignees {
-		a.Assignees = append(a.Assignees, personFromGenerated(gp))
-	}
-
-	return a
+	return resp.JSON200, nil
 }

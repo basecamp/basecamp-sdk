@@ -1,0 +1,404 @@
+[
+  {
+    "name": "upcoming-entry: a schedule entry decodes through the reduced calendar projection",
+    "description": "GetUpcomingSchedule renders app/views/api/schedules/calendar/_entry.json.jbuilder, not schedules/entries/_entry. That partial omits created_at, updated_at, title, inherits_status, parent and description_attachments \u2014 all @required on ScheduleEntry \u2014 narrows bucket to id + name, and adds `recurring`, which no other schedule-entry projection emits. Before #635 the operation declared ScheduleEntry anyway, so this body threw DecodingError.keyNotFound in Swift on bucket.type before it reached any of the six top-level omissions.\n\nThe dispatch fixes the window at 2026-06-01..2026-06-30 rather than reading it from the case: no mock runner consumes queryParams, and no assertion type can pin a query string (every runner records the path with the query stripped). Both bounds are @required, so the call cannot be made without them at all.\n\nThe runner returns a flat summary of the DECODED result \u2014 counts plus one scalar per reduced member \u2014 rather than the raw envelope. Two reasons: Go and TypeScript resolve a responseBody path as a top-level key only, so a nested assertion is not portable; and every value below is read back through the SDK's own model, so a decoder that dropped a member fails here instead of passing quietly.",
+    "operation": "GetUpcomingSchedule",
+    "method": "GET",
+    "path": "/reports/schedules/upcoming.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "schedule_entries": [
+            {
+              "id": 1069479523,
+              "status": "active",
+              "visible_to_clients": false,
+              "url": "https://3.basecampapi.com/999/buckets/2085958499/schedule_entries/1069479523.json",
+              "app_url": "https://3.basecamp.com/999/buckets/2085958499/schedule_entries/1069479523",
+              "type": "ScheduleEntry",
+              "summary": "Team Meeting",
+              "all_day": false,
+              "recurring": false,
+              "starts_at": "2026-06-05T06:00:00.000Z",
+              "ends_at": "2026-06-05T08:30:00.000Z",
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper",
+                "avatar_url": "https://3.basecampapi.com/999/people/1049715914/avatar"
+              },
+              "participants": [
+                {
+                  "id": 1049715914,
+                  "name": "Victor Cooper",
+                  "avatar_url": "https://3.basecampapi.com/999/people/1049715914/avatar"
+                },
+                {
+                  "id": 1049715915,
+                  "name": "Steve Marsh",
+                  "avatar_url": "https://3.basecampapi.com/999/people/1049715915/avatar"
+                }
+              ],
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop"
+              },
+              "comments_count": 2
+            }
+          ],
+          "recurring_schedule_entry_occurrences": [],
+          "assignables": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/reports/schedules/upcoming.json"
+      },
+      {
+        "type": "responseBody",
+        "path": "schedule_entries_count",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "recurring_occurrences_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "assignables_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "entry_summary",
+        "expected": "Team Meeting"
+      },
+      {
+        "type": "responseBody",
+        "path": "entry_recurring",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "entry_bucket_name",
+        "expected": "The Leto Laptop"
+      }
+    ],
+    "tags": [
+      "reports",
+      "schedules",
+      "decode"
+    ]
+  },
+  {
+    "name": "upcoming-occurrence: a recurring occurrence carries recurring=true and date-only bounds",
+    "description": "The occurrences array is rendered by the SAME calendar entry partial, so it carries the same shape. What separates the two arrays is `recurring`: BC3 selects schedule_entries with recurrence_schedule IS NULL and the occurrences with it NOT NULL. This element is also all_day, so starts_at/ends_at arrive as bare dates rather than timestamps \u2014 the reason Go types them types.FlexibleTime.\n\nThe dispatch fixes the window at 2026-06-01..2026-06-30 rather than reading it from the case: no mock runner consumes queryParams, and no assertion type can pin a query string (every runner records the path with the query stripped). Both bounds are @required, so the call cannot be made without them at all.\n\nThe runner returns a flat summary of the DECODED result \u2014 counts plus one scalar per reduced member \u2014 rather than the raw envelope. Two reasons: Go and TypeScript resolve a responseBody path as a top-level key only, so a nested assertion is not portable; and every value below is read back through the SDK's own model, so a decoder that dropped a member fails here instead of passing quietly.",
+    "operation": "GetUpcomingSchedule",
+    "method": "GET",
+    "path": "/reports/schedules/upcoming.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "schedule_entries": [],
+          "recurring_schedule_entry_occurrences": [
+            {
+              "id": 1069479524,
+              "status": "active",
+              "visible_to_clients": false,
+              "url": "https://3.basecampapi.com/999/buckets/2085958499/schedule_entries/1069479524.json",
+              "app_url": "https://3.basecamp.com/999/buckets/2085958499/schedule_entries/1069479524",
+              "type": "ScheduleEntry",
+              "summary": "All-hands",
+              "all_day": true,
+              "recurring": true,
+              "starts_at": "2026-06-08",
+              "ends_at": "2026-06-08",
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper",
+                "avatar_url": "https://3.basecampapi.com/999/people/1049715914/avatar"
+              },
+              "participants": [],
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop"
+              },
+              "comments_count": 0
+            }
+          ],
+          "assignables": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/reports/schedules/upcoming.json"
+      },
+      {
+        "type": "responseBody",
+        "path": "schedule_entries_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "recurring_occurrences_count",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "assignables_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "occurrence_recurring",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "occurrence_all_day",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "occurrence_starts_at",
+        "expected": "2026-06-08"
+      }
+    ],
+    "tags": [
+      "reports",
+      "schedules",
+      "decode"
+    ]
+  },
+  {
+    "name": "upcoming-assignable: the item text is `content`, and a card carries no completion block",
+    "description": "app/views/api/schedules/calendar/_assignable.json.jbuilder emits `content` (recordable.title) \u2014 the retired Assignable schema declared `title`, so the one field callers want was permanently absent. `type` is the LOWERCASE short recordable name. Both elements here are real variants: a completed to-do carrying the partial's one conditional key (`completion`), and a card that omits it and whose completion_url is RELATIVE, because BC3 renders the non-to-do branch through bucket_step_completions_path \u2014 a _path helper, which emits no host.\n\nThe dispatch fixes the window at 2026-06-01..2026-06-30 rather than reading it from the case: no mock runner consumes queryParams, and no assertion type can pin a query string (every runner records the path with the query stripped). Both bounds are @required, so the call cannot be made without them at all.\n\nThe runner returns a flat summary of the DECODED result \u2014 counts plus one scalar per reduced member \u2014 rather than the raw envelope. Two reasons: Go and TypeScript resolve a responseBody path as a top-level key only, so a nested assertion is not portable; and every value below is read back through the SDK's own model, so a decoder that dropped a member fails here instead of passing quietly.",
+    "operation": "GetUpcomingSchedule",
+    "method": "GET",
+    "path": "/reports/schedules/upcoming.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "schedule_entries": [],
+          "recurring_schedule_entry_occurrences": [],
+          "assignables": [
+            {
+              "id": 1069479525,
+              "status": "active",
+              "visible_to_clients": false,
+              "url": "https://3.basecampapi.com/999/buckets/2085958499/todos/1069479525.json",
+              "app_url": "https://3.basecamp.com/999/buckets/2085958499/todos/1069479525",
+              "starts_on": "2026-06-01",
+              "due_on": "2026-06-10",
+              "type": "todo",
+              "content": "Ship the hardware",
+              "assignees": [
+                {
+                  "id": 1049715915,
+                  "name": "Steve Marsh",
+                  "avatar_url": "https://3.basecampapi.com/999/people/1049715915/avatar"
+                }
+              ],
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop"
+              },
+              "parent": {
+                "id": 1069479520,
+                "title": "Launch: Hardware"
+              },
+              "completion_url": "https://3.basecampapi.com/999/buckets/2085958499/todos/1069479525/completion.json",
+              "completed": true,
+              "repeating": false,
+              "completion": {
+                "created_at": "2026-06-09T15:04:05.000Z",
+                "creator": {
+                  "id": 1049715915,
+                  "name": "Steve Marsh",
+                  "avatar_url": "https://3.basecampapi.com/999/people/1049715915/avatar"
+                }
+              },
+              "comments_count": 1
+            },
+            {
+              "id": 1069479526,
+              "status": "active",
+              "visible_to_clients": false,
+              "url": "https://3.basecampapi.com/999/buckets/2085958499/card_tables/cards/1069479526.json",
+              "app_url": "https://3.basecamp.com/999/buckets/2085958499/card_tables/cards/1069479526",
+              "starts_on": null,
+              "due_on": null,
+              "type": "card",
+              "content": "Design the enclosure",
+              "assignees": [],
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop"
+              },
+              "parent": {
+                "id": 1069479519,
+                "title": "In Progress"
+              },
+              "completion_url": "/999/buckets/2085958499/steps/1069479526/completions.json",
+              "completed": false,
+              "repeating": false,
+              "comments_count": 0
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/reports/schedules/upcoming.json"
+      },
+      {
+        "type": "responseBody",
+        "path": "schedule_entries_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "recurring_occurrences_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "assignables_count",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "assignable_content",
+        "expected": "Ship the hardware"
+      },
+      {
+        "type": "responseBody",
+        "path": "assignable_type",
+        "expected": "todo"
+      },
+      {
+        "type": "responseBody",
+        "path": "assignable_parent_title",
+        "expected": "Launch: Hardware"
+      },
+      {
+        "type": "responseBody",
+        "path": "assignable_completion_url",
+        "expected": "https://3.basecampapi.com/999/buckets/2085958499/todos/1069479525/completion.json"
+      }
+    ],
+    "tags": [
+      "reports",
+      "schedules",
+      "decode"
+    ]
+  },
+  {
+    "name": "upcoming-empty: an empty window is three empty arrays, not a missing key",
+    "description": "The half that always worked, pinned so the failure claim stays precise. #635 is NOT \"fails on every live response\": reports/schedules/upcoming/index.json.jbuilder writes all three keys unconditionally, so an empty window decodes under any contract. What failed was any window containing a schedule entry, a recurring occurrence or an assignable. All three arrays are @required, which is what this case pins \u2014 a body dropping one is a contract violation, not an empty result.\n\nThe dispatch fixes the window at 2026-06-01..2026-06-30 rather than reading it from the case: no mock runner consumes queryParams, and no assertion type can pin a query string (every runner records the path with the query stripped). Both bounds are @required, so the call cannot be made without them at all.\n\nThe runner returns a flat summary of the DECODED result \u2014 counts plus one scalar per reduced member \u2014 rather than the raw envelope. Two reasons: Go and TypeScript resolve a responseBody path as a top-level key only, so a nested assertion is not portable; and every value below is read back through the SDK's own model, so a decoder that dropped a member fails here instead of passing quietly.",
+    "operation": "GetUpcomingSchedule",
+    "method": "GET",
+    "path": "/reports/schedules/upcoming.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "schedule_entries": [],
+          "recurring_schedule_entry_occurrences": [],
+          "assignables": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/reports/schedules/upcoming.json"
+      },
+      {
+        "type": "responseBody",
+        "path": "schedule_entries_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "recurring_occurrences_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "assignables_count",
+        "expected": 0
+      }
+    ],
+    "tags": [
+      "reports",
+      "schedules",
+      "decode"
+    ]
+  }
+]

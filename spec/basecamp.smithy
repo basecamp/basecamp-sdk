@@ -3151,6 +3151,46 @@ structure CreateScheduleEntryInput {
   all_day: Boolean
   notify: Boolean
 
+  /// The entry's join link — a video-call URL or similar, up to 2500
+  /// characters, validated as a URL when present. A scheme-less value is
+  /// normalized to `https://`.
+  ///
+  /// Spell it `url` on the way in and read it back as `join_url`: the response
+  /// key `url` is the entry's own Basecamp API URL, written by a partial that
+  /// renders before this field, so BC3 emits the join link under a
+  /// non-colliding name. Sending `join_url` instead is silently dropped by
+  /// strong parameters — the create succeeds with no join link.
+  ///
+  /// Accepted on create since long before it was documented:
+  /// `Schedules::Entries::BaseController#base_schedule_entry_params` permits it
+  /// and `new_schedule_entry_params` passes it through unchanged for API
+  /// requests. Modeling it only on ReplaceScheduleEntry forced callers into a
+  /// three-request read-modify-write for a field the create already took — and
+  /// create is the notifying write, so participants learned about a video call
+  /// before its link existed.
+  url: ScheduleEntryJoinUrl
+
+  /// Whether the entry is highlighted on the schedule. Defaults to false.
+  ///
+  /// Do not send an explicit null: `schedule_entries.highlighted` is NOT NULL,
+  /// so BC3 raises rather than falling back to the default. Omit it instead —
+  /// every SDK's request compactor already drops unset members.
+  highlighted: Boolean
+
+  /// Publication state at creation — `active|drafted`, defaulting to `active`
+  /// for an API create.
+  ///
+  /// A top-level parameter, not part of the entry's attributes: `status` is a
+  /// Recording column, so `wrap_parameters` leaves it outside the
+  /// `schedule_entry` envelope and `Recording::StatusParam#status_param` reads
+  /// it directly. On create it accepts `drafted`, `active`, `archived` or
+  /// `trashed` and raises `ActionController::BadRequest` — a 400, not a 422 —
+  /// for anything else; the two documented values are the two worth sending.
+  ///
+  /// Unlike messages and documents, schedule-entry drafts are not listed by
+  /// GetMyDrafts.
+  status: String
+
   subscriptions: PersonIdList
 
   visible_to_clients: Boolean
@@ -4072,17 +4112,28 @@ structure ScheduleEntry {
   /// renders after it. Write it back through the `url` member of
   /// ReplaceScheduleEntry — the two spellings are deliberate, not a typo.
   ///
-  /// Optional rather than required because this one structure covers two wire
-  /// shapes. GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
-  /// CreateScheduleEntry and ReplaceScheduleEntry all render
-  /// schedules/entries/_entry, which emits it unconditionally;
-  /// GetUpcomingSchedule renders the reduced schedules/calendar/_entry, which
-  /// does not.
+  /// Optional is now UNDER-modelled, and deliberately left that way for one
+  /// release. Every operation that still returns this structure —
+  /// GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
+  /// CreateScheduleEntry, ReplaceScheduleEntry — renders
+  /// schedules/entries/_entry, which emits this key unconditionally, so it is
+  /// really required-and-nullable.
+  ///
+  /// It was optional because this structure used to cover two wire shapes: the
+  /// reduced schedules/calendar/_entry, which omits it, reached here through
+  /// GetUpcomingSchedule. That is no longer true — the report has its own
+  /// UpcomingScheduleEntry projection (#635) — so the reason is retired and
+  /// only the cost of tightening remains. Promoting it is a separate contract
+  /// change: it forces every inline schedule-entry stub across six SDKs to
+  /// carry the key, and pairs with a required-and-nullable jsonAdd, so it
+  /// belongs in its own reviewable diff rather than riding this one.
   join_url: ScheduleEntryJoinUrl
   /// Whether the entry is highlighted on the schedule.
   ///
-  /// Optional for the same reason as join_url: emitted unconditionally by the
-  /// entry partial, absent from the calendar partial GetUpcomingSchedule uses.
+  /// Under-modelled for the same reason as join_url, and more plainly so: this
+  /// one is not even nullable (`schedule_entries.highlighted` is NOT NULL with
+  /// a false default), so the entry partial's unconditional emission makes it
+  /// straightforwardly @required. Tracked with join_url.
   highlighted: Boolean
   boosts_count: Integer
   boosts_url: String
@@ -8577,13 +8628,21 @@ structure GetOverdueTodosOutput {
 /// Get upcoming schedule entries and assignable items within a date window.
 /// This endpoint is preserved as the canonical API path on BC5;
 /// the BC5 `/calendar` web view is HTML-only.
+///
+/// The three arrays carry the report's own reduced projections —
+/// UpcomingScheduleEntry and UpcomingAssignable — not the shared ScheduleEntry
+/// and Todo/Card shapes. BC3 renders this report through
+/// `app/views/api/schedules/calendar/_entry.json.jbuilder` and
+/// `_assignable.json.jbuilder`, which emit a narrower key set than the
+/// per-resource partials, plus keys those partials never emit. See
+/// UpcomingScheduleEntry for the full accounting.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/reports/schedules/upcoming.json")
 operation GetUpcomingSchedule {
   input: GetUpcomingScheduleInput
   output: GetUpcomingScheduleOutput
-  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BadRequestError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure GetUpcomingScheduleInput {
@@ -8591,17 +8650,48 @@ structure GetUpcomingScheduleInput {
   @httpLabel
   accountId: AccountId
 
+  // Both bounds are required, and required by BC3 rather than by convention.
+  // `Reports::Schedules::UpcomingController#index` calls
+  // `date_range_from_params(:window_starts_on, :window_ends_on)`, whose
+  // `date_from_params` does `Date.strptime(params.require(name).to_s, ...)`.
+  // A missing parameter raises `ActionController::ParameterMissing` and a
+  // malformed one raises `Date::Error`; the controller rescues both into
+  // `head :bad_request`. So an omitted window is a bodiless 400 — no all-time
+  // default, no empty envelope — which is why modeling these as optional
+  // described a call that never worked. A malformed-but-present date still
+  // 400s, which is why the operation declares BadRequestError even so.
+  //
+  // Kept to one doc line each: the Kotlin service emitter inlines a member's
+  // documentation into the method KDoc verbatim, so a multi-line one emits
+  // unprefixed lines inside the comment block.
+
+  /// Inclusive first day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
+  @required
   @httpQuery("window_starts_on")
   window_starts_on: ISO8601Date
 
+  /// Inclusive last day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
+  @required
   @httpQuery("window_ends_on")
   window_ends_on: ISO8601Date
 }
 
 structure GetUpcomingScheduleOutput {
-  schedule_entries: ScheduleEntryList
-  recurring_schedule_entry_occurrences: ScheduleEntryList
-  assignables: AssignableList
+  /// Non-recurring entries starting in the window, chronological. Always
+  /// present — `reports/schedules/upcoming/index.json.jbuilder` writes all
+  /// three keys unconditionally, so an empty window is three empty arrays
+  /// rather than a missing key.
+  @required
+  schedule_entries: UpcomingScheduleEntryList
+  /// Realized occurrences of recurring entries falling in the window. Rendered
+  /// through the same calendar entry partial as schedule_entries, so the two
+  /// arrays carry the same shape; an occurrence is distinguished only by its
+  /// `recurring` flag being true. Always present.
+  @required
+  recurring_schedule_entry_occurrences: UpcomingScheduleEntryList
+  /// Dated to-dos, cards and steps falling in the window. Always present.
+  @required
+  assignables: UpcomingAssignableList
 }
 
 // ===== Timeline Shapes =====
@@ -8768,21 +8858,229 @@ structure TimelineAttachment {
 
 // ===== Reports Shapes =====
 
-list AssignableList {
-  member: Assignable
+// ----- Upcoming schedule: the report's own reduced calendar projection -----
+//
+// GetUpcomingSchedule is the only operation that renders
+// `app/views/api/schedules/calendar/`. Those partials are narrower than the
+// per-resource ones and are NOT interchangeable with them, so this report gets
+// its own shape family rather than borrowing ScheduleEntry / Todo / TodoBucket /
+// TodoParent / Person. Modeling it the other way is what made a populated
+// response undecodable in Swift: the calendar entry partial omits six members
+// ScheduleEntry marks @required, plus the nested `bucket.type`.
+
+list UpcomingScheduleEntryList {
+  member: UpcomingScheduleEntry
 }
 
-structure Assignable {
-  id: Long
-  title: String
-  type: String
+/// One schedule entry as the upcoming-schedule report renders it.
+///
+/// This is NOT the ScheduleEntry projection. BC3 renders this report through
+/// `app/views/api/schedules/calendar/_entry.json.jbuilder`, a purpose-built
+/// calendar partial, while GetScheduleEntry, GetScheduleEntryOccurrence,
+/// ListScheduleEntries, CreateScheduleEntry and ReplaceScheduleEntry all render
+/// `schedules/entries/_entry.json.jbuilder` on top of the shared recording
+/// partial. The calendar partial does not render `recordings/_recording` at
+/// all — it writes its own keys — so relative to ScheduleEntry it drops
+/// `created_at`, `updated_at`, `title`, `inherits_status`, `parent`,
+/// `description_attachments`, `description`, `bookmark_url`,
+/// `subscription_url`, `comments_url`, `join_url`, `highlighted`,
+/// `boosts_count` and `boosts_url`, narrows `bucket` to id + name, and adds
+/// `recurring`, which no other schedule-entry projection emits.
+///
+/// Every member here is @required because the partial emits every key
+/// unconditionally: there is no `if` in it.
+structure UpcomingScheduleEntry {
+  @required
+  id: ScheduleEntryId
+  @required
+  status: String
+  @required
+  visible_to_clients: Boolean
+  /// The entry's own Basecamp API URL. Unlike the ScheduleEntry projection,
+  /// this report never carries the entry's join link, so `url` here has no
+  /// `join_url` sibling to be confused with.
+  @required
   url: String
+  @required
   app_url: String
-  bucket: TodoBucket
-  parent: TodoParent
-  due_on: ISO8601Date
+  /// Always the literal string "ScheduleEntry" — the calendar partial hardcodes
+  /// it rather than deriving it from the recordable, so an occurrence reads
+  /// back as "ScheduleEntry" too, not "Schedule::Entry::Occurrence".
+  @required
+  type: String
+  @required
+  summary: ScheduleEntrySummary
+  /// Whether the entry occupies whole days rather than a time range.
+  /// Discriminates the two renderings of starts_at/ends_at below.
+  @required
+  all_day: Boolean
+  /// Whether the entry repeats. Emitted only by this partial —
+  /// `recording.schedule_entry.recurring?`, i.e. whether the entry carries a
+  /// recurrence schedule.
+  ///
+  /// It also discriminates the two envelope arrays: BC3 selects
+  /// `schedule_entries` with `recurrence_schedule: nil` and
+  /// `recurring_schedule_entry_occurrences` with `recurrence_schedule` NOT
+  /// NULL, so this reads false throughout the first array and true throughout
+  /// the second.
+  @required
+  recurring: Boolean
+  /// A date for an all-day entry and a full timestamp for a timed one —
+  /// `starts_at_date_or_time`, the same rendering ScheduleEntry documents.
+  /// Treat it as opaque and round-trip it verbatim; the all_day sibling
+  /// discriminates.
+  @required
+  starts_at: ISO8601Timestamp
+  /// See starts_at for the date-vs-timestamp rendering.
+  @required
+  ends_at: ISO8601Timestamp
+  @required
+  creator: UpcomingSchedulePerson
+  /// Everyone attending. Present and possibly empty, never absent.
+  @required
+  participants: UpcomingSchedulePersonList
+  @required
+  bucket: UpcomingScheduleBucket
+  /// Comments on the entry — or, for an occurrence, on that occurrence.
+  @required
+  comments_count: Integer
+}
+
+/// The project an upcoming-schedule item belongs to: id and name only.
+///
+/// Both calendar partials write `json.(recording.bucket, :id, :name)`, so this
+/// is TodoBucket minus `type`. That missing `type` is the first key a strict
+/// decoder reaches on a populated response, ahead of any of the top-level
+/// members the calendar entry partial drops.
+structure UpcomingScheduleBucket {
+  @required
+  id: ProjectId
+  @required
+  name: String
+}
+
+list UpcomingSchedulePersonList {
+  member: UpcomingSchedulePerson
+}
+
+/// A person as the calendar partials render them: id, name and avatar only.
+///
+/// `schedules/calendar/_person.json.jbuilder` delegates to
+/// `people/_person_minimal.json.jbuilder`, the same three-key partial that
+/// MyAssignmentAssignee and OutOfOfficePerson already model separately from the
+/// full Person projection. Reusing Person here would decode — its only
+/// @required members are id and name — but would advertise two dozen members
+/// this report never sends.
+structure UpcomingSchedulePerson {
+  @required
+  id: PersonId
+  @required
+  name: PersonName
+  @required
+  avatar_url: AvatarUrl
+}
+
+list UpcomingAssignableList {
+  member: UpcomingAssignable
+}
+
+/// A dated to-do, card or step as the upcoming-schedule report renders it.
+///
+/// Rendered by `app/views/api/schedules/calendar/_assignable.json.jbuilder`,
+/// which — like the calendar entry partial — writes its own keys instead of
+/// rendering `recordings/_recording`. Nothing else in the API returns this
+/// shape.
+///
+/// The member that bites: BC3 emits the item's text under `content`, not
+/// `title`. The previous model of this report declared `title`, so the field
+/// callers most wanted was permanently absent while a key that was always
+/// present went unmodelled.
+structure UpcomingAssignable {
+  @required
+  id: Long
+  @required
+  status: String
+  @required
+  visible_to_clients: Boolean
+  /// The item's own Basecamp API URL.
+  @required
+  url: String
+  @required
+  app_url: String
+  /// The item's start date, `null` unless this is a to-do that has one:
+  /// Kanban cards and steps both define `starts_on` as a literal nil to
+  /// duck-type Todo, and the partial reads it unconditionally.
+  ///
+  /// The key is in fact always present. It is modeled optional-and-nullable
+  /// anyway, matching the deliberate treatment of `Todo.starts_on` and
+  /// `Todo`/`Card.due_on` (see the fifth-g pass in
+  /// `scripts/enhance-openapi-go-types.sh`): the static SDKs then type it
+  /// `string | null | undefined`, which accepts the null this really sends and
+  /// also tolerates a partial payload. Nullability rides that same pass, which
+  /// is what keeps the Go type `types.Date` rather than a bare string.
   starts_on: ISO8601Date
-  assignees: PersonList
+  /// The item's due date, `null` when it has none. Optional-and-nullable for
+  /// the same reason as starts_on.
+  due_on: ISO8601Date
+  /// The item's kind, LOWERCASE and singular: "todo", "card" or "step".
+  /// `short_recordable_name` demodulizes and downcases the recordable class,
+  /// so this does not match the CamelCase `type` other recording projections
+  /// carry.
+  @required
+  type: String
+  /// The item's text — `recordable.title`. Spelled `content`, not `title`:
+  /// this partial names it after the Todo/Card content attribute rather than
+  /// the recording's title.
+  @required
+  content: String
+  /// Present and possibly empty, never absent.
+  @required
+  assignees: UpcomingSchedulePersonList
+  @required
+  bucket: UpcomingScheduleBucket
+  @required
+  parent: UpcomingAssignableParent
+  /// Where to POST/PUT the item's completion.
+  ///
+  /// Only the to-do branch is an absolute URL: BC3 renders
+  /// `completion_bucket_todo_url` for a to-do and
+  /// `bucket_step_completions_path` for everything else, and a `_path` helper
+  /// emits no host. Resolve this against the account base rather than assuming
+  /// it is absolute.
+  @required
+  completion_url: String
+  @required
+  completed: Boolean
+  /// Whether the item repeats.
+  @required
+  repeating: Boolean
+  /// Who completed the item and when. The partial's one conditional key —
+  /// emitted only when the recording actually has a completion, so it is
+  /// absent (not null) on an incomplete item.
+  completion: UpcomingAssignableCompletion
+  @required
+  comments_count: Integer
+}
+
+/// The to-do list, card column or parent to-do an assignable is filed under:
+/// id and title only, with no `type`, `url` or `app_url`.
+///
+/// The title is not always the parent's own: for a to-do inside a grouped
+/// list, `todolist_or_group_title` folds in the grandparent list's title as
+/// "List: Group".
+structure UpcomingAssignableParent {
+  @required
+  id: Long
+  @required
+  title: String
+}
+
+/// When an assignable was completed and by whom.
+structure UpcomingAssignableCompletion {
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  creator: UpcomingSchedulePerson
 }
 
 // ===== Search Shapes =====

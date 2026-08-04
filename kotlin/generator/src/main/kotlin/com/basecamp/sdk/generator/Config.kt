@@ -367,6 +367,37 @@ val TYPE_ALIASES = mapOf(
     "TimesheetEntry" to "TimesheetEntry",
     "HillChart" to "HillChart",
     "HillChartDot" to "HillChartDot",
+    // The upcoming-schedule report's own reduced calendar projections. Reached
+    // only through GetUpcomingScheduleResponseContent, which the supporting-type
+    // scanner does not traverse (it seeds from TYPE_ALIASES, and response
+    // envelopes are not entities) — list them explicitly, as DraftParent is.
+    "UpcomingScheduleEntry" to "UpcomingScheduleEntry",
+    "UpcomingAssignable" to "UpcomingAssignable",
+)
+
+/**
+ * Operations whose response is an object of ARRAYS — no pagination key, no
+ * single entity — that should still decode into a generated result class
+ * instead of a raw `JsonElement`.
+ *
+ * `findUnderlyingEntitySchema` resolves one entity per response, so a body like
+ * `{schedule_entries: [...], recurring_schedule_entry_occurrences: [...],
+ * assignables: [...]}` has no single answer and falls through to `JsonElement`.
+ * That is a real hole: an operation returning `JsonElement` enforces no contract
+ * at all, so a spec that lies about its shape cannot fail in Kotlin (#635).
+ *
+ * Opt-in rather than automatic because retyping an operation is a Kotlin source
+ * break, and the pre-1.0 policy in kotlin/README.md wants each one deliberate.
+ * `GetOverdueTodos` is the other operation whose response satisfies the
+ * structural test today; it stays untyped until someone verifies BC3 renders
+ * the full `todos/_todo` partial there and takes the break on purpose.
+ *
+ * An operation listed here must have an object response whose every property is
+ * an array of `$ref`s into [TYPE_ALIASES]; the emitter falls back to
+ * `JsonElement` rather than emitting something wrong if that stops holding.
+ */
+val TYPED_ARRAY_ENVELOPE_OPERATIONS = setOf(
+    "GetUpcomingSchedule",
 )
 
 /**

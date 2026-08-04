@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-04T05:29:38Z
+# Generated: 2026-08-04T06:55:29Z
 
 require "json"
 require "time"
@@ -209,44 +209,6 @@ module Basecamp
           "teams" => @teams,
           "templates" => @templates,
           "timesheet" => @timesheet,
-        }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # Assignable
-    class Assignable
-      include TypeHelpers
-      attr_accessor :app_url, :assignees, :bucket, :due_on, :id, :parent, :starts_on, :title, :type, :url
-
-      def initialize(data = {})
-        @app_url = data["app_url"]
-        @assignees = parse_array(data["assignees"], "Person")
-        @bucket = parse_type(data["bucket"], "TodoBucket")
-        @due_on = data["due_on"]
-        @id = parse_integer(data["id"])
-        @parent = parse_type(data["parent"], "TodoParent")
-        @starts_on = data["starts_on"]
-        @title = data["title"]
-        @type = data["type"]
-        @url = data["url"]
-      end
-
-      def to_h
-        {
-          "app_url" => @app_url,
-          "assignees" => @assignees,
-          "bucket" => @bucket,
-          "due_on" => @due_on,
-          "id" => @id,
-          "parent" => @parent,
-          "starts_on" => @starts_on,
-          "title" => @title,
-          "type" => @type,
-          "url" => @url,
         }.compact
       end
 
@@ -4794,6 +4756,226 @@ module Basecamp
           "position" => @position,
           "status" => @status,
           "url" => @url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UpcomingAssignable
+    class UpcomingAssignable
+      include TypeHelpers
+      attr_accessor :app_url, :assignees, :bucket, :comments_count, :completed, :completion_url, :content, :id, :parent, :repeating, :status, :type, :url, :visible_to_clients, :completion, :due_on, :starts_on
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url assignees bucket comments_count completed completion_url content id parent repeating status type url visible_to_clients].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @assignees = parse_array(data["assignees"], "UpcomingSchedulePerson")
+        @bucket = parse_type(data["bucket"], "UpcomingScheduleBucket")
+        @comments_count = parse_integer(data["comments_count"])
+        @completed = parse_boolean(data["completed"])
+        @completion_url = data["completion_url"]
+        @content = data["content"]
+        @id = parse_integer(data["id"])
+        @parent = parse_type(data["parent"], "UpcomingAssignableParent")
+        @repeating = parse_boolean(data["repeating"])
+        @status = data["status"]
+        @type = data["type"]
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @completion = parse_type(data["completion"], "UpcomingAssignableCompletion")
+        @due_on = data["due_on"]
+        @starts_on = data["starts_on"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "assignees" => @assignees,
+          "bucket" => @bucket,
+          "comments_count" => @comments_count,
+          "completed" => @completed,
+          "completion_url" => @completion_url,
+          "content" => @content,
+          "id" => @id,
+          "parent" => @parent,
+          "repeating" => @repeating,
+          "status" => @status,
+          "type" => @type,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "completion" => @completion,
+          "due_on" => @due_on,
+          "starts_on" => @starts_on,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UpcomingAssignableCompletion
+    class UpcomingAssignableCompletion
+      include TypeHelpers
+      attr_accessor :created_at, :creator
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at creator].freeze
+      end
+
+      def initialize(data = {})
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "UpcomingSchedulePerson")
+      end
+
+      def to_h
+        {
+          "created_at" => @created_at,
+          "creator" => @creator,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UpcomingAssignableParent
+    class UpcomingAssignableParent
+      include TypeHelpers
+      attr_accessor :id, :title
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id title].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @title = data["title"]
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "title" => @title,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UpcomingScheduleBucket
+    class UpcomingScheduleBucket
+      include TypeHelpers
+      attr_accessor :id, :name
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "name" => @name,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UpcomingScheduleEntry
+    class UpcomingScheduleEntry
+      include TypeHelpers
+      attr_accessor :all_day, :app_url, :bucket, :comments_count, :creator, :ends_at, :id, :participants, :recurring, :starts_at, :status, :summary, :type, :url, :visible_to_clients
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[all_day app_url bucket comments_count creator ends_at id participants recurring starts_at status summary type url visible_to_clients].freeze
+      end
+
+      def initialize(data = {})
+        @all_day = parse_boolean(data["all_day"])
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "UpcomingScheduleBucket")
+        @comments_count = parse_integer(data["comments_count"])
+        @creator = parse_type(data["creator"], "UpcomingSchedulePerson")
+        @ends_at = data["ends_at"]
+        @id = parse_integer(data["id"])
+        @participants = parse_array(data["participants"], "UpcomingSchedulePerson")
+        @recurring = parse_boolean(data["recurring"])
+        @starts_at = data["starts_at"]
+        @status = data["status"]
+        @summary = data["summary"]
+        @type = data["type"]
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+      end
+
+      def to_h
+        {
+          "all_day" => @all_day,
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+          "comments_count" => @comments_count,
+          "creator" => @creator,
+          "ends_at" => @ends_at,
+          "id" => @id,
+          "participants" => @participants,
+          "recurring" => @recurring,
+          "starts_at" => @starts_at,
+          "status" => @status,
+          "summary" => @summary,
+          "type" => @type,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UpcomingSchedulePerson
+    class UpcomingSchedulePerson
+      include TypeHelpers
+      attr_accessor :avatar_url, :id, :name
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[avatar_url id name].freeze
+      end
+
+      def initialize(data = {})
+        @avatar_url = data["avatar_url"]
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+      end
+
+      def to_h
+        {
+          "avatar_url" => @avatar_url,
+          "id" => @id,
+          "name" => @name,
         }.compact
       end
 

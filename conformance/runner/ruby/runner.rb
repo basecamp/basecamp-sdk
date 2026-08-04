@@ -321,6 +321,18 @@ class OperationMapper
       @account.reports.person_progress(
         person_id: path_params["personId"]
       )
+    # The window is fixed here rather than read from the case: no mock runner
+    # consumes query_params, and no assertion type can pin a query string. Both
+    # bounds are required, so the call cannot be made without them. The flat
+    # summary keeps the responseBody assertions portable to Go and TypeScript,
+    # which resolve only top-level keys.
+    when "GetUpcomingSchedule"
+      summarize_upcoming(
+        @account.reports.upcoming(
+          window_starts_on: UPCOMING_WINDOW_START,
+          window_ends_on: UPCOMING_WINDOW_END
+        )
+      )
     when "GetTool"
       @account.tools.get(
         tool_id: path_params["toolId"]
@@ -519,6 +531,48 @@ class OperationMapper
   end
 
   private
+
+  # The date window every GetUpcomingSchedule case is dispatched with. Fixed in
+  # the runner because no mock runner consumes query_params and no assertion type
+  # can pin a query string — every runner records the path with the query
+  # stripped.
+  UPCOMING_WINDOW_START = "2026-06-01"
+  UPCOMING_WINDOW_END = "2026-06-30"
+
+  # Flatten the upcoming-schedule envelope into top-level scalars. Go and
+  # TypeScript resolve a responseBody path as a top-level key only, so the
+  # assertions read scalars rather than walk into the arrays. Ruby is lenient —
+  # `upcoming` hands back the parsed body verbatim — so this reads the wire keys
+  # directly; the strict tiers (Swift, Kotlin) build the same summary out of
+  # decoded models, which is where the contract is enforced.
+  def summarize_upcoming(envelope)
+    entries = envelope["schedule_entries"]
+    occurrences = envelope["recurring_schedule_entry_occurrences"]
+    assignables = envelope["assignables"]
+
+    summary = {
+      "schedule_entries_count" => entries.length,
+      "recurring_occurrences_count" => occurrences.length,
+      "assignables_count" => assignables.length
+    }
+    if entries.any?
+      summary["entry_summary"] = entries[0]["summary"]
+      summary["entry_recurring"] = entries[0]["recurring"]
+      summary["entry_bucket_name"] = entries[0].dig("bucket", "name")
+    end
+    if occurrences.any?
+      summary["occurrence_recurring"] = occurrences[0]["recurring"]
+      summary["occurrence_all_day"] = occurrences[0]["all_day"]
+      summary["occurrence_starts_at"] = occurrences[0]["starts_at"]
+    end
+    if assignables.any?
+      summary["assignable_content"] = assignables[0]["content"]
+      summary["assignable_type"] = assignables[0]["type"]
+      summary["assignable_parent_title"] = assignables[0].dig("parent", "title")
+      summary["assignable_completion_url"] = assignables[0]["completion_url"]
+    end
+    summary
+  end
 
   # Fixture requestBody keys map 1:1 to the todo write kwargs.
   TODO_WRITE_KEYS = %w[
@@ -1112,7 +1166,11 @@ class TestRunner
       return nil if current.nil?
 
       if current.is_a?(Hash)
-        current[key] || current[key.to_sym]
+        # `current[key] || current[key.to_sym]` reads a present `false` as a
+        # miss and falls through to the symbol key, then to nil — so a
+        # responseBody assertion on a boolean field could never see false. Check
+        # key presence instead of truthiness.
+        current.key?(key) ? current[key] : current[key.to_sym]
       elsif current.respond_to?(key)
         current.send(key)
       else

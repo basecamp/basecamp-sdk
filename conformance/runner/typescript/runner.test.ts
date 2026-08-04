@@ -195,6 +195,53 @@ function mapScheduleEntryWireFields(body: Record<string, unknown>): UpdateSchedu
   return mapped as UpdateScheduleEntryRequest;
 }
 
+// The date window every GetUpcomingSchedule case is dispatched with. Fixed in
+// the runner because no mock runner consumes queryParams and no assertion type
+// can pin a query string — every runner records the path with the query
+// stripped.
+const UPCOMING_WINDOW_START = "2026-06-01";
+const UPCOMING_WINDOW_END = "2026-06-30";
+
+/**
+ * Flattens the upcoming-schedule envelope into top-level scalars.
+ *
+ * TypeScript, like Go, resolves a responseBody path as a top-level key only, so
+ * the assertions read scalars rather than walk into the arrays. TypeScript has
+ * no runtime decoder, so this reads the parsed body through the generated types
+ * — the compile-time half of the contract; the strict tiers (Swift, Kotlin)
+ * build the same summary out of decoded models.
+ */
+function summarizeUpcoming(
+  envelope: Awaited<ReturnType<BasecampClient["reports"]["upcoming"]>>,
+): Record<string, unknown> {
+  const entries = envelope.schedule_entries;
+  const occurrences = envelope.recurring_schedule_entry_occurrences;
+  const assignables = envelope.assignables;
+
+  const summary: Record<string, unknown> = {
+    schedule_entries_count: entries.length,
+    recurring_occurrences_count: occurrences.length,
+    assignables_count: assignables.length,
+  };
+  if (entries.length > 0) {
+    summary.entry_summary = entries[0].summary;
+    summary.entry_recurring = entries[0].recurring;
+    summary.entry_bucket_name = entries[0].bucket.name;
+  }
+  if (occurrences.length > 0) {
+    summary.occurrence_recurring = occurrences[0].recurring;
+    summary.occurrence_all_day = occurrences[0].all_day;
+    summary.occurrence_starts_at = occurrences[0].starts_at;
+  }
+  if (assignables.length > 0) {
+    summary.assignable_content = assignables[0].content;
+    summary.assignable_type = assignables[0].type;
+    summary.assignable_parent_title = assignables[0].parent.title;
+    summary.assignable_completion_url = assignables[0].completion_url;
+  }
+  return summary;
+}
+
 /**
  * Executes the appropriate SDK method for the given operation name.
  * Returns { error?, httpStatus? } so assertions can inspect outcomes.
@@ -551,6 +598,16 @@ async function executeOperation(
       case "GetPersonProgress":
         await client.reports.personProgress(Number(params.personId));
         break;
+
+      // The window is fixed here rather than read from the case: no mock runner
+      // consumes queryParams, and no assertion type can pin a query string. Both
+      // bounds are required, so the call cannot be made without them. The flat
+      // summary keeps the responseBody assertions portable — TypeScript, like
+      // Go, resolves a responseBody path as a top-level key only.
+      case "GetUpcomingSchedule": {
+        const envelope = await client.reports.upcoming(UPCOMING_WINDOW_START, UPCOMING_WINDOW_END);
+        return { result: summarizeUpcoming(envelope) };
+      }
 
       case "GetEverythingMessages":
         await client.everything.everythingMessages();

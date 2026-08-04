@@ -30,29 +30,68 @@ class ReportsServiceTest < Minitest::Test
     assert_equal "created", result[0]["action"]
   end
 
+  # The upcoming-schedule report renders BC3's reduced calendar partials
+  # (app/views/api/schedules/calendar/), and its top-level key set is
+  # schedule_entries / recurring_schedule_entry_occurrences / assignables.
+  #
+  # This test used to stub `{"entries" => [...]}` — not a key BC3 has ever sent
+  # — and assert only that a Hash came back. Ruby is lenient, so it passed
+  # against a contract that made Swift throw on every populated window (#635).
+  # Reading the shared fixture keeps the body honest: it is validated against
+  # the generated schema by `make check-fixture-coverage`.
   def test_upcoming
-    upcoming = {
-      "entries" => [
-        { "id" => 1, "summary" => "Meeting", "starts_at" => "2024-01-20T10:00:00Z" }
-      ]
-    }
-    stub_get("/12345/reports/schedules/upcoming.json", response_body: upcoming)
-
-    result = @account.reports.upcoming
-
-    assert_kind_of Hash, result
-    assert_equal 1, result["entries"].length
-  end
-
-  def test_upcoming_with_date_range
-    upcoming = { "entries" => [] }
+    upcoming = load_fixture("schedules/upcoming.json")
     stub_request(:get, "https://3.basecampapi.com/12345/reports/schedules/upcoming.json")
-      .with(query: { window_starts_on: "2024-01-01", window_ends_on: "2024-01-31" })
+      .with(query: { window_starts_on: "2026-06-01", window_ends_on: "2026-06-30" })
       .to_return(status: 200, body: upcoming.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.reports.upcoming(window_starts_on: "2024-01-01", window_ends_on: "2024-01-31")
+    result = @account.reports.upcoming(window_starts_on: "2026-06-01", window_ends_on: "2026-06-30")
 
     assert_kind_of Hash, result
+    assert_equal %w[schedule_entries recurring_schedule_entry_occurrences assignables].sort, result.keys.sort
+
+    entry = result["schedule_entries"].first
+    assert_equal "Team Meeting", entry["summary"]
+    # Emitted only by the calendar partial, and the flag that separates the two
+    # entry arrays.
+    assert_not entry["recurring"]
+    # id + name only: the calendar partial writes json.(recording.bucket, :id, :name).
+    assert_equal %w[id name].sort, entry["bucket"].keys.sort
+
+    occurrence = result["recurring_schedule_entry_occurrences"].first
+    assert occurrence["recurring"]
+    assert occurrence["all_day"]
+    assert_equal "2026-06-08", occurrence["starts_at"]
+
+    todo, card = result["assignables"]
+    # BC3 spells the item text `content`, never `title`.
+    assert_equal "Ship the hardware", todo["content"]
+    assert_not todo.key?("title")
+    assert_equal "todo", todo["type"]
+    assert_equal "Steve Marsh", todo.dig("completion", "creator", "name")
+    # The partial's one conditional key: absent on an incomplete item.
+    assert_not card.key?("completion")
+    assert_nil card["starts_on"]
+  end
+
+  # Both bounds are required — BC3 reads them with params.require and answers a
+  # bodiless 400 without them — so the generated method takes them as required
+  # keywords rather than options.
+  def test_upcoming_requires_both_window_bounds
+    assert_raises(ArgumentError) { @account.reports.upcoming(window_starts_on: "2026-06-01") }
+    assert_raises(ArgumentError) { @account.reports.upcoming }
+  end
+
+  def test_upcoming_empty_window
+    upcoming = { "schedule_entries" => [], "recurring_schedule_entry_occurrences" => [], "assignables" => [] }
+    stub_request(:get, "https://3.basecampapi.com/12345/reports/schedules/upcoming.json")
+      .with(query: { window_starts_on: "2026-01-01", window_ends_on: "2026-01-31" })
+      .to_return(status: 200, body: upcoming.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.reports.upcoming(window_starts_on: "2026-01-01", window_ends_on: "2026-01-31")
+
+    assert_equal [], result["schedule_entries"]
+    assert_equal [], result["assignables"]
   end
 
   def test_assigned

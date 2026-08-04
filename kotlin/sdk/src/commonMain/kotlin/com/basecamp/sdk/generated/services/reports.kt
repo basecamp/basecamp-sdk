@@ -3,6 +3,8 @@ package com.basecamp.sdk.generated.services
 import com.basecamp.sdk.*
 import com.basecamp.sdk.generated.models.*
 import com.basecamp.sdk.services.BaseService
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
@@ -11,6 +13,13 @@ import kotlinx.serialization.json.jsonObject
 data class PersonProgressResult(
     val events: ListResult<TimelineEvent>,
     val person: Person
+)
+
+@Serializable
+data class UpcomingScheduleResult(
+    @SerialName("schedule_entries") val scheduleEntries: List<UpcomingScheduleEntry>,
+    @SerialName("recurring_schedule_entry_occurrences") val recurringScheduleEntryOccurrences: List<UpcomingScheduleEntry>,
+    val assignables: List<UpcomingAssignable>
 )
 
 /**
@@ -58,9 +67,10 @@ class ReportsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get upcoming schedule entries and assignable items within a date window.
-     * @param options Optional query parameters and pagination control
+     * @param windowStartsOn Inclusive first day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
+     * @param windowEndsOn Inclusive last day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
      */
-    suspend fun upcoming(options: GetUpcomingScheduleOptions? = null): JsonElement {
+    suspend fun upcoming(windowStartsOn: String, windowEndsOn: String): UpcomingScheduleResult {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetUpcomingSchedule",
@@ -70,13 +80,13 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
-            "window_starts_on" to options?.windowStartsOn,
-            "window_ends_on" to options?.windowEndsOn,
+            "window_starts_on" to windowStartsOn,
+            "window_ends_on" to windowEndsOn,
         )
         return request(info, {
             httpGet("/reports/schedules/upcoming.json" + qs, operationName = info.operation)
         }) { body ->
-            json.decodeFromString<JsonElement>(body)
+            json.decodeFromString<UpcomingScheduleResult>(body)
         }
     }
 

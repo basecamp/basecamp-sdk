@@ -2475,6 +2475,14 @@ export interface paths {
          * @description Get upcoming schedule entries and assignable items within a date window.
          *     This endpoint is preserved as the canonical API path on BC5;
          *     the BC5 `/calendar` web view is HTML-only.
+         *
+         *     The three arrays carry the report's own reduced projections —
+         *     UpcomingScheduleEntry and UpcomingAssignable — not the shared ScheduleEntry
+         *     and Todo/Card shapes. BC3 renders this report through
+         *     `app/views/api/schedules/calendar/_entry.json.jbuilder` and
+         *     `_assignable.json.jbuilder`, which emit a narrower key set than the
+         *     per-resource partials, plus keys those partials never emit. See
+         *     UpcomingScheduleEntry for the full accounting.
          */
         get: operations["GetUpcomingSchedule"];
         put?: never;
@@ -3416,19 +3424,6 @@ export interface components {
             logo?: boolean;
             timesheet?: boolean;
         };
-        Assignable: {
-            /** Format: int64 */
-            id?: number;
-            title?: string;
-            type?: string;
-            url?: string;
-            app_url?: string;
-            bucket?: components["schemas"]["TodoBucket"];
-            parent?: components["schemas"]["TodoParent"];
-            due_on?: string;
-            starts_on?: string;
-            assignees?: components["schemas"]["Person"][];
-        };
         BadRequestErrorResponseContent: {
             error: string;
             message?: string;
@@ -4054,6 +4049,49 @@ export interface components {
             participant_ids?: number[];
             all_day?: boolean;
             notify?: boolean;
+            /**
+             * @description The entry's join link — a video-call URL or similar, up to 2500
+             *     characters, validated as a URL when present. A scheme-less value is
+             *     normalized to `https://`.
+             *
+             *     Spell it `url` on the way in and read it back as `join_url`: the response
+             *     key `url` is the entry's own Basecamp API URL, written by a partial that
+             *     renders before this field, so BC3 emits the join link under a
+             *     non-colliding name. Sending `join_url` instead is silently dropped by
+             *     strong parameters — the create succeeds with no join link.
+             *
+             *     Accepted on create since long before it was documented:
+             *     `Schedules::Entries::BaseController#base_schedule_entry_params` permits it
+             *     and `new_schedule_entry_params` passes it through unchanged for API
+             *     requests. Modeling it only on ReplaceScheduleEntry forced callers into a
+             *     three-request read-modify-write for a field the create already took — and
+             *     create is the notifying write, so participants learned about a video call
+             *     before its link existed.
+             */
+            url?: string;
+            /**
+             * @description Whether the entry is highlighted on the schedule. Defaults to false.
+             *
+             *     Do not send an explicit null: `schedule_entries.highlighted` is NOT NULL,
+             *     so BC3 raises rather than falling back to the default. Omit it instead —
+             *     every SDK's request compactor already drops unset members.
+             */
+            highlighted?: boolean;
+            /**
+             * @description Publication state at creation — `active|drafted`, defaulting to `active`
+             *     for an API create.
+             *
+             *     A top-level parameter, not part of the entry's attributes: `status` is a
+             *     Recording column, so `wrap_parameters` leaves it outside the
+             *     `schedule_entry` envelope and `Recording::StatusParam#status_param` reads
+             *     it directly. On create it accepts `drafted`, `active`, `archived` or
+             *     `trashed` and raises `ActionController::BadRequest` — a 400, not a 422 —
+             *     for anything else; the two documented values are the two worth sending.
+             *
+             *     Unlike messages and documents, schedule-entry drafts are not listed by
+             *     GetMyDrafts.
+             */
+            status?: string;
             subscriptions?: number[];
             visible_to_clients?: boolean;
         };
@@ -4672,9 +4710,22 @@ export interface components {
         GetTodosetResponseContent: components["schemas"]["Todoset"];
         GetToolResponseContent: components["schemas"]["Tool"];
         GetUpcomingScheduleResponseContent: {
-            schedule_entries?: components["schemas"]["ScheduleEntry"][];
-            recurring_schedule_entry_occurrences?: components["schemas"]["ScheduleEntry"][];
-            assignables?: components["schemas"]["Assignable"][];
+            /**
+             * @description Non-recurring entries starting in the window, chronological. Always
+             *     present — `reports/schedules/upcoming/index.json.jbuilder` writes all
+             *     three keys unconditionally, so an empty window is three empty arrays
+             *     rather than a missing key.
+             */
+            schedule_entries: components["schemas"]["UpcomingScheduleEntry"][];
+            /**
+             * @description Realized occurrences of recurring entries falling in the window. Rendered
+             *     through the same calendar entry partial as schedule_entries, so the two
+             *     arrays carry the same shape; an occurrence is distinguished only by its
+             *     `recurring` flag being true. Always present.
+             */
+            recurring_schedule_entry_occurrences: components["schemas"]["UpcomingScheduleEntry"][];
+            /** @description Dated to-dos, cards and steps falling in the window. Always present. */
+            assignables: components["schemas"]["UpcomingAssignable"][];
         };
         GetUploadResponseContent: components["schemas"]["Upload"];
         GetVaultResponseContent: components["schemas"]["Vault"];
@@ -5625,19 +5676,30 @@ export interface components {
              *     renders after it. Write it back through the `url` member of
              *     ReplaceScheduleEntry — the two spellings are deliberate, not a typo.
              *
-             *     Optional rather than required because this one structure covers two wire
-             *     shapes. GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
-             *     CreateScheduleEntry and ReplaceScheduleEntry all render
-             *     schedules/entries/_entry, which emits it unconditionally;
-             *     GetUpcomingSchedule renders the reduced schedules/calendar/_entry, which
-             *     does not.
+             *     Optional is now UNDER-modelled, and deliberately left that way for one
+             *     release. Every operation that still returns this structure —
+             *     GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
+             *     CreateScheduleEntry, ReplaceScheduleEntry — renders
+             *     schedules/entries/_entry, which emits this key unconditionally, so it is
+             *     really required-and-nullable.
+             *
+             *     It was optional because this structure used to cover two wire shapes: the
+             *     reduced schedules/calendar/_entry, which omits it, reached here through
+             *     GetUpcomingSchedule. That is no longer true — the report has its own
+             *     UpcomingScheduleEntry projection (#635) — so the reason is retired and
+             *     only the cost of tightening remains. Promoting it is a separate contract
+             *     change: it forces every inline schedule-entry stub across six SDKs to
+             *     carry the key, and pairs with a required-and-nullable jsonAdd, so it
+             *     belongs in its own reviewable diff rather than riding this one.
              */
             join_url?: string;
             /**
              * @description Whether the entry is highlighted on the schedule.
              *
-             *     Optional for the same reason as join_url: emitted unconditionally by the
-             *     entry partial, absent from the calendar partial GetUpcomingSchedule uses.
+             *     Under-modelled for the same reason as join_url, and more plainly so: this
+             *     one is not even nullable (`schedule_entries.highlighted` is NOT NULL with
+             *     a false default), so the entry partial's unconditional emission makes it
+             *     straightforwardly @required. Tracked with join_url.
              */
             highlighted?: boolean;
             /** Format: int32 */
@@ -6214,6 +6276,203 @@ export interface components {
         UnauthorizedErrorResponseContent: {
             error: string;
             message?: string;
+        };
+        /**
+         * @description A dated to-do, card or step as the upcoming-schedule report renders it.
+         *
+         *     Rendered by `app/views/api/schedules/calendar/_assignable.json.jbuilder`,
+         *     which — like the calendar entry partial — writes its own keys instead of
+         *     rendering `recordings/_recording`. Nothing else in the API returns this
+         *     shape.
+         *
+         *     The member that bites: BC3 emits the item's text under `content`, not
+         *     `title`. The previous model of this report declared `title`, so the field
+         *     callers most wanted was permanently absent while a key that was always
+         *     present went unmodelled.
+         */
+        UpcomingAssignable: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            /** @description The item's own Basecamp API URL. */
+            url: string;
+            app_url: string;
+            /**
+             * @description The item's start date, `null` unless this is a to-do that has one:
+             *     Kanban cards and steps both define `starts_on` as a literal nil to
+             *     duck-type Todo, and the partial reads it unconditionally.
+             *
+             *     The key is in fact always present. It is modeled optional-and-nullable
+             *     anyway, matching the deliberate treatment of `Todo.starts_on` and
+             *     `Todo`/`Card.due_on` (see the fifth-g pass in
+             *     `scripts/enhance-openapi-go-types.sh`): the static SDKs then type it
+             *     `string | null | undefined`, which accepts the null this really sends and
+             *     also tolerates a partial payload. Nullability rides that same pass, which
+             *     is what keeps the Go type `types.Date` rather than a bare string.
+             */
+            starts_on?: string | null;
+            /**
+             * @description The item's due date, `null` when it has none. Optional-and-nullable for
+             *     the same reason as starts_on.
+             */
+            due_on?: string | null;
+            /**
+             * @description The item's kind, LOWERCASE and singular: "todo", "card" or "step".
+             *     `short_recordable_name` demodulizes and downcases the recordable class,
+             *     so this does not match the CamelCase `type` other recording projections
+             *     carry.
+             */
+            type: string;
+            /**
+             * @description The item's text — `recordable.title`. Spelled `content`, not `title`:
+             *     this partial names it after the Todo/Card content attribute rather than
+             *     the recording's title.
+             */
+            content: string;
+            /** @description Present and possibly empty, never absent. */
+            assignees: components["schemas"]["UpcomingSchedulePerson"][];
+            bucket: components["schemas"]["UpcomingScheduleBucket"];
+            parent: components["schemas"]["UpcomingAssignableParent"];
+            /**
+             * @description Where to POST/PUT the item's completion.
+             *
+             *     Only the to-do branch is an absolute URL: BC3 renders
+             *     `completion_bucket_todo_url` for a to-do and
+             *     `bucket_step_completions_path` for everything else, and a `_path` helper
+             *     emits no host. Resolve this against the account base rather than assuming
+             *     it is absolute.
+             */
+            completion_url: string;
+            completed: boolean;
+            /** @description Whether the item repeats. */
+            repeating: boolean;
+            completion?: components["schemas"]["UpcomingAssignableCompletion"];
+            /** Format: int32 */
+            comments_count: number;
+        };
+        /** @description When an assignable was completed and by whom. */
+        UpcomingAssignableCompletion: {
+            created_at: string;
+            creator: components["schemas"]["UpcomingSchedulePerson"];
+        };
+        /**
+         * @description The to-do list, card column or parent to-do an assignable is filed under:
+         *     id and title only, with no `type`, `url` or `app_url`.
+         *
+         *     The title is not always the parent's own: for a to-do inside a grouped
+         *     list, `todolist_or_group_title` folds in the grandparent list's title as
+         *     "List: Group".
+         */
+        UpcomingAssignableParent: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+        };
+        /**
+         * @description The project an upcoming-schedule item belongs to: id and name only.
+         *
+         *     Both calendar partials write `json.(recording.bucket, :id, :name)`, so this
+         *     is TodoBucket minus `type`. That missing `type` is the first key a strict
+         *     decoder reaches on a populated response, ahead of any of the top-level
+         *     members the calendar entry partial drops.
+         */
+        UpcomingScheduleBucket: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+        };
+        /**
+         * @description One schedule entry as the upcoming-schedule report renders it.
+         *
+         *     This is NOT the ScheduleEntry projection. BC3 renders this report through
+         *     `app/views/api/schedules/calendar/_entry.json.jbuilder`, a purpose-built
+         *     calendar partial, while GetScheduleEntry, GetScheduleEntryOccurrence,
+         *     ListScheduleEntries, CreateScheduleEntry and ReplaceScheduleEntry all render
+         *     `schedules/entries/_entry.json.jbuilder` on top of the shared recording
+         *     partial. The calendar partial does not render `recordings/_recording` at
+         *     all — it writes its own keys — so relative to ScheduleEntry it drops
+         *     `created_at`, `updated_at`, `title`, `inherits_status`, `parent`,
+         *     `description_attachments`, `description`, `bookmark_url`,
+         *     `subscription_url`, `comments_url`, `join_url`, `highlighted`,
+         *     `boosts_count` and `boosts_url`, narrows `bucket` to id + name, and adds
+         *     `recurring`, which no other schedule-entry projection emits.
+         *
+         *     Every member here is @required because the partial emits every key
+         *     unconditionally: there is no `if` in it.
+         */
+        UpcomingScheduleEntry: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            /**
+             * @description The entry's own Basecamp API URL. Unlike the ScheduleEntry projection,
+             *     this report never carries the entry's join link, so `url` here has no
+             *     `join_url` sibling to be confused with.
+             */
+            url: string;
+            app_url: string;
+            /**
+             * @description Always the literal string "ScheduleEntry" — the calendar partial hardcodes
+             *     it rather than deriving it from the recordable, so an occurrence reads
+             *     back as "ScheduleEntry" too, not "Schedule::Entry::Occurrence".
+             */
+            type: string;
+            summary: string;
+            /**
+             * @description Whether the entry occupies whole days rather than a time range.
+             *     Discriminates the two renderings of starts_at/ends_at below.
+             */
+            all_day: boolean;
+            /**
+             * @description Whether the entry repeats. Emitted only by this partial —
+             *     `recording.schedule_entry.recurring?`, i.e. whether the entry carries a
+             *     recurrence schedule.
+             *
+             *     It also discriminates the two envelope arrays: BC3 selects
+             *     `schedule_entries` with `recurrence_schedule: nil` and
+             *     `recurring_schedule_entry_occurrences` with `recurrence_schedule` NOT
+             *     NULL, so this reads false throughout the first array and true throughout
+             *     the second.
+             */
+            recurring: boolean;
+            /**
+             * @description A date for an all-day entry and a full timestamp for a timed one —
+             *     `starts_at_date_or_time`, the same rendering ScheduleEntry documents.
+             *     Treat it as opaque and round-trip it verbatim; the all_day sibling
+             *     discriminates.
+             */
+            starts_at: string;
+            /** @description See starts_at for the date-vs-timestamp rendering. */
+            ends_at: string;
+            creator: components["schemas"]["UpcomingSchedulePerson"];
+            /** @description Everyone attending. Present and possibly empty, never absent. */
+            participants: components["schemas"]["UpcomingSchedulePerson"][];
+            bucket: components["schemas"]["UpcomingScheduleBucket"];
+            /**
+             * Format: int32
+             * @description Comments on the entry — or, for an occurrence, on that occurrence.
+             */
+            comments_count: number;
+        };
+        /**
+         * @description A person as the calendar partials render them: id, name and avatar only.
+         *
+         *     `schedules/calendar/_person.json.jbuilder` delegates to
+         *     `people/_person_minimal.json.jbuilder`, the same three-key partial that
+         *     MyAssignmentAssignee and OutOfOfficePerson already model separately from the
+         *     full Person projection. Reusing Person here would decode — its only
+         *     @required members are id and name — but would advertise two dozen members
+         *     this report never sends.
+         */
+        UpcomingSchedulePerson: {
+            /** Format: int64 */
+            id: number;
+            /** Format: password */
+            name: string;
+            /** Format: password */
+            avatar_url: string;
         };
         UpdateAccountLogoInputPayload: string;
         UpdateAccountNameRequestContent: {
@@ -18181,9 +18440,11 @@ export interface operations {
     };
     GetUpcomingSchedule: {
         parameters: {
-            query?: {
-                window_starts_on?: string;
-                window_ends_on?: string;
+            query: {
+                /** @description Inclusive first day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it. */
+                window_starts_on: string;
+                /** @description Inclusive last day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it. */
+                window_ends_on: string;
             };
             header?: never;
             path?: never;
@@ -18198,6 +18459,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetUpcomingScheduleResponseContent"];
+                };
+            };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

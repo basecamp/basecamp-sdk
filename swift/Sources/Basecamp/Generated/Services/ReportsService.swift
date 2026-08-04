@@ -32,16 +32,6 @@ public struct ProgressReportOptions: Sendable {
     }
 }
 
-public struct UpcomingReportOptions: Sendable {
-    public var windowStartsOn: String?
-    public var windowEndsOn: String?
-
-    public init(windowStartsOn: String? = nil, windowEndsOn: String? = nil) {
-        self.windowStartsOn = windowStartsOn
-        self.windowEndsOn = windowEndsOn
-    }
-}
-
 
 public struct PersonProgressResult: Sendable {
     public let events: ListResult<TimelineEvent>
@@ -106,14 +96,10 @@ public final class ReportsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func upcoming(options: UpcomingReportOptions? = nil) async throws -> GetUpcomingScheduleResponseContent {
+    public func upcoming(windowStartsOn: String, windowEndsOn: String) async throws -> GetUpcomingScheduleResponseContent {
         var queryItems: [URLQueryItem] = []
-        if let windowStartsOn = options?.windowStartsOn {
-            queryItems.append(URLQueryItem(name: "window_starts_on", value: windowStartsOn))
-        }
-        if let windowEndsOn = options?.windowEndsOn {
-            queryItems.append(URLQueryItem(name: "window_ends_on", value: windowEndsOn))
-        }
+        queryItems.append(URLQueryItem(name: "window_starts_on", value: windowStartsOn))
+        queryItems.append(URLQueryItem(name: "window_ends_on", value: windowEndsOn))
         return try await request(
             OperationInfo(service: "Reports", operation: "GetUpcomingSchedule", resourceType: "upcoming_schedule", isMutation: false),
             method: "GET",
