@@ -637,8 +637,17 @@ conformance-kotlin-replay:
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
 	cd kotlin && ./gradlew --quiet :conformance:runReplay
 
-# Run TypeScript conformance tests
-conformance-typescript:
+# Run TypeScript conformance tests.
+#
+# Depends on ts-build rather than reinstalling the SDK from the runner's own
+# pretest hook. The runner consumes typescript/ through a `file:` link, so it
+# needs the SDK installed and built — but typescript/node_modules is SHARED with
+# ts-check, and `npm ci` deletes node_modules before it installs. A reinstall
+# driven from here would race a sibling TypeScript target under `make -j` and
+# delete dependencies out from under it. Routing through ts-build puts the
+# install behind the ts-install stamp, which make serialises for us; the runner's
+# own `npm ci` then touches only its private node_modules.
+conformance-typescript: ts-build
 	@echo "==> Running TypeScript conformance tests..."
 	cd conformance/runner/typescript && npm ci && npm test
 
@@ -649,7 +658,7 @@ conformance-typescript:
 # runner appends /{accountId}); BASECAMP_BACKEND=bc4|bc5 to namespace
 # snapshots; LIVE_RECORD_DIR to persist wire snapshots for downstream
 # replay/compare. Opt-in: not invoked by `make check`.
-conformance-typescript-live:
+conformance-typescript-live: ts-build
 	@echo "==> Running TypeScript live canary..."
 	cd conformance/runner/typescript && npm ci && BASECAMP_LIVE=1 npm test
 
@@ -1016,7 +1025,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1122,11 +1131,72 @@ check-readme-env-vars:
 test-check-readme-env-vars:
 	@python3 ./scripts/test-check-readme-env-vars.py
 
+# Best-effort DIAGNOSTIC, not the guarantee: which npm invocations could write a
+# lockfile? It prints and exits 0. The guarantee is assert-lockfiles-unchanged,
+# which compares the bytes of every manifest before and after — here and at the
+# end of every CI job — and cannot be out-spelled because it reads no source.
+#
+# Review drove this parser through eleven spellings and each round found the next;
+# separating code from data is shell parsing and this is not a shell. As a gate
+# that shipped silent holes. As a message it is worth keeping: it names the file,
+# line and reason at the commit that reintroduces a writer, which the byte
+# comparison cannot do — and today would not even notice, since the committed
+# lockfile is a fixed point under every npm in play. `npm install`
+# writes package-lock.json back, and *what* it writes depends on the npm version
+# running it, not the platform — npm >= 11.11.0 records a `libc` array on
+# Linux-only optional dependencies and every npm below that drops it (bisected:
+# 11.10.0 none, 11.11.0 eighteen). The pinned toolchain (10.9.8), CI's node 24
+# npm (11.5.1), and Dependabot's npm (11.19.x) straddle that
+# threshold, so a single `npm install` in a lifecycle script made the lockfile
+# oscillate by whoever ran it last (#612). `npm ci` installs from the lockfile
+# without writing it, and fails loudly on the package.json drift `npm install`
+# would have absorbed silently.
+#
+# An ALLOWLIST of permitted invocations, not a denylist of writers: npm accepts
+# any unambiguous prefix (`npm in`, `npm ins`) and tolerates flags before the
+# subcommand (`npm --prefix ../x install`), so a denylist cannot enumerate the
+# writers. Covers package.json lifecycle scripts, Makefile recipes, and
+# scripts/, exempting the one deliberate writer (scripts/bump-version.sh).
+# Bash+jq, static, ~0.6s: the parser runs in-process and only on lines that
+# mention npm, because a subshell per tracked line cost 234s.
+lint-npm-lockfile-writes:
+	@./scripts/lint-npm-lockfile-writes
+
+# Drive that gate from outside with synthetic repos whose correct answer is
+# known. Its live run only ever exercises the passing case, so nothing there
+# proves it rejects anything — and its first cut was a denylist that four
+# ordinary spellings walked straight through (`npm in`, `npm ins`,
+# `npm --prefix <path> install`, `npm --prefix=<path> install`). Those four are
+# pinned here, alongside the deliberate bump-version.sh exemption and a control
+# proving the same content is rejected under any other name.
+test-lint-npm-lockfile-writes:
+	@./scripts/test-lint-npm-lockfile-writes
+
+# Drive conformance/runner/typescript/assert-sdk-built.mjs at synthetic SDK
+# trees. That assertion is what stops a bare `npm test` in the runner from
+# reporting green against a build that no longer matches src, and its live run
+# only ever sees a fresh tree. Its first cut passed any existing dist/; its
+# second compared only file mtimes and so passed a build whose source had been
+# deleted — no surviving file records a deletion, only the parent directory's
+# mtime does. Both are pinned here, along with add and rename. Needs node, so it
+# rides in the TypeScript job rather than spec-gates.
+test-assert-sdk-built:
+	@./scripts/test-assert-sdk-built
+
+# Prove the lockfile tripwire notices. Its live run in `check` only ever sees
+# lockfiles that did not move, so nothing there shows it reacts when one does —
+# and "cannot be argued out of noticing" is the whole claim. Includes writes made
+# through `eval` and through a command held in a variable: spellings the static
+# gate's parser cannot resolve, and does not need to, because this one reads
+# bytes rather than text.
+test-assert-lockfiles-unchanged:
+	@./scripts/test-assert-lockfiles-unchanged
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
 
-.PHONY: generate
+.PHONY: generate check check-targets
 
 # Regenerate every machine-derived artifact in the repo, in dependency order.
 # Run after editing spec/basecamp.smithy or spec/api-provenance.json.
@@ -1144,8 +1214,35 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars
-	@echo "==> All checks passed"
+#
+# Wrapped rather than a bare dependency list so the lockfiles can be hashed
+# before the checks and again after. lint-npm-lockfile-writes predicts that
+# nothing here writes one; this observes it. The static gate names the file and
+# line at the commit that introduces a writer, and works even where the write
+# would be a no-op; this one cannot say what went wrong, only that something
+# did — but no spelling, `eval` or delegation can talk it out of noticing.
+#
+# The snapshot path is allocated per invocation with mktemp and threaded through
+# both calls: this repo is worked in from ~30 worktrees at once, and a path keyed
+# only on the user let a concurrent run overwrite this one's baseline.
+#
+# --verify runs whether or not the checks passed, and the sub-make's exit status
+# is preserved. A target that writes a lockfile and THEN fails is the case that
+# most needs the diagnostic, and aborting the recipe on the first failure would
+# have left the dirty tree unexplained.
+check:
+	@snap=$$(mktemp "$${TMPDIR:-/tmp}/basecamp-sdk-lockfiles.XXXXXX"); \
+	 trap 'rm -f "$$snap"' EXIT; \
+	 LOCKFILE_SNAPSHOT=$$snap ./scripts/assert-lockfiles-unchanged --record; \
+	 rc=0; $(MAKE) check-targets || rc=$$?; \
+	 if ! LOCKFILE_SNAPSHOT=$$snap ./scripts/assert-lockfiles-unchanged --verify; then \
+	   if [ $$rc -eq 0 ]; then rc=1; fi; \
+	 fi; \
+	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
+	 echo "==> All checks passed"
+
+check-targets: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged
+	@:
 
 # Clean all build artifacts
 clean: smithy-clean go-clean ts-clean rb-clean kt-clean swift-clean py-clean

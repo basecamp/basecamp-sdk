@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+#
+# Self-test for scripts/assert-lockfiles-unchanged.
+#
+# Its live run in `make check` only ever sees lockfiles that did not move, so
+# nothing there proves it notices when one does. The whole point of this check is
+# that it cannot be argued out of noticing — so that has to be demonstrated, not
+# asserted.
+#
+# Each case builds a synthetic repo with real lockfiles, records, mutates (or
+# does not), and verifies.
+#
+# ASSERT_LOCKFILES names the script under test, so a mutated copy can be driven
+# through the same cases.
+
+set -uo pipefail
+export LC_ALL=C
+
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ASSERT=${ASSERT_LOCKFILES:-$REPO_ROOT/scripts/assert-lockfiles-unchanged}
+
+failures=0
+cases=0
+
+TMPROOT=$(mktemp -d)
+trap 'rm -rf "$TMPROOT"' EXIT
+
+make_repo() {
+  local name=$1
+  local dir="$TMPROOT/$name"
+  mkdir -p "$dir/typescript" "$dir/ruby" "$dir/python" "$dir/conformance/runner/typescript"
+  # Content differs per repo, so a baseline recorded by one is detectably wrong
+  # for another — otherwise identical fixtures would hide a shared snapshot path.
+  printf '{"lockfileVersion":3,"name":"a","repo":"%s"}\n' "$name" \
+    > "$dir/typescript/package-lock.json"
+  printf '{"lockfileVersion":3,"name":"b"}\n' > "$dir/conformance/runner/typescript/package-lock.json"
+  printf 'GEM\n  specs:\n' > "$dir/ruby/Gemfile.lock"
+  printf 'version = 1\n' > "$dir/python/uv.lock"
+  mkdir -p "$dir/go" "$dir/conformance/runner/go"
+  printf 'example.com/x v1.0.0 h1:aaa=\n' > "$dir/go/go.sum"
+  printf 'example.com/y v1.0.0 h1:bbb=\n' > "$dir/conformance/runner/go/go.sum"
+  printf 'example.com/z v1.0.0 h1:ccc=\n' > "$dir/go.work.sum"
+  git -C "$dir" init --quiet
+  git -C "$dir" add -A
+  echo "$dir"
+}
+
+run() {   # dir, snapshot, mode
+  ( cd "$1" && CHECK_NPM_ROOT="$1" LOCKFILE_SNAPSHOT="$2" "$ASSERT" "$3" 2>&1 )
+}
+
+expect() {   # want(pass|fail), label, mutate-command
+  local want=$1 label=$2 mutate=$3
+  local dir snap out status
+  cases=$((cases + 1))
+  dir=$(make_repo "case$cases")
+  snap="$TMPROOT/snap$cases"
+
+  run "$dir" "$snap" --record >/dev/null
+  ( cd "$dir" && eval "$mutate" )
+  out=$(run "$dir" "$snap" --verify); status=$?
+
+  if [[ $want == pass && $status -ne 0 ]]; then
+    echo "  FAIL  $label — exited $status; it must accept this:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  elif [[ $want == fail && $status -eq 0 ]]; then
+    echo "  FAIL  $label — exited 0; it must reject this" >&2
+    failures=$((failures + 1))
+  elif [[ $want == fail && "$out" != *"modified a dependency lockfile"* ]]; then
+    echo "  FAIL  $label — rejected without naming the problem:" >&2
+    printf '        %s\n' "$out" >&2
+    failures=$((failures + 1))
+  else
+    echo "  ok    $label — $([[ $want == pass ]] && echo accepted || echo "rejected (exit $status)")"
+  fi
+}
+
+echo "== nothing moved =="
+
+expect pass "lockfiles untouched" "true"
+expect pass "an unrelated file changed" "echo x > README.md"
+
+echo "== something moved, however it got there =="
+
+expect fail "an npm lockfile rewritten" \
+  "printf '{\"lockfileVersion\":3,\"name\":\"a\",\"x\":1}\n' > typescript/package-lock.json"
+
+expect fail "the conformance runner's lockfile rewritten" \
+  "printf '{\"lockfileVersion\":3,\"name\":\"b\",\"x\":1}\n' > conformance/runner/typescript/package-lock.json"
+
+expect fail "Gemfile.lock rewritten" "printf 'GEM\n  specs:\n    x\n' > ruby/Gemfile.lock"
+
+expect fail "uv.lock rewritten" "printf 'version = 2\n' > python/uv.lock"
+
+# `go` rewrites go.sum as readily as `npm` rewrites a lockfile, and `make check`
+# runs Go targets.
+expect fail "go/go.sum rewritten" \
+  "printf 'example.com/x v1.0.1 h1:zzz=\n' > go/go.sum"
+
+expect fail "the conformance runner's go.sum rewritten" \
+  "printf 'example.com/y v1.0.1 h1:zzz=\n' > conformance/runner/go/go.sum"
+
+expect fail "go.work.sum rewritten" \
+  "printf 'example.com/z v1.0.1 h1:zzz=\n' > go.work.sum"
+
+expect fail "a lockfile deleted" "rm typescript/package-lock.json"
+
+# The point of this check: it observes bytes, so the mechanism does not matter.
+# None of these spellings is one the static gate's parser resolves.
+expect fail "written via eval of an assembled string" \
+  "cmd='printf x >> typescript/package-lock.json'; eval \"\$cmd\""
+
+expect fail "written by a command held in a variable" \
+  "w=printf; \$w 'y' >> typescript/package-lock.json"
+
+# A lockfile that did not exist before is not in the index, so an index-based
+# snapshot listed it in neither side and the comparison passed over it.
+expect fail "a NEW untracked lockfile created at the repo root" \
+  "printf '{}' > package-lock.json"
+
+expect fail "a new lockfile in a directory that had none" \
+  "mkdir -p extra && printf '{}' > extra/package-lock.json"
+
+echo "== --verify-clean: the CI form, baselined on the committed tree =="
+
+# CI checks out pristine, so git is the baseline and no snapshot is needed.
+# `git status` reports untracked appearance as well as tracked mutation, which is
+# the case a tracked-files-only comparison can never see.
+vc() {   # want(pass|fail), label, mutate
+  local want=$1 label=$2 mutate=$3 dir out status
+  cases=$((cases + 1))
+  dir=$(make_repo "vc$cases")
+  git -C "$dir" -c user.email=t@t -c user.name=t commit -qm init
+  ( cd "$dir" && eval "$mutate" )
+  out=$( cd "$dir" && CHECK_NPM_ROOT="$dir" "$ASSERT" --verify-clean 2>&1 ); status=$?
+  if [[ $want == pass && $status -ne 0 ]]; then
+    echo "  FAIL  $label — exited $status; it must accept this:" >&2
+    printf '        %s\n' "$out" >&2; failures=$((failures + 1))
+  elif [[ $want == fail && $status -eq 0 ]]; then
+    echo "  FAIL  $label — exited 0; it must reject this" >&2; failures=$((failures + 1))
+  else
+    echo "  ok    $label — $([[ $want == pass ]] && echo accepted || echo "rejected (exit $status)")"
+  fi
+}
+
+vc pass "a pristine checkout" "true"
+vc fail "a tracked lockfile modified" "printf 'x' >> typescript/package-lock.json"
+vc fail "a NEW untracked lockfile created" "printf '{}' > package-lock.json"
+vc fail "a new lockfile in a new directory" "mkdir -p n && printf '{}' > n/package-lock.json"
+vc fail "go.sum modified" "printf 'x' >> go/go.sum"
+vc fail "a tracked lockfile deleted" "rm python/uv.lock"
+vc pass "an unrelated file changed" "echo x > README.md"
+
+echo "== concurrent runs must not share a baseline =="
+
+# ~30 worktrees are worked in at once here. With a snapshot path keyed only on
+# the user, a second run's --record overwrote the first run's baseline.
+cases=$((cases + 1))
+d1=$(make_repo "conc1"); d2=$(make_repo "conc2")
+s1="$TMPROOT/snapc1"; s2="$TMPROOT/snapc2"
+( cd "$d1" && CHECK_NPM_ROOT="$d1" LOCKFILE_SNAPSHOT="$s1" "$ASSERT" --record >/dev/null )
+( cd "$d2" && CHECK_NPM_ROOT="$d2" LOCKFILE_SNAPSHOT="$s2" "$ASSERT" --record >/dev/null )
+( cd "$d2" && printf 'x' >> typescript/package-lock.json )
+o1=$( cd "$d1" && CHECK_NPM_ROOT="$d1" LOCKFILE_SNAPSHOT="$s1" "$ASSERT" --verify 2>&1 ); r1=$?
+o2=$( cd "$d2" && CHECK_NPM_ROOT="$d2" LOCKFILE_SNAPSHOT="$s2" "$ASSERT" --verify 2>&1 ); r2=$?
+if [[ $r1 -eq 0 && $r2 -ne 0 ]]; then
+  echo "  ok    each run keeps its own baseline (clean one passes, dirty one fails)"
+else
+  echo "  FAIL  concurrent baselines crossed — clean=$r1 dirty=$r2" >&2
+  failures=$((failures + 1))
+fi
+
+# And the DEFAULT path (no LOCKFILE_SNAPSHOT) must not be shared either: drive
+# the script itself in two repo roots, record in both, dirty only the second.
+# With one path per user, the second --record clobbers the first's baseline and
+# the clean repo starts failing.
+cases=$((cases + 1))
+d3=$(make_repo "conc3"); d4=$(make_repo "conc4")
+( cd "$d3" && CHECK_NPM_ROOT="$d3" "$ASSERT" --record >/dev/null )
+( cd "$d4" && CHECK_NPM_ROOT="$d4" "$ASSERT" --record >/dev/null )
+( cd "$d4" && printf 'x' >> typescript/package-lock.json )
+o3=$( cd "$d3" && CHECK_NPM_ROOT="$d3" "$ASSERT" --verify 2>&1 ); r3=$?
+o4=$( cd "$d4" && CHECK_NPM_ROOT="$d4" "$ASSERT" --verify 2>&1 ); r4=$?
+if [[ $r3 -eq 0 && $r4 -ne 0 ]]; then
+  echo "  ok    the default path is per repo root, so baselines do not cross"
+else
+  echo "  FAIL  default-path baselines crossed — clean=$r3 dirty=$r4" >&2
+  printf '        %s\n' "$o3" >&2
+  failures=$((failures + 1))
+fi
+
+echo "== the wrapper runs --verify even when the checks fail =="
+
+# Mirrors the `check:` recipe: record, run a step that writes a lockfile and then
+# fails, verify regardless. The developer must see the tripwire diagnostic, not
+# only the original failure, and the exit status must stay non-zero.
+cases=$((cases + 1))
+wdir=$(make_repo "wrapper")
+wsnap="$TMPROOT/snapwrapper"
+wout=$( {
+  cd "$wdir" || exit 1
+  export CHECK_NPM_ROOT="$wdir" LOCKFILE_SNAPSHOT="$wsnap"
+  "$ASSERT" --record >/dev/null
+  # Exactly the shape of the `check:` recipe.
+  rc=0
+  ( printf 'x' >> typescript/package-lock.json; exit 7 ) || rc=$?
+  if ! "$ASSERT" --verify; then
+    if [ $rc -eq 0 ]; then rc=1; fi
+  fi
+  echo "WRAPPER_EXIT=$rc"
+} 2>&1 )
+if [[ "$wout" == *"modified a dependency lockfile"* && "$wout" == *"WRAPPER_EXIT=7"* ]]; then
+  echo "  ok    failing checks still get the tripwire diagnostic, exit preserved"
+else
+  echo "  FAIL  wrapper contract — expected the diagnostic and WRAPPER_EXIT=7:" >&2
+  printf '        %s\n' "$wout" >&2
+  failures=$((failures + 1))
+fi
+
+echo
+if [[ $failures -eq 0 ]]; then
+  echo "assert-lockfiles-unchanged self-test passed ($cases cases)."
+else
+  echo "assert-lockfiles-unchanged self-test FAILED ($failures of $cases cases)." >&2
+fi
+exit $((failures > 0))

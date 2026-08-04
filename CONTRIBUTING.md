@@ -40,7 +40,7 @@ A Basecamp account is optional (for integration testing only).
 
    **TypeScript:**
    ```bash
-   cd typescript && npm install
+   cd typescript && npm ci
    npm test
    npm run typecheck
    npm run lint
