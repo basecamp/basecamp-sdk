@@ -2059,6 +2059,18 @@
       ]
     }
   },
+  "ReplaceScheduleEntry": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "ReplaceTodo": {
     "idempotent": true,
     "retry": {
@@ -2574,18 +2586,6 @@
     }
   },
   "UpdateQuestionNotificationSettings": {
-    "idempotent": true,
-    "retry": {
-      "backoff": "exponential",
-      "base_delay_ms": 1000,
-      "max": 3,
-      "retry_on": [
-        429,
-        503
-      ]
-    }
-  },
-  "UpdateScheduleEntry": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",

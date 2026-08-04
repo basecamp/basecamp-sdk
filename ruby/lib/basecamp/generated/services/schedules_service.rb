@@ -16,11 +16,11 @@ module Basecamp
         end
       end
 
-      # Update an existing schedule entry
+      # Replace a schedule entry with a new complete representation.
       # @param entry_id [Integer] entry id ID
       # @param summary [String, nil] summary
-      # @param starts_at [String, nil] starts at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
-      # @param ends_at [String, nil] ends at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
+      # @param starts_at [String] starts at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
+      # @param ends_at [String] ends at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
       # @param description [String, nil] description
       # @param participant_ids [Array, nil] Replaces the entry's participants.
       #   
@@ -33,10 +33,24 @@ module Basecamp
       #   now guards on the request actually addressing participants.
       # @param all_day [Boolean, nil] all day
       # @param notify [Boolean, nil] notify
+      # @param url [String, nil] The entry's join link — a video-call URL or similar, up to 2500
+      #   characters, validated as a URL when present.
+      #   
+      #   Omitting this member preserves the current join link; sending an empty
+      #   string clears it. Read it back as `join_url`, never as `url`: the entry's
+      #   `url` is its own Basecamp API URL, written by a partial that renders
+      #   before this one, so BC3 emits the join link under a non-colliding key.
+      #   Echoing the response's `url` into this member would write the API URL into
+      #   the join link.
+      # @param highlighted [Boolean, nil] Whether the entry is highlighted on the schedule.
+      #   
+      #   Omitting this member preserves the current highlight; sending false
+      #   removes it. Preserved on omission because until basecamp/bc3#12502 the
+      #   field was writable but never returned, so no caller could resend it.
       # @return [Hash] response data
-      def update_entry(entry_id:, summary: nil, starts_at: nil, ends_at: nil, description: nil, participant_ids: nil, all_day: nil, notify: nil)
-        with_operation(service: "schedules", operation: "update_entry", is_mutation: true, resource_id: entry_id) do
-          http_put("/schedule_entries/#{entry_id}", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify)).json
+      def replace_entry(entry_id:, starts_at:, ends_at:, summary: nil, description: nil, participant_ids: nil, all_day: nil, notify: nil, url: nil, highlighted: nil)
+        with_operation(service: "schedules", operation: "replace_entry", is_mutation: true, resource_id: entry_id) do
+          http_put("/schedule_entries/#{entry_id}", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, url: url, highlighted: highlighted)).json
         end
       end
 

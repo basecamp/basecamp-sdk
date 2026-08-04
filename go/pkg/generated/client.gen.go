@@ -2384,6 +2384,48 @@ type ReplaceDocumentRequestContent struct {
 // ReplaceDocumentResponseContent defines model for ReplaceDocumentResponseContent.
 type ReplaceDocumentResponseContent = Document
 
+// ReplaceScheduleEntryRequestContent defines model for ReplaceScheduleEntryRequestContent.
+type ReplaceScheduleEntryRequestContent struct {
+	AllDay      *bool     `json:"all_day,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	EndsAt      time.Time `json:"ends_at"`
+
+	// Highlighted Whether the entry is highlighted on the schedule.
+	//
+	// Omitting this member preserves the current highlight; sending false
+	// removes it. Preserved on omission because until basecamp/bc3#12502 the
+	// field was writable but never returned, so no caller could resend it.
+	Highlighted *bool `json:"highlighted,omitempty"`
+	Notify      *bool `json:"notify,omitempty"`
+
+	// ParticipantIds Replaces the entry's participants.
+	//
+	// Omitting this member preserves the current participants; sending an empty
+	// array clears them. That guarantee is BC3-side and recent: until
+	// basecamp/bc3#12425, `Schedules::EntriesController#update` called
+	// `replace_participants` unconditionally, so any update omitting the key —
+	// including the shape in BC3's own "Update a schedule entry" doc example —
+	// silently removed every participant and notified each one. The controller
+	// now guards on the request actually addressing participants.
+	ParticipantIds *[]int64  `json:"participant_ids,omitempty"`
+	StartsAt       time.Time `json:"starts_at"`
+	Summary        *string   `json:"summary,omitempty"`
+
+	// Url The entry's join link — a video-call URL or similar, up to 2500
+	// characters, validated as a URL when present.
+	//
+	// Omitting this member preserves the current join link; sending an empty
+	// string clears it. Read it back as `join_url`, never as `url`: the entry's
+	// `url` is its own Basecamp API URL, written by a partial that renders
+	// before this one, so BC3 emits the join link under a non-colliding key.
+	// Echoing the response's `url` into this member would write the API URL into
+	// the join link.
+	Url *string `json:"url,omitempty"`
+}
+
+// ReplaceScheduleEntryResponseContent defines model for ReplaceScheduleEntryResponseContent.
+type ReplaceScheduleEntryResponseContent = ScheduleEntry
+
 // ReplaceTodoRequestContent defines model for ReplaceTodoRequestContent.
 type ReplaceTodoRequestContent struct {
 	AssigneeIds             *[]int64    `json:"assignee_ids,omitempty"`
@@ -2492,7 +2534,9 @@ type ScheduleAttributes struct {
 
 // ScheduleEntry defines model for ScheduleEntry.
 type ScheduleEntry struct {
-	AllDay                 *bool                `json:"all_day,omitempty"`
+	// AllDay Always sent. schedule_entries.all_day is NOT NULL with a false default,
+	// and every partial that renders an entry emits it.
+	AllDay                 bool                 `json:"all_day"`
 	AppUrl                 string               `json:"app_url"`
 	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
 	BoostsCount            *int32               `json:"boosts_count,omitempty"`
@@ -2504,20 +2548,47 @@ type ScheduleEntry struct {
 	Creator                Person               `json:"creator"`
 	Description            *string              `json:"description,omitempty"`
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
-	EndsAt                 *types.FlexibleTime  `json:"ends_at,omitempty"`
-	Id                     int64                `json:"id"`
-	InheritsStatus         bool                 `json:"inherits_status"`
-	Parent                 RecordingParent      `json:"parent"`
-	Participants           []Person             `json:"participants,omitempty"`
-	StartsAt               *types.FlexibleTime  `json:"starts_at,omitempty"`
-	Status                 string               `json:"status"`
-	SubscriptionUrl        *string              `json:"subscription_url,omitempty"`
-	Summary                string               `json:"summary"`
-	Title                  string               `json:"title"`
-	Type                   string               `json:"type"`
-	UpdatedAt              time.Time            `json:"updated_at"`
-	Url                    string               `json:"url"`
-	VisibleToClients       bool                 `json:"visible_to_clients"`
+
+	// EndsAt Always sent. See starts_at for the date-vs-timestamp rendering.
+	EndsAt types.FlexibleTime `json:"ends_at"`
+
+	// Highlighted Whether the entry is highlighted on the schedule.
+	//
+	// Optional for the same reason as join_url: emitted unconditionally by the
+	// entry partial, absent from the calendar partial GetUpcomingSchedule uses.
+	Highlighted    *bool `json:"highlighted,omitempty"`
+	Id             int64 `json:"id"`
+	InheritsStatus bool  `json:"inherits_status"`
+
+	// JoinUrl The entry's join link, or null when it has none.
+	//
+	// Sent under this key rather than `url`, which is the entry's own Basecamp
+	// API URL: recordings/_recording writes that key first and the entry partial
+	// renders after it. Write it back through the `url` member of
+	// ReplaceScheduleEntry — the two spellings are deliberate, not a typo.
+	//
+	// Optional rather than required because this one structure covers two wire
+	// shapes. GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
+	// CreateScheduleEntry and ReplaceScheduleEntry all render
+	// schedules/entries/_entry, which emits it unconditionally;
+	// GetUpcomingSchedule renders the reduced schedules/calendar/_entry, which
+	// does not.
+	JoinUrl      *string         `json:"join_url,omitempty"`
+	Parent       RecordingParent `json:"parent"`
+	Participants []Person        `json:"participants,omitempty"`
+
+	// StartsAt Always sent, and a date rather than a timestamp for an all-day entry:
+	// BC3 renders starts_at_date_or_time, which drops the time component when
+	// all_day is set.
+	StartsAt         types.FlexibleTime `json:"starts_at"`
+	Status           string             `json:"status"`
+	SubscriptionUrl  *string            `json:"subscription_url,omitempty"`
+	Summary          string             `json:"summary"`
+	Title            string             `json:"title"`
+	Type             string             `json:"type"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	Url              string             `json:"url"`
+	VisibleToClients bool               `json:"visible_to_clients"`
 }
 
 // SearchMetadata defines model for SearchMetadata.
@@ -3301,30 +3372,6 @@ type UpdateQuestionRequestContent struct {
 
 // UpdateQuestionResponseContent defines model for UpdateQuestionResponseContent.
 type UpdateQuestionResponseContent = Question
-
-// UpdateScheduleEntryRequestContent defines model for UpdateScheduleEntryRequestContent.
-type UpdateScheduleEntryRequestContent struct {
-	AllDay      *bool      `json:"all_day,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	EndsAt      *time.Time `json:"ends_at,omitempty"`
-	Notify      *bool      `json:"notify,omitempty"`
-
-	// ParticipantIds Replaces the entry's participants.
-	//
-	// Omitting this member preserves the current participants; sending an empty
-	// array clears them. That guarantee is BC3-side and recent: until
-	// basecamp/bc3#12425, `Schedules::EntriesController#update` called
-	// `replace_participants` unconditionally, so any update omitting the key —
-	// including the shape in BC3's own "Update a schedule entry" doc example —
-	// silently removed every participant and notified each one. The controller
-	// now guards on the request actually addressing participants.
-	ParticipantIds *[]int64   `json:"participant_ids,omitempty"`
-	StartsAt       *time.Time `json:"starts_at,omitempty"`
-	Summary        *string    `json:"summary,omitempty"`
-}
-
-// UpdateScheduleEntryResponseContent defines model for UpdateScheduleEntryResponseContent.
-type UpdateScheduleEntryResponseContent = ScheduleEntry
 
 // UpdateScheduleSettingsRequestContent defines model for UpdateScheduleSettingsRequestContent.
 type UpdateScheduleSettingsRequestContent struct {
@@ -4407,8 +4454,8 @@ type CreateTimesheetEntryJSONRequestBody = CreateTimesheetEntryRequestContent
 // RepositionToolJSONRequestBody defines body for RepositionTool for application/json ContentType.
 type RepositionToolJSONRequestBody = RepositionToolRequestContent
 
-// UpdateScheduleEntryJSONRequestBody defines body for UpdateScheduleEntry for application/json ContentType.
-type UpdateScheduleEntryJSONRequestBody = UpdateScheduleEntryRequestContent
+// ReplaceScheduleEntryJSONRequestBody defines body for ReplaceScheduleEntry for application/json ContentType.
+type ReplaceScheduleEntryJSONRequestBody = ReplaceScheduleEntryRequestContent
 
 // UpdateScheduleSettingsJSONRequestBody defines body for UpdateScheduleSettings for application/json ContentType.
 type UpdateScheduleSettingsJSONRequestBody = UpdateScheduleSettingsRequestContent
@@ -5612,10 +5659,10 @@ type ClientInterface interface {
 	// GetScheduleEntry request
 	GetScheduleEntry(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateScheduleEntryWithBody request with any body
-	UpdateScheduleEntryWithBody(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// ReplaceScheduleEntryWithBody request with any body
+	ReplaceScheduleEntryWithBody(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateScheduleEntry(ctx context.Context, accountId string, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ReplaceScheduleEntry(ctx context.Context, accountId string, entryId int64, body ReplaceScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetScheduleEntryOccurrence request
 	GetScheduleEntryOccurrence(ctx context.Context, accountId string, entryId int64, date string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8420,21 +8467,21 @@ func (c *Client) GetScheduleEntry(ctx context.Context, accountId string, entryId
 
 }
 
-// UpdateScheduleEntryWithBody is marked as idempotent and will be retried on transient failures.
+// ReplaceScheduleEntryWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateScheduleEntryWithBody(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ReplaceScheduleEntryWithBody(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateScheduleEntryRequestWithBody(c.Server, accountId, entryId, contentType, body)
-	}, true, "UpdateScheduleEntry", reqEditors...)
+		return NewReplaceScheduleEntryRequestWithBody(c.Server, accountId, entryId, contentType, body)
+	}, true, "ReplaceScheduleEntry", reqEditors...)
 
 }
 
-func (c *Client) UpdateScheduleEntry(ctx context.Context, accountId string, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ReplaceScheduleEntry(ctx context.Context, accountId string, entryId int64, body ReplaceScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateScheduleEntryRequest(c.Server, accountId, entryId, body)
-	}, true, "UpdateScheduleEntry", reqEditors...)
+		return NewReplaceScheduleEntryRequest(c.Server, accountId, entryId, body)
+	}, true, "ReplaceScheduleEntry", reqEditors...)
 
 }
 
@@ -19104,19 +19151,19 @@ func NewGetScheduleEntryRequest(server string, accountId string, entryId int64) 
 	return req, nil
 }
 
-// NewUpdateScheduleEntryRequest calls the generic UpdateScheduleEntry builder with application/json body
-func NewUpdateScheduleEntryRequest(server string, accountId string, entryId int64, body UpdateScheduleEntryJSONRequestBody) (*http.Request, error) {
+// NewReplaceScheduleEntryRequest calls the generic ReplaceScheduleEntry builder with application/json body
+func NewReplaceScheduleEntryRequest(server string, accountId string, entryId int64, body ReplaceScheduleEntryJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateScheduleEntryRequestWithBody(server, accountId, entryId, "application/json", bodyReader)
+	return NewReplaceScheduleEntryRequestWithBody(server, accountId, entryId, "application/json", bodyReader)
 }
 
-// NewUpdateScheduleEntryRequestWithBody generates requests for UpdateScheduleEntry with any type of body
-func NewUpdateScheduleEntryRequestWithBody(server string, accountId string, entryId int64, contentType string, body io.Reader) (*http.Request, error) {
+// NewReplaceScheduleEntryRequestWithBody generates requests for ReplaceScheduleEntry with any type of body
+func NewReplaceScheduleEntryRequestWithBody(server string, accountId string, entryId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -22683,7 +22730,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetOverdueTodos":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetPersonProgress":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetScheduleEntry":                   {Idempotent: true, HasSensitiveParams: false},
-	"UpdateScheduleEntry":                {Idempotent: true, HasSensitiveParams: false},
+	"ReplaceScheduleEntry":               {Idempotent: true, HasSensitiveParams: false},
 	"GetScheduleEntryOccurrence":         {Idempotent: true, HasSensitiveParams: false},
 	"GetSchedule":                        {Idempotent: true, HasSensitiveParams: false},
 	"UpdateScheduleSettings":             {Idempotent: true, HasSensitiveParams: false},
@@ -22932,7 +22979,7 @@ var operationRetryMax = map[string]int{
 	"GetOverdueTodos":                    3,
 	"GetPersonProgress":                  3,
 	"GetScheduleEntry":                   3,
-	"UpdateScheduleEntry":                3,
+	"ReplaceScheduleEntry":               3,
 	"GetScheduleEntryOccurrence":         3,
 	"GetSchedule":                        3,
 	"UpdateScheduleSettings":             3,
@@ -23179,7 +23226,7 @@ var operationRetryOn = map[string][]int{
 	"GetOverdueTodos":                    {429, 503},
 	"GetPersonProgress":                  {429, 503},
 	"GetScheduleEntry":                   {429, 503},
-	"UpdateScheduleEntry":                {429, 503},
+	"ReplaceScheduleEntry":               {429, 503},
 	"GetScheduleEntryOccurrence":         {429, 503},
 	"GetSchedule":                        {429, 503},
 	"UpdateScheduleSettings":             {429, 503},
@@ -24001,12 +24048,12 @@ func (s *SchedulesService) GetEntry(ctx context.Context, accountId string, entry
 	return s.client.GetScheduleEntry(ctx, accountId, entryId, reqEditors...)
 }
 
-func (s *SchedulesService) UpdateEntryWithBody(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateScheduleEntryWithBody(ctx, accountId, entryId, contentType, body, reqEditors...)
+func (s *SchedulesService) ReplaceEntryWithBody(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ReplaceScheduleEntryWithBody(ctx, accountId, entryId, contentType, body, reqEditors...)
 }
 
-func (s *SchedulesService) UpdateEntry(ctx context.Context, accountId string, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateScheduleEntry(ctx, accountId, entryId, body, reqEditors...)
+func (s *SchedulesService) ReplaceEntry(ctx context.Context, accountId string, entryId int64, body ReplaceScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ReplaceScheduleEntry(ctx, accountId, entryId, body, reqEditors...)
 }
 
 func (s *SchedulesService) Get(ctx context.Context, accountId string, scheduleId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -24845,10 +24892,10 @@ type ClientWithResponsesInterface interface {
 	// GetScheduleEntryWithResponse request
 	GetScheduleEntryWithResponse(ctx context.Context, accountId string, entryId int64, reqEditors ...RequestEditorFn) (*GetScheduleEntryResponse, error)
 
-	// UpdateScheduleEntryWithBodyWithResponse request with any body
-	UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
+	// ReplaceScheduleEntryWithBodyWithResponse request with any body
+	ReplaceScheduleEntryWithBodyWithResponse(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceScheduleEntryResponse, error)
 
-	UpdateScheduleEntryWithResponse(ctx context.Context, accountId string, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error)
+	ReplaceScheduleEntryWithResponse(ctx context.Context, accountId string, entryId int64, body ReplaceScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceScheduleEntryResponse, error)
 
 	// GetScheduleEntryOccurrenceWithResponse request
 	GetScheduleEntryOccurrenceWithResponse(ctx context.Context, accountId string, entryId int64, date string, reqEditors ...RequestEditorFn) (*GetScheduleEntryOccurrenceResponse, error)
@@ -31269,10 +31316,10 @@ func (r GetScheduleEntryResponse) ContentType() string {
 	return ""
 }
 
-type UpdateScheduleEntryResponse struct {
+type ReplaceScheduleEntryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *UpdateScheduleEntryResponseContent
+	JSON200      *ReplaceScheduleEntryResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -31281,7 +31328,7 @@ type UpdateScheduleEntryResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r UpdateScheduleEntryResponse) Status() string {
+func (r ReplaceScheduleEntryResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -31289,7 +31336,7 @@ func (r UpdateScheduleEntryResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpdateScheduleEntryResponse) StatusCode() int {
+func (r ReplaceScheduleEntryResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -31297,7 +31344,7 @@ func (r UpdateScheduleEntryResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateScheduleEntryResponse) ContentType() string {
+func (r ReplaceScheduleEntryResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -35372,21 +35419,21 @@ func (c *ClientWithResponses) GetScheduleEntryWithResponse(ctx context.Context, 
 	return ParseGetScheduleEntryResponse(rsp)
 }
 
-// UpdateScheduleEntryWithBodyWithResponse request with arbitrary body returning *UpdateScheduleEntryResponse
-func (c *ClientWithResponses) UpdateScheduleEntryWithBodyWithResponse(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
-	rsp, err := c.UpdateScheduleEntryWithBody(ctx, accountId, entryId, contentType, body, reqEditors...)
+// ReplaceScheduleEntryWithBodyWithResponse request with arbitrary body returning *ReplaceScheduleEntryResponse
+func (c *ClientWithResponses) ReplaceScheduleEntryWithBodyWithResponse(ctx context.Context, accountId string, entryId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceScheduleEntryResponse, error) {
+	rsp, err := c.ReplaceScheduleEntryWithBody(ctx, accountId, entryId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateScheduleEntryResponse(rsp)
+	return ParseReplaceScheduleEntryResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateScheduleEntryWithResponse(ctx context.Context, accountId string, entryId int64, body UpdateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateScheduleEntryResponse, error) {
-	rsp, err := c.UpdateScheduleEntry(ctx, accountId, entryId, body, reqEditors...)
+func (c *ClientWithResponses) ReplaceScheduleEntryWithResponse(ctx context.Context, accountId string, entryId int64, body ReplaceScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceScheduleEntryResponse, error) {
+	rsp, err := c.ReplaceScheduleEntry(ctx, accountId, entryId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateScheduleEntryResponse(rsp)
+	return ParseReplaceScheduleEntryResponse(rsp)
 }
 
 // GetScheduleEntryOccurrenceWithResponse request returning *GetScheduleEntryOccurrenceResponse
@@ -45486,22 +45533,22 @@ func ParseGetScheduleEntryResponse(rsp *http.Response) (*GetScheduleEntryRespons
 	return response, nil
 }
 
-// ParseUpdateScheduleEntryResponse parses an HTTP response from a UpdateScheduleEntryWithResponse call
-func ParseUpdateScheduleEntryResponse(rsp *http.Response) (*UpdateScheduleEntryResponse, error) {
+// ParseReplaceScheduleEntryResponse parses an HTTP response from a ReplaceScheduleEntryWithResponse call
+func ParseReplaceScheduleEntryResponse(rsp *http.Response) (*ReplaceScheduleEntryResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpdateScheduleEntryResponse{
+	response := &ReplaceScheduleEntryResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateScheduleEntryResponseContent
+		var dest ReplaceScheduleEntryResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

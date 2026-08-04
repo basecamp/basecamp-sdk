@@ -147,7 +147,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/reports/todos/overdue.json": "GetOverdueTodos",
   "GET:/{accountId}/reports/users/progress/{personId}.json": "GetPersonProgress",
   "GET:/{accountId}/schedule_entries/{entryId}": "GetScheduleEntry",
-  "PUT:/{accountId}/schedule_entries/{entryId}": "UpdateScheduleEntry",
+  "PUT:/{accountId}/schedule_entries/{entryId}": "ReplaceScheduleEntry",
   "GET:/{accountId}/schedule_entries/{entryId}/occurrences/{date}": "GetScheduleEntryOccurrence",
   "GET:/{accountId}/schedules/{scheduleId}": "GetSchedule",
   "PUT:/{accountId}/schedules/{scheduleId}": "UpdateScheduleSettings",

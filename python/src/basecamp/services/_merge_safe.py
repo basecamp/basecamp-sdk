@@ -106,6 +106,67 @@ def writable_string(body: dict[str, Any], key: str, *, record: str, escape: str)
     return value
 
 
+def required_writable_string(body: dict[str, Any], key: str, *, record: str, escape: str) -> str:
+    """Read a writable string the record is *required* to carry.
+
+    :func:`writable_string` treats an absent key or an explicit ``None`` as
+    genuinely empty, which is right for an optional field — ``""`` is what the
+    server already holds. It is wrong for a required one. Where the spec marks a
+    response member ``@required`` and BC3 can never render it blank, an absent,
+    null or blank value in a 2xx body is a **malformed response**, not an empty
+    field. Coalescing it to ``""`` and sending that in the full-replace PUT
+    would blank the real value on a call that never mentioned it — #576's defect
+    exactly.
+
+    Two records rely on this today and for the same reason: ``Document.title``
+    is ``super.presence || "Untitled"`` and ``ScheduleEntry.summary`` is
+    ``super.presence || "Untitled"``, so neither can come back blank from a
+    healthy server.
+
+    The wrong-type branch is delegated to :func:`writable_string`, so a required
+    field and an optional one report a non-string identically.
+    """
+    value = body.get(key)
+    if value is None or (isinstance(value, str) and not value.strip()):
+        raise malformed(
+            f'{record} field "{key}" is required but the response carried {describe(value)}',
+            "The merge-safe update/edit resend this field verbatim, so a missing or blank value "
+            f"would blank the current one. Use {escape} to write the record deliberately.",
+        )
+    return writable_string(body, key, record=record, escape=escape)
+
+
+def required_writable_boolean(body: dict[str, Any], key: str, *, record: str, escape: str) -> bool:
+    """Read a writable boolean the record is *required* to carry.
+
+    The boolean analogue of :func:`required_writable_string`, and it cannot be
+    expressed with a truthiness test: the value this guard most needs to admit
+    is ``False``, which every ``or``/``if not`` idiom would treat as missing and
+    replace with a default. ``ScheduleEntry.all_day`` is ``NOT NULL`` with a
+    ``false`` default in BC3 and every partial emits it, so absent or null is a
+    malformed response — and defaulting it to ``False`` would silently convert
+    an all-day event into a midnight-to-midnight timed one on a call that only
+    changed the summary.
+
+    ``0``/``1`` are refused rather than coerced, for the same reason
+    :func:`writable_string` refuses ``42``: JSON has a boolean type and the
+    server uses it.
+    """
+    value = body.get(key)
+    if value is None:
+        raise malformed(
+            f'{record} field "{key}" is required but the response carried {describe(value)}',
+            "The merge-safe update/edit resend this field verbatim, so a missing value would "
+            f"replace the current one with a default. Use {escape} to write the record deliberately.",
+        )
+    if not isinstance(value, bool):
+        raise malformed(
+            f"{record} field {key!r} is not a boolean: {describe(value)}",
+            _RESEND_HINT.format(escape=escape),
+        )
+    return value
+
+
 def writable_id_list(body: dict[str, Any], key: str, *, record: str, escape: str) -> list[int]:
     """Read a list of person records and project it to their integer IDs.
 

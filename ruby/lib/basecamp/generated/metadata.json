@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-08-03T17:39:28Z",
+  "generated": "2026-08-03T23:20:47Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -2403,7 +2403,7 @@
         ]
       }
     },
-    "UpdateScheduleEntry": {
+    "ReplaceScheduleEntry": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,

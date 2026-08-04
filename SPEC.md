@@ -1213,7 +1213,7 @@ Every JSON API request must include all four headers below. Download requests (�
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
 - `{VERSION}` is the SDK version (e.g., `0.6.0`)
-- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-02`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
+- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-03`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
 
 ### Redirect Handling
 
@@ -3075,7 +3075,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
-| `API_VERSION` | `2026-08-02` | — | `openapi.json` `info.version` <!-- @api-version --> |
+| `API_VERSION` | `2026-08-03` | — | `openapi.json` `info.version` <!-- @api-version --> |
 | `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
 | `EVENT_FEED_HANDSHAKE_DEADLINE` | 10 | seconds | §23 timers — dial-to-`welcome` deadline |
 | `EVENT_FEED_CONFIRMATION_DEADLINE` | 10 | seconds | §23 (configurable; default) |

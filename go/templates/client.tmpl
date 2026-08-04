@@ -1829,12 +1829,12 @@ func (s *SchedulesService) CreateEntry{{.Suffix}}(ctx context.Context{{genParamA
 	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
 }
 {{end}}{{end}}
-{{else if eq $opid "UpdateScheduleEntry"}}
-func (s *SchedulesService) UpdateEntryWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+{{else if eq $opid "ReplaceScheduleEntry"}}
+func (s *SchedulesService) ReplaceEntryWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
 	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
 }
 {{range .Bodies}}{{if .IsSupportedByClient}}
-func (s *SchedulesService) UpdateEntry{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+func (s *SchedulesService) ReplaceEntry{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
 	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
 }
 {{end}}{{end}}
