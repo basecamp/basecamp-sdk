@@ -1,0 +1,29 @@
+SPEC.md
+  s_7971b60690ffce::t_c807a7610ab4de 111
+  s_7971b60690ffce::t_03e397fa338bb7 663
+  s_7971b60690ffce::t_411fee83a1c440 3355
+ruby/README.md
+  s_7971b60690ffce::t_632dae3ce575ba 444
+  s_7971b60690ffce::t_159196294bc5a0 446
+  s_7971b60690ffce::t_adb0d7f28e2407 451
+scripts/check-retry-metadata-parity.py
+  s_7971b60690ffce::t_436607d7273032 36,38-40
+ruby/lib/basecamp/http.rb
+  s_7971b60690ffce::t_13d6ef236904d2 172-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "87deb484933c9128142275d9227ac802d4aff2be",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
