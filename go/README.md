@@ -6,7 +6,7 @@
 
 Official Go SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#go) before you bump the version — eleven of this release's breaking changes give you no signal at all: no compile error, no exception, no decoder failure.
+**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#go) before you bump the version — Go carries eleven breaks your compiler will not catch — eight that give no signal at all, and three that compile and then panic only when the server omits a field.
 
 ## Features
 

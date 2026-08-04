@@ -15,24 +15,24 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 Breaking across all six SDKs — Go, TypeScript, Python, Ruby, Kotlin, Swift.
 
-**Read [Silent breaks](#silent-breaks) first.** A large share of this release
-changes what your existing code *does* without changing whether it compiles or
-raises. Against a live server there is no compile error, no exception and no
-decoder failure — the call keeps working and does something different. The
-counts below are of breaks that are silent in that sense; see
-[what "silent" means](#silent-breaks) for the precise test, and note that a
-suite pinning request paths will catch some of them.
+**Read [Breaks your compiler will not catch](#breaks-your-compiler-will-not-catch)
+first.** A large share of this release survives a clean build. Most of that
+share gives you no signal at all — the call keeps working against a live server
+and does something different. A smaller part compiles and then panics or raises,
+but only on a payload where a particular field is absent, so it passes your
+tests and fails in production.
 
-| SDK | breaking changes | of which silent |
-|---|---:|---:|
-| [Go](#go) | 27 | **11** |
-| [Swift](#swift) | 20 | **9** |
-| [TypeScript](#typescript) | 16 | 5 |
-| [Python](#python) | 14 | 4 |
-| [Ruby](#ruby) | 16 | 3 |
-| [Kotlin](#kotlin) | 14 | 3 |
+| SDK | breaking changes | no signal at all | fails at runtime |
+|---|---:|---:|---:|
+| [Go](#go) | 27 | **8** | **3** |
+| [Swift](#swift) | 20 | **9** | 0 |
+| [TypeScript](#typescript) | 16 | 5 | 0 |
+| [Python](#python) | 14 | 4 | 0 |
+| [Ruby](#ruby) | 16 | 2 | 1 |
+| [Kotlin](#kotlin) | 14 | 3 | 0 |
 
-35 silent across the six. These are counts at `51d0d86cf` and move if anything
+35 breaks the compiler will not catch, across the six: 31 with no signal at all
+and 4 that fail at runtime. These are counts at `9de44b2a8` and move if anything
 under [Not in this release](#not-in-this-release) lands before the tag.
 
 #637 does **not** add a row to either column, despite landing after the first
@@ -46,7 +46,7 @@ rather than adding one, and that is where this guide documents it.
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
 body.
 
-> **As of `51d0d86cf`.** Base `v0.12.0` = `7e2925d25`. Every count in this
+> **As of `9de44b2a8`.** Base `v0.12.0` = `7e2925d25`. Every count in this
 > document is a measurement at that commit, not a constant. If you are reading
 > this from a later tag, re-run the derivations below — they are cheap, and a
 > hand-incremented count is how these go wrong. Changes still in flight when
@@ -56,7 +56,7 @@ body.
 
 ## What shipped
 
-**Operation inventory: 238 → 241.** Derive both ends rather than trusting
+**Operation inventory: 238 → 247.** Derive both ends rather than trusting
 either number:
 
 ```bash
@@ -69,14 +69,17 @@ git show v0.12.0:openapi.json | python3 -c "import json,sys;d=json.load(sys.stdi
 print(sum(1 for p,v in d['paths'].items() for m in v if m in ('get','post','put','patch','delete')))"
 ```
 
-Eight operation IDs added, five removed. At the level of *capability* that is
-six additions, three removals and two renames:
+Fourteen operation IDs added, five removed. At the level of *capability* that is
+twelve additions, three removals and two renames:
 
 | | |
 |---|---|
-| **Added (6)** | `ListFolders`, `GetFolder`, `CreateFolder`, `UpdateFolder`, `DeleteFolder` (#593); `DestroyTimesheetEntry` (#626) |
+| **Added (12)** | Folders — `ListFolders`, `GetFolder`, `CreateFolder`, `UpdateFolder`, `DeleteFolder` (#593); `DestroyTimesheetEntry` (#626); cloud files — `GetCloudFile`, `CreateCloudFile`, `UpdateCloudFile` (#629); Google documents — `GetGoogleDocument`, `CreateGoogleDocument`, `UpdateGoogleDocument` (#629) |
 | **Renamed (2)** | `UpdateDocument` → `ReplaceDocument` (#601); `UpdateScheduleEntry` → `ReplaceScheduleEntry` (#632). Same route, same verb, honest name. |
 | **Removed (3)** | `GetRecording`, `TrashTodo`, `CreateForwardReply` (#619) |
+
+The Folders operations are worth a second look before you assume the name maps
+to the route: they are drawn at `/{accountId}/stacks(.json)`, not `/folders`.
 
 **Eleven operations kept their ID and moved route.** Nine gained a
 `/buckets/{bucketId}` prefix (#619); `ListForwards` and
@@ -160,24 +163,71 @@ an expired token on a read now raises an auth error instead of refreshing.
 Raise it to at least 2. The default of 3 is unaffected, and a static token
 provider is unaffected. Full detail in [Retry and transport](#retry-and-transport).
 
+### 5. Clearing a card's due date is already broken in production
+
+**This one is not caused by upgrading. It is true of the version you are
+running right now**, and it is the reason to upgrade rather than a hazard of
+doing so.
+
+Every released SDK encodes "clear this card's due date" by **omitting**
+`due_on` from the update body. That worked because bc3 built its card update
+params as `{ due_on: nil }.merge(card_params)`, so an omitted key erased the
+date. bc3 changed that: on the JSON representation an omitted key is now left
+**unchanged**. The change deployed before any SDK release could match it.
+
+So today, against production:
+
+- `cards.update(...)` asking to clear a due date is a **silent no-op**. The
+  request succeeds, returns 200, and the due date is still there.
+- The same call has stopped being destructive in the other direction, which is
+  the good half: a sparse update that never mentioned `due_on` used to erase it
+  and no longer does.
+
+There is nothing to configure and no workaround worth writing — see
+[Cards: the due-date fix](#cards-the-due-date-fix) for what the SDK change
+looks like and where it stands. Until you are on a release carrying it, treat
+"clear a card due date" as unavailable and verify by reading the card back.
+
 ---
 
-# Silent breaks
+# Breaks your compiler will not catch
 
-**What "silent" means here.** A break is listed in this section if, running
-your existing code against a live Basecamp server, nothing tells you: it does
-not fail to compile, does not raise, does not fail to decode, and does not
-change the shape of what you get back. The call keeps working and does
-something different.
+Everything in this section survives a clean build. That is the only property
+all of it shares, and it is why the section exists: the rest of the guide is
+work your toolchain will find for you, and this is not.
 
-Silence is a property of the **source and the runtime**, not of your test
-suite. Several of these breaks *will* fail loudly in a suite that pins request
-paths — a URL correction stops matching a `WebMock`/`MSW`/`respx` stub, and a
-strict double raises on the unregistered request. That is the good case, and it
-is called out where it applies. It is not a contradiction: the break is silent
-in production, and your mocks are the one thing that might catch it before you
-get there. A suite that stubs loosely, or matches on method and host only,
-catches nothing.
+Within it there are two classes, and they fail differently enough that mixing
+them would be misleading:
+
+**Class A — no signal at all (31).** Running your existing code against a live
+Basecamp server, nothing tells you: it does not fail to compile, does not
+raise, does not fail to decode, and does not change the shape of what you get
+back. The call keeps working and does something different. These are the
+dangerous ones, because there is no moment at which you find out.
+
+**Class B — fails at runtime, on the wrong payload (4).** Compiles, then
+panics or raises — but only when the server sends (or omits) a particular
+value. A field that is always populated in your data never trips it, so these
+pass every test you have and crash in production the first time a real record
+comes back without that field. You do get a signal; you get it late, from a
+stack trace, and only sometimes.
+
+| SDK | class A | class B |
+|---|---:|---:|
+| Go | 8 | 3 |
+| Swift | 9 | 0 |
+| TypeScript | 5 | 0 |
+| Python | 4 | 0 |
+| Ruby | 2 | 1 |
+| Kotlin | 3 | 0 |
+
+Neither class is a property of your **test suite**. Several class-A breaks
+*will* fail loudly in a suite that pins request paths — a URL correction stops
+matching a `WebMock`/`MSW`/`respx` stub, and a strict double raises on the
+unregistered request. That is the good case, and it is called out where it
+applies. It is not a contradiction: the break is silent in production, and your
+mocks are the one thing that might catch it first. A suite that stubs loosely,
+or matches on method and host only, catches nothing.
 
 ## Hits every SDK
 
@@ -236,7 +286,7 @@ What changed for Go is narrower, and splits in two:
 `Gauges().List` and `ListNeedles` are in neither group — they took no options
 and no `page` at all at v0.12.0, so gaining both is purely additive.
 
-So Go's silent break is **wrong page returned**, not **walk collapsed**. A Go
+So Go's break here is **wrong page returned**, not **walk collapsed**. A Go
 job that passed `Page: 3` and quietly processed page 1 for months now processes
 page 3 — which is what it always asked for, and a different set of rows than it
 has been handling. Audit for code that compensated for the old behaviour.
@@ -304,39 +354,56 @@ changed:
   not an object, or a writable field that is not the type the spec claims,
   aborts before the PUT with a statusless API error.
 
-## Go — 11 silent breaks
+## Go — 8 class A, 3 class B
 
-1. **Five optional timestamps became `*time.Time` (#615).** `hc.UpdatedAt.IsZero()`
-   still compiles — Go inserts the dereference — and panics on nil. Fields:
+Go carries every class-B break in the release. All three come from #560/#615's
+pointerization, and all three share one shape: Go auto-dereferences a pointer
+for a field selector and for a value-receiver method call, so the old code
+compiles untouched and panics **only when the server omits that field**.
+
+### Class B — panics at runtime, on the wrong payload
+
+1. **Five optional timestamps became `*time.Time` (#615).**
+   `hc.UpdatedAt.IsZero()` still compiles and panics on nil. Fields:
    `HillChart.UpdatedAt`, `Notification.ReadAt`, `Notification.UnreadAt`,
-   `SearchResult.CreatedAt`, `SearchResult.UpdatedAt`. The two `SearchResult`
-   tags also gained `omitempty`, so marshalling one now omits the key where it
-   used to emit a fabricated `0001-01-01T00:00:00Z`.
+   `SearchResult.CreatedAt`, `SearchResult.UpdatedAt`.
+   *Class-A residue:* the two `SearchResult` tags also gained `omitempty`, so
+   marshalling one now omits the key where it used to emit a fabricated
+   `0001-01-01T00:00:00Z`. That half never raises — check persisted output and
+   downstream strict decoders.
 2. **~107 optional fields in `pkg/generated` with struct or named types became
    pointers (#560).** `a.Limits.CanUploadFiles` and `t.DueOn.String()` both
-   compile and both panic. Of 653 value→pointer flips, 527 scalars and 19 slices
-   break loudly; the rest do not.
-3. **Nested optional objects switched to pointer presence (#560).** 34 guards
+   compile and both panic. Of 653 value→pointer flips, 527 scalars and 19
+   slices break at compile time; these ~107 do not.
+3. **`Question.Schedule.Hour` and `.Minute` can now be nil (#560).** The one
+   flip in the release running guaranteed-non-nil → nil, so
+   `*q.Schedule.Hour` that was unconditionally safe now panics.
+   *Class-A residue:* `WeekInstance`, `WeekInterval` and `MonthInterval` moved
+   the other way — nil → non-nil pointer to 0 — so a `!= nil` presence test on
+   those now fires where it did not, silently.
+
+### Class A — no signal at all
+
+1. **Nested optional objects switched to pointer presence (#560).** 34 guards
    across 17 files flipped from content-inference to `!= nil`. A
    present-but-empty object that used to yield nil now yields a non-nil struct.
-4. **`Question.Schedule.Hour` and `.Minute` can now be nil (#560).** The one flip
-   in the release running non-nil → nil.
-5. **A non-nil empty slice now reaches the wire (#560).** `Types: []string{}`
+2. **A non-nil empty slice now reaches the wire (#560).** `Types: []string{}`
    used to be a no-op; it now sends `{"types":[]}` and clears the list.
-6. **`CardColumns().Move` always sends `position`, including 0 (#560).**
-7. **`Page` is a selector (#561, #617)** — see cross-SDK #1.
-8. **`Todolists().Update` is read-modify-write (#574)** — see cross-SDK #4.
-9. **400/422 from the raw `Client`/`AccountClient` escape hatch now report
+3. **`CardColumns().Move` always sends `position`, including 0 (#560).**
+4. **`Page` is a selector (#561, #617)** — see cross-SDK #1, and the
+   [Go carve-out](#go-is-the-exception).
+5. **`Todolists().Update` is read-modify-write (#574)** — see cross-SDK #4.
+6. **400/422 from the raw `Client`/`AccountClient` escape hatch now report
    `CodeValidation`, not `CodeAPI` (#549).**
-10. **`pkg/generated` `Parse*Response` went lenient on 4xx/5xx (#541).**
-11. **Two URLs changed (#586)** — see cross-SDK #2.
+7. **`pkg/generated` `Parse*Response` went lenient on 4xx/5xx (#541).**
+8. **Two URLs changed (#586)** — see cross-SDK #2.
 
-Three more are *partly* silent: `Documents().Update` and
+Three more are *partly* compiler-visible: `Documents().Update` and
 `Schedules().UpdateEntry` (the compiler catches only the `pkg/generated` half),
 and `Error` gaining `FieldErrors` (the compiler catches only unkeyed composite
 literals).
 
-## Swift — 9 silent breaks
+## Swift — 9 class A
 
 1. **Error `message` recomposed at every status (#541).** The v0.12.0 fallback
    was `HTTPURLResponse.localizedString(forStatusCode:)` — measured on Darwin:
@@ -365,7 +432,7 @@ literals).
    matches; the error escapes to your next handler.
 9. **`downloadURL`'s first hop retries three times (#563).**
 
-## TypeScript — 5 silent breaks
+## TypeScript — 5 class A
 
 1. **Every error message from a generated service call was previously the HTTP
    status text (#541).** At v0.12.0 `BaseService.handleError` discarded the body
@@ -384,7 +451,7 @@ literals).
    misbehave; if you wrapped `downloadURL` in your own retry loop you now have
    nested retry.
 
-## Python — 4 silent breaks
+## Python — 4 class A
 
 1. **`ValidationError` message text changed and `field_errors` is new (#541).**
    `str(e)` went from `"Validation failed"` to `"color: is not a valid color"`.
@@ -402,20 +469,29 @@ Add three more with no signal whatsoever, filed as behavioural: `todolists.updat
 `documents.update` and `schedules.update_entry` keep byte-identical keyword
 sets, raise nothing on the happy path, and produce no type-checker complaint.
 
-## Ruby — 3 silent breaks
+## Ruby — 2 class A, 1 class B
+
+### Class A — no signal at all
 
 1. **`page:` selects a page (#617)** — see cross-SDK #1. Measured against a
    4-page stub: v0.12.0 issued three requests and returned three items for
    `page: 2`; main issues one and returns one.
 2. **`ValidationError#message` changed and `#field_errors` is new (#541, #549).**
    `e.message == "Request failed"` stops matching.
-3. **`Draft#scheduled_posting_at` and `MyNote#created_at`/`#updated_at` decode to
-   `Time`, not `String` (#560).** `.start_with?` raises `NoMethodError`,
-   `Time.parse(…)` raises `TypeError`, and bare interpolation silently changes
-   format from `"2026-01-02T03:04:05Z"` to `"2026-01-02 03:04:05 UTC"`.
-   `#iso8601` gets the old string back.
 
-## Kotlin — 3 silent breaks
+### Class B — raises at runtime, on the wrong payload
+
+1. **`Draft#scheduled_posting_at` and `MyNote#created_at`/`#updated_at` decode
+   to `Time`, not `String` (#560).** `.start_with?` raises `NoMethodError` and
+   `Time.parse(…)` raises `TypeError` — but only on a record where the field is
+   populated, so a fixture that leaves it nil never trips either.
+   `#iso8601` gets the old string back.
+   *Class-A residue:* bare interpolation raises nothing and silently changes
+   format from `"2026-01-02T03:04:05Z"` to `"2026-01-02 03:04:05 UTC"`, so
+   anything writing that value into a log line, a cache key or an external
+   payload changes what it emits with no error at all.
+
+## Kotlin — 3 class A
 
 1. **`documents.update` quietly stopped erasing omitted fields (#601).**
    `UpdateDocumentBody` was removed from the generator and re-declared by hand
@@ -439,7 +515,7 @@ Operations that declared URLs bc3 does not serve. **Read the removals carefully
 
 ## #586 — two spellings corrected, no signature change
 
-Covered above as [silent break #2](#2-two-operations-emit-a-different-url-under-an-unchanged-signature-586).
+Covered above as [class-A break #2](#2-two-operations-emit-a-different-url-under-an-unchanged-signature-586).
 Both old paths were 404s.
 
 ## #619 — nine operations gained a bucket scope
@@ -519,6 +595,101 @@ Previously `todos.update` coalesced a `false` content to `""` and wrote it back
 — erasing a field on a call that never mentioned it — and `cards.update` both
 dropped a falsey non-string `due_on` (which is how bc3 erases a due date) and
 forwarded a truthy non-string one.
+
+---
+
+# Cards: the due-date fix
+
+Cards move the opposite way to the three composites above: `cards.update` was a
+read-modify-write and becomes a **single PUT**. The reason is that the server
+bug it existed to defend against is gone — bc3 became presence-aware on the card
+JSON representation, so an omitted key is now left alone and there is nothing
+left for a composite to protect.
+
+The consequence for anyone still on an older SDK is
+[operator checklist item 5](#5-clearing-a-cards-due-date-is-already-broken-in-production):
+the released encoding for "clear the due date" is omission, and omission no
+longer clears.
+
+**Status:** this is a settled, non-spec-touching change sitting on
+`fix/card-due-on-explicit-clear` (`bf4371534`) and not yet merged. The shape
+below is read from that diff, not predicted; confirm it landed before relying on
+the version number.
+
+### The wire encoding of an explicit clear changes
+
+```
+clear a due date:   omit "due_on"        →   "due_on": ""
+```
+
+bc3 blank-casts `""` to nil on the date attribute, so `""` clears. `null` is not
+an option: it violates the body-compaction rule in SPEC §18, and five of the six
+SDKs strip nulls before the wire, so `""` is the only clear encoding every SDK
+can express identically.
+
+### `UpdateStepRequest.DueOn` becomes `*string`
+
+```go
+// leave the step's due date alone
+ac.CardSteps().Update(ctx, stepID, &basecamp.UpdateStepRequest{Title: "Draft"})
+
+// clear it
+ac.CardSteps().Update(ctx, stepID, &basecamp.UpdateStepRequest{DueOn: basecamp.Ptr("")})
+
+// set it
+ac.CardSteps().Update(ctx, stepID, &basecamp.UpdateStepRequest{DueOn: basecamp.Ptr("2026-08-14")})
+```
+
+Presence is `!= nil`, matching `UpdateCardRequest`. `Title` changes with it:
+an empty `Title` now leaves the title unchanged rather than being sent, because
+bc3 made title optional on update in the same change.
+
+### The hook and request sequence collapses
+
+`Cards().Update` no longer issues a `GetCard` first. In Go it is now literally
+`return s.UpdateVerbatim(ctx, cardID, req)`.
+
+| | v0.12.0 | after the fix |
+|---|---|---|
+| wire operations | `GetCard` then `UpdateCard` | `UpdateCard` |
+| Go `OperationInfo` | `{Cards, Get}` then `{Cards, UpdateVerbatim}` | `{Cards, UpdateVerbatim}` |
+| requests per call | 2 | 1 |
+| lost-update window | yes — a concurrent due-date change between GET and PUT was overwritten | none |
+
+This is the **inverse** of the `{Todolists, Update}` split in
+[operator checklist item 1](#1-operation-allowlists-and-denylists-will-start-denying--or-start-passing),
+and it fails differently, so do not reason about it by analogy:
+
+- **Allowlists do not start denying.** An allowlist naming both operations still
+  permits the one that remains. Fewer events is safe for an allowlist.
+- **Denylists can start permitting.** If you blocked `{Cards, Get}` — or
+  `GetCard` — to stop reads, that denial used to take `cards.update` down with
+  it. It no longer does: the write now succeeds where the gate previously
+  stopped it. **That is a gate that silently opens.**
+- **Audit trails lose a record.** Anything reconciling reads against writes, or
+  billing per operation, sees one event where it saw two.
+
+### A defended defect class leaves the Cards surface
+
+Removing the preservation GET also removes what that GET was validated against.
+Three `errorRaised` conformance kill cases go with it:
+
+```
+update-kill: an array due_on is refused before the replacement PUT
+update-kill: an empty-object due_on is refused, not coerced or dropped
+update-kill: a date-shaped array due_on is refused where the format check is blind
+```
+
+Those pinned the behaviour that a malformed `due_on` **read back from the
+server** was refused rather than coerced or forwarded into the write. With no
+read, there is no read-back to validate, so the guarantee is not weakened — it
+stops being reachable on this surface. `cards_write.json` goes from 8 cases to 5,
+and its `errorRaised` count from 3 to 0.
+
+**The class itself is not retired.** It stays pinned on Todos, which still does
+a real read-modify-write: `todos_write.json` keeps 2 `errorRaised` cases. If you
+were relying on Cards to be the canary for malformed-read-back handling, it is
+not one any more — Todos is.
 
 ---
 
@@ -991,7 +1162,7 @@ entire usage is `??` sees nothing.
 
 ## Silent
 
-All nine are in [Silent breaks](#swift--9-silent-breaks). Two deserve code here.
+All nine are in [class A](#swift--9-class-a). Two deserve code here.
 
 ### A cancelled request now throws raw (#568)
 
@@ -1053,8 +1224,9 @@ response.
 Drop the optional handling; a description-less list reads back as `""`. In
 `Todolist` literals, `description:` moves up into the required block (the emitter
 sorts required members first) and loses its default. Add `"description"` to any
-`URLProtocol` stub or cassette or decoding throws. Three new optional members are
-additive: `groupPositionUrl`.
+`URLProtocol` stub or cassette or decoding throws. One new member is optional and
+purely additive: `groupPositionUrl`. The other two new members, `color` and
+`commentsAppUrl`, are required — see the next section.
 
 ### `Todolist.color` and `.commentsAppUrl` are new *and* required (#637)
 
@@ -1150,7 +1322,7 @@ string you might be matching on.
 
 ## Silent
 
-See [Silent breaks](#typescript--5-silent-breaks). Two details on `fieldErrors`
+See [class A](#typescript--5-class-a). Two details on `fieldErrors`
 that bite:
 
 ```ts
@@ -1302,7 +1474,7 @@ out on the call.
 
 ## Silent
 
-See [Silent breaks](#python--4-silent-breaks). Plus the three merge-safe
+See [class A](#python--4-class-a). Plus the three merge-safe
 composites, which have byte-identical keyword sets and no signal of any kind.
 
 One correction worth knowing if you saw an earlier draft: at v0.12.0, a body like
@@ -1627,7 +1799,7 @@ document has a blank title.
 
 ### Two URLs changed (#586), error composition changed (#541, #549)
 
-See [Silent breaks](#kotlin--3-silent-breaks). Two source-compatible widenings
+See [class A](#kotlin--3-class-a). Two source-compatible widenings
 ship alongside the error work: `BasecampException.Api(httpStatus: Int)` became
 `Int? = null`, and `Validation` gained a trailing `fieldErrors` parameter with a
 default — every existing construction still binds.
@@ -1961,21 +2133,22 @@ oversight, and it should be stated rather than assumed.
 
 # Not in this release
 
-Work still in flight at `51d0d86cf`. If you are reading this from the released
+Work still in flight at `9de44b2a8`. If you are reading this from the released
 tag, these either landed — in which case the counts above were re-derived before
 the tag and this list shrank — or they did not.
 
 **For whoever cuts the tag:** each entry names the specific derivations it
 invalidates, so the final pass is arithmetic rather than rewriting.
 
-- **#629 — bare field-map error bodies**, widening the shapes `field_errors`
-  recognises and adding six cloud-file and Google-document operations. Open and
-  mergeable at the time of writing.
-  *If it lands:* the operation inventory is **247, not 241** — re-run both
-  derivations under [What shipped](#what-shipped), and revise the added/removed
-  breakdown, since these are six additions with no removals or renames. The
-  error-shape entries in [silent break #3](#3-error-message-text-changed-on-more-error-shapes-than-you-would-expect-541-549)
-  and each SDK's `field_errors` section widen but do not reverse.
+- **Cards: the due-date fix** — `fix/card-due-on-explicit-clear` (`bf4371534`),
+  settled and non-spec-touching, no PR open yet. Documented in full at
+  [Cards: the due-date fix](#cards-the-due-date-fix), because the production
+  half of it is true whether or not the branch lands.
+  *If it lands:* the operation inventory does **not** move — no spec change. Add
+  one class-A entry to Go, TypeScript, Python, Ruby, Kotlin and Swift for the
+  `cards.update` request-count and hook collapse, and one compile-error entry to
+  Go for `UpdateStepRequest.DueOn` becoming `*string`. Re-check the per-SDK
+  totals in the summary table; the class-B counts are unaffected.
 - **#635 / #641 — the `GetUpcomingSchedule` projection, and the
   `CreateScheduleEntry` write-side gap.** Open issues.
   #635: `GetUpcomingSchedule` declares the full `ScheduleEntry` schema, but bc3
@@ -1992,7 +2165,9 @@ invalidates, so the final pass is arithmetic rather than rewriting.
   *If either lands:* both touch `ScheduleEntry`, so re-check the Swift and
   Kotlin required-member lists and the Go/Swift/Kotlin per-SDK counts.
 
-Two things that were on this list are now **in** the release, folded into the
+Three things that were on this list are now **in** the release, folded into the
 sections above rather than left here: **#637** (`Todolist.color` and
-`comments_app_url` required — merged as `0fd25079c`) and **#643** (`basecamp.Ptr`
-and `basecamp.Deref` — merged as `51d0d86cf`).
+`comments_app_url` required — `0fd25079c`), **#643** (`basecamp.Ptr` and
+`basecamp.Deref` — `51d0d86cf`), and **#629** (bare field-map error bodies plus
+the cloud-file and Google-document operations — `a373b004c`, which is what took
+the inventory from 241 to 247).

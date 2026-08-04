@@ -6,7 +6,7 @@
 
 Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#kotlin) before you bump the version — three of this release's breaking changes give you no signal at all: no compile error, no exception, no decoder failure.
+**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#kotlin) before you bump the version — Kotlin carries three breaks your compiler will not catch, all of which give no signal at all.
 
 ## Features
 
