@@ -1,0 +1,35 @@
+scripts/test-check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_32e7a6d2abac2c 1-144,158-187
+  s_ae792ed0be3006::t_dd83e717d12ffe 145-157
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_eac856d8ef8b60 87-91
+  s_ae792ed0be3006::t_dca69b887e119e 98
+  s_ae792ed0be3006::t_180b927df3a0f3 105-110
+  s_ae792ed0be3006::t_5c160fe26919d7 121
+  s_ae792ed0be3006::t_9893ed3412983b 9-10,12-15,17-18
+  s_ae792ed0be3006::t_ea7196e90a1cf1 16,25-47,54-59,61-64,72-73,77-86,92-97,99-104,111-120,122-135,139-140,144,156,165-167,171,176-182
+conformance/runner/typescript/package.json
+  s_ae792ed0be3006::t_76260fabd8721e 9
+Makefile
+  s_ae792ed0be3006::t_5848cca5876e43 640-650
+  s_ae792ed0be3006::t_17337dcbc12125 661
+  s_ae792ed0be3006::t_569dbae281a937 1137-1139,1143-1150,1154-1163
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_e4fe313ad7d2a4 185-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "abe24fba7ef7c0da1b31aa896b75782eeaec93c8",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

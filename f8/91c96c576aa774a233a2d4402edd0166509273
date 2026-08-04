@@ -1,0 +1,29 @@
+conformance/runner/typescript/assert-sdk-built.mjs
+  s_ae792ed0be3006::t_44130153fb359d 41-47
+  s_ae792ed0be3006::t_5f34f43dc09971 25-32
+  s_ae792ed0be3006::t_f8b2928f406530 79
+typescript/package.json
+  s_ae792ed0be3006::t_aee7d2e6e44aa4 25
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_82f86d203e578d 101-106,213-219,221-224,226,228
+scripts/test-assert-sdk-built
+  s_ae792ed0be3006::t_de0d8333c74ce8 42,90-95
+scripts/test-check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_9a76621f3a5fdb 183-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f891c96c576aa774a233a2d4402edd0166509273",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

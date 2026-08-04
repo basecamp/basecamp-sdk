@@ -1,0 +1,32 @@
+.github/workflows/test.yml
+  s_ae792ed0be3006::t_138c64dc267959 328-336,343-348
+  s_ae792ed0be3006::t_7fb4eb2ae1df9b 349
+scripts/test-check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_40fa07d7166cc3 144-158
+conformance/runner/typescript/assert-sdk-built.mjs
+  s_ae792ed0be3006::t_e6222b29a59d21 19-22
+  s_ae792ed0be3006::t_3fe1c50db6c1fb 35-39,51
+scripts/test-assert-sdk-built
+  s_ae792ed0be3006::t_0904b7e4bf118a 1-110
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_c796b67798f228 89-99
+  s_ae792ed0be3006::t_70a1e93429b989 115-118
+Makefile
+  s_ae792ed0be3006::t_4d9443b5b3d1ff 1165-1175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "cb1cd08036ffbee760936b03c325a32b5df5ff69",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

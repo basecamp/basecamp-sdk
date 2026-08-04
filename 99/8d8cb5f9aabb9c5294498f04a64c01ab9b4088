@@ -1,0 +1,29 @@
+scripts/test-check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_2dd5f1a8cea8ea 131-143
+conformance/runner/typescript/package.json
+  s_ae792ed0be3006::t_867449966874f7 9
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_c95044481b49a5 122-136,144-148,150
+  s_ae792ed0be3006::t_27d77978196e2b 77-85,88
+  s_ae792ed0be3006::t_52c6abcaf9a63b 169-170,176,191
+conformance/runner/typescript/assert-sdk-built.mjs
+  s_ae792ed0be3006::t_04e52586db4fc1 1-64
+Makefile
+  s_ae792ed0be3006::t_d3f56854e86ed5 1150-1151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "998d8cb5f9aabb9c5294498f04a64c01ab9b4088",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

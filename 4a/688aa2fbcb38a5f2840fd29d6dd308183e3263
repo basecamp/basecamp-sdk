@@ -1,0 +1,23 @@
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_4f144f2a84bbc4 104
+  s_ae792ed0be3006::t_ee6d4f711a1298 116-133
+scripts/test-check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_7add6cfcf86e81 171-182
+  s_ae792ed0be3006::t_3f5ebabe396cc1 209-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4a688aa2fbcb38a5f2840fd29d6dd308183e3263",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
