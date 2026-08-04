@@ -315,7 +315,7 @@ auth-routable-check:
 # TypeScript SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: ts-install ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check ts-check-drift ts-clean
+.PHONY: ts-install ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check ts-check-drift ts-check-entity-exports ts-clean
 
 TS_NODE_STAMP := typescript/node_modules/.install-stamp
 
@@ -365,8 +365,17 @@ ts-check-drift: ts-install
 	@echo "==> Checking TypeScript generated code drift..."
 	@./scripts/check-typescript-service-drift.sh
 
+# Check that every generated schema alias is re-exported from src/index.ts. The
+# drift gate above cannot see this: the generated tree is self-consistent either
+# way, and the package `exports` map admits no deep import, so an alias index.ts
+# omits is a return type consumers cannot name. Pure text scan, no node needed.
+ts-check-entity-exports:
+	@echo "==> Checking TypeScript entity type exports..."
+	@python3 ./scripts/check-typescript-entity-exports.py
+	@python3 ./scripts/check-typescript-entity-exports.py --self-test
+
 # Run all TypeScript checks
-ts-check: ts-check-drift ts-typecheck ts-test
+ts-check: ts-check-drift ts-check-entity-exports ts-typecheck ts-test
 	@echo "==> TypeScript SDK checks passed"
 
 # Clean TypeScript build artifacts
@@ -1284,6 +1293,7 @@ help:
 	@echo "  ts-test               Run TypeScript tests"
 	@echo "  ts-typecheck          Run TypeScript type checking"
 	@echo "  ts-check-drift        Check generated src/generated/ is current (regenerate + diff)"
+	@echo "  ts-check-entity-exports  Check generated schema aliases are re-exported from src/index.ts"
 	@echo "  ts-check              Run all TypeScript checks"
 	@echo "  ts-clean              Remove TypeScript build artifacts"
 	@echo ""

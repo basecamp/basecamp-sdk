@@ -349,6 +349,18 @@ jobs:
       - name: Check generated code drift
         run: ../scripts/check-typescript-service-drift.sh
 
+      # The drift gate above cannot see this: it regenerates and diffs the
+      # generated tree, which is self-consistent whether or not the hand-written
+      # root index.ts re-exports the aliases those modules declare.
+      - name: Check generated entity types are re-exported
+        run: python3 ../scripts/check-typescript-entity-exports.py
+
+      # The live run above only proves the gate can say yes. This drives the
+      # ways it could wrongly say yes — chiefly a commented-out re-export,
+      # which the first version of the gate read as live.
+      - name: Entity-export gate self-test (commented-out exports)
+        run: python3 ../scripts/check-typescript-entity-exports.py --self-test
+
       - name: Verify root pack includes compiled SDK
         working-directory: .
         run: |
