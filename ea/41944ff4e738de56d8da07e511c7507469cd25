@@ -1,0 +1,25 @@
+conformance/runner/typescript/assert-sdk-built.mjs
+  s_ae792ed0be3006::t_bda20cd0343f73 55-64,84-94,97-100
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_99cfc8ebedc682 196-201,342-353
+scripts/test-assert-sdk-built
+  s_ae792ed0be3006::t_9fa54a057a4f85 96-103
+scripts/test-check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_5dd9836197f49c 58-71,323-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ea41944ff4e738de56d8da07e511c7507469cd25",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
