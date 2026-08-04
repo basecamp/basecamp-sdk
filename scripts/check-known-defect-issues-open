@@ -1,0 +1,103 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Verify that every issue the bc3 route allowlist leans on is still OPEN.
+#
+# The allowlist discharges two claims by pointing at an issue number:
+#
+#   sdk_routes_known_defective[].issue   "we know this route 404s, #N owns it"
+#   bc3_routes_not_modeled[].tracking_issue
+#                                        "an OPEN issue owns absorbing it"
+#
+# check-bc3-route-parity already requires those to be numeric. A number is not a
+# tracker: #588 auto-closed while nine live 404s still pointed at it, and that
+# gate stayed green the whole time because "is an Integer" was the entire test.
+# The allowlist's own comment says "an OPEN issue owns absorbing it" — this is
+# what makes that word load-bearing instead of decorative.
+#
+# WHY THIS IS NOT IN check-bc3-route-parity, AND NOT IN `make check`
+#
+# That gate is offline by construction and says so in its header: it needs no
+# bc3 checkout and no secret, "so it cannot skip. A gate that skips when its
+# input is absent is how two 404ing routes shipped." Issue state is only
+# knowable over the network, so folding this in would hand that gate a skip path
+# — reintroducing the exact failure mode it was built to prevent. It lives here
+# instead, as its own CI job, and it FAILS CLOSED: if it cannot reach the API it
+# fails rather than passing quietly, because an unverifiable "we know" claim is
+# indistinguishable from an untracked defect.
+#
+# No-op when the allowlist references no issues at all, which is today's state.
+#
+# Usage: ./check-known-defect-issues-open
+#        BC3_ROUTE_ALLOWLIST=... ./check-known-defect-issues-open   (self-test)
+
+require 'json'
+require 'yaml'
+
+ROOT = File.expand_path('..', __dir__)
+REPO = ENV['GITHUB_REPOSITORY'] || 'basecamp/basecamp-sdk'
+
+allow_path = ENV['BC3_ROUTE_ALLOWLIST'] || File.join(ROOT, 'spec', 'bc3-route-allowlist.yml')
+unless File.exist?(allow_path)
+  warn "ERROR: allowlist not found at #{allow_path}"
+  exit 1
+end
+allow = YAML.safe_load(File.read(allow_path)) || {}
+
+# (issue number, human-readable site) pairs, so a failure names the entry that
+# has to change rather than just the number.
+refs = []
+(allow['sdk_routes_known_defective'] || []).each do |e|
+  next unless e['issue'].is_a?(Integer)
+  refs << [e['issue'], "sdk_routes_known_defective #{e['method']} #{e['path']}"]
+end
+(allow['bc3_routes_not_modeled'] || []).each do |e|
+  next unless e['tracking_issue'].is_a?(Integer)
+  refs << [e['tracking_issue'], "bc3_routes_not_modeled #{e['method']} #{e['path']}"]
+end
+
+if refs.empty?
+  puts '  ✓ bc3 route allowlist references no tracking issues — nothing to verify'
+  exit 0
+end
+
+# Fail closed: no gh, no verification, no pass.
+unless system('command -v gh > /dev/null 2>&1')
+  warn 'ERROR: gh CLI not found, so issue state cannot be verified.'
+  warn '  This check fails closed by design — an unverifiable "a known issue owns'
+  warn '  this" claim is exactly the untracked defect it exists to catch.'
+  exit 1
+end
+
+failures = []
+states = {}
+
+refs.map(&:first).uniq.sort.each do |number|
+  out = `gh api repos/#{REPO}/issues/#{number} --jq .state 2>&1`
+  unless $?.success?
+    failures << "could not read ##{number} from #{REPO}: #{out.strip.lines.first}"
+    next
+  end
+  states[number] = out.strip
+end
+
+refs.each do |number, site|
+  state = states[number]
+  next if state.nil? || state == 'open'
+  failures << "#{site} points at ##{number}, which is #{state.upcase}. " \
+              'A closed issue tracks nothing: reopen it, repoint the entry at the ' \
+              'issue that now owns the defect, or remove the entry because the ' \
+              'route is fixed.'
+end
+
+unless failures.empty?
+  warn "\nKnown-defect tracking issues are not all open:\n\n"
+  failures.each { |f| warn "  ✗ #{f}" }
+  warn ''
+  exit 1
+end
+
+refs.each do |number, site|
+  puts "  ✓ ##{number} open — #{site}"
+end
+puts "  ✓ all #{refs.map(&:first).uniq.length} referenced tracking issue(s) open"
