@@ -5,8 +5,8 @@
   "source": {
     "repo": "basecamp/bc3",
     "branch": "master",
-    "revision": "2c0dafba1312a8a998cc5fac3f01a4a29f542702",
-    "date": "2026-08-02",
+    "revision": "4dd2926f8af08fa2d358011f16402aef5e10f82a",
+    "date": "2026-08-03",
     "extracted_from": [
       "doc/api/sections/*.md"
     ],

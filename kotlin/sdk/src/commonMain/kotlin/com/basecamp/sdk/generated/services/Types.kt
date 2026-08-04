@@ -845,15 +845,17 @@ data class GetPersonProgressOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
-/** Request body for UpdateScheduleEntry. */
-data class UpdateScheduleEntryBody(
+/** Request body for ReplaceScheduleEntry. */
+data class ReplaceScheduleEntryBody(
     val summary: String? = null,
-    val startsAt: String? = null,
-    val endsAt: String? = null,
+    val startsAt: String,
+    val endsAt: String,
     val description: String? = null,
     val participantIds: List<Long>? = null,
     val allDay: Boolean? = null,
-    val notify: Boolean? = null
+    val notify: Boolean? = null,
+    val url: String? = null,
+    val highlighted: Boolean? = null
 )
 
 /** Request body for UpdateScheduleSettings. */

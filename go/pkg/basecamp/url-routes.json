@@ -2072,7 +2072,7 @@
       "resource": "Schedule",
       "operations": {
         "GET": "GetScheduleEntry",
-        "PUT": "UpdateScheduleEntry"
+        "PUT": "ReplaceScheduleEntry"
       },
       "params": {
         "accountId": {

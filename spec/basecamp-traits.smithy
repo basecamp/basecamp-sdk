@@ -85,6 +85,29 @@ structure basecampWriteSemantics {
 
     /// Whether fields omitted from the request are cleared server-side
     clearsOmitted: Boolean
+
+    /// Wire field names the server carves out of the replacement: it preserves
+    /// their current values when the request does not address them, and applies
+    /// them normally when it does. Only meaningful alongside
+    /// mode "replace" + clearsOmitted true, which state the default.
+    ///
+    /// A carve-out is not a merge. `clearsOmitted: true` still holds for every
+    /// field not named here, which is what keeps the operation a `Replace*`
+    /// (SPEC section 18, "Replace-Semantic Operation Naming"). The carve-out set
+    /// is limited to fields a client could not safely resend from a read-back —
+    /// write-only, system-managed, or colliding with a differently-meaning
+    /// response key — because a field a client *can* round-trip needs no
+    /// server-side guard.
+    ///
+    /// Names are the JSON wire spellings a caller sends, not SDK member names,
+    /// so a merge-safe composite can test caller-addressedness against the
+    /// same vocabulary it serializes.
+    preservedOnOmission: PreservedOnOmissionFields
+}
+
+/// Wire field names carved out of a replace, in the spelling the request uses.
+list PreservedOnOmissionFields {
+    member: String
 }
 
 /// Multipart file upload semantics for Basecamp API operations.
