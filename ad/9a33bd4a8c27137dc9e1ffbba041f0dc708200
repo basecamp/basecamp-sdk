@@ -1,0 +1,19 @@
+ruby/lib/basecamp/services/schedules_extensions.rb
+  s_ae792ed0be3006::t_cd044e3ba48526 270-276,278-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ad9a33bd4a8c27137dc9e1ffbba041f0dc708200",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
