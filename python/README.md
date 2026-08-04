@@ -6,7 +6,7 @@
 
 Official Python SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#python) before you bump the version — Python carries four breaks with no signal at all, and no compile step to catch anything else.
+**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#python) before you bump the version — Python carries seven breaks with no signal at all, and no compile step to catch anything else.
 
 ## Features
 

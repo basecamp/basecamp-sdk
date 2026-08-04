@@ -24,14 +24,14 @@ tests and fails in production.
 
 | SDK | breaking changes | no signal at all | fails at runtime |
 |---|---:|---:|---:|
-| [Go](#go) | 27 | **8** | **3** |
+| [Go](#go) | 27 | **10** | **3** |
 | [Swift](#swift) | 20 | **9** | 0 |
-| [TypeScript](#typescript) | 16 | 5 | 0 |
-| [Python](#python) | 14 | 4 | 0 |
-| [Ruby](#ruby) | 16 | 2 | 1 |
-| [Kotlin](#kotlin) | 14 | 3 | 0 |
+| [TypeScript](#typescript) | 16 | 8 | 0 |
+| [Python](#python) | 14 | 7 | 0 |
+| [Ruby](#ruby) | 17 | 8 | 1 |
+| [Kotlin](#kotlin) | 14 | 5 | 0 |
 
-35 breaks the compiler will not catch, across the six: 31 with no signal at all
+51 breaks the compiler will not catch, across the six: 47 with no signal at all
 and 4 that fail at runtime. These are counts at `9de44b2a8` and move if anything
 under [Not in this release](#not-in-this-release) lands before the tag.
 
@@ -142,6 +142,15 @@ no longer exist anywhere: an allowlist entry for either is now dead text.
 Three operation IDs were also removed outright and will never match again:
 `TrashTodo`, `GetRecording`, `CreateForwardReply`.
 
+**Cards move the opposite way, and an allowlist is not automatically safe.**
+If [the cards fix](#cards-the-due-date-fix) lands, `cards.update` stops issuing
+its `GetCard` and collapses to a single `UpdateCard`. Nothing starts being
+denied — but if your allowlist names the write and deliberately omits the read,
+that omission used to reject `cards.update` at its first request and now does
+not. The same applies to a denylist on `GetCard`. Audit for gates that were
+stopping a write **by way of** the read it used to make; those stop holding, and
+no denial appears in your logs to tell you.
+
 ### 2. Request counts and rate-limit budget move
 
 Each merge-safe `update` is now two HTTP requests. `downloadURL`'s first hop
@@ -199,27 +208,60 @@ work your toolchain will find for you, and this is not.
 Within it there are two classes, and they fail differently enough that mixing
 them would be misleading:
 
-**Class A — no signal at all (31).** Running your existing code against a live
+**Class A — no signal at all (47).** Running your existing code against a live
 Basecamp server, nothing tells you: it does not fail to compile, does not
 raise, does not fail to decode, and does not change the shape of what you get
 back. The call keeps working and does something different. These are the
 dangerous ones, because there is no moment at which you find out.
 
-**Class B — fails at runtime, on the wrong payload (4).** Compiles, then
-panics or raises — but only when the server sends (or omits) a particular
-value. A field that is always populated in your data never trips it, so these
-pass every test you have and crash in production the first time a real record
-comes back without that field. You do get a signal; you get it late, from a
-stack trace, and only sometimes.
+**Class B — fails at runtime, on the wrong payload (4).** Compiles, then panics
+or raises. You do get a signal; you get it late, from a stack trace, and only
+sometimes.
+
+**These four are classified for the payload that fails.** That is a real
+limitation of the scheme and worth stating rather than hiding: class B is not a
+property of the call, it is a property of the call *plus a response*. The same
+method, against a response of the other shape, does not break at all — it
+behaves exactly as it did at v0.12.0. So "is this class B?" has no answer until
+you say which response you mean, and every entry below names its trigger.
+
+That is also why the two classes need **opposite** test fixtures, and why "we
+tested it against realistic data" is not evidence:
+
+- **Absent-field triggers** (all three Go entries). A pointer that is nil
+  because the server omitted the key. A fixture that populates every field never
+  trips these — and against a fully-populated response they are not breaks.
+- **Populated-field trigger** (the Ruby entry). A value that is now a `Time`
+  rather than a `String`, so the failure needs the field to be *present*. A
+  fixture that leaves it nil never trips it — and against an absent field the
+  behaviour is unchanged, because both versions raised there anyway.
+
+Class A has no such dependency: those break on every response.
 
 | SDK | class A | class B |
 |---|---:|---:|
-| Go | 8 | 3 |
+| Go | 10 | 3 |
 | Swift | 9 | 0 |
-| TypeScript | 5 | 0 |
-| Python | 4 | 0 |
-| Ruby | 2 | 1 |
-| Kotlin | 3 | 0 |
+| TypeScript | 8 | 0 |
+| Python | 7 | 0 |
+| Ruby | 8 | 1 |
+| Kotlin | 5 | 0 |
+
+**How these are counted**, so the number can be checked against a rule rather
+than an impression:
+
+- One entry per distinct change, per SDK, counted in the SDK where it bites.
+  A change that is a compile error in one SDK and silent in another appears
+  only under the second.
+- A change counts as class A if **any ordinary call-site shape** stays silent,
+  even when another shape is compile-caught — annotated with which is which.
+  Go's `Documents().Update` is the type case: silent for `pkg/basecamp`
+  consumers, compile-caught only for direct `pkg/generated` importers.
+- Where one change has a second face — a marshalling difference, a reformatted
+  string — that face is annotated in place as *class-A residue* and counted
+  once, against its parent change, not separately.
+- Entries that raise only on a malformed or unusual **server** response are
+  class B, not class A.
 
 Neither class is a property of your **test suite**. Several class-A breaks
 *will* fail loudly in a suite that pins request paths — a URL correction stops
@@ -354,7 +396,7 @@ changed:
   not an object, or a writable field that is not the type the spec claims,
   aborts before the PUT with a statusless API error.
 
-## Go — 8 class A, 3 class B
+## Go — 10 class A, 3 class B
 
 Go carries every class-B break in the release. All three come from #560/#615's
 pointerization, and all three share one shape: Go auto-dereferences a pointer
@@ -397,11 +439,24 @@ compiles untouched and panics **only when the server omits that field**.
    `CodeValidation`, not `CodeAPI` (#549).**
 7. **`pkg/generated` `Parse*Response` went lenient on 4xx/5xx (#541).**
 8. **Two URLs changed (#586)** — see cross-SDK #2.
+9. **`Documents().Update` is a read-modify-write emitting `ReplaceDocument`
+   (#601).** The method signature and `UpdateDocumentRequest` are both
+   unchanged, so every `pkg/basecamp` call site compiles untouched and silently
+   becomes GET+PUT with preserve-on-omission and two hook events. Only direct
+   `pkg/generated` importers get a compile error, from the `UpdateDocument*`
+   symbols disappearing.
+10. **Validation `Message` text and hint composition changed (#541).**
+    `parseErrorBody` now decodes each member independently as `json.RawMessage`,
+    so `{"error": {}, "error_description": "…"}` yields the hint where it
+    previously yielded nothing. Typed service methods already returned
+    `CodeValidation` for 400 and 422, so for most callers the *text* is the only
+    thing that moved — and any string match on it is dead.
 
-Three more are *partly* compiler-visible: `Documents().Update` and
-`Schedules().UpdateEntry` (the compiler catches only the `pkg/generated` half),
-and `Error` gaining `FieldErrors` (the compiler catches only unkeyed composite
-literals).
+One more is *partly* compiler-visible: `Error` gaining `FieldErrors` mid-struct
+breaks unkeyed composite literals and nothing else. `Schedules().UpdateEntry` is
+**not** in this class — `UpdateScheduleEntryRequest`'s fields became pointers, so
+any `pkg/basecamp` call site that set even one field fails to compile. It is in
+[Compile errors](#updatescheduleentryrequest-fields-became-pointers-632).
 
 ## Swift — 9 class A
 
@@ -416,10 +471,17 @@ literals).
 3. **`schedules.updateEntry` became merge-safe under a superset signature
    (#632).** The new init's labels are a strict superset with pre-existing order
    preserved, so v0.12.0 call sites compile untouched.
-4. **`forwards.list` emits `/inbox_forwards.json` (#586).**
-5. **`todolistGroups.reposition` emits `/todolists/groups/{id}/position.json`
-   (#586).** A regex stub on `todolists/\d+/position\.json` cannot match the new
-   path and fails open.
+4. **Two URLs changed (#586)** — `forwards.list` emits
+   `/inbox_forwards.json`, and `todolistGroups.reposition` emits
+   `/todolists/groups/{id}/position.json`. A regex stub on
+   `todolists/\d+/position\.json` cannot match the new path and fails open.
+5. **`todolists.update` is a merge-safe composite (#574, #628).** Mostly a
+   compile error — but `try await account.todolists.update(id: 1, req:
+   .init(name: "x"))` compiles unchanged, because leading-dot inference resolves
+   `.init` against whichever type the parameter has and both expose
+   `init(description:name:)`. That idiomatic shape silently becomes two requests
+   with preserve-on-omission semantics. Call sites naming
+   `UpdateTodolistOrGroupRequest` explicitly do get a type error.
 6. **`page` selects a page (#617).** `BookmarksService`, `DraftsService`,
    `EverythingService` and `MyNotificationsService` all carried `page` at
    v0.12.0 and already appended `?page=`. What they did not do was stop
@@ -432,7 +494,7 @@ literals).
    matches; the error escapes to your next handler.
 9. **`downloadURL`'s first hop retries three times (#563).**
 
-## TypeScript — 5 class A
+## TypeScript — 8 class A
 
 1. **Every error message from a generated service call was previously the HTTP
    status text (#541).** At v0.12.0 `BaseService.handleError` discarded the body
@@ -441,7 +503,10 @@ literals).
    allowed"}` gave `"Forbidden"`. On main the server's text reaches `message` at
    every status. **Any `e.message === "<statusText>"` comparison is now dead
    code.**
-2. **Eleven operations emit different URLs (#586, #619).**
+2. **Two operations emit different URLs under an unchanged signature (#586)**
+   — see cross-SDK #2. The nine #619 bucket-scoping rewrites also move URLs but
+   are compile errors here (TS2345 on `clientCorrespondences.list`, not TS2554),
+   so they are in [Compile errors](#nine-operations-gain-a-leading-bucketid-619).
 3. **Operation IDs seen by hooks were renamed, removed and doubled.**
    `OperationInfo.operation` is a plain `string`, so a stale comparison compiles
    and never matches again — an audit hook that was gating writes silently stops
@@ -450,26 +515,44 @@ literals).
 5. **`client.downloadURL()` now retries hop 1 (#563).** Single-shot mocks
    misbehave; if you wrapped `downloadURL` in your own retry loop you now have
    nested retry.
+6. **`todolists.update()` is merge-safe (#574).** Nothing to change to compile;
+   two requests per call and omission no longer clears. It additionally throws
+   `Errors.usage` locally for `{ name: "" }`, which v0.12.0 sent and let bc3
+   422 — not a happy path, so it does not disqualify the entry.
+7. **`documents.update()` is merge-safe (#601).** `UpdateDocumentRequest` keeps
+   its exact shape, so call sites are untouched.
+8. **`schedules.updateEntry()` is merge-safe with a four-field carve-out
+   (#632).** The request type was renamed, but the merge-safe type is a superset
+   of the old field set, so an inline object literal — the common shape —
+   compiles unchanged and changes semantics.
 
-## Python — 4 class A
+## Python — 7 class A
 
-1. **`ValidationError` message text changed and `field_errors` is new (#541).**
-   `str(e)` went from `"Validation failed"` to `"color: is not a valid color"`.
-2. **Bare field-map bodies now populate `field_errors` (#549).** Recognition is
-   all-or-nothing by shape: one member that is not a non-empty list of non-empty
-   strings disqualifies the whole body, so never assume a 400/422 yields a field
-   map.
-3. **Two URLs changed (#586)** — see cross-SDK #2.
-4. **`account.download_url`'s first hop retries and dropped its `Accept` header
+1. **`ValidationError` text changed and `field_errors` is new (#541, #549).**
+   `str(e)` went from `"Validation failed"` to `"color: is not a valid color"`,
+   and a bare unwrapped field map now populates `field_errors` too. Recognition
+   is all-or-nothing by shape: one member that is not a non-empty list of
+   non-empty strings disqualifies the whole body, so never assume a 400/422
+   yields a field map.
+2. **Two URLs changed (#586)** — see cross-SDK #2.
+3. **`account.download_url`'s first hop retries and dropped its `Accept` header
    (#563).** v0.12.0 sent one request with `Accept: application/json` and raised
    on a 503. Main sends no `Accept` at all and retries `{429, 502, 503, 504}`
    plus network errors. Cassettes matching on `Accept` stop matching.
+4. **`page` selects a page (#617)** — see cross-SDK #1. Measured with a mock
+   transport that always returns a next link: v0.12.0
+   `get_everything_open_todos(page=3)` issued 10,000 requests (the `max_pages`
+   cap) starting at `?page=3`; main issues exactly one.
+5. **`todolists.update()` is a merge-safe GET+PUT (#574).** Signature identical.
+6. **`documents.update()` is a merge-safe GET+PUT (#601).**
+7. **`schedules.update_entry()` is merge-safe (#632).** Every v0.12.0 keyword
+   still binds.
 
-Add three more with no signal whatsoever, filed as behavioural: `todolists.update`,
-`documents.update` and `schedules.update_entry` keep byte-identical keyword
-sets, raise nothing on the happy path, and produce no type-checker complaint.
+All three composites keep byte-identical keyword sets, raise nothing on the
+happy path, and produce no type-checker complaint — Python has no compile step,
+so nothing anywhere warns you.
 
-## Ruby — 2 class A, 1 class B
+## Ruby — 8 class A, 1 class B
 
 ### Class A — no signal at all
 
@@ -478,6 +561,24 @@ sets, raise nothing on the happy path, and produce no type-checker complaint.
    `page: 2`; main issues one and returns one.
 2. **`ValidationError#message` changed and `#field_errors` is new (#541, #549).**
    `e.message == "Request failed"` stops matching.
+3. **Two URLs changed (#586)** — see cross-SDK #2. Loud in a stubbed suite,
+   because WebMock raises on an unregistered request; silent against live bc3.
+4. **`account.download_url`'s first hop retries and dropped its `Accept` header
+   (#563).** v0.12.0 called `http.get_no_retry`, which sent
+   `Accept: application/json` and did not retry. Main calls `get_download`,
+   which is `request_with_retry(:get, url, retry_on: DOWNLOAD_RETRY_ON,
+   accept: nil)` — so no `Accept` header at all, and up to three attempts on
+   `{429, 502, 503, 504}` plus network errors. Cassettes matching on `Accept`
+   stop matching, and single-shot download stubs see more requests.
+5. **List methods request eagerly and return `ListEnumerator` (#557).**
+   `enum = account.projects.list` is byte-identical source that now costs a
+   request at call time. See [the detail below](#list-methods-now-request-eagerly-and-return-listenumerator-557)
+   — errors move, and hook pairs no longer match per-iteration.
+6. **`todolists.update` is a merge-safe GET+PUT (#574).**
+7. **`documents.update` is a merge-safe GET+PUT (#601).**
+8. **`schedules.update_entry` is a merge-safe GET+PUT (#632).** None of the
+   three `update` keyword sets changed — only `replace`/`replace_entry`
+   tightened — so every call site binds unchanged and behaves differently.
 
 ### Class B — raises at runtime, on the wrong payload
 
@@ -491,7 +592,7 @@ sets, raise nothing on the happy path, and produce no type-checker complaint.
    anything writing that value into a log line, a cache key or an external
    payload changes what it emits with no error at all.
 
-## Kotlin — 3 class A
+## Kotlin — 5 class A
 
 1. **`documents.update` quietly stopped erasing omitted fields (#601).**
    `UpdateDocumentBody` was removed from the generator and re-declared by hand
@@ -503,8 +604,17 @@ sets, raise nothing on the happy path, and produce no type-checker complaint.
    cross-SDK #3. The same parser now backs `account.downloadURL`, so download
    failure messages moved too.
 
-Two more with no build-time signal, filed as behavioural: `page` selection
-(#617) and `downloadURL` retrying hop 1 three times (#563).
+4. **`page` selects a page (#617)** — see cross-SDK #1. Seventeen operations,
+   no build-time signal.
+5. **`downloadURL` retries hop 1 (#563).** `DOWNLOAD_RETRY_ON = {429, 502, 503,
+   504}` plus network errors, gated on `config.enableRetry` (default true). A
+   single-shot 503 mock now sees three requests; 500 is deliberately not
+   retried.
+
+Kotlin's other two merge-safe composites are **not** here because the compiler
+does catch them: `todolists.update` takes a different body type and
+`UpdateScheduleEntryBody` no longer exists. Only `documents.update` survives the
+build, via the hand-written same-package shim, and that is entry 1.
 
 ---
 
@@ -611,10 +721,13 @@ The consequence for anyone still on an older SDK is
 the released encoding for "clear the due date" is omission, and omission no
 longer clears.
 
-**Status:** this is a settled, non-spec-touching change sitting on
-`fix/card-due-on-explicit-clear` (`bf4371534`) and not yet merged. The shape
-below is read from that diff, not predicted; confirm it landed before relying on
-the version number.
+**Status:** open as PR #647 on `fix/card-due-on-explicit-clear`
+(`a3c772574a`), not yet merged, and currently being reworked Smithy-first — the
+generated `UpdateCardStepRequestContent.DueOn` is `*types.Date` and cannot
+express `""`, so the fix belongs in the spec rather than in a hand-written body
+map that contradicts it. The consumer-facing shape below is read from the branch
+and is unaffected by that rework, but the branch head will move again. Confirm
+it landed before relying on the version number.
 
 ### The wire encoding of an explicit clear changes
 
@@ -658,16 +771,31 @@ bc3 made title optional on update in the same change.
 
 This is the **inverse** of the `{Todolists, Update}` split in
 [operator checklist item 1](#1-operation-allowlists-and-denylists-will-start-denying--or-start-passing),
-and it fails differently, so do not reason about it by analogy:
+so do not reason about it by analogy. There the added read could be *denied*;
+here the removed read means a gate that used to fire no longer does. **Audit
+both lists — an allowlist is not safe just because nothing new appears on it.**
 
-- **Allowlists do not start denying.** An allowlist naming both operations still
-  permits the one that remains. Fewer events is safe for an allowlist.
-- **Denylists can start permitting.** If you blocked `{Cards, Get}` — or
-  `GetCard` — to stop reads, that denial used to take `cards.update` down with
-  it. It no longer does: the write now succeeds where the gate previously
-  stopped it. **That is a gate that silently opens.**
+- **An allowlist can silently open.** Nothing starts being denied, which is the
+  part that misleads. But if your allowlist names `UpdateCard` /
+  `{Cards, UpdateVerbatim}` and deliberately omits `GetCard` / `{Cards, Get}`,
+  then `cards.update` used to be rejected **at its read** and never reached the
+  write. Collapsed to a single call, it is permitted end to end. A gate you were
+  relying on stops holding, and no denial appears in your logs to tell you.
+- **A denylist can silently open the same way.** If you blocked
+  `{Cards, Get}` / `GetCard` to stop reads, that denial used to take
+  `cards.update` down with it. It no longer does.
 - **Audit trails lose a record.** Anything reconciling reads against writes, or
   billing per operation, sees one event where it saw two.
+
+Those first two are the **same** hole seen from two policy shapes, which is why
+reading only one is dangerous: in both, the thing actually stopping the write was
+the *read*, expressed once as an omission from an allowlist and once as an entry
+on a denylist. Remove the read and both stop working, for identical reasons.
+
+The general rule, which is easy to get backwards: removing an operation from a
+composite cannot cause a *denial*, but it can remove a denial you were depending
+on. Gate on the write you actually mean to stop, not on a read that happened to
+accompany it.
 
 ### A defended defect class leaves the Cards surface
 
@@ -721,8 +849,9 @@ not one any more — Todos is.
 
 # Go
 
-Go has the most invasive changes in this release — eleven are silent, and two of
-those panic at runtime on code the compiler accepts.
+Go has the most invasive changes in this release. Thirteen survive a clean
+build: ten give no signal at all, and three compile and then panic — see
+[Go — 10 class A, 3 class B](#go--10-class-a-3-class-b) for the split.
 
 The scale, so you can size the work before starting: `pkg/basecamp`'s exported
 surface now carries **300 pointer-typed fields** — `*string` ×81, `*bool` ×23,
@@ -1152,9 +1281,10 @@ string was indistinguishable from unset and could not clear.
 
 # Swift
 
-Swift has the most no-signal breaks — nine — because three of its request types
-were replaced by same-named hand-written ones, and two of its retry and error
-policies changed under unchanged signatures.
+Swift carries nine breaks with no signal at all — second only to Go's ten —
+because three of its request types were replaced by same-named hand-written
+ones, and two of its retry and error policies changed under unchanged
+signatures.
 
 One soft edge to know before you start: optional → non-optional breaks `if let`,
 `guard let` and `?.` hard, but `x ?? default` only **warns**. A consumer whose
@@ -1162,7 +1292,10 @@ entire usage is `??` sees nothing.
 
 ## Silent
 
-All nine are in [class A](#swift--9-class-a). Two deserve code here.
+All nine are in [class A](#swift--9-class-a). Two deserve code here, and a
+third — `todolists.update`'s leading-dot `.init` shape — is under
+[Compile errors](#todolistsupdate-is-a-merge-safe-composite-574-628) because
+every other shape of that call does fail to build.
 
 ### A cancelled request now throws raw (#568)
 
@@ -1322,7 +1455,7 @@ string you might be matching on.
 
 ## Silent
 
-See [class A](#typescript--5-class-a). Two details on `fieldErrors`
+See [class A](#typescript--8-class-a). Two details on `fieldErrors`
 that bite:
 
 ```ts
@@ -1474,7 +1607,7 @@ out on the call.
 
 ## Silent
 
-See [class A](#python--4-class-a). Plus the three merge-safe
+See [class A](#python--7-class-a), which now includes the three merge-safe
 composites, which have byte-identical keyword sets and no signal of any kind.
 
 One correction worth knowing if you saw an earlier draft: at v0.12.0, a body like
@@ -1768,6 +1901,31 @@ it fires instead of silently corrupting the record when one misbehaves.
 Loud in a stubbed suite (WebMock raises on an unregistered request), silent
 against live bc3.
 
+### `download_url`'s first hop retries and no longer sends `Accept` (#563)
+
+```ruby
+# v0.12.0 — one request, Accept: application/json, raised on a 503
+response = http.get_no_retry(rewritten_url)
+
+# main — up to three attempts, no Accept header at all
+def get_download(url)
+  request_with_retry(:get, url, retry_on: DOWNLOAD_RETRY_ON, accept: nil)
+end
+```
+
+`DOWNLOAD_RETRY_ON` is `{429, 502, 503, 504}` plus network errors — never 500.
+Two consequences, both silent against a live server:
+
+- **Cassettes and stubs that match on `Accept` stop matching**, because the
+  header is no longer sent at all. `accept: nil` is load-bearing:
+  `request_headers` only sets `Accept` when it is non-nil.
+- **Single-shot download stubs see more requests than they expect.** A stub that
+  returns one 503 used to surface as an error and now gets retried.
+
+The signed second hop is unaffected. This is the same change Python got, and it
+is the one download-hop entry that does **not** apply to Go — Go's download path
+already retried at v0.12.0.
+
 ---
 
 # Kotlin
@@ -1799,7 +1957,7 @@ document has a blank title.
 
 ### Two URLs changed (#586), error composition changed (#541, #549)
 
-See [class A](#kotlin--3-class-a). Two source-compatible widenings
+See [class A](#kotlin--5-class-a). Two source-compatible widenings
 ship alongside the error work: `BasecampException.Api(httpStatus: Int)` became
 `Int? = null`, and `Validation` gained a trailing `fieldErrors` parameter with a
 default — every existing construction still binds.
@@ -2140,30 +2298,76 @@ the tag and this list shrank — or they did not.
 **For whoever cuts the tag:** each entry names the specific derivations it
 invalidates, so the final pass is arithmetic rather than rewriting.
 
-- **Cards: the due-date fix** — `fix/card-due-on-explicit-clear` (`bf4371534`),
-  settled and non-spec-touching, no PR open yet. Documented in full at
+- **#647 — Cards: the due-date fix** — `fix/card-due-on-explicit-clear`
+  (`a3c772574a`), open. Documented in full at
   [Cards: the due-date fix](#cards-the-due-date-fix), because the production
   half of it is true whether or not the branch lands.
-  *If it lands:* the operation inventory does **not** move — no spec change. Add
-  one class-A entry to Go, TypeScript, Python, Ruby, Kotlin and Swift for the
-  `cards.update` request-count and hook collapse, and one compile-error entry to
-  Go for `UpdateStepRequest.DueOn` becoming `*string`. Re-check the per-SDK
-  totals in the summary table; the class-B counts are unaffected.
-- **#635 / #641 — the `GetUpcomingSchedule` projection, and the
-  `CreateScheduleEntry` write-side gap.** Open issues.
-  #635: `GetUpcomingSchedule` declares the full `ScheduleEntry` schema, but bc3
-  renders it through a reduced partial that omits members this release marks
-  required — so a strict decode either fails or zero-fills in the three SDKs
-  with real decoders (Go, Kotlin, Swift). It predates #632.
-  #641: `ReplaceScheduleEntry` models `url` and `highlighted`;
-  `CreateScheduleEntry` models neither, so a caller who wants a video-call entry
-  with its join link needs three requests through the non-atomic read-modify-write
-  window. Its proposed scope is **three** members — `url`, `highlighted` and
-  `status` — of which the first two are the asymmetry #632 introduced and
-  v0.13.0 would be first to ship, while `status` is a pre-existing gap already
-  modelled on `CreateMessage` and `CreateDocument`.
-  *If either lands:* both touch `ScheduleEntry`, so re-check the Swift and
-  Kotlin required-member lists and the Go/Swift/Kotlin per-SDK counts.
+  It is **being reworked Smithy-first** and will become spec-touching. The
+  generated `UpdateCardStepRequestContent.DueOn` is `*types.Date`, which
+  structurally cannot express `""` — so a hand-written body map that sends the
+  empty string is bypassing a canonical contract that says the field cannot hold
+  one. Fixing that in the spec rather than around it is the right call, and it
+  means the branch head will move again.
+  *The consumer-facing shape below is unaffected by that rework* — single PUT,
+  `"due_on": ""` as the clear encoding, `*string` on steps, the hook collapse —
+  but re-read it at the final head before relying on the generated types.
+  *If it lands:* add one class-A entry to Go, TypeScript, Python, Ruby, Kotlin
+  and Swift for the `cards.update` request-count and hook collapse, and one
+  compile-error entry to Go for `UpdateStepRequest.DueOn`. The operation
+  inventory does not move; the class-B counts are unaffected.
+- **#648 — the `GetUpcomingSchedule` projection (#635, #641, #644).** Open and
+  green on `feat/upcoming-schedule-projection` (`cb438ce3ce`). This is the
+  largest in-flight change and it is breaking in every SDK.
+  `GetUpcomingSchedule` declared the full `ScheduleEntry` schema while bc3
+  renders it through a *reduced* calendar partial, so the published contract
+  promised fields the endpoint never sends. #648 gives it its own shapes:
+  - **`window_starts_on` and `window_ends_on` become required.** They are
+    optional today. Every `reports.upcoming` call site in all six SDKs must pass
+    both — Ruby's signature goes from `upcoming(window_starts_on: nil,
+    window_ends_on: nil)` to `upcoming(window_starts_on:, window_ends_on:)`,
+    Python's from `str | None = None` to `str`.
+  - **New reduced types replace the shared ones**: `UpcomingScheduleEntry`,
+    `UpcomingAssignable`, `UpcomingScheduleBucket`, `UpcomingSchedulePerson`,
+    `UpcomingAssignableParent`, `UpcomingAssignableCompletion`. Swift **deletes
+    `Assignable`**; Kotlin returns a typed `UpcomingScheduleResult` where it
+    returned `JsonElement`; Go adds aliases and moves `starts_at`/`ends_at` to
+    `types.FlexibleTime`.
+  - **The assignable half was wrong, not just thin.** bc3 emits `content`; the
+    SDK modelled `title`, so the one field callers want was permanently absent
+    while an always-present key went unmodelled. `bucket` narrows to `id` +
+    `name`, `parent` is `{id, title}`, and `type` is the **lowercase** short
+    name (`todo`, `card`, `step`), not the CamelCase `type` other projections
+    carry. Entries additionally gain `recurring`, which no other schedule-entry
+    projection emits.
+  - **#641 rides along with three members**, not the two in its title:
+    `CreateScheduleEntry` gains `url`, `highlighted` and `status`, all additive.
+    The read/write spelling split is preserved — write `url`, read `join_url`;
+    sending `join_url` on write is silently dropped by strong parameters.
+  - Also carries #644's example fixes via a new `BareResponseExampleMapper` and
+    wires `smithy-mapper-test` into the gate list.
+
+  **Do not read this as fixing `ScheduleEntry.join_url`/`.highlighted`.** Those
+  two were optional *because* `GetUpcomingSchedule` shared the shape. #648
+  retires that reason without tightening them, so on its branch they are
+  **under-modelled rather than correctly modelled** — every operation still
+  returning `ScheduleEntry` renders a partial that emits both unconditionally.
+  Tightening them touches five other operations and every inline stub in six
+  SDKs, so it is deliberately deferred to its own diff.
+
+  *If it lands:* the operation inventory does **not** move — verified, 247 on
+  both sides, with the same 14 added / 5 removed / 11 route-moved delta from
+  v0.12.0. What does move: `make check` goes from **41 targets to 42**
+  (`smithy-mapper-test`), and every SDK gains compile-or-runtime entries for the
+  required window parameters and the type replacements. Re-derive the per-SDK
+  totals; the class-B counts are unaffected.
+- **#652 — the projected-example gate (#638).** Open on
+  `gate/projected-example-validation` (`b7f86d66ee`), **stacked on #648**, so it
+  lands second or not at all. It validates the projected examples against the
+  schema the projection actually publishes.
+  *If it lands:* `make check` goes to **43 targets**. It adds no operations
+  (247, verified) and nothing consumer-visible — the entire effect is on the
+  repository's own gate list, so no entry in this guide changes except that
+  number.
 
 Three things that were on this list are now **in** the release, folded into the
 sections above rather than left here: **#637** (`Todolist.color` and
