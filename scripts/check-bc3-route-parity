@@ -124,6 +124,12 @@ scope_aliases = allow['scope_aliases'] || []
 
 # Known defects must stay attributable. An unattributed "we know" is just a
 # waiver with better manners.
+#
+# This can only check the number is a number — issue STATE needs the network,
+# and this gate is offline by construction (see header). scripts/check-known-
+# defect-issues-open verifies the referenced issues are still open, as its own
+# CI job; #588 auto-closed with nine live 404s pointing at it and this loop
+# stayed green throughout, because "is an Integer" was the entire test.
 known_bad.each do |e|
   next if e['issue'].is_a?(Integer)
   failures << "sdk_routes_known_defective entry #{e['method']} #{e['path']} has no numeric `issue:` — " \

@@ -100,6 +100,36 @@ jobs:
         if: always()
         working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
+  # Its own job purely to scope the token: this is the only check that needs
+  # `issues: read`, and folding it into Spec Gates would hand that permission to
+  # every gate in it. Cannot live in `make check` either — issue state needs the
+  # network, and check-bc3-route-parity's guarantee is that it has no skip path.
+  known-defect-issues:
+    name: Known-defect tracking issues are open
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1.319.0
+        with:
+          ruby-version: "3.3"
+
+      # Offline and first: the gate below is a no-op whenever the allowlist
+      # references no issues, so this is what proves it rejects anything.
+      - name: Self-test the known-defect gate
+        run: make test-check-known-defect-issues-open
+
+      - name: Referenced tracking issues are still open
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make check-known-defect-issues-open
+
   spec-gates:
     name: Spec Gates
     runs-on: ubuntu-latest
