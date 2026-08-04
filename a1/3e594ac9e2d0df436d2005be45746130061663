@@ -1,0 +1,21 @@
+scripts/assert-lockfiles-unchanged
+  s_ae792ed0be3006::t_656c7b1876ae0b 4-6,67-68
+scripts/test-assert-lockfiles-unchanged
+  s_ae792ed0be3006::t_de5c8063364106 36-39,93-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a13e594ac9e2d0df436d2005be45746130061663",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
