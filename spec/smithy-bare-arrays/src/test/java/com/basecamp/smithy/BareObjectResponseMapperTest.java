@@ -33,8 +33,14 @@ class BareObjectResponseMapperTest {
         assertTrue(mapper.shouldTransform("GetProjectResponseContent", schema));
     }
 
+    /**
+     * An inline object property is NOT unwrapped: unwrapping it would lose the
+     * property name, which for an inline shape is the only place the name
+     * exists (e.g. attachable_sgid). Only a $ref is unwrapped, because the
+     * referenced schema carries its own identity.
+     */
     @Test
-    void shouldTransform_matchesGetResponseContentWithInlineObject() {
+    void shouldTransform_rejectsInlineObjectProperty() {
         ObjectNode schema = ObjectNode.builder()
                 .withMember("type", "object")
                 .withMember("properties", ObjectNode.builder()
@@ -44,11 +50,18 @@ class BareObjectResponseMapperTest {
                         .build())
                 .build();
 
-        assertTrue(mapper.shouldTransform("GetThingResponseContent", schema));
+        assertFalse(mapper.shouldTransform("GetThingResponseContent", schema));
     }
 
+    /**
+     * The operation-name prefix is irrelevant. BC3 returns a bare object from
+     * GET, POST, PUT and action routes alike, so every single-$ref-property
+     * *ResponseContent is unwrapped regardless of the verb it came from; a
+     * List* response whose single property is an ARRAY is the sibling mapper's
+     * job, not an exception to this one.
+     */
     @Test
-    void shouldTransform_rejectsNonGetPrefix() {
+    void shouldTransform_ignoresTheOperationNamePrefix() {
         ObjectNode schema = ObjectNode.builder()
                 .withMember("type", "object")
                 .withMember("properties", ObjectNode.builder()
@@ -58,7 +71,8 @@ class BareObjectResponseMapperTest {
                         .build())
                 .build();
 
-        assertFalse(mapper.shouldTransform("ListProjectsResponseContent", schema));
+        assertTrue(mapper.shouldTransform("ListProjectsResponseContent", schema));
+        assertTrue(mapper.shouldTransform("UpdateProjectResponseContent", schema));
     }
 
     @Test

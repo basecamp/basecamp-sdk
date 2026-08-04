@@ -13413,17 +13413,110 @@
                   "ListRecordings_example1": {
                     "summary": "List Todo recordings",
                     "description": "Use simple type name for basic resources",
-                    "value": {}
+                    "value": [
+                      {
+                        "id": 1069479523,
+                        "status": "active",
+                        "visible_to_clients": false,
+                        "created_at": "2025-01-01T00:00:00Z",
+                        "updated_at": "2025-01-02T00:00:00Z",
+                        "title": "Ship the hardware",
+                        "inherits_status": true,
+                        "type": "Todo",
+                        "url": "https://3.basecampapi.com/999/buckets/12345678/todos/1069479523.json",
+                        "app_url": "https://3.basecamp.com/999/buckets/12345678/todos/1069479523",
+                        "creator": {
+                          "id": 1,
+                          "name": "Someone",
+                          "created_at": "2025-01-01T00:00:00Z",
+                          "updated_at": "2025-01-01T00:00:00Z"
+                        },
+                        "bucket": {
+                          "id": 12345678,
+                          "name": "My Project",
+                          "type": "Project"
+                        },
+                        "parent": {
+                          "id": 987654,
+                          "title": "Launch Tasks",
+                          "type": "Todolist",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654"
+                        }
+                      }
+                    ]
                   },
                   "ListRecordings_example2": {
                     "summary": "List Kanban Card recordings",
                     "description": "Use double-colon notation for nested types",
-                    "value": {}
+                    "value": [
+                      {
+                        "id": 1069479524,
+                        "status": "active",
+                        "visible_to_clients": false,
+                        "created_at": "2025-01-01T00:00:00Z",
+                        "updated_at": "2025-01-02T00:00:00Z",
+                        "title": "Design the enclosure",
+                        "inherits_status": true,
+                        "type": "Kanban::Card",
+                        "url": "https://3.basecampapi.com/999/buckets/12345678/card_tables/cards/1069479524.json",
+                        "app_url": "https://3.basecamp.com/999/buckets/12345678/card_tables/cards/1069479524",
+                        "creator": {
+                          "id": 1,
+                          "name": "Someone",
+                          "created_at": "2025-01-01T00:00:00Z",
+                          "updated_at": "2025-01-01T00:00:00Z"
+                        },
+                        "bucket": {
+                          "id": 12345678,
+                          "name": "My Project",
+                          "type": "Project"
+                        },
+                        "parent": {
+                          "id": 1069479519,
+                          "title": "In Progress",
+                          "type": "Kanban::Column",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/card_tables/lists/1069479519.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/card_tables/columns/1069479519"
+                        }
+                      }
+                    ]
                   },
                   "ListRecordings_example3": {
                     "summary": "List Question Answer recordings",
                     "description": "Another nested type example",
-                    "value": {}
+                    "value": [
+                      {
+                        "id": 1069479525,
+                        "status": "active",
+                        "visible_to_clients": false,
+                        "created_at": "2025-01-01T00:00:00Z",
+                        "updated_at": "2025-01-02T00:00:00Z",
+                        "title": "How did the week go?",
+                        "inherits_status": true,
+                        "type": "Question::Answer",
+                        "url": "https://3.basecampapi.com/999/buckets/12345678/question_answers/1069479525.json",
+                        "app_url": "https://3.basecamp.com/999/buckets/12345678/question_answers/1069479525",
+                        "creator": {
+                          "id": 1,
+                          "name": "Someone",
+                          "created_at": "2025-01-01T00:00:00Z",
+                          "updated_at": "2025-01-01T00:00:00Z"
+                        },
+                        "bucket": {
+                          "id": 12345678,
+                          "name": "My Project",
+                          "type": "Project"
+                        },
+                        "parent": {
+                          "id": 1069479518,
+                          "title": "How did the week go?",
+                          "type": "Question",
+                          "url": "https://3.basecampapi.com/999/buckets/12345678/questions/1069479518.json",
+                          "app_url": "https://3.basecamp.com/999/buckets/12345678/questions/1069479518"
+                        }
+                      }
+                    ]
                   }
                 }
               }
@@ -14326,17 +14419,46 @@
                   "UpdateProjectAccess_example1": {
                     "summary": "Grant access to existing users",
                     "description": "Use grant array with person IDs",
-                    "value": {}
+                    "value": {
+                      "granted": [
+                        {
+                          "id": 111,
+                          "name": "Jane Doe"
+                        },
+                        {
+                          "id": 222,
+                          "name": "John Roe"
+                        }
+                      ],
+                      "revoked": []
+                    }
                   },
                   "UpdateProjectAccess_example2": {
                     "summary": "Revoke access",
                     "description": "Use revoke array to remove users",
-                    "value": {}
+                    "value": {
+                      "granted": [],
+                      "revoked": [
+                        {
+                          "id": 333,
+                          "name": "Sam Ray"
+                        }
+                      ]
+                    }
                   },
                   "UpdateProjectAccess_example3": {
                     "summary": "Invite new users",
                     "description": "Use create array for new users without accounts",
-                    "value": {}
+                    "value": {
+                      "granted": [
+                        {
+                          "id": 444,
+                          "name": "Jane",
+                          "email_address": "jane@example.com"
+                        }
+                      ],
+                      "revoked": []
+                    }
                   }
                 }
               }
@@ -18171,12 +18293,31 @@
                   "UpdateSubscription_example1": {
                     "summary": "Add subscribers",
                     "description": "",
-                    "value": {}
+                    "value": {
+                      "subscribed": true,
+                      "count": 2,
+                      "url": "https://3.basecampapi.com/999/buckets/12345678/recordings/987654/subscription.json",
+                      "subscribers": [
+                        {
+                          "id": 111,
+                          "name": "Jane Doe"
+                        },
+                        {
+                          "id": 222,
+                          "name": "John Roe"
+                        }
+                      ]
+                    }
                   },
                   "UpdateSubscription_example2": {
                     "summary": "Remove subscribers",
                     "description": "",
-                    "value": {}
+                    "value": {
+                      "subscribed": false,
+                      "count": 0,
+                      "url": "https://3.basecampapi.com/999/buckets/12345678/recordings/987654/subscription.json",
+                      "subscribers": []
+                    }
                   }
                 }
               }
@@ -18982,7 +19123,7 @@
     },
     "/{accountId}/reports/schedules/upcoming.json": {
       "get": {
-        "description": "Get upcoming schedule entries and assignable items within a date window.\nThis endpoint is preserved as the canonical API path on BC5;\nthe BC5 `/calendar` web view is HTML-only.",
+        "description": "Get upcoming schedule entries and assignable items within a date window.\nThis endpoint is preserved as the canonical API path on BC5;\nthe BC5 `/calendar` web view is HTML-only.\n\nThe three arrays carry the report's own reduced projections —\nUpcomingScheduleEntry and UpcomingAssignable — not the shared ScheduleEntry\nand Todo/Card shapes. BC3 renders this report through\n`app/views/api/schedules/calendar/_entry.json.jbuilder` and\n`_assignable.json.jbuilder`, which emit a narrower key set than the\nper-resource partials, plus keys those partials never emit. See\nUpcomingScheduleEntry for the full accounting.",
         "operationId": "GetUpcomingSchedule",
         "parameters": [
           {
@@ -18999,16 +19140,22 @@
           {
             "name": "window_starts_on",
             "in": "query",
+            "description": "Inclusive first day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.",
             "schema": {
-              "type": "string"
-            }
+              "type": "string",
+              "description": "Inclusive first day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it."
+            },
+            "required": true
           },
           {
             "name": "window_ends_on",
             "in": "query",
+            "description": "Inclusive last day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.",
             "schema": {
-              "type": "string"
-            }
+              "type": "string",
+              "description": "Inclusive last day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it."
+            },
+            "required": true
           }
         ],
         "responses": {
@@ -19018,6 +19165,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GetUpcomingScheduleResponseContent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
                 }
               }
             }
@@ -22290,86 +22447,82 @@
                     "summary": "Get a to-do list",
                     "description": "A to-do list: parent is a Todoset, and groups_url is present",
                     "value": {
-                      "result": {
-                        "id": 987654,
-                        "status": "active",
-                        "name": "Launch Tasks",
-                        "visible_to_clients": false,
+                      "id": 987654,
+                      "status": "active",
+                      "name": "Launch Tasks",
+                      "visible_to_clients": false,
+                      "created_at": "2025-01-01T00:00:00Z",
+                      "updated_at": "2025-01-01T00:00:00Z",
+                      "title": "Launch Tasks",
+                      "inherits_status": true,
+                      "type": "Todolist",
+                      "description": "",
+                      "description_attachments": [],
+                      "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
+                      "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
+                      "bubble_up_url": "https://3.basecampapi.com/999/buckets/12345678/recordings/987654/bubble_up.json",
+                      "creator": {
+                        "id": 1,
+                        "name": "Someone",
                         "created_at": "2025-01-01T00:00:00Z",
-                        "updated_at": "2025-01-01T00:00:00Z",
-                        "title": "Launch Tasks",
-                        "inherits_status": true,
-                        "type": "Todolist",
-                        "description": "",
-                        "description_attachments": [],
-                        "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
-                        "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
-                        "bubble_up_url": "https://3.basecampapi.com/999/buckets/12345678/recordings/987654/bubble_up.json",
-                        "creator": {
-                          "id": 1,
-                          "name": "Someone",
-                          "created_at": "2025-01-01T00:00:00Z",
-                          "updated_at": "2025-01-01T00:00:00Z"
-                        },
-                        "bucket": {
-                          "id": 12345678,
-                          "name": "My Project",
-                          "type": "Project"
-                        },
-                        "parent": {
-                          "id": 99999,
-                          "title": "To-dos",
-                          "type": "Todoset",
-                          "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
-                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
-                        },
-                        "comments_app_url": "https://3.basecamp.com/999/buckets/12345678/recordings/987654/comments",
-                        "groups_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json",
-                        "color": "blue"
-                      }
+                        "updated_at": "2025-01-01T00:00:00Z"
+                      },
+                      "bucket": {
+                        "id": 12345678,
+                        "name": "My Project",
+                        "type": "Project"
+                      },
+                      "parent": {
+                        "id": 99999,
+                        "title": "To-dos",
+                        "type": "Todoset",
+                        "url": "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json",
+                        "app_url": "https://3.basecamp.com/999/buckets/12345678/todosets/99999"
+                      },
+                      "comments_app_url": "https://3.basecamp.com/999/buckets/12345678/recordings/987654/comments",
+                      "groups_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654/groups.json",
+                      "color": "blue"
                     }
                   },
                   "GetTodolistOrGroup_example2": {
                     "summary": "Get a group",
                     "description": "A group: parent is a Todolist, and group_position_url replaces groups_url",
                     "value": {
-                      "result": {
-                        "id": 111222,
-                        "status": "active",
-                        "name": "Q1 Milestones",
-                        "visible_to_clients": false,
+                      "id": 111222,
+                      "status": "active",
+                      "name": "Q1 Milestones",
+                      "visible_to_clients": false,
+                      "created_at": "2025-01-01T00:00:00Z",
+                      "updated_at": "2025-01-01T00:00:00Z",
+                      "title": "Q1 Milestones",
+                      "inherits_status": true,
+                      "type": "Todolist",
+                      "description": "",
+                      "description_attachments": [],
+                      "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/111222.json",
+                      "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/111222",
+                      "bubble_up_url": "https://3.basecampapi.com/999/buckets/12345678/recordings/111222/bubble_up.json",
+                      "creator": {
+                        "id": 1,
+                        "name": "Someone",
                         "created_at": "2025-01-01T00:00:00Z",
-                        "updated_at": "2025-01-01T00:00:00Z",
-                        "title": "Q1 Milestones",
-                        "inherits_status": true,
+                        "updated_at": "2025-01-01T00:00:00Z"
+                      },
+                      "bucket": {
+                        "id": 12345678,
+                        "name": "My Project",
+                        "type": "Project"
+                      },
+                      "parent": {
+                        "id": 987654,
+                        "title": "Launch Tasks",
                         "type": "Todolist",
-                        "description": "",
-                        "description_attachments": [],
-                        "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/111222.json",
-                        "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/111222",
-                        "bubble_up_url": "https://3.basecampapi.com/999/buckets/12345678/recordings/111222/bubble_up.json",
-                        "creator": {
-                          "id": 1,
-                          "name": "Someone",
-                          "created_at": "2025-01-01T00:00:00Z",
-                          "updated_at": "2025-01-01T00:00:00Z"
-                        },
-                        "bucket": {
-                          "id": 12345678,
-                          "name": "My Project",
-                          "type": "Project"
-                        },
-                        "parent": {
-                          "id": 987654,
-                          "title": "Launch Tasks",
-                          "type": "Todolist",
-                          "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
-                          "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654"
-                        },
-                        "comments_app_url": "https://3.basecamp.com/999/buckets/12345678/recordings/111222/comments",
-                        "group_position_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json",
-                        "color": null
-                      }
+                        "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
+                        "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654"
+                      },
+                      "comments_app_url": "https://3.basecamp.com/999/buckets/12345678/recordings/111222/comments",
+                      "group_position_url": "https://3.basecampapi.com/999/buckets/12345678/todolists/groups/111222/position.json",
+                      "color": null
                     }
                   }
                 }
@@ -26317,54 +26470,6 @@
           }
         }
       },
-      "Assignable": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "title": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "app_url": {
-            "type": "string"
-          },
-          "bucket": {
-            "$ref": "#/components/schemas/TodoBucket"
-          },
-          "parent": {
-            "$ref": "#/components/schemas/TodoParent"
-          },
-          "due_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            }
-          },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            }
-          },
-          "assignees": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Person"
-            },
-            "x-go-type-skip-optional-pointer": true
-          }
-        }
-      },
       "BadRequestErrorResponseContent": {
         "type": "object",
         "properties": {
@@ -28422,6 +28527,18 @@
           "notify": {
             "type": "boolean"
           },
+          "url": {
+            "type": "string",
+            "description": "The entry's join link — a video-call URL or similar, up to 2500\ncharacters, validated as a URL when present. A scheme-less value is\nnormalized to `https://`.\n\nSpell it `url` on the way in and read it back as `join_url`: the response\nkey `url` is the entry's own Basecamp API URL, written by a partial that\nrenders before this field, so BC3 emits the join link under a\nnon-colliding name. Sending `join_url` instead is silently dropped by\nstrong parameters — the create succeeds with no join link.\n\nAccepted on create since long before it was documented:\n`Schedules::Entries::BaseController#base_schedule_entry_params` permits it\nand `new_schedule_entry_params` passes it through unchanged for API\nrequests. Modeling it only on ReplaceScheduleEntry forced callers into a\nthree-request read-modify-write for a field the create already took — and\ncreate is the notifying write, so participants learned about a video call\nbefore its link existed."
+          },
+          "highlighted": {
+            "type": "boolean",
+            "description": "Whether the entry is highlighted on the schedule. Defaults to false.\n\nDo not send an explicit null: `schedule_entries.highlighted` is NOT NULL,\nso BC3 raises rather than falling back to the default. Omit it instead —\nevery SDK's request compactor already drops unset members."
+          },
+          "status": {
+            "type": "string",
+            "description": "Publication state at creation — `active|drafted`, defaulting to `active`\nfor an API create.\n\nA top-level parameter, not part of the entry's attributes: `status` is a\nRecording column, so `wrap_parameters` leaves it outside the\n`schedule_entry` envelope and `Recording::StatusParam#status_param` reads\nit directly. On create it accepts `drafted`, `active`, `archived` or\n`trashed` and raises `ActionController::BadRequest` — a 400, not a 422 —\nfor anything else; the two documented values are the two worth sending.\n\nUnlike messages and documents, schedule-entry drafts are not listed by\nGetMyDrafts."
+          },
           "subscriptions": {
             "type": "array",
             "items": {
@@ -30320,25 +30437,30 @@
           "schedule_entries": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ScheduleEntry"
+              "$ref": "#/components/schemas/UpcomingScheduleEntry"
             },
-            "x-go-type-skip-optional-pointer": true
+            "description": "Non-recurring entries starting in the window, chronological. Always\npresent — `reports/schedules/upcoming/index.json.jbuilder` writes all\nthree keys unconditionally, so an empty window is three empty arrays\nrather than a missing key."
           },
           "recurring_schedule_entry_occurrences": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ScheduleEntry"
+              "$ref": "#/components/schemas/UpcomingScheduleEntry"
             },
-            "x-go-type-skip-optional-pointer": true
+            "description": "Realized occurrences of recurring entries falling in the window. Rendered\nthrough the same calendar entry partial as schedule_entries, so the two\narrays carry the same shape; an occurrence is distinguished only by its\n`recurring` flag being true. Always present."
           },
           "assignables": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Assignable"
+              "$ref": "#/components/schemas/UpcomingAssignable"
             },
-            "x-go-type-skip-optional-pointer": true
+            "description": "Dated to-dos, cards and steps falling in the window. Always present."
           }
-        }
+        },
+        "required": [
+          "assignables",
+          "recurring_schedule_entry_occurrences",
+          "schedule_entries"
+        ]
       },
       "GetUploadResponseContent": {
         "$ref": "#/components/schemas/Upload"
@@ -33036,11 +33158,11 @@
           },
           "join_url": {
             "type": "string",
-            "description": "The entry's join link, or null when it has none.\n\nSent under this key rather than `url`, which is the entry's own Basecamp\nAPI URL: recordings/_recording writes that key first and the entry partial\nrenders after it. Write it back through the `url` member of\nReplaceScheduleEntry — the two spellings are deliberate, not a typo.\n\nOptional rather than required because this one structure covers two wire\nshapes. GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,\nCreateScheduleEntry and ReplaceScheduleEntry all render\nschedules/entries/_entry, which emits it unconditionally;\nGetUpcomingSchedule renders the reduced schedules/calendar/_entry, which\ndoes not."
+            "description": "The entry's join link, or null when it has none.\n\nSent under this key rather than `url`, which is the entry's own Basecamp\nAPI URL: recordings/_recording writes that key first and the entry partial\nrenders after it. Write it back through the `url` member of\nReplaceScheduleEntry — the two spellings are deliberate, not a typo.\n\nOptional is now UNDER-modelled, and deliberately left that way for one\nrelease. Every operation that still returns this structure —\nGetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,\nCreateScheduleEntry, ReplaceScheduleEntry — renders\nschedules/entries/_entry, which emits this key unconditionally, so it is\nreally required-and-nullable.\n\nIt was optional because this structure used to cover two wire shapes: the\nreduced schedules/calendar/_entry, which omits it, reached here through\nGetUpcomingSchedule. That is no longer true — the report has its own\nUpcomingScheduleEntry projection (#635) — so the reason is retired and\nonly the cost of tightening remains. Promoting it is a separate contract\nchange: it forces every inline schedule-entry stub across six SDKs to\ncarry the key, and pairs with a required-and-nullable jsonAdd, so it\nbelongs in its own reviewable diff rather than riding this one."
           },
           "highlighted": {
             "type": "boolean",
-            "description": "Whether the entry is highlighted on the schedule.\n\nOptional for the same reason as join_url: emitted unconditionally by the\nentry partial, absent from the calendar partial GetUpcomingSchedule uses."
+            "description": "Whether the entry is highlighted on the schedule.\n\nUnder-modelled for the same reason as join_url, and more plainly so: this\none is not even nullable (`schedule_entries.highlighted` is NOT NULL with\na false default), so the entry partial's unconditional emission makes it\nstraightforwardly @required. Tracked with join_url."
           },
           "boosts_count": {
             "type": "integer",
@@ -34280,6 +34402,268 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "UpcomingAssignable": {
+        "type": "object",
+        "description": "A dated to-do, card or step as the upcoming-schedule report renders it.\n\nRendered by `app/views/api/schedules/calendar/_assignable.json.jbuilder`,\nwhich — like the calendar entry partial — writes its own keys instead of\nrendering `recordings/_recording`. Nothing else in the API returns this\nshape.\n\nThe member that bites: BC3 emits the item's text under `content`, not\n`title`. The previous model of this report declared `title`, so the field\ncallers most wanted was permanently absent while a key that was always\npresent went unmodelled.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "visible_to_clients": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string",
+            "description": "The item's own Basecamp API URL."
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "starts_on": {
+            "type": "string",
+            "description": "The item's start date, `null` unless this is a to-do that has one:\nKanban cards and steps both define `starts_on` as a literal nil to\nduck-type Todo, and the partial reads it unconditionally.\n\nThe key is in fact always present. It is modeled optional-and-nullable\nanyway, matching the deliberate treatment of `Todo.starts_on` and\n`Todo`/`Card.due_on` (see the fifth-g pass in\n`scripts/enhance-openapi-go-types.sh`): the static SDKs then type it\n`string | null | undefined`, which accepts the null this really sends and\nalso tolerates a partial payload. Nullability rides that same pass, which\nis what keeps the Go type `types.Date` rather than a bare string.",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "nullable": true
+          },
+          "due_on": {
+            "type": "string",
+            "description": "The item's due date, `null` when it has none. Optional-and-nullable for\nthe same reason as starts_on.",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "description": "The item's kind, LOWERCASE and singular: \"todo\", \"card\" or \"step\".\n`short_recordable_name` demodulizes and downcases the recordable class,\nso this does not match the CamelCase `type` other recording projections\ncarry."
+          },
+          "content": {
+            "type": "string",
+            "description": "The item's text — `recordable.title`. Spelled `content`, not `title`:\nthis partial names it after the Todo/Card content attribute rather than\nthe recording's title."
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpcomingSchedulePerson"
+            },
+            "description": "Present and possibly empty, never absent."
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/UpcomingScheduleBucket"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/UpcomingAssignableParent"
+          },
+          "completion_url": {
+            "type": "string",
+            "description": "Where to POST/PUT the item's completion.\n\nOnly the to-do branch is an absolute URL: BC3 renders\n`completion_bucket_todo_url` for a to-do and\n`bucket_step_completions_path` for everything else, and a `_path` helper\nemits no host. Resolve this against the account base rather than assuming\nit is absolute."
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "repeating": {
+            "type": "boolean",
+            "description": "Whether the item repeats."
+          },
+          "completion": {
+            "$ref": "#/components/schemas/UpcomingAssignableCompletion"
+          },
+          "comments_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "app_url",
+          "assignees",
+          "bucket",
+          "comments_count",
+          "completed",
+          "completion_url",
+          "content",
+          "id",
+          "parent",
+          "repeating",
+          "status",
+          "type",
+          "url",
+          "visible_to_clients"
+        ]
+      },
+      "UpcomingAssignableCompletion": {
+        "type": "object",
+        "description": "When an assignable was completed and by whom.",
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "creator": {
+            "$ref": "#/components/schemas/UpcomingSchedulePerson"
+          }
+        },
+        "required": [
+          "created_at",
+          "creator"
+        ]
+      },
+      "UpcomingAssignableParent": {
+        "type": "object",
+        "description": "The to-do list, card column or parent to-do an assignable is filed under:\nid and title only, with no `type`, `url` or `app_url`.\n\nThe title is not always the parent's own: for a to-do inside a grouped\nlist, `todolist_or_group_title` folds in the grandparent list's title as\n\"List: Group\".",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "UpcomingScheduleBucket": {
+        "type": "object",
+        "description": "The project an upcoming-schedule item belongs to: id and name only.\n\nBoth calendar partials write `json.(recording.bucket, :id, :name)`, so this\nis TodoBucket minus `type`. That missing `type` is the first key a strict\ndecoder reaches on a populated response, ahead of any of the top-level\nmembers the calendar entry partial drops.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "UpcomingScheduleEntry": {
+        "type": "object",
+        "description": "One schedule entry as the upcoming-schedule report renders it.\n\nThis is NOT the ScheduleEntry projection. BC3 renders this report through\n`app/views/api/schedules/calendar/_entry.json.jbuilder`, a purpose-built\ncalendar partial, while GetScheduleEntry, GetScheduleEntryOccurrence,\nListScheduleEntries, CreateScheduleEntry and ReplaceScheduleEntry all render\n`schedules/entries/_entry.json.jbuilder` on top of the shared recording\npartial. The calendar partial does not render `recordings/_recording` at\nall — it writes its own keys — so relative to ScheduleEntry it drops\n`created_at`, `updated_at`, `title`, `inherits_status`, `parent`,\n`description_attachments`, `description`, `bookmark_url`,\n`subscription_url`, `comments_url`, `join_url`, `highlighted`,\n`boosts_count` and `boosts_url`, narrows `bucket` to id + name, and adds\n`recurring`, which no other schedule-entry projection emits.\n\nEvery member here is @required because the partial emits every key\nunconditionally: there is no `if` in it.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "visible_to_clients": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string",
+            "description": "The entry's own Basecamp API URL. Unlike the ScheduleEntry projection,\nthis report never carries the entry's join link, so `url` here has no\n`join_url` sibling to be confused with."
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Always the literal string \"ScheduleEntry\" — the calendar partial hardcodes\nit rather than deriving it from the recordable, so an occurrence reads\nback as \"ScheduleEntry\" too, not \"Schedule::Entry::Occurrence\"."
+          },
+          "summary": {
+            "type": "string"
+          },
+          "all_day": {
+            "type": "boolean",
+            "description": "Whether the entry occupies whole days rather than a time range.\nDiscriminates the two renderings of starts_at/ends_at below."
+          },
+          "recurring": {
+            "type": "boolean",
+            "description": "Whether the entry repeats. Emitted only by this partial —\n`recording.schedule_entry.recurring?`, i.e. whether the entry carries a\nrecurrence schedule.\n\nIt also discriminates the two envelope arrays: BC3 selects\n`schedule_entries` with `recurrence_schedule: nil` and\n`recurring_schedule_entry_occurrences` with `recurrence_schedule` NOT\nNULL, so this reads false throughout the first array and true throughout\nthe second."
+          },
+          "starts_at": {
+            "type": "string",
+            "description": "A date for an all-day entry and a full timestamp for a timed one —\n`starts_at_date_or_time`, the same rendering ScheduleEntry documents.\nTreat it as opaque and round-trip it verbatim; the all_day sibling\ndiscriminates.",
+            "x-go-type": "types.FlexibleTime",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "ends_at": {
+            "type": "string",
+            "description": "See starts_at for the date-vs-timestamp rendering.",
+            "x-go-type": "types.FlexibleTime",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "creator": {
+            "$ref": "#/components/schemas/UpcomingSchedulePerson"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpcomingSchedulePerson"
+            },
+            "description": "Everyone attending. Present and possibly empty, never absent."
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/UpcomingScheduleBucket"
+          },
+          "comments_count": {
+            "type": "integer",
+            "description": "Comments on the entry — or, for an occurrence, on that occurrence.",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "all_day",
+          "app_url",
+          "bucket",
+          "comments_count",
+          "creator",
+          "ends_at",
+          "id",
+          "participants",
+          "recurring",
+          "starts_at",
+          "status",
+          "summary",
+          "type",
+          "url",
+          "visible_to_clients"
+        ]
+      },
+      "UpcomingSchedulePerson": {
+        "type": "object",
+        "description": "A person as the calendar partials render them: id, name and avatar only.\n\n`schedules/calendar/_person.json.jbuilder` delegates to\n`people/_person_minimal.json.jbuilder`, the same three-key partial that\nMyAssignmentAssignee and OutOfOfficePerson already model separately from the\nfull Person projection. Reusing Person here would decode — its only\n@required members are id and name — but would advertise two dozen members\nthis report never sends.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "format": "password"
+          },
+          "avatar_url": {
+            "type": "string",
+            "format": "password"
+          }
+        },
+        "required": [
+          "avatar_url",
+          "id",
+          "name"
         ]
       },
       "UpdateAccountLogoInputPayload": {

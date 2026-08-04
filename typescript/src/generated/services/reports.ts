@@ -27,16 +27,6 @@ export interface ProgressReportOptions extends PaginationOptions {
 }
 
 /**
- * Options for upcoming.
- */
-export interface UpcomingReportOptions {
-  /** Window starts on */
-  windowStartsOn?: string;
-  /** Window ends on */
-  windowEndsOn?: string;
-}
-
-/**
  * Options for assigned.
  */
 export interface AssignedReportOptions {
@@ -92,15 +82,16 @@ export class ReportsService extends BaseService {
 
   /**
    * Get upcoming schedule entries and assignable items within a date window.
-   * @param options - Optional query parameters
+   * @param windowStartsOn - Inclusive first day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
+   * @param windowEndsOn - Inclusive last day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
    * @returns The upcoming_schedule
    *
    * @example
    * ```ts
-   * const result = await client.reports.upcoming();
+   * const result = await client.reports.upcoming("window_starts_on", "window_ends_on");
    * ```
    */
-  async upcoming(options?: UpcomingReportOptions): Promise<components["schemas"]["GetUpcomingScheduleResponseContent"]> {
+  async upcoming(windowStartsOn: string, windowEndsOn: string): Promise<components["schemas"]["GetUpcomingScheduleResponseContent"]> {
     const response = await this.request(
       {
         service: "Reports",
@@ -111,7 +102,7 @@ export class ReportsService extends BaseService {
       () =>
         this.client.GET("/reports/schedules/upcoming.json", {
           params: {
-            query: { "window_starts_on": options?.windowStartsOn, "window_ends_on": options?.windowEndsOn },
+            query: { "window_starts_on": windowStartsOn, "window_ends_on": windowEndsOn },
           },
         })
     );

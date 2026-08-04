@@ -1,9 +1,29 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// loadSpecFixture reads a shared fixture under spec/fixtures by its manifest
+// path. Those fixtures are validated against the generated schemas by
+// `make check-fixture-coverage`, so a test built on one cannot drift from the
+// contract the way an inline literal can.
+func loadSpecFixture(t *testing.T, relPath string) []byte {
+	t.Helper()
+	path := filepath.Join("..", "..", "..", "spec", "fixtures", filepath.FromSlash(relPath))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read fixture %s: %v", relPath, err)
+	}
+	return data
+}
 
 func TestAssignedTodosResponse_Unmarshal(t *testing.T) {
 	data := `{
@@ -80,121 +100,130 @@ func TestOverdueTodosResponse_Unmarshal(t *testing.T) {
 	}
 }
 
-func TestAssignable_Unmarshal(t *testing.T) {
-	data := `{
-		"id": 12345,
-		"title": "Test Schedule Entry",
-		"type": "ScheduleEntry",
-		"url": "https://3.basecampapi.com/123/buckets/456/schedule_entries/789.json",
-		"app_url": "https://3.basecamp.com/123/buckets/456/schedule_entries/789",
-		"due_on": "2024-03-20",
-		"starts_on": "2024-03-15",
-		"bucket": {
-			"id": 456,
-			"name": "Test Project",
-			"type": "Project"
-		},
-		"parent": {
-			"id": 789,
-			"title": "Schedule",
-			"type": "Schedule"
-		},
-		"assignees": [
-			{
-				"id": 111,
-				"name": "Test User"
-			}
-		]
-	}`
+func TestUpcomingSchedule_DecodesTheReducedCalendarProjection(t *testing.T) {
+	// The shared spec fixture, which is the key set BC3 actually renders through
+	// app/views/api/schedules/calendar/. The previous version of these tests
+	// decoded an invented body carrying `title` (which this endpoint never
+	// sends) and omitting `content`, `recurring`, `completion_url`, `completed`,
+	// `repeating` and `comments_count` (which it always does), so it could not
+	// have caught the mismatch it was there to guard.
+	data := loadSpecFixture(t, "schedules/upcoming.json")
 
-	var assignable Assignable
-	if err := json.Unmarshal([]byte(data), &assignable); err != nil {
+	var resp UpcomingScheduleResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	if assignable.ID != 12345 {
-		t.Errorf("expected ID 12345, got %d", assignable.ID)
+	if len(resp.ScheduleEntries) != 1 {
+		t.Fatalf("expected 1 schedule entry, got %d", len(resp.ScheduleEntries))
 	}
-	if assignable.Title != "Test Schedule Entry" {
-		t.Errorf("expected Title 'Test Schedule Entry', got %q", assignable.Title)
+	if len(resp.RecurringScheduleEntryOccurrences) != 1 {
+		t.Fatalf("expected 1 recurring occurrence, got %d", len(resp.RecurringScheduleEntryOccurrences))
 	}
-	if assignable.Type != "ScheduleEntry" {
-		t.Errorf("expected Type 'ScheduleEntry', got %q", assignable.Type)
+	if len(resp.Assignables) != 2 {
+		t.Fatalf("expected 2 assignables, got %d", len(resp.Assignables))
 	}
-	if assignable.DueOn != "2024-03-20" {
-		t.Errorf("expected DueOn '2024-03-20', got %q", assignable.DueOn)
+
+	// A timed entry. `recurring` is the key no other schedule-entry projection
+	// carries, and the reason this needs its own shape rather than ScheduleEntry.
+	entry := resp.ScheduleEntries[0]
+	if entry.Summary != "Team Meeting" {
+		t.Errorf("expected Summary 'Team Meeting', got %q", entry.Summary)
 	}
-	if assignable.StartsOn != "2024-03-15" {
-		t.Errorf("expected StartsOn '2024-03-15', got %q", assignable.StartsOn)
+	if entry.Recurring {
+		t.Error("expected Recurring false in schedule_entries: BC3 selects that array with recurrence_schedule IS NULL")
 	}
-	if assignable.Bucket == nil {
-		t.Fatal("expected Bucket to be non-nil")
+	if entry.StartsAt.Hour() != 6 {
+		t.Errorf("expected StartsAt hour 6, got %d", entry.StartsAt.Hour())
 	}
-	if assignable.Bucket.Name != "Test Project" {
-		t.Errorf("expected Bucket.Name 'Test Project', got %q", assignable.Bucket.Name)
+	// The bucket is id + name only — no Type field exists on this shape, which
+	// is the nested omission that broke a strict decode against TodoBucket.
+	if entry.Bucket.Name != "The Leto Laptop" {
+		t.Errorf("expected Bucket.Name 'The Leto Laptop', got %q", entry.Bucket.Name)
 	}
-	if assignable.Parent == nil {
-		t.Fatal("expected Parent to be non-nil")
+	if len(entry.Participants) != 2 {
+		t.Errorf("expected 2 participants, got %d", len(entry.Participants))
 	}
-	if assignable.Parent.Title != "Schedule" {
-		t.Errorf("expected Parent.Title 'Schedule', got %q", assignable.Parent.Title)
+	if entry.Creator.AvatarUrl == "" {
+		t.Error("expected Creator.AvatarUrl to be populated")
 	}
-	if len(assignable.Assignees) != 1 {
-		t.Fatalf("expected 1 assignee, got %d", len(assignable.Assignees))
+	if entry.CommentsCount != 2 {
+		t.Errorf("expected CommentsCount 2, got %d", entry.CommentsCount)
 	}
-	if assignable.Assignees[0].Name != "Test User" {
-		t.Errorf("expected Assignee.Name 'Test User', got %q", assignable.Assignees[0].Name)
+
+	// An all-day occurrence: recurring, and both bounds are bare dates, which is
+	// why these fields are types.FlexibleTime rather than time.Time.
+	occurrence := resp.RecurringScheduleEntryOccurrences[0]
+	if !occurrence.Recurring {
+		t.Error("expected Recurring true in recurring_schedule_entry_occurrences")
+	}
+	if !occurrence.AllDay {
+		t.Error("expected AllDay true")
+	}
+	if occurrence.StartsAt.Year() != 2026 || occurrence.StartsAt.Month() != 6 || occurrence.StartsAt.Day() != 8 {
+		t.Errorf("expected StartsAt 2026-06-08, got %v", occurrence.StartsAt)
+	}
+	if occurrence.EndsAt.Year() != 2026 || occurrence.EndsAt.Month() != 6 || occurrence.EndsAt.Day() != 8 {
+		t.Errorf("expected EndsAt 2026-06-08, got %v", occurrence.EndsAt)
+	}
+
+	// A completed to-do. Its text is Content, not Title, and its Type is the
+	// lowercase short recordable name.
+	todo := resp.Assignables[0]
+	if todo.Content != "Ship the hardware" {
+		t.Errorf("expected Content 'Ship the hardware', got %q", todo.Content)
+	}
+	if todo.Type != "todo" {
+		t.Errorf("expected Type 'todo', got %q", todo.Type)
+	}
+	if todo.Parent.Title != "Launch: Hardware" {
+		t.Errorf("expected Parent.Title 'Launch: Hardware', got %q", todo.Parent.Title)
+	}
+	if !todo.Completed {
+		t.Error("expected Completed true")
+	}
+	if todo.Completion == nil {
+		t.Fatal("expected Completion to be present on a completed assignable")
+	}
+	if todo.Completion.Creator.Name != "Steve Marsh" {
+		t.Errorf("expected Completion.Creator.Name 'Steve Marsh', got %q", todo.Completion.Creator.Name)
+	}
+	if todo.StartsOn == nil || todo.StartsOn.String() != "2026-06-01" {
+		t.Errorf("expected StartsOn 2026-06-01, got %v", todo.StartsOn)
+	}
+
+	// A card: no completion block, null dates, and a RELATIVE completion_url —
+	// BC3 renders the non-to-do branch through a `_path` helper, which emits no
+	// host.
+	card := resp.Assignables[1]
+	if card.Type != "card" {
+		t.Errorf("expected Type 'card', got %q", card.Type)
+	}
+	if card.Completion != nil {
+		t.Error("expected Completion to be absent on an incomplete assignable")
+	}
+	if card.Completed {
+		t.Error("expected Completed false")
+	}
+	if card.CompletionUrl != "/999/buckets/2085958499/steps/1069479526/completions.json" {
+		t.Errorf("unexpected CompletionUrl %q", card.CompletionUrl)
+	}
+	if len(card.Assignees) != 0 {
+		t.Errorf("expected 0 assignees, got %d", len(card.Assignees))
 	}
 }
 
-func TestUpcomingScheduleResponse_Unmarshal(t *testing.T) {
-	data := `{
-		"schedule_entries": [
-			{"id": 1, "summary": "Entry 1", "starts_at": "2022-11-01T10:00:00.000Z", "ends_at": "2022-11-01T11:00:00.000Z"},
-			{"id": 4, "summary": "All Day", "starts_at": "2022-11-15", "ends_at": "2022-11-15", "all_day": true}
-		],
-		"recurring_schedule_entry_occurrences": [
-			{"id": 2, "summary": "Recurring Entry", "starts_at": "2022-12-01T09:00:00Z", "ends_at": "2022-12-01T10:00:00Z"}
-		],
-		"assignables": [
-			{"id": 3, "title": "Assignable 1"}
-		]
-	}`
+func TestUpcomingSchedule_EmptyEnvelopeDecodes(t *testing.T) {
+	data := `{"schedule_entries": [], "recurring_schedule_entry_occurrences": [], "assignables": []}`
 
 	var resp UpcomingScheduleResponse
 	if err := json.Unmarshal([]byte(data), &resp); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	if len(resp.ScheduleEntries) != 2 {
-		t.Fatalf("expected 2 schedule entries, got %d", len(resp.ScheduleEntries))
-	}
-	if len(resp.RecurringOccurrences) != 1 {
-		t.Errorf("expected 1 recurring occurrence, got %d", len(resp.RecurringOccurrences))
-	}
-	if len(resp.Assignables) != 1 {
-		t.Errorf("expected 1 assignable, got %d", len(resp.Assignables))
-	}
-
-	// Verify RFC3339 datetime entry
-	e1 := resp.ScheduleEntries[0]
-	if e1.StartsAt.IsZero() {
-		t.Error("expected StartsAt to be non-zero for datetime entry")
-	}
-	if e1.StartsAt.Hour() != 10 {
-		t.Errorf("expected StartsAt hour 10, got %d", e1.StartsAt.Hour())
-	}
-
-	// Verify date-only entry
-	e2 := resp.ScheduleEntries[1]
-	if e2.StartsAt.IsZero() {
-		t.Error("expected StartsAt to be non-zero for date-only entry")
-	}
-	if e2.StartsAt.Year() != 2022 || e2.StartsAt.Month() != 11 || e2.StartsAt.Day() != 15 {
-		t.Errorf("expected StartsAt 2022-11-15, got %v", e2.StartsAt)
-	}
-	if e2.EndsAt.Year() != 2022 || e2.EndsAt.Month() != 11 || e2.EndsAt.Day() != 15 {
-		t.Errorf("expected EndsAt 2022-11-15, got %v", e2.EndsAt)
+	if len(resp.ScheduleEntries) != 0 || len(resp.RecurringScheduleEntryOccurrences) != 0 || len(resp.Assignables) != 0 {
+		t.Errorf("expected three empty arrays, got %d/%d/%d",
+			len(resp.ScheduleEntries), len(resp.RecurringScheduleEntryOccurrences), len(resp.Assignables))
 	}
 }
 
@@ -214,6 +243,54 @@ func TestAssignedTodosOptions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.opts != nil && tt.opts.GroupBy != tt.groupBy {
 				t.Errorf("expected GroupBy %q, got %q", tt.groupBy, tt.opts.GroupBy)
+			}
+		})
+	}
+}
+
+// Both window bounds are required, and the local guard has to say so itself.
+// types.ParseDate("") returns a zero Date and a NIL error by design, so parsing
+// alone accepts exactly the input this operation must reject: an empty bound
+// would sail past the check and come back as the server-side 400 the guard
+// exists to prevent. Both missing-bound cases are covered because a guard that
+// only checks the first argument is the usual way this half-works.
+func TestUpcomingSchedule_RejectsMissingWindowBounds(t *testing.T) {
+	cases := []struct {
+		name      string
+		startDate string
+		endDate   string
+		wantIn    string
+	}{
+		{"both empty", "", "", "window_starts_on"},
+		{"start empty", "", "2026-06-30", "window_starts_on"},
+		{"end empty", "2026-06-01", "", "window_ends_on"},
+		{"start malformed", "june", "2026-06-30", "window_starts_on"},
+		{"end malformed", "2026-06-01", "2026", "window_ends_on"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"schedule_entries":[],"recurring_schedule_entry_occurrences":[],"assignables":[]}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfg := DefaultConfig()
+			cfg.BaseURL = srv.URL
+			client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+			_, err := client.ForAccount("999").Reports().UpcomingSchedule(context.Background(), tc.startDate, tc.endDate)
+			if err == nil {
+				t.Fatal("expected a local usage error, got none")
+			}
+			if called {
+				t.Error("the request reached the server; the local guard should have stopped it")
+			}
+			if !strings.Contains(err.Error(), tc.wantIn) {
+				t.Errorf("expected the error to name %q, got %q", tc.wantIn, err.Error())
 			}
 		})
 	}

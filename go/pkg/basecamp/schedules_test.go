@@ -1680,3 +1680,81 @@ func TestSchedulesService_CreateEntryVisibleToClients(t *testing.T) {
 		})
 	}
 }
+
+// The three members #641 added to CreateScheduleEntry must reach the wire from
+// the PUBLIC request type, not merely from the generated one. The spec, the
+// generated client and five other SDKs all carried them while
+// CreateScheduleEntryRequest did not, so a Go caller could not use the
+// functionality this closes — and no marshal test of the public struct would
+// have noticed, because the gap was in the struct-to-generated-body threading.
+// This asserts the observed request body.
+func TestSchedulesService_CreateEntryJoinLinkHighlightAndStatus(t *testing.T) {
+	fixture := loadSchedulesFixture(t, "entry_get.json")
+	joinURL, drafted, highlighted := "https://zoom.us/j/999", "drafted", true
+
+	var receivedBody map[string]any
+	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	_, err := svc.CreateEntry(context.Background(), 12345, &CreateScheduleEntryRequest{
+		Summary:     "Kickoff call",
+		StartsAt:    "2024-01-15T09:00:00Z",
+		EndsAt:      "2024-01-15T10:00:00Z",
+		URL:         &joinURL,
+		Highlighted: &highlighted,
+		Status:      &drafted,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The write spelling is `url`. BC3 strong-params drop `join_url` on write,
+	// so sending it under the read spelling would be a silent no-op: a 201 with
+	// no join link.
+	if got := receivedBody["url"]; got != joinURL {
+		t.Errorf("expected url=%q on the wire, got %v (body=%v)", joinURL, got, receivedBody)
+	}
+	if _, ok := receivedBody["join_url"]; ok {
+		t.Error("join_url must not appear on the write path — BC3 discards it")
+	}
+	if got := receivedBody["highlighted"]; got != true {
+		t.Errorf("expected highlighted=true, got %v", got)
+	}
+	if got := receivedBody["status"]; got != "drafted" {
+		t.Errorf("expected status=drafted, got %v", got)
+	}
+}
+
+// Unset means absent, not a zero value on the wire. `highlighted` matters most:
+// schedule_entries.highlighted is NOT NULL, so an explicit null would make BC3
+// raise rather than apply its false default.
+func TestSchedulesService_CreateEntryOmitsUnsetJoinLinkHighlightAndStatus(t *testing.T) {
+	fixture := loadSchedulesFixture(t, "entry_get.json")
+
+	var receivedBody map[string]any
+	svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	_, err := svc.CreateEntry(context.Background(), 12345, &CreateScheduleEntryRequest{
+		Summary:  "Kickoff call",
+		StartsAt: "2024-01-15T09:00:00Z",
+		EndsAt:   "2024-01-15T10:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, key := range []string{"url", "highlighted", "status"} {
+		if _, ok := receivedBody[key]; ok {
+			t.Errorf("expected %q to be omitted when unset, got %v", key, receivedBody[key])
+		}
+	}
+}

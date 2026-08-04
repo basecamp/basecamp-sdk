@@ -20,7 +20,7 @@ class ReportsService(BaseService):
             operation="GetProgressReport",
         )
 
-    def upcoming(self, *, window_starts_on: str | None = None, window_ends_on: str | None = None) -> dict[str, Any]:
+    def upcoming(self, *, window_starts_on: str, window_ends_on: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="reports", operation="upcoming", is_mutation=False),
             "GET",
@@ -69,9 +69,7 @@ class AsyncReportsService(AsyncBaseService):
             operation="GetProgressReport",
         )
 
-    async def upcoming(
-        self, *, window_starts_on: str | None = None, window_ends_on: str | None = None
-    ) -> dict[str, Any]:
+    async def upcoming(self, *, window_starts_on: str, window_ends_on: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="reports", operation="upcoming", is_mutation=False),
             "GET",

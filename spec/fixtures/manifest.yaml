@@ -131,6 +131,52 @@ targets:
     fixture: schedules/entry_get.json
     pointer: ""
     schema: ScheduleEntry
+  # The upcoming-schedule report renders BC3's reduced calendar partials, not the
+  # per-resource ones, so it has its own shape family (#635). An operation entry
+  # validates the WHOLE envelope, which is the point: the fabricated bodies the
+  # per-SDK tests used to carry are exactly how the mismatch survived six SDKs.
+  - id: upcoming-schedule-get
+    operation: GetUpcomingSchedule
+    fixture: schedules/upcoming.json
+  # Element-level representatives, so the coverage invariant's concrete-instance
+  # rule is satisfied for each reduced component rather than only reached.
+  - id: upcoming-schedule-entry-0
+    fixture: schedules/upcoming.json
+    pointer: "/schedule_entries/0"
+    schema: UpcomingScheduleEntry
+  # The recurring array's element is the all-day variant: `recurring` true and
+  # starts_at/ends_at rendered as bare dates rather than timestamps.
+  - id: upcoming-schedule-occurrence-0
+    fixture: schedules/upcoming.json
+    pointer: "/recurring_schedule_entry_occurrences/0"
+    schema: UpcomingScheduleEntry
+  # A completed to-do: carries the optional `completion` block and both dates.
+  - id: upcoming-assignable-todo
+    fixture: schedules/upcoming.json
+    pointer: "/assignables/0"
+    schema: UpcomingAssignable
+  # A card: no `completion` key, null starts_on/due_on, and the relative
+  # completion_url the non-to-do branch renders through a `_path` helper.
+  - id: upcoming-assignable-card
+    fixture: schedules/upcoming.json
+    pointer: "/assignables/1"
+    schema: UpcomingAssignable
+  - id: upcoming-schedule-bucket
+    fixture: schedules/upcoming.json
+    pointer: "/schedule_entries/0/bucket"
+    schema: UpcomingScheduleBucket
+  - id: upcoming-schedule-person
+    fixture: schedules/upcoming.json
+    pointer: "/schedule_entries/0/creator"
+    schema: UpcomingSchedulePerson
+  - id: upcoming-assignable-parent
+    fixture: schedules/upcoming.json
+    pointer: "/assignables/0/parent"
+    schema: UpcomingAssignableParent
+  - id: upcoming-assignable-completion
+    fixture: schedules/upcoming.json
+    pointer: "/assignables/0/completion"
+    schema: UpcomingAssignableCompletion
   - id: forward-get
     fixture: forwards/get.json
     pointer: ""
@@ -228,6 +274,12 @@ covered_schemas:
   CloudFile: [cloud-file-get]
   GoogleDocument: [google-document-get]
   ScheduleEntry: [schedule-entry-get]
+  UpcomingScheduleEntry: [upcoming-schedule-entry-0, upcoming-schedule-occurrence-0]
+  UpcomingAssignable: [upcoming-assignable-todo, upcoming-assignable-card]
+  UpcomingScheduleBucket: [upcoming-schedule-bucket]
+  UpcomingSchedulePerson: [upcoming-schedule-person]
+  UpcomingAssignableParent: [upcoming-assignable-parent]
+  UpcomingAssignableCompletion: [upcoming-assignable-completion]
   Forward: [forward-get]
   ForwardReply: [forward-reply-get]
   ClientApproval: [client-approval-get]

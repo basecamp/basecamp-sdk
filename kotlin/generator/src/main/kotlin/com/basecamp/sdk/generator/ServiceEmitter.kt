@@ -16,6 +16,10 @@ class ServiceEmitter(private val api: OpenApiParser) {
         sb.appendLine("import com.basecamp.sdk.*")
         sb.appendLine("import com.basecamp.sdk.generated.models.*")
         sb.appendLine("import com.basecamp.sdk.services.BaseService")
+        if (service.operations.any { arrayEnvelopeMembers(it) != null }) {
+            sb.appendLine("import kotlinx.serialization.SerialName")
+            sb.appendLine("import kotlinx.serialization.Serializable")
+        }
         sb.appendLine("import kotlinx.serialization.json.JsonElement")
 
         val needsWrappedPagination = service.operations.any {
@@ -39,6 +43,11 @@ class ServiceEmitter(private val api: OpenApiParser) {
             if (op.hasPagination && op.paginationKey != null && !op.returnsArray) {
                 sb.append(generateWrappedResultClass(op))
             }
+        }
+
+        // Generate result data classes for typed array-envelope operations
+        for (op in service.operations) {
+            arrayEnvelopeMembers(op)?.let { sb.append(generateArrayEnvelopeResultClass(op, it)) }
         }
 
         sb.appendLine("/**")
@@ -193,6 +202,7 @@ class ServiceEmitter(private val api: OpenApiParser) {
             val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it, op.paginationKey) }
             val entityType = entitySchema?.let { TYPE_ALIASES[it] }
             val decodeType = when {
+                arrayEnvelopeMembers(op) != null -> buildWrappedResultClassName(op)
                 entityType != null && op.returnsArray -> "List<$entityType>"
                 entityType != null -> entityType
                 else -> "JsonElement"
@@ -409,6 +419,11 @@ class ServiceEmitter(private val api: OpenApiParser) {
             return buildWrappedResultClassName(op)
         }
 
+        // An object-of-arrays envelope returns its own result data class
+        if (arrayEnvelopeMembers(op) != null) {
+            return buildWrappedResultClassName(op)
+        }
+
         val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it, op.paginationKey) }
         val entityType = entitySchema?.let { TYPE_ALIASES[it] }
 
@@ -531,6 +546,60 @@ class ServiceEmitter(private val api: OpenApiParser) {
         sb.appendLine(")")
         sb.appendLine()
 
+        return sb.toString()
+    }
+
+    /**
+     * Members of an object-of-arrays response envelope, in wire order, mapped to
+     * their Kotlin element types — or null when this operation is not one.
+     *
+     * Requires all four of: the operation is opted in via
+     * [TYPED_ARRAY_ENVELOPE_OPERATIONS]; it is not already served by the
+     * pagination path; its response schema is an object with at least one
+     * property; and EVERY property is an array whose items `$ref` a schema in
+     * [TYPE_ALIASES]. Anything less falls back to the JsonElement path rather
+     * than emitting a class that cannot decode the body.
+     */
+    private fun arrayEnvelopeMembers(op: ParsedOperation): Map<String, String>? {
+        if (op.operationId !in TYPED_ARRAY_ENVELOPE_OPERATIONS) return null
+        if (op.returnsVoid || op.returnsArray || op.hasPagination) return null
+
+        val schema = op.responseSchemaRef?.let { api.getSchema(it) } ?: return null
+        if (schema["type"]?.jsonPrimitive?.contentOrNull != "object") return null
+        val properties = schema["properties"]?.jsonObject ?: return null
+        if (properties.isEmpty()) return null
+
+        val members = LinkedHashMap<String, String>()
+        for ((propName, propValue) in properties) {
+            val prop = propValue as? JsonObject ?: return null
+            if (prop["type"]?.jsonPrimitive?.contentOrNull != "array") return null
+            val itemsRef = prop["items"]?.jsonObject?.get("\$ref")?.jsonPrimitive?.contentOrNull ?: return null
+            val entityType = TYPE_ALIASES[api.resolveRef(itemsRef)] ?: return null
+            members[propName] = entityType
+        }
+        return members
+    }
+
+    /**
+     * Generates the `@Serializable` data class an object-of-arrays envelope
+     * decodes into. Every member is required and non-null: the arrays this
+     * covers are `@required` in the spec because BC3 writes all of them
+     * unconditionally, so an absent key is a contract violation worth failing on
+     * rather than a shape to paper over with a default.
+     */
+    private fun generateArrayEnvelopeResultClass(op: ParsedOperation, members: Map<String, String>): String {
+        val sb = StringBuilder()
+        sb.appendLine("@Serializable")
+        sb.appendLine("data class ${buildWrappedResultClassName(op)}(")
+        val entries = members.entries.toList()
+        for ((i, entry) in entries.withIndex()) {
+            val camelName = entry.key.snakeToCamelCase()
+            val serialName = if (camelName == entry.key) "" else "@SerialName(\"${entry.key}\") "
+            val comma = if (i < entries.size - 1) "," else ""
+            sb.appendLine("    ${serialName}val $camelName: List<${entry.value}>$comma")
+        }
+        sb.appendLine(")")
+        sb.appendLine()
         return sb.toString()
     }
 

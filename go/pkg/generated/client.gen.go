@@ -108,20 +108,6 @@ type AccountSubscription struct {
 	Timesheet    *bool   `json:"timesheet,omitempty"`
 }
 
-// Assignable defines model for Assignable.
-type Assignable struct {
-	AppUrl    *string     `json:"app_url,omitempty"`
-	Assignees []Person    `json:"assignees,omitempty"`
-	Bucket    *TodoBucket `json:"bucket,omitempty"`
-	DueOn     *types.Date `json:"due_on,omitempty"`
-	Id        *int64      `json:"id,omitempty"`
-	Parent    *TodoParent `json:"parent,omitempty"`
-	StartsOn  *types.Date `json:"starts_on,omitempty"`
-	Title     *string     `json:"title,omitempty"`
-	Type      *string     `json:"type,omitempty"`
-	Url       *string     `json:"url,omitempty"`
-}
-
 // BadRequestErrorResponseContent defines model for BadRequestErrorResponseContent.
 type BadRequestErrorResponseContent struct {
 	Error   string  `json:"error"`
@@ -827,15 +813,55 @@ type CreateRecordingBoostResponseContent = Boost
 
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
-	AllDay           *bool     `json:"all_day,omitempty"`
-	Description      *string   `json:"description,omitempty"`
-	EndsAt           time.Time `json:"ends_at"`
-	Notify           *bool     `json:"notify,omitempty"`
-	ParticipantIds   *[]int64  `json:"participant_ids,omitempty"`
-	StartsAt         time.Time `json:"starts_at"`
-	Subscriptions    *[]int64  `json:"subscriptions,omitempty"`
-	Summary          string    `json:"summary"`
-	VisibleToClients *bool     `json:"visible_to_clients,omitempty"`
+	AllDay      *bool     `json:"all_day,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	EndsAt      time.Time `json:"ends_at"`
+
+	// Highlighted Whether the entry is highlighted on the schedule. Defaults to false.
+	//
+	// Do not send an explicit null: `schedule_entries.highlighted` is NOT NULL,
+	// so BC3 raises rather than falling back to the default. Omit it instead —
+	// every SDK's request compactor already drops unset members.
+	Highlighted    *bool     `json:"highlighted,omitempty"`
+	Notify         *bool     `json:"notify,omitempty"`
+	ParticipantIds *[]int64  `json:"participant_ids,omitempty"`
+	StartsAt       time.Time `json:"starts_at"`
+
+	// Status Publication state at creation — `active|drafted`, defaulting to `active`
+	// for an API create.
+	//
+	// A top-level parameter, not part of the entry's attributes: `status` is a
+	// Recording column, so `wrap_parameters` leaves it outside the
+	// `schedule_entry` envelope and `Recording::StatusParam#status_param` reads
+	// it directly. On create it accepts `drafted`, `active`, `archived` or
+	// `trashed` and raises `ActionController::BadRequest` — a 400, not a 422 —
+	// for anything else; the two documented values are the two worth sending.
+	//
+	// Unlike messages and documents, schedule-entry drafts are not listed by
+	// GetMyDrafts.
+	Status        *string  `json:"status,omitempty"`
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	Summary       string   `json:"summary"`
+
+	// Url The entry's join link — a video-call URL or similar, up to 2500
+	// characters, validated as a URL when present. A scheme-less value is
+	// normalized to `https://`.
+	//
+	// Spell it `url` on the way in and read it back as `join_url`: the response
+	// key `url` is the entry's own Basecamp API URL, written by a partial that
+	// renders before this field, so BC3 emits the join link under a
+	// non-colliding name. Sending `join_url` instead is silently dropped by
+	// strong parameters — the create succeeds with no join link.
+	//
+	// Accepted on create since long before it was documented:
+	// `Schedules::Entries::BaseController#base_schedule_entry_params` permits it
+	// and `new_schedule_entry_params` passes it through unchanged for API
+	// requests. Modeling it only on ReplaceScheduleEntry forced callers into a
+	// three-request read-modify-write for a field the create already took — and
+	// create is the notifying write, so participants learned about a video call
+	// before its link existed.
+	Url              *string `json:"url,omitempty"`
+	VisibleToClients *bool   `json:"visible_to_clients,omitempty"`
 }
 
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
@@ -1708,9 +1734,20 @@ type GetToolResponseContent = Tool
 
 // GetUpcomingScheduleResponseContent defines model for GetUpcomingScheduleResponseContent.
 type GetUpcomingScheduleResponseContent struct {
-	Assignables                       []Assignable    `json:"assignables,omitempty"`
-	RecurringScheduleEntryOccurrences []ScheduleEntry `json:"recurring_schedule_entry_occurrences,omitempty"`
-	ScheduleEntries                   []ScheduleEntry `json:"schedule_entries,omitempty"`
+	// Assignables Dated to-dos, cards and steps falling in the window. Always present.
+	Assignables []UpcomingAssignable `json:"assignables"`
+
+	// RecurringScheduleEntryOccurrences Realized occurrences of recurring entries falling in the window. Rendered
+	// through the same calendar entry partial as schedule_entries, so the two
+	// arrays carry the same shape; an occurrence is distinguished only by its
+	// `recurring` flag being true. Always present.
+	RecurringScheduleEntryOccurrences []UpcomingScheduleEntry `json:"recurring_schedule_entry_occurrences"`
+
+	// ScheduleEntries Non-recurring entries starting in the window, chronological. Always
+	// present — `reports/schedules/upcoming/index.json.jbuilder` writes all
+	// three keys unconditionally, so an empty window is three empty arrays
+	// rather than a missing key.
+	ScheduleEntries []UpcomingScheduleEntry `json:"schedule_entries"`
 }
 
 // GetUploadResponseContent defines model for GetUploadResponseContent.
@@ -2721,8 +2758,10 @@ type ScheduleEntry struct {
 
 	// Highlighted Whether the entry is highlighted on the schedule.
 	//
-	// Optional for the same reason as join_url: emitted unconditionally by the
-	// entry partial, absent from the calendar partial GetUpcomingSchedule uses.
+	// Under-modelled for the same reason as join_url, and more plainly so: this
+	// one is not even nullable (`schedule_entries.highlighted` is NOT NULL with
+	// a false default), so the entry partial's unconditional emission makes it
+	// straightforwardly @required. Tracked with join_url.
 	Highlighted    *bool `json:"highlighted,omitempty"`
 	Id             int64 `json:"id"`
 	InheritsStatus bool  `json:"inherits_status"`
@@ -2734,12 +2773,21 @@ type ScheduleEntry struct {
 	// renders after it. Write it back through the `url` member of
 	// ReplaceScheduleEntry — the two spellings are deliberate, not a typo.
 	//
-	// Optional rather than required because this one structure covers two wire
-	// shapes. GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
-	// CreateScheduleEntry and ReplaceScheduleEntry all render
-	// schedules/entries/_entry, which emits it unconditionally;
-	// GetUpcomingSchedule renders the reduced schedules/calendar/_entry, which
-	// does not.
+	// Optional is now UNDER-modelled, and deliberately left that way for one
+	// release. Every operation that still returns this structure —
+	// GetScheduleEntry, GetScheduleEntryOccurrence, ListScheduleEntries,
+	// CreateScheduleEntry, ReplaceScheduleEntry — renders
+	// schedules/entries/_entry, which emits this key unconditionally, so it is
+	// really required-and-nullable.
+	//
+	// It was optional because this structure used to cover two wire shapes: the
+	// reduced schedules/calendar/_entry, which omits it, reached here through
+	// GetUpcomingSchedule. That is no longer true — the report has its own
+	// UpcomingScheduleEntry projection (#635) — so the reason is retired and
+	// only the cost of tightening remains. Promoting it is a separate contract
+	// change: it forces every inline schedule-entry stub across six SDKs to
+	// carry the key, and pairs with a required-and-nullable jsonAdd, so it
+	// belongs in its own reviewable diff rather than riding this one.
 	JoinUrl      *string         `json:"join_url,omitempty"`
 	Parent       RecordingParent `json:"parent"`
 	Participants []Person        `json:"participants,omitempty"`
@@ -3347,6 +3395,224 @@ type Tool struct {
 type UnauthorizedErrorResponseContent struct {
 	Error   string  `json:"error"`
 	Message *string `json:"message,omitempty"`
+}
+
+// UpcomingAssignable A dated to-do, card or step as the upcoming-schedule report renders it.
+//
+// Rendered by `app/views/api/schedules/calendar/_assignable.json.jbuilder`,
+// which — like the calendar entry partial — writes its own keys instead of
+// rendering `recordings/_recording`. Nothing else in the API returns this
+// shape.
+//
+// The member that bites: BC3 emits the item's text under `content`, not
+// `title`. The previous model of this report declared `title`, so the field
+// callers most wanted was permanently absent while a key that was always
+// present went unmodelled.
+type UpcomingAssignable struct {
+	AppUrl string `json:"app_url"`
+
+	// Assignees Present and possibly empty, never absent.
+	Assignees []UpcomingSchedulePerson `json:"assignees"`
+
+	// Bucket The project an upcoming-schedule item belongs to: id and name only.
+	//
+	// Both calendar partials write `json.(recording.bucket, :id, :name)`, so this
+	// is TodoBucket minus `type`. That missing `type` is the first key a strict
+	// decoder reaches on a populated response, ahead of any of the top-level
+	// members the calendar entry partial drops.
+	Bucket        UpcomingScheduleBucket `json:"bucket"`
+	CommentsCount int32                  `json:"comments_count"`
+	Completed     bool                   `json:"completed"`
+
+	// Completion When an assignable was completed and by whom.
+	Completion *UpcomingAssignableCompletion `json:"completion,omitempty"`
+
+	// CompletionUrl Where to POST/PUT the item's completion.
+	//
+	// Only the to-do branch is an absolute URL: BC3 renders
+	// `completion_bucket_todo_url` for a to-do and
+	// `bucket_step_completions_path` for everything else, and a `_path` helper
+	// emits no host. Resolve this against the account base rather than assuming
+	// it is absolute.
+	CompletionUrl string `json:"completion_url"`
+
+	// Content The item's text — `recordable.title`. Spelled `content`, not `title`:
+	// this partial names it after the Todo/Card content attribute rather than
+	// the recording's title.
+	Content string `json:"content"`
+
+	// DueOn The item's due date, `null` when it has none. Optional-and-nullable for
+	// the same reason as starts_on.
+	DueOn *types.Date `json:"due_on,omitempty"`
+	Id    int64       `json:"id"`
+
+	// Parent The to-do list, card column or parent to-do an assignable is filed under:
+	// id and title only, with no `type`, `url` or `app_url`.
+	//
+	// The title is not always the parent's own: for a to-do inside a grouped
+	// list, `todolist_or_group_title` folds in the grandparent list's title as
+	// "List: Group".
+	Parent UpcomingAssignableParent `json:"parent"`
+
+	// Repeating Whether the item repeats.
+	Repeating bool `json:"repeating"`
+
+	// StartsOn The item's start date, `null` unless this is a to-do that has one:
+	// Kanban cards and steps both define `starts_on` as a literal nil to
+	// duck-type Todo, and the partial reads it unconditionally.
+	//
+	// The key is in fact always present. It is modeled optional-and-nullable
+	// anyway, matching the deliberate treatment of `Todo.starts_on` and
+	// `Todo`/`Card.due_on` (see the fifth-g pass in
+	// `scripts/enhance-openapi-go-types.sh`): the static SDKs then type it
+	// `string | null | undefined`, which accepts the null this really sends and
+	// also tolerates a partial payload. Nullability rides that same pass, which
+	// is what keeps the Go type `types.Date` rather than a bare string.
+	StartsOn *types.Date `json:"starts_on,omitempty"`
+	Status   string      `json:"status"`
+
+	// Type The item's kind, LOWERCASE and singular: "todo", "card" or "step".
+	// `short_recordable_name` demodulizes and downcases the recordable class,
+	// so this does not match the CamelCase `type` other recording projections
+	// carry.
+	Type string `json:"type"`
+
+	// Url The item's own Basecamp API URL.
+	Url              string `json:"url"`
+	VisibleToClients bool   `json:"visible_to_clients"`
+}
+
+// UpcomingAssignableCompletion When an assignable was completed and by whom.
+type UpcomingAssignableCompletion struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Creator A person as the calendar partials render them: id, name and avatar only.
+	//
+	// `schedules/calendar/_person.json.jbuilder` delegates to
+	// `people/_person_minimal.json.jbuilder`, the same three-key partial that
+	// MyAssignmentAssignee and OutOfOfficePerson already model separately from the
+	// full Person projection. Reusing Person here would decode — its only
+	// @required members are id and name — but would advertise two dozen members
+	// this report never sends.
+	Creator UpcomingSchedulePerson `json:"creator"`
+}
+
+// UpcomingAssignableParent The to-do list, card column or parent to-do an assignable is filed under:
+// id and title only, with no `type`, `url` or `app_url`.
+//
+// The title is not always the parent's own: for a to-do inside a grouped
+// list, `todolist_or_group_title` folds in the grandparent list's title as
+// "List: Group".
+type UpcomingAssignableParent struct {
+	Id    int64  `json:"id"`
+	Title string `json:"title"`
+}
+
+// UpcomingScheduleBucket The project an upcoming-schedule item belongs to: id and name only.
+//
+// Both calendar partials write `json.(recording.bucket, :id, :name)`, so this
+// is TodoBucket minus `type`. That missing `type` is the first key a strict
+// decoder reaches on a populated response, ahead of any of the top-level
+// members the calendar entry partial drops.
+type UpcomingScheduleBucket struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// UpcomingScheduleEntry One schedule entry as the upcoming-schedule report renders it.
+//
+// This is NOT the ScheduleEntry projection. BC3 renders this report through
+// `app/views/api/schedules/calendar/_entry.json.jbuilder`, a purpose-built
+// calendar partial, while GetScheduleEntry, GetScheduleEntryOccurrence,
+// ListScheduleEntries, CreateScheduleEntry and ReplaceScheduleEntry all render
+// `schedules/entries/_entry.json.jbuilder` on top of the shared recording
+// partial. The calendar partial does not render `recordings/_recording` at
+// all — it writes its own keys — so relative to ScheduleEntry it drops
+// `created_at`, `updated_at`, `title`, `inherits_status`, `parent`,
+// `description_attachments`, `description`, `bookmark_url`,
+// `subscription_url`, `comments_url`, `join_url`, `highlighted`,
+// `boosts_count` and `boosts_url`, narrows `bucket` to id + name, and adds
+// `recurring`, which no other schedule-entry projection emits.
+//
+// Every member here is @required because the partial emits every key
+// unconditionally: there is no `if` in it.
+type UpcomingScheduleEntry struct {
+	// AllDay Whether the entry occupies whole days rather than a time range.
+	// Discriminates the two renderings of starts_at/ends_at below.
+	AllDay bool   `json:"all_day"`
+	AppUrl string `json:"app_url"`
+
+	// Bucket The project an upcoming-schedule item belongs to: id and name only.
+	//
+	// Both calendar partials write `json.(recording.bucket, :id, :name)`, so this
+	// is TodoBucket minus `type`. That missing `type` is the first key a strict
+	// decoder reaches on a populated response, ahead of any of the top-level
+	// members the calendar entry partial drops.
+	Bucket UpcomingScheduleBucket `json:"bucket"`
+
+	// CommentsCount Comments on the entry — or, for an occurrence, on that occurrence.
+	CommentsCount int32 `json:"comments_count"`
+
+	// Creator A person as the calendar partials render them: id, name and avatar only.
+	//
+	// `schedules/calendar/_person.json.jbuilder` delegates to
+	// `people/_person_minimal.json.jbuilder`, the same three-key partial that
+	// MyAssignmentAssignee and OutOfOfficePerson already model separately from the
+	// full Person projection. Reusing Person here would decode — its only
+	// @required members are id and name — but would advertise two dozen members
+	// this report never sends.
+	Creator UpcomingSchedulePerson `json:"creator"`
+
+	// EndsAt See starts_at for the date-vs-timestamp rendering.
+	EndsAt types.FlexibleTime `json:"ends_at"`
+	Id     int64              `json:"id"`
+
+	// Participants Everyone attending. Present and possibly empty, never absent.
+	Participants []UpcomingSchedulePerson `json:"participants"`
+
+	// Recurring Whether the entry repeats. Emitted only by this partial —
+	// `recording.schedule_entry.recurring?`, i.e. whether the entry carries a
+	// recurrence schedule.
+	//
+	// It also discriminates the two envelope arrays: BC3 selects
+	// `schedule_entries` with `recurrence_schedule: nil` and
+	// `recurring_schedule_entry_occurrences` with `recurrence_schedule` NOT
+	// NULL, so this reads false throughout the first array and true throughout
+	// the second.
+	Recurring bool `json:"recurring"`
+
+	// StartsAt A date for an all-day entry and a full timestamp for a timed one —
+	// `starts_at_date_or_time`, the same rendering ScheduleEntry documents.
+	// Treat it as opaque and round-trip it verbatim; the all_day sibling
+	// discriminates.
+	StartsAt types.FlexibleTime `json:"starts_at"`
+	Status   string             `json:"status"`
+	Summary  string             `json:"summary"`
+
+	// Type Always the literal string "ScheduleEntry" — the calendar partial hardcodes
+	// it rather than deriving it from the recordable, so an occurrence reads
+	// back as "ScheduleEntry" too, not "Schedule::Entry::Occurrence".
+	Type string `json:"type"`
+
+	// Url The entry's own Basecamp API URL. Unlike the ScheduleEntry projection,
+	// this report never carries the entry's join link, so `url` here has no
+	// `join_url` sibling to be confused with.
+	Url              string `json:"url"`
+	VisibleToClients bool   `json:"visible_to_clients"`
+}
+
+// UpcomingSchedulePerson A person as the calendar partials render them: id, name and avatar only.
+//
+// `schedules/calendar/_person.json.jbuilder` delegates to
+// `people/_person_minimal.json.jbuilder`, the same three-key partial that
+// MyAssignmentAssignee and OutOfOfficePerson already model separately from the
+// full Person projection. Reusing Person here would decode — its only
+// @required members are id and name — but would advertise two dozen members
+// this report never sends.
+type UpcomingSchedulePerson struct {
+	AvatarUrl string `json:"avatar_url"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
 }
 
 // UpdateAccountNameRequestContent defines model for UpdateAccountNameRequestContent.
@@ -4311,8 +4577,11 @@ type GetProgressReportParams struct {
 
 // GetUpcomingScheduleParams defines parameters for GetUpcomingSchedule.
 type GetUpcomingScheduleParams struct {
-	WindowStartsOn *string `form:"window_starts_on,omitempty" json:"window_starts_on,omitempty"`
-	WindowEndsOn   *string `form:"window_ends_on,omitempty" json:"window_ends_on,omitempty"`
+	// WindowStartsOn Inclusive first day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
+	WindowStartsOn string `form:"window_starts_on" json:"window_starts_on"`
+
+	// WindowEndsOn Inclusive last day of the window, `YYYY-MM-DD`. Required — BC3 answers 400 without it.
+	WindowEndsOn string `form:"window_ends_on" json:"window_ends_on"`
 }
 
 // GetTimesheetReportParams defines parameters for GetTimesheetReport.
@@ -19484,36 +19753,28 @@ func NewGetUpcomingScheduleRequest(server string, accountId string, params *GetU
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.WindowStartsOn != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_starts_on", runtime.ParamLocationQuery, *params.WindowStartsOn); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_starts_on", runtime.ParamLocationQuery, params.WindowStartsOn); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
-		if params.WindowEndsOn != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_ends_on", runtime.ParamLocationQuery, *params.WindowEndsOn); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "window_ends_on", runtime.ParamLocationQuery, params.WindowEndsOn); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
 				}
 			}
-
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -32078,6 +32339,7 @@ type GetUpcomingScheduleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *GetUpcomingScheduleResponseContent
+	JSON400      *BadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
@@ -46642,6 +46904,12 @@ func ParseGetUpcomingScheduleResponse(rsp *http.Response) (*GetUpcomingScheduleR
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent

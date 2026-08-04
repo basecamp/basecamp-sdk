@@ -1502,5 +1502,256 @@
       "carve-out",
       "dirty-tracking"
     ]
+  },
+  {
+    "name": "create-join-link: url, highlighted and status reach the wire on create",
+    "description": "#641: BC3 has accepted `url`, `highlighted` and `status` on create since long before they were documented \u2014 `Schedules::Entries::BaseController#base_schedule_entry_params` permits the first two and `Recording::StatusParam#status_param` reads the third \u2014 but the SDK modelled none of them, so a caller wanting a video-call event with its join link had to create, read and replace through a non-atomic window, and `create` is the notifying write.\n\nThe write spelling is `url`, NOT `join_url`. `join_url` is read-only: `recordings/_recording` claims the `url` key for the recording's own API URL and the entry partial renders after it, so BC3 emits the join link under a non-colliding name on the way out. Strong parameters drop `join_url` on the way in, so sending it is a 201 with no join link \u2014 a silent no-op, which is why this case asserts its absence rather than only the presence of `url`.\n\nSix runners, because the gap this closes was a hand-written one. The spec, the generated clients and five SDKs all carried these three while Go's public `CreateScheduleEntryRequest` did not, and nothing failed: every gate looked at the generated layer. A five-of-six that reads as six-of-six is what this case exists to catch.",
+    "operation": "CreateScheduleEntry",
+    "method": "POST",
+    "path": "/schedules/{scheduleId}/entries.json",
+    "pathParams": {
+      "scheduleId": 1069479520
+    },
+    "requestBody": {
+      "summary": "Kickoff call",
+      "starts_at": "2026-06-05T06:00:00Z",
+      "ends_at": "2026-06-05T08:30:00Z",
+      "url": "https://zoom.us/j/999",
+      "highlighted": true,
+      "status": "drafted"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/schedules/1069479520/entries.json",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Kickoff call",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "url",
+        "expected": "https://zoom.us/j/999",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "highlighted",
+        "expected": true,
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "status",
+        "expected": "drafted",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "join_url",
+        "index": 0
+      }
+    ],
+    "tags": [
+      "schedules",
+      "write"
+    ]
+  },
+  {
+    "name": "create-omits-unset: an unset join link, highlight and status stay off the wire",
+    "description": "Unset means the key is absent, not a zero value on the wire. `highlighted` is the one that bites: `schedule_entries.highlighted` is NOT NULL, so an explicit `null` makes BC3 raise rather than apply its `false` default. `status` omitted means BC3's own default for an API create (`active`), and an omitted `url` means no join link.\n\nThis is the control for the case above: without it, a compactor that emitted all three unconditionally would still pass the presence assertions.",
+    "operation": "CreateScheduleEntry",
+    "method": "POST",
+    "path": "/schedules/{scheduleId}/entries.json",
+    "pathParams": {
+      "scheduleId": 1069479520
+    },
+    "requestBody": {
+      "summary": "Kickoff call",
+      "starts_at": "2026-06-05T06:00:00Z",
+      "ends_at": "2026-06-05T08:30:00Z"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Team Meeting",
+          "description": "<div>Agenda in the doc.</div>",
+          "description_attachments": [],
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "join_url": "https://meet.example.com/team",
+          "highlighted": true,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/schedules/1069479520/entries.json",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Kickoff call",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "url",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "highlighted",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "status",
+        "index": 0
+      }
+    ],
+    "tags": [
+      "schedules",
+      "write"
+    ]
   }
 ]

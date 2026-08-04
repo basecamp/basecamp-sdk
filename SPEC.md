@@ -465,7 +465,7 @@ The three-method surface:
 - `summary` is optional on the request but `@required` on the response — `Schedule::Entry#summary` is `super.presence || "Untitled"`, so a healthy server can never render it blank, and an absent/null/blank `summary` in a 2xx body is a malformed response. Coalescing it to `""` and PUTting that back would blank a real summary on a call that only moved the entry.
 - `all_day` is `@required` on the response (`schedule_entries.all_day` is NOT NULL, default `false`) and it is **not** carved out, so it must be resent. Its guard is the one that cannot be written as a truthiness test: the value it most needs to admit is `false`. Defaulting a missing `all_day` to `false` converts an all-day entry into a midnight-to-midnight timed one.
 - `starts_at`/`ends_at` are `@required` on both sides — `Schedule::Entry` presence-validates both and `Recording` validates the associated recordable on update, so omitting either is a `422` rather than a clear. Their wire value is a bare **date** (`2016-06-01`) for an all-day entry and a full timestamp otherwise, because BC3 renders `starts_at_date_or_time`. `ISO8601Timestamp` is a plain string in this model so both shapes decode; the composites round-trip the value verbatim rather than parsing and re-rendering it.
-- `join_url` and `highlighted` are optional on the response — emitted unconditionally by `api/schedules/entries/_entry.json.jbuilder`, but absent from the reduced `api/schedules/calendar/_entry.json.jbuilder` that `GetUpcomingSchedule` renders through the same `ScheduleEntry` shape.
+- `join_url` and `highlighted` are optional on the response, and as of the `UpcomingScheduleEntry` carve-out they are **under**-modelled rather than correctly modelled. Both are emitted unconditionally by `api/schedules/entries/_entry.json.jbuilder`, which every operation still returning `ScheduleEntry` renders. They were optional because the reduced `api/schedules/calendar/_entry.json.jbuilder` reached the same shape through `GetUpcomingSchedule`; that report now has its own projection, so the reason is retired. Tightening them (`join_url` required-and-nullable, `highlighted` plain required) is a separate contract change across five operations and every inline stub, deliberately not ridden along.
 
 **Recurring entries are unreachable on this route.** `ensure_non_recurring_event` 302-redirects both `show` and `update` to the entry's occurrence, so `ReplaceScheduleEntry` and its composites serve non-recurring entries only; read a recurring entry through `GetScheduleEntryOccurrence`. `time_zone_name`, `recurs_until` and `recurrence_schedule` are deliberately **not modeled** — BC3 forces `time_zone_name` to nil for any entry that is not both recurring and timed, and recurrence absorption is tracked separately.
 
@@ -473,7 +473,7 @@ The three-method surface:
 
 **Race:** update/edit are read-modify-write, not atomic. A concurrent write between the GET and PUT is overwritten — last write wins for the whole representation, window of one round-trip. Use `replaceEntry` to overwrite deliberately.
 
-Conformance: `conformance/tests/schedule_entries_write.json` (`replace-omission-clears`, `replace-clears-carve-outs`, `replace-single-request`, `update-merge`, `update-addresses-carve-outs`, `update-clears-carve-outs`, `edit-clear`, `edit-untouched-carve-outs`, `edit-touched-carve-outs`).
+Conformance: `conformance/tests/schedule_entries_write.json`, 11 cases. Nine cover this surface: `replace-omission-clears`, `replace-clears-carve-outs`, `replace-single-request`, `update-merge`, `update-addresses-carve-outs`, `update-clears-carve-outs`, `edit-clear`, `edit-untouched-carve-outs`, `edit-touched-carve-outs`. The other two, `create-join-link` and `create-omits-unset`, do not: `CreateScheduleEntry` is a plain wire write with no read-back and nothing to preserve, and the pair pins that `url`, `highlighted` and `status` (#641) reach the wire when the caller sets them and stay off it when they are unset — the same absent-versus-zero-value distinction as the carve-outs, one operation earlier. They share the file because they share the fixture's entry shapes, not because create is merge-safe.
 
 ### Known Gaps (informational, not prescriptive)
 
@@ -1052,6 +1052,45 @@ Comparison is case-insensitive.
 ---
 
 ## §10. Type Fidelity
+
+### One Renderer, One Schema `[conformance]`
+
+**Two operations may share a schema only when BC3 renders them through the same
+jbuilder partial.** When one of them renders a *reduced* partial instead, it gets
+its own schema — even when the two shapes overlap almost entirely.
+
+The failure mode is not cosmetic. A `@required` member that the reduced renderer
+omits is a decode error in the strict tiers and a silent zero-fill in the lenient
+ones, so the same response is a thrown `DecodingError` in Swift, a
+`MissingFieldException` in Kotlin, `""`/`false` in Go, and `undefined` behind a
+non-optional type in TypeScript. Relaxing the shared schema to optional is the
+tempting fix and the wrong one: it weakens the contract for every operation that
+really does always send the member, and it hides the next instance.
+
+The worked example is `GetUpcomingSchedule` (#635). It renders
+`app/views/api/schedules/calendar/_entry.json.jbuilder` and `_assignable.json.jbuilder`
+— purpose-built calendar partials that do not render `recordings/_recording` at
+all — while the five other schedule-entry operations render
+`schedules/entries/_entry.json.jbuilder`. Modeling both with `ScheduleEntry` made
+any populated window undecodable in Swift; an empty window, and a call with no
+window (a bodiless BC3 400), were the only shapes that ever worked. The fix is
+the `UpcomingScheduleEntry` / `UpcomingAssignable` / `UpcomingScheduleBucket` /
+`UpcomingSchedulePerson` / `UpcomingAssignableParent` /
+`UpcomingAssignableCompletion` family, named after their owning report the way
+`Draft*`, `MyAssignment*` and `Timeline*` already are.
+
+Two corollaries worth stating, because both were violated here:
+
+- **A reduced projection is entitled to members the full one lacks.** The
+  calendar entry partial emits `recurring`, which no other schedule-entry
+  projection carries, and the calendar assignable partial emits the item text as
+  `content` where the retired schema declared `title`. A reduced schema is not a
+  subset — it is a different schema.
+- **Fixtures must be built from the renderer, not invented.** Every test that
+  covered this endpoint before #635 used a fabricated body — one whose top-level
+  key was `entries`, which BC3 has never sent — so six SDKs shipped the mismatch
+  with tests passing. Conformance cases and `spec/fixtures/` bodies are read out
+  of the partial.
 
 ### Integer Precision `[conformance]`
 
@@ -2006,6 +2045,7 @@ index past the number of recorded requests fails rather than passing vacuously.
 | todolists-read | `todolists_read.json` | §5 Merge-Safe Write Surface (Todolists) — the flat read shape the composites read through |
 | todolists-write | `todolists_write.json` | §5 Merge-Safe Write Surface (Todolists), §18 Hand-Written Composite Methods |
 | todos-write | `todos_write.json` | §5 Merge-Safe Write Surface (Todos), §18 Hand-Written Composite Methods |
+| upcoming-schedule | `upcoming_schedule.json` | §10 Type Fidelity — the reduced calendar projection `GetUpcomingSchedule` renders, distinct from the shared `ScheduleEntry` shape |
 | uploads-download | `uploads_download.json` | §14 Download, §18 Hand-Written Composite Methods |
 
 ### Runner Pattern
@@ -3289,7 +3329,8 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `todolists_read.json` | list-read / group-read / group-list-read (one flat shape decodes for both variants) | §5 (Todolists) |
 | `cards_write.json` | Presence-aware update composite (5 cases: unaddressed fields stay off the wire, verbatim raw path, explicit `due_on` clear as `""`, explicit empty content/assignees) | §5 (Cards), §18 |
-| `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad (9 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched) | §5 (Schedule Entries), §18 |
+| `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad, plus the create-side #641 fields (11 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched, and `url`/`highlighted`/`status` present-when-set vs absent-when-unset on `CreateScheduleEntry`) | §5 (Schedule Entries), §18 |
+| `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 
 ---

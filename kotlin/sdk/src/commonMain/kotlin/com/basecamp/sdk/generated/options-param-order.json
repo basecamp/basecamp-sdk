@@ -27,7 +27,6 @@
   "GetQuestionRemindersOptions": ["page", "maxItems"],
   "GetRecordingTimesheetOptions": ["from", "to", "personId", "maxItems", "page"],
   "GetTimesheetReportOptions": ["from", "to", "personId"],
-  "GetUpcomingScheduleOptions": ["windowStartsOn", "windowEndsOn"],
   "ListAnswersOptions": ["page", "maxItems"],
   "ListCampfireLinesOptions": ["sort", "direction", "maxItems", "page"],
   "ListCampfireUploadsOptions": ["sort", "direction", "maxItems", "page"],

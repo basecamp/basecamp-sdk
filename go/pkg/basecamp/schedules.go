@@ -128,6 +128,34 @@ type CreateScheduleEntryRequest struct {
 	// Subscriptions controls who gets notified and subscribed.
 	// nil: field omitted (server default). &[]int64{}: subscribe nobody. &[]int64{1,2}: those people.
 	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	// URL is the entry's join link — a video-call URL or similar, up to 2500
+	// characters, validated as a URL when present. A scheme-less value is
+	// normalized to https://.
+	//
+	// Spell it URL here and read it back as JoinURL: the response's url is the
+	// entry's own Basecamp API URL, written by a partial that renders before this
+	// field, so BC3 emits the join link under a non-colliding key. Sending
+	// join_url on write is silently dropped by strong parameters and the create
+	// succeeds with no join link.
+	//
+	// nil omits the key. There is no carve-out on create — BC3 builds a fresh
+	// record — so the pointer only distinguishes unset from an explicit empty
+	// string.
+	URL *string `json:"url,omitempty"`
+	// Highlighted highlights the entry on the schedule. Defaults to false.
+	//
+	// Do not send an explicit null: schedule_entries.highlighted is NOT NULL, so
+	// BC3 raises rather than falling back to the default. nil omits the key,
+	// which is what a Go caller gets by leaving this unset.
+	Highlighted *bool `json:"highlighted,omitempty"`
+	// Status is the publication state at creation: "active" (the API default) or
+	// "drafted".
+	//
+	// A top-level parameter rather than one of the entry's attributes: status is
+	// a Recording column, so wrap_parameters leaves it outside the schedule_entry
+	// envelope. On create BC3 accepts "drafted", "active", "archived" or
+	// "trashed" and answers 400 — not 422 — for anything else.
+	Status *string `json:"status,omitempty"`
 	// VisibleToClients sets client visibility at create time (optional, tri-state).
 	// nil omits the field so the server applies its own default visibility rule; a
 	// non-nil value is sent verbatim, and an explicit false reaches the wire (the
@@ -837,11 +865,18 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 	}
 
 	body := generated.CreateScheduleEntryJSONRequestBody{
-		Summary:          req.Summary,
-		StartsAt:         startsAt,
-		EndsAt:           endsAt,
-		Description:      omitzero(req.Description),
-		AllDay:           req.AllDay,
+		Summary:     req.Summary,
+		StartsAt:    startsAt,
+		EndsAt:      endsAt,
+		Description: omitzero(req.Description),
+		AllDay:      req.AllDay,
+		// The join link is `url` on the way in and reads back as `join_url`.
+		// Threading the response's JoinURL into this field is the correct
+		// round-trip; threading its URL would write the entry's API URL into the
+		// join link.
+		Url:              req.URL,
+		Highlighted:      req.Highlighted,
+		Status:           req.Status,
 		Subscriptions:    req.Subscriptions,
 		VisibleToClients: req.VisibleToClients,
 	}

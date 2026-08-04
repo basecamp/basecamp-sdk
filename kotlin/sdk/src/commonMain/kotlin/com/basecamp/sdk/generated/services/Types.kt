@@ -862,13 +862,6 @@ data class GetProgressReportOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
-/** Options for GetUpcomingSchedule. */
-data class GetUpcomingScheduleOptions(
-    val windowStartsOn: String? = null,
-    val windowEndsOn: String? = null
-) {
-}
-
 /** Options for GetAssignedTodos. */
 data class GetAssignedTodosOptions(
     /** Group by "bucket" or "date" */
@@ -923,6 +916,9 @@ data class CreateScheduleEntryBody(
     val participantIds: List<Long>? = null,
     val allDay: Boolean? = null,
     val notify: Boolean? = null,
+    val url: String? = null,
+    val highlighted: Boolean? = null,
+    val status: String? = null,
     val subscriptions: List<Long>? = null,
     val visibleToClients: Boolean? = null
 )

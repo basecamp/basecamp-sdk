@@ -255,6 +255,22 @@ walk(
   "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
 }
 |
+# Fifth-a2 pass: same for the upcoming-schedule reports reduced projection.
+# app/views/api/schedules/calendar/_entry.json.jbuilder renders the identical
+# starts_at_date_or_time / ends_at_date_or_time pair, so an all-day entry in the
+# upcoming report is date-only on the wire too. Not nullable: Schedule::Entry
+# validates the presence of both bounds, so unlike the timeline event data below
+# these are always a real value.
+.components.schemas.UpcomingScheduleEntry.properties.starts_at += {
+  "x-go-type": "types.FlexibleTime",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
+}
+|
+.components.schemas.UpcomingScheduleEntry.properties.ends_at += {
+  "x-go-type": "types.FlexibleTime",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
+}
+|
 # Fifth-b pass: override starts_at/ends_at on TimelineEventData to use
 # types.FlexibleTime. Same all-day date-only wire form as ScheduleEntry: the
 # schedule_entry_* timeline events carry a date ("2006-01-02") when all_day is
@@ -332,6 +348,14 @@ walk(
 .components.schemas.Todo.properties.starts_on += { "nullable": true }
 |
 .components.schemas.Card.properties.due_on += { "nullable": true }
+|
+# Same treatment for the upcoming-schedule report reduced projection. Its
+# calendar partial writes both keys unconditionally for to-dos, cards and steps
+# alike, and Kanban::Card and Step each define starts_on as a literal nil to
+# duck-type Todo — so a null value is the common case here, not the edge one.
+.components.schemas.UpcomingAssignable.properties.due_on += { "nullable": true }
+|
+.components.schemas.UpcomingAssignable.properties.starts_on += { "nullable": true }
 |
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification

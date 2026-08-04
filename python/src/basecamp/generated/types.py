@@ -54,19 +54,6 @@ class AccountSubscription(TypedDict):
     timesheet: NotRequired[bool]
 
 
-class Assignable(TypedDict):
-    app_url: NotRequired[str]
-    assignees: NotRequired[list[Person]]
-    bucket: NotRequired[TodoBucket]
-    due_on: NotRequired[str]
-    id: NotRequired[int]
-    parent: NotRequired[TodoParent]
-    starts_on: NotRequired[str]
-    title: NotRequired[str]
-    type: NotRequired[str]
-    url: NotRequired[str]
-
-
 class BadRequestErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
@@ -574,11 +561,14 @@ class CreateScheduleEntryRequestContent(TypedDict):
     all_day: NotRequired[bool]
     description: NotRequired[str]
     ends_at: str
+    highlighted: NotRequired[bool]
     notify: NotRequired[bool]
     participant_ids: NotRequired[list[int]]
     starts_at: str
+    status: NotRequired[str]
     subscriptions: NotRequired[list[int]]
     summary: str
+    url: NotRequired[str]
     visible_to_clients: NotRequired[bool]
 
 
@@ -961,9 +951,9 @@ class GetPersonProgressResponseContent(TypedDict):
 
 
 class GetUpcomingScheduleResponseContent(TypedDict):
-    assignables: NotRequired[list[Assignable]]
-    recurring_schedule_entry_occurrences: NotRequired[list[ScheduleEntry]]
-    schedule_entries: NotRequired[list[ScheduleEntry]]
+    assignables: list[UpcomingAssignable]
+    recurring_schedule_entry_occurrences: list[UpcomingScheduleEntry]
+    schedule_entries: list[UpcomingScheduleEntry]
 
 
 class GoogleDocument(TypedDict):
@@ -1893,6 +1883,65 @@ class Tool(TypedDict):
 class UnauthorizedErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
+
+
+class UpcomingAssignable(TypedDict):
+    app_url: str
+    assignees: list[UpcomingSchedulePerson]
+    bucket: UpcomingScheduleBucket
+    comments_count: int
+    completed: bool
+    completion: NotRequired[UpcomingAssignableCompletion]
+    completion_url: str
+    content: str
+    due_on: NotRequired[Optional[str]]
+    id: int
+    parent: UpcomingAssignableParent
+    repeating: bool
+    starts_on: NotRequired[Optional[str]]
+    status: str
+    type: str
+    url: str
+    visible_to_clients: bool
+
+
+class UpcomingAssignableCompletion(TypedDict):
+    created_at: str
+    creator: UpcomingSchedulePerson
+
+
+class UpcomingAssignableParent(TypedDict):
+    id: int
+    title: str
+
+
+class UpcomingScheduleBucket(TypedDict):
+    id: int
+    name: str
+
+
+class UpcomingScheduleEntry(TypedDict):
+    all_day: bool
+    app_url: str
+    bucket: UpcomingScheduleBucket
+    comments_count: int
+    creator: UpcomingSchedulePerson
+    ends_at: str
+    id: int
+    participants: list[UpcomingSchedulePerson]
+    recurring: bool
+    starts_at: str
+    status: str
+    summary: str
+    type: str
+    url: str
+    visible_to_clients: bool
+
+
+class UpcomingSchedulePerson(TypedDict):
+    avatar_url: str
+    id: int
+    name: str
 
 
 class UpdateAccountNameRequestContent(TypedDict):

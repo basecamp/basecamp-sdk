@@ -175,6 +175,9 @@ open class SchedulesService(client: AccountClient) : BaseService(client) {
                 body.participantIds?.let { put("participant_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
                 body.allDay?.let { put("all_day", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.notify?.let { put("notify", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.url?.let { put("url", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.highlighted?.let { put("highlighted", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.status?.let { put("status", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.subscriptions?.let { put("subscriptions", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
                 body.visibleToClients?.let { put("visible_to_clients", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)

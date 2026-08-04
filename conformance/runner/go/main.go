@@ -232,6 +232,15 @@ func loadTests(filename string) ([]TestCase, error) {
 // Default account ID for conformance tests
 const testAccountID = "999"
 
+// The date window every GetUpcomingSchedule case is dispatched with. Fixed in
+// the runner rather than read from the case because no mock runner consumes
+// queryParams and no assertion type can pin a query string — every runner
+// records the request path with the query stripped.
+const (
+	upcomingWindowStart = "2026-06-01"
+	upcomingWindowEnd   = "2026-06-30"
+)
+
 // operationResult holds the outcome of an SDK operation call.
 type operationResult struct {
 	err    error
@@ -663,6 +672,32 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todos().Update(ctx, todoID, req)
 		return operationResult{err: err}
 
+	// Threads the three #641 members through the PUBLIC create request, which is
+	// where they were missing: the spec, the generated client and five other
+	// SDKs all carried them while basecamp.CreateScheduleEntryRequest did not,
+	// and every gate looked at the generated layer.
+	case "CreateScheduleEntry":
+		scheduleID := getInt64Param(tc.PathParams, "scheduleId")
+		w := scheduleEntryWriteFrom(tc.RequestBody)
+		req := &basecamp.CreateScheduleEntryRequest{
+			Summary:     deref(w.summary),
+			StartsAt:    deref(w.startsAt),
+			EndsAt:      deref(w.endsAt),
+			Description: deref(w.description),
+			AllDay:      w.allDay,
+			URL:         w.url,
+			Highlighted: w.highlighted,
+			Status:      w.status,
+		}
+		if w.participantIDs != nil {
+			req.ParticipantIDs = *w.participantIDs
+		}
+		if w.notify != nil {
+			req.Notify = *w.notify
+		}
+		_, err := account.Schedules().CreateEntry(ctx, scheduleID, req)
+		return operationResult{err: err}
+
 	case "ReplaceScheduleEntry":
 		// The raw wire method: one verbatim PUT, no read-before-write.
 		// Presence-bearing, so only the keys the fixture carries reach the wire
@@ -1004,6 +1039,48 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 				"truncated":  result.Meta.Truncated,
 			},
 		}
+
+	// The window is fixed here rather than read from the case: no mock runner
+	// consumes queryParams, and no assertion type can pin a query string. Both
+	// bounds are required, so the call cannot be made without them.
+	//
+	// The result is a flat summary of the DECODED envelope. Go resolves a
+	// responseBody path as a top-level key only, so a nested assertion would not
+	// be portable; and every value below is read back through the generated
+	// reduced types, so a decode that dropped a member fails the case.
+	case "GetUpcomingSchedule":
+		result, err := account.Reports().UpcomingSchedule(ctx, upcomingWindowStart, upcomingWindowEnd)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		if result == nil {
+			return operationResult{err: fmt.Errorf("UpcomingSchedule returned no result")}
+		}
+		summary := map[string]interface{}{
+			"schedule_entries_count":      len(result.ScheduleEntries),
+			"recurring_occurrences_count": len(result.RecurringScheduleEntryOccurrences),
+			"assignables_count":           len(result.Assignables),
+		}
+		if len(result.ScheduleEntries) > 0 {
+			entry := result.ScheduleEntries[0]
+			summary["entry_summary"] = entry.Summary
+			summary["entry_recurring"] = entry.Recurring
+			summary["entry_bucket_name"] = entry.Bucket.Name
+		}
+		if len(result.RecurringScheduleEntryOccurrences) > 0 {
+			occurrence := result.RecurringScheduleEntryOccurrences[0]
+			summary["occurrence_recurring"] = occurrence.Recurring
+			summary["occurrence_all_day"] = occurrence.AllDay
+			summary["occurrence_starts_at"] = occurrence.StartsAt.Format("2006-01-02")
+		}
+		if len(result.Assignables) > 0 {
+			assignable := result.Assignables[0]
+			summary["assignable_content"] = assignable.Content
+			summary["assignable_type"] = assignable.Type
+			summary["assignable_parent_title"] = assignable.Parent.Title
+			summary["assignable_completion_url"] = assignable.CompletionUrl
+		}
+		return operationResult{result: summary}
 
 	case "GetProjectTimesheet":
 		projectID := getInt64Param(tc.PathParams, "projectId")
@@ -1786,6 +1863,7 @@ type scheduleEntryWrite struct {
 	endsAt         *string
 	description    *string
 	url            *string
+	status         *string
 	allDay         *bool
 	notify         *bool
 	highlighted    *bool
@@ -1822,6 +1900,7 @@ func scheduleEntryWriteFrom(body map[string]interface{}) scheduleEntryWrite {
 		endsAt:      str("ends_at"),
 		description: str("description"),
 		url:         str("url"),
+		status:      str("status"),
 		allDay:      flag("all_day"),
 		notify:      flag("notify"),
 		highlighted: flag("highlighted"),
@@ -1868,4 +1947,15 @@ func getStringSliceParam(params map[string]interface{}, key string) []string {
 		}
 	}
 	return nil
+}
+
+// deref returns the pointed-to value, or the zero value for nil. The create
+// request takes plain strings where replace takes pointers, so the shared
+// presence-bearing extraction has to be flattened for it.
+func deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
 }

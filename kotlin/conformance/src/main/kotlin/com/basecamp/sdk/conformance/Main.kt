@@ -21,6 +21,44 @@ private const val TEST_ACCOUNT_ID = "999"
 /** Tests where the Kotlin runner's operation dispatcher has no implementation yet. */
 private val KOTLIN_SKIPS: Map<String, String> = emptyMap()
 
+/**
+ * The date window every GetUpcomingSchedule case is dispatched with. Fixed in
+ * the runner because no mock runner consumes queryParams and no assertion type
+ * can pin a query string — every runner records the path with the query
+ * stripped.
+ */
+private const val UPCOMING_WINDOW_START = "2026-06-01"
+private const val UPCOMING_WINDOW_END = "2026-06-30"
+
+/**
+ * Flattens the upcoming-schedule envelope into top-level scalars.
+ *
+ * Go and TypeScript resolve a responseBody path as a top-level key only, so the
+ * assertions read scalars rather than walk into the arrays. Every value here
+ * comes off the decoded model, which is what makes the case a decode test.
+ */
+private fun summarizeUpcoming(envelope: UpcomingScheduleResult): JsonElement = buildJsonObject {
+    put("schedule_entries_count", envelope.scheduleEntries.size)
+    put("recurring_occurrences_count", envelope.recurringScheduleEntryOccurrences.size)
+    put("assignables_count", envelope.assignables.size)
+    envelope.scheduleEntries.firstOrNull()?.let { entry ->
+        put("entry_summary", entry.summary)
+        put("entry_recurring", entry.recurring)
+        put("entry_bucket_name", entry.bucket.name)
+    }
+    envelope.recurringScheduleEntryOccurrences.firstOrNull()?.let { occurrence ->
+        put("occurrence_recurring", occurrence.recurring)
+        put("occurrence_all_day", occurrence.allDay)
+        put("occurrence_starts_at", occurrence.startsAt)
+    }
+    envelope.assignables.firstOrNull()?.let { assignable ->
+        put("assignable_content", assignable.content)
+        put("assignable_type", assignable.type)
+        put("assignable_parent_title", assignable.parent.title)
+        put("assignable_completion_url", assignable.completionUrl)
+    }
+}
+
 fun main() {
     val testsDir = File("../conformance/tests")
 
@@ -748,6 +786,28 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         // highlighted are the operation's preservedOnOmission carve-out, so an
         // absent key must not become [] / "" / false on the wire — that would
         // clear the value BC3 is holding — while an explicit empty must be sent.
+        // `url`, `highlighted` and `status` are the three #641 members. The
+        // write spelling is `url`; `join_url` is read-only and BC3 drops it from
+        // a write body without complaining.
+        "CreateScheduleEntry" -> {
+            val scheduleId = tc.pathParams.longParam("scheduleId")
+            val rb = tc.requestBody
+            account.schedules.createEntry(scheduleId, CreateScheduleEntryBody(
+                summary = tc.requestBody.stringParam("summary"),
+                startsAt = tc.requestBody.stringParam("starts_at"),
+                endsAt = tc.requestBody.stringParam("ends_at"),
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                participantIds = rb?.get("participant_ids")?.jsonArray
+                    ?.map { element -> element.jsonPrimitive.long },
+                allDay = rb?.get("all_day")?.jsonPrimitive?.booleanOrNull,
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull,
+                url = rb?.get("url")?.jsonPrimitive?.contentOrNull,
+                highlighted = rb?.get("highlighted")?.jsonPrimitive?.booleanOrNull,
+                status = rb?.get("status")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
         "ReplaceScheduleEntry" -> {
             val entryId = tc.pathParams.longParam("entryId")
             val rb = tc.requestBody
@@ -1162,6 +1222,21 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             val personId = tc.pathParams.longParam("personId")
             account.reports.personProgress(personId)
             DispatchResult()
+        }
+
+        // The window is fixed here rather than read from the case: no mock
+        // runner consumes queryParams, and no assertion type can pin a query
+        // string. Both bounds are required, so the call cannot be made without
+        // them.
+        //
+        // Until #635 this operation returned a bare JsonElement, so Kotlin
+        // enforced no contract on it at all — a case here would have passed
+        // against any body. It now decodes into UpcomingScheduleResult, whose
+        // members are @Serializable data classes, so a missing required key
+        // raises MissingFieldException and fails the case.
+        "GetUpcomingSchedule" -> {
+            val upcoming = account.reports.upcoming(UPCOMING_WINDOW_START, UPCOMING_WINDOW_END)
+            DispatchResult(resultJson = summarizeUpcoming(upcoming))
         }
 
         "GetProjectTimesheet" -> {

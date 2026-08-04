@@ -17,8 +17,11 @@ repositories {
 
 dependencies {
     implementation("software.amazon.smithy:smithy-openapi:1.72.1")
-    testImplementation("org.junit.jupiter:junit-jupiter:6.1.2")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // JUnit 5.x, not 6.x: 6.x publishes only a JVM-17 variant, and this project
+    // targets 11, so Gradle refuses to resolve it and `./gradlew test` fails at
+    // compileTestJava — which is how three mapper test classes sat unrunnable.
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.4")
 }
 
 tasks.test {
