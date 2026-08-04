@@ -1,0 +1,88 @@
+SPEC.md
+  s_ae792ed0be3006::t_2b689a03e93ed8 308-332,337-339
+  s_ae792ed0be3006::t_fde823ccef21d9 1971
+  s_ae792ed0be3006::t_08eca352ebf2e5 1916
+  s_ae792ed0be3006::t_5678ab8e6cf48f 1930-1932
+  s_ae792ed0be3006::t_d45edf30844779 340
+spec/api-provenance.json
+  s_ae792ed0be3006::t_9ad117512369f7 4
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/CardsService.kt
+  s_ae792ed0be3006::t_71a1c4e7abec6c 8,11-15,17-19,25,27,29-31,34-37,45-51,56
+go/pkg/basecamp/cards.go
+  s_ae792ed0be3006::t_7a44ffca4280e1 504-506,508-512,514-518
+  s_ae792ed0be3006::t_9c9bb6539b0e37 1195-1203,1205
+  s_ae792ed0be3006::t_13e904996bfb3f 523,525-532
+  s_ae792ed0be3006::t_1e178a0c63f0f6 563-565,567
+  s_ae792ed0be3006::t_b9b2bd685cc169 561-562,566,568,575
+  s_ae792ed0be3006::t_8709f2b1e6a7ba 253-259,261-262,264-268
+ruby/lib/basecamp/services/cards_extensions.rb
+  s_ae792ed0be3006::t_fb7ab3607ec6b5 5,8-14,16-21,23-27,29,31,33-35,38-39,41-43,54-55,57-59
+  s_ae792ed0be3006::t_1babd5189ebc72 60
+swift/Tests/BasecampTests/CardsServiceExtensionsTests.swift
+  s_ae792ed0be3006::t_10986158c6d478 6,50-51,81-86,89-95,97-99,101-103,106-113,117,121-146,199-219,230-231,233-241,245-250,252-255,257-259,263-268,273,290
+  s_ae792ed0be3006::t_38ed834407a8fe 7-12,49,87-88,96,100,104-105,114-116,118-120,166,172-175,178-180,222,228,232,242-244,256,260-262,269-272,274-276,280-289
+  s_ae792ed0be3006::t_2386b4cadb863d 291
+ruby/lib/basecamp.rb
+  s_ae792ed0be3006::t_b20f8e8f39719d 14
+typescript/src/index.ts
+  s_ae792ed0be3006::t_5f5282a87d2dda 189-192
+python/src/basecamp/services/cards.py
+  s_ae792ed0be3006::t_c4e1ab8dd40b22 1-20,32,34,38-41,46,61,69,84
+  s_ae792ed0be3006::t_9bc863f2a2cbca 35
+typescript/src/services/cards-extensions.ts
+  s_ae792ed0be3006::t_86dd1593f91160 9,22
+  s_ae792ed0be3006::t_e1b885046d32c3 10-11,21,38,41-45,47-49,51-53,59-60,62-65,68,74,93-98
+  s_ae792ed0be3006::t_01a036c7b7d700 46
+ruby/test/basecamp/services/cards_service_test.rb
+  s_ae792ed0be3006::t_27f48000bc30e9 150-153,157,160,162-165,167
+  s_ae792ed0be3006::t_68dee963b3c159 92,102-103,116
+  s_ae792ed0be3006::t_8af1cf95a33acf 119,121-136,140-142,144,146-147,154-155,159,161,168-169
+  s_ae792ed0be3006::t_bc2adcc9af546a 73-76,83,85,89,98-101,105,108-109,111,113-115
+  s_ae792ed0be3006::t_a515106b5b82a6 170-175
+swift/Sources/Basecamp/CardsServiceExtensions.swift
+  s_ae792ed0be3006::t_3185906ebabd9e 23,53-56,64
+  s_ae792ed0be3006::t_ef1740c06cbe93 3,6-10,12-16,20-21,31-33,45-52,57-58
+  s_ae792ed0be3006::t_68d455b7b50a84 63
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/CardsServiceTest.kt
+  s_ae792ed0be3006::t_276908a7003010 21-23,25-28,70-72,74,78,109,111-112,114-117,119-122,126,130-131,142-143,146-147,152-153,159,165,187,189-190,192-194
+  s_ae792ed0be3006::t_e45391310e4c8c 9-12,17-18,24,32-34,45,69,73,75-77,79-85,89-91,94,105-106,132-137,140-141,144,148-151,154-158,160-161,167-168,172,183
+  s_ae792ed0be3006::t_0c8edb8056bb9b 107,162-164
+typescript/scripts/generate-services.ts
+  s_ae792ed0be3006::t_5c9379a12f45b1 347-352
+typescript/tests/services/cards.test.ts
+  s_ae792ed0be3006::t_d6299f6842a3d1 128-137,141,143,145,148-154,158-171,174-175,177,179-183,187-188,190,192-193,197-202,205-206,208-210,214-215,218-230,232-233,235,237-239,242-243,247-259
+  s_ae792ed0be3006::t_1640a4536fe527 113-114
+  s_ae792ed0be3006::t_317e6abd78c19c 261-273,275-277
+ruby/scripts/generate-services.rb
+  s_ae792ed0be3006::t_fffb465b71f3c2 152-154
+go/pkg/basecamp/cards_test.go
+  s_ae792ed0be3006::t_571886688ab06c 676
+  s_ae792ed0be3006::t_a5e78d4f126603 880-941
+  s_ae792ed0be3006::t_3caa32bf3c263a 1072,1074-1079
+  s_ae792ed0be3006::t_adf649a8d7fd54 1103,1116-1119,1121-1122,1124,1127-1131,1134-1154,1156-1158
+  s_ae792ed0be3006::t_84d2def2a0dd92 1162,1168-1169,1183-1250
+python/tests/services/test_cards.py
+  s_ae792ed0be3006::t_cc606b6fbb4a83 164,171,174-177,179-180,182-183,185-191,196-198,200-202,204,206,210,217,221-222,225,227-228,231-236,238,241,244,246,248,252,254
+  s_ae792ed0be3006::t_b488615cea2f1f 1,3-11,59,65-66,68,75,81,83-84,89,127,133-134,136,141,166-168,172,192-195,209,211,215-216,220,224,226,229-230,237,239-240,243,245,247,249-251,253,255-257
+  s_ae792ed0be3006::t_b635df314ee84a 82,85-86
+  s_ae792ed0be3006::t_32ea7b31e7d414 108
+  s_ae792ed0be3006::t_0222f5d81c9f2f 148-150
+conformance/tests/cards_write.json
+  s_ae792ed0be3006::t_78e7ae0c5276e7 3-4,169,174,180,183,185,190,195,209,403-404,577,579,595,770,772,787,962,964
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "bf4371534e880b20b579319f1d9ebe7e086a5369",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
