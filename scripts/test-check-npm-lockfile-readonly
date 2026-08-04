@@ -168,6 +168,19 @@ expect_reject "an option this parser cannot classify" \
   "$(make_fixture opt_unknown 'npm --some-future-option ci')" \
   'unrecognised npm option'
 
+# `fix` is a positional action and may sit behind options. The lookahead used to
+# skip option NAMES but not their values, so it stopped on `high` and never saw
+# the `fix` that writes the lockfile.
+expect_reject "npm audit --audit-level high fix (value hides the action)" \
+  "$(make_fixture audit_level 'npm audit --audit-level high fix')" \
+  'npm audit fix'
+
+expect_reject "npm audit --json fix" \
+  "$(make_fixture audit_json 'npm audit --json fix')" 'npm audit fix'
+
+expect_accept "npm audit --audit-level high (no action)" \
+  "$(make_fixture ok_audit_level 'npm audit --audit-level high')"
+
 # The shell strips quoting before resolving the command, so these run exactly as
 # the bare spellings do — but the quotes stay attached through `read -a` and the
 # token stops looking like npm.

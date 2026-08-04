@@ -83,7 +83,7 @@ readonly ALLOWED_SUBCOMMANDS=" ci run run-script test start stop restart exec au
 #   * VALUELESS_FLAGS      consumes nothing
 # Anything else is an option this parser cannot classify, and is reported rather
 # than guessed at. Extending either list is a one-line change.
-readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfig --globalconfig --cache --script-shell --shell --omit --include --tag --otp --before --node-options --user-agent --workspaces --depth --searchopts --init-module "
+readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfig --globalconfig --cache --script-shell --shell --omit --include --tag --otp --before --node-options --user-agent --workspaces --depth --searchopts --init-module --audit-level "
 
 readonly VALUELESS_FLAGS=" --silent -s --quiet --verbose -d --json --long -l --parseable -p --global -g --force -f --dry-run --ignore-scripts --no-save --save --save-dev --save-exact --no-audit --no-fund --no-package-lock --package-lock-only --prefer-offline --prefer-online --offline --if-present --include-workspace-root --legacy-peer-deps --strict-peer-deps --no-progress --no-color --yes -y "
 
@@ -113,6 +113,39 @@ report() {
 # under scripts/ cost ~234s. Callers pre-filter to lines containing "npm", and
 # this runs in-process, which puts the whole gate back under a second.
 declare -a REASONS=()
+
+# Advance past option tokens starting at index $1, using the same three-case
+# classification everywhere. Sets OPT_IDX to the first index that is not an
+# option, and OPT_UNKNOWN to an option it cannot classify (OPT_IDX is then
+# meaningless). Stops at a shell operator, leaving OPT_IDX on it.
+#
+# Factored out because the two call sites drifted: the subcommand scan consumed
+# `--key value` pairs while the `npm audit fix` lookahead did not, so
+# `npm audit --audit-level high fix` stopped on `high` and never saw the `fix`
+# that writes the lockfile.
+OPT_IDX=0
+OPT_UNKNOWN=""
+skip_options() {
+  local k=$1
+  OPT_UNKNOWN=""
+  while ((k < n)); do
+    local t=${words[k]}
+    [[ $t == ';' || $t == '&' || $t == '|' || $t == '(' || $t == ')' \
+       || $t == '<' || $t == '>' || $t == '`' ]] && break
+    [[ $t != -* ]] && break
+    if [[ $t == *=* ]]; then
+      ((k += 1))                          # --key=value: one token
+    elif [[ $VALUE_FLAGS == *" $t "* ]]; then
+      ((k += 2))                          # --key value: two
+    elif [[ $VALUELESS_FLAGS == *" $t "* ]]; then
+      ((k += 1))
+    else
+      OPT_UNKNOWN=$t
+      break
+    fi
+  done
+  OPT_IDX=$k
+}
 
 scan_line() {
   local line=$1
@@ -164,35 +197,26 @@ scan_line() {
     # so prose such as "node/npm is required" is not read as an invocation.
     if [[ $w == npm || $w == npm@* \
        || $w == /*/npm || $w == ./*npm || $w == ../*npm || $w == '~'/*npm || $w == '$'*/npm ]]; then
-      local j=$((i + 1)) sub=""
-      while ((j < n)); do
+      local j sub=""
+      skip_options $((i + 1))
+      j=$OPT_IDX
+      if [[ -n $OPT_UNKNOWN ]]; then
+        sub="!$OPT_UNKNOWN"
+      elif ((j < n)); then
         local t=${words[j]}
-        # A shell operator ends this command before any subcommand appeared.
-        # Padding above split `&&` and `||` into single characters, so match
-        # those rather than the two-character spellings.
-        [[ $t == ';' || $t == '&' || $t == '|' || $t == '(' || $t == ')' \
-           || $t == '<' || $t == '>' || $t == '`' ]] && break
-        if [[ $t == -* ]]; then
-          if [[ $t == *=* ]]; then
-            ((j += 1))                          # --key=value: one token
-          elif [[ $VALUE_FLAGS == *" $t "* ]]; then
-            ((j += 2))                          # --key value: two
-          elif [[ $VALUELESS_FLAGS == *" $t "* ]]; then
-            ((j += 1))
-          else
-            sub="!$t"                           # unclassifiable option
-            break
-          fi
-          continue
+        # An operator here means the command ended before naming a subcommand.
+        if [[ $t == ';' || $t == '&' || $t == '|' || $t == '(' || $t == ')' \
+              || $t == '<' || $t == '>' || $t == '`' ]]; then
+          sub=""
+        else
+          # Keep the leading word only: these lines are scanned as text, so a
+          # subcommand can arrive wearing the quote that closed the string it sat
+          # in (`npm ci'`, `npm test"`). Anything with no leading word — a path
+          # left behind by an unrecognised value-flag, say — is not a subcommand,
+          # and an npm invocation whose subcommand we cannot read is reported.
+          [[ $t =~ ^[a-zA-Z][a-zA-Z-]* ]] && sub=${BASH_REMATCH[0]} || sub="?$t"
         fi
-        # Keep the leading word only: these lines are scanned as text, so a
-        # subcommand can arrive wearing the quote that closed the string it sat
-        # in (`npm ci'`, `npm test"`). Anything with no leading word — a path
-        # left behind by an unrecognised value-flag, say — is not a subcommand,
-        # and an npm invocation whose subcommand we cannot read is reported.
-        [[ $t =~ ^[a-zA-Z][a-zA-Z-]* ]] && sub=${BASH_REMATCH[0]} || sub="?$t"
-        break
-      done
+      fi
 
       if [[ -z $sub ]]; then
         # Ran off the end of the line, or hit an operator, without reading a
@@ -206,11 +230,15 @@ scan_line() {
       elif [[ $ALLOWED_SUBCOMMANDS != *" $sub "* ]]; then
         REASONS+=("\`npm $sub\` is not on the permitted-invocation allowlist")
       elif [[ $sub == audit ]]; then
-        # `npm audit fix` writes the lockfile; plain `npm audit` reports.
-        local k=$((j + 1))
-        while ((k < n)) && [[ ${words[k]} == -* ]]; do ((k += 1)); done
-        ((k < n)) && [[ ${words[k]} =~ ^fix ]] && \
+        # `npm audit fix` writes the lockfile; plain `npm audit` reports. The
+        # action is positional and may sit behind options, including
+        # `--audit-level high`, so the value has to be consumed to reach it.
+        skip_options $((j + 1))
+        if [[ -n $OPT_UNKNOWN ]]; then
+          REASONS+=("unrecognised npm option \`$OPT_UNKNOWN\` after \`audit\` — cannot tell whether the action is \`fix\`")
+        elif ((OPT_IDX < n)) && [[ ${words[OPT_IDX]} =~ ^fix ]]; then
           REASONS+=("\`npm audit fix\` rewrites the lockfile")
+        fi
       fi
     fi
     ((i += 1))
