@@ -144,10 +144,13 @@ type QuestionAnswer struct {
 
 // QuestionReminder represents a pending check-in reminder for the current user.
 type QuestionReminder struct {
-	GroupOn    string    `json:"group_on,omitempty"`
-	Question   Question  `json:"question"`
-	RemindAt   time.Time `json:"remind_at"`
-	ReminderID *int64    `json:"reminder_id,omitempty"`
+	GroupOn  string   `json:"group_on,omitempty"`
+	Question Question `json:"question"`
+	// RemindAt is optional — nil means the API did not send it. A value type
+	// here would fabricate 0001-01-01T00:00:00Z for an absent timestamp, which
+	// no consumer can tell from a real one.
+	RemindAt   *time.Time `json:"remind_at,omitempty"`
+	ReminderID *int64     `json:"reminder_id,omitempty"`
 }
 
 // QuestionNotificationSettings represents the current user's notification
@@ -1239,7 +1242,7 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 // questionReminderFromGenerated converts a generated QuestionReminder to our clean type.
 func questionReminderFromGenerated(gr generated.QuestionReminder) QuestionReminder {
 	r := QuestionReminder{
-		RemindAt:   deref(gr.RemindAt),
+		RemindAt:   gr.RemindAt,
 		ReminderID: gr.ReminderId,
 	}
 
