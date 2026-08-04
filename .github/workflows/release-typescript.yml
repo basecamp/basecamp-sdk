@@ -143,10 +143,12 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           NPM_TAG: ${{ steps.npm-tag.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           if [[ "$EVENT_NAME" == "push" ]]; then
             npm publish --access public --tag "$NPM_TAG" --provenance
           else
             echo "::notice::Dry run mode - not actually publishing"
+            echo "Would publish: @37signals/basecamp@${VERSION} under npm tag ${NPM_TAG}"
             npm publish --access public --tag "$NPM_TAG" --dry-run
           fi

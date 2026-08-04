@@ -137,6 +137,9 @@ jobs:
 
       - name: Dry-run build
         if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           ./gradlew :basecamp-sdk:build
           echo "::notice::Dry run mode - not actually publishing"
+          echo "Would publish: com.basecamp:basecamp-sdk:${VERSION} to GitHub Packages"
