@@ -1,0 +1,46 @@
+spec/smithy-bare-arrays/src/test/java/com/basecamp/smithy/BareResponseExampleMapperTest.java
+  s_ae792ed0be3006::t_4a8633160a9645 1-231
+spec/smithy-bare-arrays/src/test/java/com/basecamp/smithy/BareObjectResponseMapperTest.java
+  s_ae792ed0be3006::t_21067bb6c09bed 36-41,43,53,56-62,64,74-75
+spec/smithy-bare-arrays/src/main/java/com/basecamp/smithy/BareArrayExtension.java
+  s_ae792ed0be3006::t_4884a5b4d8bc99 17-23,29-33
+spec/overlays/examples.smithy
+  s_ae792ed0be3006::t_f01208a515257e 49-61,67-76,82-91,97-106
+  s_ae792ed0be3006::t_c1df94877a84a9 123-129,135-138,144-147,155-162,167-171
+spec/smithy-bare-arrays/src/main/java/com/basecamp/smithy/BareResponseExampleMapper.java
+  s_ae792ed0be3006::t_7311565b46b748 1-239
+spec/smithy-bare-arrays/src/test/java/com/basecamp/smithy/BareArrayResponseMapperTest.java
+  s_ae792ed0be3006::t_01c16d8cd0ba91 39-43,45,55
+Makefile
+  s_ae792ed0be3006::t_a942cce146d8f7 14,26-36,1158
+openapi.json
+  s_ae792ed0be3006::t_00b90f407a5e6e 12756-12787,12792-12823,12828-12859,13762-13774,13779-13787,13792-13801,17636-17650,17655-17660,21790-21806,21808-21822,21829-21845,21847-21856,21858-21861
+python/tests/services/test_reports_service.py
+  s_ae792ed0be3006::t_7dfda51588ca7b 30-32,86,105
+ruby/lib/basecamp/generated/metadata.json
+  s_ae792ed0be3006::t_25ce099d66ccf5 4
+ruby/lib/basecamp/generated/types.rb
+  s_ae792ed0be3006::t_549af16decb9b8 4
+spec/smithy-bare-arrays/build.gradle.kts
+  s_ae792ed0be3006::t_3ea4e8c3ea3e6c 20-24
+typescript/src/generated/metadata.ts
+  s_ae792ed0be3006::t_ecb481e76710bc 40
+typescript/src/generated/openapi-stripped.json
+  s_ae792ed0be3006::t_b08aa8a9824d81 11367-11398,11403-11434,11439-11470,12268-12280,12285-12293,12298-12307,15727-15741,15746-15751,19434-19450,19452-19466,19473-19489,19491-19500,19502-19505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "44007ffc57aa04f0503c66ced63c662a659c2c8c",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
