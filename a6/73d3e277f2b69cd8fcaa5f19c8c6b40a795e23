@@ -1,0 +1,27 @@
+Makefile
+  s_ae792ed0be3006::t_a33cef294fecb8 1215-1218,1224-1228
+scripts/assert-lockfiles-unchanged
+  s_ae792ed0be3006::t_ade72298c5fbf5 48-59
+scripts/check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_15fb5c49b05d27 114-120,298
+scripts/test-assert-lockfiles-unchanged
+  s_ae792ed0be3006::t_53544aba0c92b2 32-35,125-162
+scripts/test-check-npm-lockfile-readonly
+  s_ae792ed0be3006::t_88e2627b3b988e 279-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a673d3e277f2b69cd8fcaa5f19c8c6b40a795e23",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
