@@ -267,13 +267,18 @@ module Basecamp
       #   sets the key but the value may be null — so absent or null is
       #   genuinely empty.
       #
-      # The carve-outs are seeded for *reading* only, so a block can inspect
-      # them before deciding; nothing here puts them on the wire. +url+ is
+      # The carve-outs are seeded for *reading*, so a block can inspect the
+      # current join link, highlight and participants before deciding; seeding
+      # alone puts nothing on the wire. They are guarded all the same, because
+      # "reaches the wire only when addressed" is not "never reaches the wire":
+      # dirty tracking is by setter invocation, so <tt>entry.url = entry.url</tt>
+      # is an address like any other and sends whatever the seed held — and a
+      # block that merely inspects a corrupt seed decides on garbage. +url+ is
       # seeded from +join_url+, never from +url+ (see the module docs).
-      # +highlighted+ is taken verbatim: it is optional, absent from the reduced
-      # calendar partial +GetUpcomingSchedule+ renders, and — unlike every other
-      # member — cannot reach the wire unless the caller assigns it, so there is
-      # nothing to refuse a malformed value on behalf of.
+      # +highlighted+ takes the *optional* boolean guard: the member is absent
+      # from the reduced calendar partial +GetUpcomingSchedule+ renders, so a
+      # missing one is genuinely "not highlighted" rather than malformed — but a
+      # <tt>"yes"</tt> or a +1+ is refused, not coerced.
       def fields_from_entry(entry)
         body = MergeSafe.require_hash(
           entry, record: RECORD, operation: "GetScheduleEntry", escape: ESCAPE_HATCH
