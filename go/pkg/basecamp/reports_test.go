@@ -1,9 +1,13 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -239,6 +243,54 @@ func TestAssignedTodosOptions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.opts != nil && tt.opts.GroupBy != tt.groupBy {
 				t.Errorf("expected GroupBy %q, got %q", tt.groupBy, tt.opts.GroupBy)
+			}
+		})
+	}
+}
+
+// Both window bounds are required, and the local guard has to say so itself.
+// types.ParseDate("") returns a zero Date and a NIL error by design, so parsing
+// alone accepts exactly the input this operation must reject: an empty bound
+// would sail past the check and come back as the server-side 400 the guard
+// exists to prevent. Both missing-bound cases are covered because a guard that
+// only checks the first argument is the usual way this half-works.
+func TestUpcomingSchedule_RejectsMissingWindowBounds(t *testing.T) {
+	cases := []struct {
+		name      string
+		startDate string
+		endDate   string
+		wantIn    string
+	}{
+		{"both empty", "", "", "window_starts_on"},
+		{"start empty", "", "2026-06-30", "window_starts_on"},
+		{"end empty", "2026-06-01", "", "window_ends_on"},
+		{"start malformed", "june", "2026-06-30", "window_starts_on"},
+		{"end malformed", "2026-06-01", "2026", "window_ends_on"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"schedule_entries":[],"recurring_schedule_entry_occurrences":[],"assignables":[]}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			cfg := DefaultConfig()
+			cfg.BaseURL = srv.URL
+			client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+			_, err := client.ForAccount("999").Reports().UpcomingSchedule(context.Background(), tc.startDate, tc.endDate)
+			if err == nil {
+				t.Fatal("expected a local usage error, got none")
+			}
+			if called {
+				t.Error("the request reached the server; the local guard should have stopped it")
+			}
+			if !strings.Contains(err.Error(), tc.wantIn) {
+				t.Errorf("expected the error to name %q, got %q", tc.wantIn, err.Error())
 			}
 		})
 	}

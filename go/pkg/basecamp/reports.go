@@ -228,12 +228,25 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 
 	// Both bounds are required, so refuse an empty or malformed one locally
 	// rather than spending a round-trip to be told 400.
+	//
+	// The empty check is separate and load-bearing: types.ParseDate("") returns a
+	// zero Date and a nil error by design, so parsing alone accepts exactly the
+	// input this operation most needs to reject. A missing bound would have
+	// reached BC3 and come back as the 400 the local guard promises to prevent.
+	if startDate == "" {
+		err = ErrUsage("window_starts_on is required")
+		return nil, err
+	}
 	if _, parseErr := types.ParseDate(startDate); parseErr != nil {
-		err = ErrUsage("window_starts_on is required and must be in YYYY-MM-DD format")
+		err = ErrUsage("window_starts_on must be in YYYY-MM-DD format")
+		return nil, err
+	}
+	if endDate == "" {
+		err = ErrUsage("window_ends_on is required")
 		return nil, err
 	}
 	if _, parseErr := types.ParseDate(endDate); parseErr != nil {
-		err = ErrUsage("window_ends_on is required and must be in YYYY-MM-DD format")
+		err = ErrUsage("window_ends_on must be in YYYY-MM-DD format")
 		return nil, err
 	}
 	params := &generated.GetUpcomingScheduleParams{
