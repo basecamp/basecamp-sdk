@@ -1722,11 +1722,18 @@ replacement — see [Known gaps](#there-is-no-raw-wire-migration-path);
 - **`documents.update` and `schedules.updateEntry` are merge-safe composites** —
   see Silent. For schedule entries, the two-tier rule is: full-state fields
   (`summary`, `startsAt`, `endsAt`, `description`, `allDay`) are resent from the
-  read-back when you pass nil, so nil means untouched and `""` means clear;
-  carve-outs (`participantIds`, `url`, `highlighted`, `notify`) are omitted
-  entirely when nil so bc3 preserves them, and `[]`/`""`/`false` explicitly
-  clears. Recurring entries are out of reach on this route — bc3 302-redirects
-  both show and update for them.
+  read-back when you pass nil, so nil means untouched — but what an explicit
+  value does is per field, not a uniform clear. `description` is the only one
+  `""` clears; `""` on `summary` is accepted and reads back `"Untitled"`;
+  `startsAt`/`endsAt` cannot be cleared at all (bc3
+  `validates_presence_of :starts_at, :ends_at`) and take a bare date or a
+  timestamp to match `allDay`, which is a `Bool?` — `*bool` in Go, `boolean`
+  in TypeScript — so `""` does not typecheck for it in any SDK. Carve-outs
+  (`participantIds`, `url`, `highlighted`) are omitted entirely when nil so bc3
+  preserves them, and `[]`, `""` and `false` clear them respectively; the
+  fourth, `notify`, is a send directive rather than state — omitted when nil,
+  nothing to clear. Recurring entries are out of reach on this route — bc3
+  302-redirects both show and update for them.
 - **`downloadURL`'s first hop now makes three attempts (#563)**, retrying network
   errors plus `{429, 502, 503, 504}` — never 500. Every attempt is
   authenticated; the signed second hop is still exempt. There is no public
