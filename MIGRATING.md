@@ -16,8 +16,12 @@ what wrong behaviour you get if you ignore one. This file is that half.
 Breaking across all six SDKs — Go, TypeScript, Python, Ruby, Kotlin, Swift.
 
 **Read [Silent breaks](#silent-breaks) first.** A large share of this release
-gives the consumer no signal at all: no compile error, no exception, no decoder
-failure. The call keeps working and does something different.
+changes what your existing code *does* without changing whether it compiles or
+raises. Against a live server there is no compile error, no exception and no
+decoder failure — the call keeps working and does something different. The
+counts below are of breaks that are silent in that sense; see
+[what "silent" means](#silent-breaks) for the precise test, and note that a
+suite pinning request paths will catch some of them.
 
 | SDK | breaking changes | of which silent |
 |---|---:|---:|
@@ -28,16 +32,40 @@ failure. The call keeps working and does something different.
 | [Ruby](#ruby) | 16 | 3 |
 | [Kotlin](#kotlin) | 14 | 3 |
 
+35 silent across the six. These are counts at `51d0d86cf` and move if anything
+under [Not in this release](#not-in-this-release) lands before the tag.
+
+#637 does **not** add a row to either column, despite landing after the first
+draft of this table. It made `Todolist.color` and `.comments_app_url` required —
+but neither member existed on `Todolist` at v0.12.0 in any SDK. Both arrived
+earlier in this same release with #628, so from a v0.12.0 consumer's position
+there is no member that changed from optional to required; there are two new
+members that happen to be required from the start. It reshapes the #628 break
+rather than adding one, and that is where this guide documents it.
+
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
-body. Base `v0.12.0` = `7e2925d25`.
+body.
+
+> **As of `51d0d86cf`.** Base `v0.12.0` = `7e2925d25`. Every count in this
+> document is a measurement at that commit, not a constant. If you are reading
+> this from a later tag, re-run the derivations below — they are cheap, and a
+> hand-incremented count is how these go wrong. Changes still in flight when
+> this was written are listed under
+> [Not in this release](#not-in-this-release), each with the specific lines
+> here that need re-deriving once it lands.
 
 ## What shipped
 
-**Operation inventory: 238 → 241.** Re-derive it yourself rather than trusting
-the number:
+**Operation inventory: 238 → 241.** Derive both ends rather than trusting
+either number:
 
 ```bash
+# at the tip
 python3 -c "import json;d=json.load(open('openapi.json'));\
+print(sum(1 for p,v in d['paths'].items() for m in v if m in ('get','post','put','patch','delete')))"
+
+# at the previous release, without checking it out
+git show v0.12.0:openapi.json | python3 -c "import json,sys;d=json.load(sys.stdin);\
 print(sum(1 for p,v in d['paths'].items() for m in v if m in ('get','post','put','patch','delete')))"
 ```
 
@@ -136,16 +164,30 @@ provider is unaffected. Full detail in [Retry and transport](#retry-and-transpor
 
 # Silent breaks
 
-A break is listed here if **nothing tells you**: no compiler error, no
-exception, no decoder failure, no test that fails for the right reason. The
-call keeps working and does something different.
+**What "silent" means here.** A break is listed in this section if, running
+your existing code against a live Basecamp server, nothing tells you: it does
+not fail to compile, does not raise, does not fail to decode, and does not
+change the shape of what you get back. The call keeps working and does
+something different.
+
+Silence is a property of the **source and the runtime**, not of your test
+suite. Several of these breaks *will* fail loudly in a suite that pins request
+paths — a URL correction stops matching a `WebMock`/`MSW`/`respx` stub, and a
+strict double raises on the unregistered request. That is the good case, and it
+is called out where it applies. It is not a contradiction: the break is silent
+in production, and your mocks are the one thing that might catch it before you
+get there. A suite that stubs loosely, or matches on method and host only,
+catches nothing.
 
 ## Hits every SDK
 
 ### 1. `page` now selects one page instead of starting a walk (#617)
 
-At v0.12.0, seventeen already-paginated operations treated `page` as a
-**starting offset**: the SDK put `page=N` on the first request and then
+**Applies to TypeScript, Python, Ruby, Kotlin and Swift. Go changed
+differently — [see below](#go-is-the-exception).**
+
+At v0.12.0 in those five, seventeen already-paginated operations treated `page`
+as a **starting offset**: the SDK put `page=N` on the first request and then
 followed `Link: rel="next"` to the end of the collection. Now a positive `page`
 means one request and no link-following, and `meta.truncated` reports whether a
 further page existed.
@@ -166,6 +208,38 @@ Fix: drop `page` entirely to get the old walk (cap it with
 `maxItems`/`max_items`), or drive the page loop yourself and stop when
 `meta.truncated` is false. Absent, `0` and negative all still walk the
 collection.
+
+#### Go is the exception
+
+**Do not apply the fix above to Go.** At v0.12.0 a positive `Page` in Go
+already meant *one request* — the wrapper returned before `followPagination`
+whenever `Page > 0`. Dropping `Page` in Go does not restore old behaviour; it
+converts a bounded, single-request call into a full traversal of the
+collection.
+
+What changed for Go is narrower, and splits in two:
+
+- **Where the page number was already honoured** — `Bookmarks().List`,
+  `Drafts().List`, the `Everything*` readers — v0.12.0 sent `page=N` and
+  returned that page. **Nothing about the request changed.** `Meta.Truncated`
+  is now populated where it used to be left false.
+- **Where the page number was silently ignored** — the options structs whose
+  v0.12.0 doc read *"Page, if non-zero, disables pagination and returns only
+  the first page. NOTE: The page number itself is not yet honored due to
+  OpenAPI client limitations."* Those built their params without `Page` at
+  all, so they sent no `page` and returned **page 1's rows** under any
+  positive `Page`. They now send `page=N` and return page N. Fourteen services
+  carried that doc at v0.12.0: `cards`, `checkins`, `comments`, `events`,
+  `forwards`, `messages`, `people`, `projects`, `recordings`, `schedules`,
+  `timeline`, `todolists`, `todos`, `vaults`.
+
+`Gauges().List` and `ListNeedles` are in neither group — they took no options
+and no `page` at all at v0.12.0, so gaining both is purely additive.
+
+So Go's silent break is **wrong page returned**, not **walk collapsed**. A Go
+job that passed `Page: 3` and quietly processed page 1 for months now processes
+page 3 — which is what it always asked for, and a different set of rows than it
+has been handling. Audit for code that compensated for the old behaviour.
 
 #561 brought `page` to the rest of the list surface (18 → 56 parameter
 structs). That half is purely additive.
@@ -479,12 +553,34 @@ forwarded a truthy non-string one.
 Go has the most invasive changes in this release — eleven are silent, and two of
 those panic at runtime on code the compiler accepts.
 
-Before anything else: **the SDK exports no pointer helper.** Declare your own
-once:
+The scale, so you can size the work before starting: `pkg/basecamp`'s exported
+surface now carries **300 pointer-typed fields** — `*string` ×81, `*bool` ×23,
+`*time.Time` ×16, 14 pointer-to-slice, and the rest struct pointers. Derive it
+yourself with:
+
+```bash
+rg -N '^\s{1,2}[A-Z]\w*\s+\*[\w.\[\]]+\s' go/pkg/basecamp/*.go \
+  | rg -v '_test\.go' | wc -l
+```
+
+Both halves of that round trip have an exported helper as of #643 — you do not
+need to hand-roll one:
 
 ```go
-func ptr[T any](v T) *T { return &v }
+basecamp.Ptr(v)   // func Ptr[T any](v T) *T   — set an optional field
+basecamp.Deref(p) // func Deref[T any](p *T) T — read one, zero value when nil
 ```
+
+`Ptr` never collapses `false` or `""` to nil: sending an explicit zero is the
+whole reason these fields are pointers. `T` is inferred from the argument, so a
+field whose type is not an untyped literal's default needs the conversion
+written out — `basecamp.Ptr(int32(5))` for an `*int32` field, not
+`basecamp.Ptr(5)`.
+
+`Deref` is total, which makes it the wrong tool where absence carries meaning:
+collapsing "the server omitted this" into `""` is only safe when your code
+cannot tell the two apart. Compare against nil where it can. See
+[Optional Fields](go/README.md#optional-fields) in the Go README.
 
 ## Silent
 
@@ -516,9 +612,13 @@ Grep the five field names and audit every `.IsZero()`, `.Format(`, `.Before(`,
 verbatim:
 
 ```go
-t := time.Time{}
-if n.ReadAt != nil { t = *n.ReadAt }
+t := basecamp.Deref(n.ReadAt)   // time.Time{} when the field is absent
 ```
+
+That is exactly the old behaviour, because the old value field was the zero
+time when absent. Only reach for it where absence and a genuine zero are
+interchangeable to your code — `if n.ReadAt == nil` is the honest test when
+they are not.
 
 Two consequences past the panic: absence used to read as
 `0001-01-01T00:00:00Z` and now reads as nil, and `json.Marshal` of a
@@ -669,8 +769,10 @@ Use `Edit` or `Replace`.
 
 ### Raw escape-hatch 400/422 now report `CodeValidation` (#549)
 
+If you already handle errors from the raw `Client`/`AccountClient`
+`Get`/`Post`/`Put`/`Delete` methods, the code moved:
+
 ```go
-resp, err := ac.Post(ctx, "/999/buckets/1/todolists/2/todos.json", body)
 if apiErr, ok := err.(*basecamp.Error); ok {
     switch apiErr.Code {
     case basecamp.CodeAPI:        // a 422 used to land here
@@ -679,9 +781,13 @@ if apiErr, ok := err.(*basecamp.Error); ok {
 }
 ```
 
-Only `Client`/`AccountClient` `Get`/`Post`/`Put`/`Delete` changed; typed service
-methods already returned `CodeValidation` for both statuses. Match on
-`apiErr.HTTPStatus` if you need the old grouping.
+Only those four changed; typed service methods already returned
+`CodeValidation` for both statuses. Match on `apiErr.HTTPStatus` if you need
+the old grouping.
+
+This entry documents a change to an existing surface. It is **not** a
+suggestion to reach for the raw client — see
+[no raw-wire migrations](#there-is-no-raw-wire-migration-path).
 
 ### `pkg/generated` `Parse*Response` went lenient on 4xx/5xx (#541)
 
@@ -737,31 +843,42 @@ type-specific service. See [Known gaps](#recordingsget-has-no-generic-replacemen
 
 ### `Forwards().CreateReply` and `CreateForwardReplyRequest` removed (#619)
 
-No SDK replacement. If you need it, use the escape hatch against the
-bucket-scoped route and accept that it is untested upstream:
-
-```go
-ac.Post(ctx, fmt.Sprintf("/buckets/%d/inbox_forwards/%d/replies.json", bucketID, forwardID), body)
-```
+There is no supported replacement — see
+[Known gaps](#there-is-no-raw-wire-migration-path). Reads are unaffected:
+`Forwards().ListReplies` and `Forwards().GetReply` remain.
 
 ### `UpdateScheduleEntryRequest` fields became pointers (#632)
 
 ```go
 _, err := ac.Schedules().UpdateEntry(ctx, entryID, &basecamp.UpdateScheduleEntryRequest{
-    Summary:        ptr("Standup"),
-    StartsAt:       ptr("2026-01-01T09:00:00Z"),
-    EndsAt:         ptr("2026-01-01T09:15:00Z"),
-    ParticipantIDs: ptr([]int64{7, 9}),
-    Notify:         ptr(true),
+    Summary:        basecamp.Ptr("Standup"),
+    StartsAt:       basecamp.Ptr("2026-01-01T09:00:00Z"),
+    EndsAt:         basecamp.Ptr("2026-01-01T09:15:00Z"),
+    ParticipantIDs: basecamp.Ptr([]int64{7, 9}),
+    Notify:         basecamp.Ptr(true),
 })
 ```
 
 The pointers are load-bearing: nil means "leave the fetched value alone", a
-pointer to the zero value means "set it to empty" — `Description: ptr("")` clears
-it. Two new fields: `URL` (the join link) and `Highlighted`. `AllDay` was already
-`*bool`. **`StartsAt`/`EndsAt` are no longer RFC3339-validated client-side** — a
-malformed timestamp now reaches the server instead of failing locally, so bc3's
-bare-date all-day rendering round-trips.
+pointer to the zero value means "set it to empty" —
+`Description: basecamp.Ptr("")` clears it. Two new fields: `URL` (the join link)
+and `Highlighted`. `AllDay` was already `*bool`. **`StartsAt`/`EndsAt` are no
+longer RFC3339-validated client-side** — a malformed timestamp now reaches the
+server instead of failing locally, so bc3's bare-date all-day rendering
+round-trips.
+
+**The sharpest one to get wrong is `ParticipantIDs *[]int64`,** where nil and
+empty are different instructions rather than degrees of the same one:
+
+```go
+ParticipantIDs: nil,                        // leave the participants alone
+ParticipantIDs: basecamp.Ptr([]int64{}),    // remove EVERY participant
+ParticipantIDs: basecamp.Ptr([]int64{7,9}), // set the participants to 7 and 9
+```
+
+A `[]int64` you build by filtering is `basecamp.Ptr(ids)` either way — so a
+filter that matches nothing clears the entry's participant list instead of
+leaving it untouched. Guard on `len(ids) > 0` if you meant "leave it alone".
 
 ### `Gauges().List` and `ListNeedles` gained options and a result struct (#617)
 
@@ -790,7 +907,7 @@ There is deliberately no `TodolistGroups().Update` or `.Edit`.
 
 ### `UpdateGaugeNeedleRequest.Description` became `*string` (#560)
 
-Tri-state: nil leaves it untouched, `ptr("")` clears it. At v0.12.0 an empty
+Tri-state: nil leaves it untouched, `basecamp.Ptr("")` clears it. At v0.12.0 an empty
 string was indistinguishable from unset and could not clear.
 
 ### `pkg/generated` only
@@ -820,6 +937,16 @@ string was indistinguishable from unset and could not clear.
   changed type** to `*FieldValidationErrorResponseContent` (#549). These are the
   only type-changed fields that are not a plain pointer flip, so a mechanical
   migration misses them.
+- **Two of the eight new `Todolist` members are required, and they are typed
+  asymmetrically (#628, #637).** `Color` is `*string` with the json tag
+  `"color"` and **no** `omitempty`, because the field is required but nullable —
+  so marshalling a `Todolist` always emits the key, `"color": null` included.
+  `CommentsAppUrl` is a plain `string`, not a pointer, because it is required
+  and never null on the wire; it is the one field in this release that does not
+  follow #560's blanket pointerization, and dereferencing it does not compile.
+  Neither member existed at v0.12.0, so for a Go consumer this is additive —
+  it only changes what `json.Marshal` emits, which the eight-new-fields note
+  above already covers.
 - **The `TodolistOrGroup` union and `generated.TodolistGroup` are gone (#628).**
   `resp.JSON200` is a `Todolist` directly. In `pkg/basecamp`, `TodolistGroup` is
   now a true alias: `type TodolistGroup = Todolist`. All 24 old fields survive
@@ -927,7 +1054,27 @@ Drop the optional handling; a description-less list reads back as `""`. In
 `Todolist` literals, `description:` moves up into the required block (the emitter
 sorts required members first) and loses its default. Add `"description"` to any
 `URLProtocol` stub or cassette or decoding throws. Three new optional members are
-additive: `color`, `commentsAppUrl`, `groupPositionUrl`.
+additive: `groupPositionUrl`.
+
+### `Todolist.color` and `.commentsAppUrl` are new *and* required (#637)
+
+```swift
+public let color: String?           // required, but nullable
+public let commentsAppUrl: String   // required and non-optional
+```
+
+Neither member existed on `Todolist` at v0.12.0 — both arrived with #628 earlier
+in this release, and #637 landed them in the required block rather than the
+defaulted one. So this is not an optional member turning required; it is two new
+members every `Todolist(...)` literal must pass from the start. The wire is
+unchanged: bc3 has always emitted both keys, which is why they are required.
+
+The decoder distinction matters for fixtures. `color` is required **and
+nullable**, so the generator emits `try container.decode(String?.self, forKey:
+.color)` — an explicit `"color": null` decodes fine, and only a **missing** key
+throws. `commentsAppUrl` is required and non-nullable
+(`decode(String.self, forKey:)`), so it rejects both null and absence. Fixtures
+rendering `"color": null` need no change; fixtures omitting either key do.
 
 ### `UpdateTodolistOrGroupRequest.name` is required (#574)
 
@@ -972,7 +1119,8 @@ Removed: `recordings.get(recordingId:)` (no replacement — see
 [Known gaps](#recordingsget-has-no-generic-replacement)),
 `todos.trash(todoId:)` (→ `recordings.archive(recordingId:)` to preserve
 behaviour, `recordings.trash(recordingId:)` to actually trash), and
-`forwards.createReply` with `CreateForwardReplyRequest` (no replacement;
+`forwards.createReply` with `CreateForwardReplyRequest` (no supported
+replacement — see [Known gaps](#there-is-no-raw-wire-migration-path);
 `listReplies`/`getReply` are unaffected).
 
 ## Behavioural
@@ -1047,7 +1195,8 @@ const recordings = await client.recordings.list("Todo", { bucket: [projectId] })
 ```
 
 Drop the `CreateReplyForwardRequest` import — tsc suggests `CreateUploadRequest`,
-which is unrelated noise.
+which is unrelated noise. `forwards.createReply()` has no supported replacement;
+see [Known gaps](#there-is-no-raw-wire-migration-path).
 
 ### One flat `Todolist` replaces `Todolist`, `TodolistGroup` and the `TodolistOrGroup` envelope (#628)
 
@@ -1076,8 +1225,19 @@ If you *build* group objects, the flat `Todolist` is a strict superset of the ol
 ### `Todolist.description` is now required (#628)
 
 Construction sites only (TS2741). Readers are unaffected. Also new and optional:
-`group_position_url`, `color` (`string | null` — `null` is the ordinary case for
-a group, so `list.color.toUpperCase()` throws), `comments_app_url`.
+`group_position_url`.
+
+### `Todolist.color` and `.comments_app_url` are new *and* required (#637)
+
+Construction sites only, again — TS2741 for each missing member, on top of the
+`description` one above. Both members are new in this release (#628) and
+required from the start (#637), so nothing you wrote against v0.12.0 referenced
+them. Readers gain certainty rather than losing it: `comments_app_url` is
+`string`, and `color` is `string | null`, so it is always **present** but may be
+null. `null` is the
+ordinary case for a group, so `list.color.toUpperCase()` still throws — narrow
+with `list.color?.toUpperCase()` or an explicit null check. The wire is
+unchanged; bc3 has always emitted both keys.
 
 ### `UpdateEntryScheduleRequest` → two types (#632)
 
@@ -1185,8 +1345,9 @@ No generic recording read remains. Use `account.todos.get(todo_id=…)` /
 
 ### `forwards.create_reply()` removed, with `CreateForwardReplyRequestContent` (#619)
 
-No replacement. Reads are unaffected: `forwards.list_replies` and
-`forwards.get_reply` remain.
+No supported replacement — see
+[Known gaps](#there-is-no-raw-wire-migration-path). Reads are unaffected:
+`forwards.list_replies` and `forwards.get_reply` remain.
 
 ### `TodolistGroup` is gone (#628)
 
@@ -1203,6 +1364,12 @@ Discriminate structurally, never on `type` — it reads `"Todolist"` for a group
 and a list alike. `description` moved from `NotRequired[str]` to required `str`;
 the `.get(..., "")` guard is dead. `description_attachments` did **not** change —
 it was already required.
+
+Two more members are required, but unlike `description` they are also new:
+`color` (`str | None`) and `comments_app_url` (`str`) did not exist on the
+v0.12.0 `Todolist`, arriving with #628 and landed as required by #637. Note the
+asymmetry — `color` is always **present** but may be `None`, so `item["color"]`
+is safe while `item["color"].upper()` is not.
 
 Everything else about this is silent in Python: `basecamp/generated/types.py` is
 imported by nothing in the SDK and every generated service method is annotated
@@ -1332,12 +1499,18 @@ so a call site behind a rarely-taken branch stays broken until it runs.
 `account.todos.trash` → `account.recordings.archive(recording_id:)` to preserve
 behaviour, or `recordings.trash(recording_id:)` to actually trash.
 `account.recordings.get` → the type-specific getter or `recordings.list(type:)`.
-`account.forwards.create_reply` → nothing; `list_replies` is unaffected.
+`account.forwards.create_reply` → nothing; there is no supported replacement
+(see [Known gaps](#there-is-no-raw-wire-migration-path)) and `list_replies` is
+unaffected.
 
 ### `Basecamp::Types::TodolistGroup` no longer exists (#628)
 
 `NameError` at first reference. Use `Basecamp::Types::Todolist`;
-`Todolist.required_fields` gained `:description`. Two parallel changes bite
+`Todolist.required_fields` gained `:description`, plus `:color` and
+`:comments_app_url` — the latter two being members #628 added and #637 landed as
+required, neither present at v0.12.0. `#to_h` changed with them: it used to end
+in `.compact`, dropping every nil member, and now keeps `color` even when nil,
+so a serialized todolist carries `"color" => nil` rather than omitting the key. Two parallel changes bite
 identical code: `ScheduleEntry.required_fields` gained `:all_day`, `:ends_at`,
 `:starts_at`, and `ScheduleEntry` gained `#highlighted` and `#join_url`. Blast
 radius is narrow — **no SDK service method returns a `Types::` object**; the
@@ -1480,6 +1653,14 @@ Re-record group payloads with `"description"` (a string, `""` for empty) and
 usually need nothing — v0.12.0's own `spec/fixtures/todolists/get.json` already
 carried `"description": ""`.
 
+**Two further members are required**, `color` and `commentsAppUrl`, both
+declared without a default (#628 added them, #637 made them required before the
+release shipped — neither existed at v0.12.0). They differ in nullability, and
+the difference is exactly what your fixtures hit: `color` is `String?`, so an explicit
+`"color": null` is accepted and only a *missing* key raises
+`MissingFieldException`; `commentsAppUrl` is `String`, so it rejects null and
+absence alike. A fixture already rendering `"color": null` is fine as-is.
+
 A missing key gives `MissingFieldException`; an explicit `"description": null`
 gives `JsonDecodingException`, because `description` is required and **not**
 nullable. The client's `coerceInputValues = true` rescues neither. The throw
@@ -1571,8 +1752,9 @@ not apply to it.
 [Known gaps](#recordingsget-has-no-generic-replacement)), `todos.trash`
 (→ `recordings.trash(todoId)`, which is what the name promised;
 `recordings.archive` is what the old call actually did), `forwards.createReply`
-(no substitute; `CreateForwardReplyBody` is gone from `Types.kt` with no compat
-shim).
+(no supported substitute — see
+[Known gaps](#there-is-no-raw-wire-migration-path); `CreateForwardReplyBody` is
+gone from `Types.kt` with no compat shim).
 
 ### Untyped callable references to 22 list methods are now ambiguous (#617)
 
@@ -1712,20 +1894,55 @@ either, because it 404'd.
 
 This is a real gap and it is recorded as one, not papered over.
 
+## There is no raw-wire migration path
+
+`CreateForwardReply` was removed with nothing behind it. The flat route it
+declared was never drawn; a bucket-scoped create does exist upstream, but it is
+undocumented and has no upstream coverage, so it is not modelled here.
+
+**Do not reach for the raw client to reinstate it.** Hand-building a path and
+calling `Client`/`AccountClient` `Get`/`Post`/`Put`/`Delete` — or the equivalent
+in any other SDK — gives up everything the generated operation owns: the path
+and verb, the observability hooks, the retry and idempotency configuration,
+response decoding, and the error mapping described throughout this guide. It
+also pins your code to a route nothing in this repository tests, so it can break
+without any signal from a release. The repository holds its own contributors to
+the same rule ([AGENTS.md](AGENTS.md), "Never Do These" §4 and §5: never
+construct API paths manually, never bypass the SDK).
+
+If you need this operation, the fix is to model it: open an issue, or add the
+bucket-scoped route to `spec/basecamp.smithy` and regenerate. That is a change
+to the SDK, not a workaround inside your application.
+
+The same applies to any other removal in this release. Where a supported
+replacement exists — `recordings.archive` for `todos.trash`, the type-specific
+getters for `recordings.get` — it is named in the per-SDK section. Where none
+exists, that is stated plainly and no substitute is implied.
+
 ## Binary compatibility on the JVM and in Swift was not assessed
 
 Everything in this guide is about **source** compatibility. Nobody measured
 whether a binary compiled against v0.12.0 links against v0.13.0.
 
-For Kotlin the answer is already policy, and it has not changed:
-[`kotlin/README.md`](kotlin/README.md) states that the 0.x series guarantees
-source compatibility only, that Kotlin default-argument and data-class synthetics
-make JVM binary compatibility infeasible to promise, and that you should
-recompile against each release. This release gives that policy plenty of work:
-data-class `copy` and `componentN` signatures changed, and `ScheduleEntry` moved
-three constructor parameters into positions 13–15. **Recompile. Do not drop a
-v0.13.0 jar under a binary built against v0.12.0** — you can hit
-`NoSuchMethodError` at runtime where the source would have compiled clean.
+For Kotlin, [`kotlin/README.md`](kotlin/README.md) has always disclaimed binary
+compatibility — default-argument and data-class synthetics make it infeasible to
+promise. This release gives that disclaimer plenty of work: data-class `copy` and
+`componentN` signatures changed, and `ScheduleEntry` moved three constructor
+parameters into positions 13–15. **Recompile. Do not drop a v0.13.0 jar under a
+binary built against v0.12.0** — you can hit `NoSuchMethodError` at runtime where
+the source would have compiled clean.
+
+That README's *source*-compatibility wording did change in this release, because
+v0.13.0 broke it. It previously promised that 0.x public APIs evolve append-only,
+so code compiles unchanged across minor versions, with one carve-out for
+endpoints Basecamp withdraws. This release violates that repeatedly and
+deliberately — `TodolistGroup` and `UpdateScheduleEntryBody` removed,
+`Todolist.description` and three `ScheduleEntry` members made required, a leading
+`bucketId` added to nine operations — and none of it is a withdrawn endpoint.
+Each is a correction to a model that described bc3 wrongly. The policy now says
+what the project actually does: append-only by default, but a minor version may
+break source compatibility to fix the model, and when it does the breaks are
+documented here and the release carries the `breaking` label.
 
 There is deliberately no binary-compatibility-validator `.api` dump in `kotlin/`;
 adding one would imply a guarantee the project does not make.
@@ -1744,25 +1961,38 @@ oversight, and it should be stated rather than assumed.
 
 # Not in this release
 
-Three changes were in flight when v0.13.0 was cut. If you are reading this
-against a later release, check whether they landed.
+Work still in flight at `51d0d86cf`. If you are reading this from the released
+tag, these either landed — in which case the counts above were re-derived before
+the tag and this list shrank — or they did not.
 
-- **#637 — `Todolist.color` and `Todolist.comments_app_url` become required.**
-  Open at the time of writing. When it lands it is source-breaking for Go,
-  Kotlin, Swift, TypeScript, Python and Ruby, but **the wire does not change**:
-  bc3 has always emitted both keys. `color` is modelled required **and
-  nullable**, so an explicit `"color": null` stays valid everywhere — Swift
-  emits `decode(String?.self, forKey:)` and Kotlin types it `String?` with no
-  default, and both accept null and reject only *absence*. Existing fixtures
-  that render `"color": null` need no change; fixtures that omit the key do.
-  `comments_app_url` is required and non-nullable, and additionally loses its
-  optionality in the typed SDKs.
+**For whoever cuts the tag:** each entry names the specific derivations it
+invalidates, so the final pass is arithmetic rather than rewriting.
+
 - **#629 — bare field-map error bodies**, widening the shapes `field_errors`
-  recognises and adding six cloud-file and Google-document operations. Held as a
-  draft at the time of writing; if it lands before the tag, the operation
-  inventory is no longer 241 and the number above must be re-derived.
-- **#635 / #641 — the `GetUpcomingSchedule` projection and the
-  `CreateScheduleEntry` `url`/`highlighted` asymmetry.** Both are open issues
-  with no implementation pushed. #641 in particular describes an asymmetry
-  introduced on main by #632 — `url` and `highlighted` are accepted on replace
-  but not on create — which v0.13.0 would be the first release to ship.
+  recognises and adding six cloud-file and Google-document operations. Open and
+  mergeable at the time of writing.
+  *If it lands:* the operation inventory is **247, not 241** — re-run both
+  derivations under [What shipped](#what-shipped), and revise the added/removed
+  breakdown, since these are six additions with no removals or renames. The
+  error-shape entries in [silent break #3](#3-error-message-text-changed-on-more-error-shapes-than-you-would-expect-541-549)
+  and each SDK's `field_errors` section widen but do not reverse.
+- **#635 / #641 — the `GetUpcomingSchedule` projection, and the
+  `CreateScheduleEntry` write-side gap.** Open issues.
+  #635: `GetUpcomingSchedule` declares the full `ScheduleEntry` schema, but bc3
+  renders it through a reduced partial that omits members this release marks
+  required — so a strict decode either fails or zero-fills in the three SDKs
+  with real decoders (Go, Kotlin, Swift). It predates #632.
+  #641: `ReplaceScheduleEntry` models `url` and `highlighted`;
+  `CreateScheduleEntry` models neither, so a caller who wants a video-call entry
+  with its join link needs three requests through the non-atomic read-modify-write
+  window. Its proposed scope is **three** members — `url`, `highlighted` and
+  `status` — of which the first two are the asymmetry #632 introduced and
+  v0.13.0 would be first to ship, while `status` is a pre-existing gap already
+  modelled on `CreateMessage` and `CreateDocument`.
+  *If either lands:* both touch `ScheduleEntry`, so re-check the Swift and
+  Kotlin required-member lists and the Go/Swift/Kotlin per-SDK counts.
+
+Two things that were on this list are now **in** the release, folded into the
+sections above rather than left here: **#637** (`Todolist.color` and
+`comments_app_url` required — merged as `0fd25079c`) and **#643** (`basecamp.Ptr`
+and `basecamp.Deref` — merged as `51d0d86cf`).

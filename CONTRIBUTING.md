@@ -263,10 +263,11 @@ All SDKs are generated from a single Smithy specification. When adding support f
      they cannot say which changes a consumer must react to, what wrong
      behaviour they get if they don't, or which breaks are silent. That is what
      `MIGRATING.md` carries, and it is the only place it lives — there is no
-     CHANGELOG and the GitHub Release body is built entirely by
-     `.github/workflows/release-github.yml` (an Installation block plus
-     `generate_release_notes`). A breaking release should link its
-     `MIGRATING.md` section from the release description by hand.
+     CHANGELOG, and the GitHub Release body is built entirely by
+     `.github/workflows/release-github.yml`. That workflow links `MIGRATING.md`
+     from every release automatically, so nothing has to be remembered at tag
+     time; what does have to happen is that the section exists before the tag
+     is pushed.
 
 ## Spec-shape lints
 
