@@ -219,6 +219,20 @@ echo two
 npm update')" \
   'npm update'
 
+# `sh -c '...'` hands its argument to a shell, so the quoted text is a program.
+# That is the one place an unbalanced quote must still be normalised — the
+# balance rule alone declined `'npm` and certified the writer.
+expect_reject "sh -c 'npm install ...'" \
+  "$(make_fixture wrap_sh "sh -c 'npm install --package-lock-only'")" \
+  'npm install'
+
+expect_reject 'bash -c "npm install"' \
+  "$(make_fixture wrap_bash 'true' 'bash -c "npm install --prefer-offline"')" \
+  'npm install'
+
+expect_reject "/bin/sh -c with a writer" \
+  "$(make_fixture wrap_path "/bin/sh -c 'npm dedupe'")" 'npm dedupe'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \
@@ -249,6 +263,12 @@ expect_accept "a subcommand wearing a closing quote" \
 # wrap a whole token) reached inside quoted strings and read their contents as
 # code — this exact line from scripts/check-runner-test-reachability was reported
 # as an npm invocation with no parsable subcommand.
+expect_accept "sh -c with a permitted command" \
+  "$(make_fixture wrap_ok "sh -c 'npm ci --prefer-offline'")"
+
+expect_accept "wrapper context ends at the operator before a quoted regex" \
+  "$(make_fixture wrap_scope 'true' "sh -c 'npm ci' && grep -Eq 'npm (run )?test' f")"
+
 expect_accept "an npm mention inside a quoted regex" \
   "$(make_fixture ok_regex 'true' "grep -Eq 'npm (run )?test' <<<\"\$ts_recipe\"")"
 

@@ -87,6 +87,12 @@ readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfi
 
 readonly VALUELESS_FLAGS=" --silent -s --quiet --verbose -d --json --long -l --parseable -p --global -g --force -f --dry-run --ignore-scripts --no-save --save --save-dev --save-exact --no-audit --no-fund --no-package-lock --package-lock-only --prefer-offline --prefer-online --offline --if-present --include-workspace-root --legacy-peer-deps --strict-peer-deps --no-progress --no-color --yes -y "
 
+# Commands that take code as an argument. `sh -c 'npm install'` runs npm, and
+# the quoted text is a program, not data — the one place where an unbalanced
+# quote must still be stripped. Anything after `-c` on such a command is scanned
+# as code until the next operator.
+readonly SHELL_WRAPPERS=" sh bash zsh dash ksh env "
+
 # Which lines are worth handing to the parser. Deliberately looser than `npm`:
 # the shell removes quoting before resolving a command, so `n"p"m install` runs
 # npm while carrying no literal `npm` substring. Allowing a couple of non-letters
@@ -170,8 +176,18 @@ scan_line() {
   read -r -a words <<<"$line"
 
   local i=0 n=${#words[@]}
+  local shell_seen=0 code_mode=0
   while ((i < n)); do
     local w=${words[i]}
+
+    # An operator ends the command, and with it any shell-wrapper context.
+    if [[ $w == ';' || $w == '&' || $w == '|' || $w == '(' || $w == ')' \
+       || $w == '<' || $w == '>' || $w == '`' ]]; then
+      shell_seen=0
+      code_mode=0
+      ((i += 1))
+      continue
+    fi
 
     # The shell strips quoting before it resolves the command, so `"npm" install`
     # and even `n"p"m install` run exactly as the bare spelling does, while
@@ -187,9 +203,19 @@ scan_line() {
     w=${w%\\}
     dq=${w//[^\"]/}
     sq=${w//[^\']/}
-    if (( ${#dq} % 2 == 0 && ${#sq} % 2 == 0 )); then
+    if ((code_mode)) || (( ${#dq} % 2 == 0 && ${#sq} % 2 == 0 )); then
       w=${w//\"/}
       w=${w//\'/}
+    fi
+
+    # `sh -c '...'` hands its argument to a shell, so from the `-c` onward the
+    # tokens are code and their quoting is syntax rather than content. Without
+    # this, `sh -c 'npm install'` left `'npm` unbalanced and deliberately
+    # unnormalised — the gate certified a command that rewrites the lockfile.
+    if ((shell_seen)) && [[ $w == -*c ]]; then
+      code_mode=1
+    elif [[ $SHELL_WRAPPERS == *" ${w##*/} "* ]]; then
+      shell_seen=1
     fi
 
     # `npm`, an npx-style `npm@11` pin, or a *path* ending in /npm. The path
