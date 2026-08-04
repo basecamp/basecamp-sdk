@@ -1,0 +1,19 @@
+.github/codeql/codeql-config.yml
+  s_4516f1f9b5799b::t_52de19442b9c04 36-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "129b55decc924a8bcfca4a52398b06065dc38fbe",
+  "prompts": {},
+  "sessions": {
+    "s_4516f1f9b5799b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a027c47f-e649-438a-af73-77b5db5ff3bd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
