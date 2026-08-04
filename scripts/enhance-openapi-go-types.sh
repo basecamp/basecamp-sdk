@@ -244,7 +244,8 @@ walk(
 # Fifth pass: override starts_at/ends_at on ScheduleEntry response to use types.FlexibleTime
 # The API returns date-only strings ("2006-01-02") for all-day schedule entries,
 # which time.Time cannot parse. FlexibleTime handles RFC3339, RFC3339Nano, and date-only.
-# Only the response schema needs this; request schemas keep time.Time since we always send RFC3339.
+# The request schemas are handled by the fifth-a1 pass below — NOT by keeping
+# time.Time, which was the premise this comment used to state and #634 disproved.
 .components.schemas.ScheduleEntry.properties.starts_at += {
   "x-go-type": "types.FlexibleTime",
   "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
@@ -254,6 +255,41 @@ walk(
   "x-go-type": "types.FlexibleTime",
   "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
 }
+|
+# Fifth-a1 pass: strip the time.Time the first pass put on starts_at/ends_at in
+# the two schedule-entry REQUEST bodies, leaving them the plain `string` the
+# OpenAPI document already declares.
+#
+# The bounds of an all-day entry are a bare date ("2026-06-01"), and BC3 takes
+# that form on the way in: base_schedule_entry_params in
+# Schedules::Entries::BaseController permits :starts_at and :ends_at for create
+# and update alike (new_schedule_entry_params and update_schedule_entry_params
+# both delegate to it), and Schedule::Entry does no format-specific parsing —
+# ActiveRecord casts the string, and before_save
+# :ensure_all_day_times_are_midnight_utc pins an all-day entry to midnight UTC.
+#
+# time.Time cannot hold that value: it marshals RFC3339 unconditionally, so a
+# bare date could not be SENT even after being parsed. types.FlexibleTime is not
+# the fix either — it decodes a bare date but marshals it back as a midnight
+# timestamp (issue #633), the same loss one layer down. The bound is opaque on
+# the way in and must round-trip verbatim, which is how the hand-marshaled body
+# of ReplaceScheduleEntryRequest already treats it.
+#
+# Go was alone in this. Every other SDK generates `string` here straight from
+# the OpenAPI type, so create and replace agreed everywhere but Go, where a
+# caller could REPLACE an entry into an all-day state they could never CREATE
+# (issue #634).
+.components.schemas.CreateScheduleEntryRequestContent.properties.starts_at
+  |= del(.["x-go-type"], .["x-go-type-import"])
+|
+.components.schemas.CreateScheduleEntryRequestContent.properties.ends_at
+  |= del(.["x-go-type"], .["x-go-type-import"])
+|
+.components.schemas.ReplaceScheduleEntryRequestContent.properties.starts_at
+  |= del(.["x-go-type"], .["x-go-type-import"])
+|
+.components.schemas.ReplaceScheduleEntryRequestContent.properties.ends_at
+  |= del(.["x-go-type"], .["x-go-type-import"])
 |
 # Fifth-a2 pass: same for the upcoming-schedule reports reduced projection.
 # app/views/api/schedules/calendar/_entry.json.jbuilder renders the identical

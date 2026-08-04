@@ -19,8 +19,10 @@ module Basecamp
       # Replace a schedule entry with a new complete representation.
       # @param entry_id [Integer] entry id ID
       # @param summary [String, nil] summary
-      # @param starts_at [String] starts at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
-      # @param ends_at [String] ends at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
+      # @param starts_at [String] The entry's start, as a bare date ("2026-06-01") for an all-day entry or a
+      #   full timestamp otherwise. Same rule as CreateScheduleEntry: send it
+      #   verbatim, never parsed and re-rendered.
+      # @param ends_at [String] The entry's end. See starts_at for the date-vs-timestamp rule.
       # @param description [String, nil] description
       # @param participant_ids [Array, nil] Replaces the entry's participants.
       #
@@ -109,8 +111,20 @@ module Basecamp
       # Create a new schedule entry
       # @param schedule_id [Integer] schedule id ID
       # @param summary [String] summary
-      # @param starts_at [String] starts at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
-      # @param ends_at [String] ends at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
+      # @param starts_at [String] The entry's start, as a bare date ("2026-06-01") for an all-day entry or a
+      #   full timestamp ("2026-06-01T09:00:00Z") otherwise — the same two forms the
+      #   response renders, and the same two ReplaceScheduleEntry accepts.
+      #
+      #   Create and replace share one permit list:
+      #   `Schedules::Entries::BaseController#base_schedule_entry_params` is what
+      #   both `new_schedule_entry_params` and `update_schedule_entry_params` call,
+      #   and Schedule::Entry does no format-specific parsing of either bound, so
+      #   whatever one operation takes the other takes too.
+      #
+      #   Treat the value as opaque and send it verbatim. Parsing it into a
+      #   date-time type and re-rendering rewrites an all-day entry's bounds into
+      #   midnight timestamps, which is why every SDK models it as a string.
+      # @param ends_at [String] The entry's end. See starts_at for the date-vs-timestamp rule.
       # @param description [String, nil] description
       # @param participant_ids [Array, nil] participant ids
       # @param all_day [Boolean, nil] all day

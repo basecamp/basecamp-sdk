@@ -112,9 +112,17 @@ type ScheduleEntry struct {
 type CreateScheduleEntryRequest struct {
 	// Summary is the event title (required).
 	Summary string `json:"summary"`
-	// StartsAt is the event start time (required, ISO 8601 format).
+	// StartsAt is the event start (required). Send a bare date ("2026-06-01")
+	// for an all-day entry and a timestamp ("2026-06-01T09:00:00Z") otherwise;
+	// the value is passed through opaquely, never parsed and re-rendered.
+	//
+	// The same rule ReplaceScheduleEntryRequest.StartsAt states, and since #634
+	// the same rule this field actually obeys: CreateEntry used to parse this
+	// with time.RFC3339 and reject anything else, so an all-day entry was
+	// reachable through ReplaceEntry but not through CreateEntry.
 	StartsAt string `json:"starts_at"`
-	// EndsAt is the event end time (required, ISO 8601 format).
+	// EndsAt is the event end (required). Same date-or-timestamp rule as
+	// StartsAt.
 	EndsAt string `json:"ends_at"`
 	// Description is the event details in HTML (optional).
 	Description string `json:"description,omitempty"`
@@ -853,21 +861,15 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 		return nil, err
 	}
 
-	startsAt, parseErr := time.Parse(time.RFC3339, req.StartsAt)
-	if parseErr != nil {
-		err = ErrUsage("schedule entry starts_at must be in RFC3339 format (e.g., 2024-01-15T09:00:00Z)")
-		return nil, err
-	}
-	endsAt, parseErr := time.Parse(time.RFC3339, req.EndsAt)
-	if parseErr != nil {
-		err = ErrUsage("schedule entry ends_at must be in RFC3339 format (e.g., 2024-01-15T17:00:00Z)")
-		return nil, err
-	}
-
+	// StartsAt and EndsAt go on the wire verbatim: BC3 takes a bare date for an
+	// all-day entry and a full timestamp otherwise, and the two forms are not
+	// interconvertible. Parsing into time.Time here — which this method did
+	// until #634 — rejected the bare date outright and would have re-rendered it
+	// as a midnight timestamp even if it had not.
 	body := generated.CreateScheduleEntryJSONRequestBody{
 		Summary:     req.Summary,
-		StartsAt:    startsAt,
-		EndsAt:      endsAt,
+		StartsAt:    req.StartsAt,
+		EndsAt:      req.EndsAt,
 		Description: omitzero(req.Description),
 		AllDay:      req.AllDay,
 		// The join link is `url` on the way in and reads back as `join_url`.

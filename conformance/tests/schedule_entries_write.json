@@ -1753,5 +1753,123 @@
       "schedules",
       "write"
     ]
+  },
+  {
+    "name": "create-all-day-bare-date: a bare date reaches the wire on create, matching replace",
+    "description": "#634: an all-day entry's bounds are bare dates, and until this case Go could not CREATE one. `CreateEntry` parsed `starts_at`/`ends_at` with `time.RFC3339` and handed the result to a generated body typed `time.Time`, so \"2026-06-01\" was rejected outright \u2014 and would have been re-rendered as a midnight timestamp even if it had parsed. `ReplaceEntry` sent the same value through untouched, so a caller could REPLACE an entry into an all-day state they could never CREATE.\n\nBC3 draws no such distinction. `Schedules::Entries::BaseController#base_schedule_entry_params` is the one permit list behind both `new_schedule_entry_params` and `update_schedule_entry_params`, and Schedule::Entry parses neither bound specially: ActiveRecord casts the string and `before_save :ensure_all_day_times_are_midnight_utc` pins an all-day entry to midnight UTC.\n\nSix runners, because the gap was one SDK wide. The spec, the OpenAPI document and five SDKs all typed these members `string`; only Go's `x-go-type` overlay narrowed them, and every gate that looked at the OpenAPI type saw agreement. The assertion is the bytes on the wire \u2014 a bare date in, a bare date out \u2014 not the absence of an error, which a normalising create would also satisfy.",
+    "operation": "CreateScheduleEntry",
+    "method": "POST",
+    "path": "/schedules/{scheduleId}/entries.json",
+    "pathParams": {
+      "scheduleId": 1069479520
+    },
+    "requestBody": {
+      "summary": "Offsite",
+      "starts_at": "2026-06-01",
+      "ends_at": "2026-06-02",
+      "all_day": true
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Offsite",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/999/buckets/1/recordings/1069479523/comments.json",
+          "summary": "Offsite",
+          "description": "<div>Away day.</div>",
+          "description_attachments": [],
+          "all_day": true,
+          "starts_at": "2026-06-01",
+          "ends_at": "2026-06-02",
+          "join_url": "https://meet.example.com/offsite",
+          "highlighted": false,
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/schedules/1069479520/entries.json",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "starts_at",
+        "expected": "2026-06-01",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "ends_at",
+        "expected": "2026-06-02",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "all_day",
+        "expected": true,
+        "index": 0
+      }
+    ],
+    "tags": [
+      "schedules",
+      "write"
+    ]
   }
 ]

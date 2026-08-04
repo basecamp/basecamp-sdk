@@ -28499,17 +28499,11 @@
           },
           "starts_at": {
             "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
+            "description": "The entry's start, as a bare date (\"2026-06-01\") for an all-day entry or a\nfull timestamp (\"2026-06-01T09:00:00Z\") otherwise — the same two forms the\nresponse renders, and the same two ReplaceScheduleEntry accepts.\n\nCreate and replace share one permit list:\n`Schedules::Entries::BaseController#base_schedule_entry_params` is what\nboth `new_schedule_entry_params` and `update_schedule_entry_params` call,\nand Schedule::Entry does no format-specific parsing of either bound, so\nwhatever one operation takes the other takes too.\n\nTreat the value as opaque and send it verbatim. Parsing it into a\ndate-time type and re-rendering rewrites an all-day entry's bounds into\nmidnight timestamps, which is why every SDK models it as a string."
           },
           "ends_at": {
             "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
+            "description": "The entry's end. See starts_at for the date-vs-timestamp rule."
           },
           "description": {
             "type": "string"
@@ -32720,17 +32714,11 @@
           },
           "starts_at": {
             "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
+            "description": "The entry's start, as a bare date (\"2026-06-01\") for an all-day entry or a\nfull timestamp otherwise. Same rule as CreateScheduleEntry: send it\nverbatim, never parsed and re-rendered."
           },
           "ends_at": {
             "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            }
+            "description": "The entry's end. See starts_at for the date-vs-timestamp rule."
           },
           "description": {
             "type": "string"
