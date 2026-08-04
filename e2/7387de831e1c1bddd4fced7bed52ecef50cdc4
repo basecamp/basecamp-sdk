@@ -1,0 +1,28 @@
+scripts/test-check-projected-examples.rb
+  s_7971b60690ffce::t_11b7a60bc88f56 481
+  s_7971b60690ffce::t_ca47c6e8a30e1a 77,434-477
+  s_7971b60690ffce::t_e023d1d79f1056 64,66,72-76
+  s_7971b60690ffce::t_0def9e23191739 41-42,52,56-57
+scripts/schema_instance_validator.rb
+  s_7971b60690ffce::t_2b60c12d13c2f6 173-204
+  s_7971b60690ffce::t_e7a8c5b4673d61 33-36
+  s_7971b60690ffce::t_961280fda4682e 48-58
+  s_7971b60690ffce::t_8bf6aa98fe3397 254-258,262-263
+  s_7971b60690ffce::t_0dabc19aabc6ed 324-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "e27387de831e1c1bddd4fced7bed52ecef50cdc4",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
