@@ -78,6 +78,34 @@ func timestampCarriers() []timestampCarrier {
 			present: []byte(`{"id":1,"created_at":"2026-07-31T12:34:56Z","updated_at":"2026-07-30T01:02:03Z",` +
 				`"content":null,"description":null}`),
 		},
+		// #620: the five holdouts of the same class. Each was typed value
+		// time.Time with a bare `json:"..."` tag — no omitempty to even hint the
+		// field was optional — while its generated counterpart was *time.Time.
+		{
+			name:    "TimelineEvent",
+			decode:  unmarshalInto[TimelineEvent],
+			keys:    []string{"created_at"},
+			present: []byte(`{"id":1,"created_at":"2026-07-31T12:34:56Z","kind":"todo_created"}`),
+		},
+		{
+			name:    "WebhookDelivery",
+			decode:  unmarshalInto[WebhookDelivery],
+			keys:    []string{"created_at"},
+			present: []byte(`{"id":1,"created_at":"2026-07-31T12:34:56Z"}`),
+		},
+		{
+			name:    "QuestionReminder",
+			decode:  unmarshalInto[QuestionReminder],
+			keys:    []string{"remind_at"},
+			present: []byte(`{"remind_at":"2026-07-31T12:34:56Z"}`),
+		},
+		{
+			name:   "ClientApprovalResponse",
+			decode: unmarshalInto[ClientApprovalResponse],
+			keys:   []string{"created_at", "updated_at"},
+			present: []byte(`{"id":1,"created_at":"2026-07-31T12:34:56Z",` +
+				`"updated_at":"2026-07-30T01:02:03Z","approved":true}`),
+		},
 	}
 }
 
@@ -209,9 +237,12 @@ func TestNilOptionalTimestampPanicsOnValueReceiverCall(t *testing.T) {
 // time.Time fields carrying `,omitempty`. A value-typed time.Time with NO
 // omitempty whose generated counterpart is a pointer — the shape
 // SearchResult.CreatedAt had — is NOT detectable from this package's source
-// alone; catching that class needs the (wrapper, generated) pairing that
-// scripts/check-wrapper-drift already computes for tag names but not for
-// types. That gap is reported on the PR, not closed here.
+// alone; catching that class needs a (wrapper, generated) pairing.
+//
+// That gap is now closed by TestNoWrapperTimestampNarrowerThanGenerated below,
+// which reads both sides and pairs them by struct name + json key (#620). This
+// guard stays: it catches an inert `,omitempty` on a wrapper struct that has no
+// generated counterpart at all, which the cross-reference cannot see.
 func TestNoValueTypedOptionalTimestamps(t *testing.T) {
 	entries, err := os.ReadDir(".")
 	if err != nil {
@@ -279,6 +310,160 @@ func TestNoValueTypedOptionalTimestamps(t *testing.T) {
 	for _, v := range violations {
 		t.Errorf("optional timestamp is value-typed and cannot represent absence "+
 			"(`,omitempty` is inert for a struct, so the key is emitted as 0001-01-01T00:00:00Z): %s", v)
+	}
+}
+
+// timestampField is one (struct, json key) timestamp declaration, recorded from
+// either the wrapper surface or the generated client.
+type timestampField struct {
+	pointer bool
+	field   string
+	file    string
+}
+
+// collectTimestampFields keys every time.Time / *time.Time struct field by
+// (struct name, json key). The json key is the pairing axis rather than the Go
+// field name: the wrapper renames fields (Id → ID) but the wire key is the
+// thing both sides must agree about.
+func collectTimestampFields(t *testing.T, files map[string]*ast.File) map[[2]string]timestampField {
+	t.Helper()
+	out := map[[2]string]timestampField{}
+	for path, file := range files {
+		ast.Inspect(file, func(n ast.Node) bool {
+			ts, ok := n.(*ast.TypeSpec)
+			if !ok {
+				return true
+			}
+			st, ok := ts.Type.(*ast.StructType)
+			if !ok {
+				return true
+			}
+			for _, f := range st.Fields.List {
+				if f.Tag == nil || len(f.Names) == 0 {
+					continue
+				}
+				value := isValueTime(f.Type)
+				star, isStar := f.Type.(*ast.StarExpr)
+				pointer := isStar && isValueTime(star.X)
+				if !value && !pointer {
+					continue
+				}
+				raw, err := strconv.Unquote(f.Tag.Value)
+				if err != nil {
+					continue
+				}
+				jsonTag, ok := reflect.StructTag(raw).Lookup("json")
+				if !ok {
+					continue
+				}
+				key := strings.Split(jsonTag, ",")[0]
+				if key == "" || key == "-" {
+					continue
+				}
+				out[[2]string{ts.Name.Name, key}] = timestampField{
+					pointer: pointer,
+					field:   f.Names[0].Name,
+					file:    filepath.Base(path),
+				}
+			}
+			return true
+		})
+	}
+	return out
+}
+
+func parseGoFiles(t *testing.T, paths []string) map[string]*ast.File {
+	t.Helper()
+	fset := token.NewFileSet()
+	out := map[string]*ast.File{}
+	for _, p := range paths {
+		f, err := parser.ParseFile(fset, p, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", p, err)
+		}
+		out[p] = f
+	}
+	return out
+}
+
+// TestNoWrapperTimestampNarrowerThanGenerated closes the class #620 named.
+//
+// A wrapper field typed value time.Time whose generated counterpart is
+// *time.Time cannot represent absence, and — this is what makes it invisible —
+// NOTHING IN THE WRAPPER SOURCE SAYS SO. The evidence lives in the generated
+// client, so the guard has to read both sides.
+//
+// Why the two neighbouring gates cannot do this:
+//
+//   - TestNoValueTypedOptionalTimestamps (above) keys on `,omitempty` and
+//     `continue`s without it. All five #620 fields were tagged bare
+//     `json:"created_at"`, so they were invisible to it. Its own doc comment
+//     named this gap and deferred it; this is the close.
+//   - scripts/check-wrapper-drift has the (wrapper, generated) pairing but
+//     compares tag NAMES only. Teaching it types would still miss
+//     WebhookDelivery, which its header excludes BY DESIGN as a parallel
+//     webhook-flavored shape — and WebhookDelivery.CreatedAt is one of the five.
+//
+// So the pairing here is by struct name + json key, which is blind to the
+// converter tiers and therefore covers all of them.
+//
+// Scoped to timestamps deliberately. The wrapper flattens optional
+// *string/*bool/*int to value types on purpose; a nil-capability rule applied
+// broadly reports ~345 intentional fields. Timestamps are the principled
+// carve-out: an absent string marshals away harmlessly, an absent time.Time
+// marshals as a wrong value.
+func TestNoWrapperTimestampNarrowerThanGenerated(t *testing.T) {
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatalf("read package dir: %v", err)
+	}
+	var wrapperPaths []string
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		wrapperPaths = append(wrapperPaths, name)
+	}
+
+	wrapper := collectTimestampFields(t, parseGoFiles(t, wrapperPaths))
+	gen := collectTimestampFields(t, parseGoFiles(t, []string{
+		filepath.Join("..", "generated", "client.gen.go"),
+	}))
+
+	if len(wrapper) == 0 || len(gen) == 0 {
+		t.Fatalf("collected %d wrapper and %d generated timestamp fields — the walk is broken, not the surface",
+			len(wrapper), len(gen))
+	}
+
+	var (
+		violations []string
+		compared   int
+	)
+	for key, w := range wrapper {
+		g, ok := gen[key]
+		if !ok {
+			continue
+		}
+		compared++
+		if w.pointer || !g.pointer {
+			continue
+		}
+		violations = append(violations, fmt.Sprintf(
+			"%s.%s (json:%q, %s) is time.Time but generated.%s.%s is *time.Time",
+			key[0], w.field, key[1], w.file, key[0], g.field))
+	}
+
+	// A name-keyed join that matches nothing passes vacuously.
+	if compared == 0 {
+		t.Fatal("zero (wrapper, generated) timestamp fields paired — the join key is wrong, not the surface")
+	}
+
+	sort.Strings(violations)
+	for _, v := range violations {
+		t.Errorf("wrapper timestamp is narrower than the schema it decodes: %s. "+
+			"An omitted value decodes to the zero time and re-marshals as a fabricated "+
+			"0001-01-01T00:00:00Z, indistinguishable from a real timestamp", v)
 	}
 }
 

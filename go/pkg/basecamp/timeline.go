@@ -16,8 +16,11 @@ const DefaultTimelineLimit = 100
 
 // TimelineEvent represents an activity event in the timeline.
 type TimelineEvent struct {
-	ID        int64     `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
+	ID int64 `json:"id"`
+	// CreatedAt is optional — nil means the API did not send it. A value type
+	// here would fabricate 0001-01-01T00:00:00Z for an absent timestamp, which
+	// no consumer can tell from a real one.
+	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// Kind is an open, non-exhaustive vocabulary (BC3 adds new kinds over time);
 	// treat unrecognized values as valid. Common values include message_created,
 	// todo_created, todo_completed, upload_created, schedule_entry_created,
@@ -497,7 +500,7 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 		e.ParentRecordingID = *ge.ParentRecordingId
 	}
 
-	e.CreatedAt = deref(ge.CreatedAt)
+	e.CreatedAt = ge.CreatedAt
 
 	if ge.Creator != nil {
 		creator := personFromGenerated(*ge.Creator)

@@ -36,8 +36,11 @@ type Webhook struct {
 
 // WebhookDelivery represents a recent delivery attempt for a webhook.
 type WebhookDelivery struct {
-	ID        int64                   `json:"id"`
-	CreatedAt time.Time               `json:"created_at"`
+	ID int64 `json:"id"`
+	// CreatedAt is optional — nil means the API did not send it. A value type
+	// here would fabricate 0001-01-01T00:00:00Z for an absent timestamp, which
+	// no consumer can tell from a real one.
+	CreatedAt *time.Time              `json:"created_at,omitempty"`
 	Request   WebhookDeliveryRequest  `json:"request"`
 	Response  WebhookDeliveryResponse `json:"response"`
 }
@@ -362,7 +365,7 @@ func webhookFromGenerated(gw generated.Webhook) Webhook {
 		w.RecentDeliveries = make([]WebhookDelivery, len(gw.RecentDeliveries))
 		for i, gd := range gw.RecentDeliveries {
 			d := WebhookDelivery{
-				CreatedAt: deref(gd.CreatedAt),
+				CreatedAt: gd.CreatedAt,
 			}
 			if gd.Request != nil {
 				d.Request = WebhookDeliveryRequest{

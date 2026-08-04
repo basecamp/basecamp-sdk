@@ -78,8 +78,10 @@ func TestTimelineEvent_Unmarshal(t *testing.T) {
 
 	// Check timestamp
 	expectedTime := time.Date(2024, 3, 15, 10, 30, 0, 0, time.UTC)
-	if !event.CreatedAt.Equal(expectedTime) {
-		t.Errorf("expected CreatedAt %v, got %v", expectedTime, event.CreatedAt)
+	if event.CreatedAt == nil {
+		t.Error("expected CreatedAt to be non-nil")
+	} else if !event.CreatedAt.Equal(expectedTime) {
+		t.Errorf("expected CreatedAt %v, got %v", expectedTime, *event.CreatedAt)
 	}
 }
 

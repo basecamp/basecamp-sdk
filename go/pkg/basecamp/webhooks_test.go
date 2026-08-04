@@ -174,7 +174,9 @@ func TestWebhook_UnmarshalGetWithRecentDeliveries(t *testing.T) {
 	if delivery.ID != 1230 {
 		t.Errorf("expected delivery ID 1230, got %d", delivery.ID)
 	}
-	if delivery.CreatedAt.IsZero() {
+	if delivery.CreatedAt == nil {
+		t.Error("expected non-nil delivery CreatedAt")
+	} else if delivery.CreatedAt.IsZero() {
 		t.Error("expected non-zero delivery CreatedAt")
 	}
 

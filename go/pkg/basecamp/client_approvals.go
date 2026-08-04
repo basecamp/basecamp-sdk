@@ -62,21 +62,24 @@ type ClientApproval struct {
 
 // ClientApprovalResponse represents a response to a client approval.
 type ClientApprovalResponse struct {
-	ID               int64     `json:"id"`
-	Status           string    `json:"status"`
-	VisibleToClients bool      `json:"visible_to_clients"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Title            string    `json:"title"`
-	InheritsStatus   bool      `json:"inherits_status"`
-	Type             string    `json:"type"`
-	AppURL           string    `json:"app_url"`
-	BookmarkURL      string    `json:"bookmark_url"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
-	Content          string    `json:"content"`
-	Approved         bool      `json:"approved"`
+	ID               int64  `json:"id"`
+	Status           string `json:"status"`
+	VisibleToClients bool   `json:"visible_to_clients"`
+	// CreatedAt and UpdatedAt are optional — nil means the API did not send
+	// them. Value types here would fabricate 0001-01-01T00:00:00Z for an absent
+	// timestamp, which no consumer can tell from a real one.
+	CreatedAt      *time.Time `json:"created_at,omitempty"`
+	UpdatedAt      *time.Time `json:"updated_at,omitempty"`
+	Title          string     `json:"title"`
+	InheritsStatus bool       `json:"inherits_status"`
+	Type           string     `json:"type"`
+	AppURL         string     `json:"app_url"`
+	BookmarkURL    string     `json:"bookmark_url"`
+	Parent         *Parent    `json:"parent,omitempty"`
+	Bucket         *Bucket    `json:"bucket,omitempty"`
+	Creator        *Person    `json:"creator,omitempty"`
+	Content        string     `json:"content"`
+	Approved       bool       `json:"approved"`
 }
 
 // ClientApprovalListResult contains the results from listing client approvals.
@@ -290,8 +293,8 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 			resp := ClientApprovalResponse{
 				Status:           deref(gr.Status),
 				VisibleToClients: deref(gr.VisibleToClients),
-				CreatedAt:        deref(gr.CreatedAt),
-				UpdatedAt:        deref(gr.UpdatedAt),
+				CreatedAt:        gr.CreatedAt,
+				UpdatedAt:        gr.UpdatedAt,
 				Title:            deref(gr.Title),
 				InheritsStatus:   deref(gr.InheritsStatus),
 				Type:             deref(gr.Type),
