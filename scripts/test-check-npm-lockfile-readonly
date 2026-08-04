@@ -156,6 +156,18 @@ expect_reject "npm ci|npm install (no space around |)" \
 expect_reject "an install inside a command substitution" \
   "$(make_fixture op_subst 'echo $(npm install --package-lock-only)')" 'npm install'
 
+# npm accepts any config key as `--key value`, so an option this parser does not
+# know cannot be assumed valueless. `--shell` takes a value, so `ci` is its
+# argument and the real subcommand is `install` — reading "subcommand ci" is the
+# false green. Reported as unclassifiable rather than guessed at.
+expect_reject "npm --shell ci install (value swallows a fake subcommand)" \
+  "$(make_fixture opt_shell 'npm --shell ci install --package-lock-only')" \
+  'install'
+
+expect_reject "an option this parser cannot classify" \
+  "$(make_fixture opt_unknown 'npm --some-future-option ci')" \
+  'unrecognised npm option'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \
@@ -166,6 +178,12 @@ expect_accept "npm ci with an = flag" \
 
 expect_accept "plain npm audit" \
   "$(make_fixture ok_audit 'npm audit --audit-level=high')"
+
+expect_accept "known valueless options before the subcommand" \
+  "$(make_fixture ok_flags_pre 'npm --silent --prefer-offline ci')"
+
+expect_accept "an unknown option in --key=value form is unambiguous" \
+  "$(make_fixture ok_flag_eq 'npm --some-future-option=1 ci')"
 
 expect_accept "npm test in a Makefile recipe" \
   "$(make_fixture ok_test 'true' 'cd conformance/runner/typescript && npm ci && npm test')"

@@ -58,10 +58,21 @@ cd "${CHECK_NPM_ROOT:-$(dirname "$0")/..}" || exit 1
 # so is every abbreviation of them, by construction.
 readonly ALLOWED_SUBCOMMANDS=" ci run run-script test start stop restart exec audit view ls list outdated ping whoami config help pack publish "
 
-# Flags that consume the following token as their value. If one appears without
-# `=`, its value must be skipped or it would be read as the subcommand. An
-# unknown value-taking flag therefore fails closed, which is the safe direction.
-readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfig --globalconfig --cache --script-shell --omit --include --tag --otp --before --node-options "
+# Options are allowlisted for the same reason subcommands are. npm accepts any
+# config key as `--key value`, so an unrecognised bare option cannot be assumed
+# valueless: `npm --shell ci install` consumes `ci` as --shell's value and really
+# runs `install`, which writes the lockfile. Reading it as "subcommand ci" is
+# exactly the false green this gate exists to prevent.
+#
+# Three cases, in order:
+#   * `--anything=value`   one token, unambiguous, skip it whatever it is
+#   * VALUE_FLAGS          consumes the next token too
+#   * VALUELESS_FLAGS      consumes nothing
+# Anything else is an option this parser cannot classify, and is reported rather
+# than guessed at. Extending either list is a one-line change.
+readonly VALUE_FLAGS=" --prefix --workspace -w --loglevel --registry --userconfig --globalconfig --cache --script-shell --shell --omit --include --tag --otp --before --node-options --user-agent --workspaces --depth --searchopts --init-module "
+
+readonly VALUELESS_FLAGS=" --silent -s --quiet --verbose -d --json --long -l --parseable -p --global -g --force -f --dry-run --ignore-scripts --no-save --save --save-dev --save-exact --no-audit --no-fund --no-package-lock --package-lock-only --prefer-offline --prefer-online --offline --if-present --include-workspace-root --legacy-peer-deps --strict-peer-deps --no-progress --no-color --yes -y "
 
 # Deliberate lockfile writers, exempt by design.
 readonly ALLOWED_FILES='^scripts/bump-version\.sh$'
@@ -117,10 +128,15 @@ scan_line() {
         [[ $t == ';' || $t == '&' || $t == '|' || $t == '(' || $t == ')' \
            || $t == '<' || $t == '>' || $t == '`' ]] && break
         if [[ $t == -* ]]; then
-          if [[ $t != *=* && $VALUE_FLAGS == *" $t "* ]]; then
-            ((j += 2))   # flag plus its value
-          else
+          if [[ $t == *=* ]]; then
+            ((j += 1))                          # --key=value: one token
+          elif [[ $VALUE_FLAGS == *" $t "* ]]; then
+            ((j += 2))                          # --key value: two
+          elif [[ $VALUELESS_FLAGS == *" $t "* ]]; then
             ((j += 1))
+          else
+            sub="!$t"                           # unclassifiable option
+            break
           fi
           continue
         fi
@@ -140,6 +156,8 @@ scan_line() {
         # harmless — so an npm invocation we cannot resolve is reported rather
         # than assumed innocent. This is the fail-closed direction.
         REASONS+=("npm invocation with no parsable subcommand (line continuation?)")
+      elif [[ $sub == '!'* ]]; then
+        REASONS+=("unrecognised npm option \`${sub#!}\` — cannot tell whether it consumes the next token, so the real subcommand is unknown")
       elif [[ $ALLOWED_SUBCOMMANDS != *" $sub "* ]]; then
         REASONS+=("\`npm $sub\` is not on the permitted-invocation allowlist")
       elif [[ $sub == audit ]]; then
