@@ -1,0 +1,291 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Self-test for scripts/check-known-defect-issues-open.
+#
+# The gate is deliberately ONLINE — issue state is only knowable over the
+# network, and it fails closed when it cannot ask. Its self-test must be the
+# opposite: offline and deterministic, or CI would be asserting the gate's logic
+# against whatever GitHub happens to say today. So every case here runs the real
+# checker with PATH pointing at a stub `gh` that answers from a canned table,
+# driven through the checker's two env overrides:
+#
+#   BC3_ROUTE_ALLOWLIST      the allowlist to read (tmp files; the tracked file
+#                            is never written to)
+#   KNOWN_DEFECT_ISSUE_REPO  the repo to look issues up in
+#
+# The allowlists below are synthetic. This gate reads only `issue`,
+# `tracking_issue`, `method` and `path`, so a fabricated entry exercises exactly
+# what it inspects — unlike test-check-bc3-route-parity, which must use real
+# operationIds because it is asserting facts about routes this SDK ships.
+#
+# The stub also LOGS the API path it was asked for, which is what pins the
+# repository to a constant: case 7 sets GITHUB_REPOSITORY to a fork, the way a
+# fork's CI does, and asserts the lookup still went to basecamp/basecamp-sdk.
+# The issue numbers are properties of the committed allowlist, not of whoever
+# runs CI, so a fork must not resolve them against its own numbering.
+#
+# KNOWN_DEFECT_CHECKER names the checker under test (default
+# scripts/check-known-defect-issues-open), so a deliberately-mutated copy can be
+# driven through the same suite to prove the suite is not vacuous:
+#
+#   cp scripts/check-known-defect-issues-open /tmp/m   # mutate the COPY
+#   KNOWN_DEFECT_CHECKER=/tmp/m ruby scripts/test-check-known-defect-issues-open
+#
+# Never mutate the tracked file. Removing a guard from the copy must turn exactly
+# these red, and nothing else:
+#
+#   guard removed in the copy                      cases that must go red
+#   -------------------------------------------    ----------------------
+#   REPO back to ENV['GITHUB_REPOSITORY']          7a, 8a
+#   closed state no longer fails                   4, 5
+#   bc3_routes_not_modeled refs not collected      2, 2a, 5
+#   fail-closed when gh is absent                  9
+#
+# Run directly (`ruby scripts/test-check-known-defect-issues-open`) or via
+# `make test-check-known-defect-issues-open`.
+
+require "yaml"
+require "tmpdir"
+require "open3"
+require "rbconfig"
+
+# Per-case lines go to stdout and the failure report to stderr. Unsynced, stdout
+# block-buffers when redirected to a file and the report lands ahead of the cases
+# it summarizes — which is exactly when someone is reading the log.
+$stdout.sync = true
+
+ROOT = File.expand_path("..", __dir__)
+CHECKER = File.expand_path(ENV.fetch("KNOWN_DEFECT_CHECKER", "scripts/check-known-defect-issues-open"), ROOT)
+RUBY = RbConfig.ruby
+
+# The stub `gh`. Answers `gh api repos/<owner>/<name>/issues/<n> --jq .state`
+# from GH_STUB_STATES ("101=open,202=closed"), records the path it was asked for
+# in GH_STUB_LOG, and fails outright when GH_STUB_FAIL is set. /bin/sh is an
+# absolute path, so this still runs when PATH holds nothing but the stub dir —
+# which is also why it uses only shell builtins: no basename, no tr, nothing
+# that would have to be found on the PATH the suite deliberately emptied.
+GH_STUB = <<~'SH'
+  #!/bin/sh
+  if [ -n "$GH_STUB_LOG" ]; then echo "$2" >> "$GH_STUB_LOG"; fi
+  if [ -n "$GH_STUB_FAIL" ]; then
+    echo "gh: HTTP 404: Not Found (https://api.github.com/$2)" >&2
+    exit 1
+  fi
+  number=${2##*/}
+  IFS=,
+  for pair in $GH_STUB_STATES; do
+    case "$pair" in
+      "$number="*) echo "${pair#*=}"; exit 0 ;;
+    esac
+  done
+  echo "gh: no stub state for issue $number" >&2
+  exit 1
+SH
+
+failures = []
+
+# Run the checker with a PATH that contains ONLY the stub dir (or nothing at
+# all, when gh is meant to be absent), so the real gh can never answer. The
+# interpreter is invoked by absolute path for the same reason. Returns
+# [combined_output, status, gh_log_lines].
+def run_checker(allowlist:, states: nil, gh_fail: false, repo: nil, github_repository: nil)
+  Dir.mktmpdir("known-defect-selftest") do |dir|
+    path_dir = File.join(dir, "bin")
+    Dir.mkdir(path_dir)
+    gh_log = File.join(dir, "gh-calls.log")
+
+    unless states.nil? && !gh_fail
+      gh = File.join(path_dir, "gh")
+      File.write(gh, GH_STUB)
+      File.chmod(0o755, gh)
+    end
+
+    allow_path = File.join(dir, "bc3-route-allowlist.yml")
+    File.write(allow_path, YAML.dump(allowlist))
+
+    env = {
+      "PATH" => path_dir,
+      "BC3_ROUTE_ALLOWLIST" => allow_path,
+      "GH_STUB_LOG" => gh_log,
+      "GH_STUB_STATES" => states,
+      "GH_STUB_FAIL" => (gh_fail ? "1" : nil),
+      "KNOWN_DEFECT_ISSUE_REPO" => repo,
+      "GITHUB_REPOSITORY" => github_repository
+    }
+
+    out, status = Open3.capture2e(env, RUBY, CHECKER)
+    calls = File.exist?(gh_log) ? File.read(gh_log).split("\n") : []
+    [ out, status, calls ]
+  end
+end
+
+def expect_pass(failures, label, out, status, fragment = nil)
+  if !status.success?
+    puts "  FAIL  #{label}"
+    failures << "#{label}: expected PASS but checker exited #{status.exitstatus}:\n#{out}"
+  elsif fragment && !out.include?(fragment)
+    puts "  FAIL  #{label}"
+    failures << "#{label}: passed but message missing #{fragment.inspect}:\n#{out}"
+  else
+    puts "  PASS  #{label}"
+  end
+end
+
+def expect_fail(failures, label, out, status, fragment)
+  if status.success?
+    puts "  FAIL  #{label}"
+    failures << "#{label}: expected FAILURE but checker passed:\n#{out}"
+  elsif !out.include?(fragment)
+    puts "  FAIL  #{label}"
+    failures << "#{label}: failed as expected but message missing #{fragment.inspect}:\n#{out}"
+  else
+    puts "  PASS  #{label}"
+  end
+end
+
+def defective(issue)
+  { "method" => "GET", "path" => "/buckets/:id/widgets/:id", "issue" => issue }
+end
+
+def not_modeled(issue)
+  { "method" => "POST", "path" => "/projects/:id/widgets", "tracking_issue" => issue }
+end
+
+puts "==> known-defect tracking-issue self-test (checker: #{CHECKER.sub("#{ROOT}/", '')})"
+
+# --- 1. Empty allowlist: no refs, no network, no-op -----------------------------
+#
+# Today's state. The gate must not invent work — or a failure — out of an
+# allowlist that discharges nothing by issue number.
+
+out, status, calls = run_checker(allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] })
+expect_pass(failures, "1. empty allowlist is a no-op", out, status,
+            "references no tracking issues")
+unless calls.empty?
+  puts "  FAIL  1a. empty allowlist makes no API calls"
+  failures << "1a: expected no gh calls, got #{calls.inspect}"
+end
+
+# --- 2. Both list shapes are collected ------------------------------------------
+#
+# The two dispositions spell their reference differently — `issue:` on a known
+# defect, `tracking_issue:` on an unmodeled route. Reading only one shape would
+# leave the other silently unverified, which is the failure this gate exists to
+# end. Both numbers must be looked up and both reported.
+
+out, status, calls = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ],
+               "bc3_routes_not_modeled" => [ not_modeled(202) ] },
+  states: "101=open,202=open"
+)
+expect_pass(failures, "2. both list shapes collected: issue and tracking_issue", out, status,
+            "all 2 referenced tracking issue(s) open")
+[ 101, 202 ].each do |n|
+  next if calls.any? { |c| c.end_with?("/issues/#{n}") }
+  puts "  FAIL  2a. ##{n} looked up"
+  failures << "2a: expected a lookup of ##{n}, gh saw #{calls.inspect}"
+end
+
+# --- 3. Open issue passes --------------------------------------------------------
+
+out, status, = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ] },
+  states: "101=open"
+)
+expect_pass(failures, "3. an OPEN issue passes", out, status, "✓ #101 open")
+
+# --- 4. Closed issue fails, and the message names the entry ----------------------
+#
+# THE ONE THAT MATTERS. #588 auto-closed while nine live 404s still pointed at
+# it. A number is not a tracker; this is the case that makes "open" load-bearing.
+# The fragment pins the SITE, not just the number, because a failure that names
+# only "#101" leaves the reader to grep the allowlist for which entry rotted.
+
+out, status, = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ] },
+  states: "101=closed"
+)
+expect_fail(failures, "4. a CLOSED issue fails and names the entry", out, status,
+            "sdk_routes_known_defective GET /buckets/:id/widgets/:id points at #101, which is CLOSED")
+
+# --- 5. Closed on the other shape too --------------------------------------------
+#
+# Collecting a reference and ENFORCING it are separate steps; case 2 proves the
+# first for both shapes, this proves the second.
+
+out, status, = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ],
+               "bc3_routes_not_modeled" => [ not_modeled(202) ] },
+  states: "101=open,202=closed"
+)
+expect_fail(failures, "5. a CLOSED tracking_issue fails and names the entry", out, status,
+            "bc3_routes_not_modeled POST /projects/:id/widgets points at #202, which is CLOSED")
+
+# --- 6. Unreadable issue fails closed --------------------------------------------
+#
+# gh is present but the API says no. An unverifiable "a known issue owns this"
+# claim is indistinguishable from an untracked defect, so it is not a pass.
+
+out, status, = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ] },
+  gh_fail: true
+)
+expect_fail(failures, "6. an unreadable issue fails closed", out, status,
+            "could not read #101 from basecamp/basecamp-sdk")
+
+# --- 7. The repository is a constant, not the workflow's ---------------------------
+#
+# A fork's CI sets GITHUB_REPOSITORY to the fork. The issue numbers come from the
+# committed allowlist and mean nothing in the fork's numbering, so the lookup has
+# to ignore it. Deriving the repo from the environment made fork CI fail on an
+# upstream issue that was open the whole time.
+
+out, status, calls = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ] },
+  states: "101=open",
+  github_repository: "someone-else/basecamp-sdk-fork"
+)
+expect_pass(failures, "7. GITHUB_REPOSITORY does not redirect the lookup", out, status)
+if calls.any? { |c| c.include?("someone-else") } || !calls.any? { |c| c.include?("repos/basecamp/basecamp-sdk/") }
+  puts "  FAIL  7a. lookup went to the canonical repo"
+  failures << "7a: expected a basecamp/basecamp-sdk lookup and no fork lookup, gh saw #{calls.inspect}"
+end
+
+# --- 8. The one sanctioned override still works -----------------------------------
+#
+# Without it this suite could not exist: case 6's message and every stub lookup
+# above depend on the repo being steerable by something OTHER than the ambient
+# workflow variable.
+
+out, status, calls = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ] },
+  states: "101=open",
+  repo: "example/override"
+)
+expect_pass(failures, "8. KNOWN_DEFECT_ISSUE_REPO redirects the lookup", out, status)
+unless calls.any? { |c| c.include?("repos/example/override/") }
+  puts "  FAIL  8a. lookup honored KNOWN_DEFECT_ISSUE_REPO"
+  failures << "8a: expected an example/override lookup, gh saw #{calls.inspect}"
+end
+
+# --- 9. No gh at all fails closed --------------------------------------------------
+#
+# PATH holds nothing, so `command -v gh` finds nothing. The gate must not treat
+# "I could not ask" as "nothing is wrong" — that skip path is precisely why this
+# check is not folded into the offline route-parity gate.
+
+out, status, = run_checker(allowlist: { "sdk_routes_known_defective" => [ defective(101) ] })
+expect_fail(failures, "9. missing gh fails closed", out, status,
+            "gh CLI not found")
+
+# --- Report ------------------------------------------------------------------------
+
+if failures.empty?
+  puts "==> known-defect tracking-issue self-test passed — 9 cases"
+  exit 0
+else
+  warn "known-defect tracking-issue self-test FAILED:"
+  failures.each { |f| warn "  - #{f}" }
+  exit 1
+end

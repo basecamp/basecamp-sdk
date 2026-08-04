@@ -84,7 +84,7 @@ url-routes-check:
 	@rm -f go/pkg/basecamp/url-routes.json.tmp
 	@echo "url-routes.json is up to date"
 
-.PHONY: bc3-routes bc3-route-parity test-bc3-route-parity bc3-routes-check check-known-defect-issues-open
+.PHONY: bc3-routes bc3-route-parity test-bc3-route-parity bc3-routes-check check-known-defect-issues-open test-check-known-defect-issues-open
 
 # Regenerate spec/bc3-routes.json — the vendored table of routes bc3 actually
 # serves, extracted from its API docs at the pinned provenance revision.
@@ -114,6 +114,17 @@ bc3-route-parity:
 check-known-defect-issues-open:
 	@echo "==> Checking known-defect tracking issues are open..."
 	@./scripts/check-known-defect-issues-open
+
+# Drive that gate from outside. Its live run is a no-op today — the allowlist
+# references no issues — so without this NOTHING exercises the closed-issue
+# rejection, the fail-closed path, or the second reference shape. Offline: PATH
+# is stripped to a stub `gh` answering from a canned table, because a self-test
+# that asked GitHub would assert against whatever is true this morning.
+#
+# Offline, but deliberately NOT in `check-targets` either: it belongs with the
+# gate it tests, and that gate is a CI job of its own.
+test-check-known-defect-issues-open:
+	@ruby ./scripts/test-check-known-defect-issues-open
 
 # Drive that gate from outside with adversarial allowlists. The live run only
 # exercises the VALID file, so nothing proves `modeled_as` — the one disposition

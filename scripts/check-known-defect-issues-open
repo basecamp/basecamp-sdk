@@ -29,13 +29,25 @@
 # No-op when the allowlist references no issues at all, which is today's state.
 #
 # Usage: ./check-known-defect-issues-open
-#        BC3_ROUTE_ALLOWLIST=... ./check-known-defect-issues-open   (self-test)
+#        BC3_ROUTE_ALLOWLIST=... KNOWN_DEFECT_ISSUE_REPO=... \
+#          ./check-known-defect-issues-open                        (self-test)
+#
+# Exercised offline by scripts/test-check-known-defect-issues-open.
 
 require 'json'
 require 'yaml'
 
 ROOT = File.expand_path('..', __dir__)
-REPO = ENV['GITHUB_REPOSITORY'] || 'basecamp/basecamp-sdk'
+
+# The repository is a constant, NOT derived from the workflow environment. The
+# issue numbers are properties of the committed allowlist — they are this
+# repository's numbering — while GITHUB_REPOSITORY names whoever is running CI.
+# On a fork those differ, and reading the fork would look up its own unrelated
+# issue #N, or none at all: fork CI would fail (or worse, pass) on a fact about
+# the fork rather than about the allowlist under test. KNOWN_DEFECT_ISSUE_REPO
+# is the one override, and it exists so the self-test can point the lookup at a
+# stub rather than the network.
+REPO = ENV['KNOWN_DEFECT_ISSUE_REPO'] || 'basecamp/basecamp-sdk'
 
 allow_path = ENV['BC3_ROUTE_ALLOWLIST'] || File.join(ROOT, 'spec', 'bc3-route-allowlist.yml')
 unless File.exist?(allow_path)

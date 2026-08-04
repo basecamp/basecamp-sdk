@@ -120,6 +120,11 @@ jobs:
         with:
           ruby-version: "3.3"
 
+      # Offline and first: the gate below is a no-op whenever the allowlist
+      # references no issues, so this is what proves it rejects anything.
+      - name: Self-test the known-defect gate
+        run: make test-check-known-defect-issues-open
+
       - name: Referenced tracking issues are still open
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
