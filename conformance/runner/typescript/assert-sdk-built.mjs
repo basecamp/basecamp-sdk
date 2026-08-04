@@ -22,6 +22,14 @@ import { join } from "node:path";
 const SDK = process.env.CONFORMANCE_SDK_ROOT ?? "../../../typescript";
 const ENTRY = join(SDK, "dist", "index.js");
 
+// The marker `npm run postbuild` writes once tsc has emitted AND src/generated
+// has been copied. dist/index.js is not proof of a successful build: tsconfig
+// does not set noEmitOnError, so tsc can emit a partial dist and still exit
+// non-zero, which skips postbuild entirely. The entry point then looks newer
+// than every source while dist/generated is missing or stale. Compare against
+// the marker, which only a completed build leaves behind.
+const MARKER = join(SDK, "dist", ".build-complete");
+
 function die(reason) {
   console.error(`Conformance runner: ${reason}`);
   console.error("Run: make conformance-typescript   (or make ts-build, then npm test here)");
@@ -29,6 +37,13 @@ function die(reason) {
 }
 
 if (!existsSync(ENTRY)) die(`SDK is not built — ${ENTRY} is missing.`);
+
+if (!existsSync(MARKER)) {
+  die(
+    `SDK build did not complete — ${MARKER} is missing. dist/ exists, so a build ` +
+      "started; tsc emitting and then failing leaves exactly this state.",
+  );
+}
 
 // Newest mtime anywhere in the SDK's sources, plus the inputs that change what
 // tsc emits. A dist older than any of them cannot reflect the current tree.
@@ -61,7 +76,7 @@ const sourceMtime = Math.max(
   newestMtime(join(SDK, "tsconfig.json")),
   newestMtime(join(SDK, "package.json")),
 );
-const builtMtime = statSync(ENTRY).mtimeMs;
+const builtMtime = statSync(MARKER).mtimeMs;
 
 if (sourceMtime > builtMtime) {
   die(

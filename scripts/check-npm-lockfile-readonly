@@ -98,6 +98,12 @@ scan_line() {
   local line=$1
   REASONS=()
 
+  # `read -a` stops at the first newline, so a package.json script value spanning
+  # several lines would have had only its first line tokenised — the writer on
+  # line two was never seen. A newline IS a command separator, so turn it into
+  # the one the padding below already understands.
+  line=${line//$'\n'/;}
+
   # Shell operators do not need surrounding whitespace, so `npm ci;npm install`
   # tokenises as `ci;npm` `install` and the second invocation is never seen as an
   # npm token at all. Pad every operator before splitting so each one becomes its
@@ -204,13 +210,22 @@ check_text() {   # file, line-label, text
 #    `npm install`, so every `make check` rewrote a lockfile as a side effect.
 #    jq, not node: this gate runs in the toolchain-light spec-gates job, which
 #    sets up no node and must not depend on whatever the runner image ships.
+#
+#    Records are NUL-terminated, not newline-terminated. A script value may
+#    contain a literal newline — JSON allows it and npm runs every line — and a
+#    newline-delimited read hands the first line to check_text and drops the
+#    rest, so `echo ok\nnpm install --package-lock-only` scanned clean. `jq -j`
+#    with an explicit NUL keeps each script whole however many lines it spans;
+#    scan_line splits on whitespace, so embedded newlines parse fine.
 while IFS= read -r pkg; do
-  while IFS=$'\t' read -r name cmd; do
-    [[ -z "$name" ]] && continue
+  while IFS= read -r -d '' record; do
+    [[ -z "$record" ]] && continue
+    name=${record%%$'\t'*}
+    cmd=${record#*$'\t'}
     check_text "$pkg" "scripts.$name" "$cmd"
-  done < <(jq -r '(.scripts // {}) | to_entries[]
+  done < <(jq -j '(.scripts // {}) | to_entries[]
                   | select(.value | type == "string")
-                  | "\(.key)\t\(.value)"' "$pkg" 2>/dev/null)
+                  | "\(.key)\t\(.value)\u0000"' "$pkg" 2>/dev/null)
 done < <(git ls-files '*package.json' ':!:**/node_modules/**')
 
 # 2. Makefile recipes. Recipe lines are the tab-indented ones; comments and

@@ -39,6 +39,7 @@ make_sdk() {
   printf '{"name":"sdk"}\n' > "$dir/package.json"
   sleep 0.02
   printf 'export const a = 1;\n' > "$dir/dist/index.js"
+  : > "$dir/dist/.build-complete"        # what postbuild leaves on success
   echo "$dir"
 }
 
@@ -85,6 +86,12 @@ pkg=$(make_sdk pkg); sleep 0.02; touch "$pkg/package.json"
 expect fail "package.json newer than the build" "$pkg" "stale"
 
 echo "== the cases that false-greened earlier cuts =="
+
+# tsconfig does not set noEmitOnError, so tsc can write dist/index.js and still
+# exit non-zero — which skips postbuild and its marker. Entry-point mtime alone
+# calls that a good build.
+partial=$(make_sdk partial); rm "$partial/dist/.build-complete"
+expect fail "tsc emitted, then failed (no postbuild marker)" "$partial" "did not complete"
 
 # Existence-only would pass this; so would a newest-file comparison, because the
 # deletion leaves every surviving file older than dist. The parent directory's

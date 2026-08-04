@@ -180,6 +180,21 @@ expect_reject "a single-quoted executable: 'npm' install" \
 expect_reject "an escaped space: npm\\ install" \
   "$(make_fixture quote_esc 'true' 'npm\ install')" 'npm install'
 
+# JSON permits a literal newline inside a script value, and npm runs every line
+# of it. A newline-delimited read of jq's output handed only the first line to
+# the parser and dropped the rest, so the writer on line two scanned clean.
+# Records are NUL-terminated now.
+expect_reject "a multiline lifecycle script whose second line writes" \
+  "$(make_fixture multiline 'echo ok
+npm install --package-lock-only')" \
+  'npm install'
+
+expect_reject "a writer on the third line of a script" \
+  "$(make_fixture multiline3 'echo one
+echo two
+npm update')" \
+  'npm update'
+
 echo "== permitted invocations must still pass =="
 
 expect_accept "npm ci + npm run (the fix)" \
