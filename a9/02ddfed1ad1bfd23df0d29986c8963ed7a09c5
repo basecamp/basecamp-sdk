@@ -1,0 +1,23 @@
+scripts/test-check-projected-examples.rb
+  s_ae792ed0be3006::t_f5728e53bc1ea8 89-93,95-96
+  s_ae792ed0be3006::t_a8e16988a77838 33-36,38-48,50-62
+  s_ae792ed0be3006::t_c7baf445fc6284 1-32,37,49,63-88,94,97-298
+scripts/check-projected-examples.rb
+  s_ae792ed0be3006::t_c8b563b15ab0ec 1-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a902ddfed1ad1bfd23df0d29986c8963ed7a09c5",
+  "prompts": {},
+  "sessions": {
+    "s_ae792ed0be3006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7fd3dc2e-89cf-437b-8756-21beefe1c5f6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
