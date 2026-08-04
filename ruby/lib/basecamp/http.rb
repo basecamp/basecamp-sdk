@@ -169,10 +169,10 @@ module Basecamp
     # Performs the authenticated hop-1 GET for the download flow (SPEC §14).
     #
     # Retries network errors plus the declared {DOWNLOAD_RETRY_ON} statuses —
-    # never 500 — under the public max_retries total-attempt cap, floored at
-    # one for downloads (+max_retries: 0+ still sends one attempt). DownloadURL
-    # has no behavior-model entry, so the policy is passed directly rather than
-    # looked up by operation.
+    # never 500 — under the public max_retries total-attempt cap, which is
+    # floored at one attempt on every path, not just this one (+max_retries: 0+
+    # still sends one request). DownloadURL has no behavior-model entry, so the
+    # policy is passed directly rather than looked up by operation.
     # @param url [String] absolute URL
     # @return [Response]
     def get_download(url)
