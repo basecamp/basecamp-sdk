@@ -4,7 +4,7 @@ Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-
 
 OpenAPI 3.1 spec included.
 
-**Upgrading?** Read [MIGRATING.md](MIGRATING.md) *before* you bump the version. v0.13.0 breaks all six SDKs, and 51 of those breaks survive a clean build — most give no signal at all, and a few compile and then fail at runtime on one particular shape of response, which is not the same shape in every SDK: Go's need the field *absent*, Ruby's needs it *populated*.
+**Upgrading?** Read [MIGRATING.md](MIGRATING.md) *before* you bump the version. v0.13.0 breaks all six SDKs, and 61 of those breaks survive a clean build — 55 give no signal at all, and 6 compile and then fail at runtime on one particular shape of response, which is not the same shape in every SDK: Go's four need the field *absent*, Ruby's and Kotlin's need it *present*.
 
 ## Languages
 

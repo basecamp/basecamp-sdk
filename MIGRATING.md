@@ -20,23 +20,23 @@ first.** A large share of this release survives a clean build. Most of that
 share gives you no signal at all — the call keeps working against a live server
 and does something different. A smaller part compiles and then panics or raises,
 but only on a payload of one particular shape — and the shape is not the same
-one in every SDK. The three Go entries need a field to be **absent**; Ruby's
-single entry needs its field to be **populated**, and stays quiet when it is
-nil. A fixture built for one direction proves nothing about the other, and
-either way it passes your tests and fails in production.
+one in every SDK. The four Go entries need a field to be **absent**; Ruby's and
+Kotlin's need theirs to be **present**, and both stay quiet when it is nil. A
+fixture built for one direction proves nothing about the other, and either way
+it passes your tests and fails in production.
 
 | SDK | breaking changes | no signal at all | fails at runtime |
 |---|---:|---:|---:|
-| [Go](#go) | 27 | **10** | **3** |
-| [Swift](#swift) | 20 | **9** | 0 |
-| [TypeScript](#typescript) | 16 | 8 | 0 |
-| [Python](#python) | 14 | 7 | 0 |
-| [Ruby](#ruby) | 17 | 8 | 1 |
-| [Kotlin](#kotlin) | 14 | 5 | 0 |
+| [Go](#go) | 33 | **12** | **4** |
+| [Swift](#swift) | 22 | **10** | 0 |
+| [TypeScript](#typescript) | 18 | 9 | 0 |
+| [Python](#python) | 16 | 8 | 0 |
+| [Ruby](#ruby) | 20 | 10 | 1 |
+| [Kotlin](#kotlin) | 17 | 6 | 1 |
 
-51 breaks the compiler will not catch, across the six: 47 with no signal at all
-and 4 that fail at runtime. These are counts at `9de44b2a8` and move if anything
-under [Not in this release](#not-in-this-release) lands before the tag.
+61 breaks the compiler will not catch, across the six: 55 with no signal at all
+and 6 that fail at runtime. These are counts at `2afc97707`, the commit this
+release is cut from; nothing described here is still in flight.
 
 #637 does **not** add a row to either column, despite landing after the first
 draft of this table. It made `Todolist.color` and `.comments_app_url` required —
@@ -49,13 +49,24 @@ rather than adding one, and that is where this guide documents it.
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
 body.
 
-> **As of `9de44b2a8`.** Base `v0.12.0` = `7e2925d25`. Every count in this
+> **As of `2afc97707`.** Base `v0.12.0` = `7e2925d25`. Every count in this
 > document is a measurement at that commit, not a constant. If you are reading
 > this from a later tag, re-run the derivations below — they are cheap, and a
-> hand-incremented count is how these go wrong. Changes still in flight when
-> this was written are listed under
-> [Not in this release](#not-in-this-release), each with the specific lines
-> here that need re-deriving once it lands.
+> hand-incremented count is how these go wrong. The release spans 67 merged
+> pull requests, 15 of them labelled `breaking`:
+>
+> ```bash
+> v12=$(git log -1 --format=%cI v0.12.0)
+> gh pr list --repo basecamp/basecamp-sdk --state merged --limit 300 \
+>   --json number,mergedAt --jq "[.[]|select(.mergedAt > \"$v12\")]|length"
+> gh pr list --repo basecamp/basecamp-sdk --state merged --label breaking \
+>   --limit 300 --json number,mergedAt \
+>   --jq "[.[]|select(.mergedAt > \"$v12\")]|length"
+> ```
+>
+> A labelled PR is not the same unit as an entry below: one PR can break four
+> SDKs and one SDK can carry two entries from the same PR, which is why the
+> per-SDK columns are larger than 15.
 
 ## What shipped
 
@@ -146,8 +157,8 @@ Three operation IDs were also removed outright and will never match again:
 `TrashTodo`, `GetRecording`, `CreateForwardReply`.
 
 **Cards move the opposite way, and an allowlist is not automatically safe.**
-If [the cards fix](#cards-the-due-date-fix) lands, `cards.update` stops issuing
-its `GetCard` and collapses to a single `UpdateCard`. Nothing starts being
+[The cards fix](#cards-the-due-date-fix) is in this release: `cards.update` stops
+issuing its `GetCard` and collapses to a single `UpdateCard`. Nothing starts being
 denied — but if your allowlist names the write and deliberately omits the read,
 that omission used to reject `cards.update` at its first request and now does
 not. The same applies to a denylist on `GetCard`. Audit for gates that were
@@ -195,10 +206,12 @@ So today, against production:
   the good half: a sparse update that never mentioned `due_on` used to erase it
   and no longer does.
 
-There is nothing to configure and no workaround worth writing — see
-[Cards: the due-date fix](#cards-the-due-date-fix) for what the SDK change
-looks like and where it stands. Until you are on a release carrying it, treat
-"clear a card due date" as unavailable and verify by reading the card back.
+**v0.13.0 is the release that fixes it.** `cards.update` now encodes a clear as
+`"due_on": ""`, which bc3 blank-casts to nil — see
+[Cards: the due-date fix](#cards-the-due-date-fix) for the SDK-side shape and
+what it costs you in hook events. There is nothing to configure. Until you are on
+this release, treat "clear a card due date" as unavailable and verify by reading
+the card back.
 
 ---
 
@@ -211,17 +224,17 @@ work your toolchain will find for you, and this is not.
 Within it there are two classes, and they fail differently enough that mixing
 them would be misleading:
 
-**Class A — no signal at all (47).** Running your existing code against a live
+**Class A — no signal at all (55).** Running your existing code against a live
 Basecamp server, nothing tells you: it does not fail to compile, does not
 raise, does not fail to decode, and does not change the shape of what you get
 back. The call keeps working and does something different. These are the
 dangerous ones, because there is no moment at which you find out.
 
-**Class B — fails at runtime, on the wrong payload (4).** Compiles, then panics
+**Class B — fails at runtime, on the wrong payload (6).** Compiles, then panics
 or raises. You do get a signal; you get it late, from a stack trace, and only
 sometimes.
 
-**These four are classified for the payload that fails.** That is a real
+**These six are classified for the payload that fails.** That is a real
 limitation of the scheme and worth stating rather than hiding: class B is not a
 property of the call, it is a property of the call *plus a response*. The same
 method, against a response of the other shape, does not break at all — it
@@ -231,21 +244,24 @@ you say which response you mean, and every entry below names its trigger.
 That is also why the two classes need **opposite** test fixtures, and why "we
 tested it against realistic data" is not evidence:
 
-- **Absent-field triggers** (all three Go entries). A pointer that is nil
+- **Absent-field triggers** (all four Go entries). A pointer that is nil
   because the server omitted the key. A fixture that populates every field never
   trips these — and against a fully-populated response they are not breaks.
-- **Populated-field trigger** (the Ruby entry). A value that is now a `Time`
-  rather than a `String`, so the failure needs the field to be *present*. A
-  fixture that leaves it nil never trips it — and against an absent field the
-  behaviour is unchanged, because both versions raised there anyway.
+- **Populated-field triggers** (the Ruby entry and the Kotlin one). Ruby's is a
+  value that is now a `Time` rather than a `String`, so the failure needs the
+  field to be *present*. Kotlin's is narrower still: the field must be present
+  **and carry a JSON number or boolean where the model declares a string**. A
+  fixture that leaves either nil never trips them — and against an absent field
+  the behaviour is unchanged, because both versions did the same thing there.
 
 Class A has no dependency on a *field's* presence — but that is not the same as
 "every response", and the distinction matters when you go looking for one. Most
 class-A entries do fire on every call of the affected method: the URL
 corrections (#586), the `page` selector (#617), the merge-safe composites (#574,
-#601, #632), the empty-slice marshalling change (#560). Two groups do not, and
-their precondition is a property of the *response*, not of a field you can
-populate:
+#601, #632), the cards composite collapsing the other way (#647), the
+empty-slice marshalling change (#560). Three groups do not, and their
+precondition is a property of the *response* or of your *configuration*, not of
+a field you can populate:
 
 - **The error-message and validation entries (#541, #549)** need an error status
   to reach the code at all — a 2xx never composes an error message — and the
@@ -255,15 +271,20 @@ populate:
 - **`downloadURL`'s hop-1 retry (#563)** changes nothing until a network error
   or one of `{429, 502, 503, 504}` actually occurs. Against a healthy server it
   is indistinguishable from v0.12.0.
+- **Ruby's floored attempt cap (#656)** is reachable only when you have set
+  `max_retries` to 0 *and* the GET carries no operation ID. Every other
+  configuration is bit-identical to v0.12.0 — see
+  [the Ruby entry](#max_retries-0-now-sends-one-request-where-it-sent-none-656)
+  before you go auditing.
 
 | SDK | class A | class B |
 |---|---:|---:|
-| Go | 10 | 3 |
-| Swift | 9 | 0 |
-| TypeScript | 8 | 0 |
-| Python | 7 | 0 |
-| Ruby | 8 | 1 |
-| Kotlin | 5 | 0 |
+| Go | 12 | 4 |
+| Swift | 10 | 0 |
+| TypeScript | 9 | 0 |
+| Python | 8 | 0 |
+| Ruby | 10 | 1 |
+| Kotlin | 6 | 1 |
 
 **How these are counted**, so the number can be checked against a rule rather
 than an impression:
@@ -414,10 +435,11 @@ changed:
   not an object, or a writable field that is not the type the spec claims,
   aborts before the PUT with a statusless API error.
 
-## Go — 10 class A, 3 class B
+## Go — 12 class A, 4 class B
 
-Go carries every class-B break in the release. All three come from #560/#615's
-pointerization, and all three share one shape: Go auto-dereferences a pointer
+Go carries every *panic*-shaped class-B break in the release; Ruby's and
+Kotlin's raise instead. All four Go entries come from #560/#615/#658's
+pointerization, and all four share one shape: Go auto-dereferences a pointer
 for a field selector and for a value-receiver method call, so the old code
 compiles untouched and panics **only when the server omits that field**.
 
@@ -431,11 +453,20 @@ compiles untouched and panics **only when the server omits that field**.
    marshalling one now omits the key where it used to emit a fabricated
    `0001-01-01T00:00:00Z`. That half never raises — check persisted output and
    downstream strict decoders.
-2. **~107 optional fields in `pkg/generated` with struct or named types became
+2. **Five *more* wrapper timestamps became `*time.Time` (#658).** #615's five
+   were not the whole set — a second sweep found five that its `omitempty`-keyed
+   check could not see. Fields: `QuestionReminder.RemindAt`,
+   `ClientApprovalResponse.CreatedAt`, `ClientApprovalResponse.UpdatedAt`,
+   `TimelineEvent.CreatedAt`, `WebhookDelivery.CreatedAt`. Identical failure
+   shape to entry 1, so **audit ten wrapper fields, not five**.
+   *Class-A residue:* all five gained `omitempty`, which none of them carried
+   before, so marshalling now omits the key instead of emitting
+   `0001-01-01T00:00:00Z`.
+3. **~107 optional fields in `pkg/generated` with struct or named types became
    pointers (#560).** `a.Limits.CanUploadFiles` and `t.DueOn.String()` both
    compile and both panic. Of 653 value→pointer flips, 527 scalars and 19
    slices break at compile time; these ~107 do not.
-3. **`Question.Schedule.Hour` and `.Minute` can now be nil (#560).** The one
+4. **`Question.Schedule.Hour` and `.Minute` can now be nil (#560).** The one
    flip in the release running guaranteed-non-nil → nil, so
    `*q.Schedule.Hour` that was unconditionally safe now panics.
    *Class-A residue:* `WeekInstance`, `WeekInterval` and `MonthInterval` moved
@@ -469,6 +500,18 @@ compiles untouched and panics **only when the server omits that field**.
     previously yielded nothing. Typed service methods already returned
     `CodeValidation` for 400 and 422, so for most callers the *text* is the only
     thing that moved — and any string match on it is dead.
+11. **`Cards().Update` dropped its preservation `GetCard` (#647).** The
+    signature and `UpdateCardRequest` are unchanged, so every call site compiles
+    untouched; what moves is the request count, the hook sequence and the
+    encoding of a clear. See [Cards: the due-date fix](#cards-the-due-date-fix).
+12. **`Schedules().CreateEntry` stopped validating `StartsAt`/`EndsAt` as
+    RFC3339 (#664).** `CreateScheduleEntryRequest`'s two fields were already
+    `string` and still are, so nothing about the call site changes — but the
+    local `ErrUsage` guard is gone and the value goes on the wire verbatim. A
+    bare date now creates an all-day entry where v0.12.0 refused it before the
+    request left, and a genuinely malformed value now reaches bc3 instead of
+    failing locally with `CodeUsage`. Code that used that error as its input
+    validation has no validation.
 
 One more is *partly* compiler-visible: `Error` gaining `FieldErrors` mid-struct
 breaks unkeyed composite literals and nothing else. `Schedules().UpdateEntry` is
@@ -476,7 +519,7 @@ breaks unkeyed composite literals and nothing else. `Schedules().UpdateEntry` is
 any `pkg/basecamp` call site that set even one field fails to compile. It is in
 [Compile errors](#updatescheduleentryrequest-fields-became-pointers-632).
 
-## Swift — 9 class A
+## Swift — 10 class A
 
 1. **Error `message` recomposed at every status (#541).** The v0.12.0 fallback
    was `HTTPURLResponse.localizedString(forStatusCode:)` — measured on Darwin:
@@ -511,8 +554,13 @@ any `pkg/basecamp` call site that set even one field fails to compile. It is in
    `CancellationError` (#568).** `catch let error as BasecampError` no longer
    matches; the error escapes to your next handler.
 9. **`downloadURL`'s first hop retries three times (#563).**
+10. **`cards.update` dropped its preservation `GetCard` (#647).** The signature
+    is byte-identical — `DueDate.preserve` still exists and still means "leave it
+    alone", it just omits the key now instead of fetching and resending. One
+    request, one hook event. See
+    [Cards: the due-date fix](#cards-the-due-date-fix).
 
-## TypeScript — 8 class A
+## TypeScript — 9 class A
 
 1. **Every error message from a generated service call was previously the HTTP
    status text (#541).** At v0.12.0 `BaseService.handleError` discarded the body
@@ -543,8 +591,13 @@ any `pkg/basecamp` call site that set even one field fails to compile. It is in
    (#632).** The request type was renamed, but the merge-safe type is a superset
    of the old field set, so an inline object literal — the common shape —
    compiles unchanged and changes semantics.
+9. **`cards.update()` dropped its preservation `GetCard` (#647).**
+   `UpdateCardRequest` is unchanged and every call site compiles untouched. One
+   request instead of two, one hook event instead of two, and `dueOn: null` now
+   goes on the wire as `""` rather than triggering a read-and-resend. See
+   [Cards: the due-date fix](#cards-the-due-date-fix).
 
-## Python — 7 class A
+## Python — 8 class A
 
 1. **`ValidationError` text changed and `field_errors` is new (#541, #549).**
    `str(e)` went from `"Validation failed"` to `"color: is not a valid color"`,
@@ -565,12 +618,17 @@ any `pkg/basecamp` call site that set even one field fails to compile. It is in
 6. **`documents.update()` is a merge-safe GET+PUT (#601).**
 7. **`schedules.update_entry()` is merge-safe (#632).** Every v0.12.0 keyword
    still binds.
+8. **`cards.update()` dropped its preservation `get` (#647).** Keyword set
+   identical. One request instead of two, one hook event instead of two, and
+   `due_on=""` is now the clear encoding. See
+   [Cards: the due-date fix](#cards-the-due-date-fix).
 
-All three composites keep byte-identical keyword sets, raise nothing on the
-happy path, and produce no type-checker complaint — Python has no compile step,
-so nothing anywhere warns you.
+All three merge-safe composites keep byte-identical keyword sets, raise nothing
+on the happy path, and produce no type-checker complaint — Python has no compile
+step, so nothing anywhere warns you. The cards collapse is the same shape in
+reverse, and just as quiet.
 
-## Ruby — 8 class A, 1 class B
+## Ruby — 10 class A, 1 class B
 
 ### Class A — no signal at all
 
@@ -597,6 +655,13 @@ so nothing anywhere warns you.
 8. **`schedules.update_entry` is a merge-safe GET+PUT (#632).** None of the
    three `update` keyword sets changed — only `replace`/`replace_entry`
    tightened — so every call site binds unchanged and behaves differently.
+9. **`cards.update` dropped its preservation `get` (#647).** Keyword set
+   identical. One request instead of two, one hook event instead of two, and
+   `due_on: ""` is now the clear encoding. See
+   [Cards: the due-date fix](#cards-the-due-date-fix).
+10. **`max_retries: 0` now sends one request where it sent none (#656)** — see
+    [the entry below](#max_retries-0-now-sends-one-request-where-it-sent-none-656).
+    Narrow: only an *ungoverned* GET, only at `max_retries` 0.
 
 ### Class B — raises at runtime, on the wrong payload
 
@@ -610,7 +675,7 @@ so nothing anywhere warns you.
    anything writing that value into a log line, a cache key or an external
    payload changes what it emits with no error at all.
 
-## Kotlin — 5 class A
+## Kotlin — 6 class A, 1 class B
 
 1. **`documents.update` quietly stopped erasing omitted fields (#601).**
    `UpdateDocumentBody` was removed from the generator and re-declared by hand
@@ -628,11 +693,32 @@ so nothing anywhere warns you.
    504}` plus network errors, gated on `config.enableRetry` (default true). A
    single-shot 503 mock now sees three requests; 500 is deliberately not
    retried.
+6. **`cards.update` dropped its preservation `get` (#647).** The signature is
+   unchanged. One request instead of two, one hook event instead of two, and
+   `dueOn = ""` is now the clear encoding. See
+   [Cards: the due-date fix](#cards-the-due-date-fix).
 
-Kotlin's other two merge-safe composites are **not** here because the compiler
-does catch them: `todolists.update` takes a different body type and
+### Class B — raises at runtime, on the wrong payload
+
+1. **The client decoder stopped coercing a wrong-typed scalar into a `String`
+   (#660).** No type, field or method signature moved — the only change is that
+   the client-wide `Json` no longer sets `isLenient`. At v0.12.0 a response
+   carrying `"description": 42` or `"title": false` decoded to `"42"` / `"false"`
+   for any `String`/`String?` member on any model; it now throws a raw
+   `kotlinx.serialization.SerializationException`.
+   Two properties worth planning around. The trigger is a field that is
+   **present and populated with a JSON number or boolean** — absence and explicit
+   null are unaffected, so a fixture that omits the field never trips it. And the
+   throw happens in the *response* decode, so on a write the mutation has already
+   landed: `cards.update` issues its PUT, the card changes, and then the decode
+   raises. `catch (e: BasecampException)` does not see it —
+   `todolists.update`/`edit` are the exception and wrap it as
+   `BasecampException.Api`.
+
+Kotlin's other two merge-safe composites are **not** in class A because the
+compiler does catch them: `todolists.update` takes a different body type and
 `UpdateScheduleEntryBody` no longer exists. Only `documents.update` survives the
-build, via the hand-written same-package shim, and that is entry 1.
+build, via the hand-written same-package shim, and that is class-A entry 1.
 
 ---
 
@@ -739,13 +825,15 @@ The consequence for anyone still on an older SDK is
 the released encoding for "clear the due date" is omission, and omission no
 longer clears.
 
-**Status:** open as PR #647 on `fix/card-due-on-explicit-clear`
-(`a3c772574a`), not yet merged, and currently being reworked Smithy-first — the
-generated `UpdateCardStepRequestContent.DueOn` is `*types.Date` and cannot
-express `""`, so the fix belongs in the spec rather than in a hand-written body
-map that contradicts it. The consumer-facing shape below is read from the branch
-and is unaffected by that rework, but the branch head will move again. Confirm
-it landed before relying on the version number.
+**Status:** shipped. #647 merged as `46b7f8225`, in all six SDKs.
+
+It touches no schema — not `openapi.json`, not `spec/basecamp.smithy`, not
+`go/pkg/generated`. An earlier draft of this guide said the fix would have to go
+Smithy-first because `UpdateCardStepRequestContent.DueOn` could not express
+`""`; that generated field did change from `types.Date` to `*types.Date` across
+this release, but by #560's blanket pointerization, not by #647, and the card-step
+wrapper never used that struct — it hand-builds a `map[string]any`. The two
+changes rhyme and are unrelated.
 
 ### The wire encoding of an explicit clear changes
 
@@ -780,7 +868,14 @@ bc3 made title optional on update in the same change.
 `Cards().Update` no longer issues a `GetCard` first. In Go it is now literally
 `return s.UpdateVerbatim(ctx, cardID, req)`.
 
-| | v0.12.0 | after the fix |
+**The v0.12.0 read was conditional, which narrows who is affected.** All six
+SDKs took the GET only when the caller left `due_on` **unaddressed** — Go's
+`if req.DueOn == nil`, Python's `current = self.get(...) if due_on is None`,
+Kotlin's `dueOn == null ->`, and the equivalents in Ruby, TypeScript and Swift.
+A call that named `dueOn` explicitly was already a single PUT and is unchanged.
+The table below is therefore the *unaddressed-`due_on`* path:
+
+| | v0.12.0 (`due_on` unaddressed) | v0.13.0 |
 |---|---|---|
 | wire operations | `GetCard` then `UpdateCard` | `UpdateCard` |
 | Go `OperationInfo` | `{Cards, Get}` then `{Cards, UpdateVerbatim}` | `{Cards, UpdateVerbatim}` |
@@ -833,9 +928,11 @@ stops being reachable on this surface. `cards_write.json` goes from 8 cases to 5
 and its `errorRaised` count from 3 to 0.
 
 **The class itself is not retired.** It stays pinned on Todos, which still does
-a real read-modify-write: `todos_write.json` keeps 2 `errorRaised` cases. If you
-were relying on Cards to be the canary for malformed-read-back handling, it is
-not one any more — Todos is.
+a real read-modify-write: `todos_write.json` carries 3 `errorRaised` cases — the
+array and empty-object kills it already had, plus a bare-scalar kill added by
+#660. If you were relying on Cards to be the canary for malformed-read-back
+handling, it is not one any more — Todos is, and it now covers one shape more
+than Cards ever did.
 
 ---
 
@@ -872,9 +969,9 @@ not one any more — Todos is.
 
 # Go
 
-Go has the most invasive changes in this release. Thirteen survive a clean
-build: ten give no signal at all, and three compile and then panic — see
-[Go — 10 class A, 3 class B](#go--10-class-a-3-class-b) for the split.
+Go has the most invasive changes in this release. Sixteen survive a clean
+build: twelve give no signal at all, and four compile and then panic — see
+[Go — 12 class A, 4 class B](#go--12-class-a-4-class-b) for the split.
 
 The scale, so you can size the work before starting: `pkg/basecamp`'s exported
 surface now carries **300 pointer-typed fields** — `*string` ×81, `*bool` ×23,
@@ -947,6 +1044,32 @@ Two consequences past the panic: absence used to read as
 `0001-01-01T00:00:00Z` and now reads as nil, and `json.Marshal` of a
 `SearchResult` now omits `created_at`/`updated_at` when absent. Check persisted
 serialization and downstream strict decoders.
+
+### Five *more* wrapper timestamps became `*time.Time` (#658)
+
+#615's five were not the whole set, and the check it shipped could not tell you
+so: `TestNoValueTypedOptionalTimestamps` keyed on the `,omitempty` tag, and these
+five did not carry one. A second sweep pairs each wrapper field against its
+generated counterpart by struct name and json key, and found five more:
+
+| File | Struct | Field |
+|---|---|---|
+| `go/pkg/basecamp/checkins.go` | `QuestionReminder` | `RemindAt` |
+| `go/pkg/basecamp/client_approvals.go` | `ClientApprovalResponse` | `CreatedAt` |
+| `go/pkg/basecamp/client_approvals.go` | `ClientApprovalResponse` | `UpdatedAt` |
+| `go/pkg/basecamp/timeline.go` | `TimelineEvent` | `CreatedAt` |
+| `go/pkg/basecamp/webhooks.go` | `WebhookDelivery` | `CreatedAt` |
+
+The failure is identical to #615's — `ev.CreatedAt.Format(time.RFC3339)`
+compiles, and panics when the server omits `created_at`. **So the audit is ten
+fields, not five.** Watch the near-miss siblings, which did *not* change and are
+easy to sed by accident: `Webhook.CreatedAt`/`UpdatedAt`,
+`QuestionAnswer.CreatedAt`/`UpdatedAt`, and `ClientApproval.CreatedAt`/
+`UpdatedAt` — note that the last pair is on `ClientApproval`, while the pair that
+*did* move is on `ClientApprovalResponse`.
+
+All five also gained `,omitempty`, which none of them carried before, so
+`json.Marshal` now drops the key instead of emitting `0001-01-01T00:00:00Z`.
 
 ### `pkg/generated`: ~107 struct- and time-typed optional fields became pointers (#560)
 
@@ -1136,6 +1259,38 @@ now takes the first branch for malformed error bodies.
 
 `RepositionTodolistGroup` and `ListForwards`. Go call sites are byte-identical.
 
+### `Cards().Update` dropped its preservation `GetCard` (#647)
+
+`UpdateCardRequest` and the method signature are unchanged, so nothing in your
+build moves. `Update` is now literally `return s.UpdateVerbatim(ctx, cardID, req)`
+— one request where a call leaving `DueOn` nil used to make two, one
+`OperationInfo` where there were two, and `DueOn: basecamp.Ptr("")` as the clear
+encoding. Full detail, including what it does to allowlists and denylists, in
+[Cards: the due-date fix](#cards-the-due-date-fix).
+
+### `Schedules().CreateEntry` no longer validates the timestamps (#664)
+
+```go
+req := &basecamp.CreateScheduleEntryRequest{Summary: "Offsite",
+    StartsAt: "2026-06-01", EndsAt: "2026-06-01"}
+
+// v0.12.0 — never reached the wire
+_, err := ac.Schedules().CreateEntry(ctx, scheduleID, req)
+// err.Code == CodeUsage: "schedule entry starts_at must be in RFC3339 format …"
+
+// main — sent verbatim, creates an all-day entry
+_, err := ac.Schedules().CreateEntry(ctx, scheduleID, req)
+```
+
+`CreateScheduleEntryRequest.StartsAt` and `.EndsAt` were `string` at v0.12.0 and
+still are; only the set of values they accept widens. bc3 takes a bare date for
+an all-day entry and a timestamp otherwise, and the client-side
+`time.Parse(time.RFC3339, …)` guard rejected the first — so the fix is
+unambiguously in the right direction. What is silent is the other half: **a
+genuinely malformed value now reaches bc3** instead of failing locally with
+`CodeUsage`, and code that leaned on that error as its own input validation has
+none. The `""`-is-required guards survive.
+
 ## Compile errors
 
 ### Nine operations gained a leading `bucketID` (#619)
@@ -1243,6 +1398,65 @@ There is deliberately no `TodolistGroups().Update` or `.Edit`.
 Tri-state: nil leaves it untouched, `basecamp.Ptr("")` clears it. At v0.12.0 an empty
 string was indistinguishable from unset and could not clear.
 
+### `UpdateStepRequest.DueOn` became `*string` (#647)
+
+```go
+// leave the step's due date alone
+ac.CardSteps().Update(ctx, stepID, &basecamp.UpdateStepRequest{Title: "Draft"})
+
+// clear it
+ac.CardSteps().Update(ctx, stepID, &basecamp.UpdateStepRequest{DueOn: basecamp.Ptr("")})
+
+// set it
+ac.CardSteps().Update(ctx, stepID, &basecamp.UpdateStepRequest{DueOn: basecamp.Ptr("2026-08-14")})
+```
+
+Presence is `!= nil`, matching `UpdateCardRequest`, whose `DueOn` was already
+`*string` at v0.12.0 and did not move. `Title` changes with it: an empty `Title`
+now leaves the title unchanged rather than being sent, because bc3 made title
+optional on update in the same change. This is the one part of #647 the compiler
+finds for you; the rest is [class A](#go--12-class-a-4-class-b).
+
+### `UpcomingSchedule` returns reduced types, and `Assignable` is gone (#648)
+
+`GetUpcomingSchedule` declared the full `ScheduleEntry` schema while bc3 renders
+it through a reduced calendar partial, so the SDK promised fields the endpoint
+never sends and its converters zero-filled them silently. The response type is
+now a set of aliases onto purpose-built shapes:
+
+```go
+type (
+    UpcomingScheduleResponse     = generated.GetUpcomingScheduleResponseContent
+    UpcomingScheduleEntry        = generated.UpcomingScheduleEntry
+    UpcomingAssignable           = generated.UpcomingAssignable
+    UpcomingScheduleBucket       = generated.UpcomingScheduleBucket
+    UpcomingSchedulePerson       = generated.UpcomingSchedulePerson
+    UpcomingAssignableParent     = generated.UpcomingAssignableParent
+    UpcomingAssignableCompletion = generated.UpcomingAssignableCompletion
+)
+```
+
+`ReportsService.UpcomingSchedule(ctx, startDate, endDate)` keeps its signature;
+everything else about the result moves, and every move is a build failure:
+
+- **`basecamp.Assignable` and `generated.Assignable` are deleted.**
+- **`Assignable.Title` is now `UpcomingAssignable.Content`.** bc3 has always
+  emitted `content` and never `title`, so the field you were reading was
+  permanently the zero value. This is the correction, not a regression.
+- **`UpcomingScheduleResponse.RecurringOccurrences` → `RecurringScheduleEntryOccurrences`.**
+- Because the aliases publish generated names, the initialisms flip: `ID`→`Id`,
+  `URL`→`Url`, `AppURL`→`AppUrl`.
+- `DueOn`/`StartsOn` go `string` → `*types.Date`; `Bucket` and `Parent` become
+  the narrowed value types `UpcomingScheduleBucket{Id, Name}` and
+  `UpcomingAssignableParent{Id, Title}`; `Assignees` becomes
+  `[]UpcomingSchedulePerson`. `UpcomingScheduleEntry` drops fourteen members the
+  partial never rendered and gains `Recurring`.
+- `StartsAt`/`EndsAt` on the entry are `types.FlexibleTime`, which is what
+  `basecamp.ScheduleEntry` already used — not a change for readers.
+
+Also new and loud: an empty `startDate` or `endDate` is now
+`ErrUsage("window_starts_on is required")` rather than a bc3 400.
+
 ### `pkg/generated` only
 
 - **546 optional scalar and slice fields became pointers (#560),** enforced by
@@ -1270,6 +1484,14 @@ string was indistinguishable from unset and could not clear.
   changed type** to `*FieldValidationErrorResponseContent` (#549). These are the
   only type-changed fields that are not a plain pointer flip, so a mechanical
   migration misses them.
+- **`CreateScheduleEntryRequestContent.StartsAt` and `.EndsAt` went `time.Time`
+  → `string` (#664),** and so did `CreateScheduleEntryJSONRequestBody`, its
+  alias. A `time.Time` in one of those literals no longer compiles; pass the
+  string you actually want on the wire. The sibling
+  `ReplaceScheduleEntryRequestContent` carries `string` too, but it is a *new*
+  type as of #632 — there is nothing to migrate there from v0.12.0. The public
+  `basecamp.CreateScheduleEntryRequest` is untouched; see
+  [the silent half](#schedulescreateentry-no-longer-validates-the-timestamps-664).
 - **Two of the eight new `Todolist` members are required, and they are typed
   asymmetrically (#628, #637).** `Color` is `*string` with the json tag
   `"color"` and **no** `omitempty`, because the field is required but nullable —
@@ -1314,7 +1536,7 @@ string was indistinguishable from unset and could not clear.
 
 # Swift
 
-Swift carries nine breaks with no signal at all — second only to Go's ten —
+Swift carries ten breaks with no signal at all — second only to Go's twelve —
 because three of its request types were replaced by same-named hand-written
 ones, and two of its retry and error policies changed under unchanged
 signatures.
@@ -1325,7 +1547,7 @@ entire usage is `??` sees nothing.
 
 ## Silent
 
-All nine are in [class A](#swift--9-class-a). Two deserve code here, and a
+All ten are in [class A](#swift--10-class-a). Two deserve code here, and a
 third — `todolists.update`'s leading-dot `.init` shape — is under
 [Compile errors](#todolistsupdate-is-a-merge-safe-composite-574-628) because
 every other shape of that call does fail to build.
@@ -1445,6 +1667,40 @@ Remove the optional binding. All three move into the required init block and
 lose their defaults. New optional members: `highlighted` and `joinUrl` — the join
 link. **The request spells the same thing `url`.**
 
+### `reports.upcoming` takes two required arguments and returns reduced types (#648)
+
+```swift
+// v0.12.0
+let r = try await account.reports.upcoming(options: UpcomingReportOptions(windowStartsOn: a))
+if let entries = r.scheduleEntries { … }
+
+// v0.13.0
+let r = try await account.reports.upcoming(windowStartsOn: a, windowEndsOn: b)
+for entry in r.scheduleEntries { … }        // no longer optional
+```
+
+Four separate build failures, and they land in this order:
+
+- **`UpcomingReportOptions` no longer exists** — it was a `public struct`
+  declared inline in `ReportsService.swift`, not under `Models/`, so grep for the
+  name rather than for a file. Both window bounds are now required positional
+  labels; bc3 has always required them.
+- **`Assignable` is deleted** (`Generated/Models/Assignable.swift` is gone), and
+  its replacement `UpcomingAssignable` spells the field `content`, not `title`.
+  `assignable.title` is *value of type 'UpcomingAssignable' has no member
+  'title'* — not a silent nil. bc3 never sent `title`; the old model was fiction.
+- **The three envelope arrays went `var … ?` to `let …`** —
+  `scheduleEntries`, `recurringScheduleEntryOccurrences` and `assignables` are
+  non-optional, so `if let` on any of them is *initializer for conditional
+  binding must have Optional type*.
+- **Five more new models** carry the reduced shapes:
+  `UpcomingScheduleEntry`, `UpcomingScheduleBucket`, `UpcomingSchedulePerson`,
+  `UpcomingAssignableParent`, `UpcomingAssignableCompletion`.
+
+This is a fix in the strict sense: at v0.12.0 the call threw
+`DecodingError.keyNotFound` on `bucket.type` for *any* non-empty window, so the
+old signature could not return a populated result at all.
+
 ### Nine operations gained `bucketId:` (#619), three were removed (#619)
 
 `campfires.{listChatbots, getChatbot, createChatbot, updateChatbot,
@@ -1476,6 +1732,11 @@ replacement — see [Known gaps](#there-is-no-raw-wire-migration-path);
   authenticated; the signed second hop is still exempt. There is no public
   numeric knob: `DownloadURL` is deliberately absent from `behavior-model.json`.
   `enableRetry: false` collapses it to one attempt.
+- **`cards.update` is a single PUT (#647).** The signature is byte-identical and
+  `DueDate.preserve` still exists — it now omits the key instead of fetching the
+  card and resending the value, so a call that used to make two requests and emit
+  two hook events makes and emits one. `.clear` sends `"due_on": ""`. See
+  [Cards: the due-date fix](#cards-the-due-date-fix).
 
 ---
 
@@ -1488,7 +1749,7 @@ string you might be matching on.
 
 ## Silent
 
-See [class A](#typescript--8-class-a). Two details on `fieldErrors`
+See [class A](#typescript--9-class-a). Two details on `fieldErrors`
 that bite:
 
 ```ts
@@ -1592,6 +1853,35 @@ read this, **not** `url`, which is the entry's own API URL) and `highlighted`.
 Note `starts_at` is a bare date (`"2026-06-01"`) for an all-day entry and a full
 timestamp otherwise; round-trip it verbatim.
 
+### `reports.upcoming()` takes two required arguments and returns reduced types (#648)
+
+```ts
+// v0.12.0
+const r = await client.reports.upcoming({ windowStartsOn: a, windowEndsOn: b });
+
+// v0.13.0
+const r = await client.reports.upcoming(a, b);
+```
+
+`upcoming()` with no arguments is TS2554 (*Expected 2 arguments, but got 0*);
+passing the old object literal is TS2345, because the first parameter is now a
+`string`. **`UpcomingReportOptions` is deleted** — it was exported from
+`src/generated/services/reports.ts` but never re-exported from `src/index.ts`, so
+only a deep import references it by name.
+
+`components["schemas"]["Assignable"]` is gone, replaced by `UpcomingAssignable`
+(and `UpcomingScheduleEntry`, `UpcomingScheduleBucket`, `UpcomingSchedulePerson`,
+`UpcomingAssignableParent`, `UpcomingAssignableCompletion`). Two consequences:
+
+- `assignable.title` no longer exists — the field is `content`. bc3 has always
+  sent `content`, so this is the model catching up with the wire, not a loss.
+  TypeScript reports it; **plain JS or a value you widened to `any` gets
+  `undefined`, exactly as it already did at v0.12.0.**
+- The three envelope arrays — `schedule_entries`,
+  `recurring_schedule_entry_occurrences`, `assignables` — went from optional to
+  required, so `r.schedule_entries?.map(…)` still compiles but the `?.` is now
+  dead, and code that narrowed on their absence has an unreachable branch.
+
 ### The exported `paths` type lost nine route keys and re-typed two 422 bodies (#619, #586, #549)
 
 Only affects code that types itself off the root `paths` export. The trap is the
@@ -1622,12 +1912,18 @@ exactly `UpdateMyNote` and `UpdateMyPreferences`.
   carrying an explicit `undefined` counts as addressed. `editEntry` tracks
   carve-outs by *setter invocation* via a Proxy, so `e.url = e.url` does send the
   join link.
-- **`todos.update()`, `todos.edit()` and `cards.update()` now throw on a
-  malformed read-back (#597).** v0.12.0's `?? ""` coalesced only null/undefined;
-  a wrong-typed field rode into the replacement PUT. `cards.update` was worst —
-  `if (current.due_on)` both dropped a falsey non-string (which is how bc3 erases
-  a due date) and forwarded a truthy non-string. The new error is statusless,
+- **`todos.update()` and `todos.edit()` now throw on a malformed read-back
+  (#597).** v0.12.0's `?? ""` coalesced only null/undefined; a wrong-typed field
+  rode into the replacement PUT. The new error is statusless,
   `code === "api_error"`, `retryable === false`, and never reaches the wire.
+  `cards.update()` was in this set and is no longer — see the next bullet.
+- **`cards.update()` is a single PUT (#647).** `UpdateCardRequest` is unchanged
+  and nothing in your build moves. A call leaving `dueOn` unaddressed used to
+  fetch the card first; it no longer does, so it costs one request and one hook
+  event instead of two, and `dueOn: null` goes on the wire as `""`. This also
+  retires the #597 guard on this method — `writableString` is not invoked for
+  Cards any more, because there is no read-back to validate. See
+  [Cards: the due-date fix](#cards-the-due-date-fix).
 
 ---
 
@@ -1640,8 +1936,9 @@ out on the call.
 
 ## Silent
 
-See [class A](#python--7-class-a), which now includes the three merge-safe
-composites, which have byte-identical keyword sets and no signal of any kind.
+See [class A](#python--8-class-a), which now includes the three merge-safe
+composites and the cards collapse — all four have byte-identical keyword sets
+and no signal of any kind.
 
 One correction worth knowing if you saw an earlier draft: at v0.12.0, a body like
 `{"error": {"code": 7}}` did not "hand you the dict" — it raised
@@ -1713,6 +2010,31 @@ Everything else about this is silent in Python: `basecamp/generated/types.py` is
 imported by nothing in the SDK and every generated service method is annotated
 `-> dict[str, Any]`. There is no decoder to throw.
 
+### `reports.upcoming()` requires both window bounds (#648)
+
+```python
+# v0.12.0
+def upcoming(self, *, window_starts_on: str | None = None, window_ends_on: str | None = None) -> dict[str, Any]
+# v0.13.0
+def upcoming(self, *, window_starts_on: str, window_ends_on: str) -> dict[str, Any]
+```
+
+Both are now required keyword-only arguments, on the sync method and its async
+twin. A call that omits either raises
+`TypeError: upcoming() missing 1 required keyword-only argument: 'window_ends_on'`
+at call time — where v0.12.0 reached bc3 and came back a 400. bc3 has always
+required both.
+
+The return type is unchanged (`dict[str, Any]`; Python never decodes into the
+TypedDicts at runtime), so **nothing about reading the result changes at
+runtime.** What changes is the static picture: `Assignable` is deleted from
+`basecamp.generated.types` and replaced by `UpcomingAssignable` and five
+siblings, and the envelope's three members went `NotRequired[list[...]]` to
+required. `from basecamp.generated.types import Assignable` is an `ImportError`;
+everything else here is mypy/pyright-only. In particular
+`result["assignables"][0]["title"]` was already a `KeyError` at v0.12.0 — bc3
+never sent `title` — so #648 changes nothing about it.
+
 ### With `max_retries` 0 or 1, a 401 no longer refreshes the token on reads (#571)
 
 ```python
@@ -1759,6 +2081,12 @@ the retry loop and keep the uncounted replay.
   requests (the `max_pages` cap) starting at `?page=3`; main issues exactly one
   and reports `meta.truncated=True`. Scope is 17 sync methods and their async
   twins. `page=True` is explicitly rejected as a selector (bool subclasses int).
+- **`cards.update()` is a single PUT (#647).** Keyword set identical. A call
+  leaving `due_on` unaddressed used to run `self.get(card_id=card_id)` first and
+  no longer does — one request and one hook event instead of two — and
+  `due_on=""` is now the clear encoding. The #597 `writable_string` guard is no
+  longer reached on this method, because there is no read-back to validate. See
+  [Cards: the due-date fix](#cards-the-due-date-fix).
 
 ---
 
@@ -1787,6 +2115,36 @@ There is no single call for "everything from page 2 onward" any more. Drop
 only `max_items:` and no `page:` at all: `campfires.list_chatbots`,
 `checkins.answerers`, `message_types.list`, `people.list_pingable`,
 `uploads.list_versions`, `webhooks.list`.
+
+### `max_retries: 0` now sends one request where it sent none (#656)
+
+```ruby
+# v0.12.0 — max_attempts was @config.max_retries, i.e. 0, so the loop broke
+# before single_request was ever called
+client = Basecamp::Client.new(..., max_retries: 0)
+client.get_absolute(url)
+#   requests: (none)   raises Basecamp::ApiError, "Request failed after 0 attempts"
+
+# main — the cap is floored at one attempt on every path
+client.get_absolute(url)
+#   requests: 1
+```
+
+**Narrow, and worth reading the scope before auditing anything.** Two conditions
+have to hold together:
+
+- `max_retries` must be **0**. For any value ≥ 1 the new expression
+  `[@config.max_retries, 1].max` is byte-identical to the old one.
+- The GET must be **ungoverned** — carrying no operation ID. Every one of the
+  247 operations in `metadata.json` declares a retry block, so this is not "an
+  operation without a policy"; it is a call site that passes no `operation:`.
+  In practice that means `Http#get_absolute` and the Launchpad authorization
+  fetch it backs, plus `AccountClient#get` / `Http#get` when *you* call them
+  without naming an operation.
+
+Mutations were never affected — they never entered the retry loop — and the
+download hop was already floored. If you had `max_retries: 0` standing in for a
+kill switch on those escape hatches, it is not one any more.
 
 ### `ValidationError#message` changed; `#field_errors` is new (#541, #549)
 
@@ -1855,6 +2213,27 @@ radius is narrow — **no SDK service method returns a `Types::` object**; the
 service layer returns raw Hashes. This only bites code that constructs these
 value objects itself.
 
+### `reports.upcoming` requires both window bounds (#648)
+
+```ruby
+# v0.12.0
+def upcoming(window_starts_on: nil, window_ends_on: nil)
+# v0.13.0
+def upcoming(window_starts_on:, window_ends_on:)
+```
+
+`account.reports.upcoming` with either omitted raises
+`ArgumentError: missing keywords: :window_starts_on, :window_ends_on` at call
+time. bc3 has always required both, so v0.12.0's defaults produced a 400.
+
+The return value is unchanged — a raw `Hash` — so **reading the result behaves
+exactly as it did.** `result["assignables"][0]["title"]` was `nil` at v0.12.0
+because bc3 sends `content`, and it is `nil` now for the same reason.
+`Basecamp::Types::Assignable` is deleted (`NameError` at first reference) in
+favour of `Basecamp::Types::UpcomingAssignable` and five siblings, but as with
+the other `Types::` classes, no service method returns one — this only bites code
+that constructs them itself.
+
 ### A refreshable 401 no longer replays when `max_retries` is 0 or 1 (#571)
 
 ```ruby
@@ -1921,13 +2300,24 @@ per pass and now emits one pair total.
   API URL. Omitting `all_day:` no longer resets it to false. `replace_entry` now
   requires `starts_at:` and `ends_at:`.
 
-### `todos.update`/`edit` and `cards.update` refuse a malformed read-back (#597)
+### `todos.update`/`edit` refuse a malformed read-back (#597)
 
 v0.12.0's `todo["content"] || ""` turned a `false` content into `""` and wrote it
-back — erasing the field on a call that never mentioned it. `cards.update`
-forwarded `due_on` verbatim. Both now raise `Basecamp::ApiError` (statusless,
-`retryable: false`) before the PUT. Should never fire against a healthy server;
-it fires instead of silently corrupting the record when one misbehaves.
+back — erasing the field on a call that never mentioned it. It now raises
+`Basecamp::ApiError` (statusless, `retryable: false`) before the PUT. Should
+never fire against a healthy server; it fires instead of silently corrupting the
+record when one misbehaves. `cards.update` was in this set at the time #597
+landed and is no longer — see the next entry.
+
+### `cards.update` is a single PUT and no longer reads first (#647)
+
+Keyword set identical, so every call site binds unchanged. A call that left
+`due_on` unaddressed used to fetch the card first; it no longer does, so it costs
+one request and one hook event instead of two, and `due_on: ""` is now the clear
+encoding — `compact_params` is `kwargs.compact`, so the empty string survives to
+the wire where a `nil` would not. `MergeSafe.writable_string` is not reached on
+this method any more, because there is no read-back to validate. See
+[Cards: the due-date fix](#cards-the-due-date-fix).
 
 ### Two URLs changed (#586)
 
@@ -1963,9 +2353,10 @@ already retried at v0.12.0.
 
 # Kotlin
 
-Kotlin catches the type work at compile time. The two things to watch are decoder
-throws on payloads your fixtures may not carry, and one silent semantic change
-hidden behind a hand-written compatibility shim.
+Kotlin catches the type work at compile time. The things to watch are decoder
+throws on payloads your fixtures may not carry — including one that no signature
+change announces at all — and one silent semantic change hidden behind a
+hand-written compatibility shim.
 
 ## Silent
 
@@ -1988,9 +2379,17 @@ account.documents.edit(documentId) { title = "🚨 $title" }
 New failure mode: `update`/`edit` throw `BasecampException.Api` if the fetched
 document has a blank title.
 
+### `cards.update` stopped fetching the card first (#647)
+
+The signature is unchanged. A call leaving `dueOn` null used to run
+`get(cardId).dueOn` first and no longer does — one request and one hook event
+instead of two — and `dueOn = ""` is now the clear encoding, since the generated
+body builder drops only nulls. See
+[Cards: the due-date fix](#cards-the-due-date-fix).
+
 ### Two URLs changed (#586), error composition changed (#541, #549)
 
-See [class A](#kotlin--5-class-a). Two source-compatible widenings
+See [class A](#kotlin--6-class-a-1-class-b). Two source-compatible widenings
 ship alongside the error work: `BasecampException.Api(httpStatus: Int)` became
 `Int? = null`, and `Validation` gained a trailing `fieldErrors` parameter with a
 default — every existing construction still binds.
@@ -2032,6 +2431,46 @@ escapes as a raw `SerializationException` from
 `catch (e: BasecampException)` does not see it. The merge-safe
 `todolists.update`/`edit` are the exception; they wrap it into
 `BasecampException.Api`.
+
+### A wrong-typed scalar no longer decodes into a `String` (#660)
+
+```kotlin
+// v0.12.0 — isLenient = true on the client-wide Json
+// {"description": 42}     -> description == "42"
+// {"description": false}  -> description == "false"
+
+// v0.13.0 — isLenient is gone
+// kotlinx.serialization.SerializationException
+```
+
+**Nothing in your build tells you.** No type, field or method signature moved;
+the only change is one line of `Json { }` configuration in `BasecampClient`. That
+`Json` backs every response decode in the SDK, so the scope is every
+`String`/`String?` member on every model, not a named list of fields. `isLenient`
+also relaxed other RFC-4627 rules — unquoted literals — so a body relying on that
+laxity now fails too. Structural mismatches (`[]` or `{}` where a string is
+declared) were already refused and are unchanged, as is `coerceInputValues`,
+which stays: it rewrites an explicit null to a declared default and has nothing
+to say about a scalar's type.
+
+Two things to plan around:
+
+- **The trigger is a present, populated, wrong-typed field.** Absence and
+  explicit null behave exactly as they did, so a fixture that omits the field
+  proves nothing. Re-record any cassette carrying a number or boolean in a string
+  slot.
+- **On a write, the mutation has already happened.** The throw is in the
+  *response* decode, so `cards.update` issues its PUT, the card changes, and
+  *then* it raises. And it raises a raw `SerializationException`, not a
+  `BasecampException` — `catch (e: BasecampException)` does not cover it. The
+  merge-safe `todolists.update`/`edit` are the exception; they wrap it as
+  `BasecampException.Api`.
+
+This is the fix for a real corruption path: under `isLenient`, a merge-safe
+composite read `"description": 42`, got the string `"42"`, and wrote that
+fabricated value back to a full-replace endpoint on a call that never mentioned
+the field. The per-composite guard that fixed Python, Ruby and TypeScript in #597
+could not see it, because the coercion happened inside the decoder.
 
 ### `ScheduleEntry.allDay`, `.startsAt`, `.endsAt` became required and moved (#632)
 
@@ -2118,6 +2557,27 @@ not apply to it.
 (no supported substitute — see
 [Known gaps](#there-is-no-raw-wire-migration-path); `CreateForwardReplyBody` is
 gone from `Types.kt` with no compat shim).
+
+### `reports.upcoming` takes two required arguments and returns a typed result (#648)
+
+```kotlin
+// v0.12.0
+suspend fun upcoming(options: GetUpcomingScheduleOptions? = null): JsonElement
+// v0.13.0
+suspend fun upcoming(windowStartsOn: String, windowEndsOn: String): UpcomingScheduleResult
+```
+
+Three build failures. `upcoming()` no longer has a default argument, so a bare
+call is unresolved; `GetUpcomingScheduleOptions` is deleted from
+`generated/services/Types.kt` (and from `options-param-order.json`); and the
+return type is no longer `JsonElement`, so every `.jsonObject["schedule_entries"]`
+navigation stops compiling. `assignable.title` is an unresolved reference — the
+member is `content`, which is what bc3 has always sent.
+
+`UpcomingScheduleResult` and its six models are `@Serializable` with
+non-nullable required members, so a body missing any of them now throws
+`MissingFieldException` where v0.12.0 handed back a `JsonElement` unconditionally.
+That is deliberate, and it is the same fixture hazard as the two entries above.
 
 ### Untyped callable references to 22 list methods are now ambiguous (#617)
 
@@ -2324,87 +2784,51 @@ oversight, and it should be stated rather than assumed.
 
 # Not in this release
 
-Work still in flight at `9de44b2a8`. If you are reading this from the released
-tag, these either landed — in which case the counts above were re-derived before
-the tag and this list shrank — or they did not.
+**Nothing is in flight.** Every change this guide describes is merged at
+`2afc97707`, and every count above is a measurement at that commit rather than a
+projection. Earlier drafts carried an "if it lands" list; all of it landed, and
+the counts were re-derived rather than incremented.
 
-**For whoever cuts the tag:** each entry names the specific derivations it
-invalidates, so the final pass is arithmetic rather than rewriting.
+For the record, since the earlier drafts named them and reviewers may be looking
+for them:
 
-- **#647 — Cards: the due-date fix** — `fix/card-due-on-explicit-clear`
-  (`a3c772574a`), open. Documented in full at
-  [Cards: the due-date fix](#cards-the-due-date-fix), because the production
-  half of it is true whether or not the branch lands.
-  It is **being reworked Smithy-first** and will become spec-touching. The
-  generated `UpdateCardStepRequestContent.DueOn` is `*types.Date`, which
-  structurally cannot express `""` — so a hand-written body map that sends the
-  empty string is bypassing a canonical contract that says the field cannot hold
-  one. Fixing that in the spec rather than around it is the right call, and it
-  means the branch head will move again.
-  *The consumer-facing shape below is unaffected by that rework* — single PUT,
-  `"due_on": ""` as the clear encoding, `*string` on steps, the hook collapse —
-  but re-read it at the final head before relying on the generated types.
-  *If it lands:* add one class-A entry to Go, TypeScript, Python, Ruby, Kotlin
-  and Swift for the `cards.update` request-count and hook collapse, and one
-  compile-error entry to Go for `UpdateStepRequest.DueOn`. The operation
-  inventory does not move; the class-B counts are unaffected.
-- **#648 — the `GetUpcomingSchedule` projection (#635, #641, #644).** Open and
-  green on `feat/upcoming-schedule-projection` (`cb438ce3ce`). This is the
-  largest in-flight change and it is breaking in every SDK.
-  `GetUpcomingSchedule` declared the full `ScheduleEntry` schema while bc3
-  renders it through a *reduced* calendar partial, so the published contract
-  promised fields the endpoint never sends. #648 gives it its own shapes:
-  - **`window_starts_on` and `window_ends_on` become required.** They are
-    optional today. Every `reports.upcoming` call site in all six SDKs must pass
-    both — Ruby's signature goes from `upcoming(window_starts_on: nil,
-    window_ends_on: nil)` to `upcoming(window_starts_on:, window_ends_on:)`,
-    Python's from `str | None = None` to `str`.
-  - **New reduced types replace the shared ones**: `UpcomingScheduleEntry`,
-    `UpcomingAssignable`, `UpcomingScheduleBucket`, `UpcomingSchedulePerson`,
-    `UpcomingAssignableParent`, `UpcomingAssignableCompletion`. Swift **deletes
-    `Assignable`**; Kotlin returns a typed `UpcomingScheduleResult` where it
-    returned `JsonElement`; Go adds aliases and moves `starts_at`/`ends_at` to
-    `types.FlexibleTime`.
-  - **The assignable half was wrong, not just thin.** bc3 emits `content`; the
-    SDK modelled `title`, so the one field callers want was permanently absent
-    while an always-present key went unmodelled. `bucket` narrows to `id` +
-    `name`, `parent` is `{id, title}`, and `type` is the **lowercase** short
-    name (`todo`, `card`, `step`), not the CamelCase `type` other projections
-    carry. Entries additionally gain `recurring`, which no other schedule-entry
-    projection emits.
-  - **#641 rides along with three members**, not the two in its title:
-    `CreateScheduleEntry` gains `url`, `highlighted` and `status`, all additive.
-    The read/write spelling split is preserved — write `url`, read `join_url`;
-    sending `join_url` on write is silently dropped by strong parameters.
-  - Also carries #644's example fixes via a new `BareResponseExampleMapper` and
-    wires `smithy-mapper-test` into the gate list.
+- **#647 — Cards: the due-date fix** (`46b7f8225`). Folded into
+  [Cards: the due-date fix](#cards-the-due-date-fix) and into a class-A entry for
+  all six SDKs, plus a Go compile-error entry for
+  [`UpdateStepRequest.DueOn`](#updatesteprequestdueon-became-string-647). One
+  draft claimed it would have to go Smithy-first; the merged commit touches no
+  schema at all, and the `UpdateCardStepRequestContent.DueOn` pointerization that
+  prompted that claim came from #560.
+- **#648 — the `GetUpcomingSchedule` projection** (#635, #641, #644 —
+  `e0431a722`). One compile-or-runtime entry per SDK. It adds **no** class-A or
+  class-B entry anywhere: bc3's response body is byte-identical before and after,
+  so nothing that used to be populated silently stops being so, and every rename
+  and retype is caught statically in Go, Swift, TypeScript and Kotlin and raised
+  immediately in Python and Ruby. The operation inventory does not move — 247 on
+  both sides, same 14 added / 5 removed / 11 route-moved delta from v0.12.0.
+  It does **not** fix `ScheduleEntry.join_url`/`.highlighted`, which were optional
+  only *because* `GetUpcomingSchedule` shared the shape; #648 retires that reason
+  without tightening them, so they are now under-modelled rather than correctly
+  modelled. Tightening touches five other operations and every inline stub in six
+  SDKs, so it is deliberately its own diff. #641's three additive members on
+  `CreateScheduleEntry` — `url`, `highlighted`, `status` — ride along; the
+  read/write spelling split stands, write `url` and read `join_url`.
+- **#652 — the projected-example gate** (#638 — `fd939d0bb`). Repository-internal:
+  it validates the projected examples against the schema the projection
+  publishes. Nothing consumer-visible, no operations added.
 
-  **Do not read this as fixing `ScheduleEntry.join_url`/`.highlighted`.** Those
-  two were optional *because* `GetUpcomingSchedule` shared the shape. #648
-  retires that reason without tightening them, so on its branch they are
-  **under-modelled rather than correctly modelled** — every operation still
-  returning `ScheduleEntry` renders a partial that emits both unconditionally.
-  Tightening them touches five other operations and every inline stub in six
-  SDKs, so it is deliberately deferred to its own diff.
+Between them #648 and #652 took `make check` from **41 targets to 43**
+(`smithy-mapper-test`, then `check-projected-examples`). Derive it with:
 
-  *If it lands:* the operation inventory does **not** move — verified, 247 on
-  both sides, with the same 14 added / 5 removed / 11 route-moved delta from
-  v0.12.0. What does move: `make check` goes from **41 targets to 42**
-  (`smithy-mapper-test`), and every SDK gains compile-or-runtime entries for the
-  required window parameters and the type replacements. Re-derive the per-SDK
-  totals; the class-B counts are unaffected.
-- **#652 — the projected-example gate (#638).** Open on
-  `gate/projected-example-validation` (`b7f86d66ee`), **stacked on #648**, so it
-  lands second or not at all. It validates the projected examples against the
-  schema the projection actually publishes.
-  *If it lands:* `make check` goes to **43 targets**. It adds no operations
-  (247, verified) and nothing consumer-visible — the entire effect is on the
-  repository's own gate list, so no entry in this guide changes except that
-  number.
+```bash
+sed -n 's/^check-targets: *//p' Makefile | tr ' ' '\n' | grep -c .
+```
 
-Three things that were on this list are now **in** the release, folded into the
-sections above rather than left here: **#637** (`Todolist.color` and
+Also folded in rather than listed: **#637** (`Todolist.color` and
 `comments_app_url` required — `0fd25079c`), **#643** (`basecamp.Ptr` and
-`basecamp.Deref` — `51d0d86cf`), and **#629** (bare field-map error bodies plus
-the cloud-file and Google-document operations — `a373b004c`, which is what took
-the inventory from 241 to 247).
+`basecamp.Deref` — `51d0d86cf`), **#629** (bare field-map error bodies plus the
+cloud-file and Google-document operations — `a373b004c`, which took the inventory
+from 241 to 247), **#656** (Ruby's floored attempt cap — `0fa8b461f`), **#658**
+(five more Go wrapper timestamps — `6a8a833b3`), **#660** (Kotlin's decoder
+strictness — `a3174cf3e`) and **#664** (bare dates on schedule-entry creation —
+`2afc97707`).
