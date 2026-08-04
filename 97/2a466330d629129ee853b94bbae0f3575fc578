@@ -1,0 +1,34 @@
+go/pkg/basecamp/optional_timestamps_test.go
+  s_7971b60690ffce::t_91e06a65ec7c4d 316-469
+  s_7971b60690ffce::t_67b2a5ff86d424 81-108
+  s_7971b60690ffce::t_3de07f00dc7651 240-245
+go/pkg/basecamp/checkins.go
+  s_7971b60690ffce::t_a7fe521f29a841 147-153
+  s_7971b60690ffce::t_530ebc888df56f 1245
+go/pkg/basecamp/webhooks.go
+  s_7971b60690ffce::t_11184add6d8567 39-43
+  s_7971b60690ffce::t_f898d7b420a7ef 368
+go/pkg/basecamp/timeline.go
+  s_7971b60690ffce::t_9232a2e54a9c0c 19-23
+  s_7971b60690ffce::t_1583c75dbfecbf 503
+go/pkg/basecamp/client_approvals.go
+  s_7971b60690ffce::t_631aad98938ee1 65-74
+  s_7971b60690ffce::t_ec94e62cb23036 296-297
+  s_7971b60690ffce::t_a0b64f33b44b64 75-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "972a466330d629129ee853b94bbae0f3575fc578",
+  "prompts": {},
+  "sessions": {
+    "s_7971b60690ffce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "495e5b3d-e8af-48a2-b1bb-2e6aacf79d5b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
