@@ -51,6 +51,10 @@ class TodolistsServiceTest {
      *
      * @param name raw JSON for the `name` member, or null to omit the key
      * @param description raw JSON for `description`, or null to omit the key
+     * @param color raw JSON for `color` — `null` for an uncolored list or group,
+     *   which is the ordinary case for a group. The key itself is always emitted:
+     *   it is required-and-nullable, so this takes raw JSON rather than a String?
+     *   that would omit it.
      * @param trailing the variant-specific members (`groups_url` for a list,
      *   `group_position_url` for a group)
      */
@@ -60,6 +64,7 @@ class TodolistsServiceTest {
         description: String? = "\"<p>Things to do before launch</p>\"",
         descriptionAttachments: String = "[]",
         parent: String = todosetParent,
+        color: String = "\"blue\"",
         trailing: List<String> = listOf("\"groups_url\": \"$api/todolists/$id/groups.json\""),
     ): String {
         val members = mutableListOf(
@@ -82,6 +87,11 @@ class TodolistsServiceTest {
             "\"completed_ratio\": \"0/5\"",
             "\"position\": 1",
             "\"todos_url\": \"$api/todolists/$id/todos.json\"",
+            // Both keys are @required in the published contract: the jbuilder
+            // emits color in both branches of its todolist_group? conditional and
+            // comments_app_url from a route helper. Neither is ever absent.
+            "\"color\": $color",
+            "\"comments_app_url\": \"https://3.basecamp.com/12345/buckets/1/recordings/$id/comments\"",
         )
         name?.let { members += "\"name\": $it" }
         description?.let { members += "\"description\": $it" }
@@ -102,10 +112,9 @@ class TodolistsServiceTest {
         name = "\"Hardware\"",
         description = "\"<p>Ship the hardware</p>\"",
         parent = todolistParent,
+        color = "null",
         trailing = listOf(
             "\"group_position_url\": \"$api/todolists/groups/42/position.json\"",
-            "\"color\": null",
-            "\"comments_app_url\": \"https://3.basecamp.com/12345/buckets/1/recordings/42/comments\"",
         ),
     )
 
@@ -199,10 +208,9 @@ class TodolistsServiceTest {
             description = "\"<div>Phase one hardware work</div>\"",
             descriptionAttachments = attachment,
             parent = todolistParent,
+            color = "null",
             trailing = listOf(
                 "\"group_position_url\": \"$api/todolists/groups/7/position.json\"",
-                "\"color\": null",
-                "\"comments_app_url\": \"https://3.basecamp.com/12345/buckets/1/recordings/7/comments\"",
             ),
         )
         val engine = MockEngine { _ ->
@@ -247,7 +255,6 @@ class TodolistsServiceTest {
             respond(
                 content = todolistBody(trailing = listOf(
                     "\"groups_url\": \"$api/todolists/42/groups.json\"",
-                    "\"color\": \"blue\"",
                 )),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),

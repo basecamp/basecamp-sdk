@@ -390,6 +390,11 @@ final class GeneratedServiceTests: XCTestCase {
             "todos_url": "https://3.basecampapi.com/999999999/buckets/1/todolists/\(id)/todos.json",
             "groups_url": "https://3.basecampapi.com/999999999/buckets/1/todolists/\(id)/groups.json",
             "app_todos_url": "https://3.basecamp.com/999999999/buckets/1/todolists/\(id)/todos",
+            // Both required: the jbuilder emits color in both branches of its
+            // todolist_group? conditional and comments_app_url from a route
+            // helper. color is required-and-nullable — null when unset.
+            "color": "blue",
+            "comments_app_url": "https://3.basecamp.com/999999999/buckets/1/recordings/\(id)/comments",
         ]
     }
 
