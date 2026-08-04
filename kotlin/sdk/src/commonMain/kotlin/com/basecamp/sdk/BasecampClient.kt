@@ -153,9 +153,21 @@ class BasecampClient internal constructor(
     /** Whether the SDK created (and therefore owns) the underlying HttpClient. */
     private val ownsHttpClient = externalHttpClient == null
 
+    // NO `isLenient` here, deliberately (#598). It relaxes RFC-4627 far enough
+    // that a JSON number or boolean is read into a declared String:
+    // `"description": 42` decoded to "42", and the merge-safe composites then
+    // PUT that fabricated value back to a full-replace endpoint on a call that
+    // never mentioned the field. The coercion happened inside the decoder, so a
+    // guard in TodosService/CardsService — the shape that fixed Python, Ruby and
+    // TypeScript in #597 — could not see it: by the time the composite ran, the
+    // value was an ordinary String.
+    //
+    // `coerceInputValues` stays. It is a different mechanism (an explicit null
+    // becomes the declared default for a non-nullable property) and is not
+    // implicated: DecoderStrictnessTest pins both behaviours so this comment
+    // cannot drift from the semantics.
     internal val json: Json = Json {
         ignoreUnknownKeys = true
-        isLenient = true
         coerceInputValues = true
     }
 
