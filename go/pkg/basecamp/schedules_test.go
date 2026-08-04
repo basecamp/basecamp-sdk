@@ -1758,3 +1758,72 @@ func TestSchedulesService_CreateEntryOmitsUnsetJoinLinkHighlightAndStatus(t *tes
 		}
 	}
 }
+
+// An all-day entry has bare dates for bounds, and until #634 CreateEntry could
+// not send one: it parsed StartsAt/EndsAt with time.RFC3339 and handed the
+// result to a generated body typed time.Time, so "2026-06-01" was rejected
+// outright and would have been re-rendered as a midnight timestamp even if it
+// had parsed. ReplaceEntry passed the same value through untouched, so a caller
+// could REPLACE an entry into an all-day state they could never CREATE.
+//
+// BC3 draws no such distinction. base_schedule_entry_params in
+// Schedules::Entries::BaseController is the one permit list behind both
+// new_schedule_entry_params and update_schedule_entry_params, and Schedule::Entry
+// parses neither bound specially.
+//
+// This asserts the bytes: the bare date reaches the wire verbatim on create, and
+// create and replace put the identical value there.
+func TestSchedulesService_CreateEntryAllDayBareDate(t *testing.T) {
+	fixture := loadSchedulesFixture(t, "entry_get.json")
+	allDay := true
+
+	var createdBody map[string]any
+	createSvc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		createdBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	_, err := createSvc.CreateEntry(context.Background(), 12345, &CreateScheduleEntryRequest{
+		Summary:  "Offsite",
+		StartsAt: "2026-06-01",
+		EndsAt:   "2026-06-02",
+		AllDay:   &allDay,
+	})
+	if err != nil {
+		t.Fatalf("create with bare dates failed: %v", err)
+	}
+
+	if got := createdBody["starts_at"]; got != "2026-06-01" {
+		t.Errorf("create sent starts_at=%v, want the bare date %q", got, "2026-06-01")
+	}
+	if got := createdBody["ends_at"]; got != "2026-06-02" {
+		t.Errorf("create sent ends_at=%v, want the bare date %q", got, "2026-06-02")
+	}
+
+	var replacedBody map[string]any
+	replaceSvc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		replacedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	startsAt, endsAt := "2026-06-01", "2026-06-02"
+	_, err = replaceSvc.ReplaceEntry(context.Background(), 12345, &ReplaceScheduleEntryRequest{
+		StartsAt: &startsAt,
+		EndsAt:   &endsAt,
+		AllDay:   &allDay,
+	})
+	if err != nil {
+		t.Fatalf("replace with bare dates failed: %v", err)
+	}
+
+	for _, key := range []string{"starts_at", "ends_at"} {
+		if createdBody[key] != replacedBody[key] {
+			t.Errorf("create sent %s=%v but replace sent %v; the two operations must express the same all-day state",
+				key, createdBody[key], replacedBody[key])
+		}
+	}
+}

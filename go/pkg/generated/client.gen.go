@@ -813,19 +813,35 @@ type CreateRecordingBoostResponseContent = Boost
 
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
-	AllDay      *bool     `json:"all_day,omitempty"`
-	Description *string   `json:"description,omitempty"`
-	EndsAt      time.Time `json:"ends_at"`
+	AllDay      *bool   `json:"all_day,omitempty"`
+	Description *string `json:"description,omitempty"`
+
+	// EndsAt The entry's end. See starts_at for the date-vs-timestamp rule.
+	EndsAt string `json:"ends_at"`
 
 	// Highlighted Whether the entry is highlighted on the schedule. Defaults to false.
 	//
 	// Do not send an explicit null: `schedule_entries.highlighted` is NOT NULL,
 	// so BC3 raises rather than falling back to the default. Omit it instead —
 	// every SDK's request compactor already drops unset members.
-	Highlighted    *bool     `json:"highlighted,omitempty"`
-	Notify         *bool     `json:"notify,omitempty"`
-	ParticipantIds *[]int64  `json:"participant_ids,omitempty"`
-	StartsAt       time.Time `json:"starts_at"`
+	Highlighted    *bool    `json:"highlighted,omitempty"`
+	Notify         *bool    `json:"notify,omitempty"`
+	ParticipantIds *[]int64 `json:"participant_ids,omitempty"`
+
+	// StartsAt The entry's start, as a bare date ("2026-06-01") for an all-day entry or a
+	// full timestamp ("2026-06-01T09:00:00Z") otherwise — the same two forms the
+	// response renders, and the same two ReplaceScheduleEntry accepts.
+	//
+	// Create and replace share one permit list:
+	// `Schedules::Entries::BaseController#base_schedule_entry_params` is what
+	// both `new_schedule_entry_params` and `update_schedule_entry_params` call,
+	// and Schedule::Entry does no format-specific parsing of either bound, so
+	// whatever one operation takes the other takes too.
+	//
+	// Treat the value as opaque and send it verbatim. Parsing it into a
+	// date-time type and re-rendering rewrites an all-day entry's bounds into
+	// midnight timestamps, which is why every SDK models it as a string.
+	StartsAt string `json:"starts_at"`
 
 	// Status Publication state at creation — `active|drafted`, defaulting to `active`
 	// for an API create.
@@ -2590,9 +2606,11 @@ type ReplaceScheduleEntryRequestContent struct {
 	// Sending an explicit null is worse than omitting it: the column rejects
 	// NULL, so BC3 raises rather than falling back to the default. The same is
 	// true of highlighted.
-	AllDay      *bool     `json:"all_day,omitempty"`
-	Description *string   `json:"description,omitempty"`
-	EndsAt      time.Time `json:"ends_at"`
+	AllDay      *bool   `json:"all_day,omitempty"`
+	Description *string `json:"description,omitempty"`
+
+	// EndsAt The entry's end. See starts_at for the date-vs-timestamp rule.
+	EndsAt string `json:"ends_at"`
 
 	// Highlighted Whether the entry is highlighted on the schedule.
 	//
@@ -2611,9 +2629,13 @@ type ReplaceScheduleEntryRequestContent struct {
 	// including the shape in BC3's own "Update a schedule entry" doc example —
 	// silently removed every participant and notified each one. The controller
 	// now guards on the request actually addressing participants.
-	ParticipantIds *[]int64  `json:"participant_ids,omitempty"`
-	StartsAt       time.Time `json:"starts_at"`
-	Summary        *string   `json:"summary,omitempty"`
+	ParticipantIds *[]int64 `json:"participant_ids,omitempty"`
+
+	// StartsAt The entry's start, as a bare date ("2026-06-01") for an all-day entry or a
+	// full timestamp otherwise. Same rule as CreateScheduleEntry: send it
+	// verbatim, never parsed and re-rendered.
+	StartsAt string  `json:"starts_at"`
+	Summary  *string `json:"summary,omitempty"`
 
 	// Url The entry's join link — a video-call URL or similar, up to 2500
 	// characters, validated as a URL when present.
