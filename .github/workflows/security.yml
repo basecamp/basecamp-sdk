@@ -298,6 +298,62 @@ jobs:
         working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
+  trivy-python:
+    name: Trivy (Python SDK)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Full-severity SARIF for Security-tab visibility; the gate step below enforces policy.
+      # (In SARIF mode the action reports all severities unless limit-severities-for-sarif is set.)
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: './python'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-python-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: 'trivy-python-results.sarif'
+          category: 'trivy-python'
+
+      # Table mode passes the severity filter through, so this gates on HIGH/CRITICAL only.
+      - name: Fail on HIGH/CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './python'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          skip-setup-trivy: true
+          cache: 'false'
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   bundler-audit:
     name: Bundler Audit (Ruby SDK)
     runs-on: ubuntu-latest

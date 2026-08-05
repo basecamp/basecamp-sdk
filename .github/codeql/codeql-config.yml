@@ -8,6 +8,7 @@ paths:
   - ruby/
   - swift/
   - kotlin/
+  - python/
 
 paths-ignore:
   # Generated SDK code (fix in the generator or spec, not here).
@@ -21,6 +22,13 @@ paths-ignore:
   - ruby/lib/basecamp/generated/
   - swift/Sources/Basecamp/Generated/
   - kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/
+  # python/src/basecamp/generated/ is deliberately NOT listed. It holds two
+  # hand-written files — services/_base.py and services/_async_base.py, the HTTP,
+  # retry and pagination plumbing (AGENTS.md exempts them from the generator) —
+  # i.e. exactly the code most worth scanning. paths-ignore has no negation, so
+  # excluding the directory would silently drop them. If generated Python turns
+  # out to be noisy, narrow it in codeql.yml's SARIF filter instead: that step is
+  # a jq test() regex and can express "generated/ but not services/_".
   # Test infrastructure
   - conformance/
   - kotlin/conformance/

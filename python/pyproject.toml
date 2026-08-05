@@ -47,9 +47,14 @@ quote-style = "double"
 docstring-code-format = true
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+# "S" is flake8-bandit — the Python SDK's only static security linting.
+select = ["E", "F", "I", "UP", "B", "SIM", "S"]
 
 [tool.ruff.lint.per-file-ignores]
+# Tests assert freely and pass fake credentials as literals: S101 (assert),
+# S105/S106 (hardcoded "password" strings and kwargs, e.g. access_token=,
+# client_secret=, secret=). All fixture noise, none of it shipped.
+"tests/**" = ["S101", "S105", "S106"]
 "src/basecamp/generated/**" = ["E501", "I001", "F401"]
 "src/basecamp/generated/types.py" = ["E501", "UP", "I001", "F401"]
 

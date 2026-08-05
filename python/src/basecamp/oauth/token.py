@@ -9,7 +9,8 @@ class OAuthToken:
     """OAuth 2 access token response."""
 
     access_token: str
-    token_type: str = "Bearer"
+    # RFC 6750 authentication scheme name, not a credential.
+    token_type: str = "Bearer"  # noqa: S105
     refresh_token: str | None = None
     expires_in: int | None = None
     expires_at: float | None = field(default=None)

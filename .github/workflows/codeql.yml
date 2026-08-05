@@ -41,6 +41,8 @@ jobs:
               - 'swift/**'
             kotlin:
               - 'kotlin/**'
+            python:
+              - 'python/**'
             actions:
               - '.github/**'
             config:
@@ -56,6 +58,7 @@ jobs:
           RUBY: ${{ steps.filter.outputs.ruby }}
           SWIFT: ${{ steps.filter.outputs.swift }}
           KOTLIN: ${{ steps.filter.outputs.kotlin }}
+          PYTHON: ${{ steps.filter.outputs.python }}
           ACTIONS: ${{ steps.filter.outputs.actions }}
           CONFIG: ${{ steps.filter.outputs.config }}
         run: |
@@ -67,6 +70,7 @@ jobs:
             add go manual
             add javascript none
             add ruby none
+            add python none
             add java-kotlin manual
             swift=true
           else
@@ -74,6 +78,7 @@ jobs:
             if [ "$GO" = "true" ]; then add go manual; fi
             if [ "$TS" = "true" ]; then add javascript none; fi
             if [ "$RUBY" = "true" ]; then add ruby none; fi
+            if [ "$PYTHON" = "true" ]; then add python none; fi
             if [ "$KOTLIN" = "true" ]; then add java-kotlin manual; fi
             swift=$SWIFT
           fi

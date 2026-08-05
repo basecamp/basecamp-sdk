@@ -608,7 +608,8 @@ def _build_token(data: dict[str, Any], status: int) -> OAuthToken:
     # malformed. Uniform across all five SDKs.
     token_type = data.get("token_type")
     if token_type is None:
-        token_type = "Bearer"
+        # RFC 6750 authentication scheme name, not a credential.
+        token_type = "Bearer"  # noqa: S105
     elif not isinstance(token_type, str) or not token_type:
         raise OAuthError("api_error", "Device token response token_type must be a non-empty string", http_status=status)
 
