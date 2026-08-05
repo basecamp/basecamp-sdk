@@ -1,0 +1,21 @@
+python/tests/test_pagination.py
+  s_1b3e045daedc77::t_bd2b0f7f6581a0 66-114
+python/src/basecamp/_pagination.py
+  s_1b3e045daedc77::t_554679870bb959 28-53,61-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "dff1fcdd0b7613de9bccd755ffc91db87c5ee4d3",
+  "prompts": {},
+  "sessions": {
+    "s_1b3e045daedc77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f00c661b-5cec-41d1-9e12-8ac34bd59167",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
