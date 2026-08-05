@@ -88,6 +88,92 @@
     "tags": ["pagination", "auto-follow"]
   },
   {
+    "name": "Auto-pagination continues past a malformed rel=next part",
+    "description": "A part that says rel=\"next\" but carries no extractable URL must not suppress a well-formed part after it. The empty <> yields nothing, so the parser continues and finds page 2. Short-circuiting there reports truncated=false for a list that has more pages (SPEC 'Link Header Parsing Algorithm', step 3b).",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "<>; rel=\"next\", </projects.json?page=2>; rel=\"next\""
+        },
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"}
+        ]
+      },
+      {
+        "status": 200,
+        "body": [
+          {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "requestPath", "index": 1, "expected": "/projects.json"},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "truncated", "expected": false}
+    ],
+    "tags": ["pagination", "auto-follow"]
+  },
+  {
+    "name": "A closing bracket before the opening bracket does not hide the next link",
+    "description": "The URL is delimited by the first < and the first > AFTER it. Scanning for both from position 0 makes end < start, the guard fails, and the next link is silently lost — the SDK then reports no further pages for a list that has them.",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": ">x</projects.json?page=2>; rel=\"next\""
+        },
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"}
+        ]
+      },
+      {
+        "status": 200,
+        "body": [
+          {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "requestPath", "index": 1, "expected": "/projects.json"},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "truncated", "expected": false}
+    ],
+    "tags": ["pagination", "auto-follow"]
+  },
+  {
+    "name": "A Link header with no extractable URL reports no further pages",
+    "description": "The negative direction of the same rule: continuing past a malformed part must not invent a next page. An unterminated < never closes, so there is no next link at all — one request, truncated=false. Not tagged link-header despite carrying one: that tag tells Kotlin and Swift to skip the case outright and Ruby and Python to drop the requestCount assertion, because it marks a count an auto-paginating SDK cannot meet. This count it can — there is no next link to follow — and requestCount is the whole assertion here.",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "<; rel=\"next\""
+        },
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "truncated", "expected": false}
+    ],
+    "tags": ["pagination", "auto-follow"]
+  },
+  {
     "name": "Pagination stops at maxPages safety cap",
     "description": "Verifies that pagination stops after maxPages even when more pages are available (2C.3, 2C.6)",
     "operation": "ListProjects",

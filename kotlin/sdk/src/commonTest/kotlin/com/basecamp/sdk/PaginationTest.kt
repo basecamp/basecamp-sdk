@@ -170,6 +170,25 @@ class PaginationTest {
         assertNull(parseNextLink(""">$many; rel="next""""))
     }
 
+    @Test
+    fun parseNextLinkHandlesManyEmptyBracketPairs() {
+        // The pathological case for the scan that replaced the regex, which is
+        // a different shape from the one above: that header returns after a
+        // single indexOf('>') and never takes the empty-<> branch, so the skip
+        // loop's own worst case went untested. Every "<>" here advances the
+        // cursor by one and goes round again — the only path where a
+        // non-constant-time index lookup would compound into quadratic
+        // behaviour. Behaviour and completion again, not elapsed time.
+        val pairs = "<>".repeat(50_000)
+        // No non-empty pair anywhere: every iteration skips, then it runs out.
+        assertNull(parseNextLink("""$pairs; rel="next""""))
+        // Same prefix, but the skips have to land on a real pair at the end.
+        assertEquals(
+            "https://api.example.com/page2",
+            parseNextLink("""$pairs<https://api.example.com/page2>; rel="next""""),
+        )
+    }
+
     // =========================================================================
     // isSameOrigin
     // =========================================================================

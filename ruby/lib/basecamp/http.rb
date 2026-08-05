@@ -721,6 +721,19 @@ module Basecamp
     # than a remediation. Searching for ">" from *after* the "<" is linear by
     # construction, and it is what the other five SDKs now do.
     #
+    # Byte offsets, not character offsets, and that distinction is the whole
+    # point in Ruby. String#index(str, offset) takes a CHARACTER offset, and on
+    # a string whose coderange is not CR_7BIT Ruby must walk from the start to
+    # convert it — O(cursor) per call. Since the skip loop below advances the
+    # cursor once per empty <>, character indexing makes this quadratic on any
+    # header carrying a non-ASCII byte: "é" + "<>" * 160_000 took 20.3s, where
+    # the regex it replaces took 5ms. Byte offsets are O(1). The five other
+    # SDKs index by byte (Go), UTF-16 code unit (TypeScript/Kotlin), flat code
+    # point (Python) or an O(1) native String.Index (Swift) — all already
+    # linear; only Ruby had to ask for it. Parity is exact because "<" and ">"
+    # are ASCII and UTF-8 is self-synchronising, so a byte offset and a
+    # character offset select the same substring here.
+    #
     # An empty <> is skipped rather than returned, because [^>]+ requires at
     # least one character: the regex would move on to the next "<", and so does
     # this.
@@ -729,13 +742,13 @@ module Basecamp
       cursor = 0
 
       while cursor && result.nil?
-        start = part.index("<", cursor)
-        finish = start && part.index(">", start + 1)
+        start = part.byteindex("<", cursor)
+        finish = start && part.byteindex(">", start + 1)
 
         if finish.nil?
           cursor = nil
         elsif finish > start + 1
-          result = part[(start + 1)...finish]
+          result = part.byteslice((start + 1)...finish)
         else
           cursor = start + 1
         end

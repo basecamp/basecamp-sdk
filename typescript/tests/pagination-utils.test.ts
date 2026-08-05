@@ -91,4 +91,20 @@ describe("parseNextLink — adversarial input", () => {
     // regex engines use to bail early.
     expect(parseNextLink(`>${many}; rel="next"`)).toBeNull();
   });
+
+  it("handles a header of many empty bracket pairs", () => {
+    // The pathological case for the scan that replaced the regex, which is a
+    // different shape from the one above: that header returns after a single
+    // ">"-search and never takes the empty-<> branch, so the skip loop's own
+    // worst case went untested. Every "<>" here advances the cursor by one and
+    // goes round again — the only path where a non-constant-time index lookup
+    // would compound into quadratic behaviour.
+    const pairs = "<>".repeat(50_000);
+    // No non-empty pair anywhere: every iteration skips, then the scan runs out.
+    expect(parseNextLink(`${pairs}; rel="next"`)).toBeNull();
+    // Same prefix, but the skips have to land on a real pair at the end.
+    expect(parseNextLink(`${pairs}<https://api.example.com/page2>; rel="next"`)).toBe(
+      "https://api.example.com/page2",
+    );
+  });
 });

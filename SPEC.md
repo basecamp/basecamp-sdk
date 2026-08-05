@@ -857,11 +857,38 @@ FUNCTION parseNextLink(linkHeader: String?) → String?
   3. For each part:
      a. Trim whitespace.
      b. If part contains 'rel="next"':
-        - Extract URL between < and >.
-        - Return URL.
+        - url ← extractAngleBracketed(part)
+        - If url is not null → return url.
+        - Otherwise CONTINUE to the next part. A part that says rel="next" but
+          carries no extractable URL must NOT suppress a well-formed part after
+          it: the return value feeds `truncated`/`hasMore`, so short-circuiting
+          to null there reports "no further pages" for a list that has them.
   4. → null (no next link found).
 END
+
+FUNCTION extractAngleBracketed(part: String) → String?
+  1. cursor ← 0.
+  2. Loop:
+     a. start ← offset of "<" at or after cursor. If none → return null.
+     b. end ← offset of ">" at or after start + 1. If none → return null.
+     c. If end > start + 1 → return the substring strictly between them.
+     d. Otherwise the pair is an empty "<>" → cursor ← start + 1, continue.
+END
 ```
+
+Two properties this shape is required to have, both of which an implementation
+can lose without failing any well-formed-input test:
+
+- **Leftmost-match parity with `/<([^>]+)>/`.** Step 2d skips an empty `<>`
+  rather than returning `""`, because `[^>]+` requires at least one character
+  and so the regex moves on to the next `<`. Verified exhaustively over
+  `{<,>,a,b}^≤8`.
+- **Linear time.** Step 2b must search for `>` from *after* the `<`, never from
+  the start — searching from 0 is both quadratic and, when a `>` precedes the
+  `<`, silently wrong. The offsets must also be O(1) to compute: bytes, UTF-16
+  code units, or flat code points. A *character* offset into a variable-width
+  string is O(offset) in some runtimes, which makes step 2d quadratic on any
+  header carrying a non-ASCII byte.
 
 ### Auto-Pagination Algorithm `[conformance]`
 

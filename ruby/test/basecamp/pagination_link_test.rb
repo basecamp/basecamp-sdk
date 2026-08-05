@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "timeout"
 
 # Link-header parsing tests.
 #
@@ -91,5 +92,32 @@ class PaginationLinkTest < Minitest::Test
 
     assert_nil parse(%(#{many}; rel="next"))
     assert_nil parse(%(>#{many}; rel="next"))
+  end
+
+  # The pathological case for the scan that replaced the regex, which is a
+  # different shape from the one above: that header returns after a single
+  # index(">") and never takes the empty-<> branch, so the skip loop's own worst
+  # case went untested. Every "<>" here advances the cursor by one and goes
+  # round again.
+  #
+  # The leading "é" is the whole point. It pushes the string off CR_7BIT, and
+  # String#index(str, offset) takes a CHARACTER offset, which on such a string
+  # Ruby resolves by walking from the start — O(cursor) per call, so the skip
+  # loop turns quadratic. byteindex/byteslice are O(1) in the offset. This is
+  # the one place a timeout earns its keep: the byte-indexed version does this
+  # in ~34ms, the character-indexed one in ~20.3s, so 5s sits ~150x above the
+  # fixed path and ~4x below the broken one — a regression gate, not a timing
+  # bound. (The other SDKs need no such guard; only Ruby indexes by character.)
+  def test_handles_many_empty_bracket_pairs_in_a_non_ascii_header
+    pairs = "é" + ("<>" * 160_000)
+
+    Timeout.timeout(5) do
+      # No non-empty pair anywhere: every iteration skips, then it runs out.
+      assert_nil parse(%(#{pairs}; rel="next"))
+
+      # Same prefix, but the skips have to land on a real pair at the end.
+      assert_equal "https://api.example.com/page2",
+                   parse(%(#{pairs}<https://api.example.com/page2>; rel="next"))
+    end
   end
 end

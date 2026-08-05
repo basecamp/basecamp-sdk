@@ -726,6 +726,30 @@ func TestParseNextLinkPathological(t *testing.T) {
 	}
 }
 
+// TestParseNextLinkManyEmptyBracketPairs is the pathological case for the scan
+// that replaced the regex, which is a different shape from the one above: that
+// header returns after a single ">"-scan and never takes the empty-<> branch,
+// so the skip loop's own worst case went untested. Every "<>" here advances the
+// cursor by one and goes round again, which is the only path where a
+// non-constant-time index lookup would compound into quadratic behaviour.
+//
+// Behaviour and completion again, not elapsed time.
+func TestParseNextLinkManyEmptyBracketPairs(t *testing.T) {
+	pairs := strings.Repeat("<>", 50000)
+
+	// No non-empty pair anywhere: every iteration skips, then the scan runs out.
+	if got := parseNextLink(pairs + `; rel="next"`); got != "" {
+		t.Errorf("parseNextLink(many empty pairs) = %q, want \"\"", got)
+	}
+
+	// Same prefix, but the skips have to land on a real pair at the end.
+	header := pairs + `<https://api.example.com/page2>; rel="next"`
+	if got := parseNextLink(header); got != "https://api.example.com/page2" {
+		t.Errorf("parseNextLink(many empty pairs, then a real one) = %q, want %q",
+			got, "https://api.example.com/page2")
+	}
+}
+
 // TestResolveURL tests the URL resolution helper.
 func TestResolveURL(t *testing.T) {
 	tests := []struct {

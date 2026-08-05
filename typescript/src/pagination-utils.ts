@@ -32,6 +32,17 @@ function extractAngleBracketed(part: string): string | null {
 }
 
 /**
+ * Default maximum pages to follow as a safety cap against infinite loops.
+ *
+ * Lives here rather than in base.ts because both base.ts and client.ts need it
+ * and this module is the one they can both import without a cycle. A malformed
+ * or hostile Link header can name the page it was served from, so every loop
+ * that follows rel="next" needs a bound that does not depend on the server
+ * ever stopping.
+ */
+export const DEFAULT_MAX_PAGES = 10_000;
+
+/**
  * Parses the next URL from a Link header.
  * Looks for rel="next" in the header value.
  *

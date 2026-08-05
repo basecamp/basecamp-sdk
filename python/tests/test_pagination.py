@@ -111,6 +111,21 @@ class TestParseNextLinkAdversarialInput:
         # some regex engines use to bail early.
         assert parse_next_link(f'>{many}; rel="next"') is None
 
+    def test_many_empty_bracket_pairs(self):
+        # The pathological case for the scan that replaced the regex, which is
+        # a different shape from the one above: that header returns after a
+        # single ">" search and never takes the empty-<> branch, so the skip
+        # loop's own worst case went untested. Every "<>" here advances the
+        # cursor by one and goes round again — the only path where a
+        # non-constant-time index lookup would compound into quadratic
+        # behaviour.
+        pairs = "<>" * 50_000
+        # No non-empty pair anywhere: every iteration skips, then it runs out.
+        assert parse_next_link(f'{pairs}; rel="next"') is None
+        # Same prefix, but the skips have to land on a real pair at the end.
+        header = f'{pairs}<https://api.example.com/page2>; rel="next"'
+        assert parse_next_link(header) == "https://api.example.com/page2"
+
 
 class TestParseTotalCount:
     def test_present(self):

@@ -13,7 +13,7 @@ import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
 import type { BasecampHooks, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
 import { isLocalhost, requireSameOrigin } from "./security.js";
-import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
+import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
 import { createDownloadURL, type DownloadResult } from "./download.js";
 import {
@@ -1096,7 +1096,18 @@ function createRetryingFetch(
 
 /**
  * Fetches all pages of a paginated resource using Link header pagination.
- * Automatically follows rel="next" links until no more pages exist.
+ * Automatically follows rel="next" links until no more pages exist, or until
+ * `maxPages` pages have been consumed.
+ *
+ * The cap is not optional in spirit: a Link header naming the page it was
+ * served from makes "until no more pages exist" never true, and the header is
+ * attacker-influenced (that is why `isSameOrigin` is checked below). Every
+ * other pagination loop in this SDK, and in the other five, is bounded the
+ * same way. Reaching the cap stops quietly — there is no meta channel on a
+ * bare `T[]` to report it, and throwing would break callers who legitimately
+ * have that many pages.
+ *
+ * @param maxPages - Safety cap on pages CONSUMED. Defaults to `DEFAULT_MAX_PAGES`.
  *
  * @example
  * ```ts
@@ -1111,14 +1122,24 @@ function createRetryingFetch(
 export async function fetchAllPages<T>(
   initialResponse: Response,
   parse: (response: Response) => Promise<T[]>,
-  authHeader?: string
+  authHeader?: string,
+  maxPages: number = DEFAULT_MAX_PAGES
 ): Promise<T[]> {
   const results: T[] = [];
   let response = initialResponse;
 
-  while (true) {
+  for (let page = 1; page <= maxPages; page++) {
     const items = await parse(response.clone());
     results.push(...items);
+
+    // Before reading the Link header, not after fetching it. The loop consumes
+    // the current page at the head of the iteration and fetches the next at the
+    // tail, so testing the cap only in the `for` condition would let the final
+    // allowed iteration issue a request whose response is never parsed and
+    // never returned — and that request goes to a URL taken from an
+    // attacker-influenceable header. `maxPages` counts pages CONSUMED, matching
+    // BaseService.followPagination.
+    if (page === maxPages) break;
 
     const rawNextUrl = parseNextLink(response.headers.get("Link"));
     if (!rawNextUrl) break;
@@ -1146,6 +1167,11 @@ export async function fetchAllPages<T>(
  * Async generator that yields pages of results one at a time.
  * Useful for processing large datasets without loading everything into memory.
  *
+ * Bounded by `maxPages` for the same reason as {@link fetchAllPages}: a Link
+ * header that points at its own page would otherwise yield forever.
+ *
+ * @param maxPages - Safety cap on pages CONSUMED. Defaults to `DEFAULT_MAX_PAGES`.
+ *
  * @example
  * ```ts
  * for await (const page of paginateAll(response.response, (r) => r.json() as Promise<any[]>)) {
@@ -1156,13 +1182,19 @@ export async function fetchAllPages<T>(
 export async function* paginateAll<T>(
   initialResponse: Response,
   parse: (response: Response) => Promise<T[]>,
-  authHeader?: string
+  authHeader?: string,
+  maxPages: number = DEFAULT_MAX_PAGES
 ): AsyncGenerator<T[], void, unknown> {
   let response = initialResponse;
 
-  while (true) {
+  for (let page = 1; page <= maxPages; page++) {
     const items = await parse(response.clone());
     yield items;
+
+    // See {@link fetchAllPages}: breaking here rather than relying on the loop
+    // condition is what keeps the last allowed iteration from issuing a fetch
+    // whose response is never yielded.
+    if (page === maxPages) break;
 
     const rawNextUrl = parseNextLink(response.headers.get("Link"));
     if (!rawNextUrl) break;

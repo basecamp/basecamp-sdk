@@ -26,7 +26,7 @@ import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js"
 import { BasecampError, errorFromParsedBody, errorFromResponse } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
-import { parseNextLink, resolveURL, isSameOrigin } from "../pagination-utils.js";
+import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES } from "../pagination-utils.js";
 import { saturatingBackoff } from "../retry.js";
 import type { paths } from "../generated/schema.js";
 import type createClient from "openapi-fetch";
@@ -44,9 +44,6 @@ export interface FetchResponse<T> {
   error?: unknown;
   response: Response;
 }
-
-/** Default maximum pages to follow as a safety cap against infinite loops. */
-const DEFAULT_MAX_PAGES = 10_000;
 
 /**
  * True when the caller pinned a single page (SPEC section 8).
