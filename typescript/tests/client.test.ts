@@ -662,12 +662,19 @@ describe("BasecampClient", () => {
     // `Infinity` removes the cap entirely, `2.5` consumes 2 pages then fetches
     // and discards a 3rd, and `0`/negative/`NaN` consume zero pages. Checked at
     // construction, where the mistake was written.
+    //
+    // `Number.MAX_VALUE` and `2 ** 53` remove the cap the same way `Infinity`
+    // does, and are why the predicate is `isSafeInteger`: `isInteger` returns
+    // `true` for both, and a counter that reaches `2 ** 53` stops advancing on
+    // `page++`, so it never becomes equal to the bound.
     const invalid: Array<[string, number]> = [
       ["zero", 0],
       ["negative", -1],
       ["NaN", NaN],
       ["Infinity", Infinity],
       ["fractional", 2.5],
+      ["Number.MAX_VALUE", Number.MAX_VALUE],
+      ["unsafe integer", 2 ** 53],
     ];
 
     it.each(invalid)("rejects a %s maxPages at construction", (_label, value) => {
@@ -686,7 +693,7 @@ describe("BasecampClient", () => {
       expect(caught).toMatchObject({
         name: "BasecampError",
         code: "usage",
-        message: expect.stringContaining(`maxPages must be a positive integer, got ${String(value)}`),
+        message: expect.stringContaining(`got ${String(value)}`),
       });
     });
 

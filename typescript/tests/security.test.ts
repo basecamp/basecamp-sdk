@@ -471,8 +471,15 @@ describe("pagination page cap", () => {
   //                an attacker-influenceable header.
   //   0, -1, NaN — consume ZERO pages, silently discarding a response the
   //                caller already fetched and handed in.
+  //   MAX_VALUE,  — unbounded again, and the reason the predicate is
+  //   2**53         `isSafeInteger` and not `isInteger`:
+  //                `Number.isInteger(Number.MAX_VALUE)` is `true`, so the
+  //                obvious check lets it through. The counter then climbs to
+  //                `2 ** 53`, where `page++` no longer changes the value, and
+  //                `page === maxPages` is never reached. A cap must be a
+  //                number the counter can actually arrive at.
   //
-  // `Number.isInteger(n) && n > 0` rejects all five in one predicate.
+  // `Number.isSafeInteger(n) && n > 0` rejects all seven in one predicate.
   // SPEC.md §2 step 5: "Validate `max_pages > 0`. → `⊥ BasecampError(code:
   // "usage")` otherwise."
   describe("maxPages validation", () => {
@@ -490,6 +497,8 @@ describe("pagination page cap", () => {
       ["NaN", NaN],
       ["Infinity", Infinity],
       ["a non-integer", 2.5],
+      ["Number.MAX_VALUE", Number.MAX_VALUE],
+      ["an unsafe integer", 2 ** 53],
     ];
 
     /**

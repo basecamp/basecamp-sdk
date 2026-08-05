@@ -1108,11 +1108,17 @@ function createRetryingFetch(
 /**
  * Rejects any `maxPages` that would defeat or invert the cap.
  *
- * `Number.isInteger(n) && n > 0` is one predicate covering five distinct
+ * `Number.isSafeInteger(n) && n > 0` is one predicate covering six distinct
  * failures, each of which passed silently while the parameter was unvalidated:
  *
  * - `Infinity` — `page === maxPages` is never true, so the loop is unbounded
  *   and the cap does nothing at all. Precisely the runaway it exists to stop.
+ * - `Number.MAX_VALUE`, or anything at or above `2 ** 53` — the same runaway
+ *   through a different door, and the reason this is `isSafeInteger` rather
+ *   than `isInteger`. `Number.isInteger(Number.MAX_VALUE)` is `true`, so the
+ *   obvious predicate admits it; the loop then counts up to `2 ** 53`, where
+ *   `page++` stops changing the value, and `page === maxPages` is never
+ *   reached. A cap has to be a number the counter can actually arrive at.
  * - `2.5` — consumes 2 pages, then fetches a 3rd and discards it: a request to
  *   a URL taken from an attacker-influenceable header, whose response is never
  *   parsed or returned.
@@ -1123,10 +1129,10 @@ function createRetryingFetch(
  * "usage")` otherwise."
  */
 function assertValidMaxPages(maxPages: number): void {
-  if (!Number.isInteger(maxPages) || maxPages <= 0) {
+  if (!Number.isSafeInteger(maxPages) || maxPages <= 0) {
     throw new BasecampError(
       "usage",
-      `maxPages must be a positive integer, got ${String(maxPages)}`,
+      `maxPages must be a positive integer no larger than ${Number.MAX_SAFE_INTEGER}, got ${String(maxPages)}`,
       { hint: "Pass a whole number greater than 0, or omit maxPages to use the default cap." }
     );
   }
