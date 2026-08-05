@@ -112,9 +112,8 @@ class _TodoEditBase:
     @property
     def result(self) -> dict[str, Any]:
         """The updated todo, available after the ``with`` block exits cleanly."""
-        if not self._completed:
+        if not self._completed or self._result is None:
             raise RuntimeError("edit has not completed")
-        assert self._result is not None
         return self._result
 
 

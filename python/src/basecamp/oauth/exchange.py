@@ -182,7 +182,8 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
     # must be a non-empty string — matching the device-flow parser (SPEC §16).
     token_type = data.get("token_type")
     if token_type is None:
-        token_type = "Bearer"
+        # RFC 6750 authentication scheme name, not a credential.
+        token_type = "Bearer"  # noqa: S105
     elif not isinstance(token_type, str) or not token_type:
         raise OAuthError(
             "api_error",

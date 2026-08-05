@@ -47,7 +47,8 @@ class AsyncOAuthTokenProvider:
     ``token.resource``) instead of this provider.
     """
 
-    TOKEN_URL = "https://launchpad.37signals.com/authorization/token"
+    # Public OAuth token endpoint URL, not a credential.
+    TOKEN_URL = "https://launchpad.37signals.com/authorization/token"  # noqa: S105
 
     def __init__(
         self,

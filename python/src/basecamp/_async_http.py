@@ -379,7 +379,8 @@ class AsyncHttpClient:
         if server_retry_after and server_retry_after > 0:
             return float(server_retry_after)
         base = saturating_backoff(self._config.base_delay, attempt)
-        jitter = random.random() * self._config.max_jitter
+        # Backoff jitter spreads retries; it is a fairness device, not a security primitive.
+        jitter = random.random() * self._config.max_jitter  # noqa: S311
         return base + jitter
 
     def _is_retryable_operation(self, operation: str) -> bool:
