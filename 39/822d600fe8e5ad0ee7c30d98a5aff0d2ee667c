@@ -1,0 +1,21 @@
+typescript/tests/auth-strategy.test.ts
+  s_1b3e045daedc77::t_26eb2321105898 4
+typescript/scripts/generate-services.ts
+  s_1b3e045daedc77::t_875f9d37ee5942 1157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "39822d600fe8e5ad0ee7c30d98a5aff0d2ee667c",
+  "prompts": {},
+  "sessions": {
+    "s_1b3e045daedc77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f00c661b-5cec-41d1-9e12-8ac34bd59167",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
