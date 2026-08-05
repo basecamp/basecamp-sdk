@@ -7,6 +7,31 @@
  */
 
 /**
+ * Extracts the contents of the first non-empty `<...>` pair.
+ *
+ * This is the leftmost-match semantics of `/<([^>]+)>/` in linear time. The
+ * regex form is quadratic on a header carrying many `<` with no reachable `>`,
+ * because every `<` is retried as a start position and each scans to the end.
+ * Searching for `>` from *after* the `<` visits each character once instead.
+ *
+ * An empty `<>` is skipped rather than returned, because `[^>]+` requires at
+ * least one character — the regex would move on to the next `<`, and so does
+ * this. Skipping costs nothing: the scan that found `<>` was O(1), so the loop
+ * only ever repeats after work it did not do.
+ */
+function extractAngleBracketed(part: string): string | null {
+  let cursor = 0;
+  for (;;) {
+    const start = part.indexOf("<", cursor);
+    if (start < 0) return null;
+    const end = part.indexOf(">", start + 1);
+    if (end < 0) return null;
+    if (end > start + 1) return part.slice(start + 1, end);
+    cursor = start + 1;
+  }
+}
+
+/**
  * Parses the next URL from a Link header.
  * Looks for rel="next" in the header value.
  *
@@ -19,8 +44,12 @@ export function parseNextLink(linkHeader: string | null): string | null {
   for (const part of linkHeader.split(",")) {
     const trimmed = part.trim();
     if (trimmed.includes('rel="next"')) {
-      const match = trimmed.match(/<([^>]+)>/);
-      return match?.[1] ?? null;
+      // Keep scanning if this part is malformed. The previous code returned
+      // unconditionally here, so one unparseable `rel="next"` segment
+      // short-circuited the whole header to null; the other five SDKs fall
+      // through and keep looking.
+      const url = extractAngleBracketed(trimmed);
+      if (url !== null) return url;
     }
   }
 
