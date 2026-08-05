@@ -1,0 +1,21 @@
+swift/Tests/BasecampTests/PaginationTests.swift
+  s_1b3e045daedc77::t_90eeb5796fef10 84-149
+swift/Sources/Basecamp/Pagination.swift
+  s_1b3e045daedc77::t_82ec969c52fc44 92-117,123-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "746ce01b6eb69ff568678bbbb3672be19b5ddbf1",
+  "prompts": {},
+  "sessions": {
+    "s_1b3e045daedc77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f00c661b-5cec-41d1-9e12-8ac34bd59167",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

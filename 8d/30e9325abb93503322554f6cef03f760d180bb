@@ -1,0 +1,22 @@
+go/pkg/basecamp/pagination_test.go
+  s_1b3e045daedc77::t_bdcc2187c20be3 653-696
+  s_1b3e045daedc77::t_1d1613fc449d77 709-728
+go/pkg/basecamp/client.go
+  s_1b3e045daedc77::t_d80ed366f37016 955-988,998-999
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "8d30e9325abb93503322554f6cef03f760d180bb",
+  "prompts": {},
+  "sessions": {
+    "s_1b3e045daedc77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f00c661b-5cec-41d1-9e12-8ac34bd59167",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+ruby/test/basecamp/pagination_link_test.rb
+  s_1b3e045daedc77::t_e22c991c96061e 1-8,12-95
+  s_1b3e045daedc77::t_f7e0fdeb90b533 9-11
+ruby/lib/basecamp/http.rb
+  s_1b3e045daedc77::t_8e381bb23af1b8 714-742,744-748,750-755,758
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "091feca4bf6d88c666c8fefbe593ec118c7d5d79",
+  "prompts": {},
+  "sessions": {
+    "s_1b3e045daedc77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f00c661b-5cec-41d1-9e12-8ac34bd59167",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
