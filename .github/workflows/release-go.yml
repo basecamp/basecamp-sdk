@@ -70,6 +70,47 @@ jobs:
       - name: Run tests with race detector
         run: go test -race ./...
 
+  # The dry run is a separate job from the real tag push so that the rehearsal
+  # never holds `contents: write`. Both jobs share the same tag-resolution logic;
+  # only this one is allowed to run on workflow_dispatch.
+  tag-dry-run:
+    name: Create Go module tag (dry run)
+    needs: [smithy, test]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Report the go/ subdirectory tag that would be pushed
+        run: |
+          # On workflow_dispatch GITHUB_REF is refs/heads/<branch>, so the tag
+          # cannot be derived from it. Read the Go source of truth instead,
+          # mirroring how release-ruby reads version.rb and release-typescript
+          # reads package.json.
+          VERSION=$(sed -n 's/^const Version = "\(.*\)"$/\1/p' go/pkg/basecamp/version.go)
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read Version from go/pkg/basecamp/version.go"
+            exit 1
+          fi
+          echo "Rehearsal for version: $VERSION"
+
+          GO_TAG="go/v${VERSION}"
+          REMOTE_SHA=$(git ls-remote --tags --refs origin "$GO_TAG" | awk '{print $1}')
+          if [ -z "$REMOTE_SHA" ]; then
+            echo "Would create $GO_TAG at $GITHUB_SHA and push it."
+          elif [ "$REMOTE_SHA" = "$GITHUB_SHA" ]; then
+            echo "Tag $GO_TAG already exists at $GITHUB_SHA — would do nothing."
+          else
+            echo "Tag $GO_TAG exists at $REMOTE_SHA — would force-move it to $GITHUB_SHA."
+          fi
+
+          echo "::notice::Dry run mode - not actually publishing"
+          echo "Would publish: Go module tag ${GO_TAG} (proxy.golang.org serves github.com/basecamp/basecamp-sdk/go from it)"
+
   tag:
     name: Create Go module tag
     needs: [smithy, test]

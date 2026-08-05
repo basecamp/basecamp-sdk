@@ -50,8 +50,46 @@ jobs:
           fi
           echo "Version verification passed"
 
+      # On workflow_dispatch GITHUB_REF is refs/heads/<branch>, so there is no
+      # tag to verify against. Read the Swift source of truth instead, mirroring
+      # how release-ruby reads version.rb and release-typescript reads package.json.
+      - name: Extract version
+        id: version
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION=$(sed -n 's/.*public static let version = "\(.*\)".*/\1/p' Sources/Basecamp/BasecampConfig.swift)
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read version from Sources/Basecamp/BasecampConfig.swift"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Rehearsal for version: $VERSION"
+
       - name: Build
         run: swift build
 
       - name: Test
         run: swift test
+
+      # Swift has no registry upload: SPM consumers resolve the package straight
+      # from the `v<version>` git tag on this repository, so the rehearsal
+      # exercises everything a consumer would — manifest, build, tests — and then
+      # reports the tag that carries the release.
+      - name: Dry-run package verification
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          swift package describe --type json > /dev/null
+          echo "Package manifest resolves."
+
+          TAG="v${VERSION}"
+          REMOTE_SHA=$(git ls-remote --tags --refs origin "$TAG" | awk '{print $1}')
+          if [ -z "$REMOTE_SHA" ]; then
+            echo "Tag $TAG does not exist yet — it is what will trigger the real release run."
+          else
+            echo "Tag $TAG already exists at $REMOTE_SHA."
+          fi
+
+          echo "::notice::Dry run mode - not actually publishing"
+          echo "Would publish: Swift package Basecamp at tag ${TAG} (resolved by SPM from this repository; no artifact upload)"

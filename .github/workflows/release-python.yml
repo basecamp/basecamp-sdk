@@ -63,15 +63,19 @@ jobs:
       - name: Run tests with coverage
         run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=60
 
-  publish:
-    name: Publish to PyPI
+  # Building is deliberately separate from publishing: this job carries no
+  # `environment:`, so a workflow_dispatch rehearsal runs it from any ref
+  # without needing the release-pypi deployment approval, and it holds no
+  # publishing credentials. The publish job below consumes the exact artifact
+  # built here rather than rebuilding.
+  build:
+    name: Build distribution
     needs: [smithy, test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
-      attestations: write
-    environment: release-pypi
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     defaults:
       run:
         working-directory: python
@@ -121,11 +125,51 @@ jobs:
       - name: Build package
         run: uv build
 
+      # PyPI rejects uploads whose metadata will not parse or whose long
+      # description will not render, and that rejection would otherwise land
+      # mid-release. twine check is the same validation, run before the tag
+      # exists. Not --strict: this package currently ships no long_description
+      # at all, which twine warns about and PyPI accepts, so --strict would fail
+      # every release over a defect that belongs in pyproject.toml, not here.
+      - name: Check distribution metadata
+        run: uvx twine check dist/*
+
+      - name: Dry-run build verification
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          ls -la dist/
+          echo "::notice::Dry run mode - not actually publishing"
+          echo "Would publish: $(ls dist/*.tar.gz dist/*.whl)"
+
+      - name: Upload distribution
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-dist
+          path: python/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    environment: release-pypi
+    steps:
+      - name: Download distribution
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-dist
+          path: python/dist/
+
       - name: Check if already published
         id: check-published
-        if: github.event_name == 'push'
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           # Query the PyPI JSON API for exact version match
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/basecamp-sdk/${VERSION}/json")
@@ -137,15 +181,8 @@ jobs:
           fi
 
       - name: Publish to PyPI
-        if: github.event_name == 'push' && steps.check-published.outputs.already_published != 'true'
+        if: steps.check-published.outputs.already_published != 'true'
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: python/dist/
           attestations: true
-
-      - name: Dry-run build verification
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          ls -la dist/
-          echo "::notice::Dry run mode - not actually publishing"
-          echo "Would publish: $(ls dist/*.tar.gz dist/*.whl)"
