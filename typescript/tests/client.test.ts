@@ -7,6 +7,7 @@ import { server } from "./setup.js";
 import { createBasecampClient, normalizeUrlPath } from "../src/client.js";
 import type { BasecampHooks } from "../src/hooks.js";
 import { BasecampError } from "../src/errors.js";
+import { DEFAULT_MAX_PAGES } from "../src/pagination-utils.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -651,6 +652,68 @@ describe("BasecampClient", () => {
           requestTimeoutMs: value,
         })
       ).not.toThrow();
+    });
+  });
+
+  describe("maxPages validation", () => {
+    // `maxPages` is not consumed here — it is handed to every service and read
+    // much later, in BaseService's `page < this.maxPages` loops. Each rejected
+    // value below breaks the bound in a different direction and did so silently:
+    // `Infinity` removes the cap entirely, `2.5` consumes 2 pages then fetches
+    // and discards a 3rd, and `0`/negative/`NaN` consume zero pages. Checked at
+    // construction, where the mistake was written.
+    const invalid: Array<[string, number]> = [
+      ["zero", 0],
+      ["negative", -1],
+      ["NaN", NaN],
+      ["Infinity", Infinity],
+      ["fractional", 2.5],
+    ];
+
+    it.each(invalid)("rejects a %s maxPages at construction", (_label, value) => {
+      let caught: unknown;
+      try {
+        createBasecampClient({
+          accountId: "12345",
+          accessToken: "test-token",
+          maxPages: value,
+        });
+      } catch (e: unknown) {
+        caught = e;
+      }
+
+      expect(caught).toBeInstanceOf(BasecampError);
+      expect(caught).toMatchObject({
+        name: "BasecampError",
+        code: "usage",
+        message: expect.stringContaining(`maxPages must be a positive integer, got ${String(value)}`),
+      });
+    });
+
+    it.each([
+      ["one", 1],
+      ["a typical value", 25],
+      ["the default", DEFAULT_MAX_PAGES],
+    ])("accepts %s and propagates it to services", (_label, value) => {
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        maxPages: value,
+      });
+
+      // `maxPages` is protected on BaseService; read it structurally, since the
+      // point of the assertion is that the validated value reached the services
+      // rather than being validated and dropped.
+      expect((client.projects as unknown as { maxPages: number }).maxPages).toBe(value);
+    });
+
+    it("leaves an omitted maxPages at the default", () => {
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      expect((client.projects as unknown as { maxPages: number }).maxPages).toBe(DEFAULT_MAX_PAGES);
     });
   });
 

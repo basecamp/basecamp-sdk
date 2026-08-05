@@ -147,6 +147,53 @@ class ClientTest {
     }
 
     @Test
+    fun builderRejectsNonPositiveMaxPages() {
+        // 0 and -1 both make BaseService's `while (page < maxPages)` loop follow
+        // nothing, so the first page is returned as if it were the collection.
+        for (value in listOf(0, -1)) {
+            val error = assertFailsWith<IllegalArgumentException> {
+                BasecampClient {
+                    accessToken("token")
+                    baseUrl = "http://localhost:3000"
+                    maxPages = value
+                }
+            }
+            assertEquals("maxPages must be > 0, got: $value", error.message)
+        }
+    }
+
+    @Test
+    fun configRejectsNonPositiveMaxPages() {
+        // The builder is the sanctioned path, but BasecampConfig is public and
+        // constructible directly; the require lives on the field for that reason.
+        val error = assertFailsWith<IllegalArgumentException> {
+            BasecampConfig(maxPages = 0)
+        }
+        assertEquals("maxPages must be > 0, got: 0", error.message)
+    }
+
+    @Test
+    fun builderPropagatesMaxPagesToConfig() {
+        val client = testBasecampClient {
+            accessToken("token")
+            baseUrl = "http://localhost:3000"
+            maxPages = 25
+        }
+        assertEquals(25, client.config.maxPages)
+        client.close()
+    }
+
+    @Test
+    fun omittedMaxPagesKeepsTheDefault() {
+        val client = testBasecampClient {
+            accessToken("token")
+            baseUrl = "http://localhost:3000"
+        }
+        assertEquals(BasecampConfig.DEFAULT_MAX_PAGES, client.config.maxPages)
+        client.close()
+    }
+
+    @Test
     fun infiniteTimeoutAllowsRequestUnderRunTest() = runTest {
         // Regression guard: HttpTimeout is skipped when timeout is INFINITE,
         // sidestepping the KTOR-8271 virtual-clock race in MockEngine + runTest.

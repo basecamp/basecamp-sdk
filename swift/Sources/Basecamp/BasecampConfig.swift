@@ -52,6 +52,15 @@ public struct BasecampConfig: Sendable {
         maxPages: Int = 10_000,
         timeoutInterval: TimeInterval = 30
     ) {
+        // A non-positive cap is not a cap. `BaseService`'s pagination loops are
+        // `for _ in 1..<maxPages`, and Swift traps forming a range whose upper
+        // bound is below its lower bound — so `maxPages <= 0` already crashes,
+        // but deep inside pagination, after page 1 has been fetched, with a
+        // message about Range rather than about configuration. Reject it here,
+        // at the call that wrote the mistake, the same way the SDK rejects a
+        // non-HTTPS base URL and a non-numeric account ID. SPEC.md §2 step 5.
+        precondition(maxPages > 0, "maxPages must be positive, got: \(maxPages)")
+
         self.baseURL = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
         self.userAgent = userAgent
         self.enableRetry = enableRetry

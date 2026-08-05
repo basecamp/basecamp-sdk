@@ -329,6 +329,17 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     );
   }
 
+  // The cap the standalone helpers validate is the same cap the config carries,
+  // and this is the wider door: `maxPages` here is handed to every service and
+  // reached only later, inside `BaseService`'s `page < this.maxPages` loops, far
+  // from the call that misconfigured it. Same predicate, same error, checked
+  // once at construction — see assertValidMaxPages for what each rejected value
+  // does to the bound. Only when the caller supplied one: `undefined` must keep
+  // falling through to DEFAULT_MAX_PAGES.
+  if (maxPages !== undefined) {
+    assertValidMaxPages(maxPages);
+  }
+
   const authStrategy: AuthStrategy = auth ?? bearerAuth(accessToken!);
 
   // Validate configuration (skip HTTPS check for localhost in dev/test)
