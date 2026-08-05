@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "basecamp-sdk"
 version = "0.13.0"
 description = "Official Python SDK for the Basecamp API"
+readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "37signals" }]
