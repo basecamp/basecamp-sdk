@@ -63,6 +63,55 @@ class TestParseNextLink:
         assert parse_next_link("") is None
 
 
+class TestParseNextLinkAdversarialInput:
+    """The Link header is attacker-influenced, so malformed shapes are a contract.
+
+    ``isSameOrigin`` exists to stop SSRF through a poisoned Link header, which
+    makes the parser's behaviour on hostile input part of the threat model. The
+    same six cases exist in all six SDKs.
+    """
+
+    def test_opening_bracket_with_no_closing_bracket(self):
+        assert parse_next_link('<https://api.example.com/page2; rel="next"') is None
+
+    def test_closing_bracket_before_opening_bracket(self):
+        header = '>x<https://api.example.com/page2>; rel="next"'
+        assert parse_next_link(header) == "https://api.example.com/page2"
+
+    def test_url_containing_raw_closing_bracket_truncates_at_the_first(self):
+        # Parity with the old <([^>]+)> spelling: [^>] cannot span a ">".
+        header = '<https://api.example.com/page2?q=a>b>; rel="next"'
+        assert parse_next_link(header) == "https://api.example.com/page2?q=a"
+
+    def test_multiple_bracket_pairs_in_one_part_take_the_first(self):
+        # Parity with the old spelling: leftmost match wins.
+        header = '<https://api.example.com/a> <https://api.example.com/b>; rel="next"'
+        assert parse_next_link(header) == "https://api.example.com/a"
+
+    def test_empty_bracket_pair_is_skipped_not_returned(self):
+        # Parity with the old spelling: [^>]+ requires at least one character,
+        # so an empty <> is not a match and the scan moves on. A naive
+        # find(">", start + 1) without this check would return "".
+        header = '<> <https://api.example.com/page2>; rel="next"'
+        assert parse_next_link(header) == "https://api.example.com/page2"
+
+    def test_malformed_part_does_not_abandon_a_later_valid_one(self):
+        header = '<malformed; rel="next", <https://api.example.com/page2>; rel="next"'
+        assert parse_next_link(header) == "https://api.example.com/page2"
+
+    def test_pathological_header(self):
+        # Many "<" start positions with no reachable ">" — the shape that
+        # punishes a backtracking regex. The re.search spelling took 5.2s at
+        # 32k characters; this is 50k. Asserting behaviour and completion, not
+        # elapsed time: the suite already has timing flakiness (#655) and a
+        # duration bound would add more.
+        many = "<" * 50_000
+        assert parse_next_link(f'{many}; rel="next"') is None
+        # A ">" present but unreachable defeats the literal-prescan shortcut
+        # some regex engines use to bail early.
+        assert parse_next_link(f'>{many}; rel="next"') is None
+
+
 class TestParseTotalCount:
     def test_present(self):
         assert parse_total_count({"X-Total-Count": "42"}) == 42

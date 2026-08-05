@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import TypeVar
 
@@ -26,6 +25,32 @@ class ListResult(list[T]):
         return f"ListResult({list.__repr__(self)}, meta={self.meta!r})"
 
 
+def _extract_angle_bracketed(part: str) -> str | None:
+    """Return the contents of the first non-empty ``<...>`` pair.
+
+    This is the leftmost-match semantics of ``<([^>]+)>`` in linear time. The
+    regex form is quadratic on a header carrying many ``<`` with no reachable
+    ``>``, because every ``<`` is retried as a start position and each scans to
+    the end. Searching for ``>`` from *after* the ``<`` visits each character
+    once instead.
+
+    An empty ``<>`` is skipped rather than returned, because ``[^>]+`` requires
+    at least one character — the regex would move on to the next ``<``, and so
+    does this.
+    """
+    cursor = 0
+    while True:
+        start = part.find("<", cursor)
+        if start < 0:
+            return None
+        end = part.find(">", start + 1)
+        if end < 0:
+            return None
+        if end > start + 1:
+            return part[start + 1 : end]
+        cursor = start + 1
+
+
 def parse_next_link(link_header: str | None) -> str | None:
     """Parse the next page URL from a Link header."""
     if not link_header:
@@ -33,9 +58,9 @@ def parse_next_link(link_header: str | None) -> str | None:
     for part in link_header.split(","):
         part = part.strip()
         if 'rel="next"' in part:
-            match = re.search(r"<([^>]+)>", part)
-            if match:
-                return match.group(1)
+            url = _extract_angle_bracketed(part)
+            if url is not None:
+                return url
     return None
 
 
