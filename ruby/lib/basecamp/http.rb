@@ -711,18 +711,51 @@ module Basecamp
       nil
     end
 
-    def parse_next_link(link_header)
-      return nil if link_header.nil? || link_header.empty?
+    # Returns the contents of the first non-empty <...> pair.
+    #
+    # This is the leftmost-match semantics of /<([^>]+)>/ without the regex.
+    # CodeQL flags that pattern as polynomial-redos (alert 48): every "<" is
+    # retried as a start position, and each scan runs to the end of the string.
+    # Onigmo does not actually realize the blowup — measured linear to 3.2M
+    # characters — so this is a consistency and correctness change here rather
+    # than a remediation. Searching for ">" from *after* the "<" is linear by
+    # construction, and it is what the other five SDKs now do.
+    #
+    # An empty <> is skipped rather than returned, because [^>]+ requires at
+    # least one character: the regex would move on to the next "<", and so does
+    # this.
+    def extract_angle_bracketed(part)
+      result = nil
+      cursor = 0
 
-      link_header.split(",").each do |part|
-        part = part.strip
-        next unless part.include?('rel="next"')
+      while cursor && result.nil?
+        start = part.index("<", cursor)
+        finish = start && part.index(">", start + 1)
 
-        match = part.match(/<([^>]+)>/)
-        return match[1] if match
+        if finish.nil?
+          cursor = nil
+        elsif finish > start + 1
+          result = part[(start + 1)...finish]
+        else
+          cursor = start + 1
+        end
       end
 
-      nil
+      result
+    end
+
+    def parse_next_link(link_header)
+      next_url = nil
+
+      unless link_header.nil? || link_header.empty?
+        link_header.split(",").each do |part|
+          part = part.strip
+          next_url = extract_angle_bracketed(part) if part.include?('rel="next"')
+          break unless next_url.nil?
+        end
+      end
+
+      next_url
     end
   end
 
