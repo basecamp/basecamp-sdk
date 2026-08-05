@@ -97,6 +97,80 @@ class PaginationTest {
     }
 
     // =========================================================================
+    // parseNextLink — adversarial input
+    //
+    // The Link header is attacker-influenced (isSameOrigin exists to stop SSRF
+    // through a poisoned one), so malformed shapes are a contract, not a
+    // curiosity. The same six cases exist in all six SDKs.
+    // =========================================================================
+
+    @Test
+    fun parseNextLinkReturnsNullWhenBracketNeverCloses() {
+        assertNull(parseNextLink("""<https://api.example.com/page2; rel="next""""))
+    }
+
+    @Test
+    fun parseNextLinkReadsClosingBracketBeforeOpeningBracket() {
+        // Was broken here: indexOf('<') and indexOf('>') ran independently from
+        // 0, so a '>' ahead of the '<' gave end < start and extraction silently
+        // failed. The regex SDKs always read this correctly.
+        assertEquals(
+            "https://api.example.com/page2",
+            parseNextLink(""">x<https://api.example.com/page2>; rel="next""""),
+        )
+    }
+
+    @Test
+    fun parseNextLinkTruncatesUrlAtFirstRawClosingBracket() {
+        // Parity with the old <([^>]+)> spelling: [^>] cannot span a '>'.
+        assertEquals(
+            "https://api.example.com/page2?q=a",
+            parseNextLink("""<https://api.example.com/page2?q=a>b>; rel="next""""),
+        )
+    }
+
+    @Test
+    fun parseNextLinkTakesFirstOfMultipleBracketPairsInOnePart() {
+        // Parity with the old spelling: leftmost match wins.
+        assertEquals(
+            "https://api.example.com/a",
+            parseNextLink("""<https://api.example.com/a> <https://api.example.com/b>; rel="next""""),
+        )
+    }
+
+    @Test
+    fun parseNextLinkSkipsEmptyBracketPair() {
+        // Parity with the old spelling: [^>]+ requires at least one character,
+        // so an empty <> is not a match and the scan moves on. A naive
+        // indexOf('>', start + 1) without this check would return "".
+        assertEquals(
+            "https://api.example.com/page2",
+            parseNextLink("""<> <https://api.example.com/page2>; rel="next""""),
+        )
+    }
+
+    @Test
+    fun parseNextLinkKeepsScanningPastAMalformedPart() {
+        assertEquals(
+            "https://api.example.com/page2",
+            parseNextLink("""<malformed; rel="next", <https://api.example.com/page2>; rel="next""""),
+        )
+    }
+
+    @Test
+    fun parseNextLinkHandlesPathologicalHeader() {
+        // Many '<' start positions with no reachable '>' — the shape that
+        // punishes a backtracking regex. Asserting behaviour and completion,
+        // not elapsed time: this suite already has timing flakiness (#655) and
+        // a duration bound would add more.
+        val many = "<".repeat(50_000)
+        assertNull(parseNextLink("""$many; rel="next""""))
+        // A '>' present but unreachable defeats the literal-prescan shortcut
+        // some regex engines use to bail early.
+        assertNull(parseNextLink(""">$many; rel="next""""))
+    }
+
+    // =========================================================================
     // isSameOrigin
     // =========================================================================
 
