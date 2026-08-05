@@ -7,6 +7,7 @@ import { server } from "./setup.js";
 import { createBasecampClient, normalizeUrlPath } from "../src/client.js";
 import type { BasecampHooks } from "../src/hooks.js";
 import { BasecampError } from "../src/errors.js";
+import { ProjectsService } from "../src/generated/services/projects.js";
 import { DEFAULT_MAX_PAGES } from "../src/pagination-utils.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -663,10 +664,12 @@ describe("BasecampClient", () => {
     // and discards a 3rd, and `0`/negative/`NaN` consume zero pages. Checked at
     // construction, where the mistake was written.
     //
-    // `Number.MAX_VALUE` and `2 ** 53` remove the cap the same way `Infinity`
-    // does, and are why the predicate is `isSafeInteger`: `isInteger` returns
-    // `true` for both, and a counter that reaches `2 ** 53` stops advancing on
-    // `page++`, so it never becomes equal to the bound.
+    // `Number.MAX_VALUE` removes the cap the same way `Infinity` does, and is
+    // why the predicate is `isSafeInteger`: `isInteger` returns `true` for it.
+    // Past `2 ** 53` the counter stalls -- `page++` on `2 ** 53` yields
+    // `2 ** 53` again -- so a bound like `2 ** 53 + 2` is never reached.
+    // `2 ** 53` itself would terminate; rejecting it is deliberately
+    // conservative, MAX_SAFE_INTEGER being the honest edge of the guarantee.
     const invalid: Array<[string, number]> = [
       ["zero", 0],
       ["negative", -1],
@@ -693,7 +696,12 @@ describe("BasecampClient", () => {
       expect(caught).toMatchObject({
         name: "BasecampError",
         code: "usage",
-        message: expect.stringContaining(`got ${String(value)}`),
+        // Pin the whole sentence, not just the offending value. An earlier
+        // revision asserted only `got ${value}`, which a message about some
+        // other usage error would satisfy just as well — and which would not
+        // have noticed the bound changing from "a positive integer" to
+        // MAX_SAFE_INTEGER at all.
+        message: `maxPages must be a positive integer no larger than ${Number.MAX_SAFE_INTEGER}, got ${String(value)}`,
       });
     });
 
@@ -721,6 +729,25 @@ describe("BasecampClient", () => {
       });
 
       expect((client.projects as unknown as { maxPages: number }).maxPages).toBe(DEFAULT_MAX_PAGES);
+    });
+
+    // The third door. BaseService and every generated service extending it are
+    // exported from index.ts, so a service can be constructed directly without
+    // going through createBasecampClient — and its `maxPages` lands straight in
+    // `followPagination`'s `page < this.maxPages`. Validating at the factory and
+    // in the standalone helpers, but not here, is a guard on two of three.
+    it.each(invalid)("rejects a %s maxPages passed straight to a service", (_label, value) => {
+      const raw = createBasecampClient({ accountId: "12345", accessToken: "test-token" }).raw;
+
+      expect(() => new ProjectsService(raw, undefined, undefined, value)).toThrow(BasecampError);
+      expect(() => new ProjectsService(raw, undefined, undefined, value)).toThrow(/maxPages/);
+    });
+
+    it("leaves an omitted maxPages at the default when a service is built directly", () => {
+      const raw = createBasecampClient({ accountId: "12345", accessToken: "test-token" }).raw;
+      const service = new ProjectsService(raw);
+
+      expect((service as unknown as { maxPages: number }).maxPages).toBe(DEFAULT_MAX_PAGES);
     });
   });
 

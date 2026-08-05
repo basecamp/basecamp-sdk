@@ -26,7 +26,7 @@ import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js"
 import { BasecampError, errorFromParsedBody, errorFromResponse } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
-import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES } from "../pagination-utils.js";
+import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
 import { saturatingBackoff } from "../retry.js";
 import type { paths } from "../generated/schema.js";
 import type createClient from "openapi-fetch";
@@ -165,6 +165,16 @@ export abstract class BaseService {
     authenticatedFetch?: (url: string, init: RequestInit) => Promise<Response>,
     baseUrl?: string,
   ) {
+    // BaseService is exported, and so is every generated service extending it,
+    // so `new ProjectsService(client, hooks, fetchPage, Infinity)` is a
+    // supported call that reaches followPagination's `page < this.maxPages`
+    // without passing through createBasecampClient. Validating only at the
+    // client factory would leave this door open. Checked only when supplied, so
+    // an omitted cap still falls through to the default.
+    if (maxPages !== undefined) {
+      assertValidMaxPages(maxPages);
+    }
+
     this.client = client;
     this.hooks = hooks;
     this.fetchPage = fetchPage ?? ((url) => fetch(url, { headers: { Accept: "application/json" } }));

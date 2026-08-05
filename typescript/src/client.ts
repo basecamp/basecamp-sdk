@@ -13,7 +13,7 @@ import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
 import type { BasecampHooks, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
 import { isLocalhost, requireSameOrigin } from "./security.js";
-import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES } from "./pagination-utils.js";
+import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
 import { createDownloadURL, type DownloadResult } from "./download.js";
 import {
@@ -1105,38 +1105,6 @@ function createRetryingFetch(
 // Pagination Helper
 // =============================================================================
 
-/**
- * Rejects any `maxPages` that would defeat or invert the cap.
- *
- * `Number.isSafeInteger(n) && n > 0` is one predicate covering six distinct
- * failures, each of which passed silently while the parameter was unvalidated:
- *
- * - `Infinity` — `page === maxPages` is never true, so the loop is unbounded
- *   and the cap does nothing at all. Precisely the runaway it exists to stop.
- * - `Number.MAX_VALUE`, or anything at or above `2 ** 53` — the same runaway
- *   through a different door, and the reason this is `isSafeInteger` rather
- *   than `isInteger`. `Number.isInteger(Number.MAX_VALUE)` is `true`, so the
- *   obvious predicate admits it; the loop then counts up to `2 ** 53`, where
- *   `page++` stops changing the value, and `page === maxPages` is never
- *   reached. A cap has to be a number the counter can actually arrive at.
- * - `2.5` — consumes 2 pages, then fetches a 3rd and discards it: a request to
- *   a URL taken from an attacker-influenceable header, whose response is never
- *   parsed or returned.
- * - `0`, negative, `NaN` — consume ZERO pages, throwing away a response the
- *   caller already fetched and passed in.
- *
- * SPEC.md §2 step 5: "Validate `max_pages > 0`. → `⊥ BasecampError(code:
- * "usage")` otherwise."
- */
-function assertValidMaxPages(maxPages: number): void {
-  if (!Number.isSafeInteger(maxPages) || maxPages <= 0) {
-    throw new BasecampError(
-      "usage",
-      `maxPages must be a positive integer no larger than ${Number.MAX_SAFE_INTEGER}, got ${String(maxPages)}`,
-      { hint: "Pass a whole number greater than 0, or omit maxPages to use the default cap." }
-    );
-  }
-}
 
 /**
  * Fetches all pages of a paginated resource using Link header pagination.
