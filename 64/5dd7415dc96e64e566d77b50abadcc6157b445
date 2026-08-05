@@ -1,0 +1,26 @@
+typescript/tests/client.test.ts
+  s_5cad6ce9807bd1::t_696f38aa140745 665-669,676-677
+  s_5cad6ce9807bd1::t_0e952eed6351c4 696
+typescript/src/client.ts
+  s_5cad6ce9807bd1::t_33fc1887bce4e0 1132,1135
+  s_5cad6ce9807bd1::t_664b2bac105c9b 1111,1116-1121
+typescript/tests/security.test.ts
+  s_5cad6ce9807bd1::t_2e226533c767b6 500-501
+  s_5cad6ce9807bd1::t_4287850192a1ad 474-480,482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "645dd7415dc96e64e566d77b50abadcc6157b445",
+  "prompts": {},
+  "sessions": {
+    "s_5cad6ce9807bd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89e3f253-2f99-4fc4-8806-c2f1a2f14d0c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
