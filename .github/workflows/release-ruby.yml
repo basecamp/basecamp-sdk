@@ -32,7 +32,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1.319.0
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
         with:
           ruby-version: '3.3'
@@ -74,7 +74,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1.319.0
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
         with:
           ruby-version: '3.3'
@@ -168,7 +168,7 @@ jobs:
       # No checkout: this job pushes the gem the build job produced, so it needs
       # Ruby but not the repository. bundler-cache is therefore not used either.
       - name: Set up Ruby
-        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1.319.0
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         with:
           ruby-version: '3.3'
 
