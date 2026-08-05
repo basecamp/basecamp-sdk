@@ -1,0 +1,63 @@
+typescript/src/client.ts
+  s_5cad6ce9807bd1::t_6baaba9d0e366d 1097,1207-1219,1228,1233-1248
+  s_5cad6ce9807bd1::t_b9a7c42046e7e2 1137-1142
+  s_5cad6ce9807bd1::t_c0eb10b6ef1ef2 1160-1161
+  s_5cad6ce9807bd1::t_c73f775ce427eb 1098-1123
+ruby/lib/basecamp/http.rb
+  s_5cad6ce9807bd1::t_0fa1382ed2bc29 724-730,733-755,761,766-767,772,778
+  s_5cad6ce9807bd1::t_10707f7a8172fb 731-732
+  s_5cad6ce9807bd1::t_e58b4a4972c8a2 785-794,799-800
+conformance/runner/python/runner.py
+  s_5cad6ce9807bd1::t_70e50915f08d47 1043-1047
+  s_5cad6ce9807bd1::t_13a7fc9de1f8ae 1048-1051
+  s_5cad6ce9807bd1::t_6a4406c1f85c60 258-279,282-286
+  s_5cad6ce9807bd1::t_45e51fbbf747a8 315-316
+  s_5cad6ce9807bd1::t_fb016d8f693475 280-281
+  s_5cad6ce9807bd1::t_bb2997c2d326b7 246-257
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_5cad6ce9807bd1::t_d03d7955c61d8a 142-161
+  s_5cad6ce9807bd1::t_0407bab26fcf26 176-179
+conformance/runner/ruby/runner.rb
+  s_5cad6ce9807bd1::t_6283c4d91798bc 762-766
+  s_5cad6ce9807bd1::t_dbeeda1a813e48 1197-1203
+  s_5cad6ce9807bd1::t_d64fc95276b56f 211-222
+  s_5cad6ce9807bd1::t_55cc1bbdde3073 610-611,615-625
+  s_5cad6ce9807bd1::t_2479028748466f 589-609,612-614,626-627
+conformance/tests/pagination.json
+  s_5cad6ce9807bd1::t_d7b9f8556170a1 119,151
+  s_5cad6ce9807bd1::t_0c6f7b3cc1a727 125
+  s_5cad6ce9807bd1::t_2f7c9420e93568 117,150
+  s_5cad6ce9807bd1::t_91744e9527a4c5 92
+  s_5cad6ce9807bd1::t_dd329f1548729f 118,152
+conformance/runner/go/main.go
+  s_5cad6ce9807bd1::t_d9d0e805f5ab3d 455-480,502
+typescript/tests/security.test.ts
+  s_5cad6ce9807bd1::t_6f635bdf49835c 479-486
+  s_5cad6ce9807bd1::t_c9637f8b08af9f 460-478,487-582
+conformance/runner/typescript/runner.test.ts
+  s_5cad6ce9807bd1::t_33a5c378a759b2 259-281
+  s_5cad6ce9807bd1::t_18dc5ea71b6030 310
+  s_5cad6ce9807bd1::t_0bad380d88e2c3 258
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_5cad6ce9807bd1::t_2d44fc2c50c281 754-758
+  s_5cad6ce9807bd1::t_6f2c67f88b9ae6 62-81
+ruby/test/basecamp/pagination_link_test.rb
+  s_5cad6ce9807bd1::t_9c2c93ec9f5538 123-196
+  s_5cad6ce9807bd1::t_ccbde05443f59c 106-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c08e5ffa2ac8692db5d35d6369fd343ca0115f4a",
+  "prompts": {},
+  "sessions": {
+    "s_5cad6ce9807bd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89e3f253-2f99-4fc4-8806-c2f1a2f14d0c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
