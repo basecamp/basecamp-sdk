@@ -452,6 +452,32 @@ func runTest(tc TestCase) TestResult {
 	}
 }
 
+// summarizeProjects flattens an accumulated project list into top-level
+// scalars.
+//
+// Flat and scalar because that is the only path form every runner can resolve:
+// Go and TypeScript read a responseBody path as a top-level key with no dot
+// splitting, and the Swift and Kotlin navigators descend through objects only,
+// so neither a dotted path nor an array index is portable.
+//
+// It exists so a fixture can prove the items of a followed page were
+// ACCUMULATED, not merely fetched. requestCount only sees that the second
+// request happened, and meta.totalCount is the X-Total-Count header rather than
+// the item count, so an SDK that fetched page 2 and discarded its body
+// satisfies both.
+func summarizeProjects(projects []basecamp.Project) map[string]interface{} {
+	summary := map[string]interface{}{
+		"project_count":    len(projects),
+		"first_project_id": int64(0),
+		"last_project_id":  int64(0),
+	}
+	if len(projects) > 0 {
+		summary["first_project_id"] = projects[0].ID
+		summary["last_project_id"] = projects[len(projects)-1].ID
+	}
+	return summary
+}
+
 // executeOperation dispatches to the appropriate SDK service method.
 // Returns the operation result with error and optional metadata.
 func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc TestCase) operationResult {
@@ -473,6 +499,7 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 				"totalCount": result.Meta.TotalCount,
 				"truncated":  result.Meta.Truncated,
 			},
+			result: summarizeProjects(result.Projects),
 		}
 
 	case "GetProject":

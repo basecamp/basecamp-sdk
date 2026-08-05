@@ -89,7 +89,7 @@
   },
   {
     "name": "Auto-pagination continues past a malformed rel=next part",
-    "description": "A part that says rel=\"next\" but carries no extractable URL must not suppress a well-formed part after it. The empty <> yields nothing, so the parser continues and finds page 2. Short-circuiting there reports truncated=false for a list that has more pages (SPEC 'Link Header Parsing Algorithm', step 3b).",
+    "description": "A part that says rel=\"next\" but carries no extractable URL must not suppress a well-formed part after it. The empty <> yields nothing, so the parser continues and finds page 2. Short-circuiting there reports truncated=false for a list that has more pages (SPEC 'Link Header Parsing Algorithm', step 3b). The responseBody summary is what proves page 2's items were ACCUMULATED rather than merely fetched: requestCount only sees the second request and responseMeta.totalCount is the X-Total-Count header, so an SDK that fetched page 2 and discarded its body satisfies both. The followed URL's QUERY STRING is NOT verified here — every runner records the request path with the query stripped and no assertion type can pin a query, so requestPath index 1 confirms only the path. Swift's runner alone enforces an implicit rel=\"next\" pathAndQuery invariant (conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift:196-219), so the query is pinned in exactly one of six.",
     "operation": "ListProjects",
     "method": "GET",
     "path": "/projects.json",
@@ -114,13 +114,15 @@
       {"type": "requestCount", "expected": 2},
       {"type": "requestPath", "index": 1, "expected": "/projects.json"},
       {"type": "noError"},
-      {"type": "responseMeta", "path": "truncated", "expected": false}
+      {"type": "responseMeta", "path": "truncated", "expected": false},
+      {"type": "responseBody", "path": "project_count", "expected": 2},
+      {"type": "responseBody", "path": "last_project_id", "expected": 2}
     ],
     "tags": ["pagination", "auto-follow"]
   },
   {
     "name": "A closing bracket before the opening bracket does not hide the next link",
-    "description": "The URL is delimited by the first < and the first > AFTER it. Scanning for both from position 0 makes end < start, the guard fails, and the next link is silently lost — the SDK then reports no further pages for a list that has them.",
+    "description": "The URL is delimited by the first < and the first > AFTER it. Scanning for both from position 0 makes end < start, the guard fails, and the next link is silently lost — the SDK then reports no further pages for a list that has them. The responseBody summary is what proves page 2's items were ACCUMULATED rather than merely fetched: requestCount only sees the second request and responseMeta.totalCount is the X-Total-Count header, so an SDK that fetched page 2 and discarded its body satisfies both. The followed URL's QUERY STRING is NOT verified here — every runner records the request path with the query stripped and no assertion type can pin a query, so requestPath index 1 confirms only the path. Swift's runner alone enforces an implicit rel=\"next\" pathAndQuery invariant (conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift:196-219), so the query is pinned in exactly one of six.",
     "operation": "ListProjects",
     "method": "GET",
     "path": "/projects.json",
@@ -145,7 +147,9 @@
       {"type": "requestCount", "expected": 2},
       {"type": "requestPath", "index": 1, "expected": "/projects.json"},
       {"type": "noError"},
-      {"type": "responseMeta", "path": "truncated", "expected": false}
+      {"type": "responseMeta", "path": "truncated", "expected": false},
+      {"type": "responseBody", "path": "project_count", "expected": 2},
+      {"type": "responseBody", "path": "last_project_id", "expected": 2}
     ],
     "tags": ["pagination", "auto-follow"]
   },

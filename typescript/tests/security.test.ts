@@ -457,6 +457,129 @@ describe("pagination page cap", () => {
       }
     });
   });
+
+  // A cap is only a cap if the value is one. Every rejected value below breaks
+  // the bound in a different direction, and each did so silently before
+  // validation existed:
+  //
+  //   Infinity   — `page === maxPages` is never true, so the loop is unbounded
+  //                and the cap does exactly nothing. The failure mode the cap
+  //                was added to prevent, re-entered through the front door.
+  //   2.5        — consumes 2 pages, then fetches a 3rd and discards it. That
+  //                is the off-by-one this commit removed, resurfacing for
+  //                non-integers, and it issues a request to a URL taken from
+  //                an attacker-influenceable header.
+  //   0, -1, NaN — consume ZERO pages, silently discarding a response the
+  //                caller already fetched and handed in.
+  //
+  // `Number.isInteger(n) && n > 0` rejects all five in one predicate.
+  // SPEC.md §2 step 5: "Validate `max_pages > 0`. → `⊥ BasecampError(code:
+  // "usage")` otherwise."
+  describe("maxPages validation", () => {
+    async function collect<T>(gen: AsyncGenerator<T[], void, unknown>): Promise<T[][]> {
+      const pages: T[][] = [];
+      for await (const page of gen) {
+        pages.push(page);
+      }
+      return pages;
+    }
+
+    const INVALID: ReadonlyArray<[string, number]> = [
+      ["zero", 0],
+      ["negative", -1],
+      ["NaN", NaN],
+      ["Infinity", Infinity],
+      ["a non-integer", 2.5],
+    ];
+
+    /**
+     * Counts fetches without answering any. Validation has to happen before a
+     * single request goes out — a throw that lands after one would be a
+     * different bug wearing the same error, so every case below asserts zero.
+     */
+    function installCountingFetch(): { count: () => number; restore: () => void } {
+      let fetchCallCount = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+        fetchCallCount++;
+        return finalPage(url, 2);
+      });
+      return {
+        count: () => fetchCallCount,
+        restore: () => {
+          globalThis.fetch = originalFetch;
+        },
+      };
+    }
+
+    describe("fetchAllPages", () => {
+      it.each(INVALID)("rejects %s with a usage error and fetches nothing", async (_label, value) => {
+        const mock = installCountingFetch();
+        try {
+          const error = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, value)
+            .then(() => null)
+            .catch((e: unknown) => e);
+
+          expect(error).toBeInstanceOf(BasecampError);
+          expect((error as BasecampError).code).toBe("usage");
+          expect((error as BasecampError).message).toContain(String(value));
+          expect(mock.count()).toBe(0);
+        } finally {
+          mock.restore();
+        }
+      });
+    });
+
+    describe("paginateAll", () => {
+      // Asserted on the CALL, not on the first `.next()`. paginateAll validates
+      // eagerly — it is a plain function that checks the cap and then returns
+      // the generator, rather than an `async function*` whose body would not
+      // run until something iterated it. A usage error is a programmer error,
+      // and it should be raised where the programmer wrote the mistake, not
+      // wherever the generator happens to be consumed later. This assertion is
+      // what pins that choice: under lazy validation `paginateAll(...)` returns
+      // a generator without throwing and `expect(...).toThrow` fails.
+      it.each(INVALID)("rejects %s eagerly and fetches nothing", (_label, value) => {
+        const mock = installCountingFetch();
+        try {
+          expect(() => paginateAll(firstOfEndless(), (r) => r.json(), undefined, value)).toThrow(
+            BasecampError
+          );
+
+          let thrown: unknown;
+          try {
+            paginateAll(firstOfEndless(), (r) => r.json(), undefined, value);
+          } catch (e: unknown) {
+            thrown = e;
+          }
+          expect((thrown as BasecampError).code).toBe("usage");
+          expect((thrown as BasecampError).message).toContain(String(value));
+          expect(mock.count()).toBe(0);
+        } finally {
+          mock.restore();
+        }
+      });
+    });
+
+    // The predicate must not be so eager it rejects the caps the SDK itself
+    // uses. DEFAULT_MAX_PAGES is covered by the "under the default cap" tests
+    // above; these pin the explicit end of the range.
+    it.each([1, 2, 3, 100, 10_000])("accepts the valid cap %i", async (value) => {
+      const mock = installCountingFetch();
+      try {
+        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, value);
+        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, value));
+
+        // A two-page sequence: page 1 is supplied, page 2 is terminal.
+        const expected = value === 1 ? [{ id: 1 }] : [{ id: 1 }, { id: 2 }];
+        expect(results).toEqual(expected);
+        expect(pages).toEqual(expected.map((item) => [item]));
+        expect(mock.count()).toBe(value === 1 ? 0 : 2);
+      } finally {
+        mock.restore();
+      }
+    });
+  });
 });
 
 // =============================================================================

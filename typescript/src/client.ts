@@ -1095,6 +1095,33 @@ function createRetryingFetch(
 // =============================================================================
 
 /**
+ * Rejects any `maxPages` that would defeat or invert the cap.
+ *
+ * `Number.isInteger(n) && n > 0` is one predicate covering five distinct
+ * failures, each of which passed silently while the parameter was unvalidated:
+ *
+ * - `Infinity` — `page === maxPages` is never true, so the loop is unbounded
+ *   and the cap does nothing at all. Precisely the runaway it exists to stop.
+ * - `2.5` — consumes 2 pages, then fetches a 3rd and discards it: a request to
+ *   a URL taken from an attacker-influenceable header, whose response is never
+ *   parsed or returned.
+ * - `0`, negative, `NaN` — consume ZERO pages, throwing away a response the
+ *   caller already fetched and passed in.
+ *
+ * SPEC.md §2 step 5: "Validate `max_pages > 0`. → `⊥ BasecampError(code:
+ * "usage")` otherwise."
+ */
+function assertValidMaxPages(maxPages: number): void {
+  if (!Number.isInteger(maxPages) || maxPages <= 0) {
+    throw new BasecampError(
+      "usage",
+      `maxPages must be a positive integer, got ${String(maxPages)}`,
+      { hint: "Pass a whole number greater than 0, or omit maxPages to use the default cap." }
+    );
+  }
+}
+
+/**
  * Fetches all pages of a paginated resource using Link header pagination.
  * Automatically follows rel="next" links until no more pages exist, or until
  * `maxPages` pages have been consumed.
@@ -1107,7 +1134,12 @@ function createRetryingFetch(
  * bare `T[]` to report it, and throwing would break callers who legitimately
  * have that many pages.
  *
- * @param maxPages - Safety cap on pages CONSUMED. Defaults to `DEFAULT_MAX_PAGES`.
+ * @param maxPages - Safety cap on pages CONSUMED. Must be a positive integer;
+ *   `0`, negatives, `NaN`, `Infinity` and non-integers all throw
+ *   `BasecampError("usage")` before any request is made. Defaults to
+ *   `DEFAULT_MAX_PAGES`.
+ * @throws {BasecampError} with `code: "usage"` if `maxPages` is not a positive
+ *   integer.
  *
  * @example
  * ```ts
@@ -1125,6 +1157,8 @@ export async function fetchAllPages<T>(
   authHeader?: string,
   maxPages: number = DEFAULT_MAX_PAGES
 ): Promise<T[]> {
+  assertValidMaxPages(maxPages);
+
   const results: T[] = [];
   let response = initialResponse;
 
@@ -1170,7 +1204,19 @@ export async function fetchAllPages<T>(
  * Bounded by `maxPages` for the same reason as {@link fetchAllPages}: a Link
  * header that points at its own page would otherwise yield forever.
  *
- * @param maxPages - Safety cap on pages CONSUMED. Defaults to `DEFAULT_MAX_PAGES`.
+ * Validation is EAGER, which is why this is a plain function returning a
+ * generator rather than an `async function*`. The body of an `async function*`
+ * does not run until something iterates it, so a check written inside one would
+ * surface a bad `maxPages` at some later `for await` — possibly in a different
+ * function, on a generator that was passed along. A usage error is a programmer
+ * error and belongs at the call site that made it.
+ *
+ * @param maxPages - Safety cap on pages CONSUMED. Must be a positive integer;
+ *   `0`, negatives, `NaN`, `Infinity` and non-integers all throw
+ *   `BasecampError("usage")` from this call, before the generator is created
+ *   and before any request is made. Defaults to `DEFAULT_MAX_PAGES`.
+ * @throws {BasecampError} with `code: "usage"` if `maxPages` is not a positive
+ *   integer.
  *
  * @example
  * ```ts
@@ -1179,11 +1225,27 @@ export async function fetchAllPages<T>(
  * }
  * ```
  */
-export async function* paginateAll<T>(
+export function paginateAll<T>(
   initialResponse: Response,
   parse: (response: Response) => Promise<T[]>,
   authHeader?: string,
   maxPages: number = DEFAULT_MAX_PAGES
+): AsyncGenerator<T[], void, unknown> {
+  assertValidMaxPages(maxPages);
+
+  return paginatePages(initialResponse, parse, authHeader, maxPages);
+}
+
+/**
+ * The generator body behind {@link paginateAll}. Split out only so the cap can
+ * be validated before the generator object exists; `maxPages` is already known
+ * good here.
+ */
+async function* paginatePages<T>(
+  initialResponse: Response,
+  parse: (response: Response) => Promise<T[]>,
+  authHeader: string | undefined,
+  maxPages: number
 ): AsyncGenerator<T[], void, unknown> {
   let response = initialResponse;
 

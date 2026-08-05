@@ -59,6 +59,26 @@ private fun summarizeUpcoming(envelope: UpcomingScheduleResult): JsonElement = b
     }
 }
 
+/**
+ * Flattens an accumulated project list into top-level scalars.
+ *
+ * Flat and scalar because that is the only path form every runner can resolve:
+ * Go and TypeScript read a responseBody path as a top-level key with no dot
+ * splitting, and this runner's navigator (like Swift's) descends through
+ * JsonObjects only, so neither a dotted path nor an array index is portable.
+ *
+ * It exists so a fixture can prove the items of a followed page were
+ * ACCUMULATED, not merely fetched. requestCount only sees that the second
+ * request happened, and meta.totalCount is the X-Total-Count header rather than
+ * the item count, so an SDK that fetched page 2 and discarded its body
+ * satisfies both.
+ */
+private fun summarizeProjects(projects: List<Project>): JsonElement = buildJsonObject {
+    put("project_count", projects.size)
+    put("first_project_id", projects.firstOrNull()?.id ?: 0L)
+    put("last_project_id", projects.lastOrNull()?.id ?: 0L)
+}
+
 fun main() {
     val testsDir = File("../conformance/tests")
 
@@ -731,7 +751,11 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
                 ListProjectsOptions(maxItems = maxItems, page = page)
             } else null
             val result = account.projects.list(opts)
-            DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
+            DispatchResult(
+                totalCount = result.meta.totalCount,
+                truncated = result.meta.truncated,
+                resultJson = summarizeProjects(result),
+            )
         }
 
         "GetProject" -> {

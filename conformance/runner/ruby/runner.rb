@@ -208,14 +208,18 @@ class OperationMapper
       raw_url = "https://storage.3.basecamp.com" + path
       @account.download_url(raw_url)
     when "ListProjects"
-      # Returned unconsumed so the runner can consume then assert on .meta;
-      # the plain arity stays exercised when the fixture carries neither a
-      # maxItems cap nor a pinned page.
-      if max_items || page
-        @account.projects.list(max_items: max_items, page: page)
-      else
-        @account.projects.list
-      end
+      # Consumed and summarized HERE rather than returned unconsumed: the
+      # summary is what lets a fixture assert on the accumulated items, and
+      # building it requires the walk to have finished anyway. The plain arity
+      # stays exercised when the fixture carries neither a maxItems cap nor a
+      # pinned page.
+      summarize_projects(
+        if max_items || page
+          @account.projects.list(max_items: max_items, page: page)
+        else
+          @account.projects.list
+        end
+      )
     when "GetProject"
       @account.projects.get(project_id: path_params["projectId"])
     when "CreateProject"
@@ -582,6 +586,45 @@ class OperationMapper
     summary
   end
 
+  # Flatten an accumulated project list into top-level scalars.
+  #
+  # Flat and scalar because that is the only path form every runner can
+  # resolve: Go and TypeScript read a responseBody path as a top-level key with
+  # no dot splitting, and the Swift and Kotlin navigators descend through
+  # objects only, so neither a dotted path nor an array index is portable.
+  #
+  # It exists so a fixture can prove the items of a followed page were
+  # ACCUMULATED, not merely fetched. requestCount only sees that the second
+  # request happened, and meta.totalCount is the X-Total-Count header rather
+  # than the item count, so an SDK that fetched page 2 and discarded its body
+  # satisfies both.
+  #
+  # The returned Hash replaces the enumerator for BOTH assertion families, so
+  # it carries the two responseMeta fields under their JSON names as well; the
+  # responseMeta arm falls back to a Hash lookup when the result has no #meta.
+  # `truncated` is final only after the enumeration completes, which #to_a is.
+  def summarize_projects(enum)
+    items = enum.to_a
+    {
+      "project_count" => items.length,
+      "first_project_id" => project_id(items.first),
+      "last_project_id" => project_id(items.last),
+      "totalCount" => enum.meta.total_count,
+      "truncated" => enum.meta.truncated
+    }
+  end
+
+  # The "id" of a list item, or 0 when the item is absent or not an object.
+  #
+  # Not every ListProjects fixture answers with a bare array of projects:
+  # retry.json's 503 case returns the legacy `{"projects": []}` envelope, and
+  # the lenient paginator hands that back as the Hash's [key, value] pairs. An
+  # unguarded `item["id"]` raises TypeError on an Array there — in a case that
+  # asserts nothing about the body at all.
+  def project_id(item)
+    item.is_a?(Hash) ? item["id"] || 0 : 0
+  end
+
   # Fixture requestBody keys map 1:1 to the todo write kwargs.
   TODO_WRITE_KEYS = %w[
     content description assignee_ids completion_subscriber_ids due_on starts_on notify
@@ -716,6 +759,11 @@ class TestRunner
       # final only after the lazy enumeration completes, and consumption is
       # what drives the follow-up page requests that requestCount observes.
       # The enumerator itself is kept so responseMeta can reach .meta.
+      #
+      # A no-op for ListProjects, whose arm consumes and summarizes in place
+      # (summarize_projects) so responseBody can assert on the accumulated
+      # items — every OTHER list arm still returns an unconsumed enumerator and
+      # still needs this.
       result.to_a if result.is_a?(Enumerator)
       verify_assertions(result: result, error: nil)
     rescue StandardError => e
@@ -1146,7 +1194,13 @@ class TestRunner
         actual = if result.respond_to?(:meta) && result.meta.respond_to?(snake_field)
           result.meta.public_send(snake_field)
         elsif result.is_a?(Hash)
-          result[field_path] || result[field_path.to_sym]
+          # Key presence, not truthiness. `result[key] || result[key.to_sym]`
+          # reads a present `false` as a miss and falls through to the symbol
+          # key and then to nil, so `truncated => false` — the assertion every
+          # non-truncating pagination fixture makes — could never pass once a
+          # dispatch arm returns a summary Hash instead of an object with #meta.
+          # Same trap dig_path already fixed below.
+          result.key?(field_path) ? result[field_path] : result[field_path.to_sym]
         end
         unless actual == expected
           failures << "Expected responseMeta.#{field_path} = #{expected.inspect}, got #{actual.inspect}"

@@ -103,11 +103,11 @@ class PaginationLinkTest < Minitest::Test
   # The leading "é" is the whole point. It pushes the string off CR_7BIT, and
   # String#index(str, offset) takes a CHARACTER offset, which on such a string
   # Ruby resolves by walking from the start — O(cursor) per call, so the skip
-  # loop turns quadratic. byteindex/byteslice are O(1) in the offset. This is
-  # the one place a timeout earns its keep: the byte-indexed version does this
-  # in ~34ms, the character-indexed one in ~20.3s, so 5s sits ~150x above the
-  # fixed path and ~4x below the broken one — a regression gate, not a timing
-  # bound. (The other SDKs need no such guard; only Ruby indexes by character.)
+  # loop turns quadratic. Indexing the binary view is O(1) in the offset. This
+  # is the one place a timeout earns its keep: scanning part.b does this in
+  # ~30ms, the character-indexed one in ~15s, so 5s sits ~150x above the fixed
+  # path and well below the broken one — a regression gate, not a timing bound.
+  # (The other SDKs need no such guard; only Ruby indexes by character.)
   def test_handles_many_empty_bracket_pairs_in_a_non_ascii_header
     pairs = "é" + ("<>" * 160_000)
 
@@ -119,5 +119,79 @@ class PaginationLinkTest < Minitest::Test
       assert_equal "https://api.example.com/page2",
                    parse(%(#{pairs}<https://api.example.com/page2>; rel="next"))
     end
+  end
+
+  # --- Malformed UTF-8 ---
+  #
+  # The header comes off the wire and nothing between the socket and here
+  # validates it as UTF-8. Net::HTTP happens to hand Faraday ASCII-8BIT values,
+  # where every byte offset is a character and none of this can bite, but that
+  # is an adapter's accident rather than a contract — so both the extractor and
+  # its caller have to be total on bytes that are not valid UTF-8.
+  #
+  # The witness is "\xC2<\x80>" (bytes 194 60 128 62) tagged UTF-8. "\xC2" is a
+  # two-byte lead, so Ruby reads byte 2 — the one just past the "<" — as the
+  # middle of a character.
+
+  MALFORMED = "\xC2<\x80>"
+
+  # byteindex is O(1) in the offset but RAISES IndexError when that offset does
+  # not land on a character boundary, which is exactly what byte 2 above is. A
+  # binary view has no character boundaries to violate, so every offset is
+  # legal; force_encoding hands the caller's encoding back on the way out.
+  def test_extracts_from_a_part_whose_bytes_are_not_valid_utf8
+    part = MALFORMED.b.force_encoding(Encoding::UTF_8)
+
+    extracted = @http.send(:extract_angle_bracketed, part)
+
+    assert_equal "\x80".b, extracted.b
+    assert_equal Encoding::UTF_8, extracted.encoding
+  end
+
+  # Binary in, binary out: the scan must not silently retag its result.
+  def test_preserves_binary_encoding_of_the_part
+    extracted = @http.send(:extract_angle_bracketed, MALFORMED.b)
+
+    assert_equal "\x80".b, extracted
+    assert_equal Encoding::BINARY, extracted.encoding
+  end
+
+  # Valid input keeps its encoding too, so the .b round trip is invisible.
+  def test_preserves_utf8_encoding_of_the_part
+    extracted = @http.send(:extract_angle_bracketed, "<https://api.example.com/é>")
+
+    assert_equal "https://api.example.com/é", extracted
+    assert_equal Encoding::UTF_8, extracted.encoding
+  end
+
+  # The whole path, not just the extractor. String#split and String#strip raise
+  # ArgumentError on a broken coderange, so parse_next_link crashed on this
+  # header one frame ABOVE extract_angle_bracketed — a fix confined to the
+  # extractor would leave the header just as fatal. Splitting a binary view is
+  # total, and ASCII-8BIT strips and compares identically for ASCII literals.
+  def test_parses_a_header_whose_bytes_are_not_valid_utf8
+    header = %(#{MALFORMED}; rel="next").b.force_encoding(Encoding::UTF_8)
+
+    next_url = parse(header)
+
+    assert_equal "\x80".b, next_url.b
+    assert_equal Encoding::UTF_8, next_url.encoding
+  end
+
+  # Same header, binary-tagged — the shape Net::HTTP actually produces.
+  def test_parses_a_binary_header
+    next_url = parse(%(#{MALFORMED}; rel="next").b)
+
+    assert_equal "\x80".b, next_url
+    assert_equal Encoding::BINARY, next_url.encoding
+  end
+
+  # A malformed part must not swallow a well-formed one after it, and the comma
+  # split has to survive the malformed bytes to reach it.
+  def test_keeps_scanning_past_a_malformed_utf8_part
+    header = %(#{MALFORMED[0]}<; rel="next", <https://api.example.com/page2>; rel="next")
+             .b.force_encoding(Encoding::UTF_8)
+
+    assert_equal "https://api.example.com/page2", parse(header)
   end
 end
