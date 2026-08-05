@@ -952,6 +952,40 @@ func saturatingBackoff(base time.Duration, attempt int) time.Duration {
 	return time.Duration(int64(base) * multiplier)
 }
 
+// extractAngleBracketed returns the contents of the first non-empty <...> pair,
+// or "" if there is none.
+//
+// Searching for ">" from after the "<" is what makes this correct: looking for
+// both independently from position 0 means a ">" that precedes the "<" yields
+// end < start, and the extraction silently fails for that part. It also matches
+// the leftmost-match semantics of <([^>]+)>, which is what the TypeScript, Ruby
+// and Python SDKs used to spell this with.
+//
+// An empty <> is skipped rather than returned, because [^>]+ requires at least
+// one character. That scan was O(1), so the loop stays linear overall.
+func extractAngleBracketed(part string) string {
+	for cursor := 0; cursor < len(part); {
+		start := strings.Index(part[cursor:], "<")
+		if start < 0 {
+			return ""
+		}
+		start += cursor
+
+		end := strings.Index(part[start+1:], ">")
+		if end < 0 {
+			return ""
+		}
+		end += start + 1
+
+		if end > start+1 {
+			return part[start+1 : end]
+		}
+		cursor = start + 1
+	}
+
+	return ""
+}
+
 // parseNextLink extracts the next URL from a Link header.
 func parseNextLink(linkHeader string) string {
 	if linkHeader == "" {
@@ -961,11 +995,8 @@ func parseNextLink(linkHeader string) string {
 	for part := range strings.SplitSeq(linkHeader, ",") {
 		part = strings.TrimSpace(part)
 		if strings.Contains(part, `rel="next"`) {
-			// Extract URL between < and >
-			start := strings.Index(part, "<")
-			end := strings.Index(part, ">")
-			if start >= 0 && end > start {
-				return part[start+1 : end]
+			if url := extractAngleBracketed(part); url != "" {
+				return url
 			}
 		}
 	}
