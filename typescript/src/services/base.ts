@@ -171,7 +171,12 @@ export abstract class BaseService {
     // without passing through createBasecampClient. Validating only at the
     // client factory would leave this door open. Checked only when supplied, so
     // an omitted cap still falls through to the default.
-    if (maxPages !== undefined) {
+    // `!= null` rather than `!== undefined`, to agree with the `??` below:
+    // that treats an explicit `null` as "not supplied" and falls back to the
+    // default, so the guard must treat it the same way. A JS caller passing
+    // `null` — outside the declared type, but reachable from untyped code —
+    // would otherwise have started throwing where it previously defaulted.
+    if (maxPages != null) {
       assertValidMaxPages(maxPages);
     }
 
