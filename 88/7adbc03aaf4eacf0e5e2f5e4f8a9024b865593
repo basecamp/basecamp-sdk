@@ -1,0 +1,30 @@
+MIGRATING.md
+  s_a1c8b722236ebd::t_23bbc98f61a1d5 38
+  s_a1c8b722236ebd::t_aa4328b6bf8a18 102
+  s_a1c8b722236ebd::t_ab6df4a418e0cc 144-178
+  s_a1c8b722236ebd::t_67887c497706fe 2214
+  s_a1c8b722236ebd::t_e842a1be38a7f9 75-84,87,93,95
+  s_a1c8b722236ebd::t_93c3598740d3f2 55,58-59
+  s_a1c8b722236ebd::t_6b8e8dc8401a55 119-120,124
+  s_a1c8b722236ebd::t_d44106adf70bb8 106
+  s_a1c8b722236ebd::t_9ff762a65af859 2863
+  s_a1c8b722236ebd::t_b5722b45387ec2 2902-2928
+SPEC.md
+  s_a1c8b722236ebd::t_f0a06ca675abca 141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "887adbc03aaf4eacf0e5e2f5e4f8a9024b865593",
+  "prompts": {},
+  "sessions": {
+    "s_a1c8b722236ebd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba243365-4cdf-4f30-bb66-2616165dbd3e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
