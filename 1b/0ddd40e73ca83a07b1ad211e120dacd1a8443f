@@ -1,0 +1,44 @@
+spec/api-gaps/README.md
+  s_2df5574aca7ce9::t_b7c8a10a74b51d 217-226
+  s_2df5574aca7ce9::t_83bb72d13f5d6b 100,107-112
+  s_2df5574aca7ce9::t_26ff709f88f88d 175-188,190-191
+spec/api-gaps/upload-new-version.md
+  s_2df5574aca7ce9::t_b3adfbc915b39d 8
+COORDINATION.md
+  s_2df5574aca7ce9::t_ddb0df49843493 12
+spec/api-provenance.json
+  s_2df5574aca7ce9::t_644b24b51ae015 4
+spec/doc-constants.json
+  s_2df5574aca7ce9::t_b9251777fe2752 51
+spec/api-gaps/project-archive-unarchive.md
+  s_2df5574aca7ce9::t_67a8e74db2d494 56,60-67
+  s_e8546fb757d939::t_acec19c05c2190 68
+spec/bc3-routes.json
+  s_2df5574aca7ce9::t_ddb0df49843493 8
+go/pkg/basecamp/api-provenance.json
+  s_2df5574aca7ce9::t_ddb0df49843493 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1b0ddd40e73ca83a07b1ad211e120dacd1a8443f",
+  "prompts": {},
+  "sessions": {
+    "s_2df5574aca7ce9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b042b5dd-8507-4859-9ca5-57664b41af01",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e8546fb757d939": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11b5aae9-cb3f-4ddf-9392-9b5fabf359cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
