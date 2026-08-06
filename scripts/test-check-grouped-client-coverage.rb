@@ -28,9 +28,11 @@
 # including the positive control, which looks like a devastating mutation and is
 # really just a checker that cannot find its inputs. Never mutate the tracked file.
 #
-# Every guard in the checker is pinned by EXACTLY one case, and every case by
-# exactly one guard — measured, not assumed. Removing a guard from the copy must
-# turn exactly this red and nothing else:
+# Every guard in the checker is pinned by at least one case, and the mapping below
+# is measured — mutate the guard in a copy, record which cases go red — rather than
+# reasoned about. It is mostly one-to-one; where it is not, the table says so, and
+# the two exceptions were both found by measuring after writing down the tidy
+# version. Removing a guard from the copy must turn exactly this red:
 #
 #   guard removed in the copy                        case that must go red
 #   ---------------------------------------------    ---------------------
@@ -63,6 +65,15 @@
 # template-arm check rather than the unaccounted check, because by then the arms
 # exist. Case 1 is the form where they do not. Both matter: #679 shipped with
 # NEITHER, and whichever gets written first, the other guard catches the rest.
+#
+# WHAT THIS SUITE IS NOT. Five of these cases — 11, 12, 13, 14, 15 — exist because
+# a reviewer found a hole this suite had not thought of, on a gate whose whole
+# premise is that an ungated gate is no gate. Every one was the same species the
+# gate exists to catch: a one-way containment check, an unexamined `next`, a
+# method surface measured at 86 and recorded at 63, a duplicate check written for
+# one input and not its twin. The suite passing means these fifteen things are
+# checked. It has never meant the list is complete, and the list's own history is
+# the argument against reading it that way.
 #
 # Run directly (`ruby scripts/test-check-grouped-client-coverage.rb`) or via
 # `make test-grouped-client-coverage`.
