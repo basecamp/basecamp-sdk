@@ -1,0 +1,26 @@
+python/tests/test_config.py
+  s_a1c8b722236ebd::t_67bdebb76c889d 78-88
+python/src/basecamp/config.py
+  s_a1c8b722236ebd::t_d61fee195fd695 118-122
+  s_a1c8b722236ebd::t_d8c882cce46429 123
+typescript/tests/client.test.ts
+  s_a1c8b722236ebd::t_1c38b66d759df6 752-773
+typescript/src/client.ts
+  s_a1c8b722236ebd::t_4fb07735c41abc 337-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6b8aef7d85ffc9e5ce6318c8dc8d3fe70e94f02c",
+  "prompts": {},
+  "sessions": {
+    "s_a1c8b722236ebd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba243365-4cdf-4f30-bb66-2616165dbd3e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
