@@ -163,7 +163,7 @@ the kind of `FlexTime` special-casing Go already needed.
   surface; they have discovery but no way to read the document discovery points
   them at.
 
-## What shipped (#PLACEHOLDER)
+## What shipped (#681)
 
 The SDK half of this brief is closed. `status` stays `partial-coverage` because
 the other half is bc3's and has not moved: bc3 still does not document its own

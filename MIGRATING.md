@@ -49,12 +49,12 @@ there is no member that changed from optional to required; there are two new
 members that happen to be required from the start. It reshapes the #628 break
 rather than adding one, and that is where this guide documents it.
 
-#PLACEHOLDER **does** add one, and it is the only row in the table above measured
+#681 **does** add one, and it is the only row in the table above measured
 past `70d576bd8`: it takes TypeScript from 18 breaking changes to 19. It adds
 nothing to either "no signal" column — it is four required-to-optional field
 relaxations, which `tsc` catches under `strictNullChecks` — so the 61/55/6 totals
 below are unmoved. See
-[Four `Identity` and `AuthorizedAccount` fields became optional](#four-identity-and-authorizedaccount-fields-became-optional-placeholder).
+[Four `Identity` and `AuthorizedAccount` fields became optional](#four-identity-and-authorizedaccount-fields-became-optional-681).
 
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
 body.
@@ -1974,7 +1974,7 @@ survive because a sibling verb still lives there, so
 clean. Grep for those five names rather than trusting tsc. The 422 re-tags are
 exactly `UpdateMyNote` and `UpdateMyPreferences`.
 
-### Four `Identity` and `AuthorizedAccount` fields became optional (#PLACEHOLDER)
+### Four `Identity` and `AuthorizedAccount` fields became optional (#681)
 
 `Identity.firstName`, `.lastName`, `.emailAddress` and `AuthorizedAccount.product`
 went from required `string` to `string | undefined`; `AuthorizedAccount.appHref`
