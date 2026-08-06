@@ -1,0 +1,915 @@
+[
+  {
+    "name": "create-version-unaddressed: description and base_name stay off the wire",
+    "description": "BC3 reads description with key?, so an omitted key carries the previous version's description forward and a present one replaces it. When the caller addresses neither description nor base_name, neither key may appear in the body \u2014 a compactor that emitted null, or a default that emitted \"\", would clear a description the server is holding for us. The requestBody assertion on attachable_sgid rides along deliberately: a requestBodyAbsent alone is satisfied by an empty body, which would pass while sending nothing at all.",
+    "operation": "CreateUploadVersion",
+    "method": "POST",
+    "path": "/uploads/{uploadId}/versions.json",
+    "pathParams": {
+      "uploadId": 1069479400
+    },
+    "requestBody": {
+      "attachable_sgid": "BAh2CEkiCGdpZAY6BkVUSSIsZ2lkOi7vYmMzL0F0dGFjaG1lbnQvNzM4NDcyNj8=--13982201"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479400,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-11-22T08:35:00.000Z",
+          "updated_at": "2022-11-22T08:35:00.000Z",
+          "title": "logo.png",
+          "inherits_status": true,
+          "type": "Upload",
+          "url": "https://3.basecampapi.com/999999999/buckets/2085958500/uploads/1069479400.json",
+          "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/uploads/1069479400",
+          "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDAwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcd1234.json",
+          "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/subscription.json",
+          "comments_count": 1,
+          "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 1069479098,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999999999/buckets/2085958500/vaults/1069479098.json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/vaults/1069479098"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abcd1234",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.000Z",
+            "updated_at": "2022-11-22T08:23:21.000Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--5520caeec1845b5a20c5b41d2c9de6578bcbb83d/avatar?v=1",
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "description": "<div>The original</div>",
+          "content_type": "image/png",
+          "byte_size": 245678,
+          "width": 1024.0,
+          "height": 768.0,
+          "download_url": "https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png",
+          "filename": "logo.png",
+          "description_attachments": [
+            {
+              "id": 1069480020,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01",
+              "filename": "brand-guide.png",
+              "content_type": "image/png",
+              "byte_size": 512000,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/download/brand-guide.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/previews/brand-guide.png",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/thumbnails/brand-guide.png"
+            },
+            {
+              "id": 1069480021,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02",
+              "filename": "specs.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 2097152,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/download/specs.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/previews/specs.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/thumbnails/specs.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/uploads/1069479400/versions.json",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "attachable_sgid",
+        "expected": "BAh2CEkiCGdpZAY6BkVUSSIsZ2lkOi7vYmMzL0F0dGFjaG1lbnQvNzM4NDcyNj8=--13982201",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "description",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "base_name",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "uploads",
+      "write",
+      "presence-aware",
+      "body-compaction"
+    ]
+  },
+  {
+    "name": "create-version-clear: an explicit empty description reaches the wire",
+    "description": "The clear spelling is \"\", not null: SPEC \u00a718 body compaction forbids {\"field\": null}, and five of six SDKs strip nulls structurally before the wire (Python _compact, Ruby compact_params, Kotlin ?.let, Swift encodeIfPresent, Go omitempty). Only an empty string survives compaction in every language, so it is the only clear a caller can actually express. Pinned by BC3's own test at basecamp/bc3#12565.",
+    "operation": "CreateUploadVersion",
+    "method": "POST",
+    "path": "/uploads/{uploadId}/versions.json",
+    "pathParams": {
+      "uploadId": 1069479400
+    },
+    "requestBody": {
+      "attachable_sgid": "BAh2CEkiCGdpZAY6BkVUSSIsZ2lkOi7vYmMzL0F0dGFjaG1lbnQvNzM4NDcyNj8=--13982201",
+      "description": ""
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479400,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-11-22T08:35:00.000Z",
+          "updated_at": "2022-11-22T08:35:00.000Z",
+          "title": "logo.png",
+          "inherits_status": true,
+          "type": "Upload",
+          "url": "https://3.basecampapi.com/999999999/buckets/2085958500/uploads/1069479400.json",
+          "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/uploads/1069479400",
+          "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDAwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcd1234.json",
+          "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/subscription.json",
+          "comments_count": 1,
+          "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 1069479098,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999999999/buckets/2085958500/vaults/1069479098.json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/vaults/1069479098"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abcd1234",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.000Z",
+            "updated_at": "2022-11-22T08:23:21.000Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--5520caeec1845b5a20c5b41d2c9de6578bcbb83d/avatar?v=1",
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "description": "",
+          "content_type": "image/png",
+          "byte_size": 245678,
+          "width": 1024.0,
+          "height": 768.0,
+          "download_url": "https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png",
+          "filename": "logo.png",
+          "description_attachments": [
+            {
+              "id": 1069480020,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01",
+              "filename": "brand-guide.png",
+              "content_type": "image/png",
+              "byte_size": 512000,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/download/brand-guide.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/previews/brand-guide.png",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/thumbnails/brand-guide.png"
+            },
+            {
+              "id": 1069480021,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02",
+              "filename": "specs.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 2097152,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/download/specs.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/previews/specs.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/thumbnails/specs.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "attachable_sgid",
+        "expected": "BAh2CEkiCGdpZAY6BkVUSSIsZ2lkOi7vYmMzL0F0dGFjaG1lbnQvNzM4NDcyNj8=--13982201",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "uploads",
+      "write",
+      "presence-aware",
+      "clear"
+    ]
+  },
+  {
+    "name": "create-version-set: a supplied description reaches the wire verbatim",
+    "operation": "CreateUploadVersion",
+    "method": "POST",
+    "path": "/uploads/{uploadId}/versions.json",
+    "pathParams": {
+      "uploadId": 1069479400
+    },
+    "requestBody": {
+      "attachable_sgid": "BAh2CEkiCGdpZAY6BkVUSSIsZ2lkOi7vYmMzL0F0dGFjaG1lbnQvNzM4NDcyNj8=--13982201",
+      "description": "<div><strong>The replacement</strong></div>",
+      "base_name": "company-logo"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479400,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-11-22T08:35:00.000Z",
+          "updated_at": "2022-11-22T08:35:00.000Z",
+          "title": "logo.png",
+          "inherits_status": true,
+          "type": "Upload",
+          "url": "https://3.basecampapi.com/999999999/buckets/2085958500/uploads/1069479400.json",
+          "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/uploads/1069479400",
+          "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDAwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcd1234.json",
+          "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/subscription.json",
+          "comments_count": 1,
+          "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 1069479098,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999999999/buckets/2085958500/vaults/1069479098.json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/vaults/1069479098"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abcd1234",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.000Z",
+            "updated_at": "2022-11-22T08:23:21.000Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--5520caeec1845b5a20c5b41d2c9de6578bcbb83d/avatar?v=1",
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "description": "<div><strong>The replacement</strong></div>",
+          "content_type": "image/png",
+          "byte_size": 245678,
+          "width": 1024.0,
+          "height": 768.0,
+          "download_url": "https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png",
+          "filename": "logo.png",
+          "description_attachments": [
+            {
+              "id": 1069480020,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01",
+              "filename": "brand-guide.png",
+              "content_type": "image/png",
+              "byte_size": 512000,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/download/brand-guide.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/previews/brand-guide.png",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/thumbnails/brand-guide.png"
+            },
+            {
+              "id": 1069480021,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02",
+              "filename": "specs.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 2097152,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/download/specs.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/previews/specs.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/thumbnails/specs.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "<div><strong>The replacement</strong></div>",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "base_name",
+        "expected": "company-logo",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "uploads",
+      "write",
+      "presence-aware"
+    ]
+  },
+  {
+    "name": "update-unaddressed: an unaddressed description stays off the wire",
+    "description": "UpdateUpload lands on the same serialized ActionText attribute as CreateUploadVersion. Go's UpdateUploadRequest.Description was a plain string behind omitzero(), so \"\" read as unset and the clear was unreachable \u2014 the divergence SPEC.md \u00a75 documented. It is a pointer now, and these two cases are what keep both request types honest about the same three states.",
+    "operation": "UpdateUpload",
+    "method": "PUT",
+    "path": "/uploads/{uploadId}",
+    "pathParams": {
+      "uploadId": 1069479400
+    },
+    "requestBody": {
+      "base_name": "renamed"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479400,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-11-22T08:35:00.000Z",
+          "updated_at": "2022-11-22T08:35:00.000Z",
+          "title": "logo.png",
+          "inherits_status": true,
+          "type": "Upload",
+          "url": "https://3.basecampapi.com/999999999/buckets/2085958500/uploads/1069479400.json",
+          "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/uploads/1069479400",
+          "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDAwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcd1234.json",
+          "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/subscription.json",
+          "comments_count": 1,
+          "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 1069479098,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999999999/buckets/2085958500/vaults/1069479098.json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/vaults/1069479098"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abcd1234",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.000Z",
+            "updated_at": "2022-11-22T08:23:21.000Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--5520caeec1845b5a20c5b41d2c9de6578bcbb83d/avatar?v=1",
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "description": "<div>The original</div>",
+          "content_type": "image/png",
+          "byte_size": 245678,
+          "width": 1024.0,
+          "height": 768.0,
+          "download_url": "https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png",
+          "filename": "renamed.png",
+          "description_attachments": [
+            {
+              "id": 1069480020,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01",
+              "filename": "brand-guide.png",
+              "content_type": "image/png",
+              "byte_size": 512000,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/download/brand-guide.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/previews/brand-guide.png",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/thumbnails/brand-guide.png"
+            },
+            {
+              "id": 1069480021,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02",
+              "filename": "specs.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 2097152,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/download/specs.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/previews/specs.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/thumbnails/specs.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "base_name",
+        "expected": "renamed",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "description",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "uploads",
+      "write",
+      "presence-aware",
+      "body-compaction"
+    ]
+  },
+  {
+    "name": "update-clear: an explicit empty description reaches the wire",
+    "operation": "UpdateUpload",
+    "method": "PUT",
+    "path": "/uploads/{uploadId}",
+    "pathParams": {
+      "uploadId": 1069479400
+    },
+    "requestBody": {
+      "description": ""
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479400,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-11-22T08:35:00.000Z",
+          "updated_at": "2022-11-22T08:35:00.000Z",
+          "title": "logo.png",
+          "inherits_status": true,
+          "type": "Upload",
+          "url": "https://3.basecampapi.com/999999999/buckets/2085958500/uploads/1069479400.json",
+          "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/uploads/1069479400",
+          "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDAwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcd1234.json",
+          "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/subscription.json",
+          "comments_count": 1,
+          "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479400/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 1069479098,
+            "title": "Docs & Files",
+            "type": "Vault",
+            "url": "https://3.basecampapi.com/999999999/buckets/2085958500/vaults/1069479098.json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/vaults/1069479098"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abcd1234",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.000Z",
+            "updated_at": "2022-11-22T08:23:21.000Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--5520caeec1845b5a20c5b41d2c9de6578bcbb83d/avatar?v=1",
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "description": "",
+          "content_type": "image/png",
+          "byte_size": 245678,
+          "width": 1024.0,
+          "height": 768.0,
+          "download_url": "https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png",
+          "filename": "logo.png",
+          "description_attachments": [
+            {
+              "id": 1069480020,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01",
+              "filename": "brand-guide.png",
+              "content_type": "image/png",
+              "byte_size": 512000,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/download/brand-guide.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/previews/brand-guide.png",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/thumbnails/brand-guide.png"
+            },
+            {
+              "id": 1069480021,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02",
+              "filename": "specs.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 2097152,
+              "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/download/specs.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/previews/specs.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/thumbnails/specs.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "uploads",
+      "write",
+      "presence-aware",
+      "clear"
+    ]
+  },
+  {
+    "name": "list-versions decodes the version payload, filename and current included",
+    "description": "ListUploadVersionsOutput declared uploads: UploadList, but the endpoint returns events \u2014 11 of Upload's 14 required members are absent from every response, which is why the CLI's versions command and the MCP server's list_upload_versions rendered blank fields (basecamp-sdk#649). The body here is the shared spec/fixtures/uploads/versions.json, so this case and the per-SDK unit tests cannot drift apart. The runners flatten the array into a summary object \u2014 the same shape summarize_upcoming uses \u2014 because the assertion path resolvers walk objects, not array indices.",
+    "operation": "ListUploadVersions",
+    "method": "GET",
+    "path": "/uploads/{uploadId}/versions.json",
+    "pathParams": {
+      "uploadId": 1069479400
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 1069479501,
+            "recording_id": 1069479400,
+            "action": "blob_changed",
+            "details": {},
+            "created_at": "2022-12-04T16:41:12.114Z",
+            "creator": {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abcd1234",
+              "name": "Victor Cooper",
+              "email_address": "victor@honchodesign.com",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "bio": "Don't let your dreams be dreams",
+              "location": "Chicago, IL",
+              "created_at": "2022-11-22T08:23:21.000Z",
+              "updated_at": "2022-11-22T08:23:21.000Z",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--5520caeec1845b5a20c5b41d2c9de6578bcbb83d/avatar?v=1",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "boosts_count": 2,
+            "boosts_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479400/events/1069479501/boosts.json",
+            "upload": {
+              "content_type": "image/png",
+              "byte_size": 184829,
+              "filename": "company-logo.png",
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/uploads/1069479400/versions/1069479501/download/company-logo.png",
+              "app_download_url": "https://storage.3.basecamp.com/195539477/buckets/2085958500/uploads/1069479400/versions/1069479501/download/company-logo.png",
+              "current": true
+            }
+          },
+          {
+            "id": 1069479500,
+            "recording_id": 1069479400,
+            "action": "active",
+            "details": {},
+            "created_at": "2022-11-28T09:02:44.301Z",
+            "creator": {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd1e798e7c0e2b40cd88ed93c0b8",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Central Markets Manager",
+              "bio": "To open a store is easy, to keep it open is an art",
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.911Z",
+              "updated_at": "2022-11-22T08:23:21.911Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkz4=--e609ef146e39f9ca5e4bb7f8bf7b7fecfff6e302/avatar?v=1",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "upload": {
+              "content_type": "image/png",
+              "byte_size": 172294,
+              "filename": "company-logo.png",
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/uploads/1069479400/versions/1069479500/download/company-logo.png",
+              "app_download_url": "https://storage.3.basecamp.com/195539477/buckets/2085958500/uploads/1069479400/versions/1069479500/download/company-logo.png",
+              "current": false
+            }
+          },
+          {
+            "id": 1069479499,
+            "recording_id": 1069479400,
+            "action": "created",
+            "details": {},
+            "created_at": "2022-11-22T08:23:58.523Z",
+            "creator": {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd1e798e7c0e2b40cd88ed93c0b8",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Central Markets Manager",
+              "bio": "To open a store is easy, to keep it open is an art",
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.911Z",
+              "updated_at": "2022-11-22T08:23:21.911Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkz4=--e609ef146e39f9ca5e4bb7f8bf7b7fecfff6e302/avatar?v=1",
+              "company": {
+                "id": 1033447817,
+                "name": "Honcho Design"
+              },
+              "can_manage_projects": true,
+              "can_manage_people": true
+            }
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "versions_count",
+        "expected": 3
+      },
+      {
+        "type": "responseBody",
+        "path": "first_action",
+        "expected": "blob_changed"
+      },
+      {
+        "type": "responseBody",
+        "path": "first_filename",
+        "expected": "company-logo.png"
+      },
+      {
+        "type": "responseBody",
+        "path": "first_content_type",
+        "expected": "image/png"
+      },
+      {
+        "type": "responseBody",
+        "path": "first_byte_size",
+        "expected": 184829
+      },
+      {
+        "type": "responseBody",
+        "path": "first_current",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "current_count",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "last_action",
+        "expected": "created"
+      },
+      {
+        "type": "responseBody",
+        "path": "last_has_upload",
+        "expected": false
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "uploads",
+      "read",
+      "issue-649"
+    ]
+  },
+  {
+    "name": "create-version storage limit is limit_exceeded, not a retryable api_error",
+    "description": "A replacement copies bytes into a new blob and keeps the old one, so it always grows recorded storage; ensure_account_can_upload_files guards it. SPEC \u00a76 step 11 decides 507 before the 5xx catch-all, because both match and only order separates them. Against un-fixed code every SDK reported api_error with retryable: true \u2014 a plan limit no backoff can satisfy, indistinguishable from a 500. requestCount pins that nothing retried it, so a future retryOn list that added 507 would fail here.",
+    "operation": "CreateUploadVersion",
+    "method": "POST",
+    "path": "/uploads/{uploadId}/versions.json",
+    "pathParams": {
+      "uploadId": 1069479400
+    },
+    "requestBody": {
+      "attachable_sgid": "BAh2CEkiCGdpZAY6BkVUSSIsZ2lkOi7vYmMzL0F0dGFjaG1lbnQvNzM4NDcyNj8=--13982201"
+    },
+    "mockResponses": [
+      {
+        "status": 507,
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Request-Id": "req-507-storage"
+        },
+        "body": {
+          "error": "The storage limit for this account has been reached."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorCode",
+        "expected": "limit_exceeded"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 507
+      },
+      {
+        "type": "errorField",
+        "path": "retryable",
+        "expected": false
+      },
+      {
+        "type": "errorMessage",
+        "expected": "storage limit"
+      }
+    ],
+    "tags": [
+      "uploads",
+      "write",
+      "error-mapping",
+      "limit-exceeded"
+    ]
+  }
+]

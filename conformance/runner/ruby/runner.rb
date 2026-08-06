@@ -353,6 +353,19 @@ class OperationMapper
       )
     when "UploadsDownload"
       @account.uploads.download(upload_id: path_params["uploadId"])
+    when "CreateUploadVersion"
+      # Presence-bearing, like ReplaceScheduleEntry: only keys the fixture
+      # carries are passed, so an unaddressed description stays off the wire
+      # while an explicit "" survives compact_params (which strips only nil).
+      @account.uploads.create_version(
+        upload_id: path_params["uploadId"],
+        attachable_sgid: body["attachable_sgid"],
+        **upload_version_write_kwargs(body)
+      )
+    when "UpdateUpload"
+      @account.uploads.update(upload_id: path_params["uploadId"], **upload_version_write_kwargs(body))
+    when "ListUploadVersions"
+      summarize_upload_versions(@account.uploads.list_versions(upload_id: path_params["uploadId"]).to_a)
     when "UpdateTodo"
       @account.todos.update(
         todo_id: path_params["todoId"],
@@ -650,6 +663,41 @@ class OperationMapper
   def schedule_entry_write_kwargs(body)
     SCHEDULE_ENTRY_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
       .to_h { |key| [key.to_sym, body[key]] }
+  end
+
+  # attachable_sgid is passed positionally by the dispatch (it is required), so
+  # it is deliberately absent here — this list is only the presence-bearing
+  # members, where "sent as empty" and "not sent" are different writes.
+  UPLOAD_VERSION_WRITE_KEYS = %w[base_name description notify subscriptions].freeze
+
+  def upload_version_write_kwargs(body)
+    UPLOAD_VERSION_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
+      .to_h { |key| [key.to_sym, body[key]] }
+  end
+
+  # GET /uploads/{id}/versions.json returns an ARRAY, and the assertion path
+  # resolvers walk objects, not array indices. Flatten to the same summary shape
+  # summarize_upcoming uses so the fixture can assert on it.
+  def summarize_upload_versions(versions)
+    summary = {
+      "versions_count" => versions.length,
+      "current_count" => versions.count { |v| v.dig("upload", "current") }
+    }
+    if versions.any?
+      first = versions.first
+      summary["first_action"] = first["action"]
+      summary["first_filename"] = first.dig("upload", "filename")
+      summary["first_content_type"] = first.dig("upload", "content_type")
+      summary["first_byte_size"] = first.dig("upload", "byte_size")
+      summary["first_current"] = first.dig("upload", "current")
+
+      last = versions.last
+      summary["last_action"] = last["action"]
+      # A version whose recordable no longer resolves omits the upload object
+      # entirely — the optionality UploadVersion.upload declares.
+      summary["last_has_upload"] = !last["upload"].nil?
+    end
+    summary
   end
 
   CARD_WRITE_KEYS = %w[title content due_on assignee_ids].freeze

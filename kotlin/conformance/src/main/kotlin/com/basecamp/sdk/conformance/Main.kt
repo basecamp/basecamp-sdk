@@ -79,6 +79,41 @@ private fun summarizeProjects(projects: List<Project>): JsonElement = buildJsonO
     put("last_project_id", projects.lastOrNull()?.id ?: 0L)
 }
 
+/**
+ * Flattens the versions array into top-level scalars.
+ *
+ * GET /uploads/{id}/versions.json returns an ARRAY and a responseBody path
+ * resolves as a top-level key only. listVersions hands back ListResult<JsonElement>
+ * — the generator's shape for a bare-array response, as with gauges, checkins and
+ * search — so this reads the wire keys directly.
+ */
+private fun summarizeUploadVersions(versions: List<JsonElement>): JsonElement = buildJsonObject {
+    put("versions_count", versions.size)
+    put(
+        "current_count",
+        versions.count { v ->
+            (v as? JsonObject)?.get("upload")?.jsonObject?.get("current")?.jsonPrimitive?.booleanOrNull == true
+        },
+    )
+    versions.firstOrNull()?.let { first ->
+        val obj = first.jsonObject
+        put("first_action", obj["action"]!!.jsonPrimitive.content)
+        obj["upload"]?.jsonObject?.let { file ->
+            put("first_filename", file["filename"]!!.jsonPrimitive.content)
+            file["content_type"]?.jsonPrimitive?.contentOrNull?.let { put("first_content_type", it) }
+            file["byte_size"]?.jsonPrimitive?.longOrNull?.let { put("first_byte_size", it) }
+            put("first_current", file["current"]!!.jsonPrimitive.boolean)
+        }
+    }
+    versions.lastOrNull()?.let { last ->
+        val obj = last.jsonObject
+        put("last_action", obj["action"]!!.jsonPrimitive.content)
+        // A version whose recordable no longer resolves omits the upload object
+        // entirely — the optionality UploadVersion.upload declares.
+        put("last_has_upload", obj["upload"] != null)
+    }
+}
+
 fun main() {
     val testsDir = File("../conformance/tests")
 
@@ -1397,6 +1432,40 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             val uploadId = tc.pathParams.longParam("uploadId")
             account.uploads.download(uploadId)
             DispatchResult()
+        }
+
+        // Presence-bearing, like ReplaceScheduleEntry: a key the fixture omits
+        // stays null and `?.let` keeps it off the wire, so an unaddressed
+        // description carries forward while an explicit "" is sent and clears.
+        "CreateUploadVersion" -> {
+            val uploadId = tc.pathParams.longParam("uploadId")
+            val rb = tc.requestBody
+            account.uploads.createVersion(uploadId, CreateUploadVersionBody(
+                attachableSgid = tc.requestBody.stringParam("attachable_sgid"),
+                baseName = rb?.get("base_name")?.jsonPrimitive?.contentOrNull,
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                notify = rb?.get("notify")?.jsonPrimitive?.contentOrNull,
+                subscriptions = rb?.get("subscriptions")?.jsonArray
+                    ?.map { element -> element.jsonPrimitive.long },
+            ))
+            DispatchResult()
+        }
+
+        "UpdateUpload" -> {
+            val uploadId = tc.pathParams.longParam("uploadId")
+            val rb = tc.requestBody
+            account.uploads.update(uploadId, UpdateUploadBody(
+                baseName = rb?.get("base_name")?.jsonPrimitive?.contentOrNull,
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
+        "ListUploadVersions" -> {
+            val uploadId = tc.pathParams.longParam("uploadId")
+            val result = account.uploads.listVersions(uploadId)
+            // ListResult<T> delegates to List<T>, so it IS the item list.
+            DispatchResult(resultJson = summarizeUploadVersions(result))
         }
 
         "ListForwards" -> {

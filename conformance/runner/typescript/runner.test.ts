@@ -278,6 +278,34 @@ function summarizeProjects(
     last_project_id: projects.length > 0 ? projects[projects.length - 1]!.id : 0,
   };
 }
+/**
+ * GET /uploads/{id}/versions.json returns an ARRAY, and a responseBody path
+ * resolves as a top-level key only. Flatten to the same shape summarizeUpcoming
+ * uses so the fixture's assertions stay portable across all six runners.
+ */
+function summarizeUploadVersions(
+  versions: Awaited<ReturnType<BasecampClient["uploads"]["listVersions"]>>,
+): Record<string, unknown> {
+  const summary: Record<string, unknown> = {
+    versions_count: versions.length,
+    current_count: versions.filter((v) => v.upload?.current).length,
+  };
+  if (versions.length > 0) {
+    const first = versions[0];
+    summary.first_action = first.action;
+    summary.first_filename = first.upload?.filename;
+    summary.first_content_type = first.upload?.content_type;
+    summary.first_byte_size = first.upload?.byte_size;
+    summary.first_current = first.upload?.current;
+
+    const last = versions[versions.length - 1];
+    summary.last_action = last.action;
+    // A version whose recordable no longer resolves omits the upload object
+    // entirely — the optionality UploadVersion.upload declares.
+    summary.last_has_upload = last.upload !== undefined && last.upload !== null;
+  }
+  return summary;
+}
 
 /**
  * Executes the appropriate SDK method for the given operation name.
@@ -735,6 +763,33 @@ async function executeOperation(
       case "EnableTool":
         await client.tools.enable(Number(params.toolId));
         break;
+
+      // Presence-bearing, like ReplaceScheduleEntry: a key the fixture omits
+      // never reaches the request object, so an unaddressed description stays
+      // off the wire while an explicit "" is sent and clears it.
+      case "CreateUploadVersion":
+        await client.uploads.createVersion(Number(params.uploadId), {
+          attachableSgid: String(body.attachable_sgid),
+          ...(body.base_name !== undefined ? { baseName: String(body.base_name) } : {}),
+          ...(body.description !== undefined ? { description: String(body.description) } : {}),
+          ...(body.notify !== undefined ? { notify: String(body.notify) } : {}),
+          ...(body.subscriptions !== undefined
+            ? { subscriptions: body.subscriptions as number[] }
+            : {}),
+        });
+        break;
+
+      case "UpdateUpload":
+        await client.uploads.update(Number(params.uploadId), {
+          ...(body.base_name !== undefined ? { baseName: String(body.base_name) } : {}),
+          ...(body.description !== undefined ? { description: String(body.description) } : {}),
+        });
+        break;
+
+      case "ListUploadVersions": {
+        const versions = await client.uploads.listVersions(Number(params.uploadId));
+        return { result: summarizeUploadVersions(versions) };
+      }
 
       case "UploadsDownload": {
         const result = await client.uploads.download(Number(params.uploadId));
