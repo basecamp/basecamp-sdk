@@ -109,18 +109,36 @@ end
 
 # Walk the {{if eq $opid "X"}} / {{else if eq $opid "X"}} chain. Each arm runs
 # until the next arm, and the `func (s *XxxService) Name(` lines inside it are
-# what that arm emits. A `range .Bodies` variant spells its name with a template
-# action (`Create{{.Suffix}}`), which does not match and is not recorded — the
-# WithBody form beside it is the anchor, and it is enough to prove the arm fired.
+# what that arm emits.
+#
+# A body-bearing arm emits TWO kinds of method, and both have to be tracked:
+#
+#   func (s *TodosService) CreateWithBody(...)      <- literal, matches directly
+#   func (s *TodosService) Create{{.Suffix}}(...)   <- inside {{range .Bodies}}
+#
+# The second is the typed, public one people actually call (`Todos().Create`),
+# and its name is a template action, so it cannot be read literally — only its
+# PREFIX can. Recording just the `WithBody` anchor was not enough: deleting the
+# `{{range .Bodies}}` block removes `Create` from the generated client while
+# `CreateWithBody` survives, so template, inventory and generated output would
+# all still agree and the gate would pass having lost a public method. There are
+# 23 such variants, a quarter of the 86 grouped methods.
+#
+# So dynamic lines are captured by prefix, the inventory must record the concrete
+# resolved name for each, and the generated-output cross-check below is what
+# actually proves the method still exists.
 template_arms = {}
 current = nil
 File.foreach(TEMPLATE_PATH, encoding: "UTF-8") do |line|
   if (m = line.match(/\{\{(?:else )?if eq \$opid "([^"]+)"\}\}/))
-    current = { opid: m[1], service: nil, methods: [] }
+    current = { opid: m[1], service: nil, methods: [], dynamic_prefixes: [] }
     template_arms[m[1]] = current
   elsif current && (m = line.match(/^func \(s \*(\w+Service)\) (\w+)\(/))
     current[:service] ||= m[1]
     current[:methods] << m[2]
+  elsif current && (m = line.match(/^func \(s \*(\w+Service)\) (\w+)\{\{/))
+    current[:service] ||= m[1]
+    current[:dynamic_prefixes] << m[2]
   end
 end
 
@@ -273,8 +291,26 @@ inventory_grouped.each do |opid, entry|
                 "is not in its inventory `methods:` — method names are recorded, not derived."
   end
 
-  phantom_methods = entry[:methods].to_set - arm[:methods].to_set
+  # A dynamic `Name{{.Suffix}}` line cannot be matched by name, only by prefix, so
+  # require the inventory to carry at least one recorded method under that prefix
+  # beyond the literal ones. That recorded name is then checked against the
+  # generated client below, which is what makes deleting a `{{range .Bodies}}`
+  # block fail instead of silently dropping a public method.
+  literal = arm[:methods].to_set
+  arm[:dynamic_prefixes].uniq.sort.each do |prefix|
+    typed = entry[:methods].reject { |m| literal.include?(m) }.select { |m| m.start_with?(prefix) }
+    next unless typed.empty?
+    failures << "`#{opid}` emits a typed `#{entry[:service]}.#{prefix}{{.Suffix}}` variant in " \
+                "client.tmpl (inside `{{range .Bodies}}`) but its inventory `methods:` records " \
+                "no `#{prefix}…` method beyond the WithBody form — record the resolved name, or " \
+                "the typed method can vanish from the generated client unnoticed."
+  end
+
+  # Phantom check, minus anything a dynamic prefix legitimately explains.
+  explained = ->(m) { arm[:dynamic_prefixes].any? { |p| m.start_with?(p) } }
+  phantom_methods = entry[:methods].to_set - literal
   phantom_methods.sort.each do |method|
+    next if explained.call(method)
     failures << "`#{opid}` records method `#{method}` but client.tmpl's arm does not emit it."
   end
 end
@@ -303,6 +339,7 @@ end
 
 die(failures) unless failures.empty?
 
+method_count = inventory_grouped.values.sum { |e| e[:methods].size }
 puts "OK: Go grouped-client coverage — #{spec_ops.size} operations fully accounted for " \
-     "(#{inventory_grouped.size} grouped across #{grouped.size} services, " \
+     "(#{inventory_grouped.size} grouped across #{grouped.size} services via #{method_count} methods, " \
      "#{not_grouped.size} deliberately not grouped)"

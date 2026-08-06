@@ -41,10 +41,21 @@
 #   inventory-vs-template service agreement          5
 #   `grouped:`-entry-with-no-template-arm check      6
 #   arm-emits-unrecorded-method check                7
-#   inventory-records-phantom-method check           8
+#   inventory-records-phantom-method check           8 and 13
 #   extraction floor on template arms                9
 #   duplicate `grouped:` entry check                 10
 #   dead-template-arm check                          11
+#   dynamic-prefix (typed body variant) check        12
+#   the `explained` filter on the phantom check      positive control
+#
+# The last two rows are the measured result, not the tidy one I first wrote. The
+# phantom check catches both a genuinely invented method (8) and a typed variant
+# whose `{{range .Bodies}}` block was deleted (13) — it is one guard with two
+# cases, and neutering it turns both red. The `explained` filter beside it does
+# the opposite job: it stops the same check from misreporting the 23 legitimate
+# typed variants as phantoms, so deleting it breaks the POSITIVE control rather
+# than any negative case. A filter that prevents false positives can only be
+# pinned by a case that is supposed to pass.
 #
 # Case 2 is the #679 replay in its realistic form and is caught by the
 # template-arm check rather than the unaccounted check, because by then the arms
@@ -288,6 +299,35 @@ out, status = with_inputs(spec_ops: REAL_OPS - ["ArchiveProject"]) do |inv|
 end
 expect_fail(failures, "11. dead template arm for an operation dropped from the spec", out, status,
             "still has a `$opid` arm for `ArchiveProject`")
+
+# --- 12. Typed `{{range .Bodies}}` variant dropped from the inventory ----------
+#
+# A body-bearing arm emits both `CreateWithBody` (literal) and `Create{{.Suffix}}`
+# (dynamic). Recording only the WithBody anchor covered 63 of the 86 grouped
+# methods and left the 23 typed variants — the ones people actually call — outside
+# the accounting entirely.
+
+out, status = with_inputs do |inv|
+  _service, entry = grouped_entry(inv, "CreateTodo")
+  entry["methods"] = entry["methods"].reject { |m| m == "Create" }
+end
+expect_fail(failures, "12. typed body variant missing from the inventory", out, status,
+            "records no `Create…` method beyond the WithBody form")
+
+# --- 13. The `{{range .Bodies}}` block deleted from the template ---------------
+#
+# The other direction, and the regression this pair exists for: regeneration drops
+# the public `Todos().Create` while `CreateWithBody` survives. Before the typed
+# variants were recorded, template, inventory and generated output all still
+# agreed and the gate passed having lost a public method.
+
+mutated = read_utf8(REAL_TEMPLATE).sub(
+  /\{\{range \.Bodies\}\}\{\{if \.IsSupportedByClient\}\}\nfunc \(s \*TodosService\) Create\{\{\.Suffix\}\}.*?\n\{\{end\}\}\{\{end\}\}\n/m, ""
+)
+raise "template mutation for case 13 did not apply" if mutated == read_utf8(REAL_TEMPLATE)
+out, status = with_inputs(template: mutated) { |_inv| }
+expect_fail(failures, "13. typed body variant deleted from the template", out, status,
+            "`CreateTodo` records method `Create` but client.tmpl's arm does not emit it")
 
 # --- 10. The same operation grouped twice --------------------------------------
 

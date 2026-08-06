@@ -35,45 +35,45 @@ grouped:
       methods: ["List"]
   CardsService:
     - operation: CreateCard
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: GetCard
       methods: ["Get"]
     - operation: ListCards
       methods: ["List"]
     - operation: MoveCard
-      methods: ["MoveWithBody"]
+      methods: ["MoveWithBody", "Move"]
     - operation: UpdateCard
-      methods: ["UpdateVerbatimWithBody"]
+      methods: ["UpdateVerbatimWithBody", "UpdateVerbatim"]
   CommentsService:
     - operation: CreateComment
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: GetComment
       methods: ["Get"]
     - operation: ListComments
       methods: ["List"]
     - operation: UpdateComment
-      methods: ["UpdateWithBody"]
+      methods: ["UpdateWithBody", "Update"]
   DocumentsService:
     - operation: CreateDocument
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: GetDocument
       methods: ["Get"]
     - operation: ListDocuments
       methods: ["List"]
     - operation: ReplaceDocument
-      methods: ["ReplaceWithBody"]
+      methods: ["ReplaceWithBody", "Replace"]
   EventsService:
     - operation: ListEvents
       methods: ["List"]
   MessagesService:
     - operation: CreateMessage
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: GetMessage
       methods: ["Get"]
     - operation: ListMessages
       methods: ["List"]
     - operation: UpdateMessage
-      methods: ["UpdateWithBody"]
+      methods: ["UpdateWithBody", "Update"]
   PeopleService:
     - operation: GetMyProfile
       methods: ["GetMyProfile"]
@@ -85,7 +85,7 @@ grouped:
     - operation: ArchiveProject
       methods: ["Archive"]
     - operation: CreateProject
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: GetProject
       methods: ["Get"]
     - operation: ListProjects
@@ -95,7 +95,7 @@ grouped:
     - operation: UnarchiveProject
       methods: ["Unarchive"]
     - operation: UpdateProject
-      methods: ["UpdateWithBody"]
+      methods: ["UpdateWithBody", "Update"]
   RecordingsService:
     - operation: ArchiveRecording
       methods: ["Archive"]
@@ -107,7 +107,7 @@ grouped:
       methods: ["Unarchive"]
   SchedulesService:
     - operation: CreateScheduleEntry
-      methods: ["CreateEntryWithBody"]
+      methods: ["CreateEntryWithBody", "CreateEntry"]
     - operation: GetSchedule
       methods: ["Get"]
     - operation: GetScheduleEntry
@@ -115,10 +115,10 @@ grouped:
     - operation: ListScheduleEntries
       methods: ["ListEntries"]
     - operation: ReplaceScheduleEntry
-      methods: ["ReplaceEntryWithBody"]
+      methods: ["ReplaceEntryWithBody", "ReplaceEntry"]
   TemplatesService:
     - operation: CreateTemplate
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: DeleteTemplate
       methods: ["Delete"]
     - operation: GetTemplate
@@ -126,41 +126,41 @@ grouped:
     - operation: ListTemplates
       methods: ["List"]
     - operation: UpdateTemplate
-      methods: ["UpdateWithBody"]
+      methods: ["UpdateWithBody", "Update"]
   TodosService:
     - operation: CompleteTodo
       methods: ["Complete"]
     - operation: CreateTodo
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: GetTodo
       methods: ["Get"]
     - operation: ListTodos
       methods: ["List"]
     - operation: ReplaceTodo
-      methods: ["ReplaceWithBody"]
+      methods: ["ReplaceWithBody", "Replace"]
     - operation: UncompleteTodo
       methods: ["Uncomplete"]
   UploadsService:
     - operation: CreateUpload
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: GetUpload
       methods: ["Get"]
     - operation: ListUploads
       methods: ["List"]
     - operation: UpdateUpload
-      methods: ["UpdateWithBody"]
+      methods: ["UpdateWithBody", "Update"]
   VaultsService:
     - operation: CreateVault
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: GetVault
       methods: ["Get"]
     - operation: ListVaults
       methods: ["List"]
     - operation: UpdateVault
-      methods: ["UpdateWithBody"]
+      methods: ["UpdateWithBody", "Update"]
   WebhooksService:
     - operation: CreateWebhook
-      methods: ["CreateWithBody"]
+      methods: ["CreateWithBody", "Create"]
     - operation: DeleteWebhook
       methods: ["Delete"]
     - operation: GetWebhook
@@ -168,7 +168,7 @@ grouped:
     - operation: ListWebhooks
       methods: ["List"]
     - operation: UpdateWebhook
-      methods: ["UpdateWithBody"]
+      methods: ["UpdateWithBody", "Update"]
 
 # Operations deliberately absent from the grouped surface. Bulk, but pure data:
 # this list is what makes the accounting total, and therefore what makes a new
