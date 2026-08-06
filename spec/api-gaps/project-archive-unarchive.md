@@ -53,9 +53,18 @@ operation and is not reversible on the same terms.
 There is no client-side workaround. `UpdateProject` looks like one, but
 `PUT /projects/{id}.json` with `project[status]` returns **200** and silently
 drops the field — `status` is not in BC3's permit list
-(`app/controllers/concerns/project_operations.rb:19-28`). That silent drop is
+(`app/controllers/concerns/project_operations.rb`). That silent drop is
 called out as a known adjacent defect in #12550 and deliberately left unfixed
 there; the SDK should not model `status` as writable on `UpdateProject`.
+
+BC3 **#12566** later documented exactly that, in two lines of
+`doc/api/sections/projects.md`: a project's `status` is read-only on Update a
+project, passing one has no effect and still returns 200, and callers are pointed
+at Archive, Unarchive and Trash instead. So the SDK's decision not to model
+`status` as writable is now backed by upstream prose rather than by reading the
+permit list, and #12566's "see Archive/Unarchive" pointer resolves to the two
+operations this brief absorbs. The underlying silent-drop behaviour is unchanged —
+#12566 documents it, it does not fix it.
 
 ## Suggested API shape
 

@@ -5,7 +5,7 @@ detected: 2026-07-22
 sdk_demand: medium
 bc3_pr: 12555
 bc3_refs:
-  introduced_in: BC3 #12555 (the merge commit the SDK repinned to when this was registered)
+  introduced_in: BC3 #12555, inside the range the SDK triaged when it registered this
   routes:
     - POST /:account_id/uploads/:id/versions.json
     - POST /:account_id/buckets/:bucket_id/uploads/:id/versions.json

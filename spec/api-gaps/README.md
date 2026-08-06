@@ -97,18 +97,19 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `a26c2e479f` (2026-08-05). <!-- @bc3-pin -->
+> The provenance pin is `7fe1c63ab3` (2026-08-05). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `4e34dc83eb..a26c2e479f` range (70 commits) contains exactly **five**
-> API-contract changes. Two touch `doc/api`; the other three change the wire, or
-> a payload's backing field, without a documentation or route diff — which is
-> why the sweep below is a classification of all 70 commits and not a glob over
-> three paths.
+> The `4e34dc83eb..7fe1c63ab3` range (71 commits) contains exactly **six**
+> API-contract or API-documentation changes. Three touch `doc/api`; the other
+> three change the wire, or a payload's backing field, without a documentation or
+> route diff — which is why the sweep below is a classification of all 71 commits
+> and not a glob over three paths. Only **two** of the three `doc/api` commits move
+> the route table; the third is prose on an endpoint already documented.
 >
 > 1. BC3 **#12550** (`6f4781bbd4`) — **absorbed here.** `Projects::StatusController`
 >    gains the `respond_to` it never had, so `active`/`archived`/`trashed` answer
@@ -171,9 +172,23 @@ making the absorption journey publicly auditable.
 >    `my/assignings` and `my/assignments` controllers are **not** a rename: both
 >    exist before and after the range, one line changed in each, so no modelled
 >    path moved.
+> 6. BC3 **#12566** (`7fe1c63ab3`) — **registered, no SDK action, and it ratifies
+>    a decision this repin's absorption already made.** Two added lines of prose in
+>    `doc/api/sections/projects.md` stating that a project's `status` is read-only
+>    on Update a project: passing one has no effect and still answers **200**, and
+>    the note points callers at Archive, Unarchive and Trash instead. No route, no
+>    bullet, no payload field — `spec/bc3-routes.json` regenerates at 373 routes
+>    with only its `revision` line changing, which is the mechanical proof this is
+>    documentation and not contract. It is registered rather than absorbed because
+>    there is nothing to absorb: the SDK deliberately does **not** model `status`
+>    as writable on `UpdateProject` (it is absent from `create_project_params`, so
+>    bc3 silently drops it), and that omission was inferred from the permit list
+>    when [`project-archive-unarchive.md`](project-archive-unarchive.md) was
+>    written. #12566 makes it bc3's documented contract, so the SDK's silence is
+>    now backed by upstream prose rather than by reading a controller.
 >
-> **The wire-neutral sweep, earned.** All 70 commits classified by touched path,
-> residual bucket empty. Beyond the five above: `eac8b2b476` also adds
+> **The wire-neutral sweep, earned.** All 71 commits classified by touched path,
+> residual bucket empty. Beyond the six above: `eac8b2b476` also adds
 > `app_url_options` to `app/controllers/concerns/api_request.rb` — the API
 > boundary concern itself — but it is a **20-line addition of a new private
 > method** that computes web-host URL options for OAuth's HTML redirects;
@@ -199,11 +214,16 @@ making the absorption journey publicly auditable.
 > #12550's own 507 test. The remaining commits are merges, iOS auto-scroll
 > refactoring, web-only view changes, host maintenance and schema dumps.
 >
-> **The route table moves for both `doc/api` commits.** `make bc3-routes` at the
-> new pin adds the two project-status PUTs, which the absorption models, and
-> #12555's upload-version rows, which carry `registry:` dispositions. Nothing
-> else moved, which is the mechanical confirmation that items 3–5 are
-> undocumented and item 4's OAuth routes are not drawn under `doc/api`.
+> **The route table moves for two of the three `doc/api` commits.**
+> `make bc3-routes` at the new pin lands 373 routes across 64 sections and adds
+> exactly four rows: the two project-status PUTs, which the absorption models, and
+> #12555's flat and bucket-scoped upload-version POSTs, which carry a `registry:`
+> disposition. #12566 adds none, because it documents an endpoint the table
+> already carries — a `doc/api` diff is necessary but not sufficient for a route
+> delta, and the distinction is the whole reason this paragraph reads the
+> regenerated diff instead of asserting a row count. Nothing else moved, which is
+> the mechanical confirmation that items 3–5 are undocumented and item 4's OAuth
+> routes are not drawn under `doc/api`.
 >
 > Earlier pins, kept as the triage record. Each names the pin it was written
 > against, in the past tense, because that is what it is — a range triaged
