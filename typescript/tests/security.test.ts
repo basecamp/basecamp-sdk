@@ -471,13 +471,20 @@ describe("pagination page cap", () => {
   //                an attacker-influenceable header.
   //   0, -1, NaN — consume ZERO pages, silently discarding a response the
   //                caller already fetched and handed in.
-  //   MAX_VALUE,  — unbounded again, and the reason the predicate is
-  //   2**53         `isSafeInteger` and not `isInteger`:
+  //   MAX_VALUE   — unbounded again, and the reason the predicate is
+  //                `isSafeInteger` and not `isInteger`:
   //                `Number.isInteger(Number.MAX_VALUE)` is `true`, so the
-  //                obvious check lets it through. The counter then climbs to
-  //                `2 ** 53`, where `page++` no longer changes the value, and
-  //                `page === maxPages` is never reached. A cap must be a
-  //                number the counter can actually arrive at.
+  //                obvious check lets it through. Past `2 ** 53` the counter
+  //                stalls — `page++` on `2 ** 53` yields `2 ** 53` again,
+  //                because the next integer is not representable — so a bound
+  //                of `2 ** 53 + 2` is never reached.
+  //   2**53       — terminates, in fact: the counter arrives from
+  //                `2 ** 53 - 1` and breaks on equality before the next
+  //                increment. It is rejected anyway, because
+  //                MAX_SAFE_INTEGER is the honest edge of the guarantee that
+  //                the counter can arrive at the bound at all. Deliberately
+  //                conservative, and listed here so nobody "fixes" the
+  //                predicate back to isInteger on the strength of this case.
   //
   // `Number.isSafeInteger(n) && n > 0` rejects all seven in one predicate.
   // SPEC.md §2 step 5: "Validate `max_pages > 0`. → `⊥ BasecampError(code:
@@ -531,7 +538,12 @@ describe("pagination page cap", () => {
 
           expect(error).toBeInstanceOf(BasecampError);
           expect((error as BasecampError).code).toBe("usage");
-          expect((error as BasecampError).message).toContain(String(value));
+          // The whole sentence, not just the offending value: `toContain` on
+          // the value alone is satisfied by any usage error that happens to
+          // mention it, and would not notice the bound itself changing.
+          expect((error as BasecampError).message).toBe(
+            `maxPages must be a positive integer no larger than ${Number.MAX_SAFE_INTEGER}, got ${String(value)}`
+          );
           expect(mock.count()).toBe(0);
         } finally {
           mock.restore();
@@ -562,7 +574,9 @@ describe("pagination page cap", () => {
             thrown = e;
           }
           expect((thrown as BasecampError).code).toBe("usage");
-          expect((thrown as BasecampError).message).toContain(String(value));
+          expect((thrown as BasecampError).message).toBe(
+            `maxPages must be a positive integer no larger than ${Number.MAX_SAFE_INTEGER}, got ${String(value)}`
+          );
           expect(mock.count()).toBe(0);
         } finally {
           mock.restore();
