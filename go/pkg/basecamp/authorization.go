@@ -44,6 +44,10 @@ func (ft *FlexTime) UnmarshalJSON(data []byte) error {
 }
 
 // Identity represents the authenticated user's identity from the authorization endpoint.
+//
+// Only ID is emitted by both issuers. A BC5 issuer's own document carries nothing
+// but the identity id — it drops the PII the API docs already say not to use for
+// identifying users — so FirstName, LastName and EmailAddress are "" there.
 type Identity struct {
 	ID           int64  `json:"id"`
 	FirstName    string `json:"first_name"`
@@ -52,12 +56,19 @@ type Identity struct {
 }
 
 // AuthorizedAccount represents a Basecamp account the user has access to.
+//
+// Product and AppHREF are Launchpad's and are "" against a BC5 issuer; Resource
+// is a BC5 issuer's and is "" against Launchpad.
 type AuthorizedAccount struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	Product  string `json:"product"`
-	HREF     string `json:"href"`
-	AppHREF  string `json:"app_href"`
+	ID      int64  `json:"id"`
+	Name    string `json:"name"`
+	Product string `json:"product"`
+	HREF    string `json:"href"`
+	AppHREF string `json:"app_href"`
+	// Resource is the RFC 8707 resource indicator for this account
+	// (urn:bc:account:<id>), emitted by BC5 issuers only. Pass it as the
+	// "resource" parameter when requesting a token scoped to this account.
+	Resource string `json:"resource,omitempty"`
 	Hidden   bool   `json:"hidden,omitempty"`
 	Expired  bool   `json:"expired,omitempty"`
 	Featured bool   `json:"featured,omitempty"`
@@ -68,6 +79,17 @@ type AuthorizationInfo struct {
 	ExpiresAt FlexTime            `json:"expires_at"`
 	Identity  Identity            `json:"identity"`
 	Accounts  []AuthorizedAccount `json:"accounts"`
+	// Scope is the token's granted scope. BC5 issuers only, and only for
+	// BC3-issued tokens — legacy Signal tokens predate scopes, so an empty
+	// Scope is not an error.
+	Scope string `json:"scope,omitempty"`
+
+	// ProductFilterApplied reports whether a requested GetInfoOptions.FilterProduct
+	// was actually applied. It is meaningful only when FilterProduct was set: false
+	// then means the document carried no product on any account — a BC5 document —
+	// so the filter was inapplicable and Accounts is unfiltered rather than empty.
+	// Not a wire field.
+	ProductFilterApplied bool `json:"-"`
 }
 
 // GetInfoOptions specifies options for fetching authorization info.
@@ -79,6 +101,11 @@ type GetInfoOptions struct {
 	// FilterProduct filters accounts to only those matching this product.
 	// Common values: "bc3" (Basecamp), "bcx" (Basecamp 2), "hey" (HEY).
 	// If empty, all accounts are returned.
+	//
+	// A BC5 issuer's document carries no product on any account, so the filter
+	// cannot apply there. In that case all accounts are returned and
+	// AuthorizationInfo.ProductFilterApplied is false, rather than the empty
+	// list a literal filter would produce.
 	FilterProduct string
 }
 
@@ -157,15 +184,29 @@ func (s *AuthorizationService) GetInfo(ctx context.Context, opts *GetInfoOptions
 		return nil, fmt.Errorf("parsing authorization response: %w", err)
 	}
 
-	// Filter accounts by product if requested
+	// Filter accounts by product if requested. A document whose accounts carry no
+	// product at all cannot be filtered by product: matching nothing would empty a
+	// list the caller is about to pick an HREF out of, which is silently wrong
+	// rather than merely unhelpful. Report the filter inapplicable instead, and
+	// leave the accounts alone.
 	if opts != nil && opts.FilterProduct != "" {
-		filtered := make([]AuthorizedAccount, 0, len(info.Accounts))
+		filterable := false
 		for _, acct := range info.Accounts {
-			if acct.Product == opts.FilterProduct {
-				filtered = append(filtered, acct)
+			if acct.Product != "" {
+				filterable = true
+				break
 			}
 		}
-		info.Accounts = filtered
+		info.ProductFilterApplied = filterable
+		if filterable {
+			filtered := make([]AuthorizedAccount, 0, len(info.Accounts))
+			for _, acct := range info.Accounts {
+				if acct.Product == opts.FilterProduct {
+					filtered = append(filtered, acct)
+				}
+			}
+			info.Accounts = filtered
+		}
 	}
 
 	return &info, nil

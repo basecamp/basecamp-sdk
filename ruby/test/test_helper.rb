@@ -222,7 +222,10 @@ module TestHelpers
     }
   end
 
-  # Sample authorization data
+  # Sample authorization data as *Launchpad* serves it.
+  #
+  # Use this only for tests whose issuer is Launchpad. A BC5 issuer serves a
+  # different document; see {#sample_bc5_authorization}.
   def sample_authorization
     {
       "expires_at" => "2025-01-01T00:00:00Z",
@@ -240,6 +243,31 @@ module TestHelpers
           "href" => "https://3.basecampapi.com/12345"
         }
       ]
+    }
+  end
+
+  # Sample authorization data as a *BC5* issuer serves it, per bc3's
+  # app/views/api/authorizations/show.json.jbuilder.
+  #
+  # Feeding Launchpad's body to a test that proves discovery reached a BC5 issuer
+  # makes the test agree with itself and with nothing else: it would pass just as
+  # well if the SDK could not read a BC5 document at all. The differences are the
+  # point — identity id only, no product or app_href, an RFC 8707 resource
+  # indicator, a top-level scope, and expires_at as integer epoch seconds.
+  def sample_bc5_authorization
+    {
+      "identity" => { "id" => 1 },
+      "accounts" => [
+        {
+          "id" => 12_345,
+          "name" => "Test Account",
+          "href" => "https://bc5.example.test/12345",
+          "resource" => "urn:bc:account:12345"
+        }
+      ],
+      "scope" => "read write",
+      # 2036-01-29T09:55:56Z as epoch seconds.
+      "expires_at" => 2_085_213_356
     }
   end
 end

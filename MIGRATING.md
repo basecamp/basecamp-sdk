@@ -29,7 +29,7 @@ it passes your tests and fails in production.
 |---|---:|---:|---:|
 | [Go](#go) | 33 | **12** | **4** |
 | [Swift](#swift) | 22 | **10** | 0 |
-| [TypeScript](#typescript) | 18 | 9 | 0 |
+| [TypeScript](#typescript) | 19 | 9 | 0 |
 | [Python](#python) | 16 | 8 | 0 |
 | [Ruby](#ruby) | 20 | 10 | 1 |
 | [Kotlin](#kotlin) | 17 | 6 | 1 |
@@ -48,6 +48,13 @@ earlier in this same release with #628, so from a v0.12.0 consumer's position
 there is no member that changed from optional to required; there are two new
 members that happen to be required from the start. It reshapes the #628 break
 rather than adding one, and that is where this guide documents it.
+
+#PLACEHOLDER **does** add one, and it is the only row in the table above measured
+past `70d576bd8`: it takes TypeScript from 18 breaking changes to 19. It adds
+nothing to either "no signal" column — it is four required-to-optional field
+relaxations, which `tsc` catches under `strictNullChecks` — so the 61/55/6 totals
+below are unmoved. See
+[Four `Identity` and `AuthorizedAccount` fields became optional](#four-identity-and-authorizedaccount-fields-became-optional-placeholder).
 
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
 body.
@@ -1966,6 +1973,63 @@ survive because a sibling verb still lives there, so
 `paths["/todos/{todoId}"]["delete"]` resolves to `never | undefined` and compiles
 clean. Grep for those five names rather than trusting tsc. The 422 re-tags are
 exactly `UpdateMyNote` and `UpdateMyPreferences`.
+
+### Four `Identity` and `AuthorizedAccount` fields became optional (#PLACEHOLDER)
+
+`Identity.firstName`, `.lastName`, `.emailAddress` and `AuthorizedAccount.product`
+went from required `string` to `string | undefined`; `AuthorizedAccount.appHref`
+went from required `string` to optional. Under `strictNullChecks`, anything
+assigning one to a `string` or calling a method on it is now a compile error:
+
+```ts
+// v0.12.0 — compiled
+const email: string = info.identity.emailAddress;
+const initial = info.identity.firstName.charAt(0);
+
+// main — TS2322 / TS18048 ("possibly undefined")
+const email: string = info.identity.emailAddress ?? "";
+const initial = info.identity.firstName?.charAt(0) ?? "";
+```
+
+This is a **correction, not a restriction.** Those fields are Launchpad's. bc3
+serves its own `GET /authorization.json` from a different template, and it emits
+`identity.id` and nothing else of the identity, and no `product` or `app_href` on
+accounts. You reach that document by passing `endpoint:` to
+`authorization.getInfo()` — the documented way to point at a BC5 issuer — and at
+v0.12.0 the four fields were typed `string` and arrived `undefined`. The type was
+lying; it now describes both issuers.
+
+`AuthorizedAccount.resource` (the RFC 8707 indicator, BC5 only) and a top-level
+`AuthorizationInfo.scope` are new and optional, so they break nothing.
+
+The same change lands on `discoverIdentity()`, which returns the same
+`AuthorizationInfo`. It had already drifted from `AuthorizationService`'s copy of
+this mapping — `app_href` was optional in one and required in the other — and
+both now share one parser in `oauth/authorization-document.ts`.
+
+Two behavioural changes ride along, neither of which the compiler will flag:
+
+- **`expires_at` is read as epoch seconds when it arrives as a number.** bc3
+  renders `@token.expires_at.to_i`. v0.12.0 passed that integer straight to
+  `new Date()`, which reads it as *milliseconds* — so a token expiring in 2036
+  parsed as a date in **1970**, and every "is my token still valid" check said
+  no. A string is still parsed as ISO-8601, unchanged.
+- **`filterProduct` no longer empties the list when the filter cannot apply.**
+  A BC5 document carries no `product` on any account, so
+  `getInfo({ filterProduct: "bc3" })` matched nothing and returned `[]` — while
+  the accounts it was meant to filter existed and were what you needed the
+  `href` from. When *no* account in the document carries a `product`, the filter
+  is now reported inapplicable: every account is returned and the new
+  `AuthorizationInfo.productFilterApplied` is `false`. When at least one account
+  does carry a `product` the filter applies exactly as before, so an empty
+  result still means "nothing matched".
+
+Go gets the same `filterProduct` correction and the same two additive fields
+(`AuthorizedAccount.Resource`, `AuthorizationInfo.Scope`, plus
+`ProductFilterApplied`); its timestamp already decoded both spellings via
+`FlexTime`. Nothing there is a compile break — Go's fields were already
+zero-valued rather than required. Ruby and Python return the raw document
+unchanged. See `spec/api-gaps/bc5-authorization-document-shape.md`.
 
 ## Behavioural
 

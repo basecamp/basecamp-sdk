@@ -75,8 +75,14 @@ Blast radius differs per SDK, and the untyped ones are the lucky ones:
   point at a BC5 issuer.
 - **Go** already tolerates the timestamp: `FlexTime.UnmarshalJSON`
   (`go/pkg/basecamp/authorization.go:25-43`) tries integer Unix first, then
-  RFC 3339. Its string fields degrade to `""`. Its endpoint is Launchpad-only
-  today.
+  RFC 3339. Its string fields degrade to `""`.
+
+  > **Correction.** This brief originally said Go's "endpoint is Launchpad-only
+  > today". That was wrong. `GetInfoOptions.Endpoint` overrides it exactly as
+  > TypeScript's `endpoint:` option does, so Go reaches bc3's document by the
+  > same documented route — and `FilterProduct` therefore had the same
+  > empty-list defect TypeScript did, which the "Go already tolerates it"
+  > reading hid. Both are fixed together; see below.
 - **Python** returns a raw `dict` from a hardcoded `LAUNCHPAD_AUTHORIZATION_URL`,
   so it neither reaches the document nor mistypes it.
 - **Kotlin and Swift** have no authorization-document service at all.
@@ -156,3 +162,61 @@ the kind of `FlexTime` special-casing Go already needed.
 - Consider whether Kotlin and Swift should gain an authorization-document
   surface; they have discovery but no way to read the document discovery points
   them at.
+
+## What shipped (#PLACEHOLDER)
+
+The SDK half of this brief is closed. `status` stays `partial-coverage` because
+the other half is bc3's and has not moved: bc3 still does not document its own
+authorization document, so `doc/api/sections/authentication.md` describes only
+Launchpad's payload and the two shapes are still undeclared. Nothing here is
+generated — OAuth is outside the OpenAPI spec by design — so there are no
+`smithy_refs` to point at and `absorbed-in-sdk` would fail
+`scripts/validate-api-gaps.rb` for exactly that reason.
+
+**TypeScript** — the two duplicated mappings became one shared parser,
+`typescript/src/oauth/authorization-document.ts`, imported by both
+`services/authorization.ts` and `oauth/identity.ts`. It is a leaf module: it
+imports nothing from the SDK, so `identity.ts` taking a *value* dependency on it
+adds no runtime edge to the known `base.ts`/`client.ts` cycle. In it:
+
+- `expires_at` branches on `typeof`. A number is epoch **seconds**
+  (`new Date(n * 1000)`); v0.12.0's `new Date(n)` read it as milliseconds and
+  produced a 1970 date. `0` — bc3's `.to_i` rendering of a nil expiry, never
+  `null` — parses to an Invalid Date rather than to 1970.
+- `Identity.firstName`/`lastName`/`emailAddress` and
+  `AuthorizedAccount.product`/`appHref` are optional; `resource` and a
+  top-level `scope` are new. This is a **breaking type change** and has a
+  `MIGRATING.md` entry.
+- `filterProduct` takes the third of the brief's three options: when *no*
+  account carries a `product`, the filter is inapplicable, all accounts are
+  returned, and `AuthorizationInfo.productFilterApplied` is `false`. When at
+  least one does, the filter applies unchanged, so an empty result still means
+  "nothing matched" — the two situations stay distinguishable, which returning
+  `[]` for both did not allow.
+
+**Go** — `AuthorizedAccount.Resource` and `AuthorizationInfo.Scope` added
+(`,omitempty`), plus the same `FilterProduct` correction and
+`ProductFilterApplied`. `ExpiresAt` is deliberately untouched: **issue #662**
+owns pointerizing it (it currently fabricates `0001-01-01T00:00:00Z`) and
+widening the `isValueTime` guard, and `FlexTime` already decodes both spellings,
+so the brief's Go timestamp ask was met before this. Doing it here would collide
+with a breaking change #662 should make on its own terms.
+
+**Ruby** — `AuthorizationService#get`'s `@example` no longer reads
+`identity.email_address`, which is `nil` against bc3. The sharper fix is in the
+tests: `test_helper.rb`'s `sample_authorization` is Launchpad-shaped and the
+BC5-issuer tests were being served it, so *the tests proving the SDK reaches
+bc3's issuer were feeding it Launchpad's body* and would have passed even if the
+SDK could not read a BC5 document. A `sample_bc5_authorization` helper now backs
+those, plus one test pinning the three BC5-only fields through the round trip.
+
+**Python, Kotlin, Swift — considered, no change.** Recorded here so the next
+reader does not re-derive it. Python returns a raw `dict` from a hardcoded
+`LAUNCHPAD_AUTHORIZATION_URL`: it neither reaches bc3's document nor types it, so
+there is nothing to relax and no reachable defect. Kotlin and Swift have no
+authorization-document surface at all — the last bullet above, giving them one,
+is still open and is a feature, not a fix.
+
+Both fixtures asked for by the absorption plan exist: the pre-existing
+Launchpad-shaped ones and new BC5-shaped ones in all three SDKs that have a
+typed or tested surface, each asserting the epoch-seconds `expires_at`.

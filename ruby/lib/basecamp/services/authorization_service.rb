@@ -5,11 +5,20 @@ module Basecamp
     # Service for authorization operations.
     # This is the only service that doesn't require an account context.
     #
+    # The document's shape depends on which issuer served it. Discovery selects a
+    # BC5 issuer whenever one is advertised, and a BC5 issuer serves its *own*
+    # document (+app/views/api/authorizations/show.json.jbuilder+), which is not
+    # Launchpad's: it carries +identity.id+ and nothing else of the identity, no
+    # +product+ or +app_href+ on accounts, an RFC 8707 +resource+ indicator
+    # instead, a top-level +scope+ for BC3-issued tokens, and +expires_at+ as
+    # integer epoch seconds rather than ISO-8601. Only +identity.id+,
+    # +accounts[].id+, +accounts[].name+ and +accounts[].href+ are common to both.
+    #
     # @example Get authorization info
     #   auth = client.authorization.get
-    #   puts "Identity: #{auth["identity"]["email_address"]}"
+    #   puts "Identity: #{auth["identity"]["id"]}"
     #   auth["accounts"].each do |account|
-    #     puts "Account: #{account["name"]} (#{account["id"]})"
+    #     puts "Account: #{account["name"]} (#{account["href"]})"
     #   end
     class AuthorizationService < BaseService
       # Gets authorization information for the current user.

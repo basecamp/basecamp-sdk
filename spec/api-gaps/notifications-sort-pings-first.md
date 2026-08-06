@@ -116,3 +116,31 @@ not the column.
 - Update the counts in `SPEC.md`, `SECURITY.md` and
   `scripts/check-idempotency-parity` — a PUT is naturally idempotent and lands in
   both the idempotent and union counts.
+
+## Deferred (2026-08-06): absorb only after a `doc/api` PR to bc3
+
+Considered for absorption alongside the authorization-document brief and
+deliberately deferred, so the analysis is not re-derived from scratch next time.
+
+bc3 documents this resource **nowhere**: zero hits for `my/notifications` and
+zero for `sort_pings_first` across all of `doc/api/`. The trap is that
+`doc/api/sections/my_notifications.md` **exists** and is entirely about the
+*feed* (`/my/readings.json`) — it collides with the controller name exactly as
+`GetMyNotifications` collides with the settings resource, which is the
+conflation this brief already warns about, arriving one level up in the
+evidence rather than in the modelling.
+
+The consequence is mechanical: SDK operations here would be routes the SDK draws
+and `doc/api` does not, so they trip route-parity **direction 1** twice and need
+`sdk_routes_absent_from_bc3_docs` waivers. That list enforces almost nothing —
+its `reason:` is review-only — so the waiver is a claim a reviewer accepts, not
+one a gate checks. Both existing entries at least have a documented sibling
+resource, making "the docs are merely incomplete here" checkable against
+something. This resource has **no documented sibling at all**, so the same
+sentence would be materially weaker, and the gate would not know the difference.
+
+Absorbing first and waiving would therefore spend the waiver list's credibility
+to skip the cheaper fix. **The right first move is a `doc/api` PR to bc3** — the
+first bullet of "Implementation notes for BC3" above — after which the route
+becomes visible to `spec/bc3-routes.json` and the SDK side needs no waiver at
+all. Status stays `partial-coverage`; nothing else changes.
