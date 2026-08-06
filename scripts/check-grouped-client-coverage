@@ -236,10 +236,19 @@ end
 end
 
 (template_arms.keys.to_set - inventory_grouped.keys.to_set).sort.each do |opid|
-  next unless spec_ops.include?(opid) # already reported as stale above otherwise
-  failures << "go/templates/client.tmpl exposes `#{opid}` on " \
-              "`#{template_arms[opid][:service]}` but it is not under `grouped:` — " \
-              "record it there."
+  if spec_ops.include?(opid)
+    failures << "go/templates/client.tmpl exposes `#{opid}` on " \
+                "`#{template_arms[opid][:service]}` but it is not under `grouped:` — " \
+                "record it there."
+  else
+    # A dead arm, and nothing else here sees it. The stale-inventory check above
+    # walks `accounted`, so once an operation is removed from openapi.json AND
+    # from the inventory, its surviving `$opid` arm is in no set that check
+    # compares — it would sit in client.tmpl forever with the gate green.
+    failures << "go/templates/client.tmpl still has a `$opid` arm for `#{opid}` " \
+                "(on `#{template_arms[opid][:service]}`), which is no longer in " \
+                "openapi.json — remove the dead arm."
+  end
 end
 
 inventory_grouped.each do |opid, entry|

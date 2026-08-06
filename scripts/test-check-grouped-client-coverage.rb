@@ -44,6 +44,7 @@
 #   inventory-records-phantom-method check           8
 #   extraction floor on template arms                9
 #   duplicate `grouped:` entry check                 10
+#   dead-template-arm check                          11
 #
 # Case 2 is the #679 replay in its realistic form and is caught by the
 # template-arm check rather than the unaccounted check, because by then the arms
@@ -265,6 +266,22 @@ expect_fail(failures, "8. inventory records a phantom method", out, status,
 out, status = with_inputs(template: "// a client template with no $opid chain at all\n") { |_inv| }
 expect_fail(failures, "9. template extraction returns nothing", out, status,
             "the chain's syntax probably changed and extraction is silently failing")
+
+# --- 11. A template arm for an operation the spec no longer has ----------------
+#
+# The gap between the other two checks. Remove an operation from openapi.json and
+# from the inventory but leave its `$opid` arm: the stale-inventory check walks
+# `accounted`, which no longer contains it, and the arm-not-in-inventory check
+# used to `next` past anything absent from the spec on the (wrong) assumption that
+# the stale check had it covered. Nothing looked at it, so a dead arm could sit in
+# client.tmpl indefinitely with the gate green.
+
+out, status = with_inputs(spec_ops: REAL_OPS - ["ArchiveProject"]) do |inv|
+  service, entry = grouped_entry(inv, "ArchiveProject")
+  inv["grouped"][service].delete(entry)
+end
+expect_fail(failures, "11. dead template arm for an operation dropped from the spec", out, status,
+            "still has a `$opid` arm for `ArchiveProject`")
 
 # --- 10. The same operation grouped twice --------------------------------------
 
