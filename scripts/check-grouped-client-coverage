@@ -31,6 +31,13 @@
 # -> Move, UpdateCard -> UpdateVerbatim, justified at client.tmpl:1613). Keying on
 # the operationId is what makes that safe.
 #
+# Every read is pinned to UTF-8. Under a non-UTF-8 locale (LC_ALL=C) Ruby tags file
+# contents US-ASCII, and client.tmpl, openapi.json and the inventory all carry
+# non-ASCII text — so the first scan raises InvalidByteSequenceError and the gate
+# fails before validating anything. Both CI steps run under LC_ALL=C so that stays
+# proven rather than asserted, matching check-fixture-coverage and
+# check-projected-examples.
+#
 # Env seams (for scripts/test-check-grouped-client-coverage.rb — the tracked tree
 # is never written to):
 #   GROUPED_CLIENT_INVENTORY  path to the inventory YAML
@@ -78,7 +85,7 @@ unless File.exist?(OPENAPI_PATH)
   die(["#{OPENAPI_PATH} not found"])
 end
 
-spec = JSON.parse(File.read(OPENAPI_PATH))
+spec = JSON.parse(File.read(OPENAPI_PATH, encoding: "UTF-8"))
 spec_ops = spec.fetch("paths").flat_map { |_path, item|
   item.filter_map { |_verb, op| op["operationId"] if op.is_a?(Hash) && op["operationId"] }
 }
@@ -107,7 +114,7 @@ end
 # WithBody form beside it is the anchor, and it is enough to prove the arm fired.
 template_arms = {}
 current = nil
-File.foreach(TEMPLATE_PATH) do |line|
+File.foreach(TEMPLATE_PATH, encoding: "UTF-8") do |line|
   if (m = line.match(/\{\{(?:else )?if eq \$opid "([^"]+)"\}\}/))
     current = { opid: m[1], service: nil, methods: [] }
     template_arms[m[1]] = current
@@ -136,7 +143,7 @@ end
 generated_services = []
 generated_methods = []
 if File.exist?(GENERATED_PATH)
-  File.foreach(GENERATED_PATH) do |line|
+  File.foreach(GENERATED_PATH, encoding: "UTF-8") do |line|
     if (m = line.match(/^func \(c \*Client\) \w+\(\) \*(\w+Service) \{/))
       generated_services << m[1]
     elsif (m = line.match(/^func \(s \*(\w+Service)\) (\w+)\(/))
@@ -163,7 +170,7 @@ unless File.exist?(INVENTORY_PATH)
 end
 
 inventory = begin
-  YAML.safe_load(File.read(INVENTORY_PATH)) || {}
+  YAML.safe_load(File.read(INVENTORY_PATH, encoding: "UTF-8")) || {}
 rescue Psych::Exception => e
   # A malformed inventory is a gate failure, not a crash. Aliases in particular
   # are rejected by safe_load, and an unhandled Psych backtrace buries the one

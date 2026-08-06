@@ -183,14 +183,23 @@ jobs:
       # against the hand-written go/pkg/basecamp wrappers; nothing watched the
       # GROUPED client until this gate, which is how ArchiveProject and
       # UnarchiveProject shipped missing from it through two green `make` runs.
+      #
+      # Under LC_ALL=C so CI exercises the non-UTF-8-locale path (the reads are
+      # pinned to UTF-8; this proves it stays that way). All three inputs carry
+      # non-ASCII text, so an unpinned read raises InvalidByteSequenceError and
+      # the gate fails before validating anything.
       - name: Every operation accounted for on the Go grouped client
         run: make check-grouped-client-coverage
+        env:
+          LC_ALL: C
 
       # The run above only ever exercises the PASSING case. This drives
       # adversarial inventories through the same gate, including the
       # unaccounted-new-operation case that is the whole reason it exists.
       - name: Grouped-client coverage gate self-test (adversarial inventories)
         run: make test-check-grouped-client-coverage
+        env:
+          LC_ALL: C
 
       - name: README env-var tables match what the SDKs actually read
         run: make check-readme-env-vars

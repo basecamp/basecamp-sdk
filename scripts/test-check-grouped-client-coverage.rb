@@ -98,7 +98,13 @@ def run_checker(inventory: nil, template: nil, openapi: nil, generated: nil)
   # entry is not ALSO reported as missing from client.gen.go, which would let a
   # case pass on the wrong message.
   env["GROUPED_CLIENT_GENERATED"] = generated || "/nonexistent/client.gen.go"
-  Open3.capture2e(env, "ruby", CHECKER)
+  out, status = Open3.capture2e(env, "ruby", CHECKER)
+  # Under LC_ALL=C the captured output comes back tagged US-ASCII, and every
+  # expected fragment below contains UTF-8 punctuation — so `out.include?(fragment)`
+  # raises Encoding::CompatibilityError before it can compare anything, and every
+  # negative case dies for a reason unrelated to what it tests. The bytes are UTF-8
+  # either way; only the tag is wrong.
+  [out.dup.force_encoding("UTF-8"), status]
 end
 
 # Build a case's temp inputs, run, and clean up. `inventory` and `spec_ops` are
