@@ -49,11 +49,11 @@ there is no member that changed from optional to required; there are two new
 members that happen to be required from the start. It reshapes the #628 break
 rather than adding one, and that is where this guide documents it.
 
-#681 **does** add one, and it is the only row in the table above measured
-past `70d576bd8`: it takes TypeScript from 18 breaking changes to 19. It adds
-nothing to either "no signal" column — it is five required-to-optional field
-relaxations, which `tsc` catches under `strictNullChecks` — so the 61/55/6 totals
-below are unmoved. See
+#681 **does** add one, and it is the only row in the table above measured past
+the baseline this document states: it takes TypeScript from 18 breaking changes
+to 19. It adds nothing to either "no signal" column — it is five
+required-to-optional field relaxations, which `tsc` catches under
+`strictNullChecks` — so the 61/55/6 totals below are unmoved. See
 [Five `Identity` and `AuthorizedAccount` fields became optional](#five-identity-and-authorizedaccount-fields-became-optional-681).
 
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
