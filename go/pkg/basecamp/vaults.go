@@ -216,9 +216,15 @@ type CreateDocumentRequest struct {
 
 // UpdateUploadRequest specifies the parameters for updating an upload.
 type UpdateUploadRequest struct {
-	// Description is the upload description.
-	Description string `json:"description,omitempty"`
+	// Description is the upload description, and is presence-aware.
+	// nil omits the field, leaving the current description alone.
+	// Ptr("") clears it. Ptr(v) sets it.
+	Description *string `json:"description,omitempty"`
 	// BaseName is the filename without extension.
+	//
+	// A plain string rather than a pointer, unlike Description: Upload#base_name=
+	// guards on new_base_name.present?, so "" and absent are the same write
+	// server-side. There is no third state for a pointer to express.
 	BaseName string `json:"base_name,omitempty"`
 }
 
@@ -831,9 +837,8 @@ func (s *UploadsService) Update(ctx context.Context, uploadID int64, req *Update
 		return nil, err
 	}
 
-	body := generated.UpdateUploadJSONRequestBody{}
-	if req.Description != "" {
-		body.Description = &req.Description
+	body := generated.UpdateUploadJSONRequestBody{
+		Description: req.Description,
 	}
 	if req.BaseName != "" {
 		body.BaseName = &req.BaseName
@@ -902,6 +907,85 @@ func (s *UploadsService) Create(ctx context.Context, vaultID int64, req *CreateU
 	return &upload, nil
 }
 
+// CreateUploadVersionRequest specifies the parameters for replacing an upload's file.
+type CreateUploadVersionRequest struct {
+	// AttachableSGID is the signed global ID for an uploaded attachment (required).
+	// See the Create Attachment endpoint for how to upload files.
+	AttachableSGID string `json:"attachable_sgid"`
+	// BaseName is the filename without extension (optional). Omit it to keep the
+	// name of the file you uploaded.
+	//
+	// A plain string rather than a pointer, unlike Description: Upload#base_name=
+	// guards on new_base_name.present?, so "" and absent are the same write
+	// server-side. There is no third state for a pointer to express.
+	BaseName string `json:"base_name,omitempty"`
+	// Description is the upload description in HTML, and is presence-aware.
+	// nil omits the field, carrying the previous version's description forward.
+	// Ptr("") clears it. Ptr(v) sets it.
+	Description *string `json:"description,omitempty"`
+	// Notify selects who to notify: "default", "everyone", or "custom" (the
+	// people in Subscriptions). nil omits the field.
+	//
+	// Leave both this and Subscriptions nil to notify nobody. A Subscriptions
+	// list sent without Notify is read as "custom".
+	Notify *string `json:"notify,omitempty"`
+	// Subscriptions are the people to notify about the replacement and subscribe
+	// to the upload. nil omits the field.
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+}
+
+// CreateVersion replaces an upload's file with a new version.
+// The attachable_sgid must be obtained from the Create Attachment endpoint.
+//
+// The recording keeps its id, its URL and its comments; the previous file
+// becomes a past version. Use this instead of Create when publishing a new
+// release of the same file, so its published link keeps working.
+//
+// Returns the upload with its new file.
+func (s *UploadsService) CreateVersion(ctx context.Context, uploadID int64, req *CreateUploadVersionRequest) (result *Upload, err error) {
+	op := OperationInfo{
+		Service: "Uploads", Operation: "CreateVersion",
+		ResourceType: "upload", IsMutation: true,
+		ResourceID: uploadID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil || req.AttachableSGID == "" {
+		err = ErrUsage("upload version attachable_sgid is required")
+		return nil, err
+	}
+
+	body := generated.CreateUploadVersionJSONRequestBody{
+		AttachableSgid: req.AttachableSGID,
+		BaseName:       omitzero(req.BaseName),
+		Description:    req.Description,
+		Notify:         req.Notify,
+		Subscriptions:  req.Subscriptions,
+	}
+
+	resp, err := s.client.parent.gen.CreateUploadVersionWithResponse(ctx, s.client.accountID, uploadID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	upload := uploadFromGenerated(*resp.JSON201)
+	return &upload, nil
+}
+
 // Trash moves an upload to the trash.
 // Trashed uploads can be recovered from the trash.
 func (s *UploadsService) Trash(ctx context.Context, uploadID int64) (err error) {
@@ -939,9 +1023,94 @@ type UploadVersionListOptions struct {
 }
 
 // UploadVersionListResult contains the results from listing upload versions.
+// UploadVersion is a version event for an upload, plus the file it recorded.
+//
+// Action is one of "created", "active" (the upload's publication) or
+// "blob_changed" (a file replacement). To list past versions of the file,
+// filter on "blob_changed".
+type UploadVersion struct {
+	// ID is the event ID, not the upload's.
+	ID int64
+	// RecordingID is the upload recording this version belongs to.
+	RecordingID int64
+	// Action is "created", "active" or "blob_changed".
+	Action string
+	// CreatedAt is when the version was recorded.
+	CreatedAt time.Time
+	// Creator is the person who recorded it.
+	Creator Person
+	// Details carries the event's membership changes, when it has any.
+	//
+	// Presence is the pointer, matching Event: the versions partial renders
+	// details through the shared recordings/events/_event partial, which emits
+	// "details": {} for an event with no membership changes. Mapping that
+	// present-empty object to nil would lose the distinction between "no changes
+	// recorded" and "this event carries no details at all".
+	Details *EventDetails
+	// BoostsCount is the number of boosts (nil when the event isn't boostable).
+	BoostsCount *int32
+	// BoostsURL links the event's boosts (nil when the event isn't boostable).
+	BoostsURL *string
+	// Upload is the file this version recorded. Nil when the recordable no
+	// longer resolves — a deleted file leaves its version event behind.
+	Upload *UploadVersionFile
+}
+
+// UploadVersionFile is the file a version event recorded. It is a reduced
+// projection, not an Upload: the versions endpoint renders its own partial and
+// emits only these fields.
+type UploadVersionFile struct {
+	// Filename is the name of this version's file.
+	Filename string
+	// ContentType is the blob's MIME type (nil when the upload has no blob).
+	ContentType *string
+	// ByteSize is the blob's size (nil when the upload has no blob).
+	ByteSize *int64
+	// DownloadURL fetches THIS version's bytes. The upload's own download URL
+	// always serves the latest, which is the point of the feature.
+	DownloadURL string
+	// AppDownloadURL is the same file on the storage host.
+	AppDownloadURL string
+	// Current is true for the most recent version; exactly one element per
+	// response has it. This is the newest version, not necessarily the file the
+	// upload's own download URL serves — a metadata-only update swaps in a
+	// recordable carrying the same blob and emits no event.
+	Current bool
+}
+
+func uploadVersionFromGenerated(g generated.UploadVersion) UploadVersion {
+	v := UploadVersion{
+		ID:          g.Id,
+		RecordingID: g.RecordingId,
+		Action:      g.Action,
+		CreatedAt:   g.CreatedAt,
+		Creator:     personFromGenerated(g.Creator),
+		BoostsCount: g.BoostsCount,
+		BoostsURL:   g.BoostsUrl,
+	}
+	if g.Details != nil {
+		v.Details = &EventDetails{
+			AddedPersonIDs:       g.Details.AddedPersonIds,
+			RemovedPersonIDs:     g.Details.RemovedPersonIds,
+			NotifiedRecipientIDs: g.Details.NotifiedRecipientIds,
+		}
+	}
+	if g.Upload != nil {
+		v.Upload = &UploadVersionFile{
+			Filename:       g.Upload.Filename,
+			ContentType:    g.Upload.ContentType,
+			ByteSize:       g.Upload.ByteSize,
+			DownloadURL:    g.Upload.DownloadUrl,
+			AppDownloadURL: g.Upload.AppDownloadUrl,
+			Current:        g.Upload.Current,
+		}
+	}
+	return v
+}
+
 type UploadVersionListResult struct {
 	// Versions is the list of upload versions returned.
-	Versions []Upload
+	Versions []UploadVersion
 	// Meta contains pagination metadata (total count, etc.).
 	Meta ListMeta
 }
@@ -984,10 +1153,10 @@ func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64, opts 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
 	// Parse first page
-	var versions []Upload
+	var versions []UploadVersion
 	if resp.JSON200 != nil {
-		for _, gu := range *resp.JSON200 {
-			versions = append(versions, uploadFromGenerated(gu))
+		for _, gv := range *resp.JSON200 {
+			versions = append(versions, uploadVersionFromGenerated(gv))
 		}
 	}
 
@@ -1016,11 +1185,11 @@ func (s *UploadsService) ListVersions(ctx context.Context, uploadID int64, opts 
 
 	// Parse additional pages
 	for _, raw := range rawMore {
-		var gu generated.Upload
-		if err := json.Unmarshal(raw, &gu); err != nil {
+		var gv generated.UploadVersion
+		if err := json.Unmarshal(raw, &gv); err != nil {
 			return nil, fmt.Errorf("failed to parse upload version: %w", err)
 		}
-		versions = append(versions, uploadFromGenerated(gu))
+		versions = append(versions, uploadVersionFromGenerated(gv))
 	}
 
 	return &UploadVersionListResult{Versions: versions, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
