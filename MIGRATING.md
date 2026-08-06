@@ -11,6 +11,83 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+Breaking in Go and in the shape every SDK decodes from
+`GET /uploads/{id}/versions.json`.
+
+### `ListUploadVersions` returns versions, not uploads (#649)
+
+The endpoint has always returned **events**. The spec declared
+`uploads: UploadList` anyway, and **11 of `Upload`'s 14 required members are
+absent from every response** — which is why the CLI's versions command and the
+MCP server's `list_upload_versions` printed blank fields rather than failing.
+The output is now `versions: UploadVersionList`.
+
+| SDK | was | now |
+|---|---|---|
+| Go | `UploadVersionListResult.Versions []Upload` | `[]UploadVersion` |
+| TypeScript | `Upload[]` | `UploadVersion[]` |
+| Swift | `ListResult<Upload>` | `ListResult<UploadVersion>` |
+| Kotlin | `ListResult<JsonElement>` | unchanged — bare-array responses were already untyped here |
+| Ruby / Python | parsed body, unchanged at runtime | fields differ, see below |
+
+**This is one of the breaks a compiler will not catch in Ruby and Python**, and
+in Kotlin. Nothing changes in the type; what changes is which keys are actually
+there. Code reading `version["filename"]` was reading a key the server never
+sent and getting nil — it now reads `version["upload"]["filename"]`, and the
+event's own metadata (`action`, `created_at`, `creator`) is available where it
+previously looked like a partly-empty upload.
+
+A version carries `upload` only when its recordable still resolves; a deleted
+file leaves the event behind with no `upload` at all. Check before dereferencing.
+`action` is `created`, `active` (the publication) or `blob_changed` (a file
+replacement) — filter on `blob_changed` to list past versions of the file. The
+per-version `download_url` serves **that** version's bytes; the upload's own
+always serves the latest.
+
+### Go: `UpdateUploadRequest.Description` became `*string`
+
+Tri-state, following `UpdateGaugeNeedleRequest.Description` (#560): nil leaves
+it untouched, `basecamp.Ptr("")` clears it, `basecamp.Ptr(v)` sets it.
+Previously a plain `string` behind a zero-value guard, so `""` read as *unset*
+and clearing a description through `Update` was unreachable — the divergence
+SPEC §5 documented.
+
+```go
+// Before — compiled, and silently did nothing to the description.
+svc.Update(ctx, id, &UpdateUploadRequest{Description: ""})
+
+// After — clears it.
+svc.Update(ctx, id, &UpdateUploadRequest{Description: basecamp.Ptr("")})
+
+// After — leaves it alone.
+svc.Update(ctx, id, &UpdateUploadRequest{BaseName: "renamed"})
+```
+
+The compiler catches this one: `Description: "text"` no longer type-checks. Wrap
+it in `basecamp.Ptr`.
+
+`BaseName` is deliberately still a plain `string` on both this and
+`CreateUploadVersionRequest`. `Upload#base_name=` guards on
+`new_base_name.present?`, so `""` and absent are the same write server-side —
+there is no third state for a pointer to express.
+
+### New: `UploadsService.CreateVersion` and a 507 error code
+
+Not breaking, but the reason for the above. `POST /uploads/{id}/versions.json`
+replaces an upload's file in place, keeping the recording's id, URL and
+comments, so a published link keeps working — which `CreateUpload` cannot do.
+
+A `507 Insufficient Storage` now maps to the new `limit_exceeded` code (exit
+code 10) instead of `api_error`. **If you branch on `api_error` to decide
+whether to back off, a storage-limit failure no longer lands in that branch** —
+which is the point: it was reported as retryable, and no retry can satisfy a
+plan limit. This affects `CreateUpload`, `CreateAttachment`,
+`CreateCampfireUpload` and `CreateUploadVersion`.
+
+---
+
 # v0.13.0
 
 Breaking across all six SDKs — Go, TypeScript, Python, Ruby, Kotlin, Swift.

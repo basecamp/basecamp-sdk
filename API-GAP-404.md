@@ -2,6 +2,20 @@
 
 Addresses basecamp/basecamp-cli#404.
 
+> **Resolved.** BC3 closed this with a dedicated route rather than by widening
+> the update: `POST /uploads/{id}/versions.json` (basecamp/bc3#12555, input
+> contract settled in #12565). The SDK absorbed it as `CreateUploadVersion`,
+> alongside the read-side retype that closes basecamp-sdk#649.
+>
+> **The finding below still stands and is why the guard stays.** `PUT
+> /uploads/{id}.json` still ignores `attachable_sgid` — the hypothesis this
+> document tested is still false, and `TestUpdateUploadRequest_HasNoFileReplacementField`
+> still asserts it. What changed is that the guard now pins a design choice
+> rather than a missing feature; its positive counterpart is
+> `TestCreateUploadVersionRequest_HasFileReplacementField`.
+>
+> Registry entry: [`spec/api-gaps/upload-new-version.md`](spec/api-gaps/upload-new-version.md).
+
 ## Question
 
 basecamp-cli#404 asks the SDK to support uploading a **new version** of an

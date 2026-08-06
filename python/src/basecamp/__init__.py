@@ -14,13 +14,13 @@ from basecamp.config import Config
 from basecamp.download import DownloadResult
 from basecamp.errors import (
     AmbiguousError,
-    LimitExceededError,
     ApiError,
     AuthError,
     BasecampError,
     ErrorCode,
     ExitCode,
     ForbiddenError,
+    LimitExceededError,
     NetworkError,
     NotFoundError,
     RateLimitError,

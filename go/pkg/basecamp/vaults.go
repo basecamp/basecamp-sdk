@@ -1022,7 +1022,6 @@ type UploadVersionListOptions struct {
 	Page int
 }
 
-// UploadVersionListResult contains the results from listing upload versions.
 // UploadVersion is a version event for an upload, plus the file it recorded.
 //
 // Action is one of "created", "active" (the upload's publication) or
@@ -1030,15 +1029,15 @@ type UploadVersionListOptions struct {
 // filter on "blob_changed".
 type UploadVersion struct {
 	// ID is the event ID, not the upload's.
-	ID int64
+	ID int64 `json:"id"`
 	// RecordingID is the upload recording this version belongs to.
-	RecordingID int64
+	RecordingID int64 `json:"recording_id"`
 	// Action is "created", "active" or "blob_changed".
-	Action string
+	Action string `json:"action"`
 	// CreatedAt is when the version was recorded.
-	CreatedAt time.Time
+	CreatedAt time.Time `json:"created_at"`
 	// Creator is the person who recorded it.
-	Creator Person
+	Creator Person `json:"creator"`
 	// Details carries the event's membership changes, when it has any.
 	//
 	// Presence is the pointer, matching Event: the versions partial renders
@@ -1046,14 +1045,14 @@ type UploadVersion struct {
 	// "details": {} for an event with no membership changes. Mapping that
 	// present-empty object to nil would lose the distinction between "no changes
 	// recorded" and "this event carries no details at all".
-	Details *EventDetails
+	Details *EventDetails `json:"details,omitempty"`
 	// BoostsCount is the number of boosts (nil when the event isn't boostable).
-	BoostsCount *int32
+	BoostsCount *int32 `json:"boosts_count,omitempty"`
 	// BoostsURL links the event's boosts (nil when the event isn't boostable).
-	BoostsURL *string
+	BoostsURL *string `json:"boosts_url,omitempty"`
 	// Upload is the file this version recorded. Nil when the recordable no
 	// longer resolves — a deleted file leaves its version event behind.
-	Upload *UploadVersionFile
+	Upload *UploadVersionFile `json:"upload,omitempty"`
 }
 
 // UploadVersionFile is the file a version event recorded. It is a reduced
@@ -1061,21 +1060,21 @@ type UploadVersion struct {
 // emits only these fields.
 type UploadVersionFile struct {
 	// Filename is the name of this version's file.
-	Filename string
+	Filename string `json:"filename"`
 	// ContentType is the blob's MIME type (nil when the upload has no blob).
-	ContentType *string
+	ContentType *string `json:"content_type,omitempty"`
 	// ByteSize is the blob's size (nil when the upload has no blob).
-	ByteSize *int64
+	ByteSize *int64 `json:"byte_size,omitempty"`
 	// DownloadURL fetches THIS version's bytes. The upload's own download URL
 	// always serves the latest, which is the point of the feature.
-	DownloadURL string
+	DownloadURL string `json:"download_url"`
 	// AppDownloadURL is the same file on the storage host.
-	AppDownloadURL string
+	AppDownloadURL string `json:"app_download_url"`
 	// Current is true for the most recent version; exactly one element per
 	// response has it. This is the newest version, not necessarily the file the
 	// upload's own download URL serves — a metadata-only update swaps in a
 	// recordable carrying the same blob and emits no event.
-	Current bool
+	Current bool `json:"current"`
 }
 
 func uploadVersionFromGenerated(g generated.UploadVersion) UploadVersion {
@@ -1108,6 +1107,7 @@ func uploadVersionFromGenerated(g generated.UploadVersion) UploadVersion {
 	return v
 }
 
+// UploadVersionListResult contains the results from listing upload versions.
 type UploadVersionListResult struct {
 	// Versions is the list of upload versions returned.
 	Versions []UploadVersion

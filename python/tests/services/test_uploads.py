@@ -298,9 +298,7 @@ class TestCreateVersion:
         )
 
         c = Client(access_token="test-token")
-        c.for_account("12345").uploads.create_version(
-            upload_id=77, attachable_sgid="sgid-abc", description=""
-        )
+        c.for_account("12345").uploads.create_version(upload_id=77, attachable_sgid="sgid-abc", description="")
 
         body = json.loads(route.calls[0].request.content)
         assert "description" in body
@@ -326,9 +324,7 @@ class TestCreateVersion:
     @respx.mock
     def test_storage_limit_is_limit_exceeded_and_not_retried(self):
         route = respx.post("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
-            return_value=httpx.Response(
-                507, json={"error": "The storage limit for this account has been reached."}
-            )
+            return_value=httpx.Response(507, json={"error": "The storage limit for this account has been reached."})
         )
 
         c = Client(access_token="test-token")

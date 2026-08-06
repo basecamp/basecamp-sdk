@@ -172,7 +172,7 @@ class UploadsServiceTest < Minitest::Test
 
     assert_equal "limit_exceeded", error.code
     assert_equal 10, error.exit_code
-    refute error.retryable?
+    assert_not error.retryable?
     assert_match(/storage limit/, error.message)
     assert_requested(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json", times: 1)
   end
