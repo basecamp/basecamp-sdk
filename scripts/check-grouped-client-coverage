@@ -322,7 +322,17 @@ end
 # cross-check would not have caught it on its own — the total accounting above is
 # what does. This catches the different failure where an arm exists but generates
 # nothing.
+#
+# BOTH DIRECTIONS, for the same reason the operation-level accounting is total.
+# Recorded-implies-generated alone leaves a generated method nobody recorded, and
+# an unrecorded method is one that can later disappear with nothing noticing —
+# which is the #679 failure mode at method granularity. It is reachable without
+# anyone touching this gate: a grouped operation that gains a second supported
+# request content type makes `{{range .Bodies}}` emit an extra suffixed method,
+# and the dynamic-prefix check above is satisfied by the variant already
+# recorded. So every method on a grouped service must be accounted for too.
 unless generated_services.empty?
+  recorded_pairs = Set.new
   inventory_grouped.each do |opid, entry|
     unless generated_services.include?(entry[:service])
       failures << "`#{opid}` is recorded on `#{entry[:service]}`, which has no " \
@@ -330,10 +340,17 @@ unless generated_services.empty?
       next
     end
     entry[:methods].each do |method|
+      recorded_pairs << [entry[:service], method]
       next if generated_methods.include?([entry[:service], method])
       failures << "`#{entry[:service]}.#{method}` (#{opid}) is in the inventory but absent from " \
                   "the generated client — regenerate, or the arm is not firing."
     end
+  end
+
+  (generated_methods - recorded_pairs).sort.each do |service, method|
+    failures << "the generated client exposes `#{service}.#{method}` but no `grouped:` entry " \
+                "records it — add it to the owning operation's `methods:`, or an unrecorded " \
+                "method can vanish again without this gate noticing."
   end
 end
 

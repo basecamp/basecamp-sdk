@@ -46,6 +46,7 @@
 #   duplicate `grouped:` entry check                 10
 #   dead-template-arm check                          11
 #   dynamic-prefix (typed body variant) check        12
+#   generated-not-recorded check (reverse direction) 14
 #   the `explained` filter on the phantom check      positive control
 #
 # The last two rows are the measured result, not the tidy one I first wrote. The
@@ -328,6 +329,31 @@ raise "template mutation for case 13 did not apply" if mutated == read_utf8(REAL
 out, status = with_inputs(template: mutated) { |_inv| }
 expect_fail(failures, "13. typed body variant deleted from the template", out, status,
             "`CreateTodo` records method `Create` but client.tmpl's arm does not emit it")
+
+# --- 14. A generated method nobody recorded ------------------------------------
+#
+# The reverse direction, and the one that makes the method accounting total. An
+# operation gaining a second supported request content type makes
+# `{{range .Bodies}}` emit an extra suffixed method; the dynamic-prefix check is
+# already satisfied by the variant recorded earlier, so without this the new
+# method sits unrecorded — and an unrecorded method is one that can later vanish
+# with nothing noticing, which is #679 at method granularity.
+#
+# This is the only case that overrides GROUPED_CLIENT_GENERATED, so it builds a
+# temp copy of the real client.gen.go with one extra method spliced in.
+
+out, status = Dir.mktmpdir("grouped-client-coverage-generated") do |dir|
+  real = File.join(ROOT, "go/pkg/generated/client.gen.go")
+  src = read_utf8(real)
+  anchor = "func (s *TodosService) Create(ctx context.Context"
+  idx = src.index(anchor) or raise "anchor for case 14 not found in #{real}"
+  extra = "func (s *TodosService) CreateFormdata(ctx context.Context) (*http.Response, error) { return nil, nil }\n\n"
+  gen = File.join(dir, "client.gen.go")
+  File.write(gen, src[0...idx] + extra + src[idx..])
+  run_checker(generated: gen)
+end
+expect_fail(failures, "14. generated method absent from the inventory", out, status,
+            "the generated client exposes `TodosService.CreateFormdata` but no `grouped:` entry records it")
 
 # --- 10. The same operation grouped twice --------------------------------------
 
