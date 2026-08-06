@@ -1,0 +1,29 @@
+MIGRATING.md
+  s_c60f4ea423b48a::t_a3de8318da639c 1937-1940
+  s_c60f4ea423b48a::t_a7b73362a95679 1957,1960-1964
+  s_4b2851df67c3f7::t_e5412d2df944a3 54,57,1935,1965
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a4dff45e39d8b4f4fdcb08b41b690d2783720351",
+  "prompts": {},
+  "sessions": {
+    "s_4b2851df67c3f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1c83b83-446a-4c6b-886f-101040635c18",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_c60f4ea423b48a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535c7003-8f6e-4ea8-a375-ab8ffe1551c4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
