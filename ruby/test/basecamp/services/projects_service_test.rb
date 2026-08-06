@@ -113,8 +113,9 @@ class ProjectsServiceTest < Minitest::Test
     assert_equal 403, error.http_status
   end
 
-  # The only behavioural evidence for ProjectLimitError. No SDK gives 507 a named
-  # class, so it lands in the generic ApiError arm carrying the status (SPEC.md §7).
+  # The only behavioural evidence for ProjectLimitError. A 507 is an account
+  # limit, so it maps to limit_exceeded and is NOT retryable — no backoff frees
+  # a project slot (SPEC.md §6, step 11).
   def test_unarchive_project_at_project_limit
     stub_put(
       "/12345/projects/123/status/active.json",
@@ -122,12 +123,12 @@ class ProjectsServiceTest < Minitest::Test
       status: 507
     )
 
-    error = assert_raises(Basecamp::ApiError) do
+    error = assert_raises(Basecamp::LimitExceededError) do
       @account.projects.unarchive(project_id: 123)
     end
 
     assert_equal 507, error.http_status
-    assert_equal Basecamp::ErrorCode::API, error.code
-    assert error.retryable, "Ruby's from_status marks every 5xx retryable"
+    assert_equal Basecamp::ErrorCode::LIMIT_EXCEEDED, error.code
+    assert_not error.retryable, "an account limit is never retryable"
   end
 end

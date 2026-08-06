@@ -175,10 +175,10 @@ describe("ProjectsService", () => {
       await expect(client.projects.unarchive(42)).resolves.toBeUndefined();
     });
 
-    // The only behavioural evidence for ProjectLimitError. No SDK gives 507 a
-    // named class, so it surfaces as a generic api_error carrying the status
-    // (SPEC.md §7).
-    it("should surface the 507 project limit as a generic api_error", async () => {
+    // The only behavioural evidence for ProjectLimitError. A 507 is an account
+    // limit, so it maps to limit_exceeded and is NOT retryable — no backoff
+    // frees a project slot (SPEC.md §6, step 11).
+    it("should surface the 507 project limit as a non-retryable limit_exceeded", async () => {
       server.use(
         http.put(`${BASE_URL}/projects/42/status/active.json`, () => {
           return HttpResponse.json(
@@ -189,8 +189,9 @@ describe("ProjectsService", () => {
       );
 
       await expect(client.projects.unarchive(42)).rejects.toMatchObject({
-        code: "api_error",
+        code: "limit_exceeded",
         httpStatus: 507,
+        retryable: false,
       });
     });
   });
