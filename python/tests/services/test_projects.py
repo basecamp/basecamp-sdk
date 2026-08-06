@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
+from basecamp import AsyncClient
 from basecamp.client import Client
+from basecamp.errors import ApiError, ErrorCode, ForbiddenError
+
+BASE = "https://3.basecampapi.com/12345"
 
 
 def make_account():
@@ -65,3 +70,113 @@ class TestProjects:
 
         assert projects[0]["start_date"] == "2024-01-01"
         assert projects[0]["end_date"] == "2024-03-31"
+
+
+PROJECT_LIMIT_BODY = {"error": "The project limit for this account has been reached."}
+
+
+class TestSyncStatusTransitions:
+    @respx.mock
+    def test_archive_project(self):
+        route = respx.put(f"{BASE}/projects/42/status/archived.json").mock(return_value=httpx.Response(204))
+
+        client, account = make_account()
+        assert account.projects.archive(project_id=42) is None
+        client.close()
+
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_unarchive_project(self):
+        route = respx.put(f"{BASE}/projects/42/status/active.json").mock(return_value=httpx.Response(204))
+
+        client, account = make_account()
+        assert account.projects.unarchive(project_id=42) is None
+        client.close()
+
+        assert route.call_count == 1
+
+    # The admin pro pack can limit archiving to admins and the project's creator,
+    # which bc3 answers with `head :forbidden`.
+    @respx.mock
+    def test_archive_project_forbidden(self):
+        respx.put(f"{BASE}/projects/42/status/archived.json").mock(return_value=httpx.Response(403))
+
+        client, account = make_account()
+        with pytest.raises(ForbiddenError) as excinfo:
+            account.projects.archive(project_id=42)
+        client.close()
+
+        assert excinfo.value.http_status == 403
+
+    # The only behavioural evidence for ProjectLimitError. No SDK gives 507 a named
+    # class, so it falls into the generic api_error arm carrying the status
+    # (SPEC.md §7).
+    #
+    # NOTE the deliberate `retryable is False`. Python's fallback arm builds a bare
+    # ApiError, whose default is retryable=False, while the other five SDKs mark
+    # every unclassified 5xx retryable. That is a pre-existing divergence from
+    # SPEC §7 (python/src/basecamp/errors.py) and is asserted here as-is rather
+    # than fixed in passing.
+    @respx.mock
+    def test_unarchive_project_at_project_limit(self):
+        respx.put(f"{BASE}/projects/42/status/active.json").mock(
+            return_value=httpx.Response(507, json=PROJECT_LIMIT_BODY)
+        )
+
+        client, account = make_account()
+        with pytest.raises(ApiError) as excinfo:
+            account.projects.unarchive(project_id=42)
+        client.close()
+
+        assert excinfo.value.http_status == 507
+        assert excinfo.value.code == ErrorCode.API
+        assert excinfo.value.retryable is False
+
+
+class TestAsyncStatusTransitions:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_archive_project(self):
+        route = respx.put(f"{BASE}/projects/42/status/archived.json").mock(return_value=httpx.Response(204))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        assert await account.projects.archive(project_id=42) is None
+
+        assert route.call_count == 1
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_unarchive_project(self):
+        route = respx.put(f"{BASE}/projects/42/status/active.json").mock(return_value=httpx.Response(204))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        assert await account.projects.unarchive(project_id=42) is None
+
+        assert route.call_count == 1
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_archive_project_forbidden(self):
+        respx.put(f"{BASE}/projects/42/status/archived.json").mock(return_value=httpx.Response(403))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        with pytest.raises(ForbiddenError) as excinfo:
+            await account.projects.archive(project_id=42)
+
+        assert excinfo.value.http_status == 403
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_unarchive_project_at_project_limit(self):
+        respx.put(f"{BASE}/projects/42/status/active.json").mock(
+            return_value=httpx.Response(507, json=PROJECT_LIMIT_BODY)
+        )
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        with pytest.raises(ApiError) as excinfo:
+            await account.projects.unarchive(project_id=42)
+
+        assert excinfo.value.http_status == 507
+        assert excinfo.value.code == ErrorCode.API
+        assert excinfo.value.retryable is False
