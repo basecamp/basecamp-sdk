@@ -1,0 +1,22 @@
+scripts/check-grouped-client-coverage
+  s_c60f4ea423b48a::t_edc233d7fafbbe 239-251
+scripts/test-check-grouped-client-coverage.rb
+  s_c60f4ea423b48a::t_a594da9a4f7abe 47
+  s_c60f4ea423b48a::t_2020da536f90b2 270-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2c1835c6c12f2651284929cd8d9232fa8fbc942a",
+  "prompts": {},
+  "sessions": {
+    "s_c60f4ea423b48a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535c7003-8f6e-4ea8-a375-ab8ffe1551c4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

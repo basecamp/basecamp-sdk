@@ -1,0 +1,19 @@
+scripts/check-grouped-client-coverage
+  s_c60f4ea423b48a::t_4a9ef31905f02a 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d4479bfa0fbb1df3a0033447b5fdf40ec8785351",
+  "prompts": {},
+  "sessions": {
+    "s_c60f4ea423b48a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535c7003-8f6e-4ea8-a375-ab8ffe1551c4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
