@@ -187,10 +187,19 @@ bc3_routes_not_modeled:
   - method: GET
     path: /authorization
     out_of_scope: >-
-      Launchpad identity endpoint, not an account-scoped Basecamp route — served
-      from https://launchpad.37signals.com/authorization.json, so it is absent
-      from openapi.json by design. The SDK does implement it, as the client-level
-      authorization service (SPEC §5, `authorization.getInfo()`).
+      The identity endpoint, not an account-scoped Basecamp route, so it is
+      absent from openapi.json by design. The SDK does implement it, as the
+      client-level authorization service (SPEC §5, `authorization.getInfo()`).
+      Reasoning corrected at the repin that registered BC3 #12555: this used to say the route is
+      served only from https://launchpad.37signals.com/authorization.json, which
+      was true when written and is no longer. BC3 #9471 (`eac8b2b476`) draws
+      `resource :authorization, only: :show` and renders it from
+      app/views/api/authorizations/show.json.jbuilder, so bc3 now serves its own
+      copy — and the SDK reaches it, because `Http#get_authorization_document`
+      binds to the discovered BC5 issuer. The disposition is unchanged (OAuth is
+      outside the OpenAPI spec by design; this lives in the hand-written lane),
+      but the two documents' shapes differ, which is registered as
+      spec/api-gaps/bc5-authorization-document-shape.md.
 
   - method: POST
     path: /integrations/:id/buckets/:id/chats/:id/lines
@@ -225,6 +234,34 @@ bc3_routes_not_modeled:
   - method: POST
     path: /dock/doors
     registry: spec/api-gaps/external-links-doors.md
+
+  # -- upload file replacement (BC3 #12555, arrived with the repin that registered it) --
+  #
+  # Registered, not waived: bc3 now documents creating a new version of an
+  # upload, which closes the write side spec/api-gaps/upload-new-version.md has
+  # described since basecamp-cli#404 hypothesized the wrong shape for it. bc3
+  # chose POST .../versions.json (201), not the PUT /uploads/{id}.json that
+  # brief disproved.
+  #
+  # ONE entry covers both spellings. bc3 documents the flat
+  # POST /uploads/:id/versions and the bucket-scoped
+  # POST /buckets/:id/uploads/:id/versions, and the gate's direction-2 failure
+  # named both — but direction 2 collapses a leading /buckets/:id, so the two
+  # rows normalize to the same key and the flat entry satisfies both. Adding a
+  # second entry for the bucket-scoped spelling is a HARD FAILURE ("matches
+  # nothing"), which is how this was established rather than assumed.
+  #
+  # Absorption is NOT this repin's job and is not implied by these entries: it
+  # belongs to the `upload-versions-api` branch, which also has to model the
+  # 507 this endpoint returns. That 507 is a **storage** limit ("The storage
+  # limit for this account has been reached.", app/controllers/concerns/
+  # resource_limits.rb) and must get its own error shape — ProjectLimitError,
+  # added here for CreateProject and UnarchiveProject, is a different resource
+  # with a different message and must not be reused for it.
+
+  - method: POST
+    path: /uploads/:id/versions
+    registry: spec/api-gaps/upload-new-version.md
 
   # -- gauge needle show/update/destroy (#581) --
   #

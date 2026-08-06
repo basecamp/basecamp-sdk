@@ -52,7 +52,7 @@ making the absorption journey publicly auditable.
 | [todoset-direct-todo-create](todoset-direct-todo-create.md) | absorbed-in-sdk | post-train | medium |
 | [schedule-recurrence-writes](schedule-recurrence-writes.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 | [dock-tool-create-contract](dock-tool-create-contract.md) | absorbed-in-sdk | launch | medium |
-| [upload-new-version](upload-new-version.md) | no-json-contract | post-train | medium |
+| [upload-new-version](upload-new-version.md) | addressed-in-bc3-pr-12555 | post-train | medium |
 | [todolist-reposition](todolist-reposition.md) | absorbed-in-sdk | pre-BC5 | medium |
 | [rich-text-attachments-coverage](rich-text-attachments-coverage.md) | absorbed-in-sdk | n/a | medium |
 | [visible-to-clients-on-creates](visible-to-clients-on-creates.md) | absorbed-in-sdk | post-train | medium |
@@ -67,6 +67,9 @@ making the absorption journey publicly auditable.
 | [everything-todo-card-filters](everything-todo-card-filters.md) | absorbed-in-sdk | post-train | medium |
 | [folders-api](folders-api.md) | absorbed-in-sdk | master | medium |
 | [event-feed](event-feed.md) | no-json-contract | n/a | high |
+| [project-archive-unarchive](project-archive-unarchive.md) | absorbed-in-sdk | master | medium |
+| [notifications-sort-pings-first](notifications-sort-pings-first.md) | partial-coverage | master | low |
+| [bc5-authorization-document-shape](bc5-authorization-document-shape.md) | partial-coverage | master | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -94,42 +97,142 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `4e34dc83eb` (2026-08-03). <!-- @bc3-pin -->
+> The provenance pin is `a26c2e479f` (2026-08-05). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `4dd2926f8a..4e34dc83eb` range (2 commits) contains exactly **one**
-> API-contract change, and it is the one this repin exists to absorb: BC3
-> **#12521** (`4e34dc83eb`) makes card and card table step updates
-> presence-aware on the **JSON representation only** — `card_update_params`
-> returns bare `card_params` under `request.format.json?` instead of merging
-> over `{ due_on: nil }`, and `steps#update` changes the existing recordable
-> rather than rebuilding it, replacing assignees only when an assignee key is
-> present. An omitted field is now left unchanged; `"due_on": null` or `""`
-> clears; `"assignee_ids": []` removes everyone; `title` becomes optional on
-> step update. The HTML/turbo_stream leg keeps `with_defaults(due_on: nil)`,
-> so this is a representation-level fork invisible to web callers.
+> The `4e34dc83eb..a26c2e479f` range (70 commits) contains exactly **five**
+> API-contract changes. Two touch `doc/api`; the other three change the wire, or
+> a payload's backing field, without a documentation or route diff — which is
+> why the sweep below is a classification of all 70 commits and not a glob over
+> three paths.
 >
-> It is the only commit in the range touching `doc/api` (2 lines in
-> `card_table_cards.md`, 8 in `card_table_steps.md`) and it touches neither
-> `config/routes.rb` nor any view under `app/views/api`, so
-> `spec/bc3-routes.json` regenerates with no route delta — the change is to an
-> omission rule on already-modelled endpoints, absorbed here as the
-> `"due_on": ""` clear encoding across all six SDKs and the removal of the
-> Cards preservation GET. This repin was **reactive, not preventive**: the
-> commit reached production before the compatibility release, so every released
-> SDK's explicit card due-date clear silently no-opped until the absorption
-> landed. The other commit is a single HTML view change hiding the boost emoji
-> picker on narrow columns; it touches no `doc/api`, no `config/routes.rb` and
-> no API view.
+> 1. BC3 **#12550** (`6f4781bbd4`) — **absorbed here.** `Projects::StatusController`
+>    gains the `respond_to` it never had, so `active`/`archived`/`trashed` answer
+>    a JSON request with `head :no_content` instead of a **302** to an HTML URL
+>    that then returned **406**. The routes are not new; the contract is. Adds 32
+>    lines to `doc/api/sections/projects.md` ("Archive a project", "Unarchive a
+>    project"). Absorbed as `ArchiveProject` / `UnarchiveProject` and the shared
+>    507 `ProjectLimitError`, recorded in
+>    [`project-archive-unarchive.md`](project-archive-unarchive.md).
+> 2. BC3 **#12555** (`a26c2e479f`) — **registered, absorbed elsewhere.** Upload
+>    file replacement over the API: `POST /uploads/:id/versions.json` flat and
+>    bucket-scoped, an index alongside it, new version fields including
+>    `current`, and a **507 storage-limit** response. It closes the write side
+>    [`upload-new-version.md`](upload-new-version.md) already describes, so its
+>    registration is a status flip to `addressed-in-bc3-pr-12555`, not a new
+>    brief. Absorption belongs to the `upload-versions-api` branch; this repin
+>    only makes the pin honest about the contract existing. Its routes therefore
+>    arrive in `spec/bc3-routes.json` with no operation behind them and carry
+>    `registry:` dispositions in `spec/bc3-route-allowlist.yml`.
+> 3. BC3 **#12396** (`98eb24b22f`, `pings-sort-preference`) — **registered.** A
+>    new `sort_pings_first` field on the notification *settings* payload
+>    (`app/views/api/my/notifications/show.json.jbuilder`) plus an update action
+>    to persist it, across `5561c42106`, `0e015cacd6` and four migrations
+>    (`9cf4e17817`, `09ff95f35d`, `8c5af3956f`, `2480131f78`). bc3 documents none
+>    of it, so no route-table row moves, but it renders under `app/views/api`, so
+>    it is API surface. Registered as
+>    [`notifications-sort-pings-first.md`](notifications-sort-pings-first.md),
+>    `partial-coverage`.
+> 4. BC3 **#9471** (`eac8b2b476`) — the modern OAuth 2.1 stack; **two halves,
+>    two dispositions.** The discovery half **matches, no action**: bc3's new
+>    `.well-known/oauth-authorization-server` (RFC 8414) and
+>    `.well-known/oauth-protected-resource` (RFC 9728) are the exact paths the
+>    SDK's hand-written discovery already fetches — `go/pkg/basecamp/oauth/discovery.go:24-25`,
+>    `typescript/src/oauth/discovery.ts:400,514`, `python/src/basecamp/oauth/discovery.py:223,301`,
+>    `ruby/lib/basecamp/oauth/discovery.rb:88`. The **authorization-document half
+>    diverges** and is registered as
+>    [`bc5-authorization-document-shape.md`](bc5-authorization-document-shape.md):
+>    bc3 now draws `resource :authorization, only: :show` and renders it from
+>    `app/views/api/authorizations/show.json.jbuilder`, whose shape is *not*
+>    Launchpad's — `identity` carries only `id`, accounts carry `resource` but
+>    neither `product` nor `app_href`, and `expires_at` is integer epoch seconds
+>    rather than an ISO-8601 string. That document is reachable from the SDK
+>    today: `Http#get_authorization_document` binds to the discovered BC5 issuer
+>    and fetches `{issuer_origin}/authorization.json`. OAuth is deliberately
+>    outside the OpenAPI spec, so this is a hand-written-lane gap, and
+>    `spec/bc3-route-allowlist.yml`'s `GET /authorization` entry keeps its
+>    `out_of_scope` disposition with its reasoning corrected — bc3 serves that
+>    route itself now, and the claim that it does not was true when written.
+> 5. `5c0e774b0d`, with `84569d7a92`, `d2f17f4489` and `25633614d3` — **no SDK
+>    action, recorded because it is invisible to every path-based filter.**
+>    Selecting completions through the denormalized column reroutes
+>    `Recording.completed` to `completed_recently_first`
+>    (`reorder("completions.created_at DESC")`) in
+>    `app/controllers/concerns/everything/{cards,todos}/recordings.rb` and both
+>    `app/controllers/my/assign{ings,ments}/completed_controller.rb`. Three
+>    modelled operations reorder — `GetEverythingCompletedTodos`,
+>    `GetEverythingCompletedCards`, `GetMyCompletedAssignments` — with no field
+>    added, removed or retyped. None of the three declares an ordering in its
+>    Smithy documentation, so there is no claim to correct. The paired
+>    `my/assignings` and `my/assignments` controllers are **not** a rename: both
+>    exist before and after the range, one line changed in each, so no modelled
+>    path moved.
+>
+> **The wire-neutral sweep, earned.** All 70 commits classified by touched path,
+> residual bucket empty. Beyond the five above: `eac8b2b476` also adds
+> `app_url_options` to `app/controllers/concerns/api_request.rb` — the API
+> boundary concern itself — but it is a **20-line addition of a new private
+> method** that computes web-host URL options for OAuth's HTML redirects;
+> `api_request?` and `restrict_view_paths_to_api_root` are untouched, so what
+> counts as an API route is unchanged. `9a162bca80` (#12475) registers `Gallery`
+> as a recordable and adds it to the `dock_tools` group, so a gallery can appear
+> in a project dock — additive only, because `DockItem.name` is modelled as a
+> plain `String`, not an enum, and no `app/views/api/galleries` template exists,
+> so galleries are not themselves API-renderable. `c76eceeec9` (#12529) makes
+> OAuth consent proofs single-use, inside the OAuth stack's own controllers.
+> `b41cae851b`, `625d3db323`, `8015fea19e` and `72bf7118ca` are model-layer
+> changes behind no `app/views/api` template: a recordings account association,
+> a timesheet-entry recording window, jump-menu project search by client name,
+> and an email-pattern validation. `a4cc23cc48` casts a ChatChannel room number
+> before SQL — Action Cable, not the §23 event-feed contract. `4536d5952a`
+> keeps the cable server's `Origin` whitelist from arriving empty, a
+> configuration guard on the cable host the §23 connector dials, with no change
+> to the dial contract. The `gems/saas/**` commits are Trek admin UI
+> (`057d7783e8`, `02eee3163e`, `03d591b5cd`, `f0c279424a`, `c4a95e15bf`), invite
+> spam classification (`7fe9f8c139`, `1de902f11c`, `893af26c1c`, `ef40bb5fcc`)
+> and a reverted Help Scout beacon signature (`b0eb1f4119`, `7bbca0ccea`,
+> `683e021d1c`); `gems/saas`'s only appearance in an absorbed contract is
+> #12550's own 507 test. The remaining commits are merges, iOS auto-scroll
+> refactoring, web-only view changes, host maintenance and schema dumps.
+>
+> **The route table moves for both `doc/api` commits.** `make bc3-routes` at the
+> new pin adds the two project-status PUTs, which the absorption models, and
+> #12555's upload-version rows, which carry `registry:` dispositions. Nothing
+> else moved, which is the mechanical confirmation that items 3–5 are
+> undocumented and item 4's OAuth routes are not drawn under `doc/api`.
 >
 > Earlier pins, kept as the triage record. Each names the pin it was written
 > against, in the past tense, because that is what it is — a range triaged
 > once, at the repin that set its end. Only the sentence above is a claim
 > about today.
+>
+> The pin was `4e34dc83eb` (2026-08-03). The `4dd2926f8a..4e34dc83eb` range (2 commits) contained exactly **one**
+> API-contract change, and it was the one that repin existed to absorb: BC3
+> **#12521** (`4e34dc83eb`) made card and card table step updates
+> presence-aware on the **JSON representation only** — `card_update_params`
+> returned bare `card_params` under `request.format.json?` instead of merging
+> over `{ due_on: nil }`, and `steps#update` changed the existing recordable
+> rather than rebuilding it, replacing assignees only when an assignee key was
+> present. An omitted field is now left unchanged; `"due_on": null` or `""`
+> clears; `"assignee_ids": []` removes everyone; `title` became optional on
+> step update. The HTML/turbo_stream leg kept `with_defaults(due_on: nil)`,
+> so this was a representation-level fork invisible to web callers.
+> It was the only commit in the range touching `doc/api` (2 lines in
+> `card_table_cards.md`, 8 in `card_table_steps.md`) and it touched neither
+> `config/routes.rb` nor any view under `app/views/api`, so
+> `spec/bc3-routes.json` regenerated with no route delta — the change was to an
+> omission rule on already-modelled endpoints, absorbed there as the
+> `"due_on": ""` clear encoding across all six SDKs and the removal of the
+> Cards preservation GET. That repin was **reactive, not preventive**: the
+> commit reached production before the compatibility release, so every released
+> SDK's explicit card due-date clear silently no-opped until the absorption
+> landed. The other commit was a single HTML view change hiding the boost emoji
+> picker on narrow columns; it touched no `doc/api`, no `config/routes.rb` and
+> no API view.
 >
 > The pin was `4dd2926f8a` (2026-08-03). The `2c0dafba13..4dd2926f8a` range (6 commits) contained exactly **one**
 > API-contract change, and it was the one that repin absorbed: BC3
