@@ -223,4 +223,62 @@ export class ProjectsService extends BaseService {
         })
     );
   }
+
+  /**
+   * Restore a project to active status from trash as well as from the archive.
+   * @param projectId - The project ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.projects.unarchive(123);
+   * ```
+   */
+  async unarchive(projectId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Projects",
+        operation: "UnarchiveProject",
+        resourceType: "project",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.PUT("/projects/{projectId}/status/active.json", {
+          params: {
+            path: { projectId },
+          },
+        })
+    );
+  }
+
+  /**
+   * Archive a project, removing it from the active project list.
+   * @param projectId - The project ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.projects.archive(123);
+   * ```
+   */
+  async archive(projectId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Projects",
+        operation: "ArchiveProject",
+        resourceType: "project",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.PUT("/projects/{projectId}/status/archived.json", {
+          params: {
+            path: { projectId },
+          },
+        })
+    );
+  }
 }

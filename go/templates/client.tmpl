@@ -1512,6 +1512,14 @@ func (s *ProjectsService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $p
 func (s *ProjectsService) Trash(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
 	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
 }
+{{else if eq $opid "ArchiveProject"}}
+func (s *ProjectsService) Archive(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+{{else if eq $opid "UnarchiveProject"}}
+func (s *ProjectsService) Unarchive(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
 
 {{/* Comments operations */}}
 {{else if eq $opid "ListComments"}}

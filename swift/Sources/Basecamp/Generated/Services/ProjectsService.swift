@@ -17,6 +17,15 @@ public struct ListProjectOptions: Sendable {
 
 
 public final class ProjectsService: BaseService, @unchecked Sendable {
+    public func archive(projectId: Int) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Projects", operation: "ArchiveProject", resourceType: "project", isMutation: true, projectId: projectId),
+            method: "PUT",
+            path: "/projects/\(projectId)/status/archived.json",
+            retryConfig: Metadata.retryConfig(for: "ArchiveProject")
+        )
+    }
+
     public func create(req: CreateProjectRequest) async throws -> Project {
         return try await request(
             OperationInfo(service: "Projects", operation: "CreateProject", resourceType: "project", isMutation: true),
@@ -59,6 +68,15 @@ public final class ProjectsService: BaseService, @unchecked Sendable {
             method: "DELETE",
             path: "/projects/\(projectId)",
             retryConfig: Metadata.retryConfig(for: "TrashProject")
+        )
+    }
+
+    public func unarchive(projectId: Int) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Projects", operation: "UnarchiveProject", resourceType: "project", isMutation: true, projectId: projectId),
+            method: "PUT",
+            path: "/projects/\(projectId)/status/active.json",
+            retryConfig: Metadata.retryConfig(for: "UnarchiveProject")
         )
     }
 

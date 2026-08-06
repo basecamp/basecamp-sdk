@@ -84,4 +84,50 @@ class ProjectsServiceTest < Minitest::Test
 
     assert_nil result
   end
+
+  def test_archive_project
+    stub_put("/12345/projects/123/status/archived.json", response_body: "", status: 204)
+
+    result = @account.projects.archive(project_id: 123)
+
+    assert_nil result
+  end
+
+  def test_unarchive_project
+    stub_put("/12345/projects/123/status/active.json", response_body: "", status: 204)
+
+    result = @account.projects.unarchive(project_id: 123)
+
+    assert_nil result
+  end
+
+  # The admin pro pack can limit archiving to admins and the project's creator,
+  # which bc3 answers with `head :forbidden`.
+  def test_archive_project_forbidden
+    stub_put("/12345/projects/123/status/archived.json", response_body: "", status: 403)
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.projects.archive(project_id: 123)
+    end
+
+    assert_equal 403, error.http_status
+  end
+
+  # The only behavioural evidence for ProjectLimitError. No SDK gives 507 a named
+  # class, so it lands in the generic ApiError arm carrying the status (SPEC.md §7).
+  def test_unarchive_project_at_project_limit
+    stub_put(
+      "/12345/projects/123/status/active.json",
+      response_body: { error: "The project limit for this account has been reached." },
+      status: 507
+    )
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.projects.unarchive(project_id: 123)
+    end
+
+    assert_equal 507, error.http_status
+    assert_equal Basecamp::ErrorCode::API, error.code
+    assert error.retryable, "Ruby's from_status marks every 5xx retryable"
+  end
 end

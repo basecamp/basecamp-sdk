@@ -122,4 +122,40 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
             httpDelete("/projects/${projectId}", operationName = info.operation)
         }) { Unit }
     }
+
+    /**
+     * Restore a project to active status from trash as well as from the archive.
+     * @param projectId The project ID
+     */
+    suspend fun unarchive(projectId: Long): Unit {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "UnarchiveProject",
+            resourceType = "project",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        request(info, {
+            httpPut("/projects/${projectId}/status/active.json", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Archive a project, removing it from the active project list.
+     * @param projectId The project ID
+     */
+    suspend fun archive(projectId: Long): Unit {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "ArchiveProject",
+            resourceType = "project",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        request(info, {
+            httpPut("/projects/${projectId}/status/archived.json", operationName = info.operation)
+        }) { Unit }
+    }
 }

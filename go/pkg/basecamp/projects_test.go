@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // fixturesDir returns the path to the fixtures directory.
@@ -366,3 +369,122 @@ func TestProjectsService_UpdateRetriesOn503WithFullBody(t *testing.T) {
 		}
 	}
 }
+
+// Trash, Archive and Unarchive are the three project status transitions. All
+// three answer 204 with an empty body, so the wrapper's contract is "no error,
+// nothing to decode" — plus the hook and gating plumbing every wrapper carries.
+func TestProjectsService_StatusTransitions(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		call       func(*ProjectsService) error
+		wantMethod string
+		wantPath   string
+	}{
+		{
+			name:       "Trash",
+			call:       func(s *ProjectsService) error { return s.Trash(context.Background(), 42) },
+			wantMethod: "DELETE",
+			wantPath:   "/99999/projects/42",
+		},
+		{
+			name:       "Archive",
+			call:       func(s *ProjectsService) error { return s.Archive(context.Background(), 42) },
+			wantMethod: "PUT",
+			wantPath:   "/99999/projects/42/status/archived.json",
+		},
+		{
+			name:       "Unarchive",
+			call:       func(s *ProjectsService) error { return s.Unarchive(context.Background(), 42) },
+			wantMethod: "PUT",
+			wantPath:   "/99999/projects/42/status/active.json",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotMethod, gotPath string
+			svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				gotMethod, gotPath = r.Method, r.URL.Path
+				w.WriteHeader(http.StatusNoContent)
+			})
+
+			if err := tc.call(svc); err != nil {
+				t.Fatalf("%s returned error: %v", tc.name, err)
+			}
+			if gotMethod != tc.wantMethod {
+				t.Errorf("method = %q, want %q", gotMethod, tc.wantMethod)
+			}
+			if gotPath != tc.wantPath {
+				t.Errorf("path = %q, want %q", gotPath, tc.wantPath)
+			}
+		})
+	}
+}
+
+// The admin pro pack can limit archiving to admins and the project's creator,
+// which bc3 answers with `head :forbidden`.
+func TestProjectsService_ArchiveForbidden(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"error":"Access denied"}`))
+	})
+
+	err := svc.Archive(context.Background(), 42)
+	if err == nil {
+		t.Fatal("Archive should have returned an error on 403")
+	}
+
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T", err)
+	}
+	if bcErr.Code != CodeForbidden {
+		t.Errorf("code = %q, want %q", bcErr.Code, CodeForbidden)
+	}
+	if bcErr.HTTPStatus != 403 {
+		t.Errorf("http status = %d, want 403", bcErr.HTTPStatus)
+	}
+}
+
+// The only behavioural evidence for ProjectLimitError. No SDK gives 507 a named
+// class, so it surfaces as a generic api_error carrying the status (SPEC.md §7).
+func TestProjectsService_UnarchiveAtProjectLimit(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInsufficientStorage)
+		_, _ = w.Write([]byte(`{"error":"The project limit for this account has been reached."}`))
+	})
+
+	err := svc.Unarchive(context.Background(), 42)
+	if err == nil {
+		t.Fatal("Unarchive should have returned an error on 507")
+	}
+
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T", err)
+	}
+	if bcErr.Code != CodeAPI {
+		t.Errorf("code = %q, want %q", bcErr.Code, CodeAPI)
+	}
+	if bcErr.HTTPStatus != 507 {
+		t.Errorf("http status = %d, want 507", bcErr.HTTPStatus)
+	}
+}
+
+// The low-level grouped client surface (generated.Client.Projects()) is emitted
+// from an explicit per-operation switch in go/templates/client.tmpl, NOT from the
+// operation list — so adding an operation to the spec does not add it here, and
+// nothing catches the omission: go-check-drift compares generated operations
+// against this package's wrappers and never looks at the grouped surface.
+// ArchiveProject and UnarchiveProject shipped without their template cases for
+// exactly that reason (caught in review on #679), leaving ProjectsService
+// asymmetric with RecordingsService, which has both.
+//
+// These method-value references are the cheap guard: they are compile-time only,
+// so a regressed template breaks the build here instead of silently shipping a
+// grouped client that cannot reach the operation.
+var (
+	_ = (*generated.ProjectsService).Archive
+	_ = (*generated.ProjectsService).Unarchive
+	_ = (*generated.ProjectsService).Trash
+)

@@ -3,6 +3,7 @@ import Foundation
 
 enum Metadata {
     private static let configs: [String: RetryConfig] = [
+        "ArchiveProject": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "ArchiveRecording": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CompleteTodo": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateAnswer": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
@@ -210,6 +211,7 @@ enum Metadata {
         "ToggleGauge": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "TrashProject": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "TrashRecording": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
+        "UnarchiveProject": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "UnarchiveRecording": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "UncompleteTodo": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "UnpinMessage": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
@@ -257,6 +259,7 @@ enum Metadata {
     }
 
     private static let idempotentOperations: Set<String> = [
+        "ArchiveProject",
         "ArchiveRecording",
         "CompleteTodo",
         "CreateBookmark",
@@ -298,6 +301,7 @@ enum Metadata {
         "ToggleGauge",
         "TrashProject",
         "TrashRecording",
+        "UnarchiveProject",
         "UnarchiveRecording",
         "UncompleteTodo",
         "UnpinMessage",

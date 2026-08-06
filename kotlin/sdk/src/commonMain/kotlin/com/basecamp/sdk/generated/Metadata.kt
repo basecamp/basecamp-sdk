@@ -20,6 +20,7 @@ object Metadata {
     )
 
     val operations: Map<String, OperationConfig> = mapOf(
+        "ArchiveProject" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ArchiveRecording" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CompleteTodo" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CreateAnswer" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
@@ -227,6 +228,7 @@ object Metadata {
         "ToggleGauge" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "TrashProject" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "TrashRecording" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "UnarchiveProject" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UnarchiveRecording" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UncompleteTodo" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UnpinMessage" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

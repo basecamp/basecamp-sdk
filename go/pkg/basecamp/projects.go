@@ -380,6 +380,57 @@ func (s *ProjectsService) Trash(ctx context.Context, id int64) (err error) {
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
+// Archive removes a project from the active project list.
+// Accounts on the admin pro pack may restrict archiving to admins and the
+// project's creator, which answers 403.
+func (s *ProjectsService) Archive(ctx context.Context, id int64) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "Archive",
+		ResourceType: "project", IsMutation: true,
+		ProjectID: id,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.ArchiveProjectWithResponse(ctx, s.client.accountID, id)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// Unarchive restores a project to active status from trash as well as from the
+// archive, making it the inverse of both Archive and Trash. Restoring counts
+// against the account's project limit, so it answers 507 when that limit is
+// already reached.
+func (s *ProjectsService) Unarchive(ctx context.Context, id int64) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "Unarchive",
+		ResourceType: "project", IsMutation: true,
+		ProjectID: id,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.UnarchiveProjectWithResponse(ctx, s.client.accountID, id)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // projectFromGenerated converts a generated Project to our clean Project type.
 func projectFromGenerated(gp generated.Project) Project {
 	p := Project{

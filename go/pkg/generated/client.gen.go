@@ -2346,6 +2346,13 @@ type ProjectConstructionAttributes struct {
 	Name        string  `json:"name"`
 }
 
+// ProjectLimitErrorResponseContent The account has reached its project limit. Raised by CreateProject and by
+// UnarchiveProject, both of which add to the active project count.
+type ProjectLimitErrorResponseContent struct {
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
+}
+
 // Question defines model for Question.
 type Question struct {
 	AnswersCount     *int32            `json:"answers_count,omitempty"`
@@ -6034,6 +6041,12 @@ type ClientInterface interface {
 
 	UpdateProjectAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UnarchiveProject request
+	UnarchiveProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ArchiveProject request
+	ArchiveProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetProjectTimeline request
 	GetProjectTimeline(ctx context.Context, accountId string, projectId int64, params *GetProjectTimelineParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -8452,6 +8465,26 @@ func (c *Client) UpdateProjectAccess(ctx context.Context, accountId string, proj
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectAccessRequest(c.Server, accountId, projectId, body)
 	}, true, "UpdateProjectAccess", reqEditors...)
+
+}
+
+// UnarchiveProject is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UnarchiveProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUnarchiveProjectRequest(c.Server, accountId, projectId)
+	}, true, "UnarchiveProject", reqEditors...)
+
+}
+
+// ArchiveProject is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ArchiveProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewArchiveProjectRequest(c.Server, accountId, projectId)
+	}, true, "ArchiveProject", reqEditors...)
 
 }
 
@@ -17444,6 +17477,88 @@ func NewUpdateProjectAccessRequestWithBody(server string, accountId string, proj
 	return req, nil
 }
 
+// NewUnarchiveProjectRequest generates requests for UnarchiveProject
+func NewUnarchiveProjectRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/status/active.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewArchiveProjectRequest generates requests for ArchiveProject
+func NewArchiveProjectRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/status/archived.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetProjectTimelineRequest generates requests for GetProjectTimeline
 func NewGetProjectTimelineRequest(server string, accountId string, projectId int64, params *GetProjectTimelineParams) (*http.Request, error) {
 	var err error
@@ -23709,6 +23824,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateGaugeNeedle":                  {Idempotent: false, HasSensitiveParams: false},
 	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectAccess":                {Idempotent: true, HasSensitiveParams: false},
+	"UnarchiveProject":                   {Idempotent: true, HasSensitiveParams: false},
+	"ArchiveProject":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimesheet":                {Idempotent: true, HasSensitiveParams: false},
 	"GetAnswer":                          {Idempotent: true, HasSensitiveParams: false},
@@ -23965,6 +24082,8 @@ var operationRetryMax = map[string]int{
 	"CreateGaugeNeedle":                  2,
 	"ListProjectPeople":                  3,
 	"UpdateProjectAccess":                3,
+	"UnarchiveProject":                   3,
+	"ArchiveProject":                     3,
 	"GetProjectTimeline":                 3,
 	"GetProjectTimesheet":                3,
 	"GetAnswer":                          3,
@@ -24219,6 +24338,8 @@ var operationRetryOn = map[string][]int{
 	"CreateGaugeNeedle":                  {429, 503},
 	"ListProjectPeople":                  {429, 503},
 	"UpdateProjectAccess":                {429, 503},
+	"UnarchiveProject":                   {429, 503},
+	"ArchiveProject":                     {429, 503},
 	"GetProjectTimeline":                 {429, 503},
 	"GetProjectTimesheet":                {429, 503},
 	"GetAnswer":                          {429, 503},
@@ -25060,6 +25181,14 @@ func (s *ProjectsService) Update(ctx context.Context, accountId string, projectI
 	return s.client.UpdateProject(ctx, accountId, projectId, body, reqEditors...)
 }
 
+func (s *ProjectsService) Unarchive(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UnarchiveProject(ctx, accountId, projectId, reqEditors...)
+}
+
+func (s *ProjectsService) Archive(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ArchiveProject(ctx, accountId, projectId, reqEditors...)
+}
+
 func (s *CommentsService) List(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.ListComments(ctx, accountId, recordingId, params, reqEditors...)
 }
@@ -25787,6 +25916,12 @@ type ClientWithResponsesInterface interface {
 	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
 	UpdateProjectAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
+
+	// UnarchiveProjectWithResponse request
+	UnarchiveProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*UnarchiveProjectResponse, error)
+
+	// ArchiveProjectWithResponse request
+	ArchiveProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ArchiveProjectResponse, error)
 
 	// GetProjectTimelineWithResponse request
 	GetProjectTimelineWithResponse(ctx context.Context, accountId string, projectId int64, params *GetProjectTimelineParams, reqEditors ...RequestEditorFn) (*GetProjectTimelineResponse, error)
@@ -30546,6 +30681,7 @@ type CreateProjectResponse struct {
 	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
+	JSON507      *ProjectLimitErrorResponseContent
 }
 
 // Status returns HTTPResponse.Status
@@ -30875,6 +31011,73 @@ func (r UpdateProjectAccessResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateProjectAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UnarchiveProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+	JSON507      *ProjectLimitErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UnarchiveProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnarchiveProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnarchiveProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ArchiveProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ArchiveProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ArchiveProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ArchiveProjectResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -36273,6 +36476,24 @@ func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseUpdateProjectAccessResponse(rsp)
+}
+
+// UnarchiveProjectWithResponse request returning *UnarchiveProjectResponse
+func (c *ClientWithResponses) UnarchiveProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*UnarchiveProjectResponse, error) {
+	rsp, err := c.UnarchiveProject(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnarchiveProjectResponse(rsp)
+}
+
+// ArchiveProjectWithResponse request returning *ArchiveProjectResponse
+func (c *ClientWithResponses) ArchiveProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*ArchiveProjectResponse, error) {
+	rsp, err := c.ArchiveProject(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseArchiveProjectResponse(rsp)
 }
 
 // GetProjectTimelineWithResponse request returning *GetProjectTimelineResponse
@@ -44173,6 +44394,12 @@ func ParseCreateProjectResponse(rsp *http.Response) (*CreateProjectResponse, err
 			response.JSON500 = &dest
 		}
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
+		var dest ProjectLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON507 = &dest
+		}
+
 	}
 
 	return response, nil
@@ -44637,6 +44864,104 @@ func ParseUpdateProjectAccessResponse(rsp *http.Response) (*UpdateProjectAccessR
 		var dest RateLimitErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUnarchiveProjectResponse parses an HTTP response from a UnarchiveProjectWithResponse call
+func ParseUnarchiveProjectResponse(rsp *http.Response) (*UnarchiveProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnarchiveProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
+		var dest ProjectLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON507 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseArchiveProjectResponse parses an HTTP response from a ArchiveProjectWithResponse call
+func ParseArchiveProjectResponse(rsp *http.Response) (*ArchiveProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ArchiveProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

@@ -102,6 +102,28 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/7"))
     }
 
+    func testArchiveProjectSendsPut() async throws {
+        let transport = MockTransport(statusCode: 204, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        try await account.projects.archive(projectId: 7)
+
+        let req = transport.lastRequest!.request
+        XCTAssertEqual(req.httpMethod, "PUT")
+        XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/7/status/archived.json"))
+    }
+
+    func testUnarchiveProjectSendsPut() async throws {
+        let transport = MockTransport(statusCode: 204, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        try await account.projects.unarchive(projectId: 7)
+
+        let req = transport.lastRequest!.request
+        XCTAssertEqual(req.httpMethod, "PUT")
+        XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/7/status/active.json"))
+    }
+
     // MARK: - requestPaginated path
 
     func testListProjectsReturnsPaginatedResult() async throws {

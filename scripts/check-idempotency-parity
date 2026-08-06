@@ -119,8 +119,12 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # UpdateGoogleDocument are naturally idempotent (+2 both counts); GetCloudFile
 # and GetGoogleDocument are readonly (+2 union only); the two creates are
 # neither.
-expected_idempotent=81
-expected_union=206
+# Project archive/unarchive absorption (+2 ops): ArchiveProject and
+# UnarchiveProject are both naturally-idempotent PUTs — re-archiving an archived
+# project is a no-op that still answers 204 — so both land in both counts
+# (+2 each). Neither is readonly, so the union moves only by the same 2.
+expected_idempotent=83
+expected_union=208
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

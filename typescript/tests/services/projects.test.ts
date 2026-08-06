@@ -136,4 +136,62 @@ describe("ProjectsService", () => {
       await expect(client.projects.trash(42)).resolves.toBeUndefined();
     });
   });
+
+  describe("archive", () => {
+    it("should archive a project", async () => {
+      server.use(
+        http.put(`${BASE_URL}/projects/42/status/archived.json`, () => {
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(client.projects.archive(42)).resolves.toBeUndefined();
+    });
+
+    // The admin pro pack can limit archiving to admins and the project's
+    // creator; bc3 answers `head :forbidden` from
+    // ensure_can_archive_or_trash_project.
+    it("should surface a 403 when archiving is restricted", async () => {
+      server.use(
+        http.put(`${BASE_URL}/projects/42/status/archived.json`, () => {
+          return new HttpResponse(null, { status: 403 });
+        })
+      );
+
+      await expect(client.projects.archive(42)).rejects.toMatchObject({
+        httpStatus: 403,
+      });
+    });
+  });
+
+  describe("unarchive", () => {
+    it("should unarchive a project", async () => {
+      server.use(
+        http.put(`${BASE_URL}/projects/42/status/active.json`, () => {
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(client.projects.unarchive(42)).resolves.toBeUndefined();
+    });
+
+    // The only behavioural evidence for ProjectLimitError. No SDK gives 507 a
+    // named class, so it surfaces as a generic api_error carrying the status
+    // (SPEC.md §7).
+    it("should surface the 507 project limit as a generic api_error", async () => {
+      server.use(
+        http.put(`${BASE_URL}/projects/42/status/active.json`, () => {
+          return HttpResponse.json(
+            { error: "The project limit for this account has been reached." },
+            { status: 507 }
+          );
+        })
+      );
+
+      await expect(client.projects.unarchive(42)).rejects.toMatchObject({
+        code: "api_error",
+        httpStatus: 507,
+      });
+    });
+  });
 });

@@ -1308,6 +1308,11 @@ class ProjectConstructionAttributes(TypedDict):
     name: str
 
 
+class ProjectLimitErrorResponseContent(TypedDict):
+    error: str
+    message: NotRequired[str]
+
+
 class Question(TypedDict):
     answers_count: NotRequired[int]
     answers_url: NotRequired[str]

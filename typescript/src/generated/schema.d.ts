@@ -1950,6 +1950,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/status/active.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Restore a project to active status from trash as well as from the archive (returns 204 No Content).
+         *     This is the inverse of both ArchiveProject and TrashProject. Restoring counts against
+         *     the account's project limit, so it answers 507 when that limit is already reached.
+         */
+        put: operations["UnarchiveProject"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/status/archived.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Archive a project, removing it from the active project list (returns 204 No Content).
+         *     Accounts on the admin pro pack may restrict archiving to admins and the project's
+         *     creator, which answers 403.
+         */
+        put: operations["ArchiveProject"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/timeline.json": {
         parameters: {
             query?: never;
@@ -5232,6 +5274,14 @@ export interface components {
         ProjectConstructionAttributes: {
             name: string;
             description?: string;
+        };
+        /**
+         * @description The account has reached its project limit. Raised by CreateProject and by
+         *     UnarchiveProject, both of which add to the active project count.
+         */
+        ProjectLimitErrorResponseContent: {
+            error: string;
+            message?: string;
         };
         Question: {
             /** Format: int64 */
@@ -15072,6 +15122,15 @@ export interface operations {
                     "application/json": components["schemas"]["InternalServerErrorResponseContent"];
                 };
             };
+            /** @description ProjectLimitError 507 response */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLimitErrorResponseContent"];
+                };
+            };
         };
     };
     ListRecordings: {
@@ -15656,6 +15715,127 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UnarchiveProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description UnarchiveProject 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+            /** @description ProjectLimitError 507 response */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLimitErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ArchiveProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ArchiveProject 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

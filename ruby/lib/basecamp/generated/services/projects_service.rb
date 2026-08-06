@@ -60,6 +60,26 @@ module Basecamp
           nil
         end
       end
+
+      # Restore a project to active status from trash as well as from the archive (returns 204 No Content).
+      # @param project_id [Integer] project id ID
+      # @return [void]
+      def unarchive(project_id:)
+        with_operation(service: "projects", operation: "unarchive", is_mutation: true, project_id: project_id) do
+          http_put("/projects/#{project_id}/status/active.json")
+          nil
+        end
+      end
+
+      # Archive a project, removing it from the active project list (returns 204 No Content).
+      # @param project_id [Integer] project id ID
+      # @return [void]
+      def archive(project_id:)
+        with_operation(service: "projects", operation: "archive", is_mutation: true, project_id: project_id) do
+          http_put("/projects/#{project_id}/status/archived.json")
+          nil
+        end
+      end
     end
   end
 end

@@ -64,6 +64,22 @@ class ProjectsService(BaseService):
             operation="TrashProject",
         )
 
+    def unarchive(self, *, project_id: int) -> None:
+        self._request_void(
+            OperationInfo(service="projects", operation="unarchive", is_mutation=True, project_id=project_id),
+            "PUT",
+            f"/projects/{project_id}/status/active.json",
+            operation="UnarchiveProject",
+        )
+
+    def archive(self, *, project_id: int) -> None:
+        self._request_void(
+            OperationInfo(service="projects", operation="archive", is_mutation=True, project_id=project_id),
+            "PUT",
+            f"/projects/{project_id}/status/archived.json",
+            operation="ArchiveProject",
+        )
+
 
 class AsyncProjectsService(AsyncBaseService):
     async def list(
@@ -119,4 +135,20 @@ class AsyncProjectsService(AsyncBaseService):
             "DELETE",
             f"/projects/{project_id}",
             operation="TrashProject",
+        )
+
+    async def unarchive(self, *, project_id: int) -> None:
+        await self._request_void(
+            OperationInfo(service="projects", operation="unarchive", is_mutation=True, project_id=project_id),
+            "PUT",
+            f"/projects/{project_id}/status/active.json",
+            operation="UnarchiveProject",
+        )
+
+    async def archive(self, *, project_id: int) -> None:
+        await self._request_void(
+            OperationInfo(service="projects", operation="archive", is_mutation=True, project_id=project_id),
+            "PUT",
+            f"/projects/{project_id}/status/archived.json",
+            operation="ArchiveProject",
         )

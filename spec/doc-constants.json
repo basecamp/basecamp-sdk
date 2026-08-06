@@ -48,7 +48,7 @@
   "unmarkedPinCitations": {
     "spec/api-gaps/README.md": {
       "count": 2,
-      "reason": "the two ways a range triage names its own endpoint, which is by definition the pin that repin set: the 4dd2926f8a..4e34dc83eb range itself, and BC3 #12521 cited as the commit that shipped presence-aware card and card-step updates. Both are bound to that triage and stay true after the next repin. The pin sentence is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file"
+      "reason": "the two ways a range triage names its own endpoint, which is by definition the pin that repin set: the 4e34dc83eb..7fe1c63ab3 range itself, and BC3 #12566 cited as the commit that shipped the note documenting a project's status as read-only on update. Both are bound to that triage and stay true after the next repin. Note the count survived a repin WITHIN this triage without changing meaning: the earlier a26c2e479f endpoint and its #12555 citation stopped being checked the moment the pin advanced past them, and the two citations granted here are the new endpoint's. The pin sentence is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file"
     }
   }
 }

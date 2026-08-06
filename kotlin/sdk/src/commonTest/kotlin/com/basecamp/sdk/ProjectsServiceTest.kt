@@ -202,6 +202,102 @@ class ProjectsServiceTest {
     }
 
     @Test
+    fun archiveProject() = runTest {
+        var capturedMethod: HttpMethod? = null
+        var capturedPath: String? = null
+
+        val client = mockClient { request ->
+            capturedMethod = request.method
+            capturedPath = request.url.encodedPath
+
+            respond(
+                content = "",
+                status = HttpStatusCode.NoContent,
+            )
+        }
+
+        val account = client.forAccount("12345")
+        account.projects.archive(projectId = 42)
+
+        assertEquals(HttpMethod.Put, capturedMethod)
+        assertTrue(capturedPath!!.endsWith("/projects/42/status/archived.json"))
+
+        client.close()
+    }
+
+    @Test
+    fun unarchiveProject() = runTest {
+        var capturedMethod: HttpMethod? = null
+        var capturedPath: String? = null
+
+        val client = mockClient { request ->
+            capturedMethod = request.method
+            capturedPath = request.url.encodedPath
+
+            respond(
+                content = "",
+                status = HttpStatusCode.NoContent,
+            )
+        }
+
+        val account = client.forAccount("12345")
+        account.projects.unarchive(projectId = 42)
+
+        assertEquals(HttpMethod.Put, capturedMethod)
+        assertTrue(capturedPath!!.endsWith("/projects/42/status/active.json"))
+
+        client.close()
+    }
+
+    // The admin pro pack can limit archiving to admins and the project's creator,
+    // which bc3 answers with `head :forbidden`.
+    @Test
+    fun archiveProjectForbiddenThrows() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """{"error": "Access denied"}""",
+                status = HttpStatusCode.Forbidden,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        try {
+            account.projects.archive(projectId = 42)
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Forbidden) {
+            assertEquals(403, e.httpStatus)
+        }
+
+        client.close()
+    }
+
+    // The only behavioural evidence for ProjectLimitError. No SDK gives 507 a named
+    // class, so it lands in the generic Api arm carrying the status (SPEC.md §7).
+    @Test
+    fun unarchiveProjectAtProjectLimitThrows() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """{"error": "The project limit for this account has been reached."}""",
+                status = HttpStatusCode.InsufficientStorage,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        try {
+            account.projects.unarchive(projectId = 42)
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Api) {
+            assertEquals(507, e.httpStatus)
+            assertEquals("The project limit for this account has been reached.", e.message)
+            assertTrue(e.retryable, "Kotlin marks every unclassified 5xx retryable")
+        }
+
+        client.close()
+    }
+
+    @Test
     fun projectNotFoundThrows() = runTest {
         val client = mockClient { _ ->
             respond(
