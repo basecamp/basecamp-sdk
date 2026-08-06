@@ -1,0 +1,35 @@
+go/pkg/basecamp/projects_test.go
+  s_2df5574aca7ce9::t_9d34d80e3756dd 370-470
+  s_2df5574aca7ce9::t_48375217bfe139 6
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_2df5574aca7ce9::t_48bccbaf99bd0d 105-126
+ruby/test/basecamp/services/projects_service_test.rb
+  s_2df5574aca7ce9::t_4a85d33c92248e 87-132
+go/pkg/basecamp/projects.go
+  s_2df5574aca7ce9::t_3b976bc169263e 383-433
+python/tests/services/test_projects.py
+  s_2df5574aca7ce9::t_337cb8a60d74cf 81,91,103,141,151,161
+  s_2df5574aca7ce9::t_a6d5e5701bd938 73-80,82-90,92-102,104-140,142-150,152-160,162-182
+  s_2df5574aca7ce9::t_831f1ee689b26e 4,7,9-11
+typescript/tests/services/projects.test.ts
+  s_2df5574aca7ce9::t_b5b7787aece916 139-196
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ProjectsServiceTest.kt
+  s_2df5574aca7ce9::t_9c64f197a66eac 204,252-299
+  s_2df5574aca7ce9::t_2f939950a3ad1e 205-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9bc5832a544a8810c467f5ebbea4f56c6c4fa1a8",
+  "prompts": {},
+  "sessions": {
+    "s_2df5574aca7ce9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b042b5dd-8507-4859-9ca5-57664b41af01",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
