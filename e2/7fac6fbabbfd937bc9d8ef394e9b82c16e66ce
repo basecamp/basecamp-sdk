@@ -1,0 +1,164 @@
+spec/api-provenance.json
+  s_6596a1ee398fe6::t_c45cdd96317872 4-5
+typescript/scripts/generate-services.ts
+  s_6596a1ee398fe6::t_b2f27cf9aa6cef 211
+  s_6596a1ee398fe6::t_e249e1375437fb 419
+spec/basecamp.smithy
+  s_6596a1ee398fe6::t_79f1578c9e3538 3076
+  s_6596a1ee398fe6::t_c8bcae5fcdec6f 2670
+  s_6596a1ee398fe6::t_e2b4fa6c1a3ac1 7266-7320
+  s_6596a1ee398fe6::t_233bcb7ec2b305 118
+  s_6596a1ee398fe6::t_ce53d5f4762af7 480-492
+  s_6596a1ee398fe6::t_f7bfa921d35534 4593
+  s_6596a1ee398fe6::t_88d754378ccf80 2802
+  s_6596a1ee398fe6::t_5a3a71a43be936 2698-2744
+  s_e06e3bd3e6c564::t_bde193eb4286bf 54
+spec/bc3-routes.json
+  s_6596a1ee398fe6::t_256fcc2da639db 8-9,2804-2814,3298-3308,3994-4015
+ruby/scripts/generate-services.rb
+  s_6596a1ee398fe6::t_c102501d4d5036 68
+  s_6596a1ee398fe6::t_ad069c594bf0a5 220
+behavior-model.json
+  s_6596a1ee398fe6::t_089cf575af5b01 395-405
+spec/api-gaps/upload-create-subscriptions.md
+  s_6596a1ee398fe6::t_b0a95996f2e798 68,70-71,77-87,89-92,95-101
+  s_6596a1ee398fe6::t_434967c337a32c 1-19,26-67,69,72-76,88,93-94
+  s_6596a1ee398fe6::t_3089d129554618 20-25
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  s_6596a1ee398fe6::t_14a16d16f61d4b 51
+python/scripts/generate_services.py
+  s_6596a1ee398fe6::t_f95ba806ec9df3 69
+  s_6596a1ee398fe6::t_81510abe046c2c 226
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_6596a1ee398fe6::t_c367f5107287a9 127
+go/pkg/basecamp/api-provenance.json
+  s_6596a1ee398fe6::t_256fcc2da639db 4-5
+openapi.json
+  s_6596a1ee398fe6::t_089cf575af5b01 479-488,7325-7334,25394-25523,26148-26157,29137-29170,31385,33813-33827,35834-35914
+  s_d3c2521698c7f8::t_4ab7861bc225c8 5
+SPEC.md
+  s_6596a1ee398fe6::t_bbadc06c9eab39 527
+  s_6596a1ee398fe6::t_fe634737d81ef6 541-545
+  s_6596a1ee398fe6::t_f89da562106666 523
+  s_e06e3bd3e6c564::t_1231efc84e5f09 1337,3249
+spec/bc3-route-allowlist.yml
+  s_6596a1ee398fe6::t_5aefddb1a99695 287
+spec/api-gaps/upload-new-version.md
+  s_6596a1ee398fe6::t_2444060dfbbe32 101-102
+  s_6596a1ee398fe6::t_107a0137672d09 3,6-11,20
+  s_6596a1ee398fe6::t_2529ef20048425 103-139
+spec/overlays/tags.smithy
+  s_6596a1ee398fe6::t_481ba3f8ceb927 67
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_6596a1ee398fe6::t_187eaa9d020ecd 52
+  s_6596a1ee398fe6::t_530ba1289f5648 263
+spec/api-gaps/README.md
+  s_6596a1ee398fe6::t_fbd2f319b35825 101,120,127,136,143,219,246,257
+  s_6596a1ee398fe6::t_43d96b3e0b1012 55-56
+  s_6596a1ee398fe6::t_e14bdc1a2fbf5c 275
+  s_6596a1ee398fe6::t_cbacf65d231e6c 265
+COORDINATION.md
+  s_e06e3bd3e6c564::t_fecbf355723d8a 12
+go/pkg/basecamp/url-routes.json
+  s_196407525132f3::t_58dd6e321f4611 2703-2704
+go/pkg/basecamp/version.go
+  s_196407525132f3::t_0f4dc3603615d5 7
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_196407525132f3::t_34a04781169004 45
+python/src/basecamp/_version.py
+  s_196407525132f3::t_4c463ead2e2490 2
+python/src/basecamp/generated/metadata.json
+  s_196407525132f3::t_8d63e264a7708b 391-401
+python/src/basecamp/generated/services/uploads.py
+  s_196407525132f3::t_00d274e5ddec78 39-62,125-148
+python/src/basecamp/generated/types.py
+  s_196407525132f3::t_991ccba53b34c1 631-638,1665-1669,2179-2199
+ruby/lib/basecamp/generated/metadata.json
+  s_196407525132f3::t_b6b65a725280f1 4,3123-3133
+ruby/lib/basecamp/generated/services/uploads_service.rb
+  s_52e1c3aa0894dd::t_d4ca3ca998fb86 40-57
+ruby/lib/basecamp/generated/types.rb
+  s_196407525132f3::t_1ca5d5e067d8c8 4,5066-5141
+ruby/lib/basecamp/version.rb
+  s_196407525132f3::t_ce0c6b917b92d1 5
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_196407525132f3::t_ba6944134debb8 30
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_196407525132f3::t_c83be1ba413736 41
+swift/Sources/Basecamp/Generated/Models/CreateUploadVersionRequest.swift
+  s_196407525132f3::t_f7d03bf58efb6e 1-24
+swift/Sources/Basecamp/Generated/Models/UploadVersion.swift
+  s_196407525132f3::t_b3df35c8da234f 1-36
+swift/Sources/Basecamp/Generated/Models/UploadVersionFile.swift
+  s_196407525132f3::t_279ee509c6eefa 1-27
+swift/Sources/Basecamp/Generated/Services/UploadsService.swift
+  s_196407525132f3::t_8508c8559421db 35-44,54
+typescript/src/client.ts
+  s_196407525132f3::t_94cfcc91072a46 270
+typescript/src/generated/metadata.ts
+  s_196407525132f3::t_d748d67ffc3576 40,3160-3170
+typescript/src/generated/openapi-stripped.json
+  s_196407525132f3::t_f6a21a91c269c2 5,420-429,6584-6593,22686-22804,23363-23372,26297-26330,28545,30973-30987,32994-33074
+typescript/src/generated/path-mapping.ts
+  s_196407525132f3::t_9c2b3774633916 196
+typescript/src/generated/schema.d.ts
+  s_196407525132f3::t_787daf3237ede6 3310-3317,4224-4243,4945,5926-5936,6837-6879,7343-7351,11455-11463,22382-22470,22862-22870
+typescript/src/generated/services/uploads.ts
+  s_196407525132f3::t_941365372f8176 36-55,159,166,185-225
+go/pkg/generated/client.gen.go
+  s_6596a1ee398fe6::t_a3be7abeb10c26 1017-1040,2004,2995-3004,4073-4111,5117-5119,6485-6489,9978-10007,23193-23246,24093,24352,24609,26453-26457,26646,28779,34660-34696,34878,37851-37867,38256-38261,41528-41533,50400-50467,50781-50786
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_6596a1ee398fe6::t_44412f0751e7b3 58
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_6596a1ee398fe6::t_57e91fa144f43a 1168-1176
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/uploads.kt
+  s_6596a1ee398fe6::t_afcec039f543f9 64,76-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e27fac6fbabbfd937bc9d8ef394e9b82c16e66ce",
+  "prompts": {},
+  "sessions": {
+    "s_196407525132f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff17d3d9-4858-437c-982c-0e61f9b1adfb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_52e1c3aa0894dd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5ce1311-e75b-46dc-9419-83483dc98797",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d3c2521698c7f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b28ff3d-f55b-4c24-a27b-07324bf2ee10",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e06e3bd3e6c564": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ceab2f3-5d69-490d-a9af-b2b1ab8f4381",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

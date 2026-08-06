@@ -1,0 +1,35 @@
+go/pkg/basecamp/vaults.go
+  s_6596a1ee398fe6::t_3e9aeb1932bde4 1091-1097
+  s_6596a1ee398fe6::t_3f92964c1326d0 1156,1158-1159
+  s_6596a1ee398fe6::t_b79b626e0aa417 976,979,983,987,1026-1041,1050-1090,1098-1110,1113
+  s_6596a1ee398fe6::t_6ee50e4e27e934 910-973,975,978,982
+  s_6596a1ee398fe6::t_477448e36028e4 1042-1049
+  s_6596a1ee398fe6::t_bc2e15253fb33d 1188-1189,1192
+  s_6596a1ee398fe6::t_d3f5584c942ed5 224-227
+  s_6596a1ee398fe6::t_a9aede5a643f82 219-222,840-841
+  s_6596a1ee398fe6::t_51235793eb38a4 974,977,980-981,984-986,988
+go/pkg/basecamp/vaults_test.go
+  s_6596a1ee398fe6::t_a9aede5a643f82 591-597,606-607,624,635-640,692
+go/pkg/basecamp/optional_presence_test.go
+  s_6596a1ee398fe6::t_a1c508f60171c7 465-483,486-490,492-493,495-496
+  s_6596a1ee398fe6::t_fca01547a62c80 484-485,491,494
+  s_6596a1ee398fe6::t_a9aede5a643f82 398,408-412,414
+  s_6596a1ee398fe6::t_64831de6ba48f9 337-397,399-407,413,415-464,497
+  s_6596a1ee398fe6::t_fc544d1d84eaf5 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8c820cbbf64a99daf6f0b99102663af6a55b9b6b",
+  "prompts": {},
+  "sessions": {
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

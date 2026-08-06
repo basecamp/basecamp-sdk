@@ -1,0 +1,40 @@
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_6596a1ee398fe6::t_f112a1e1317f62 39,48
+conformance/runner/go/main.go
+  s_6596a1ee398fe6::t_9aa491c3926abf 1168-1238,1979-2003
+conformance/tests/uploads_write.json
+  s_6596a1ee398fe6::t_17844ce3b1e63c 24-26,29-67,70-102,171-173,176-214,217-249,304-306,309-347,350-382,435-437,440-478,481-484,486-513,570-572,575-613,616-648
+  s_6596a1ee398fe6::t_8f4c2bb653b3b5 1-23,27-28,68-69,103-170,174-175,215-216,250-303,307-308,348-349,383-434,438-439,479-480,485,514-569,573-574,614-615,649-675,677-805,813-815,818,829-830,833,844-845,848-903,905-915
+  s_6596a1ee398fe6::t_a2fb41ed9ecb6a 676,806-812,816-817,819-828,831-832,834-843,846-847,904
+conformance/runner/typescript/runner.test.ts
+  s_6596a1ee398fe6::t_5a4ddbc294385d 282-309,767-792
+  s_6596a1ee398fe6::t_84d4608c7cb19d 281,793
+conformance/runner/python/runner.py
+  s_6596a1ee398fe6::t_451fbd4045d86d 212-245,580-598
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_6596a1ee398fe6::t_f112a1e1317f62 162-190,764-789
+  s_6596a1ee398fe6::t_828b700b87a3f2 790
+conformance/runner/ruby/runner.rb
+  s_6596a1ee398fe6::t_e9bcd01e16cd0a 356-368,668-701
+  s_6596a1ee398fe6::t_b799018381632f 702
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_6596a1ee398fe6::t_08bfe9792c5dab 1467-1468
+  s_6596a1ee398fe6::t_9287a62d3cc5e0 82-116,1437-1466,1469
+  s_6596a1ee398fe6::t_c806dc2711dacf 1470
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ef2b4a71d3ece1af256b26afd2e3f0200b748225",
+  "prompts": {},
+  "sessions": {
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
