@@ -13,7 +13,7 @@ import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
 import type { BasecampHooks, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
 import { isLocalhost, requireSameOrigin } from "./security.js";
-import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
+import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
 import { createDownloadURL, type DownloadResult } from "./download.js";
 import {
@@ -327,6 +327,17 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
       "usage",
       `'requestTimeoutMs' must be an integer between 0 and ${MAX_TIMEOUT_MS}, got ${requestTimeoutMs}`
     );
+  }
+
+  // The cap the standalone helpers validate is the same cap the config carries,
+  // and this is the wider door: `maxPages` here is handed to every service and
+  // reached only later, inside `BaseService`'s `page < this.maxPages` loops, far
+  // from the call that misconfigured it. Same predicate, same error, checked
+  // once at construction — see assertValidMaxPages for what each rejected value
+  // does to the bound. Only when the caller supplied one: `undefined` must keep
+  // falling through to DEFAULT_MAX_PAGES.
+  if (maxPages !== undefined) {
+    assertValidMaxPages(maxPages);
   }
 
   const authStrategy: AuthStrategy = auth ?? bearerAuth(accessToken!);
@@ -1094,9 +1105,26 @@ function createRetryingFetch(
 // Pagination Helper
 // =============================================================================
 
+
 /**
  * Fetches all pages of a paginated resource using Link header pagination.
- * Automatically follows rel="next" links until no more pages exist.
+ * Automatically follows rel="next" links until no more pages exist, or until
+ * `maxPages` pages have been consumed.
+ *
+ * The cap is not optional in spirit: a Link header naming the page it was
+ * served from makes "until no more pages exist" never true, and the header is
+ * attacker-influenced (that is why `isSameOrigin` is checked below). Every
+ * other pagination loop in this SDK, and in the other five, is bounded the
+ * same way. Reaching the cap stops quietly — there is no meta channel on a
+ * bare `T[]` to report it, and throwing would break callers who legitimately
+ * have that many pages.
+ *
+ * @param maxPages - Safety cap on pages CONSUMED. Must be a positive integer;
+ *   `0`, negatives, `NaN`, `Infinity` and non-integers all throw
+ *   `BasecampError("usage")` before any request is made. Defaults to
+ *   `DEFAULT_MAX_PAGES`.
+ * @throws {BasecampError} with `code: "usage"` if `maxPages` is not a positive
+ *   integer.
  *
  * @example
  * ```ts
@@ -1111,14 +1139,26 @@ function createRetryingFetch(
 export async function fetchAllPages<T>(
   initialResponse: Response,
   parse: (response: Response) => Promise<T[]>,
-  authHeader?: string
+  authHeader?: string,
+  maxPages: number = DEFAULT_MAX_PAGES
 ): Promise<T[]> {
+  assertValidMaxPages(maxPages);
+
   const results: T[] = [];
   let response = initialResponse;
 
-  while (true) {
+  for (let page = 1; page <= maxPages; page++) {
     const items = await parse(response.clone());
     results.push(...items);
+
+    // Before reading the Link header, not after fetching it. The loop consumes
+    // the current page at the head of the iteration and fetches the next at the
+    // tail, so testing the cap only in the `for` condition would let the final
+    // allowed iteration issue a request whose response is never parsed and
+    // never returned — and that request goes to a URL taken from an
+    // attacker-influenceable header. `maxPages` counts pages CONSUMED, matching
+    // BaseService.followPagination.
+    if (page === maxPages) break;
 
     const rawNextUrl = parseNextLink(response.headers.get("Link"));
     if (!rawNextUrl) break;
@@ -1146,6 +1186,23 @@ export async function fetchAllPages<T>(
  * Async generator that yields pages of results one at a time.
  * Useful for processing large datasets without loading everything into memory.
  *
+ * Bounded by `maxPages` for the same reason as {@link fetchAllPages}: a Link
+ * header that points at its own page would otherwise yield forever.
+ *
+ * Validation is EAGER, which is why this is a plain function returning a
+ * generator rather than an `async function*`. The body of an `async function*`
+ * does not run until something iterates it, so a check written inside one would
+ * surface a bad `maxPages` at some later `for await` — possibly in a different
+ * function, on a generator that was passed along. A usage error is a programmer
+ * error and belongs at the call site that made it.
+ *
+ * @param maxPages - Safety cap on pages CONSUMED. Must be a positive integer;
+ *   `0`, negatives, `NaN`, `Infinity` and non-integers all throw
+ *   `BasecampError("usage")` from this call, before the generator is created
+ *   and before any request is made. Defaults to `DEFAULT_MAX_PAGES`.
+ * @throws {BasecampError} with `code: "usage"` if `maxPages` is not a positive
+ *   integer.
+ *
  * @example
  * ```ts
  * for await (const page of paginateAll(response.response, (r) => r.json() as Promise<any[]>)) {
@@ -1153,16 +1210,38 @@ export async function fetchAllPages<T>(
  * }
  * ```
  */
-export async function* paginateAll<T>(
+export function paginateAll<T>(
   initialResponse: Response,
   parse: (response: Response) => Promise<T[]>,
-  authHeader?: string
+  authHeader?: string,
+  maxPages: number = DEFAULT_MAX_PAGES
+): AsyncGenerator<T[], void, unknown> {
+  assertValidMaxPages(maxPages);
+
+  return paginatePages(initialResponse, parse, authHeader, maxPages);
+}
+
+/**
+ * The generator body behind {@link paginateAll}. Split out only so the cap can
+ * be validated before the generator object exists; `maxPages` is already known
+ * good here.
+ */
+async function* paginatePages<T>(
+  initialResponse: Response,
+  parse: (response: Response) => Promise<T[]>,
+  authHeader: string | undefined,
+  maxPages: number
 ): AsyncGenerator<T[], void, unknown> {
   let response = initialResponse;
 
-  while (true) {
+  for (let page = 1; page <= maxPages; page++) {
     const items = await parse(response.clone());
     yield items;
+
+    // See {@link fetchAllPages}: breaking here rather than relying on the loop
+    // condition is what keeps the last allowed iteration from issuing a fetch
+    // whose response is never yielded.
+    if (page === maxPages) break;
 
     const rawNextUrl = parseNextLink(response.headers.get("Link"));
     if (!rawNextUrl) break;

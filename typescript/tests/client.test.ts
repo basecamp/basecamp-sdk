@@ -7,6 +7,8 @@ import { server } from "./setup.js";
 import { createBasecampClient, normalizeUrlPath } from "../src/client.js";
 import type { BasecampHooks } from "../src/hooks.js";
 import { BasecampError } from "../src/errors.js";
+import { ProjectsService } from "../src/generated/services/projects.js";
+import { DEFAULT_MAX_PAGES } from "../src/pagination-utils.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -651,6 +653,101 @@ describe("BasecampClient", () => {
           requestTimeoutMs: value,
         })
       ).not.toThrow();
+    });
+  });
+
+  describe("maxPages validation", () => {
+    // `maxPages` is not consumed here — it is handed to every service and read
+    // much later, in BaseService's `page < this.maxPages` loops. Each rejected
+    // value below breaks the bound in a different direction and did so silently:
+    // `Infinity` removes the cap entirely, `2.5` consumes 2 pages then fetches
+    // and discards a 3rd, and `0`/negative/`NaN` consume zero pages. Checked at
+    // construction, where the mistake was written.
+    //
+    // `Number.MAX_VALUE` removes the cap the same way `Infinity` does, and is
+    // why the predicate is `isSafeInteger`: `isInteger` returns `true` for it.
+    // Past `2 ** 53` the counter stalls -- `page++` on `2 ** 53` yields
+    // `2 ** 53` again -- so a bound like `2 ** 53 + 2` is never reached.
+    // `2 ** 53` itself would terminate; rejecting it is deliberately
+    // conservative, MAX_SAFE_INTEGER being the honest edge of the guarantee.
+    const invalid: Array<[string, number]> = [
+      ["zero", 0],
+      ["negative", -1],
+      ["NaN", NaN],
+      ["Infinity", Infinity],
+      ["fractional", 2.5],
+      ["Number.MAX_VALUE", Number.MAX_VALUE],
+      ["unsafe integer", 2 ** 53],
+    ];
+
+    it.each(invalid)("rejects a %s maxPages at construction", (_label, value) => {
+      let caught: unknown;
+      try {
+        createBasecampClient({
+          accountId: "12345",
+          accessToken: "test-token",
+          maxPages: value,
+        });
+      } catch (e: unknown) {
+        caught = e;
+      }
+
+      expect(caught).toBeInstanceOf(BasecampError);
+      expect(caught).toMatchObject({
+        name: "BasecampError",
+        code: "usage",
+        // Pin the whole sentence, not just the offending value. An earlier
+        // revision asserted only `got ${value}`, which a message about some
+        // other usage error would satisfy just as well — and which would not
+        // have noticed the bound changing from "a positive integer" to
+        // MAX_SAFE_INTEGER at all.
+        message: `maxPages must be a positive integer no larger than ${Number.MAX_SAFE_INTEGER}, got ${String(value)}`,
+      });
+    });
+
+    it.each([
+      ["one", 1],
+      ["a typical value", 25],
+      ["the default", DEFAULT_MAX_PAGES],
+    ])("accepts %s and propagates it to services", (_label, value) => {
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        maxPages: value,
+      });
+
+      // `maxPages` is protected on BaseService; read it structurally, since the
+      // point of the assertion is that the validated value reached the services
+      // rather than being validated and dropped.
+      expect((client.projects as unknown as { maxPages: number }).maxPages).toBe(value);
+    });
+
+    it("leaves an omitted maxPages at the default", () => {
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      expect((client.projects as unknown as { maxPages: number }).maxPages).toBe(DEFAULT_MAX_PAGES);
+    });
+
+    // The third door. BaseService and every generated service extending it are
+    // exported from index.ts, so a service can be constructed directly without
+    // going through createBasecampClient — and its `maxPages` lands straight in
+    // `followPagination`'s `page < this.maxPages`. Validating at the factory and
+    // in the standalone helpers, but not here, is a guard on two of three.
+    it.each(invalid)("rejects a %s maxPages passed straight to a service", (_label, value) => {
+      const raw = createBasecampClient({ accountId: "12345", accessToken: "test-token" }).raw;
+
+      expect(() => new ProjectsService(raw, undefined, undefined, value)).toThrow(BasecampError);
+      expect(() => new ProjectsService(raw, undefined, undefined, value)).toThrow(/maxPages/);
+    });
+
+    it("leaves an omitted maxPages at the default when a service is built directly", () => {
+      const raw = createBasecampClient({ accountId: "12345", accessToken: "test-token" }).raw;
+      const service = new ProjectsService(raw);
+
+      expect((service as unknown as { maxPages: number }).maxPages).toBe(DEFAULT_MAX_PAGES);
     });
   });
 

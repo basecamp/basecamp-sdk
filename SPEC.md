@@ -138,7 +138,7 @@ All validation errors are `BasecampError(code: "usage")` (see §6 error taxonomy
    - **Kotlin:** the builder rejects a *negative* value (`require(maxRetries >= 0)`) and accepts `0`, which the transport coerces to a single attempt (`config.maxRetries.coerceAtLeast(1)`).
    - **Ruby:** `0` passes config validation and the transport coerces it to a single attempt (`[config.max_retries, 1].max`), matching Kotlin. The floor applies on every path: whether a request reaches the wire does not depend on whether the operation carries a declared retry block. A declared operation ceiling still clamps the floored cap downward.
    - **Hand-written Go** (`pkg/basecamp` client): rejects `0` — `NewClient` panics `"basecamp: max retries must be at least 1"` (its GET/download loops treat `MaxRetries` as the total attempt count with a minimum of 1).
-5. Validate `max_pages > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
+5. Validate `max_pages > 0`. → `⊥ BasecampError(code: "usage")` otherwise. Each SDK raises its own idiomatic configuration error rather than a literal `BasecampError`: Ruby `ArgumentError`, Python `ValueError`, Go a returned `error`, Kotlin `IllegalArgumentException` (via `require`), TypeScript `BasecampError("usage")`. **Divergence:** Swift alone is not recoverable — `BasecampConfig.init` is public and non-throwing, so it uses `precondition`, which traps. That is a strict improvement rather than a new failure: `BaseService`'s pagination loops are `for _ in 1..<maxPages`, and Swift already traps forming that range when `maxPages <= 0`, only later, after page 1 has been fetched, and reporting a `Range` violation instead of a configuration mistake. **TypeScript is the only one that must also reject non-integers and unsafe integers**, because its `maxPages` is a `number` rather than an integer type. Its predicate is `Number.isSafeInteger(n) && n > 0`. `Infinity` makes the bound unreachable so pagination never stops; a fractional cap overruns by one page; and `Number.isInteger` is *not* sufficient, because it returns `true` for `Number.MAX_VALUE` and everything else above `2 ** 53`, where the page counter stops advancing — `page++` on `2 ** 53` yields `2 ** 53` again — so a bound like `2 ** 53 + 2` is never reached. `2 ** 53` itself does terminate, being arrived at from `2 ** 53 - 1`; rejecting it too is deliberately conservative, `MAX_SAFE_INTEGER` being the edge of the guarantee that the counter can reach the bound at all. **Python needs the same check for a different reason**: its `int` annotation is not enforced at runtime, so `Config(max_pages=float("inf"))` and `max_pages=2.5` are both accepted by a bare `<= 0` test, and `page < max_pages` then never terminates. It validates with `isinstance(self.max_pages, int)` alongside the sign. Only Go, Kotlin and Swift get the integer guarantee from their compilers; Ruby buys it back with `is_a?(Integer)`. In all six the check belongs at **every** construction path that accepts a cap, not only the client factory: TypeScript exports `BaseService` and its generated subclasses, so a directly-constructed service is a second door to the same loop.
 6. Normalize `base_url`: strip trailing `/`.
 
 ---
@@ -857,11 +857,38 @@ FUNCTION parseNextLink(linkHeader: String?) → String?
   3. For each part:
      a. Trim whitespace.
      b. If part contains 'rel="next"':
-        - Extract URL between < and >.
-        - Return URL.
+        - url ← extractAngleBracketed(part)
+        - If url is not null → return url.
+        - Otherwise CONTINUE to the next part. A part that says rel="next" but
+          carries no extractable URL must NOT suppress a well-formed part after
+          it: the return value feeds `truncated`/`hasMore`, so short-circuiting
+          to null there reports "no further pages" for a list that has them.
   4. → null (no next link found).
 END
+
+FUNCTION extractAngleBracketed(part: String) → String?
+  1. cursor ← 0.
+  2. Loop:
+     a. start ← offset of "<" at or after cursor. If none → return null.
+     b. end ← offset of ">" at or after start + 1. If none → return null.
+     c. If end > start + 1 → return the substring strictly between them.
+     d. Otherwise the pair is an empty "<>" → cursor ← start + 1, continue.
+END
 ```
+
+Two properties this shape is required to have, both of which an implementation
+can lose without failing any well-formed-input test:
+
+- **Leftmost-match parity with `/<([^>]+)>/`.** Step 2d skips an empty `<>`
+  rather than returning `""`, because `[^>]+` requires at least one character
+  and so the regex moves on to the next `<`. Verified exhaustively over
+  `{<,>,a,b}^≤8`.
+- **Linear time.** Step 2b must search for `>` from *after* the `<`, never from
+  the start — searching from 0 is both quadratic and, when a `>` precedes the
+  `<`, silently wrong. The offsets must also be O(1) to compute: bytes, UTF-16
+  code units, or flat code points. A *character* offset into a variable-width
+  string is O(offset) in some runtimes, which makes step 2d quadratic on any
+  header carrying a non-ASCII byte.
 
 ### Auto-Pagination Algorithm `[conformance]`
 

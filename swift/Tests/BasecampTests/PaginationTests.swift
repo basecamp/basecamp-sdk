@@ -81,6 +81,90 @@ final class PaginationTests: XCTestCase {
         XCTAssertNil(parseNextLink(header))
     }
 
+    // MARK: - parseNextLink, adversarial input
+    //
+    // The Link header is attacker-influenced (isSameOrigin exists to stop SSRF
+    // through a poisoned one), so malformed shapes are a contract, not a
+    // curiosity. The same six cases exist in all six SDKs.
+
+    func testParseNextLinkBracketNeverCloses() {
+        XCTAssertNil(parseNextLink("<https://api.example.com/page2; rel=\"next\""))
+    }
+
+    func testParseNextLinkClosingBracketBeforeOpeningBracket() {
+        // Was broken here: firstIndex(of: "<") and firstIndex(of: ">") both ran
+        // from the start, so a ">" ahead of the "<" failed the start < end
+        // guard and extraction silently returned nothing. The regex SDKs always
+        // read this correctly.
+        XCTAssertEqual(
+            parseNextLink(">x<https://api.example.com/page2>; rel=\"next\""),
+            "https://api.example.com/page2"
+        )
+    }
+
+    func testParseNextLinkTruncatesURLAtFirstRawClosingBracket() {
+        // Parity with the old <([^>]+)> spelling: [^>] cannot span a ">".
+        XCTAssertEqual(
+            parseNextLink("<https://api.example.com/page2?q=a>b>; rel=\"next\""),
+            "https://api.example.com/page2?q=a"
+        )
+    }
+
+    func testParseNextLinkTakesFirstOfMultipleBracketPairs() {
+        // Parity with the old spelling: leftmost match wins.
+        XCTAssertEqual(
+            parseNextLink("<https://api.example.com/a> <https://api.example.com/b>; rel=\"next\""),
+            "https://api.example.com/a"
+        )
+    }
+
+    func testParseNextLinkSkipsEmptyBracketPair() {
+        // Parity with the old spelling: [^>]+ requires at least one character,
+        // so an empty <> is not a match and the scan moves on. A naive search
+        // for ">" after the "<" without this check would return "".
+        XCTAssertEqual(
+            parseNextLink("<> <https://api.example.com/page2>; rel=\"next\""),
+            "https://api.example.com/page2"
+        )
+    }
+
+    func testParseNextLinkKeepsScanningPastMalformedPart() {
+        XCTAssertEqual(
+            parseNextLink("<malformed; rel=\"next\", <https://api.example.com/page2>; rel=\"next\""),
+            "https://api.example.com/page2"
+        )
+    }
+
+    func testParseNextLinkPathologicalHeader() {
+        // Many "<" start positions with no reachable ">" — the shape that
+        // punishes a backtracking regex. Asserting behaviour and completion,
+        // not elapsed time: this suite already has timing flakiness (#655) and
+        // a duration bound would add more.
+        let many = String(repeating: "<", count: 50_000)
+        XCTAssertNil(parseNextLink("\(many); rel=\"next\""))
+        // A ">" present but unreachable defeats the literal-prescan shortcut
+        // some regex engines use to bail early.
+        XCTAssertNil(parseNextLink(">\(many); rel=\"next\""))
+    }
+
+    func testParseNextLinkManyEmptyBracketPairs() {
+        // The pathological case for the scan that replaced the regex, which is
+        // a different shape from the one above: that header returns after a
+        // single search for ">" and never takes the empty-<> branch, so the
+        // skip loop's own worst case went untested. Every "<>" here advances
+        // the cursor by one and goes round again — the only path where a
+        // non-constant-time index lookup would compound into quadratic
+        // behaviour. Behaviour and completion again, not elapsed time.
+        let pairs = String(repeating: "<>", count: 50_000)
+        // No non-empty pair anywhere: every iteration skips, then it runs out.
+        XCTAssertNil(parseNextLink("\(pairs); rel=\"next\""))
+        // Same prefix, but the skips have to land on a real pair at the end.
+        XCTAssertEqual(
+            parseNextLink("\(pairs)<https://api.example.com/page2>; rel=\"next\""),
+            "https://api.example.com/page2"
+        )
+    }
+
     // MARK: - resolveURL
 
     func testResolveAbsoluteURL() {

@@ -81,15 +81,48 @@ public func expectedRequestPath(_ fixturePath: String, accountID: String) -> Str
 /// Deliberately tolerant of the surrounding syntax (multiple comma-separated
 /// links, arbitrary parameter order and spacing) and strict about the target
 /// itself, which is returned verbatim between the angle brackets.
+///
+/// The bracket extraction follows SPEC "Link Header Parsing Algorithm" rather
+/// than testing `hasPrefix("<") && hasSuffix(">")`. This function decides which
+/// requests the LINK and PATH invariants govern, so a parser here that is
+/// stricter than the SDKs' does not merely fail to notice a bug — it INVENTS
+/// one: a header the SDK reads correctly (`>x</projects.json?page=2>`) reads as
+/// "no next link" here, the follow-up request loses its exemption from the
+/// PATH invariant, and a correct SDK fails on a link it followed exactly as
+/// the fixture asked. A parser that is more permissive is just as bad in the
+/// other direction: an empty `<>` accepted as a target makes the LINK
+/// invariant demand a fetch of "".
 public func nextLinkTarget(_ headerValue: String) -> String? {
     for link in headerValue.split(separator: ",") {
         let parts = link.split(separator: ";")
-        guard let target = parts.first?.trimmingCharacters(in: .whitespaces),
-              target.hasPrefix("<"), target.hasSuffix(">"),
+        guard let head = parts.first?.trimmingCharacters(in: .whitespaces),
+              let target = angleBracketedTarget(head),
               parts.dropFirst().contains(where: { isRelNext($0) })
         else { continue }
-        return String(target.dropFirst().dropLast())
+        return target
     }
+    return nil
+}
+
+/// The leftmost non-empty `<…>` span in `part`, matching `/<([^>]+)>/`.
+///
+/// Mirrors `extractAngleBracketed` in each SDK: scan for `<`, then for the
+/// first `>` AFTER it (never from position 0, which is both quadratic and
+/// wrong when a `>` precedes the `<`), and skip an empty `<>` because `[^>]+`
+/// requires at least one character.
+func angleBracketedTarget(_ part: String) -> String? {
+    var cursor = part.startIndex
+
+    while let start = part[cursor...].firstIndex(of: "<") {
+        let contentStart = part.index(after: start)
+        guard let end = part[contentStart...].firstIndex(of: ">") else { return nil }
+
+        if end > contentStart {
+            return String(part[contentStart..<end])
+        }
+        cursor = contentStart
+    }
+
     return nil
 }
 

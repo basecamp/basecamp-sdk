@@ -82,16 +82,38 @@ internal fun parseTotalCount(headers: Map<String, List<String>>): Long {
  *
  * Example: `<https://api.example.com/page?page=2>; rel="next"` → the URL
  */
+/**
+ * Returns the contents of the first non-empty `<...>` pair, or null if there is none.
+ *
+ * Searching for `>` from after the `<` is what makes this correct: looking for
+ * both independently from index 0 means a `>` that precedes the `<` yields
+ * `end < start`, and the extraction silently fails for that part. It also
+ * matches the leftmost-match semantics of `<([^>]+)>`, which is what the
+ * TypeScript, Ruby and Python SDKs used to spell this with.
+ *
+ * An empty `<>` is skipped rather than returned, because `[^>]+` requires at
+ * least one character. That scan was O(1), so the loop stays linear overall.
+ */
+internal fun extractAngleBracketed(part: String): String? {
+    var cursor = 0
+    while (true) {
+        val start = part.indexOf('<', cursor)
+        if (start < 0) return null
+
+        val end = part.indexOf('>', start + 1)
+        if (end < 0) return null
+
+        if (end > start + 1) return part.substring(start + 1, end)
+        cursor = start + 1
+    }
+}
+
 internal fun parseNextLink(linkHeader: String?): String? {
     if (linkHeader.isNullOrBlank()) return null
     for (part in linkHeader.split(",")) {
         val trimmed = part.trim()
         if (trimmed.contains("""rel="next"""")) {
-            val start = trimmed.indexOf('<')
-            val end = trimmed.indexOf('>')
-            if (start >= 0 && end > start) {
-                return trimmed.substring(start + 1, end)
-            }
+            extractAngleBracketed(trimmed)?.let { return it }
         }
     }
     return null

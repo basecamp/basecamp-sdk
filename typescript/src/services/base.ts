@@ -26,7 +26,7 @@ import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js"
 import { BasecampError, errorFromParsedBody, errorFromResponse } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
-import { parseNextLink, resolveURL, isSameOrigin } from "../pagination-utils.js";
+import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
 import { saturatingBackoff } from "../retry.js";
 import type { paths } from "../generated/schema.js";
 import type createClient from "openapi-fetch";
@@ -44,9 +44,6 @@ export interface FetchResponse<T> {
   error?: unknown;
   response: Response;
 }
-
-/** Default maximum pages to follow as a safety cap against infinite loops. */
-const DEFAULT_MAX_PAGES = 10_000;
 
 /**
  * True when the caller pinned a single page (SPEC section 8).
@@ -168,6 +165,21 @@ export abstract class BaseService {
     authenticatedFetch?: (url: string, init: RequestInit) => Promise<Response>,
     baseUrl?: string,
   ) {
+    // BaseService is exported, and so is every generated service extending it,
+    // so `new ProjectsService(client, hooks, fetchPage, Infinity)` is a
+    // supported call that reaches followPagination's `page < this.maxPages`
+    // without passing through createBasecampClient. Validating only at the
+    // client factory would leave this door open. Checked only when supplied, so
+    // an omitted cap still falls through to the default.
+    // `!= null` rather than `!== undefined`, to agree with the `??` below:
+    // that treats an explicit `null` as "not supplied" and falls back to the
+    // default, so the guard must treat it the same way. A JS caller passing
+    // `null` — outside the declared type, but reachable from untyped code —
+    // would otherwise have started throwing where it previously defaulted.
+    if (maxPages != null) {
+      assertValidMaxPages(maxPages);
+    }
+
     this.client = client;
     this.hooks = hooks;
     this.fetchPage = fetchPage ?? ((url) => fetch(url, { headers: { Accept: "application/json" } }));

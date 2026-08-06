@@ -108,8 +108,15 @@ class Config:
             raise ValueError("base_delay must be non-negative")
         if self.max_jitter < 0:
             raise ValueError("max_jitter must be non-negative")
-        if self.max_pages <= 0:
-            raise ValueError("max_pages must be positive")
+        # The ``int`` annotation is not enforced at runtime, so this checks the
+        # type as well as the sign. Without it ``max_pages=float("inf")`` is
+        # accepted and the paginators' ``page < max_pages`` never terminates on
+        # a self-referential Link header — the same unbounded walk TypeScript
+        # had, and Ruby already rejects via ``is_a?(Integer)``. Go, Kotlin and
+        # Swift get it from the compiler. A float like 2.5 is refused for the
+        # same reason: a cap has to be a number the counter can arrive at.
+        if not isinstance(self.max_pages, int) or self.max_pages <= 0:
+            raise ValueError("max_pages must be a positive integer")
 
     @classmethod
     def from_env(cls) -> Config:

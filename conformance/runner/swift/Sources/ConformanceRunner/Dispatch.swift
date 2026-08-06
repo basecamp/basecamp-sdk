@@ -139,6 +139,26 @@ private func summarizeUpcoming(_ envelope: GetUpcomingScheduleResponseContent) -
     return .object(summary)
 }
 
+/// Flattens an accumulated project list into top-level scalars.
+///
+/// Flat and scalar because that is the only path form every runner can resolve:
+/// Go and TypeScript read a responseBody path as a top-level key with no dot
+/// splitting, and this runner's navigator (like Kotlin's) descends through
+/// objects only, so neither a dotted path nor an array index is portable.
+///
+/// It exists so a fixture can prove the items of a followed page were
+/// ACCUMULATED, not merely fetched. requestCount only sees that the second
+/// request happened, and meta.totalCount is the X-Total-Count header rather than
+/// the item count, so an SDK that fetched page 2 and discarded its body
+/// satisfies both.
+private func summarizeProjects(_ projects: [Project]) -> JSON {
+    .object([
+        "project_count": .int(Int64(projects.count)),
+        "first_project_id": .int(Int64(projects.first?.id ?? 0)),
+        "last_project_id": .int(Int64(projects.last?.id ?? 0)),
+    ])
+}
+
 /// Dispatches the test operation against the SDK and returns observed metadata.
 /// Direct port of the Kotlin dispatch table.
 func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws -> DispatchResult {
@@ -153,7 +173,10 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
             ? ListProjectOptions(page: page, maxItems: maxItems)
             : nil
         let result = try await account.projects.list(options: options)
-        return DispatchResult(totalCount: result.meta.totalCount, truncated: result.meta.truncated)
+        return DispatchResult(
+            totalCount: result.meta.totalCount,
+            truncated: result.meta.truncated,
+            resultJSON: summarizeProjects(result.items))
 
     case "GetProject":
         let project = try await account.projects.get(projectId: pathParams.longParam("projectId"))

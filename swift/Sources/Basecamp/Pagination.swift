@@ -89,18 +89,39 @@ extension ListResult: RandomAccessCollection {
 ///
 /// - Parameter linkHeader: The Link header value.
 /// - Returns: The URL for the next page, or nil if not found.
+/// Returns the contents of the first non-empty `<...>` pair, or nil if there is none.
+///
+/// Searching for `>` from after the `<` is what makes this correct: looking for
+/// both independently from the start means a `>` that precedes the `<` yields
+/// `end < start`, and the extraction silently fails for that part. It also
+/// matches the leftmost-match semantics of `<([^>]+)>`, which is what the
+/// TypeScript, Ruby and Python SDKs used to spell this with.
+///
+/// An empty `<>` is skipped rather than returned, because `[^>]+` requires at
+/// least one character. That scan was O(1), so the loop stays linear overall.
+func extractAngleBracketed(_ part: String) -> String? {
+    var cursor = part.startIndex
+
+    while let start = part[cursor...].firstIndex(of: "<") {
+        let contentStart = part.index(after: start)
+        guard let end = part[contentStart...].firstIndex(of: ">") else { return nil }
+
+        if end > contentStart {
+            return String(part[contentStart..<end])
+        }
+        cursor = contentStart
+    }
+
+    return nil
+}
+
 func parseNextLink(_ linkHeader: String?) -> String? {
     guard let linkHeader, !linkHeader.isEmpty else { return nil }
 
     for part in linkHeader.split(separator: ",") {
         let trimmed = part.trimmingCharacters(in: .whitespaces)
-        if trimmed.contains("rel=\"next\"") {
-            // Extract URL between < and >
-            guard let start = trimmed.firstIndex(of: "<"),
-                  let end = trimmed.firstIndex(of: ">"),
-                  start < end
-            else { continue }
-            return String(trimmed[trimmed.index(after: start)..<end])
+        if trimmed.contains("rel=\"next\""), let url = extractAngleBracketed(trimmed) {
+            return url
         }
     }
     return nil

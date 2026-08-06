@@ -650,6 +650,50 @@ func TestParseNextLink(t *testing.T) {
 			header:   `<https://3.basecampapi.com/12345/projects.json?page=5>; rel="next"`,
 			expected: "https://3.basecampapi.com/12345/projects.json?page=5",
 		},
+
+		// Adversarial input. The Link header is attacker-influenced — isSameOrigin
+		// exists to stop SSRF through a poisoned one — so malformed shapes are a
+		// contract, not a curiosity. The same six cases exist in all six SDKs.
+		{
+			name:     "opening bracket with no closing bracket",
+			header:   `<https://api.example.com/page2; rel="next"`,
+			expected: "",
+		},
+		{
+			// Was broken here: indexOf("<") and indexOf(">") ran independently
+			// from 0, so a ">" ahead of the "<" gave end < start and extraction
+			// silently failed. The regex SDKs always read this correctly.
+			name:     "closing bracket before opening bracket",
+			header:   `>x<https://api.example.com/page2>; rel="next"`,
+			expected: "https://api.example.com/page2",
+		},
+		{
+			// Parity with the old <([^>]+)> spelling: [^>] cannot span a ">",
+			// so the value stops at the first one.
+			name:     "url containing a raw closing bracket truncates at the first",
+			header:   `<https://api.example.com/page2?q=a>b>; rel="next"`,
+			expected: "https://api.example.com/page2?q=a",
+		},
+		{
+			// Parity with the old spelling: leftmost match wins.
+			name:     "multiple bracket pairs in one part take the first",
+			header:   `<https://api.example.com/a> <https://api.example.com/b>; rel="next"`,
+			expected: "https://api.example.com/a",
+		},
+		{
+			// Parity with the old spelling: [^>]+ requires at least one
+			// character, so an empty <> is not a match and the scan moves on.
+			// A naive indexOf(">", start+1) that skipped this check would
+			// return "" here.
+			name:     "empty bracket pair is skipped, not returned",
+			header:   `<> <https://api.example.com/page2>; rel="next"`,
+			expected: "https://api.example.com/page2",
+		},
+		{
+			name:     "malformed first part does not abandon a later valid one",
+			header:   `<malformed; rel="next", <https://api.example.com/page2>; rel="next"`,
+			expected: "https://api.example.com/page2",
+		},
 	}
 
 	for _, tt := range tests {
@@ -659,6 +703,50 @@ func TestParseNextLink(t *testing.T) {
 				t.Errorf("parseNextLink(%q) = %q, want %q", tt.header, result, tt.expected)
 			}
 		})
+	}
+}
+
+// TestParseNextLinkPathological feeds the parser a header built to punish a
+// backtracking regex: many "<" start positions with no reachable ">".
+//
+// The assertion is on behaviour and completion, not elapsed time — this suite
+// already has timing flakiness (#655) and a duration bound would add more. A
+// regression is still unmissable: the quadratic spelling took seconds here.
+func TestParseNextLinkPathological(t *testing.T) {
+	header := strings.Repeat("<", 50000) + `; rel="next"`
+
+	if got := parseNextLink(header); got != "" {
+		t.Errorf("parseNextLink(pathological) = %q, want \"\"", got)
+	}
+
+	// Same shape, but with a ">" present and unreachable, which defeats the
+	// literal-prescan shortcut some regex engines use to bail early.
+	if got := parseNextLink(">" + strings.Repeat("<", 50000) + `; rel="next"`); got != "" {
+		t.Errorf("parseNextLink(pathological, leading >) = %q, want \"\"", got)
+	}
+}
+
+// TestParseNextLinkManyEmptyBracketPairs is the pathological case for the scan
+// that replaced the regex, which is a different shape from the one above: that
+// header returns after a single ">"-scan and never takes the empty-<> branch,
+// so the skip loop's own worst case went untested. Every "<>" here advances the
+// cursor by one and goes round again, which is the only path where a
+// non-constant-time index lookup would compound into quadratic behaviour.
+//
+// Behaviour and completion again, not elapsed time.
+func TestParseNextLinkManyEmptyBracketPairs(t *testing.T) {
+	pairs := strings.Repeat("<>", 50000)
+
+	// No non-empty pair anywhere: every iteration skips, then the scan runs out.
+	if got := parseNextLink(pairs + `; rel="next"`); got != "" {
+		t.Errorf("parseNextLink(many empty pairs) = %q, want \"\"", got)
+	}
+
+	// Same prefix, but the skips have to land on a real pair at the end.
+	header := pairs + `<https://api.example.com/page2>; rel="next"`
+	if got := parseNextLink(header); got != "https://api.example.com/page2" {
+		t.Errorf("parseNextLink(many empty pairs, then a real one) = %q, want %q",
+			got, "https://api.example.com/page2")
 	}
 }
 

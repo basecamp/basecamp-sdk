@@ -256,6 +256,30 @@ function summarizeUpcoming(
 }
 
 /**
+ * Flattens an accumulated project list into top-level scalars.
+ *
+ * Flat and scalar because that is the only path form every runner can resolve:
+ * TypeScript and Go read a responseBody path as a top-level key with no dot
+ * splitting, and the Swift and Kotlin navigators descend through objects only,
+ * so neither a dotted path nor an array index is portable.
+ *
+ * It exists so a fixture can prove the items of a followed page were
+ * ACCUMULATED, not merely fetched. requestCount only sees that the second
+ * request happened, and meta.totalCount is the X-Total-Count header rather than
+ * the item count, so an SDK that fetched page 2 and discarded its body
+ * satisfies both.
+ */
+function summarizeProjects(
+  projects: Awaited<ReturnType<BasecampClient["projects"]["list"]>>,
+): Record<string, unknown> {
+  return {
+    project_count: projects.length,
+    first_project_id: projects.length > 0 ? projects[0]!.id : 0,
+    last_project_id: projects.length > 0 ? projects[projects.length - 1]!.id : 0,
+  };
+}
+
+/**
  * Executes the appropriate SDK method for the given operation name.
  * Returns { error?, httpStatus? } so assertions can inspect outcomes.
  *
@@ -283,6 +307,7 @@ async function executeOperation(
             totalCount: projects.meta?.totalCount ?? 0,
             truncated: projects.meta?.truncated ?? false,
           },
+          result: summarizeProjects(projects),
         };
       }
 

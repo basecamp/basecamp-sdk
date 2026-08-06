@@ -54,6 +54,30 @@ class TestValidation:
         with pytest.raises(ValueError, match="timeout must be positive"):
             Config(timeout=-1)
 
+    def test_max_pages_zero_raises(self):
+        with pytest.raises(ValueError, match="max_pages must be a positive integer"):
+            Config(max_pages=0)
+
+    def test_max_pages_negative_raises(self):
+        with pytest.raises(ValueError, match="max_pages must be a positive integer"):
+            Config(max_pages=-1)
+
+    def test_max_pages_infinity_raises(self):
+        # The ``int`` annotation is not enforced at runtime. Without an
+        # isinstance check this is accepted, and the paginators'
+        # ``page < max_pages`` never terminates on a self-referential Link
+        # header -- an unbounded walk driven by an attacker-influenceable
+        # response header.
+        with pytest.raises(ValueError, match="max_pages must be a positive integer"):
+            Config(max_pages=float("inf"))
+
+    def test_max_pages_fractional_raises(self):
+        with pytest.raises(ValueError, match="max_pages must be a positive integer"):
+            Config(max_pages=2.5)
+
+    def test_max_pages_positive_integer_allowed(self):
+        assert Config(max_pages=25).max_pages == 25
+
     def test_max_retries_negative_raises(self):
         with pytest.raises(ValueError, match="max_retries must be non-negative"):
             Config(max_retries=-1)

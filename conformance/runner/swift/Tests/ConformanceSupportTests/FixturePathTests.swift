@@ -140,4 +140,28 @@ final class NextLinkTests: XCTestCase {
         XCTAssertNil(nextLinkTarget(""))
         XCTAssertNil(nextLinkTarget("garbage"))
     }
+
+    /// The adversarial headers from conformance/tests/pagination.json. This
+    /// helper decides which requests the LINK and PATH invariants govern, so
+    /// disagreeing with the SDKs' parser here fails a correct SDK — which is
+    /// how these three arrived: the runner read `<>` as a target of "" and
+    /// `>x</p>` as no target at all, and reported both as SDK bugs.
+    func testAgreesWithTheSDKParserOnMalformedParts() {
+        // An empty <> names no page: skip the part, keep scanning.
+        XCTAssertEqual(
+            "/projects.json?page=2",
+            nextLinkTarget("<>; rel=\"next\", </projects.json?page=2>; rel=\"next\"")
+        )
+        // The ">" delimiting the URL is the first one AFTER the "<", not the
+        // first one in the string.
+        XCTAssertEqual(
+            "/projects.json?page=2",
+            nextLinkTarget(">x</projects.json?page=2>; rel=\"next\"")
+        )
+        // A "<" that never closes yields no target rather than the rest of
+        // the header.
+        XCTAssertNil(nextLinkTarget("<; rel=\"next\""))
+        // An empty pair with nothing after it is not a target of "".
+        XCTAssertNil(nextLinkTarget("<>; rel=\"next\""))
+    }
 }

@@ -208,6 +208,404 @@ describe("Link header origin validation", () => {
 });
 
 // =============================================================================
+// Pagination Page Cap (unbounded Link-following)
+// =============================================================================
+
+/**
+ * `fetchAllPages` and `paginateAll` followed rel="next" under `while (true)`.
+ * Same-origin validation bounds WHERE the loop can go, not how long it runs:
+ * a Link header naming the page it was served from is same-origin and passes,
+ * so "until no more pages exist" is never true and the call never returns.
+ * Every other pagination loop in this SDK, and in the other five, carries a
+ * page cap; these two — the exported helpers — did not.
+ *
+ * Every case below pins the EXACT number of fetches, not just that the call
+ * returned. Termination on its own is too weak an assertion: the cap is applied
+ * between consuming a page and reading its Link header, and a version that
+ * tested it only in the `for` condition also terminates — while issuing one
+ * extra request per call, to a URL taken from an attacker-influenceable header,
+ * whose response is then discarded. `maxPages: 1` is where that off-by-one is
+ * loudest: the initial page is handed in, so the correct number of fetches is
+ * zero.
+ *
+ * The always-next mocks yield to the macrotask queue via `setTimeout(0)` so
+ * that a regression to an unbounded loop fails on the suite timeout instead of
+ * starving the event loop in microtasks, where no timer can interrupt it.
+ */
+describe("pagination page cap", () => {
+  /** A page that always advertises another page after it. */
+  function endlessPage(url: string, id: number, nextUrl: string): Response {
+    const resp = new Response(JSON.stringify([{ id }]), {
+      status: 200,
+      headers: { Link: `<${nextUrl}>; rel="next"` },
+    });
+    Object.defineProperty(resp, "url", { value: url });
+    return resp;
+  }
+
+  /** A terminal page: no Link header, so the natural end of a sequence. */
+  function finalPage(url: string, id: number): Response {
+    const resp = new Response(JSON.stringify([{ id }]), { status: 200 });
+    Object.defineProperty(resp, "url", { value: url });
+    return resp;
+  }
+
+  const firstOfEndless = () =>
+    endlessPage(`${BASE_URL}/projects.json`, 1, `${BASE_URL}/projects.json?page=2`);
+
+  /** Installs a fetch that never stops advertising a next page. */
+  function installEndlessFetch(): { count: () => number; restore: () => void } {
+    let fetchCallCount = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+      fetchCallCount++;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const page = fetchCallCount + 1;
+      return endlessPage(url, page, `${BASE_URL}/projects.json?page=${page + 1}`);
+    });
+    return {
+      count: () => fetchCallCount,
+      restore: () => {
+        globalThis.fetch = originalFetch;
+      },
+    };
+  }
+
+  describe("fetchAllPages", () => {
+    it("makes no further request at all when maxPages is 1", async () => {
+      const mock = installEndlessFetch();
+      try {
+        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, 1);
+
+        expect(results).toEqual([{ id: 1 }]);
+        // The initial response was supplied by the caller. One page consumed
+        // means zero pages fetched — anything else is a request whose body is
+        // thrown away.
+        expect(mock.count()).toBe(0);
+      } finally {
+        mock.restore();
+      }
+    });
+
+    it("consumes exactly maxPages pages against a server that never stops", async () => {
+      const mock = installEndlessFetch();
+      try {
+        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, 3);
+
+        expect(results).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+        expect(mock.count()).toBe(2);
+      } finally {
+        mock.restore();
+      }
+    });
+
+    it("terminates on a Link header pointing at its own page", async () => {
+      // The motivating case. Self-referential, same-origin, indistinguishable
+      // from a legitimate link — only the cap ends it.
+      const selfUrl = `${BASE_URL}/projects.json`;
+      let fetchCallCount = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+        fetchCallCount++;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(url).toBe(selfUrl);
+        return endlessPage(selfUrl, 1, selfUrl);
+      });
+
+      try {
+        const results = await fetchAllPages(
+          endlessPage(selfUrl, 1, selfUrl),
+          (r) => r.json(),
+          undefined,
+          3
+        );
+
+        expect(results).toEqual([{ id: 1 }, { id: 1 }, { id: 1 }]);
+        expect(fetchCallCount).toBe(2);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("stops at the natural end rather than at the cap", async () => {
+      let fetchCallCount = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+        fetchCallCount++;
+        return finalPage(url, 2);
+      });
+
+      try {
+        // Generous cap, two-page sequence: the cap must not be what ends it.
+        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, 100);
+
+        expect(results).toEqual([{ id: 1 }, { id: 2 }]);
+        expect(fetchCallCount).toBe(1);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("stops at the natural end under the default cap", async () => {
+      let fetchCallCount = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+        fetchCallCount++;
+        return finalPage(url, 2);
+      });
+
+      try {
+        const results = await fetchAllPages(firstOfEndless(), (r) => r.json());
+
+        expect(results).toEqual([{ id: 1 }, { id: 2 }]);
+        expect(fetchCallCount).toBe(1);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe("paginateAll", () => {
+    async function collect<T>(gen: AsyncGenerator<T[], void, unknown>): Promise<T[][]> {
+      const pages: T[][] = [];
+      for await (const page of gen) {
+        pages.push(page);
+      }
+      return pages;
+    }
+
+    it("makes no further request at all when maxPages is 1", async () => {
+      const mock = installEndlessFetch();
+      try {
+        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, 1));
+
+        expect(pages).toEqual([[{ id: 1 }]]);
+        expect(mock.count()).toBe(0);
+      } finally {
+        mock.restore();
+      }
+    });
+
+    it("yields exactly maxPages pages against a server that never stops", async () => {
+      const mock = installEndlessFetch();
+      try {
+        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, 3));
+
+        expect(pages).toEqual([[{ id: 1 }], [{ id: 2 }], [{ id: 3 }]]);
+        expect(mock.count()).toBe(2);
+      } finally {
+        mock.restore();
+      }
+    });
+
+    it("terminates on a Link header pointing at its own page", async () => {
+      const selfUrl = `${BASE_URL}/projects.json`;
+      let fetchCallCount = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+        fetchCallCount++;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(url).toBe(selfUrl);
+        return endlessPage(selfUrl, 1, selfUrl);
+      });
+
+      try {
+        const pages = await collect(
+          paginateAll(endlessPage(selfUrl, 1, selfUrl), (r) => r.json(), undefined, 3)
+        );
+
+        expect(pages).toEqual([[{ id: 1 }], [{ id: 1 }], [{ id: 1 }]]);
+        expect(fetchCallCount).toBe(2);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("stops at the natural end rather than at the cap", async () => {
+      let fetchCallCount = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+        fetchCallCount++;
+        return finalPage(url, 2);
+      });
+
+      try {
+        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, 100));
+
+        expect(pages).toEqual([[{ id: 1 }], [{ id: 2 }]]);
+        expect(fetchCallCount).toBe(1);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("stops at the natural end under the default cap", async () => {
+      let fetchCallCount = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+        fetchCallCount++;
+        return finalPage(url, 2);
+      });
+
+      try {
+        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json()));
+
+        expect(pages).toEqual([[{ id: 1 }], [{ id: 2 }]]);
+        expect(fetchCallCount).toBe(1);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+  });
+
+  // A cap is only a cap if the value is one. Every rejected value below breaks
+  // the bound in a different direction, and each did so silently before
+  // validation existed:
+  //
+  //   Infinity   — `page === maxPages` is never true, so the loop is unbounded
+  //                and the cap does exactly nothing. The failure mode the cap
+  //                was added to prevent, re-entered through the front door.
+  //   2.5        — consumes 2 pages, then fetches a 3rd and discards it. That
+  //                is the off-by-one this commit removed, resurfacing for
+  //                non-integers, and it issues a request to a URL taken from
+  //                an attacker-influenceable header.
+  //   0, -1, NaN — consume ZERO pages, silently discarding a response the
+  //                caller already fetched and handed in.
+  //   MAX_VALUE   — unbounded again, and the reason the predicate is
+  //                `isSafeInteger` and not `isInteger`:
+  //                `Number.isInteger(Number.MAX_VALUE)` is `true`, so the
+  //                obvious check lets it through. Past `2 ** 53` the counter
+  //                stalls — `page++` on `2 ** 53` yields `2 ** 53` again,
+  //                because the next integer is not representable — so a bound
+  //                of `2 ** 53 + 2` is never reached.
+  //   2**53       — terminates, in fact: the counter arrives from
+  //                `2 ** 53 - 1` and breaks on equality before the next
+  //                increment. It is rejected anyway, because
+  //                MAX_SAFE_INTEGER is the honest edge of the guarantee that
+  //                the counter can arrive at the bound at all. Deliberately
+  //                conservative, and listed here so nobody "fixes" the
+  //                predicate back to isInteger on the strength of this case.
+  //
+  // `Number.isSafeInteger(n) && n > 0` rejects all seven in one predicate.
+  // SPEC.md §2 step 5: "Validate `max_pages > 0`. → `⊥ BasecampError(code:
+  // "usage")` otherwise."
+  describe("maxPages validation", () => {
+    async function collect<T>(gen: AsyncGenerator<T[], void, unknown>): Promise<T[][]> {
+      const pages: T[][] = [];
+      for await (const page of gen) {
+        pages.push(page);
+      }
+      return pages;
+    }
+
+    const INVALID: ReadonlyArray<[string, number]> = [
+      ["zero", 0],
+      ["negative", -1],
+      ["NaN", NaN],
+      ["Infinity", Infinity],
+      ["a non-integer", 2.5],
+      ["Number.MAX_VALUE", Number.MAX_VALUE],
+      ["an unsafe integer", 2 ** 53],
+    ];
+
+    /**
+     * Counts fetches without answering any. Validation has to happen before a
+     * single request goes out — a throw that lands after one would be a
+     * different bug wearing the same error, so every case below asserts zero.
+     */
+    function installCountingFetch(): { count: () => number; restore: () => void } {
+      let fetchCallCount = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+        fetchCallCount++;
+        return finalPage(url, 2);
+      });
+      return {
+        count: () => fetchCallCount,
+        restore: () => {
+          globalThis.fetch = originalFetch;
+        },
+      };
+    }
+
+    describe("fetchAllPages", () => {
+      it.each(INVALID)("rejects %s with a usage error and fetches nothing", async (_label, value) => {
+        const mock = installCountingFetch();
+        try {
+          const error = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, value)
+            .then(() => null)
+            .catch((e: unknown) => e);
+
+          expect(error).toBeInstanceOf(BasecampError);
+          expect((error as BasecampError).code).toBe("usage");
+          // The whole sentence, not just the offending value: `toContain` on
+          // the value alone is satisfied by any usage error that happens to
+          // mention it, and would not notice the bound itself changing.
+          expect((error as BasecampError).message).toBe(
+            `maxPages must be a positive integer no larger than ${Number.MAX_SAFE_INTEGER}, got ${String(value)}`
+          );
+          expect(mock.count()).toBe(0);
+        } finally {
+          mock.restore();
+        }
+      });
+    });
+
+    describe("paginateAll", () => {
+      // Asserted on the CALL, not on the first `.next()`. paginateAll validates
+      // eagerly — it is a plain function that checks the cap and then returns
+      // the generator, rather than an `async function*` whose body would not
+      // run until something iterated it. A usage error is a programmer error,
+      // and it should be raised where the programmer wrote the mistake, not
+      // wherever the generator happens to be consumed later. This assertion is
+      // what pins that choice: under lazy validation `paginateAll(...)` returns
+      // a generator without throwing and `expect(...).toThrow` fails.
+      it.each(INVALID)("rejects %s eagerly and fetches nothing", (_label, value) => {
+        const mock = installCountingFetch();
+        try {
+          expect(() => paginateAll(firstOfEndless(), (r) => r.json(), undefined, value)).toThrow(
+            BasecampError
+          );
+
+          let thrown: unknown;
+          try {
+            paginateAll(firstOfEndless(), (r) => r.json(), undefined, value);
+          } catch (e: unknown) {
+            thrown = e;
+          }
+          expect((thrown as BasecampError).code).toBe("usage");
+          expect((thrown as BasecampError).message).toBe(
+            `maxPages must be a positive integer no larger than ${Number.MAX_SAFE_INTEGER}, got ${String(value)}`
+          );
+          expect(mock.count()).toBe(0);
+        } finally {
+          mock.restore();
+        }
+      });
+    });
+
+    // The predicate must not be so eager it rejects the caps the SDK itself
+    // uses. DEFAULT_MAX_PAGES is covered by the "under the default cap" tests
+    // above; these pin the explicit end of the range.
+    it.each([1, 2, 3, 100, 10_000])("accepts the valid cap %i", async (value) => {
+      const mock = installCountingFetch();
+      try {
+        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, value);
+        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, value));
+
+        // A two-page sequence: page 1 is supplied, page 2 is terminal.
+        const expected = value === 1 ? [{ id: 1 }] : [{ id: 1 }, { id: 2 }];
+        expect(results).toEqual(expected);
+        expect(pages).toEqual(expected.map((item) => [item]));
+        expect(mock.count()).toBe(value === 1 ? 0 : 2);
+      } finally {
+        mock.restore();
+      }
+    });
+  });
+});
+
+// =============================================================================
 // HTTPS Enforcement on Token Endpoints
 // =============================================================================
 

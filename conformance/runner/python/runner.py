@@ -243,6 +243,47 @@ def _summarize_upcoming(envelope: dict) -> dict:
     return summary
 
 
+def _project_id(item: Any) -> Any:
+    """The ``id`` of a list item, or 0 when the item is not an object.
+
+    Not every ListProjects fixture answers with a bare array of projects:
+    retry.json's 503 case returns the legacy ``{"projects": []}`` envelope, and
+    Python's lenient paginator hands that back as a list of the envelope's KEY
+    strings. An unguarded ``item["id"]`` raises TypeError there — in a case that
+    asserts nothing about the body at all.
+    """
+    return item.get("id", 0) if isinstance(item, dict) else 0
+
+
+def _summarize_projects(result: Any) -> dict[str, Any]:
+    """Flatten an accumulated project list into top-level scalars.
+
+    Flat and scalar because that is the only path form every runner can resolve:
+    Go and TypeScript read a responseBody path as a top-level key with no dot
+    splitting, and the Swift and Kotlin navigators descend through objects only,
+    so neither a dotted path nor an array index is portable.
+
+    It exists so a fixture can prove the items of a followed page were
+    ACCUMULATED, not merely fetched. requestCount only sees that the second
+    request happened, and meta.totalCount is the X-Total-Count header rather
+    than the item count, so an SDK that fetched page 2 and discarded its body
+    satisfies both.
+
+    The returned dict replaces the ListResult for BOTH assertion families, so it
+    carries the two whitelisted responseMeta fields under their JSON names as
+    well; the responseMeta arm falls back to a mapping lookup when the result
+    has no `.meta` (mirroring the Ruby runner's Hash fallback).
+    """
+    items = list(result)
+    return {
+        "project_count": len(items),
+        "first_project_id": _project_id(items[0]) if items else 0,
+        "last_project_id": _project_id(items[-1]) if items else 0,
+        "totalCount": result.meta.total_count,
+        "truncated": result.meta.truncated,
+    }
+
+
 class OperationMapper:
     """Maps conformance operation names to SDK calls."""
 
@@ -271,8 +312,8 @@ class OperationMapper:
                 # the plain no-argument arity stays exercised when the fixture
                 # carries neither.
                 if max_items or page:
-                    return self._account.projects.list(max_items=max_items, page=page)
-                return self._account.projects.list()
+                    return _summarize_projects(self._account.projects.list(max_items=max_items, page=page))
+                return _summarize_projects(self._account.projects.list())
             case "GetProject":
                 return self._account.projects.get(project_id=path_params["projectId"])
             case "CreateProject":
@@ -999,6 +1040,15 @@ class TestRunner:
                         # Convert camelCase field names to snake_case for Python attrs
                         snake_field = re.sub(r"([a-z])([A-Z])", r"\1_\2", field_path).lower()
                         actual = getattr(result.meta, snake_field, None)
+                    elif isinstance(result, dict):
+                        # Mirrors the Ruby runner's Hash fallback. A dispatch arm
+                        # that reduces a ListResult to a flat summary dict (see
+                        # _summarize_projects) has no `.meta` left to read, so it
+                        # carries the meta fields as top-level keys under their
+                        # JSON names. A lookup, not a truthiness test: an `or`
+                        # chain would read a present False (`truncated`) as a
+                        # miss.
+                        actual = result.get(field_path)
                     if actual != expected:
                         failures.append(f"Expected responseMeta.{field_path} = {expected!r}, got {actual!r}")
 

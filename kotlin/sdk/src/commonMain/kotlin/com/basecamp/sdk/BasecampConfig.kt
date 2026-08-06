@@ -27,6 +27,19 @@ data class BasecampConfig(
     /** Base delay for exponential backoff. */
     val baseRetryDelay: Duration = 1.seconds,
 ) {
+    init {
+        // A cap of 0 or less is not a cap: BaseService's pagination loops run
+        // `while (page < maxPages)`, so a non-positive value consumes zero extra
+        // pages and silently returns the first page as if it were the whole
+        // collection. Checked here rather than only in BasecampClientBuilder so
+        // the invariant travels with the field — the builder constructs this
+        // config, so `BasecampClient { maxPages = 0 }` fails through this same
+        // require. SPEC.md §2 step 5.
+        require(maxPages > 0) {
+            "maxPages must be > 0, got: $maxPages"
+        }
+    }
+
     companion object {
         const val VERSION = "0.13.0"
         const val API_VERSION = "2026-08-05"
