@@ -1,0 +1,32 @@
+typescript/tests/services/authorization.test.ts
+  s_c60f4ea423b48a::t_34f703c46a495e 125-141
+typescript/src/oauth/authorization-document.ts
+  s_c60f4ea423b48a::t_c7255034ac5561 114-117
+  s_c60f4ea423b48a::t_183d863bccea38 192-201,207
+  s_c60f4ea423b48a::t_1b313ddeae791d 66-67
+go/pkg/basecamp/authorization.go
+  s_c60f4ea423b48a::t_fd61688622340d 89-92
+  s_c60f4ea423b48a::t_1a22934b11d763 193-199,201
+MIGRATING.md
+  s_c60f4ea423b48a::t_2fb814180a33c5 1979-1986
+go/pkg/basecamp/authorization_test.go
+  s_c60f4ea423b48a::t_e02500bd3124a4 217-249
+spec/api-gaps/bc5-authorization-document-shape.md
+  s_c60f4ea423b48a::t_5bb72f809cdea3 190-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "03820f5251a2e2baf3ef75b999ba8cb8c2d37d74",
+  "prompts": {},
+  "sessions": {
+    "s_c60f4ea423b48a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535c7003-8f6e-4ea8-a375-ab8ffe1551c4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
