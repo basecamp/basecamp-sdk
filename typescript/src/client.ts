@@ -117,7 +117,7 @@ export interface BasecampClient extends RawClient {
   // Service Accessors
   // =========================================================================
 
-  /** Projects service - list, get, create, update, and trash projects */
+  /** Projects service - list, get, create, update, trash, archive, and unarchive projects */
   readonly projects: ProjectsService;
   /** Todos service - list, get, create, update, complete, and manage todos */
   readonly todos: TodosService;
@@ -267,7 +267,7 @@ export interface BasecampClientOptions {
 }
 
 export const VERSION = "0.13.0";
-export const API_VERSION = "2026-08-03";
+export const API_VERSION = "2026-08-05";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**
