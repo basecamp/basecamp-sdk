@@ -1,0 +1,74 @@
+go/pkg/basecamp/authorization_test.go
+  s_c60f4ea423b48a::t_e15b3b8019d75b 121-253
+  s_c60f4ea423b48a::t_d7fde43c8817cd 9
+ruby/test/basecamp/services/authorization_service_test.rb
+  s_c60f4ea423b48a::t_450ed5c4fc30d1 41-45,52,56,67,72,77-98
+  s_c60f4ea423b48a::t_7e09685a1d8989 99-100
+typescript/src/oauth/identity.ts
+  s_c60f4ea423b48a::t_8c4835e6f93fb8 72,74,79
+  s_c60f4ea423b48a::t_eac7ec8fd7a526 16-20
+  s_c60f4ea423b48a::t_59b75a82ca972f 6-11
+typescript/src/oauth/authorization-document.ts
+  s_c60f4ea423b48a::t_7f4dd1cf76483f 213
+  s_c60f4ea423b48a::t_9632f82efbe05c 1-123,129-132,135-139,142-212,214-234,239-249
+  s_c60f4ea423b48a::t_14a74eed74a70c 124-128
+  s_c60f4ea423b48a::t_c265e6f71757c2 133-134,140-141
+  s_c60f4ea423b48a::t_19d06dcacf2349 235-238
+typescript/src/services/authorization.ts
+  s_c60f4ea423b48a::t_6eb5a1ba6e83d4 110-112,116
+  s_c60f4ea423b48a::t_5c8e56792b1dfe 150,152
+  s_c60f4ea423b48a::t_b20cbd96975ee9 12-13,15-24,33-35,41-45
+  s_c60f4ea423b48a::t_e07c777c11924c 14
+  s_c60f4ea423b48a::t_78c4046526f4c9 55-58,71,73-75
+ruby/lib/basecamp/services/authorization_service.rb
+  s_c60f4ea423b48a::t_e68b66abcaeb2e 8-16,19,21
+ruby/test/test_helper.rb
+  s_c60f4ea423b48a::t_e9ff8542457d0e 225-228,248-270
+  s_4b2851df67c3f7::t_6e3c03b395ce19 271-272
+typescript/tests/services/authorization.test.ts
+  s_c60f4ea423b48a::t_eea9bb825ab0be 62
+  s_c60f4ea423b48a::t_f4d4dee037cb13 39-61,63-67
+  s_c60f4ea423b48a::t_5243f46169c6e8 160-163
+  s_c60f4ea423b48a::t_f74b5206bacf60 156
+  s_c60f4ea423b48a::t_24ee860338087e 110-131
+  s_c60f4ea423b48a::t_6225e60d077b9b 143-155,157-159,164-183
+go/pkg/basecamp/authorization.go
+  s_c60f4ea423b48a::t_27f967ef5e32f2 47-50,59-61,63-71,82-92
+  s_c60f4ea423b48a::t_6ea7f397e02ba5 187-191,193,195-197,200-209
+  s_c60f4ea423b48a::t_2b6010711c55f0 104-108
+MIGRATING.md
+  s_c60f4ea423b48a::t_fd44b66cfd66f0 32
+  s_c60f4ea423b48a::t_ca4952b987bec9 52-58
+  s_c60f4ea423b48a::t_6acfbcef16314d 1935-1991
+typescript/src/oauth/index.ts
+  s_c60f4ea423b48a::t_ff962da48c5b17 137-144
+spec/api-gaps/bc5-authorization-document-shape.md
+  s_c60f4ea423b48a::t_f8509275ae1a8d 78-85
+  s_c60f4ea423b48a::t_1ae62d6027dde4 165-222
+spec/api-gaps/notifications-sort-pings-first.md
+  s_c60f4ea423b48a::t_da1b0ea747bef8 119-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9cb77632c3caeb9b0dd9998742d89adff4ed029e",
+  "prompts": {},
+  "sessions": {
+    "s_4b2851df67c3f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1c83b83-446a-4c6b-886f-101040635c18",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_c60f4ea423b48a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535c7003-8f6e-4ea8-a375-ab8ffe1551c4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
