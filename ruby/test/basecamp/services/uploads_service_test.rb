@@ -69,14 +69,112 @@ class UploadsServiceTest < Minitest::Test
     assert_equal "Updated description", result["description"]
   end
 
+  # The endpoint returns EVENTS, not Uploads — the retype that closes #649.
   def test_list_versions
-    response = [ { "id" => 1, "version" => 1, "description_attachments" => [] }, { "id" => 2, "version" => 2, "description_attachments" => [] } ]
-
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/uploads/\d+/versions\.json})
-      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+      .to_return(status: 200, body: load_fixture("uploads/versions.json").to_json,
+        headers: { "Content-Type" => "application/json" })
 
     result = @account.uploads.list_versions(upload_id: 2).to_a
-    assert_equal 2, result.length
+
+    assert_equal 3, result.length
+    assert_equal "blob_changed", result.first["action"]
+    assert_equal "company-logo.png", result.first["upload"]["filename"]
+    assert_equal 184829, result.first["upload"]["byte_size"]
+  end
+
+  def test_list_versions_marks_exactly_one_current
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/uploads/\d+/versions\.json})
+      .to_return(status: 200, body: load_fixture("uploads/versions.json").to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    result = @account.uploads.list_versions(upload_id: 2).to_a
+
+    assert_equal 1, result.count { |v| v.dig("upload", "current") }
+    assert result.first.dig("upload", "current")
+  end
+
+  # A version whose recordable no longer resolves omits the upload object
+  # entirely; the partial's `if upload = uploads[...]` is false.
+  def test_list_versions_tolerates_a_missing_recordable
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/uploads/\d+/versions\.json})
+      .to_return(status: 200, body: load_fixture("uploads/versions.json").to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    result = @account.uploads.list_versions(upload_id: 2).to_a
+
+    assert_equal "created", result.last["action"]
+    assert_nil result.last["upload"]
+  end
+
+  def test_create_version_posts_the_attachable_sgid
+    stub_request(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json")
+      .to_return(status: 201, body: { "id" => 2, "filename" => "company-logo.png" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    result = @account.uploads.create_version(upload_id: 2, attachable_sgid: "sgid-abc")
+
+    assert_equal 2, result["id"]
+    assert_requested(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json") do |req|
+      JSON.parse(req.body)["attachable_sgid"] == "sgid-abc"
+    end
+  end
+
+  # Presence-aware: omitted carries the previous description forward, "" clears.
+  def test_create_version_omits_an_unaddressed_description
+    stub_request(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json")
+      .to_return(status: 201, body: { "id" => 2 }.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.uploads.create_version(upload_id: 2, attachable_sgid: "sgid-abc")
+
+    assert_requested(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json") do |req|
+      body = JSON.parse(req.body)
+      !body.key?("description") && !body.key?("base_name")
+    end
+  end
+
+  def test_create_version_sends_an_explicit_blank_description_to_clear_it
+    stub_request(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json")
+      .to_return(status: 201, body: { "id" => 2 }.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.uploads.create_version(upload_id: 2, attachable_sgid: "sgid-abc", description: "")
+
+    assert_requested(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json") do |req|
+      body = JSON.parse(req.body)
+      body.key?("description") && body["description"] == ""
+    end
+  end
+
+  def test_create_version_passes_notify_and_subscriptions
+    stub_request(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json")
+      .to_return(status: 201, body: { "id" => 2 }.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.uploads.create_version(upload_id: 2, attachable_sgid: "sgid-abc",
+      notify: "custom", subscriptions: [ 1049715915 ])
+
+    assert_requested(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json") do |req|
+      body = JSON.parse(req.body)
+      body["notify"] == "custom" && body["subscriptions"] == [ 1049715915 ]
+    end
+  end
+
+  # A replacement copies bytes into a new blob and keeps the old one, so it
+  # always grows recorded storage. 507 is a limit, never a transient failure.
+  def test_create_version_reports_a_storage_limit_as_limit_exceeded
+    stub_request(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json")
+      .to_return(status: 507,
+        body: { "error" => "The storage limit for this account has been reached." }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::LimitExceededError) do
+      @account.uploads.create_version(upload_id: 2, attachable_sgid: "sgid-abc")
+    end
+
+    assert_equal "limit_exceeded", error.code
+    assert_equal 10, error.exit_code
+    refute error.retryable?
+    assert_match(/storage limit/, error.message)
+    assert_requested(:post, "https://3.basecampapi.com/12345/uploads/2/versions.json", times: 1)
   end
 
   def test_download_delegates_through_download_url

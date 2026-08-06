@@ -184,6 +184,7 @@ class ErrorTest {
             BasecampException.Api("error", 500),
             BasecampException.Ambiguous("project"),
             BasecampException.Validation("invalid"),
+            BasecampException.LimitExceeded(),
             BasecampException.Usage("bad arg"),
             BasecampException.DiscoverySelection("ambiguous_issuers", "ambiguous"),
             BasecampException.DeviceFlow(BasecampException.DEVICE_ACCESS_DENIED),
@@ -200,6 +201,7 @@ class ErrorTest {
                 is BasecampException.Api -> "api"
                 is BasecampException.Ambiguous -> "ambiguous"
                 is BasecampException.Validation -> "validation"
+                is BasecampException.LimitExceeded -> "limit_exceeded"
                 is BasecampException.Usage -> "usage"
                 is BasecampException.DiscoverySelection -> "discovery_selection"
                 is BasecampException.DeviceFlow -> "device_flow"

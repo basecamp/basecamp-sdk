@@ -14,6 +14,7 @@ from basecamp.config import Config
 from basecamp.download import DownloadResult
 from basecamp.errors import (
     AmbiguousError,
+    LimitExceededError,
     ApiError,
     AuthError,
     BasecampError,
@@ -43,6 +44,7 @@ __all__ = [
     "NetworkError",
     "ApiError",
     "AmbiguousError",
+    "LimitExceededError",
     "UsageError",
     "ErrorCode",
     "ExitCode",

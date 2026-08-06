@@ -27,6 +27,9 @@ const (
 	CodeAPI        = "api_error"
 	CodeValidation = "validation"
 	CodeAmbiguous  = "ambiguous"
+	// CodeLimitExceeded is a 507: an account limit blocks the request (file
+	// storage, webhooks). Not retryable — no backoff can satisfy a plan limit.
+	CodeLimitExceeded = "limit_exceeded"
 )
 
 // Exit codes for CLI tools.
@@ -41,6 +44,7 @@ const (
 	ExitAPI        = 7 // Server returned error
 	ExitAmbiguous  = 8 // Multiple matches for name
 	ExitValidation = 9 // Validation error (422)
+	ExitLimit      = 10 // Account limit reached (507)
 )
 
 // requestIDHeader is the response header carrying the server-issued request ID.
@@ -114,6 +118,8 @@ func ExitCodeFor(code string) int {
 		return ExitValidation
 	case CodeAmbiguous:
 		return ExitAmbiguous
+	case CodeLimitExceeded:
+		return ExitLimit
 	default:
 		return ExitAPI
 	}

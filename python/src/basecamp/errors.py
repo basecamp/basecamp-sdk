@@ -16,6 +16,7 @@ class ErrorCode(StrEnum):
     API = "api_error"
     AMBIGUOUS = "ambiguous"
     VALIDATION = "validation"
+    LIMIT_EXCEEDED = "limit_exceeded"
 
 
 class ExitCode(IntEnum):
@@ -28,6 +29,7 @@ class ExitCode(IntEnum):
     API = 7
     AMBIGUOUS = 8
     VALIDATION = 9
+    LIMIT_EXCEEDED = 10
 
 
 _EXIT_CODE_MAP = {
@@ -40,6 +42,7 @@ _EXIT_CODE_MAP = {
     ErrorCode.API: ExitCode.API,
     ErrorCode.AMBIGUOUS: ExitCode.AMBIGUOUS,
     ErrorCode.VALIDATION: ExitCode.VALIDATION,
+    ErrorCode.LIMIT_EXCEEDED: ExitCode.LIMIT_EXCEEDED,
 }
 
 
@@ -106,6 +109,18 @@ class NetworkError(BasecampError):
 class ApiError(BasecampError):
     def __init__(self, message: str = "API error", *, retryable: bool = False, **kwargs: Any):
         super().__init__(message, code=ErrorCode.API, retryable=retryable, **kwargs)
+
+
+class LimitExceededError(BasecampError):
+    """An account limit blocks the request (HTTP 507).
+
+    File storage exhausted, or a webhook ceiling reached. Never retryable: no
+    amount of backoff frees storage or raises a plan limit. That is why this is
+    not an ApiError, which a 507 would otherwise become via the 5xx catch-all.
+    """
+
+    def __init__(self, message: str = "Account limit reached", **kwargs: Any):
+        super().__init__(message, code=ErrorCode.LIMIT_EXCEEDED, retryable=False, **kwargs)
 
 
 class AmbiguousError(BasecampError):
@@ -239,6 +254,11 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
             # otherwise; truncated after flattening so the tail is capped too.
             message = f"{message} ({flat})" if message else flat
         err = ValidationError(_truncate(message or "Validation failed"), http_status=status, field_errors=field_errors)
+    elif status == 507:
+        # A 5xx status carrying a client fact: the account is out of storage, or
+        # at its webhook ceiling. Retrying cannot satisfy it, so this is decided
+        # before the 5xx arms below.
+        err = LimitExceededError(_truncate(message or "Account limit reached"), http_status=507)
     elif status == 500:
         err = ApiError("Server error (500)", retryable=True, http_status=500)
     elif status in (502, 503, 504):
