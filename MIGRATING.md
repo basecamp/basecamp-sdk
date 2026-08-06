@@ -35,7 +35,7 @@ it passes your tests and fails in production.
 | [Kotlin](#kotlin) | 17 | 6 | 1 |
 
 61 breaks the compiler will not catch, across the six: 55 with no signal at all
-and 6 that fail at runtime. These are counts at `70d576bd8` — the last commit of
+and 6 that fail at runtime. These are counts at `9a819e44d` — the last commit of
 release content, and the baseline every count here was measured against, not the
 commit the tag is cut from. v0.13.0 is tagged from `main` after this guide
 merges, so the tagged tree contains this file; the counts carry over unchanged
@@ -52,11 +52,11 @@ rather than adding one, and that is where this guide documents it.
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
 body.
 
-> **As of `70d576bd8`.** Base `v0.12.0` = `7e2925d25`. Every count in this
+> **As of `9a819e44d`.** Base `v0.12.0` = `7e2925d25`. Every count in this
 > document is a measurement at that commit, not a constant. If you are reading
 > this from a later tag, re-run the derivations below — they are cheap, and a
-> hand-incremented count is how these go wrong. The release spans 58 merged
-> pull requests, 15 of them labelled `breaking`:
+> hand-incremented count is how these go wrong. The release spans 64 merged
+> pull requests, 16 of them labelled `breaking`:
 >
 > ```bash
 > # Ask which PRs are IN the range, rather than counting commits in it. Two
@@ -72,31 +72,38 @@ body.
 > #      pushed directly to main and is not a PR, so that count runs one high
 > #      from the moment the version is bumped.
 > #
-> # Reachable from HEAD and not from v0.12.0 is the definition; apply it to
-> # merge commits of PRs and neither trap applies.
-> gh pr list --repo basecamp/basecamp-sdk --state merged --limit 300 \
+> #   3. Too small a `--limit`. `gh pr list` orders by CREATED, not merged, so
+> #      a long-open PR that merged late sits far down the list. At `--limit
+> #      300` an old-but-recently-merged PR drops off the end and is silently
+> #      uncounted. Ask for more than you need; the filtering is done below.
+> #
+> # Reachable from origin/main and not from v0.12.0 is the definition; apply it
+> # to merge commits of PRs and none of the three traps applies. Read from
+> # origin/main rather than HEAD — a stale checkout reported an inventory two
+> # operations behind what was actually on main.
+> gh pr list --repo basecamp/basecamp-sdk --state merged --limit 1000 \
 >   --json mergeCommit --jq '.[].mergeCommit.oid' |
 >   while read sha; do
->     git merge-base --is-ancestor "$sha" HEAD 2>/dev/null &&
+>     git merge-base --is-ancestor "$sha" origin/main 2>/dev/null &&
 >     ! git merge-base --is-ancestor "$sha" v0.12.0 2>/dev/null && echo "$sha"
 >   done | wc -l
 >
 > # Same rule for the breaking subset.
 > gh pr list --repo basecamp/basecamp-sdk --state merged --label breaking \
->   --limit 300 --json mergeCommit --jq '.[].mergeCommit.oid' |
+>   --limit 1000 --json mergeCommit --jq '.[].mergeCommit.oid' |
 >   while read sha; do
->     git merge-base --is-ancestor "$sha" HEAD 2>/dev/null &&
+>     git merge-base --is-ancestor "$sha" origin/main 2>/dev/null &&
 >     ! git merge-base --is-ancestor "$sha" v0.12.0 2>/dev/null && echo "$sha"
 >   done | wc -l
 > ```
 >
 > A labelled PR is not the same unit as an entry below: one PR can break four
 > SDKs and one SDK can carry two entries from the same PR, which is why the
-> per-SDK columns are larger than 15.
+> per-SDK columns are larger than 16.
 
 ## What shipped
 
-**Operation inventory: 238 → 247.** Derive both ends rather than trusting
+**Operation inventory: 238 → 249.** Derive both ends rather than trusting
 either number:
 
 ```bash
@@ -109,12 +116,12 @@ git show v0.12.0:openapi.json | python3 -c "import json,sys;d=json.load(sys.stdi
 print(sum(1 for p,v in d['paths'].items() for m in v if m in ('get','post','put','patch','delete')))"
 ```
 
-Fourteen operation IDs added, five removed. At the level of *capability* that is
-twelve additions, three removals and two renames:
+Sixteen operation IDs added, five removed. At the level of *capability* that is
+fourteen additions, three removals and two renames:
 
 | | |
 |---|---|
-| **Added (12)** | Folders — `ListFolders`, `GetFolder`, `CreateFolder`, `UpdateFolder`, `DeleteFolder` (#593); `DestroyTimesheetEntry` (#626); cloud files — `GetCloudFile`, `CreateCloudFile`, `UpdateCloudFile` (#629); Google documents — `GetGoogleDocument`, `CreateGoogleDocument`, `UpdateGoogleDocument` (#629) |
+| **Added (14)** | Folders — `ListFolders`, `GetFolder`, `CreateFolder`, `UpdateFolder`, `DeleteFolder` (#593); `DestroyTimesheetEntry` (#626); cloud files — `GetCloudFile`, `CreateCloudFile`, `UpdateCloudFile` (#629); Google documents — `GetGoogleDocument`, `CreateGoogleDocument`, `UpdateGoogleDocument` (#629); project status — `ArchiveProject`, `UnarchiveProject` (#679) |
 | **Renamed (2)** | `UpdateDocument` → `ReplaceDocument` (#601); `UpdateScheduleEntry` → `ReplaceScheduleEntry` (#632). Same route, same verb, honest name. |
 | **Removed (3)** | `GetRecording`, `TrashTodo`, `CreateForwardReply` (#619) |
 
@@ -133,6 +140,41 @@ composites — the largest behavioural change in the release. See
 
 No surviving operation's retry, idempotency or pagination *configuration*
 changed. `page` changed meaning; the metadata behind it did not.
+
+**The pagination cap is now validated at construction (#678, #680).** This is
+**not** one of the 61, and it adds nothing to any per-SDK column above. Those
+count breaks the compiler will not catch: class A is silent, and class B needs a
+particular server response before it fails. This is neither. It fails at
+construction, deterministically, before any request is made, on a value you
+wrote literally, with a named configuration error that says what was wrong. You
+find out on the first line, every time, in development.
+
+What newly raises depends on the SDK, because they did not start from the same
+place:
+
+| SDK | newly rejected at construction |
+|---|---|
+| TypeScript | `0`, negatives, `NaN`, `Infinity`, fractional caps, `Number.MAX_VALUE` and anything else `≥ 2 ** 53` |
+| Kotlin | `0` and negatives (`IllegalArgumentException` via `require`) |
+| Swift | `0` and negatives — `precondition`, which **traps**; `BasecampConfig.init` is public and non-throwing, so it has no way to return an error |
+| Python | non-integers such as `float("inf")` and `2.5`, and `True` |
+| Go, Ruby | nothing — both already rejected a non-positive cap at v0.12.0 |
+
+Python's `0` and negatives already raised at v0.12.0; only the type check is
+new. Go already panicked and Ruby already raised `ArgumentError`, so neither
+moves.
+
+The one that will actually bite is **`maxPages: Infinity` in TypeScript**, and
+it is why #678 carries the `breaking` label. At v0.12.0 there was no validation
+at all, so writing `Infinity` to mean "no cap" *ran* — and did exactly what it
+said, following `rel="next"` without a bound. It now throws. If that was your
+idiom, pass a real number.
+
+An **absent** cap is unchanged, and that includes an explicit `null`: both
+`undefined` and `null` fall through to the default 10,000, in the client factory
+and in a directly-constructed service alike. #680 fixed a disagreement between
+those two doors that would otherwise have shipped — the factory rejected `null`
+where the service defaulted it.
 
 **Coverage was corrected and re-scoped, not completed.** Five of the six routes
 tracked as gaps turned out to be phantoms — already modelled at their flat
@@ -2169,7 +2211,7 @@ have to hold together:
 - `max_retries` must be **0**. For any value ≥ 1 the new expression
   `[@config.max_retries, 1].max` is byte-identical to the old one.
 - The GET must be **ungoverned** — carrying no operation ID. Every one of the
-  247 operations in `metadata.json` declares a retry block, so this is not "an
+  249 operations in `metadata.json` declares a retry block, so this is not "an
   operation without a policy"; it is a call site that passes no `operation:`.
   In practice that means `Http#get_absolute` and the Launchpad authorization
   fetch it backs, plus `AccountClient#get` / `Http#get` when *you* call them
@@ -2818,7 +2860,7 @@ oversight, and it should be stated rather than assumed.
 # Not in this release
 
 **Nothing is in flight.** Every change this guide describes is merged at
-`70d576bd8`, and every count above is a measurement at that commit rather than a
+`9a819e44d`, and every count above is a measurement at that commit rather than a
 projection. Earlier drafts carried an "if it lands" list; all of it landed, and
 the counts were re-derived rather than incremented.
 
@@ -2856,6 +2898,33 @@ Between them #648 and #652 took `make check` from **41 targets to 43**
 ```bash
 sed -n 's/^check-targets: *//p' Makefile | tr ' ' '\n' | grep -c .
 ```
+
+**Six PRs landed after this guide's first draft.** All are merged, all are
+inside the counts above, and none is pending. They are listed because a reviewer
+comparing the guide against `git log` will find them and should not have to work
+out which ones mattered:
+
+- **#676 — Python entered the security tooling** (`b0567a77e`). Repository-internal:
+  CodeQL, Trivy and ruff's flake8-bandit cover Python for the first time. No
+  consumer-visible change and no operations.
+- **#679 — bc3 repin plus project archive/unarchive** (`a5bcb3fb2`). Adds
+  `ArchiveProject` and `UnarchiveProject`, taking the inventory from 247 to 249.
+  It adds no class-A and no class-B entry, for the reason new operations never
+  do: there was no v0.12.0 caller of an operation that did not exist.
+- **#678 — Link-header parsing** (`a6aa8a1c2`). All six SDKs parsed `Link`
+  wrongly, in two different directions, and that part is a fix rather than a
+  break. Its `breaking` label is earned by the `maxPages` validation it also
+  introduced — see [What shipped](#what-shipped).
+- **#645 — event-feed conformance** (`7a32b22c3`). Conformance families and the
+  SPEC §23 G-SD repair. Test-suite scope only; it moves no SDK surface, and it
+  adds conformance families rather than `make check` targets, so the 43 above
+  still holds.
+- **#610 — Actions group bump** (`9f0ebad16`). CI only.
+- **#680 — two `maxPages` guards that disagreed with their siblings**
+  (`9a819e44d`). Fixes, not breaks: Python stopped accepting `max_pages=True`,
+  and the TypeScript factory stopped rejecting a `null` that a directly
+  constructed service defaulted. Both are described under
+  [What shipped](#what-shipped).
 
 Also folded in rather than listed: **#637** (`Todolist.color` and
 `comments_app_url` required — `0fd25079c`), **#643** (`basecamp.Ptr` and
