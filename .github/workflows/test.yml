@@ -179,6 +179,19 @@ jobs:
       - name: Kotlin service drift (static; jq/grep, no JVM)
         run: make kt-check-drift
 
+      # The third Go surface. go-check-drift compares generated operations
+      # against the hand-written go/pkg/basecamp wrappers; nothing watched the
+      # GROUPED client until this gate, which is how ArchiveProject and
+      # UnarchiveProject shipped missing from it through two green `make` runs.
+      - name: Every operation accounted for on the Go grouped client
+        run: make check-grouped-client-coverage
+
+      # The run above only ever exercises the PASSING case. This drives
+      # adversarial inventories through the same gate, including the
+      # unaccounted-new-operation case that is the whole reason it exists.
+      - name: Grouped-client coverage gate self-test (adversarial inventories)
+        run: make test-check-grouped-client-coverage
+
       - name: README env-var tables match what the SDKs actually read
         run: make check-readme-env-vars
 

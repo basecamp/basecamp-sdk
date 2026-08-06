@@ -1,0 +1,291 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Guard: every operation is explicitly accounted for on the Go GROUPED client.
+#
+# The grouped surface is `generated.Client.Todos()`, `.Projects()`, and so on — a
+# curated ergonomic layer emitted by the `{{if eq $opid "X"}}` chain in
+# go/templates/client.tmpl. Nothing else in `make` looks at it. `go-check-drift`
+# compares generated operations against the hand-written go/pkg/basecamp wrappers,
+# which is a different surface; ArchiveProject and UnarchiveProject shipped missing
+# from the grouped client and survived TWO fully green `make` runs before a human
+# reviewer caught it (#679). The next operation added to a grouped service hits the
+# same hole.
+#
+# WHAT THIS IS NOT. "Every operation in a grouped service's tag must be exposed"
+# is not the invariant: it is false for 14 of the 15 services today. Projects is
+# exhaustive over its tag; Todos exposes 6 of 18, Card Tables 5 of 21, People 3 of
+# 16, and 9 tags have no grouped presence at all. Curation is the design.
+#
+# Nor is a plain inventory of what IS exposed enough. A newly-added operation would
+# be absent from both the inventory and the template, the two would agree, and the
+# gate would pass — the #679 miss exactly.
+#
+# THE INVARIANT IS TOTAL ACCOUNTING. Every operationId in openapi.json appears
+# EXACTLY ONCE across go/grouped-client-inventory.yml's `grouped:` and
+# `not_grouped:`. A new operation lands in neither and fails loudly, forcing a
+# decision. Same device as spec/doc-constants.json's committed marker counts, where
+# both adding and deleting fail until someone restates the number.
+#
+# Method names are recorded data, never derived: arms deliberately rename (MoveCard
+# -> Move, UpdateCard -> UpdateVerbatim, justified at client.tmpl:1613). Keying on
+# the operationId is what makes that safe.
+#
+# Env seams (for scripts/test-check-grouped-client-coverage.rb — the tracked tree
+# is never written to):
+#   GROUPED_CLIENT_INVENTORY  path to the inventory YAML
+#   GROUPED_CLIENT_TEMPLATE   path to client.tmpl
+#   GROUPED_CLIENT_OPENAPI    path to openapi.json
+#   GROUPED_CLIENT_GENERATED  path to client.gen.go
+#
+# Usage: scripts/check-grouped-client-coverage
+
+require "json"
+require "yaml"
+
+ROOT = File.expand_path("..", __dir__)
+
+INVENTORY_PATH = ENV["GROUPED_CLIENT_INVENTORY"] || File.join(ROOT, "go/grouped-client-inventory.yml")
+TEMPLATE_PATH  = ENV["GROUPED_CLIENT_TEMPLATE"]  || File.join(ROOT, "go/templates/client.tmpl")
+OPENAPI_PATH   = ENV["GROUPED_CLIENT_OPENAPI"]   || File.join(ROOT, "openapi.json")
+GENERATED_PATH = ENV["GROUPED_CLIENT_GENERATED"] || File.join(ROOT, "go/pkg/generated/client.gen.go")
+
+# Extraction floors. Every input here is parsed with a regex, and a regex that
+# stops matching returns an empty set rather than an error — which reads as "all
+# clear" and is how a gate silently stops gating. A floor turns that into a
+# failure. The numbers are deliberately far below the real values (249 operations,
+# 63 arms, 15 services): they catch total extraction collapse, not drift.
+MIN_OPERATIONS = 200
+MIN_ARMS = 40
+MIN_SERVICES = 10
+
+failures = []
+
+def die(failures)
+  warn "FAIL: Go grouped-client coverage"
+  warn ""
+  failures.each { |f| warn "  - #{f}" }
+  warn ""
+  warn "  The grouped client is go/templates/client.tmpl's `$opid` chain; the"
+  warn "  accounting lives in go/grouped-client-inventory.yml."
+  exit 1
+end
+
+# ----------------------------------------------------------------- openapi.json
+
+unless File.exist?(OPENAPI_PATH)
+  die(["#{OPENAPI_PATH} not found"])
+end
+
+spec = JSON.parse(File.read(OPENAPI_PATH))
+spec_ops = spec.fetch("paths").flat_map { |_path, item|
+  item.filter_map { |_verb, op| op["operationId"] if op.is_a?(Hash) && op["operationId"] }
+}
+
+if spec_ops.length < MIN_OPERATIONS
+  die(["only #{spec_ops.length} operations read from openapi.json (floor #{MIN_OPERATIONS}) — " \
+       "extraction is probably broken, not the spec"])
+end
+
+dupe_spec = spec_ops.tally.select { |_, n| n > 1 }.keys
+unless dupe_spec.empty?
+  die(["openapi.json declares duplicate operationIds: #{dupe_spec.sort.join(', ')}"])
+end
+spec_ops = spec_ops.to_set
+
+# -------------------------------------------------------------- client.tmpl
+
+unless File.exist?(TEMPLATE_PATH)
+  die(["#{TEMPLATE_PATH} not found"])
+end
+
+# Walk the {{if eq $opid "X"}} / {{else if eq $opid "X"}} chain. Each arm runs
+# until the next arm, and the `func (s *XxxService) Name(` lines inside it are
+# what that arm emits. A `range .Bodies` variant spells its name with a template
+# action (`Create{{.Suffix}}`), which does not match and is not recorded — the
+# WithBody form beside it is the anchor, and it is enough to prove the arm fired.
+template_arms = {}
+current = nil
+File.foreach(TEMPLATE_PATH) do |line|
+  if (m = line.match(/\{\{(?:else )?if eq \$opid "([^"]+)"\}\}/))
+    current = { opid: m[1], service: nil, methods: [] }
+    template_arms[m[1]] = current
+  elsif current && (m = line.match(/^func \(s \*(\w+Service)\) (\w+)\(/))
+    current[:service] ||= m[1]
+    current[:methods] << m[2]
+  end
+end
+
+if template_arms.length < MIN_ARMS
+  die(["only #{template_arms.length} `$opid` arms read from #{File.basename(TEMPLATE_PATH)} " \
+       "(floor #{MIN_ARMS}) — the chain's syntax probably changed and extraction is silently failing"])
+end
+
+template_arms.each_value do |arm|
+  next unless arm[:service].nil?
+  failures << "client.tmpl arm for `#{arm[:opid]}` emits no `func (s *XxxService)` — " \
+              "an arm that produces no method is dead template."
+end
+
+# ------------------------------------------------------------- client.gen.go
+#
+# Anchor on the ACCESSOR, not on `type \w+Service struct`: CloudFileService and
+# DoorService are unrelated schema types in the same file and would be read as
+# grouped services.
+generated_services = []
+generated_methods = []
+if File.exist?(GENERATED_PATH)
+  File.foreach(GENERATED_PATH) do |line|
+    if (m = line.match(/^func \(c \*Client\) \w+\(\) \*(\w+Service) \{/))
+      generated_services << m[1]
+    elsif (m = line.match(/^func \(s \*(\w+Service)\) (\w+)\(/))
+      generated_methods << [m[1], m[2]]
+    end
+  end
+
+  if generated_services.length < MIN_SERVICES
+    die(["only #{generated_services.length} grouped service accessors read from " \
+         "#{File.basename(GENERATED_PATH)} (floor #{MIN_SERVICES}) — extraction is probably broken"])
+  end
+else
+  # The generated client is a build artifact; a fresh clone has it, but do not
+  # hard-fail a tree that has not generated yet. Say so rather than passing quietly.
+  warn "note: #{GENERATED_PATH} not found — skipping the generated-output cross-check"
+end
+generated_services = generated_services.to_set
+generated_methods = generated_methods.to_set
+
+# ----------------------------------------------------------------- inventory
+
+unless File.exist?(INVENTORY_PATH)
+  die(["#{INVENTORY_PATH} not found — this file IS the accounting"])
+end
+
+inventory = begin
+  YAML.safe_load(File.read(INVENTORY_PATH)) || {}
+rescue Psych::Exception => e
+  # A malformed inventory is a gate failure, not a crash. Aliases in particular
+  # are rejected by safe_load, and an unhandled Psych backtrace buries the one
+  # line that says which file to look at.
+  die(["#{INVENTORY_PATH} is not loadable YAML: #{e.message}"])
+end
+grouped = inventory["grouped"] || {}
+not_grouped = inventory["not_grouped"] || []
+
+unless grouped.is_a?(Hash)
+  die(["inventory `grouped:` must be a mapping of service name to entries"])
+end
+unless not_grouped.is_a?(Array)
+  die(["inventory `not_grouped:` must be a list of operationIds"])
+end
+
+inventory_grouped = {} # opid => { service:, methods: }
+grouped.each do |service, entries|
+  (entries || []).each do |entry|
+    opid = entry["operation"]
+    if opid.nil?
+      failures << "inventory `grouped: #{service}:` has an entry with no `operation:`."
+      next
+    end
+    if inventory_grouped.key?(opid)
+      failures << "`#{opid}` is listed twice under `grouped:` " \
+                  "(#{inventory_grouped[opid][:service]} and #{service}) — " \
+                  "every operation is accounted for exactly once."
+      next
+    end
+    inventory_grouped[opid] = { service: service, methods: Array(entry["methods"]) }
+  end
+end
+
+dupe_ungrouped = not_grouped.tally.select { |_, n| n > 1 }.keys
+dupe_ungrouped.each do |opid|
+  failures << "`#{opid}` is listed twice under `not_grouped:` — " \
+              "every operation is accounted for exactly once."
+end
+
+# ------------------------------------------------------- the total accounting
+
+both = inventory_grouped.keys & not_grouped
+both.sort.each do |opid|
+  failures << "`#{opid}` is in BOTH `grouped:` (#{inventory_grouped[opid][:service]}) and " \
+              "`not_grouped:` — it is one or the other, not both."
+end
+
+accounted = (inventory_grouped.keys + not_grouped).to_set
+
+# THE #679 CASE. A new operation is in openapi.json and in neither bucket.
+(spec_ops - accounted).sort.each do |opid|
+  arm = template_arms[opid]
+  where = arm ? "`#{arm[:service]}`" : "the right service"
+  failures << "new operation `#{opid}` is unaccounted for — expose it on #{where} in " \
+              "go/templates/client.tmpl and add it under `grouped:`, or add it to " \
+              "`not_grouped:` if it deliberately stays off the grouped client."
+end
+
+(accounted - spec_ops).sort.each do |opid|
+  failures << "`#{opid}` is in the inventory but not in openapi.json — stale, remove it."
+end
+
+# -------------------------------------------- inventory vs. the actual template
+
+(inventory_grouped.keys.to_set - template_arms.keys.to_set).sort.each do |opid|
+  failures << "`#{opid}` is listed under `grouped: #{inventory_grouped[opid][:service]}:` but " \
+              "go/templates/client.tmpl has no `$opid` arm for it — " \
+              "either add the arm or move it to `not_grouped:`."
+end
+
+(template_arms.keys.to_set - inventory_grouped.keys.to_set).sort.each do |opid|
+  next unless spec_ops.include?(opid) # already reported as stale above otherwise
+  failures << "go/templates/client.tmpl exposes `#{opid}` on " \
+              "`#{template_arms[opid][:service]}` but it is not under `grouped:` — " \
+              "record it there."
+end
+
+inventory_grouped.each do |opid, entry|
+  arm = template_arms[opid]
+  next if arm.nil? || arm[:service].nil?
+
+  if arm[:service] != entry[:service]
+    failures << "`#{opid}` is recorded under `grouped: #{entry[:service]}:` but client.tmpl " \
+                "emits it on `#{arm[:service]}`."
+  end
+
+  missing_methods = arm[:methods].to_set - entry[:methods].to_set
+  missing_methods.sort.each do |method|
+    failures << "`#{opid}` emits `#{entry[:service]}.#{method}` in client.tmpl but that method " \
+                "is not in its inventory `methods:` — method names are recorded, not derived."
+  end
+
+  phantom_methods = entry[:methods].to_set - arm[:methods].to_set
+  phantom_methods.sort.each do |method|
+    failures << "`#{opid}` records method `#{method}` but client.tmpl's arm does not emit it."
+  end
+end
+
+# ------------------------------------------ inventory vs. the generated output
+#
+# The template is the intent; client.gen.go is whether the intent survived
+# generation. #679's arms were added to the template AND regenerated, so this
+# cross-check would not have caught it on its own — the total accounting above is
+# what does. This catches the different failure where an arm exists but generates
+# nothing.
+unless generated_services.empty?
+  inventory_grouped.each do |opid, entry|
+    unless generated_services.include?(entry[:service])
+      failures << "`#{opid}` is recorded on `#{entry[:service]}`, which has no " \
+                  "`func (c *Client) ...() *#{entry[:service]}` accessor in the generated client."
+      next
+    end
+    entry[:methods].each do |method|
+      next if generated_methods.include?([entry[:service], method])
+      failures << "`#{entry[:service]}.#{method}` (#{opid}) is in the inventory but absent from " \
+                  "the generated client — regenerate, or the arm is not firing."
+    end
+  end
+end
+
+die(failures) unless failures.empty?
+
+puts "OK: Go grouped-client coverage — #{spec_ops.size} operations fully accounted for " \
+     "(#{inventory_grouped.size} grouped across #{grouped.size} services, " \
+     "#{not_grouped.size} deliberately not grouped)"

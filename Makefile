@@ -300,7 +300,7 @@ doc-constants-check:
 # Go SDK targets (delegates to go/Makefile)
 #------------------------------------------------------------------------------
 
-.PHONY: go-test go-lint go-check go-clean go-check-drift go-check-wrapper-drift go-check-generated-drift
+.PHONY: go-test go-lint go-check go-clean go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage
 
 go-test:
 	@$(MAKE) -C go test
@@ -327,6 +327,29 @@ go-check-drift:
 go-check-generated-drift:
 	@echo "==> Checking generated Go client drift..."
 	@./scripts/check-go-generated-drift.sh
+
+# Total accounting for the GROUPED generated client (generated.Client.Todos(),
+# .Projects(), …). The third Go surface, and the one nothing else watches:
+# go-check-drift compares generated operations against the hand-written
+# go/pkg/basecamp wrappers, go-check-wrapper-drift compares their fields, and
+# neither looks at the `$$opid` chain in go/templates/client.tmpl. ArchiveProject
+# and UnarchiveProject shipped missing from it through TWO fully green `make`
+# runs; a human reviewer caught it, and a gate should have.
+#
+# Every operationId must appear exactly once across go/grouped-client-inventory.yml.
+# "Expose every operation in the tag" is NOT the invariant — the grouped surface is
+# deliberately curated, and that rule is false for 14 of its 15 services.
+check-grouped-client-coverage:
+	@echo "==> Checking Go grouped-client coverage..."
+	@./scripts/check-grouped-client-coverage
+
+# Drive that gate from outside with adversarial inventories. Its live run only
+# ever exercises the PASSING case, so nothing there proves it rejects anything —
+# and a coverage gate that cannot fail converts "nobody checked" into "the gate
+# says it is fine". Each case drives the real checker through its env seams
+# against synthetic inputs in a tmpdir; the tracked tree is never written to.
+test-check-grouped-client-coverage:
+	@ruby ./scripts/test-check-grouped-client-coverage.rb
 
 # Check for field-level drift between generated structs and hand-written
 # wrappers in go/pkg/basecamp/. Sibling of go-check-drift; that check is
@@ -1303,7 +1326,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts
@@ -1336,6 +1359,8 @@ help:
 	@echo "  go-check         Run all Go checks"
 	@echo "  go-check-drift           Check service layer drift vs generated client (operation-level)"
 	@echo "  go-check-wrapper-drift   Check wrapper struct drift vs generated structs (field-level)"
+	@echo "  check-grouped-client-coverage       Check every operation is accounted for on the grouped client"
+	@echo "  test-check-grouped-client-coverage  Self-test that gate with adversarial inventories"
 	@echo "  go-check-generated-drift Check generated client.gen.go is current (regenerate + diff)"
 	@echo "  go-clean         Remove Go build artifacts"
 	@echo ""
