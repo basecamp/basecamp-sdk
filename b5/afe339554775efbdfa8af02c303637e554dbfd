@@ -1,0 +1,48 @@
+API-GAP-404.md
+  s_6596a1ee398fe6::t_72f6cb1960e81d 5-18
+SPEC.md
+  s_6596a1ee398fe6::t_3f049765bfe107 851,1391,3427
+  s_6596a1ee398fe6::t_6079155d1117ae 341-354
+  s_6596a1ee398fe6::t_accccdc7474a17 3371-3374
+  s_6596a1ee398fe6::t_63109d8419cf3f 385-392,1121-1136
+  s_6596a1ee398fe6::t_47e79782e484c4 1137
+AGENTS.md
+  s_6596a1ee398fe6::t_3f049765bfe107 29,94
+python/src/basecamp/__init__.py
+  s_6596a1ee398fe6::t_5666e2bfe23a1c 23
+go/pkg/basecamp/errors.go
+  s_6596a1ee398fe6::t_d821d15cce0b5b 37-46
+python/tests/services/test_uploads.py
+  s_6596a1ee398fe6::t_1bf3023a472692 301,327
+MIGRATING.md
+  s_6596a1ee398fe6::t_455cf8f3f42cea 14-90
+go/pkg/basecamp/vaults.go
+  s_6596a1ee398fe6::t_c7354ca8905318 1110
+  s_6596a1ee398fe6::t_738d7c29748f42 1032,1034,1036,1038,1040,1048,1050,1052,1055,1063,1065,1067,1070,1072,1077
+ruby/test/basecamp/services/uploads_service_test.rb
+  s_e4dc5311e27670::t_f66e7291c55d08 175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b5afe339554775efbdfa8af02c303637e554dbfd",
+  "prompts": {},
+  "sessions": {
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e4dc5311e27670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4125831-cfa6-4336-96d7-6e128ffcf078",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
