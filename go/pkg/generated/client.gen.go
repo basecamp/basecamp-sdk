@@ -25181,6 +25181,14 @@ func (s *ProjectsService) Update(ctx context.Context, accountId string, projectI
 	return s.client.UpdateProject(ctx, accountId, projectId, body, reqEditors...)
 }
 
+func (s *ProjectsService) Unarchive(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UnarchiveProject(ctx, accountId, projectId, reqEditors...)
+}
+
+func (s *ProjectsService) Archive(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ArchiveProject(ctx, accountId, projectId, reqEditors...)
+}
+
 func (s *CommentsService) List(ctx context.Context, accountId string, recordingId int64, params *ListCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.ListComments(ctx, accountId, recordingId, params, reqEditors...)
 }

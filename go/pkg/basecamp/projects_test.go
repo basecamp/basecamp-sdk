@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // fixturesDir returns the path to the fixtures directory.
@@ -468,3 +470,21 @@ func TestProjectsService_UnarchiveAtProjectLimit(t *testing.T) {
 		t.Errorf("http status = %d, want 507", bcErr.HTTPStatus)
 	}
 }
+
+// The low-level grouped client surface (generated.Client.Projects()) is emitted
+// from an explicit per-operation switch in go/templates/client.tmpl, NOT from the
+// operation list — so adding an operation to the spec does not add it here, and
+// nothing catches the omission: go-check-drift compares generated operations
+// against this package's wrappers and never looks at the grouped surface.
+// ArchiveProject and UnarchiveProject shipped without their template cases for
+// exactly that reason (caught in review on #679), leaving ProjectsService
+// asymmetric with RecordingsService, which has both.
+//
+// These method-value references are the cheap guard: they are compile-time only,
+// so a regressed template breaks the build here instead of silently shipping a
+// grouped client that cannot reach the operation.
+var (
+	_ = (*generated.ProjectsService).Archive
+	_ = (*generated.ProjectsService).Unarchive
+	_ = (*generated.ProjectsService).Trash
+)
