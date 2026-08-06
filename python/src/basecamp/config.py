@@ -115,7 +115,12 @@ class Config:
         # had, and Ruby already rejects via ``is_a?(Integer)``. Go, Kotlin and
         # Swift get it from the compiler. A float like 2.5 is refused for the
         # same reason: a cap has to be a number the counter can arrive at.
-        if not isinstance(self.max_pages, int) or self.max_pages <= 0:
+        # ``bool`` is excluded for the same reason as ``max_retries`` above: it
+        # is a subclass of ``int``, so ``max_pages=True`` otherwise passes and
+        # yields a cap of ``True``, which every paginator reads as 1 — silently
+        # returning the first page as the whole collection. ``False`` was
+        # already refused, but only incidentally, by being ``0``.
+        if isinstance(self.max_pages, bool) or not isinstance(self.max_pages, int) or self.max_pages <= 0:
             raise ValueError("max_pages must be a positive integer")
 
     @classmethod

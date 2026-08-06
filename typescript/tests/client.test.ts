@@ -749,6 +749,28 @@ describe("BasecampClient", () => {
 
       expect((service as unknown as { maxPages: number }).maxPages).toBe(DEFAULT_MAX_PAGES);
     });
+
+    // Both doors have to agree on what "not supplied" means. BaseService guards
+    // `maxPages != null` so that an explicit `null` falls through to the same
+    // `?? DEFAULT_MAX_PAGES` the guard's own comment points at; the factory
+    // guarded `!== undefined`, so the two disagreed on exactly one value and
+    // `createBasecampClient({ maxPages: null })` threw where the equivalent
+    // direct construction defaulted. `null` is outside the declared type but
+    // reachable from untyped JS, which is the only place the disagreement
+    // could ever have been observed — hence the casts.
+    it("treats an explicit null maxPages as not supplied, in both doors alike", () => {
+      const raw = createBasecampClient({ accountId: "12345", accessToken: "test-token" }).raw;
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        maxPages: null as unknown as number,
+      });
+      const service = new ProjectsService(raw, undefined, undefined, null as unknown as number);
+
+      expect((client.projects as unknown as { maxPages: number }).maxPages).toBe(DEFAULT_MAX_PAGES);
+      expect((service as unknown as { maxPages: number }).maxPages).toBe(DEFAULT_MAX_PAGES);
+    });
   });
 
   describe("hooks integration", () => {

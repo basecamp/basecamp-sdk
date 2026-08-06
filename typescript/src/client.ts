@@ -334,9 +334,17 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   // reached only later, inside `BaseService`'s `page < this.maxPages` loops, far
   // from the call that misconfigured it. Same predicate, same error, checked
   // once at construction — see assertValidMaxPages for what each rejected value
-  // does to the bound. Only when the caller supplied one: `undefined` must keep
-  // falling through to DEFAULT_MAX_PAGES.
-  if (maxPages !== undefined) {
+  // does to the bound. Only when the caller supplied one: an absent cap must
+  // keep falling through to DEFAULT_MAX_PAGES.
+  //
+  // `!= null`, matching BaseService's guard exactly. This value is not consumed
+  // here — it is handed straight to every service below, where `maxPages ??
+  // DEFAULT_MAX_PAGES` treats an explicit `null` as absent. A `!== undefined`
+  // test here made the two doors disagree on that single value: the factory
+  // threw where the equivalent direct service construction defaulted. Whichever
+  // way "not supplied" is defined, both guards have to define it the same way,
+  // because the same `??` is downstream of both.
+  if (maxPages != null) {
     assertValidMaxPages(maxPages);
   }
 
