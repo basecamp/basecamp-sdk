@@ -1,0 +1,27 @@
+scripts/test-check-grouped-client-coverage.rb
+  s_c60f4ea423b48a::t_461e711caf7266 44,49-58
+  s_c60f4ea423b48a::t_5f10fcb33075a0 48
+  s_c60f4ea423b48a::t_80c116b9fb18db 303-331
+scripts/check-grouped-client-coverage
+  s_c60f4ea423b48a::t_7c578708dace96 342,344
+  s_c60f4ea423b48a::t_a123e796ed80b6 294-311,313
+  s_c60f4ea423b48a::t_b6ceb37945d087 112-129,134,139-141
+go/grouped-client-inventory.yml
+  s_c60f4ea423b48a::t_16c6e067ab7329 38,44,46,49,55,58,64,70,76,88,98,110,118,121,129,134,140,145,151,154,160,163,171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4de3881b275ab1d7d4d5261b297f58468d169f06",
+  "prompts": {},
+  "sessions": {
+    "s_c60f4ea423b48a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535c7003-8f6e-4ea8-a375-ab8ffe1551c4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
