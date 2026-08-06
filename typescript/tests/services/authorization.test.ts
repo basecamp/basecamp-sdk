@@ -122,6 +122,23 @@ describe("AuthorizationService", () => {
       expect(info.productFilterApplied).toBe(true);
     });
 
+    it("treats an empty Launchpad account list as filterable, not inapplicable", async () => {
+      // Launchpad returns accounts: [] for an identity with no currently
+      // accessible accounts. "No account carries a product" is vacuously true of
+      // an empty list, but this document filters fine — reporting the filter
+      // inapplicable would assert "this issuer cannot filter by product" on no
+      // evidence, which is the one thing the flag is supposed to mean.
+      server.use(
+        http.get(LAUNCHPAD_URL, () =>
+          HttpResponse.json({ ...sampleAuthResponse(), accounts: [] })
+        )
+      );
+
+      const info = await client.authorization.getInfo({ filterProduct: "bc3" });
+      expect(info.accounts).toHaveLength(0);
+      expect(info.productFilterApplied).toBe(true);
+    });
+
     it("leaves productFilterApplied unset when no filter was requested", async () => {
       server.use(http.get(LAUNCHPAD_URL, () => HttpResponse.json(sampleAuthResponse())));
 

@@ -187,12 +187,16 @@ adds no runtime edge to the known `base.ts`/`client.ts` cycle. In it:
   `AuthorizedAccount.product`/`appHref` are optional; `resource` and a
   top-level `scope` are new. This is a **breaking type change** and has a
   `MIGRATING.md` entry.
-- `filterProduct` takes the third of the brief's three options: when *no*
-  account carries a `product`, the filter is inapplicable, all accounts are
-  returned, and `AuthorizationInfo.productFilterApplied` is `false`. When at
-  least one does, the filter applies unchanged, so an empty result still means
-  "nothing matched" — the two situations stay distinguishable, which returning
-  `[]` for both did not allow.
+- `filterProduct` takes the third of the brief's three options: when the
+  document carries at least one account and *none* of them carries a `product`,
+  the filter is inapplicable, all accounts are returned, and
+  `AuthorizationInfo.productFilterApplied` is `false`. When at least one does,
+  the filter applies unchanged, so an empty result still means "nothing
+  matched" — the two situations stay distinguishable, which returning `[]` for
+  both did not allow. An **empty** account list reports `applied: true`:
+  Launchpad returns one for an identity with no currently accessible accounts,
+  the result is empty either way, and `false` there would assert "this issuer
+  cannot filter by product" on no evidence.
 
 **Go** — `AuthorizedAccount.Resource` and `AuthorizationInfo.Scope` added
 (`,omitempty`), plus the same `FilterProduct` correction and

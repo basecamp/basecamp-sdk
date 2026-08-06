@@ -63,8 +63,8 @@ export interface AuthorizedAccount {
    * Product type (e.g. `"bc3"` for Basecamp, `"hey"` for HEY).
    *
    * Launchpad only. A BC5 issuer serves one product by construction and omits
-   * this, which is why {@link filterAccountsByProduct} treats a document with no
-   * `product` anywhere as one the filter cannot apply to.
+   * this, which is why {@link filterAccountsByProduct} treats a non-empty
+   * document with no `product` anywhere as one the filter cannot apply to.
    */
   product?: string;
   /** API URL for this account. Emitted by both issuers. */
@@ -111,9 +111,10 @@ export interface AuthorizationInfo {
    * Whether a requested `product` filter was actually applied.
    *
    * Only meaningful when a product filter was requested. `false` means the
-   * document carried no `product` on any account — a BC5 document — so the
-   * filter was inapplicable and `accounts` is unfiltered rather than empty.
-   * See {@link filterAccountsByProduct}.
+   * document carried at least one account and no `product` on any of them — a
+   * BC5 document — so the filter was inapplicable and `accounts` is unfiltered
+   * rather than empty. An empty account list reports `true`: it is no evidence
+   * about the issuer either way. See {@link filterAccountsByProduct}.
    */
   productFilterApplied?: boolean;
 }
@@ -188,12 +189,22 @@ export function parseExpiresAt(value: string | number | null | undefined): Date 
  *
  * When at least one account carries a `product`, the filter is meaningful and is
  * applied normally — an empty result then genuinely means "no account matched".
+ *
+ * An **empty** account list is the edge that needs saying out loud. "No account
+ * carries a `product`" is vacuously true of `[]`, which would report the filter
+ * inapplicable — but Launchpad returns `accounts: []` for an identity with no
+ * currently accessible accounts, and that document is perfectly filterable. The
+ * result is the same list either way, so nothing observable changes; what changes
+ * is the claim the flag makes, and `applied: false` would assert "this issuer
+ * cannot filter by product" on no evidence at all. An empty list carries no
+ * evidence about the issuer, so treat the filter as applied: filtering nothing by
+ * anything yields nothing, which is exactly what happened.
  */
 export function filterAccountsByProduct(
   accounts: AuthorizedAccount[],
   product: string
 ): { accounts: AuthorizedAccount[]; applied: boolean } {
-  const filterable = accounts.some((a) => a.product !== undefined);
+  const filterable = accounts.length === 0 || accounts.some((a) => a.product !== undefined);
   if (!filterable) {
     return { accounts, applied: false };
   }

@@ -86,9 +86,10 @@ type AuthorizationInfo struct {
 
 	// ProductFilterApplied reports whether a requested GetInfoOptions.FilterProduct
 	// was actually applied. It is meaningful only when FilterProduct was set: false
-	// then means the document carried no product on any account — a BC5 document —
-	// so the filter was inapplicable and Accounts is unfiltered rather than empty.
-	// Not a wire field.
+	// then means the document carried at least one account and no product on any of
+	// them — a BC5 document — so the filter was inapplicable and Accounts is
+	// unfiltered rather than empty. An empty account list reports true: it is no
+	// evidence about the issuer either way. Not a wire field.
 	ProductFilterApplied bool `json:"-"`
 }
 
@@ -189,8 +190,15 @@ func (s *AuthorizationService) GetInfo(ctx context.Context, opts *GetInfoOptions
 	// list the caller is about to pick an HREF out of, which is silently wrong
 	// rather than merely unhelpful. Report the filter inapplicable instead, and
 	// leave the accounts alone.
+	//
+	// An EMPTY account list is filterable, not inapplicable. "No account carries a
+	// product" is vacuously true of an empty slice, but Launchpad returns an empty
+	// list for an identity with no currently accessible accounts, and that document
+	// filters fine. The returned list is empty either way; what would differ is the
+	// claim — reporting the filter inapplicable asserts "this issuer cannot filter
+	// by product" on no evidence.
 	if opts != nil && opts.FilterProduct != "" {
-		filterable := false
+		filterable := len(info.Accounts) == 0
 		for _, acct := range info.Accounts {
 			if acct.Product != "" {
 				filterable = true

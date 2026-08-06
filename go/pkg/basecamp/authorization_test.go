@@ -214,6 +214,39 @@ func TestAuthorizationService_GetInfo_ProductFilterAppliedWhenFilterable(t *test
 	}
 }
 
+// Launchpad returns an empty account list for an identity with no currently
+// accessible accounts. "No account carries a product" is vacuously true there,
+// but the document is perfectly filterable — reporting the filter inapplicable
+// would assert "this issuer cannot filter by product" on no evidence at all.
+func TestAuthorizationService_GetInfo_EmptyAccountListIsFilterable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"identity": map[string]any{"id": 123},
+			"accounts": []map[string]any{},
+		})
+	}))
+	defer server.Close()
+
+	client := newBC5AuthorizationClient(t, server)
+
+	info, err := client.Authorization().GetInfo(t.Context(), &GetInfoOptions{
+		Endpoint:      server.URL + "/authorization.json",
+		FilterProduct: "bc3",
+	})
+	if err != nil {
+		t.Fatalf("GetInfo() unexpected error: %v", err)
+	}
+
+	if len(info.Accounts) != 0 {
+		t.Errorf("GetInfo() returned %d accounts, want 0", len(info.Accounts))
+	}
+	if !info.ProductFilterApplied {
+		t.Error("GetInfo() reported ProductFilterApplied = false on an empty list, want true — " +
+			"an empty list is no evidence that the issuer omits product")
+	}
+}
+
 // The rest of the BC5 shape: the resource indicator, the scope, the epoch-seconds
 // timestamp Go's FlexTime already handled, and the Launchpad-only fields that
 // degrade to "" rather than erroring.

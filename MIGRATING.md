@@ -2018,11 +2018,14 @@ Two behavioural changes ride along, neither of which the compiler will flag:
   A BC5 document carries no `product` on any account, so
   `getInfo({ filterProduct: "bc3" })` matched nothing and returned `[]` — while
   the accounts it was meant to filter existed and were what you needed the
-  `href` from. When *no* account in the document carries a `product`, the filter
-  is now reported inapplicable: every account is returned and the new
-  `AuthorizationInfo.productFilterApplied` is `false`. When at least one account
-  does carry a `product` the filter applies exactly as before, so an empty
-  result still means "nothing matched".
+  `href` from. When the document carries at least one account and *none* of them
+  carries a `product`, the filter is now reported inapplicable: every account is
+  returned and the new `AuthorizationInfo.productFilterApplied` is `false`. When
+  at least one account does carry a `product` the filter applies exactly as
+  before, so an empty result still means "nothing matched". An **empty** account
+  list — what Launchpad returns for an identity with no currently accessible
+  accounts — reports `applied: true`: the list is empty either way, and an empty
+  list is no evidence that the issuer omits `product`.
 
 Go gets the same `filterProduct` correction and the same two additive fields
 (`AuthorizedAccount.Resource`, `AuthorizationInfo.Scope`, plus
