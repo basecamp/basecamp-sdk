@@ -1,0 +1,35 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ProjectsServiceTest.kt
+  s_6596a1ee398fe6::t_b473964b9f82ff 275-277,292,295
+ruby/lib/basecamp/generated/metadata.json
+  s_6596a1ee398fe6::t_64d6d0d0d7663a 4,1809-1836
+python/tests/services/test_projects.py
+  s_6596a1ee398fe6::t_2638a74438544f 9
+  s_6596a1ee398fe6::t_b473964b9f82ff 112-114,116-119,127,132,176,180
+ruby/lib/basecamp/generated/types.rb
+  s_6596a1ee398fe6::t_64d6d0d0d7663a 4
+typescript/tests/services/projects.test.ts
+  s_6596a1ee398fe6::t_b473964b9f82ff 178-181,192,194
+typescript/src/generated/metadata.ts
+  s_6596a1ee398fe6::t_64d6d0d0d7663a 40,1834-1861
+ruby/test/basecamp/services/projects_service_test.rb
+  s_6596a1ee398fe6::t_b473964b9f82ff 116-118,126,131-132
+go/pkg/basecamp/projects_test.go
+  s_6596a1ee398fe6::t_b473964b9f82ff 448-450,467-468,473-474
+  s_6596a1ee398fe6::t_91033ad8e8ecd7 475
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9cff43584aa9f9ec5cdf873897e75a13232f5b93",
+  "prompts": {},
+  "sessions": {
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
