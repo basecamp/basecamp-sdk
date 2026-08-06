@@ -66,7 +66,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
     },
     "Files": {
         "Attachments": ["CreateAttachment"],
-        "Uploads": ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"],
+        "Uploads": ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions", "CreateUploadVersion"],
         "Vaults": ["GetVault", "UpdateVault", "ListVaults", "CreateVault"],
         "Documents": ["GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"],
         "CloudFiles": ["GetCloudFile", "CreateCloudFile", "UpdateCloudFile"],
@@ -223,6 +223,7 @@ METHOD_NAME_OVERRIDES = {
     "ListUploads": "list",
     "CreateUpload": "create",
     "ListUploadVersions": "list_versions",
+    "CreateUploadVersion": "create_version",
     "GetMessage": "get",
     "UpdateMessage": "update",
     "CreateMessage": "create",

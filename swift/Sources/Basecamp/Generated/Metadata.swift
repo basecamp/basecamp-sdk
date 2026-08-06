@@ -38,6 +38,7 @@ enum Metadata {
         "CreateTodosetTodo": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateTool": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateUpload": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
+        "CreateUploadVersion": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateVault": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateWebhook": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateWormhole": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),

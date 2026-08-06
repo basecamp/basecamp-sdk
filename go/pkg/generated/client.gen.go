@@ -1014,6 +1014,30 @@ type CreateUploadRequestContent struct {
 // CreateUploadResponseContent defines model for CreateUploadResponseContent.
 type CreateUploadResponseContent = Upload
 
+// CreateUploadVersionRequestContent defines model for CreateUploadVersionRequestContent.
+type CreateUploadVersionRequestContent struct {
+	AttachableSgid string `json:"attachable_sgid"`
+
+	// BaseName Omit to keep the uploaded file's own name. Sending "" also keeps it.
+	BaseName *string `json:"base_name,omitempty"`
+
+	// Description Presence-aware: omit to carry the previous version's description forward,
+	// send "" to clear it, send a value to set it.
+	Description *string `json:"description,omitempty"`
+
+	// Notify Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+	//
+	// Omit both this and subscriptions to notify nobody. A subscriptions array sent
+	// without notify is read as "custom".
+	Notify *string `json:"notify,omitempty"`
+
+	// Subscriptions People to notify about the replacement and subscribe to the upload.
+	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+}
+
+// CreateUploadVersionResponseContent defines model for CreateUploadVersionResponseContent.
+type CreateUploadVersionResponseContent = Upload
+
 // CreateVaultRequestContent defines model for CreateVaultRequestContent.
 type CreateVaultRequestContent struct {
 	Title string `json:"title"`
@@ -1977,7 +2001,7 @@ type ListTodolistsResponseContent = []Todolist
 type ListTodosResponseContent = []Todo
 
 // ListUploadVersionsResponseContent defines model for ListUploadVersionsResponseContent.
-type ListUploadVersionsResponseContent = []Upload
+type ListUploadVersionsResponseContent = []UploadVersion
 
 // ListUploadsResponseContent defines model for ListUploadsResponseContent.
 type ListUploadsResponseContent = []Upload
@@ -2967,6 +2991,16 @@ type SetClientVisibilityRequestContent struct {
 
 // SetClientVisibilityResponseContent defines model for SetClientVisibilityResponseContent.
 type SetClientVisibilityResponseContent = Recording
+
+// StorageLimitErrorResponseContent The account has reached its file storage limit.
+//
+// Raised by ResourceLimits#ensure_account_can_upload_files ahead of any operation
+// that stores new bytes. No retry can satisfy it: the account needs more storage,
+// so this maps to `limit_exceeded` rather than a retryable server error.
+type StorageLimitErrorResponseContent struct {
+	Error   string  `json:"error"`
+	Message *string `json:"message,omitempty"`
+}
 
 // SubscribeResponseContent defines model for SubscribeResponseContent.
 type SubscribeResponseContent = Subscription
@@ -4036,6 +4070,45 @@ type Upload struct {
 	Width                  *types.FlexInt       `json:"width,omitempty"`
 }
 
+// UploadVersion A version event for an upload, from GET /uploads/{id}/versions.json.
+//
+// `action` is one of `created`, `active` (the upload's publication) or `blob_changed`
+// (a file replacement). A caller listing past versions of the file filters on
+// `blob_changed`. This is an Event plus the file it recorded, rendered by its own
+// partial rather than the shared event one, so upload fields don't leak onto todo,
+// message and card events.
+type UploadVersion struct {
+	Action      string        `json:"action"`
+	BoostsCount *int32        `json:"boosts_count,omitempty"`
+	BoostsUrl   *string       `json:"boosts_url,omitempty"`
+	CreatedAt   time.Time     `json:"created_at"`
+	Creator     Person        `json:"creator"`
+	Details     *EventDetails `json:"details,omitempty"`
+	Id          int64         `json:"id"`
+	RecordingId int64         `json:"recording_id"`
+
+	// Upload The file a version event recorded — a reduced projection, not an Upload.
+	Upload *UploadVersionFile `json:"upload,omitempty"`
+}
+
+// UploadVersionFile The file a version event recorded — a reduced projection, not an Upload.
+type UploadVersionFile struct {
+	AppDownloadUrl string  `json:"app_download_url"`
+	ByteSize       *int64  `json:"byte_size,omitempty"`
+	ContentType    *string `json:"content_type,omitempty"`
+
+	// Current True for the most recent version; exactly one element per response. This is the
+	// newest *version*, not necessarily the file the upload's own download_url serves —
+	// a metadata-only PUT swaps in a recordable carrying the same blob and emits no
+	// event, so after one no event references the upload's current recordable.
+	Current bool `json:"current"`
+
+	// DownloadUrl Fetches THIS version's bytes. The upload's own download_url always serves the
+	// latest, which is the whole point of the feature.
+	DownloadUrl string `json:"download_url"`
+	Filename    string `json:"filename"`
+}
+
 // ValidationErrorResponseContent defines model for ValidationErrorResponseContent.
 type ValidationErrorResponseContent struct {
 	Error   string  `json:"error"`
@@ -5040,6 +5113,9 @@ type CreateTodolistJSONRequestBody = CreateTodolistRequestContent
 
 // UpdateUploadJSONRequestBody defines body for UpdateUpload for application/json ContentType.
 type UpdateUploadJSONRequestBody = UpdateUploadRequestContent
+
+// CreateUploadVersionJSONRequestBody defines body for CreateUploadVersion for application/json ContentType.
+type CreateUploadVersionJSONRequestBody = CreateUploadVersionRequestContent
 
 // UpdateVaultJSONRequestBody defines body for UpdateVault for application/json ContentType.
 type UpdateVaultJSONRequestBody = UpdateVaultRequestContent
@@ -6405,6 +6481,11 @@ type ClientInterface interface {
 
 	// ListUploadVersions request
 	ListUploadVersions(ctx context.Context, accountId string, uploadId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateUploadVersionWithBody request with any body
+	CreateUploadVersionWithBody(ctx context.Context, accountId string, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateUploadVersion(ctx context.Context, accountId string, uploadId int64, body CreateUploadVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVault request
 	GetVault(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9891,6 +9972,36 @@ func (c *Client) ListUploadVersions(ctx context.Context, accountId string, uploa
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListUploadVersionsRequest(c.Server, accountId, uploadId)
 	}, true, "ListUploadVersions", reqEditors...)
+
+}
+
+// CreateUploadVersionWithBody executes the CreateUploadVersion operation.
+
+func (c *Client) CreateUploadVersionWithBody(ctx context.Context, accountId string, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateUploadVersionRequestWithBody(c.Server, accountId, uploadId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateUploadVersion(ctx context.Context, accountId string, uploadId int64, body CreateUploadVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateUploadVersionRequest(c.Server, accountId, uploadId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 
 }
 
@@ -23079,6 +23190,60 @@ func NewListUploadVersionsRequest(server string, accountId string, uploadId int6
 	return req, nil
 }
 
+// NewCreateUploadVersionRequest calls the generic CreateUploadVersion builder with application/json body
+func NewCreateUploadVersionRequest(server string, accountId string, uploadId int64, body CreateUploadVersionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateUploadVersionRequestWithBody(server, accountId, uploadId, "application/json", bodyReader)
+}
+
+// NewCreateUploadVersionRequestWithBody generates requests for CreateUploadVersion with any type of body
+func NewCreateUploadVersionRequestWithBody(server string, accountId string, uploadId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "uploadId", runtime.ParamLocationPath, uploadId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/uploads/%s/versions.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetVaultRequest generates requests for GetVault
 func NewGetVaultRequest(server string, accountId string, vaultId int64) (*http.Request, error) {
 	var err error
@@ -23925,6 +24090,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetUpload":                          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateUpload":                       {Idempotent: true, HasSensitiveParams: false},
 	"ListUploadVersions":                 {Idempotent: true, HasSensitiveParams: false},
+	"CreateUploadVersion":                {Idempotent: false, HasSensitiveParams: false},
 	"GetVault":                           {Idempotent: true, HasSensitiveParams: false},
 	"UpdateVault":                        {Idempotent: true, HasSensitiveParams: false},
 	"ListDocuments":                      {Idempotent: true, HasSensitiveParams: false},
@@ -24183,6 +24349,7 @@ var operationRetryMax = map[string]int{
 	"GetUpload":                          3,
 	"UpdateUpload":                       3,
 	"ListUploadVersions":                 3,
+	"CreateUploadVersion":                2,
 	"GetVault":                           3,
 	"UpdateVault":                        3,
 	"ListDocuments":                      3,
@@ -24439,6 +24606,7 @@ var operationRetryOn = map[string][]int{
 	"GetUpload":                          {429, 503},
 	"UpdateUpload":                       {429, 503},
 	"ListUploadVersions":                 {429, 503},
+	"CreateUploadVersion":                {429, 503},
 	"GetVault":                           {429, 503},
 	"UpdateVault":                        {429, 503},
 	"ListDocuments":                      {429, 503},
@@ -26282,6 +26450,11 @@ type ClientWithResponsesInterface interface {
 	// ListUploadVersionsWithResponse request
 	ListUploadVersionsWithResponse(ctx context.Context, accountId string, uploadId int64, reqEditors ...RequestEditorFn) (*ListUploadVersionsResponse, error)
 
+	// CreateUploadVersionWithBodyWithResponse request with any body
+	CreateUploadVersionWithBodyWithResponse(ctx context.Context, accountId string, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadVersionResponse, error)
+
+	CreateUploadVersionWithResponse(ctx context.Context, accountId string, uploadId int64, body CreateUploadVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadVersionResponse, error)
+
 	// GetVaultWithResponse request
 	GetVaultWithResponse(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*GetVaultResponse, error)
 
@@ -26470,6 +26643,7 @@ type CreateAttachmentResponse struct {
 	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
+	JSON507      *StorageLimitErrorResponseContent
 }
 
 // Status returns HTTPResponse.Status
@@ -28602,6 +28776,7 @@ type CreateCampfireUploadResponse struct {
 	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
+	JSON507      *StorageLimitErrorResponseContent
 }
 
 // Status returns HTTPResponse.Status
@@ -34482,6 +34657,43 @@ func (r ListUploadVersionsResponse) ContentType() string {
 	return ""
 }
 
+type CreateUploadVersionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateUploadVersionResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+	JSON507      *StorageLimitErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateUploadVersionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateUploadVersionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateUploadVersionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetVaultResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -34663,6 +34875,7 @@ type CreateUploadResponse struct {
 	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
+	JSON507      *StorageLimitErrorResponseContent
 }
 
 // Status returns HTTPResponse.Status
@@ -37635,6 +37848,23 @@ func (c *ClientWithResponses) ListUploadVersionsWithResponse(ctx context.Context
 	return ParseListUploadVersionsResponse(rsp)
 }
 
+// CreateUploadVersionWithBodyWithResponse request with arbitrary body returning *CreateUploadVersionResponse
+func (c *ClientWithResponses) CreateUploadVersionWithBodyWithResponse(ctx context.Context, accountId string, uploadId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUploadVersionResponse, error) {
+	rsp, err := c.CreateUploadVersionWithBody(ctx, accountId, uploadId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUploadVersionResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateUploadVersionWithResponse(ctx context.Context, accountId string, uploadId int64, body CreateUploadVersionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUploadVersionResponse, error) {
+	rsp, err := c.CreateUploadVersion(ctx, accountId, uploadId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUploadVersionResponse(rsp)
+}
+
 // GetVaultWithResponse request returning *GetVaultResponse
 func (c *ClientWithResponses) GetVaultWithResponse(ctx context.Context, accountId string, vaultId int64, reqEditors ...RequestEditorFn) (*GetVaultResponse, error) {
 	rsp, err := c.GetVault(ctx, accountId, vaultId, reqEditors...)
@@ -38021,6 +38251,12 @@ func ParseCreateAttachmentResponse(rsp *http.Response) (*CreateAttachmentRespons
 		var dest InternalServerErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON500 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
+		var dest StorageLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON507 = &dest
 		}
 
 	}
@@ -41287,6 +41523,12 @@ func ParseCreateCampfireUploadResponse(rsp *http.Response) (*CreateCampfireUploa
 		var dest InternalServerErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON500 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
+		var dest StorageLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON507 = &dest
 		}
 
 	}
@@ -50155,6 +50397,74 @@ func ParseListUploadVersionsResponse(rsp *http.Response) (*ListUploadVersionsRes
 	return response, nil
 }
 
+// ParseCreateUploadVersionResponse parses an HTTP response from a CreateUploadVersionWithResponse call
+func ParseCreateUploadVersionResponse(rsp *http.Response) (*CreateUploadVersionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateUploadVersionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateUploadVersionResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
+		var dest StorageLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON507 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseGetVaultResponse parses an HTTP response from a GetVaultWithResponse call
 func ParseGetVaultResponse(rsp *http.Response) (*GetVaultResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -50466,6 +50776,12 @@ func ParseCreateUploadResponse(rsp *http.Response) (*CreateUploadResponse, error
 		var dest InternalServerErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON500 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 507:
+		var dest StorageLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON507 = &dest
 		}
 
 	}

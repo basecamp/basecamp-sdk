@@ -628,6 +628,14 @@ class CreateUploadRequestContent(TypedDict):
     visible_to_clients: NotRequired[bool]
 
 
+class CreateUploadVersionRequestContent(TypedDict):
+    attachable_sgid: str
+    base_name: NotRequired[str]
+    description: NotRequired[str]
+    notify: NotRequired[str]
+    subscriptions: NotRequired[list[int]]
+
+
 class CreateVaultRequestContent(TypedDict):
     title: str
 
@@ -1654,6 +1662,11 @@ class SetClientVisibilityRequestContent(TypedDict):
     visible_to_clients: bool
 
 
+class StorageLimitErrorResponseContent(TypedDict):
+    error: str
+    message: NotRequired[str]
+
+
 class Subscription(TypedDict):
     count: int
     subscribed: bool
@@ -2161,6 +2174,27 @@ class Upload(TypedDict):
     url: str
     visible_to_clients: bool
     width: NotRequired[int | float]
+
+
+class UploadVersion(TypedDict):
+    action: str
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
+    created_at: str
+    creator: Person
+    details: NotRequired[EventDetails]
+    id: int
+    recording_id: int
+    upload: NotRequired[UploadVersionFile]
+
+
+class UploadVersionFile(TypedDict):
+    app_download_url: str
+    byte_size: NotRequired[int]
+    content_type: NotRequired[str]
+    current: bool
+    download_url: str
+    filename: str
 
 
 class ValidationErrorResponseContent(TypedDict):

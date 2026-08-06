@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-06T00:45:34Z
+# Generated: 2026-08-06T04:48:02Z
 
 require "json"
 require "time"
@@ -5055,6 +5055,82 @@ module Basecamp
           "position" => @position,
           "subscription_url" => @subscription_url,
           "width" => @width,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UploadVersion
+    class UploadVersion
+      include TypeHelpers
+      attr_accessor :action, :created_at, :creator, :id, :recording_id, :boosts_count, :boosts_url, :details, :upload
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[action created_at creator id recording_id].freeze
+      end
+
+      def initialize(data = {})
+        @action = data["action"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @recording_id = parse_integer(data["recording_id"])
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
+        @details = parse_type(data["details"], "EventDetails")
+        @upload = parse_type(data["upload"], "UploadVersionFile")
+      end
+
+      def to_h
+        {
+          "action" => @action,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "recording_id" => @recording_id,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
+          "details" => @details,
+          "upload" => @upload,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # UploadVersionFile
+    class UploadVersionFile
+      include TypeHelpers
+      attr_accessor :app_download_url, :current, :download_url, :filename, :byte_size, :content_type
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_download_url current download_url filename].freeze
+      end
+
+      def initialize(data = {})
+        @app_download_url = data["app_download_url"]
+        @current = parse_boolean(data["current"])
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @byte_size = parse_integer(data["byte_size"])
+        @content_type = data["content_type"]
+      end
+
+      def to_h
+        {
+          "app_download_url" => @app_download_url,
+          "current" => @current,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "byte_size" => @byte_size,
+          "content_type" => @content_type,
         }.compact
       end
 

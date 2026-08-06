@@ -61,7 +61,7 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
      * @param uploadId The upload ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listVersions(uploadId: Long, options: PaginationOptions? = null): ListResult<Upload> {
+    suspend fun listVersions(uploadId: Long, options: PaginationOptions? = null): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "Uploads",
             operation = "ListUploadVersions",
@@ -73,7 +73,34 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
         return requestPaginated(info, options, {
             httpGet("/uploads/${uploadId}/versions.json", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<List<Upload>>(body)
+            json.decodeFromString<List<JsonElement>>(body)
+        }
+    }
+
+    /**
+     * Replace an upload's file with a new version
+     * @param uploadId The upload ID
+     * @param body Request body
+     */
+    suspend fun createVersion(uploadId: Long, body: CreateUploadVersionBody): Upload {
+        val info = OperationInfo(
+            service = "Uploads",
+            operation = "CreateUploadVersion",
+            resourceType = "upload_version",
+            isMutation = true,
+            projectId = null,
+            resourceId = uploadId,
+        )
+        return request(info, {
+            httpPost("/uploads/${uploadId}/versions.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("attachable_sgid", kotlinx.serialization.json.JsonPrimitive(body.attachableSgid))
+                body.baseName?.let { put("base_name", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.notify?.let { put("notify", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.subscriptions?.let { put("subscriptions", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Upload>(body)
         }
     }
 

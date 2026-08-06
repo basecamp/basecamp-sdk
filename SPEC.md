@@ -520,10 +520,11 @@ Status-mapped codes are verified per the Verification column and are `[conforman
 | `ambiguous` | 8 | — | false | Multiple matches found (CLI disambiguation) | `[static]` |
 | `validation` | 9 | 422 | false | Request validation failed | `[conformance]` |
 | `validation` | 9 | 400 | false | Request validation failed | `[conformance]` |
+| `limit_exceeded` | 10 | 507 | false | An account limit blocks the request (file storage, webhooks) | `[conformance]` |
 
 ### HTTP Status Mapping Algorithm
 
-Each explicitly enumerated status mapping below (steps 1–10) is `[conformance]`-verified. The two catch-all fallback steps (11: general 5xx; 12: any other non-mapped status) have no dedicated conformance case and are `[static]`.
+Each explicitly enumerated status mapping below (steps 1–11) is `[conformance]`-verified. The two catch-all fallback steps (12: general 5xx; 13: any other non-mapped status) have no dedicated conformance case and are `[static]`.
 
 Given an HTTP response with status code `status` and body `body`:
 
@@ -537,8 +538,11 @@ Given an HTTP response with status code `status` and body `body`:
 8. If `status == 502` → `BasecampError(code: "api_error", http_status: 502, retryable: true)`.
 9. If `status == 503` → `BasecampError(code: "api_error", http_status: 503, retryable: true)`.
 10. If `status == 504` → `BasecampError(code: "api_error", http_status: 504, retryable: true)`.
-11. If `status >= 500` → `BasecampError(code: "api_error", http_status: status, retryable: true)`. `[static]`
-12. Otherwise → `BasecampError(code: "api_error", http_status: status, retryable: false)`. `[static]`
+11. If `status == 507` → `BasecampError(code: "limit_exceeded", http_status: 507, retryable: false)`.
+12. If `status >= 500` → `BasecampError(code: "api_error", http_status: status, retryable: true)`. `[static]`
+13. Otherwise → `BasecampError(code: "api_error", http_status: status, retryable: false)`. `[static]`
+
+Step 11 must precede the 5xx catch-all. A 507 is a *server* status carrying a *client* fact: the account is out of storage, or at its webhook ceiling. Retrying cannot satisfy it, so classifying it by its 5xx range alone would report a plan limit as a transient server error — indistinguishable, to a caller deciding whether to back off, from a 500. Ordering is what makes the distinction, since both steps match.
 
 In all cases, extract `request_id` from `X-Request-Id` response header if present. `[conformance]`
 

@@ -36,6 +36,30 @@ class UploadsService(BaseService):
             operation="ListUploadVersions",
         )
 
+    def create_version(
+        self,
+        *,
+        upload_id: int,
+        attachable_sgid: str,
+        base_name: str | None = None,
+        description: str | None = None,
+        notify: str | None = None,
+        subscriptions: list[int] | None = None,
+    ) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(service="uploads", operation="create_version", is_mutation=True, resource_id=upload_id),
+            "POST",
+            f"/uploads/{upload_id}/versions.json",
+            json_body=self._compact(
+                attachable_sgid=attachable_sgid,
+                base_name=base_name,
+                description=description,
+                notify=notify,
+                subscriptions=subscriptions,
+            ),
+            operation="CreateUploadVersion",
+        )
+
     def list(self, *, vault_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
@@ -96,6 +120,30 @@ class AsyncUploadsService(AsyncBaseService):
             f"/uploads/{upload_id}/versions.json",
             max_items=max_items,
             operation="ListUploadVersions",
+        )
+
+    async def create_version(
+        self,
+        *,
+        upload_id: int,
+        attachable_sgid: str,
+        base_name: str | None = None,
+        description: str | None = None,
+        notify: str | None = None,
+        subscriptions: list[int] | None = None,
+    ) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(service="uploads", operation="create_version", is_mutation=True, resource_id=upload_id),
+            "POST",
+            f"/uploads/{upload_id}/versions.json",
+            json_body=self._compact(
+                attachable_sgid=attachable_sgid,
+                base_name=base_name,
+                description=description,
+                notify=notify,
+                subscriptions=subscriptions,
+            ),
+            operation="CreateUploadVersion",
         )
 
     async def list(self, *, vault_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:

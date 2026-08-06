@@ -37,6 +37,24 @@ module Basecamp
         end
       end
 
+      # Replace an upload's file with a new version
+      # @param upload_id [Integer] upload id ID
+      # @param attachable_sgid [String] attachable sgid
+      # @param base_name [String, nil] Omit to keep the uploaded file's own name. Sending "" also keeps it.
+      # @param description [String, nil] Presence-aware: omit to carry the previous version's description forward,
+      #   send "" to clear it, send a value to set it.
+      # @param notify [String, nil] Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+      #
+      #   Omit both this and subscriptions to notify nobody. A subscriptions array sent
+      #   without notify is read as "custom".
+      # @param subscriptions [Array, nil] People to notify about the replacement and subscribe to the upload.
+      # @return [Hash] response data
+      def create_version(upload_id:, attachable_sgid:, base_name: nil, description: nil, notify: nil, subscriptions: nil)
+        with_operation(service: "uploads", operation: "create_version", is_mutation: true, resource_id: upload_id) do
+          http_post("/uploads/#{upload_id}/versions.json", body: compact_params(attachable_sgid: attachable_sgid, base_name: base_name, description: description, notify: notify, subscriptions: subscriptions)).json
+        end
+      end
+
       # List uploads in a vault
       # @param vault_id [Integer] vault id ID
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.

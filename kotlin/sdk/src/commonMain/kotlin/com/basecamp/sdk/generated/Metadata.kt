@@ -55,6 +55,7 @@ object Metadata {
         "CreateTodosetTodo" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CreateTool" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateUpload" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
+        "CreateUploadVersion" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateVault" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateWebhook" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateWormhole" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),

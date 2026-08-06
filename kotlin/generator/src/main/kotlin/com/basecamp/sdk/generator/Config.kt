@@ -49,7 +49,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     ),
     "Files" to mapOf(
         "Attachments" to listOf("CreateAttachment"),
-        "Uploads" to listOf("GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"),
+        "Uploads" to listOf("GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions", "CreateUploadVersion"),
         "Vaults" to listOf("GetVault", "UpdateVault", "ListVaults", "CreateVault"),
         "Documents" to listOf("GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"),
         "CloudFiles" to listOf("GetCloudFile", "CreateCloudFile", "UpdateCloudFile"),
@@ -260,6 +260,7 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "ListUploads" to "list",
     "CreateUpload" to "create",
     "ListUploadVersions" to "listVersions",
+    "CreateUploadVersion" to "createVersion",
     "GetMessage" to "get",
     "UpdateMessage" to "update",
     "CreateMessage" to "create",

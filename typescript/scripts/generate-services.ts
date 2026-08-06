@@ -208,7 +208,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
   },
   Files: {
     Attachments: ["CreateAttachment"],
-    Uploads: ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions"],
+    Uploads: ["GetUpload", "UpdateUpload", "ListUploads", "CreateUpload", "ListUploadVersions", "CreateUploadVersion"],
     Vaults: ["GetVault", "UpdateVault", "ListVaults", "CreateVault"],
     Documents: ["GetDocument", "ReplaceDocument", "ListDocuments", "CreateDocument"],
     CloudFiles: ["GetCloudFile", "CreateCloudFile", "UpdateCloudFile"],
@@ -416,6 +416,7 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   ListUploads: "list",
   CreateUpload: "create",
   ListUploadVersions: "listVersions",
+  CreateUploadVersion: "createVersion",
   GetMessage: "get",
   UpdateMessage: "update",
   CreateMessage: "create",

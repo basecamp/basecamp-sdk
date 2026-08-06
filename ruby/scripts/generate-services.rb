@@ -65,7 +65,7 @@ class ServiceGenerator
     },
     'Files' => {
       'Attachments' => %w[CreateAttachment],
-      'Uploads' => %w[GetUpload UpdateUpload ListUploads CreateUpload ListUploadVersions],
+      'Uploads' => %w[GetUpload UpdateUpload ListUploads CreateUpload ListUploadVersions CreateUploadVersion],
       'Vaults' => %w[GetVault UpdateVault ListVaults CreateVault],
       'Documents' => %w[GetDocument ReplaceDocument ListDocuments CreateDocument],
       'CloudFiles' => %w[GetCloudFile CreateCloudFile UpdateCloudFile],
@@ -217,6 +217,7 @@ class ServiceGenerator
     'ListUploads' => 'list',
     'CreateUpload' => 'create',
     'ListUploadVersions' => 'list_versions',
+    'CreateUploadVersion' => 'create_version',
     'GetMessage' => 'get',
     'UpdateMessage' => 'update',
     'CreateMessage' => 'create',
