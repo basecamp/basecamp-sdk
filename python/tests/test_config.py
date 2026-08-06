@@ -75,6 +75,17 @@ class TestValidation:
         with pytest.raises(ValueError, match="max_pages must be a positive integer"):
             Config(max_pages=2.5)
 
+    def test_max_pages_bool_raises(self):
+        # ``bool`` is a subclass of ``int``, so a bare isinstance check accepts
+        # ``True`` and yields a cap of ``True`` -- which ``range(1, cap + 1)``
+        # and ``page < cap`` both read as 1, silently capping every paginator at
+        # a single page. ``False`` was already rejected only incidentally, by
+        # being ``0``. ``max_retries`` above excludes bool for the same reason.
+        with pytest.raises(ValueError, match="max_pages must be a positive integer"):
+            Config(max_pages=True)
+        with pytest.raises(ValueError, match="max_pages must be a positive integer"):
+            Config(max_pages=False)
+
     def test_max_pages_positive_integer_allowed(self):
         assert Config(max_pages=25).max_pages == 25
 
