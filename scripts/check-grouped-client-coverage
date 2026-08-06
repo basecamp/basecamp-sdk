@@ -41,6 +41,7 @@
 # Usage: scripts/check-grouped-client-coverage
 
 require "json"
+require "set"
 require "yaml"
 
 ROOT = File.expand_path("..", __dir__)
