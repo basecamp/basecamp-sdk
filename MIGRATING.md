@@ -51,10 +51,10 @@ rather than adding one, and that is where this guide documents it.
 
 #681 **does** add one, and it is the only row in the table above measured
 past `70d576bd8`: it takes TypeScript from 18 breaking changes to 19. It adds
-nothing to either "no signal" column — it is four required-to-optional field
+nothing to either "no signal" column — it is five required-to-optional field
 relaxations, which `tsc` catches under `strictNullChecks` — so the 61/55/6 totals
 below are unmoved. See
-[Four `Identity` and `AuthorizedAccount` fields became optional](#four-identity-and-authorizedaccount-fields-became-optional-681).
+[Five `Identity` and `AuthorizedAccount` fields became optional](#five-identity-and-authorizedaccount-fields-became-optional-681).
 
 Every claim below was read out of `git diff v0.12.0..main`, not out of a PR
 body.
@@ -1974,12 +1974,12 @@ survive because a sibling verb still lives there, so
 clean. Grep for those five names rather than trusting tsc. The 422 re-tags are
 exactly `UpdateMyNote` and `UpdateMyPreferences`.
 
-### Four `Identity` and `AuthorizedAccount` fields became optional (#681)
+### Five `Identity` and `AuthorizedAccount` fields became optional (#681)
 
-`Identity.firstName`, `.lastName`, `.emailAddress` and `AuthorizedAccount.product`
-went from required `string` to `string | undefined`; `AuthorizedAccount.appHref`
-went from required `string` to optional. Under `strictNullChecks`, anything
-assigning one to a `string` or calling a method on it is now a compile error:
+Five fields went from required `string` to optional:
+`Identity.firstName`, `.lastName`, `.emailAddress`, `AuthorizedAccount.product`
+and `AuthorizedAccount.appHref`. Under `strictNullChecks`, anything assigning one
+to a `string` or calling a method on it is now a compile error:
 
 ```ts
 // v0.12.0 — compiled
@@ -1996,8 +1996,14 @@ serves its own `GET /authorization.json` from a different template, and it emits
 `identity.id` and nothing else of the identity, and no `product` or `app_href` on
 accounts. You reach that document by passing `endpoint:` to
 `authorization.getInfo()` — the documented way to point at a BC5 issuer — and at
-v0.12.0 the four fields were typed `string` and arrived `undefined`. The type was
+v0.12.0 all five were typed `string` and arrived `undefined`. The type was
 lying; it now describes both issuers.
+
+`appHref` is the one to grep for rather than reason about. `discoverIdentity()`
+coerced a missing `app_href` to `""` while `AuthorizationService` typed it
+required — so at v0.12.0 the same field was already reaching consumers as an
+empty string from one call site and as `undefined` from the other, and only the
+latter was a type error waiting to happen. It is now honestly optional on both.
 
 `AuthorizedAccount.resource` (the RFC 8707 indicator, BC5 only) and a top-level
 `AuthorizationInfo.scope` are new and optional, so they break nothing.
