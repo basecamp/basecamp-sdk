@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-08-03"
+  version: "2026-08-05"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -61,6 +61,8 @@ service Basecamp {
     CreateProject,
     UpdateProject,
     TrashProject,
+    ArchiveProject,
+    UnarchiveProject,
     ListTodos,
     GetTodo,
     CreateTodo,
@@ -474,6 +476,16 @@ structure WebhookLimitError {
   message: String
 }
 
+/// The account has reached its project limit. Raised by CreateProject and by
+/// UnarchiveProject, both of which add to the active project count.
+@error("server")
+@httpError(507)
+structure ProjectLimitError {
+  @required
+  error: String
+  message: String
+}
+
 @error("server")
 @retryable
 @httpError(500)
@@ -550,7 +562,7 @@ structure GetProjectOutput {
 operation CreateProject {
   input: CreateProjectInput
   output: CreateProjectOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, ProjectLimitError, InternalServerError]
 }
 
 structure CreateProjectInput {
@@ -622,6 +634,56 @@ structure TrashProjectInput {
 }
 
 structure TrashProjectOutput {}
+
+/// Archive a project, removing it from the active project list (returns 204 No Content).
+/// Accounts on the admin pro pack may restrict archiving to admins and the project's
+/// creator, which answers 403.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/projects/{projectId}/status/archived.json", code: 204)
+operation ArchiveProject {
+  input: ArchiveProjectInput
+  output: ArchiveProjectOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure ArchiveProjectInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+}
+
+structure ArchiveProjectOutput {}
+
+/// Restore a project to active status from trash as well as from the archive (returns 204 No Content).
+/// This is the inverse of both ArchiveProject and TrashProject. Restoring counts against
+/// the account's project limit, so it answers 507 when that limit is already reached.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/projects/{projectId}/status/active.json", code: 204)
+operation UnarchiveProject {
+  input: UnarchiveProjectInput
+  output: UnarchiveProjectOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, ProjectLimitError, InternalServerError]
+}
+
+structure UnarchiveProjectInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+}
+
+structure UnarchiveProjectOutput {}
 
 
 // ===== Sensitive Types (PII) =====

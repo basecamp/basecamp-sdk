@@ -247,6 +247,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/{accountId}/projects/{projectId}/gauge/needles.json": "CreateGaugeNeedle",
   "GET:/{accountId}/projects/{projectId}/people.json": "ListProjectPeople",
   "PUT:/{accountId}/projects/{projectId}/people/users.json": "UpdateProjectAccess",
+  "PUT:/{accountId}/projects/{projectId}/status/active.json": "UnarchiveProject",
+  "PUT:/{accountId}/projects/{projectId}/status/archived.json": "ArchiveProject",
   "GET:/{accountId}/projects/{projectId}/timeline.json": "GetProjectTimeline",
   "GET:/{accountId}/projects/{projectId}/timesheet.json": "GetProjectTimesheet",
   "GET:/{accountId}/projects/recordings.json": "ListRecordings",

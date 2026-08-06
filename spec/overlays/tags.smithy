@@ -9,6 +9,8 @@ apply GetProject @tags(["Projects"])
 apply CreateProject @tags(["Projects"])
 apply UpdateProject @tags(["Projects"])
 apply TrashProject @tags(["Projects"])
+apply ArchiveProject @tags(["Projects"])
+apply UnarchiveProject @tags(["Projects"])
 
 // Todos (includes Todolists, TodolistGroups, Todosets)
 apply ListTodos @tags(["Todos"])

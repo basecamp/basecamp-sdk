@@ -3,6 +3,18 @@
   "version": "1.0.0",
   "generated": true,
   "operations": {
+    "ArchiveProject": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "ArchiveRecording": {
       "idempotent": true,
       "retry": {
@@ -2696,6 +2708,18 @@
       }
     },
     "TrashRecording": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "UnarchiveProject": {
       "idempotent": true,
       "retry": {
         "max": 3,

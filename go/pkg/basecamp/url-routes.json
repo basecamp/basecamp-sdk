@@ -1585,6 +1585,40 @@
       }
     },
     {
+      "pattern": "/{accountId}/projects/{projectId}/status/active",
+      "resource": "Projects",
+      "operations": {
+        "PUT": "UnarchiveProject"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/projects/{projectId}/status/archived",
+      "resource": "Projects",
+      "operations": {
+        "PUT": "ArchiveProject"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/projects/{projectId}/timeline",
       "resource": null,
       "operations": {
