@@ -57,6 +57,7 @@ spec/api-gaps/README.md
   s_6596a1ee398fe6::t_43d96b3e0b1012 55-56
   s_6596a1ee398fe6::t_e14bdc1a2fbf5c 275
   s_6596a1ee398fe6::t_cbacf65d231e6c 265
+  s_6596a1ee398fe6::t_d70549ca8b781c 108-119,121-126,128-135
 COORDINATION.md
   s_e06e3bd3e6c564::t_fecbf355723d8a 12
 go/pkg/basecamp/url-routes.json
@@ -113,6 +114,8 @@ kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
   s_6596a1ee398fe6::t_57e91fa144f43a 1168-1176
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/uploads.kt
   s_6596a1ee398fe6::t_afcec039f543f9 64,76-103
+spec/doc-constants.json
+  s_1dac4bab6382ad::t_4e7ba0729c5180 51
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -124,6 +127,14 @@ kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/uploads.kt
       "agent_id": {
         "tool": "claude",
         "id": "ff17d3d9-4858-437c-982c-0e61f9b1adfb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_1dac4bab6382ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6aa053e-fdf1-4b71-9ed7-e2b6a82edfcf",
         "model": "claude-opus-5"
       },
       "human_author": "Jeremy Daer <jeremy@hey.com>"
