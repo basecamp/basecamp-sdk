@@ -1,0 +1,138 @@
+{
+  "name": "12-checkpoint-after-handoff",
+  "description": "Per page of the catch-up walk, delivery strictly precedes that page's checkpoint save. Saves are strict-matched, so a save arriving while an expectDelivered rendezvous is still pending is an unmatched action and fails the scenario — killing checkpoint-before-handoff.",
+  "config": {
+    "position": "{{POS:0}}"
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [
+              {
+                "id": 101,
+                "kind": "message",
+                "event_type": "message.created",
+                "action": "created",
+                "created_at": "2026-08-01T12:00:00Z",
+                "bucket_id": 2,
+                "creator_id": 3,
+                "recording_id": 900
+              },
+              {
+                "id": 102,
+                "kind": "message",
+                "event_type": "message.created",
+                "action": "created",
+                "created_at": "2026-08-01T12:00:00Z",
+                "bucket_id": 2,
+                "creator_id": 3,
+                "recording_id": 900
+              }
+            ],
+            "position": "{{POS:1}}",
+            "next": "{{NEXT:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [101, 102]
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectPoll": {
+        "url": "{{NEXT:1}}",
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [
+              {
+                "id": 103,
+                "kind": "message",
+                "event_type": "message.created",
+                "action": "created",
+                "created_at": "2026-08-01T12:00:00Z",
+                "bucket_id": 2,
+                "creator_id": 3,
+                "recording_id": 900
+              }
+            ],
+            "position": "{{POS:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [101, 102, 103]
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:2}}"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {
+      "exact": [101, 102, 103]
+    },
+    "checkpoints": {
+      "exact": ["{{POS:1}}", "{{POS:2}}"]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open"
+  }
+}

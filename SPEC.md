@@ -2447,7 +2447,7 @@ typed error element is emitted), `Closed` (absorbing; no error element).
 | 21 | CatchingUp | Backoff | socket died mid-walk, or staleness expiry (per-page checkpoints already saved are kept) |
 | 22 | CatchingUp | Draining | `next` absent — the walk reached its frozen head → deliver the final page's events → save + announce its checkpoint (position-resume entries) → enter Draining. **Present-class amendment (present-class entries only — Entry Boundary below; position-resume entries unchanged):** the entry poll's returned position is HELD, not saved; the ownership cut — defined under Entry Boundary — is taken after entry into Draining. |
 | 23 | Draining | Streaming | buffer replayed through dedupe → `Observer.caught_up` → arm jittered `repair-poll`. **Present-class amendment:** the held entry position is saved only once the conjunctive save-ordering invariant holds; a `BufferOverflow` disposition of Terminate — or no handler — lands in Terminal(`buffer_overflow`) instead, with no Save. (A `FeedGap` cannot arise here: 410s arise from polls, which Draining never performs — a 410 on the entry walk was already dispatched at transition 17.) |
-| 24 | Streaming | CatchingUp | `repair-poll` fired → one walk from the durable position (60s ± 20%) |
+| 24 | Streaming | CatchingUp | `repair-poll` fired → one walk from the connector's current position (in-memory authoritative — Checkpoint discipline below; 60s ± 20%) |
 | 25 | Streaming | Backoff | `staleness` fired (7.5s without a frame) / socket error / disconnect `reconnect ≠ false` and not protocol-fatal (includes `remote`) |
 | 26 | Streaming | Terminal(`protocol_fatal`) | raw disconnect `invalid_event_stream_command` |
 | — | any non-absorbing | Closed | `close()` / cancellation / consumer break (universal edge) |
@@ -2462,7 +2462,8 @@ sit outside the 26 numbered rows for the same reason: the Terminal(`checkpoint_l
 Terminal(`usage`) edge (a re-consumed iterator); the Terminal(`invalid_continuation`) edge
 (fires between URL validation and the poll call, wherever a `next` continuation or 410
 `resume` URL is about to be followed — row 16's follow and row 17's Accept re-entry both
-pass through it; zero requests to the failing URL); the Terminal(`poll_failed`) edge (an
+pass through it, as does a redirect `Location` failing per-hop validation inside a poll
+seam call (Continuation and Resume URL Validation); zero requests to the failing URL); the Terminal(`poll_failed`) edge (an
 `unrecoverable`-kind poll error — Seam Contracts below — from any polling state, carrying
 the generated error); the Terminal(`mint_failed`) edge (an `unrecoverable`-kind mint
 error, from Minting, carrying the generated error); the Terminal(`invalid_cable_url`)
@@ -2507,7 +2508,10 @@ Interpretation, pinned:
 - **Checkpoint discipline:** only poll-page acceptance ever calls `save` (transitions 16/22–23
   per their amendments; re-entry walks save through 16 like any other pages). Streaming never
   saves — live event ids never advance the durable position. `save` failure is
-  `Observer.checkpoint_save_failed` and the feed continues. `load` happens exactly once,
+  `Observer.checkpoint_save_failed` and the feed continues. The connector's position
+  tracking is in-memory and authoritative for resume and repair within a run; the store
+  is write-through durability only — a failed `save` never regresses or blanks the live
+  cursor. `load` happens exactly once,
   on the first iteration **before the first mint**; its failure is
   Terminal(`checkpoint_load`) with zero wire attempts, because silently starting at the
   present would skip history.
@@ -2763,6 +2767,10 @@ SignalHandler : (Signal) → Accept | Terminate
   what distinguishes them.)
 - `Observer.gap` and `Observer.buffer_overflow` remain observability-only notifications.
   The semantic disposition lives exclusively in the handler.
+- **Dispatch timing:** a semantic signal is dispatched at the first consumer-context
+  opportunity after its condition arises, with "before the next `save`" as the outer
+  bound. Drop-time dispatch is therefore the normative expectation fixtures may rely
+  on — an implementation must not defer the signal to a later cut that may never come.
 
 **Only event-bearing frames are admitted to the live buffer** — pings, control frames, and
 unknown frame types update liveness and are discarded, never buffered — so the buffer is
@@ -2803,7 +2811,7 @@ Terminal reasons end iteration with exactly one typed error element:
 | `usage` | re-consumed iterator (the only `usage` condition that surfaces as an iteration element — construction-time validation failures raise language-native construction errors carrying the same code) |
 | `buffer_overflow` | live-buffer overflow with no registered handler, or a handler returning Terminate |
 | `feed_gap` | 410 with no registered handler, or a handler returning Terminate |
-| `invalid_continuation` | a `next` or 410 `resume` URL failed same-origin/downgrade validation (Continuation and Resume URL Validation below); no request is issued to it |
+| `invalid_continuation` | a `next` or 410 `resume` URL failed same-origin/downgrade validation (Continuation and Resume URL Validation below), or a redirect `Location` that fails the same validation; no request is issued to the failing URL |
 | `poll_failed` | an `unrecoverable`-kind poll error — a generated-operation outcome outside the feed's 400/409/410 matrix and the retryable classes (e.g. 404, 405, an unexpected shape) — passed through with the generated error attached |
 | `mint_failed` | an `unrecoverable`-kind mint error — a non-retryable `CreateStreamTicket` outcome other than 401/403 (e.g. 404, 422, a malformed success) — passed through with the generated error attached |
 | `invalid_cable_url` | the mint's `url` violates cable-URL policy (non-`wss://` outside localhost, a redirect on dial, unparseable) — recurring by construction on every re-mint, so it is surfaced, never retried into |
@@ -2859,7 +2867,8 @@ INTERFACE PollSource
 END
 
 RECORD Cursor           -- exactly one field set; the zero Cursor is the bare present entry
-  position : String?    -- durable resume/repair token
+  position : String?    -- resume/repair token (in-memory authoritative within a run;
+                        -- durable via write-through when saves succeed)
   since    : String?    -- "now", "0", or a decimal event id
   page_url : String?    -- absolute URL: a `next` continuation OR a 410 resume URL.
                         -- Same-origin + no-downgrade validated BEFORE any poll call
@@ -2874,12 +2883,17 @@ RECORD PollPage         -- the body envelope IS the contract; never bind to resp
 END
 -- Poll errors carry a kind: transient | throttled(retry_after) | position_invalid |
 -- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url) |
--- unauthorized | unrecoverable(error).
+-- unauthorized | redirect_refused(location_origin) | unrecoverable(error).
 -- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
 -- 429/503 and §7-retryable outcomes exhausted inside the seam → transient/throttled;
 -- the feed's 400/409/410 matrix → its four kinds; 401/403 (after the seam's own token
--- refresh and retry budget) → unauthorized; anything else non-retryable (404, 405,
--- unexpected shapes) → unrecoverable, carrying the generated error verbatim.
+-- refresh and retry budget) → unauthorized; a 3xx whose Location fails the per-hop
+-- same-origin/no-downgrade validation (auto-follow is disabled — Continuation and
+-- Resume URL Validation) → redirect_refused, carrying the refused Location redacted to
+-- its origin → Terminal(`invalid_continuation`), NEVER unrecoverable; anything else
+-- non-retryable (404, 405, unexpected shapes) → unrecoverable, carrying the generated
+-- error verbatim. A same-origin Location may be followed inside the seam under the same
+-- per-hop rule (no error surfaces).
 
 INTERFACE CableTransport
   dial(ws_url, cancellation, max_frame_bytes) → CableConn
@@ -2927,8 +2941,14 @@ END
 -- assertion (`outstanding()`) rather than a test-only artifact.
 
 INTERFACE CheckpointStore
-  load(key: CheckpointKey) → (position: String, ok: Boolean)
-  save(key: CheckpointKey, position: String)
+  load(key: CheckpointKey) → Loaded(position) | Missing | Failed(error)
+  save(key: CheckpointKey, position: String) → Saved | Failed(error)
+  -- Tri-state by contract — a boolean/void shape cannot express the failures this
+  -- section dispatches on. Missing proceeds to a present-class entry (no stored cursor
+  -- is not an error). Failed on load is Terminal(`checkpoint_load`) with zero wire
+  -- attempts; collapsing it to Missing would silently start at the present and skip
+  -- history. Failed on save is `Observer.checkpoint_save_failed` with the feed
+  -- continuing — subsequent saves are still attempted (no save circuit-breaker).
 END
 
 RECORD CheckpointKey
@@ -2969,15 +2989,27 @@ Terminal(`invalid_continuation`) — no request is issued to the failing URL, an
 rejected URL is carried redacted (origin only) in the error. There is no retry and no
 handler for this condition: a hostile continuation is not an operable feed state.
 
+**Prevalidation does not cover redirects, so the poll seam must.** The underlying HTTP
+stacks auto-follow redirects (Go strips `Authorization` on a cross-origin hop but still
+egresses), which would falsify the zero-foreign-egress guarantee the moment a validated
+same-origin URL answers 3xx with a foreign `Location`. The Layer-1 adapter therefore
+**disables automatic redirect-following for `PollEvents`** (or per-hop validates every
+resolved `Location` under §8's hop-anchored rule): a 3xx from a validated URL yields its
+`Location` to the same same-origin + no-downgrade validation — cross-origin or downgraded
+→ Terminal(`invalid_continuation`) with zero egress to the foreign origin; same-origin →
+it may be followed, each hop under the same rule.
+
 The mint's cable `url` is deliberately **not** under this rule: it is server-directed
 cable topology, cross-host by design, dialed verbatim with its own credential (the
 short-lived ticket rides in the URL itself; no `Authorization` header is attached), and
 governed by its own invariants — `wss://` outside localhost, redirects refused, never
 logged (Security Invariants below).
 
-Required tier-2 coverage: a hostile cross-origin `next` mid-walk and a hostile 410
-`resume` URL each terminate with `invalid_continuation` and zero requests to the foreign
-origin.
+Required tier-2 coverage: a hostile cross-origin `next` mid-walk, a hostile 410
+`resume` URL, and a validated same-origin `next` answering 302 with a cross-origin
+`Location` each terminate with `invalid_continuation` and zero requests to the foreign
+origin; store-failure coverage proves Failed(load) terminates with zero wire attempts and
+Failed(save) continues with the observer signal and a subsequent save attempt.
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 

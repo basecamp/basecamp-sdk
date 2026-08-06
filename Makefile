@@ -504,7 +504,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check
+.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check
 
 # NOTE: conformance-swift and conformance-runner-tests-swift are defined in the
 # Swift SDK targets section below — their IS_MACOS conditional must parse after
@@ -529,6 +529,20 @@ oauth-token-fixtures-check:
 	@echo "==> Validating OAuth token fixtures..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/oauth-token/schema.json conformance/oauth-token/fixtures/*.json
+
+event-feed-fixtures-check:
+	@echo "==> Validating event-feed scenario fixtures..."
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--check-metaschema conformance/event-feed/schema.json
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--schemafile conformance/event-feed/schema.json conformance/event-feed/fixtures/*.json
+
+event-feed-digest-fixtures-check:
+	@echo "==> Validating event-feed srv1 digest vectors..."
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--check-metaschema conformance/event-feed-digest/schema.json
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--schemafile conformance/event-feed-digest/schema.json conformance/event-feed-digest/fixtures/*.json
 
 # Validate every conformance/tests/*.json entry against conformance/schema.json.
 # This is the AUTHORITATIVE enforcement of the per-case schema — including the
@@ -723,7 +737,7 @@ conformance-python-replay:
 	cd conformance/runner/python && uv sync && uv run python replay_runner.py
 
 # Run all conformance tests
-conformance: oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check conformance-runner-tests conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-swift
+conformance: oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check conformance-runner-tests conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-swift
 	@echo "==> Conformance tests passed"
 
 # Orchestrate one canary pass against a single backend:
@@ -1371,6 +1385,8 @@ help:
 	@echo "  conformance-build          Build Go conformance test runner"
 	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"
+	@echo "  event-feed-fixtures-check Validate event-feed tier-2 scenario fixtures against their schema"
+	@echo "  event-feed-digest-fixtures-check Validate event-feed srv1 digest vectors against their schema"
 	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json"
 	@echo "  check-runner-test-reachability  Assert every runner test file is reachable from discovery"
 	@echo "  check-replay-decoder-parity  Assert all five replay/dispatch tables cover the live fixture"

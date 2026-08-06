@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://basecamp.com/schemas/event-feed-digest.json",
+  "title": "Event-feed srv1 digest and checkpoint flat-key vectors",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "description",
+    "provisional",
+    "srv1_vectors",
+    "flat_key_cases"
+  ],
+  "properties": {
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provisional": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verified_at",
+        "freezes_at"
+      ],
+      "properties": {
+        "verified_at": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{10,40}$"
+        },
+        "freezes_at": {
+          "const": "bc3 merge-time gate (regenerated vectors)"
+        }
+      }
+    },
+    "srv1_vectors": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "filters",
+          "canonical_json",
+          "digest"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "filters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "types": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "buckets": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "integer",
+                    "string"
+                  ]
+                }
+              },
+              "creators": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "integer",
+                    "string"
+                  ]
+                }
+              }
+            }
+          },
+          "canonical_json": {
+            "type": "string",
+            "pattern": "^\\["
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$"
+          }
+        }
+      }
+    },
+    "flat_key_cases": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "origin",
+          "account_id",
+          "consumer_namespace",
+          "filters",
+          "filter_key",
+          "flat_key"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 1
+          },
+          "account_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "consumer_namespace": {
+            "type": "string",
+            "minLength": 1
+          },
+          "filters": {
+            "$ref": "#/properties/srv1_vectors/items/properties/filters"
+          },
+          "filter_key": {
+            "type": "string",
+            "pattern": "^srv1-[0-9a-f]{16}$"
+          },
+          "flat_key": {
+            "type": "string",
+            "pattern": "^\\["
+          }
+        }
+      }
+    }
+  }
+}

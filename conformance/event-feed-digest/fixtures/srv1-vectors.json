@@ -1,0 +1,198 @@
+{
+  "description": "srv1 digest vectors (the published bc3 table) and checkpoint flat-key cases (SPEC §23 Checkpoint Identity). The srv1 algorithm is total over client-validated inputs; these vectors are the published server table. All six SDKs assert every case.",
+  "provisional": {
+    "verified_at": "8be5c67de5",
+    "freezes_at": "bc3 merge-time gate (regenerated vectors)"
+  },
+  "srv1_vectors": [
+    {
+      "name": "empty-set",
+      "filters": {},
+      "canonical_json": "[null,null,null]",
+      "digest": "fe44a8cccd89edae"
+    },
+    {
+      "name": "single-type",
+      "filters": {
+        "types": [
+          "message.created"
+        ]
+      },
+      "canonical_json": "[[\"message.created\"],null,null]",
+      "digest": "9eae6bbae1414746"
+    },
+    {
+      "name": "unsorted-multi-list",
+      "filters": {
+        "types": [
+          "todo.completed",
+          "message.created"
+        ],
+        "buckets": [
+          2,
+          1
+        ]
+      },
+      "canonical_json": "[[\"message.created\",\"todo.completed\"],[1,2],null]",
+      "digest": "00ed03e6196e77a2"
+    },
+    {
+      "name": "leading-zero-coercion-dedup",
+      "filters": {
+        "buckets": [
+          "1",
+          "01"
+        ]
+      },
+      "canonical_json": "[null,[1],null]",
+      "digest": "fb19e601cd033cad"
+    },
+    {
+      "name": "cap-boundary-100-ids",
+      "filters": {
+        "buckets": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100
+        ]
+      },
+      "canonical_json": "[null,[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100],null]",
+      "digest": "832adbc56aa7c8f2"
+    }
+  ],
+  "flat_key_cases": [
+    {
+      "name": "empty-set-default-origin",
+      "origin": "https://3.basecampapi.com",
+      "account_id": "5951425",
+      "consumer_namespace": "openclaw",
+      "filters": {},
+      "filter_key": "srv1-fe44a8cccd89edae",
+      "flat_key": "[\"https://3.basecampapi.com\",\"5951425\",\"openclaw\",\"srv1-fe44a8cccd89edae\"]"
+    },
+    {
+      "name": "origin-canonicalization-case-and-default-port",
+      "origin": "HTTPS://Example.Basecampapi.COM:443",
+      "account_id": "1",
+      "consumer_namespace": "agent-a",
+      "filters": {
+        "types": [
+          "message.created"
+        ]
+      },
+      "filter_key": "srv1-9eae6bbae1414746",
+      "flat_key": "[\"https://example.basecampapi.com\",\"1\",\"agent-a\",\"srv1-9eae6bbae1414746\"]"
+    },
+    {
+      "name": "nondefault-port-preserved",
+      "origin": "https://localhost:3001",
+      "account_id": "195539477",
+      "consumer_namespace": "dev",
+      "filters": {
+        "buckets": [
+          "1",
+          "01"
+        ]
+      },
+      "filter_key": "srv1-fb19e601cd033cad",
+      "flat_key": "[\"https://localhost:3001\",\"195539477\",\"dev\",\"srv1-fb19e601cd033cad\"]"
+    }
+  ]
+}

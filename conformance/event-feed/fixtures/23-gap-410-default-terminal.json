@@ -1,0 +1,90 @@
+{
+  "name": "23-gap-410-default-terminal",
+  "description": "No handler configured: a 410 epoch gap is the typed terminal — a 410 never silently auto-continues. The exact-set finally is the direct test of any auto-continue mutant (following resume would be an unmatched poll; mintCount/state/timers pin the rest), and zero handler invocations are required by the schema's default-terminal pin. Observer.gap (expectGap) fires either way — observability is not disposition. Kills: auto-continue-past-unhandled-gap.",
+  "config": {
+    "position": "{{POS:0}}"
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}"
+        },
+        "respond": {
+          "status": 410,
+          "body": {
+            "error": "position expired",
+            "epoch_after_id": 100,
+            "resume": "{{API_ORIGIN}}/events.json?since=now"
+          }
+        }
+      }
+    },
+    {
+      "expectGap": {
+        "epochAfterId": 100
+      }
+    },
+    {
+      "expectClientClose": {}
+    },
+    {
+      "expectError": {
+        "reason": "feed_gap"
+      }
+    }
+  ],
+  "finally": {
+    "state": "terminal",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {
+      "exact": []
+    },
+    "checkpoints": {
+      "exact": []
+    },
+    "timers": {
+      "exact": {}
+    },
+    "socket": "closed",
+    "error": {
+      "reason": "feed_gap"
+    },
+    "handlerInvocations": {
+      "exact": []
+    }
+  }
+}

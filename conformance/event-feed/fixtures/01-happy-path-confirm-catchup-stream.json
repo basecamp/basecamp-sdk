@@ -1,0 +1,190 @@
+{
+  "name": "01-happy-path-confirm-catchup-stream",
+  "description": "Full pipeline order on a position-resume entry with a types filter: mint, connect, welcome, subscribe (filter params pinned), confirm, then a catch-up walk with one continuation delivering and saving per page, a drain of a mid-walk live event admitted before the entry page was served (proven via the expectBuffered rendezvous), and finally streaming delivery. Live ids never appear in checkpoints; the checkpoint step for page 2 precedes the cumulative delivered assertion so the drain of the buffered event cannot race an intermediate expectDelivered.",
+  "config": {
+    "types": ["message.created"],
+    "position": "{{POS:0}}"
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel",
+        "params": {
+          "types": "message.created"
+        }
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "serve": {
+        "frame": "message",
+        "event": {
+          "id": 104,
+          "kind": "message",
+          "event_type": "message.created",
+          "action": "created",
+          "created_at": "2026-08-01T12:00:00Z",
+          "bucket_id": 2,
+          "creator_id": 3,
+          "recording_id": 900,
+          "visible_to_clients": false
+        }
+      }
+    },
+    {
+      "expectBuffered": {
+        "count": 1
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}",
+          "types": "message.created"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [
+              {
+                "id": 101,
+                "kind": "message",
+                "event_type": "message.created",
+                "action": "created",
+                "created_at": "2026-08-01T12:00:00Z",
+                "bucket_id": 2,
+                "creator_id": 3,
+                "recording_id": 900
+              },
+              {
+                "id": 102,
+                "kind": "message",
+                "event_type": "message.created",
+                "action": "created",
+                "created_at": "2026-08-01T12:00:00Z",
+                "bucket_id": 2,
+                "creator_id": 3,
+                "recording_id": 900
+              }
+            ],
+            "position": "{{POS:1}}",
+            "next": "{{NEXT:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [101, 102]
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectPoll": {
+        "url": "{{NEXT:1}}",
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [
+              {
+                "id": 103,
+                "kind": "message",
+                "event_type": "message.created",
+                "action": "created",
+                "created_at": "2026-08-01T12:00:00Z",
+                "bucket_id": 2,
+                "creator_id": 3,
+                "recording_id": 900
+              }
+            ],
+            "position": "{{POS:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:2}}"
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [101, 102, 103, 104]
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "serve": {
+        "frame": "message",
+        "event": {
+          "id": 105,
+          "kind": "message",
+          "event_type": "message.created",
+          "action": "created",
+          "created_at": "2026-08-01T12:00:00Z",
+          "bucket_id": 2,
+          "creator_id": 3,
+          "recording_id": 900,
+          "visible_to_clients": false
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [101, 102, 103, 104, 105]
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {
+      "exact": [101, 102, 103, 104, 105]
+    },
+    "checkpoints": {
+      "exact": ["{{POS:1}}", "{{POS:2}}"]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open"
+  }
+}

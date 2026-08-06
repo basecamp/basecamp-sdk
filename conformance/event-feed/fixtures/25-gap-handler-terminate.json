@@ -1,0 +1,61 @@
+{
+  "name": "25-gap-handler-terminate",
+  "description": "The gap-flavored Terminate branch: a 410 epoch gap with a registered feedGap handler returning Terminate — Observer.gap fires (observability is not disposition), the handler is invoked exactly once with {feedGap, terminate}, and the connector goes Terminal(feed_gap) with no save (Terminate means no save; the empty checkpoint ledger plus strict-save pin it) and the resume URL never followed. Same visible outcome as fixture 23, distinguished by the invocation record — which is exactly what distinguishes a consulted handler from a bypassed default-terminal path (kills bypass-configured-handler, with 24).",
+  "config": {
+    "position": "{{POS:0}}",
+    "signalDisposition": { "feedGap": "terminate" }
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    { "expectConnect": { "url": "{{CABLE_URL:1}}" } },
+    { "serve": { "frame": "welcome" } },
+    { "expectSubscribe": { "channel": "EventsChannel" } },
+    { "serve": { "frame": "confirm" } },
+    {
+      "expectPoll": {
+        "query": { "position": "{{POS:0}}" },
+        "respond": {
+          "status": 410,
+          "body": {
+            "error": "position expired",
+            "epoch_after_id": 100,
+            "resume": "{{API_ORIGIN}}/events.json?since=now"
+          }
+        }
+      }
+    },
+    { "expectGap": { "epochAfterId": 100 } },
+    { "expectSignal": { "kind": "feedGap", "epochAfterId": 100 } },
+    {
+      "expectHandlerInvocations": {
+        "exact": [{ "kind": "feedGap", "disposition": "terminate" }]
+      }
+    },
+    { "expectClientClose": {} },
+    { "expectError": { "reason": "feed_gap" } }
+  ],
+  "finally": {
+    "state": "terminal",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": { "exact": [] },
+    "checkpoints": { "exact": [] },
+    "timers": { "exact": {} },
+    "socket": "closed",
+    "error": { "reason": "feed_gap" },
+    "handlerInvocations": {
+      "exact": [{ "kind": "feedGap", "disposition": "terminate" }]
+    }
+  }
+}

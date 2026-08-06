@@ -1,0 +1,143 @@
+{
+  "name": "29-checkpoint-save-failure-continues",
+  "description": "Save failure is an observer notification, not a terminal: the feed continues, and a SUBSEQUENT save is attempted — the exact store-call script ([\"failed\", \"saved\"], fully consumed at finally) proves no save circuit breaker (C-R9). Entry is present-class via load \"missing\". The repair walk resumes from the connector's held in-memory position ({{POS:1}}) — per SPEC §23's checkpoint discipline the in-memory cursor is authoritative for resume/repair within a run; the store is write-through durability only, so the failed save never regresses or blanks the live cursor. finally.checkpoints records CALLS, so both positions appear even though only the second durably saved.",
+  "config": {
+    "checkpointStore": {
+      "load": "missing",
+      "save": [
+        "failed",
+        "saved"
+      ]
+    }
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel"
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "exact": {}
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectSaveFailed": true
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "repair-poll",
+        "assertDelayMs": {
+          "min": 48000,
+          "max": 72000
+        }
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:1}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [
+              {
+                "id": 71,
+                "kind": "message",
+                "event_type": "message.created",
+                "action": "created",
+                "created_at": "2026-08-01T12:00:00Z",
+                "bucket_id": 2,
+                "creator_id": 3,
+                "recording_id": 900
+              }
+            ],
+            "position": "{{POS:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [
+          71
+        ]
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:2}}"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {
+      "exact": [
+        71
+      ]
+    },
+    "checkpoints": {
+      "exact": [
+        "{{POS:1}}",
+        "{{POS:2}}"
+      ]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open"
+  }
+}
