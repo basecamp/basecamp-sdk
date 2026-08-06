@@ -128,11 +128,19 @@ end
 # resolved name for each, and the generated-output cross-check below is what
 # actually proves the method still exists.
 template_arms = {}
+duplicate_arms = []
 current = nil
 File.foreach(TEMPLATE_PATH, encoding: "UTF-8") do |line|
   if (m = line.match(/\{\{(?:else )?if eq \$opid "([^"]+)"\}\}/))
+    # A repeated `$opid` in the chain — a copy-pasted arm — is unreachable: Go
+    # evaluates the FIRST matching branch and never reaches the second. Assigning
+    # into the hash keeps the LAST one, so without this the gate would compare the
+    # inventory against a branch that never runs, and an identical duplicate would
+    # be invisible dead template. The inventory has the same check; the template
+    # deserves it symmetrically.
+    duplicate_arms << m[1] if template_arms.key?(m[1])
     current = { opid: m[1], service: nil, methods: [], dynamic_prefixes: [] }
-    template_arms[m[1]] = current
+    template_arms[m[1]] ||= current
   elsif current && (m = line.match(/^func \(s \*(\w+Service)\) (\w+)\(/))
     current[:service] ||= m[1]
     current[:methods] << m[2]
@@ -145,6 +153,12 @@ end
 if template_arms.length < MIN_ARMS
   die(["only #{template_arms.length} `$opid` arms read from #{File.basename(TEMPLATE_PATH)} " \
        "(floor #{MIN_ARMS}) — the chain's syntax probably changed and extraction is silently failing"])
+end
+
+duplicate_arms.uniq.sort.each do |opid|
+  failures << "go/templates/client.tmpl has more than one `$opid` arm for `#{opid}` — " \
+              "Go takes the first matching branch, so the later one is unreachable dead " \
+              "template. Delete the duplicate."
 end
 
 template_arms.each_value do |arm|

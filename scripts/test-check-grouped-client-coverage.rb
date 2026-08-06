@@ -47,6 +47,7 @@
 #   dead-template-arm check                          11
 #   dynamic-prefix (typed body variant) check        12
 #   generated-not-recorded check (reverse direction) 14
+#   duplicate-template-arm check                     15
 #   the `explained` filter on the phantom check      positive control
 #
 # The last two rows are the measured result, not the tidy one I first wrote. The
@@ -354,6 +355,22 @@ out, status = Dir.mktmpdir("grouped-client-coverage-generated") do |dir|
 end
 expect_fail(failures, "14. generated method absent from the inventory", out, status,
             "the generated client exposes `TodosService.CreateFormdata` but no `grouped:` entry records it")
+
+# --- 15. The same operation armed twice in the template ------------------------
+#
+# The symmetric twin of case 10, which covers the inventory. Go evaluates the
+# FIRST matching branch of the chain, so a copy-pasted arm is unreachable dead
+# template — and parsing it into a hash keeps the LAST one, so the gate would
+# otherwise compare the inventory against a branch that never runs, while an
+# identical duplicate stayed invisible.
+
+tmpl = read_utf8(REAL_TEMPLATE)
+dup_marker = "{{else if eq $opid \"ArchiveProject\"}}"
+raise "arm marker for case 15 not found" unless tmpl.include?(dup_marker)
+dup_arm = "#{dup_marker}\nfunc (s *ProjectsService) Archive(ctx context.Context) (*http.Response, error) {\n\treturn nil, nil\n}\n"
+out, status = with_inputs(template: tmpl.sub(dup_marker, dup_arm + dup_marker)) { |_inv| }
+expect_fail(failures, "15. duplicate `$opid` arm in the template", out, status,
+            "more than one `$opid` arm for `ArchiveProject`")
 
 # --- 10. The same operation grouped twice --------------------------------------
 
