@@ -5,6 +5,7 @@ SPEC.md
   s_6596a1ee398fe6::t_accccdc7474a17 3430-3433
   s_6596a1ee398fe6::t_63109d8419cf3f 385-392,1148-1163
   s_6596a1ee398fe6::t_47e79782e484c4 1164
+  s_6596a1ee398fe6::t_5b94805c7ab95f 851,1418,3486
 python/src/basecamp/__init__.py
   s_6596a1ee398fe6::t_5666e2bfe23a1c 23
 go/pkg/basecamp/errors.go
@@ -18,6 +19,8 @@ go/pkg/basecamp/vaults.go
   s_6596a1ee398fe6::t_738d7c29748f42 1032,1034,1036,1038,1040,1048,1050,1052,1055,1063,1065,1067,1070,1072,1077
 ruby/test/basecamp/services/uploads_service_test.rb
   s_e4dc5311e27670::t_f66e7291c55d08 175
+AGENTS.md
+  s_6596a1ee398fe6::t_5b94805c7ab95f 29,94
 ---
 {
   "schema_version": "authorship/3.0.0",
