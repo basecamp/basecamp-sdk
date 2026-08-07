@@ -1,0 +1,22 @@
+go/pkg/basecamp/optional_presence_test.go
+  s_6596a1ee398fe6::t_54f19e43fd4666 11
+  s_6596a1ee398fe6::t_9c002634a43490 499-537
+go/pkg/basecamp/client.go
+  s_6596a1ee398fe6::t_9c002634a43490 835-850
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "60eedb819aab0568a4d5bd3e3cc449a50f9e66f8",
+  "prompts": {},
+  "sessions": {
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
