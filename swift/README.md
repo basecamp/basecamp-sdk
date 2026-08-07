@@ -361,6 +361,9 @@ do {
         fieldErrors?.forEach { field, messages in
             messages.forEach { print("  \(field) \($0)") }
         }
+    case .limitExceeded(let message, _, _):
+        // 507. An account limit, not a transient failure — do not retry.
+        print("Limit reached: \(message)")
     case .ambiguous(let resource, _, _):
         print("Ambiguous \(resource)")
     case .usage(let message, _):
@@ -385,9 +388,10 @@ do {
 | `.notFound` | 404 | 2 | Resource not found |
 | `.rateLimit` | 429 | 5 | Rate limit exceeded (retryable) |
 | `.network` | - | 6 | Network error (retryable) |
-| `.api` | 5xx | 7 | Server error |
+| `.api` | 500, 502, 503, 504, other 5xx | 7 | Server error |
 | `.ambiguous` | - | 8 | Multiple matches found |
 | `.validation` | 400, 422 | 9 | Invalid request data |
+| `.limitExceeded` | 507 | 10 | Account limit reached (file storage, projects, webhooks) — never retryable |
 | `.usage` | - | 1 | Configuration or argument error |
 
 ### Validation Errors

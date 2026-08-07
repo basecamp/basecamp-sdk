@@ -480,6 +480,7 @@ end
 | `ValidationError` | Invalid request data (400, 422) |
 | `RateLimitError` | Rate limit exceeded (429) |
 | `NetworkError` | Connection failures |
+| `LimitExceededError` | Account limit reached (507) — file storage, projects, webhooks |
 
 ### Validation Errors
 
