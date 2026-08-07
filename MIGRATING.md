@@ -16,6 +16,14 @@ what wrong behaviour you get if you ignore one. This file is that half.
 Breaking in Go and in the shape every SDK decodes from
 `GET /uploads/{id}/versions.json`.
 
+**Operation inventory: 249 → 250** — `CreateUploadVersion`. Derive both ends
+rather than trusting either number:
+
+```bash
+git show v0.13.0:openapi.json | jq '[.paths[]|keys[]]|length'
+jq '[.paths[]|keys[]]|length' openapi.json
+```
+
 ### `ListUploadVersions` returns versions, not uploads (#649)
 
 The endpoint has always returned **events**. The spec declared
