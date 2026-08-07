@@ -64,8 +64,16 @@ REAL_ALLOWLIST = File.join(ROOT, "spec/bc3-route-allowlist.yml")
 def read_utf8(path) = File.read(path, encoding: "UTF-8")
 
 # Run the checker against a given allowlist; returns [combined_output, status].
+#
+# The captured output is forced to UTF-8. Under a non-UTF-8 locale (LC_ALL=C)
+# Open3 tags it US-ASCII, and every expected fragment below contains UTF-8
+# punctuation — so `out.include?(fragment)` raises Encoding::CompatibilityError
+# before it can compare anything, and every case dies for a reason unrelated to
+# what it tests while looking like the gate is broken. The bytes are UTF-8 either
+# way; only the tag is wrong.
 def run_checker(allowlist:)
-  Open3.capture2e({ "BC3_ROUTE_ALLOWLIST" => allowlist }, "ruby", CHECKER)
+  out, status = Open3.capture2e({ "BC3_ROUTE_ALLOWLIST" => allowlist }, "ruby", CHECKER)
+  [out.dup.force_encoding("UTF-8"), status]
 end
 
 failures = []

@@ -33,7 +33,7 @@ unless File.file?(SCHEMA_FILE)
   exit 2
 end
 
-schema = JSON.parse(File.read(SCHEMA_FILE))
+schema = JSON.parse(File.read(SCHEMA_FILE, encoding: "UTF-8"))
 required_fields = schema.dig("required") || []
 known_fields = schema.dig("properties")&.keys || []
 additional_strict = schema["additionalProperties"] == false
@@ -43,7 +43,7 @@ status_pattern = status_alts.find { |alt| alt["pattern"] }&.dig("pattern")
 date_pattern = schema.dig("properties", "detected", "pattern")
 
 def parse_frontmatter(path)
-  content = File.read(path)
+  content = File.read(path, encoding: "UTF-8")
   return [nil, content, "missing leading frontmatter delimiter"] unless content.start_with?("---\n")
 
   rest = content[4..]
@@ -158,11 +158,11 @@ if File.file?(ALLOWLIST_FILE)
     # Skip allowlist content validation when the schema is missing.
     allowlist_schema = nil
   else
-    allowlist_schema = JSON.parse(File.read(ALLOWLIST_SCHEMA_FILE))
+    allowlist_schema = JSON.parse(File.read(ALLOWLIST_SCHEMA_FILE, encoding: "UTF-8"))
   end
   allowed_keys = allowlist_schema && allowlist_schema["properties"]&.keys || []
   begin
-    allowlist = YAML.safe_load(File.read(ALLOWLIST_FILE), permitted_classes: [Date, Time]) || {}
+    allowlist = YAML.safe_load(File.read(ALLOWLIST_FILE, encoding: "UTF-8"), permitted_classes: [Date, Time]) || {}
   rescue Psych::SyntaxError => e
     add_error(errors, ALLOWLIST_FILE, "YAML parse error: #{e.message}")
     allowlist = nil
@@ -206,7 +206,7 @@ end
 
 if File.file?(ALLOWLIST_FILE)
   begin
-    allowlist = YAML.safe_load(File.read(ALLOWLIST_FILE), permitted_classes: [Date, Time]) || {}
+    allowlist = YAML.safe_load(File.read(ALLOWLIST_FILE, encoding: "UTF-8"), permitted_classes: [Date, Time]) || {}
     Array(allowlist["absorbed_under_other_brief"]).each_with_index do |entry, idx|
       next unless entry.is_a?(Hash)
       cover = entry["covers_under"]

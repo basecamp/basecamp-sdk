@@ -30,17 +30,26 @@ API_VER  = "2026-08-15"
 
 failures = []
 
+# Captured gate output, retagged UTF-8. Under a non-UTF-8 locale (LC_ALL=C) Open3
+# tags it US-ASCII, and both the expected fragments and the gate's own messages
+# contain UTF-8 punctuation — so `out.include?(fragment)` raises
+# Encoding::CompatibilityError before comparing anything, and every case dies for
+# a reason unrelated to what it tests. The bytes are UTF-8 either way; only the
+# tag is wrong. Applied here rather than at each of the five capture sites so a
+# sixth cannot reintroduce it.
+def utf8(out) = out.dup.force_encoding("UTF-8")
+
 def expect_pass(failures, label, out, status)
   return if status.success?
 
-  failures << "#{label}: expected PASS, gate exited #{status.exitstatus}:\n#{out}"
+  failures << "#{label}: expected PASS, gate exited #{status.exitstatus}:\n#{utf8(out)}"
 end
 
 def expect_fail(failures, label, out, status, fragment)
   if status.success?
-    failures << "#{label}: expected FAILURE, gate exited 0:\n#{out}"
-  elsif !out.include?(fragment)
-    failures << "#{label}: failed as expected but message missing #{fragment.inspect}:\n#{out}"
+    failures << "#{label}: expected FAILURE, gate exited 0:\n#{utf8(out)}"
+  elsif !utf8(out).include?(fragment)
+    failures << "#{label}: failed as expected but message missing #{fragment.inspect}:\n#{utf8(out)}"
   end
 end
 
