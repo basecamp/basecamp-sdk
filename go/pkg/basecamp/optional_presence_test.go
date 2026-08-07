@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -493,5 +494,44 @@ func TestUploadVersionFromGenerated_DetailsSurvives(t *testing.T) {
 	}
 	if len(populated.Details.NotifiedRecipientIDs) != 1 {
 		t.Errorf("notified_recipient_ids must survive, got %v", populated.Details.NotifiedRecipientIDs)
+	}
+}
+
+// Go has two response handlers: checkResponse for the generated service layer,
+// and doRequest for the raw Client.Get/Post/Put/Delete escape hatch. A status
+// mapped in one and not the other is a real divergence — the 400/422 arm in
+// doRequest exists because exactly that happened with field-keyed errors.
+func TestRawClientRequest_MapsInsufficientStorage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInsufficientStorage)
+		_, _ = w.Write([]byte(`{"error":"The storage limit for this account has been reached."}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	_, err := client.Get(context.Background(), "/99999/uploads/1")
+	if err == nil {
+		t.Fatal("expected an error on 507")
+	}
+
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T", err)
+	}
+	if bcErr.Code != CodeLimitExceeded {
+		t.Errorf("code = %q, want %q", bcErr.Code, CodeLimitExceeded)
+	}
+	if bcErr.HTTPStatus != 507 {
+		t.Errorf("http status = %d, want 507", bcErr.HTTPStatus)
+	}
+	if bcErr.Retryable {
+		t.Error("an account limit must not be retryable")
+	}
+	if !strings.Contains(bcErr.Message, "storage limit") {
+		t.Errorf("server message must survive, got %q", bcErr.Message)
 	}
 }

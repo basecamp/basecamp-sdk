@@ -832,6 +832,22 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		serverMsg, serverHint, fieldErrors := parseErrorBody(respBody)
 		return nil, validationError(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID)
 
+	case http.StatusInsufficientStorage: // 507
+		// Same reason the 400/422 arm above exists: the generated service layer
+		// maps this through checkResponse, and the raw escape hatch would
+		// otherwise fall through to the default arm and report an account limit
+		// as a generic api_error. Decided before the 5xx arms — a limit is not a
+		// transient failure, and no retry can satisfy it (SPEC §6, step 11).
+		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
+		serverMsg, serverHint, _ := parseErrorBody(respBody)
+		return nil, (&Error{
+			Code:       CodeLimitExceeded,
+			Message:    msgOrDefault(serverMsg, "account limit reached"),
+			Hint:       serverHint,
+			HTTPStatus: 507,
+			Retryable:  false,
+		}).withRequestID(requestID)
+
 	case http.StatusInternalServerError: // 500
 		return nil, ErrAPI(500, "Server error (500)").withRequestID(requestID)
 
