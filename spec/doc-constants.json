@@ -28,7 +28,9 @@
     "markerCounts is: an unbounded file grant would wave through whatever the",
     "file grows next, in the files likeliest to grow a real class-A sentence.",
     "The N+1th citation fails until someone reads it and restates the number;",
-    "fewer than N means the entry has outlived what it described."
+    "fewer than N means the entry has outlived what it described.",
+    "",
+    "operation-count — the number of (path, HTTP method) pairs in openapi.json. It is one jq away from the source and was restated in prose in six places across four files, which is how a single new operation left five of them stale and took three review rounds to reconcile. The marked span must carry the count as a BACKTICKED integer, and exactly one: the marked sentences state other numbers (SECURITY.md names 125 GETs and 83 mutations beside the total), so backticks are what distinguishes the derived constant from prose arithmetic the writer has no source for."
   ],
   "markerCounts": {
     "api-version": {
@@ -40,6 +42,11 @@
     },
     "assertion-types": {
       "SPEC.md": 1
+    },
+    "operation-count": {
+      "AGENTS.md": 2,
+      "SPEC.md": 3,
+      "SECURITY.md": 1
     }
   },
   "writerExcludes": {
