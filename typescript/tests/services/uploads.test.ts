@@ -302,6 +302,26 @@ describe("UploadsService", () => {
       expect(result[0].upload?.download_url).toContain("/versions/1069479501/");
     });
 
+    // Selecting past versions by action is the tempting shortcut and the wrong
+    // one: the original file arrives as `created`/`active`, so `blob_changed`
+    // drops it and keeps the CURRENT file instead. Select on current === false.
+    it("selects past versions by current, not by action", async () => {
+      server.use(
+        http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
+          return HttpResponse.json(versionsFixture);
+        }),
+      );
+
+      const result = await service.listVersions(7001);
+
+      const past = result.filter((v) => v.upload && v.upload.current === false);
+      expect(past.map((v) => v.action)).toEqual(["active"]);
+
+      // The shortcut returns the current file and none of the history.
+      const byAction = result.filter((v) => v.action === "blob_changed");
+      expect(byAction.map((v) => v.upload?.current)).toEqual([true]);
+    });
+
     it("tolerates a version whose recordable no longer resolves", async () => {
       server.use(
         http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {

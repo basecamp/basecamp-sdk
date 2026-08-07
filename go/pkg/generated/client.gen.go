@@ -4073,8 +4073,10 @@ type Upload struct {
 // UploadVersion A version event for an upload, from GET /uploads/{id}/versions.json.
 //
 // `action` is one of `created`, `active` (the upload's publication) or `blob_changed`
-// (a file replacement). A caller listing past versions of the file filters on
-// `blob_changed`. This is an Event plus the file it recorded, rendered by its own
+// (a file replacement). To list the file's PAST versions, select entries that carry
+// an `upload` whose `current` is false — the original file arrives as `created` or
+// `active`, never `blob_changed`, so filtering on that action drops the original
+// and keeps the current file instead. This is an Event plus the file it recorded, rendered by its own
 // partial rather than the shared event one, so upload fields don't leak onto todo,
 // message and card events.
 type UploadVersion struct {

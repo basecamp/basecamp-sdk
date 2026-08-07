@@ -1025,8 +1025,13 @@ type UploadVersionListOptions struct {
 // UploadVersion is a version event for an upload, plus the file it recorded.
 //
 // Action is one of "created", "active" (the upload's publication) or
-// "blob_changed" (a file replacement). To list past versions of the file,
-// filter on "blob_changed".
+// "blob_changed" (a file replacement).
+//
+// To list the file's PAST versions, select entries whose Upload is non-nil and
+// whose Upload.Current is false. Filtering on "blob_changed" is the tempting
+// shortcut and the wrong one: the original file is recorded by the "created" or
+// "active" event, so that filter drops the original and keeps the current file
+// — the opposite of what it reads like.
 type UploadVersion struct {
 	// ID is the event ID, not the upload's.
 	ID int64 `json:"id"`

@@ -47,9 +47,11 @@ a partly-empty upload.
 A version carries `upload` only when its recordable still resolves; a deleted
 file leaves the event behind with no `upload` at all. Check before dereferencing.
 `action` is `created`, `active` (the publication) or `blob_changed` (a file
-replacement) — filter on `blob_changed` to list past versions of the file. The
-per-version `download_url` serves **that** version's bytes; the upload's own
-always serves the latest.
+replacement). To list the file's **past** versions, take the entries that carry
+an `upload` with `current == false` — not the ones with `action == "blob_changed"`,
+which drops the original (it arrives as `created` or `active`) and keeps the
+current file. The per-version `download_url` serves **that** version's bytes; the
+upload's own always serves the latest.
 
 ### Go: `UpdateUploadRequest.Description` became `*string`
 
