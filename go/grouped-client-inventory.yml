@@ -1,0 +1,367 @@
+# Total accounting for the Go GROUPED generated client.
+#
+# The grouped surface is `generated.Client.Todos()`, `.Projects()`, and so on:
+# a curated ergonomic layer emitted by the `$opid` chain in
+# go/templates/client.tmpl. It is NOT the flat generated client, and it is NOT
+# the hand-written go/pkg/basecamp wrappers — `make go-check-drift` compares
+# generated operations against those wrappers and never looks here, which is how
+# ArchiveProject and UnarchiveProject shipped missing from the grouped client
+# through two fully green `make` runs (#679).
+#
+# THE INVARIANT: every operationId in openapi.json appears EXACTLY ONCE across
+# this file — either under `grouped:` or in `not_grouped:`. A new operation lands
+# in neither and fails loudly, forcing a decision about whether it belongs on the
+# grouped surface.
+#
+# Why not "every operation in a service's tag must be exposed"? Because that is
+# false for 14 of the 15 services today and always has been. The grouped surface
+# is deliberately curated: Projects is exhaustive over its tag, Todos exposes 6
+# of 18, Card Tables 5 of 21. Total accounting is the invariant that actually
+# holds, and it is the same device as spec/doc-constants.json's committed marker
+# counts — both adding and deleting fail until someone restates the number.
+#
+# `method` is recorded data, not derived: arms deliberately rename (MoveCard ->
+# Move, UpdateCard -> UpdateVerbatim, justified at client.tmpl:1613), so the
+# method name cannot be computed from the operationId.
+#
+# Regenerate nothing by hand — run `make check-grouped-client-coverage` and
+# follow what it says.
+
+grouped:
+  CampfiresService:
+    - operation: GetCampfire
+      methods: ["Get"]
+    - operation: ListCampfires
+      methods: ["List"]
+  CardsService:
+    - operation: CreateCard
+      methods: ["CreateWithBody", "Create"]
+    - operation: GetCard
+      methods: ["Get"]
+    - operation: ListCards
+      methods: ["List"]
+    - operation: MoveCard
+      methods: ["MoveWithBody", "Move"]
+    - operation: UpdateCard
+      methods: ["UpdateVerbatimWithBody", "UpdateVerbatim"]
+  CommentsService:
+    - operation: CreateComment
+      methods: ["CreateWithBody", "Create"]
+    - operation: GetComment
+      methods: ["Get"]
+    - operation: ListComments
+      methods: ["List"]
+    - operation: UpdateComment
+      methods: ["UpdateWithBody", "Update"]
+  DocumentsService:
+    - operation: CreateDocument
+      methods: ["CreateWithBody", "Create"]
+    - operation: GetDocument
+      methods: ["Get"]
+    - operation: ListDocuments
+      methods: ["List"]
+    - operation: ReplaceDocument
+      methods: ["ReplaceWithBody", "Replace"]
+  EventsService:
+    - operation: ListEvents
+      methods: ["List"]
+  MessagesService:
+    - operation: CreateMessage
+      methods: ["CreateWithBody", "Create"]
+    - operation: GetMessage
+      methods: ["Get"]
+    - operation: ListMessages
+      methods: ["List"]
+    - operation: UpdateMessage
+      methods: ["UpdateWithBody", "Update"]
+  PeopleService:
+    - operation: GetMyProfile
+      methods: ["GetMyProfile"]
+    - operation: GetPerson
+      methods: ["Get"]
+    - operation: ListPeople
+      methods: ["List"]
+  ProjectsService:
+    - operation: ArchiveProject
+      methods: ["Archive"]
+    - operation: CreateProject
+      methods: ["CreateWithBody", "Create"]
+    - operation: GetProject
+      methods: ["Get"]
+    - operation: ListProjects
+      methods: ["List"]
+    - operation: TrashProject
+      methods: ["Trash"]
+    - operation: UnarchiveProject
+      methods: ["Unarchive"]
+    - operation: UpdateProject
+      methods: ["UpdateWithBody", "Update"]
+  RecordingsService:
+    - operation: ArchiveRecording
+      methods: ["Archive"]
+    - operation: ListRecordings
+      methods: ["List"]
+    - operation: TrashRecording
+      methods: ["Trash"]
+    - operation: UnarchiveRecording
+      methods: ["Unarchive"]
+  SchedulesService:
+    - operation: CreateScheduleEntry
+      methods: ["CreateEntryWithBody", "CreateEntry"]
+    - operation: GetSchedule
+      methods: ["Get"]
+    - operation: GetScheduleEntry
+      methods: ["GetEntry"]
+    - operation: ListScheduleEntries
+      methods: ["ListEntries"]
+    - operation: ReplaceScheduleEntry
+      methods: ["ReplaceEntryWithBody", "ReplaceEntry"]
+  TemplatesService:
+    - operation: CreateTemplate
+      methods: ["CreateWithBody", "Create"]
+    - operation: DeleteTemplate
+      methods: ["Delete"]
+    - operation: GetTemplate
+      methods: ["Get"]
+    - operation: ListTemplates
+      methods: ["List"]
+    - operation: UpdateTemplate
+      methods: ["UpdateWithBody", "Update"]
+  TodosService:
+    - operation: CompleteTodo
+      methods: ["Complete"]
+    - operation: CreateTodo
+      methods: ["CreateWithBody", "Create"]
+    - operation: GetTodo
+      methods: ["Get"]
+    - operation: ListTodos
+      methods: ["List"]
+    - operation: ReplaceTodo
+      methods: ["ReplaceWithBody", "Replace"]
+    - operation: UncompleteTodo
+      methods: ["Uncomplete"]
+  UploadsService:
+    - operation: CreateUpload
+      methods: ["CreateWithBody", "Create"]
+    - operation: GetUpload
+      methods: ["Get"]
+    - operation: ListUploads
+      methods: ["List"]
+    - operation: UpdateUpload
+      methods: ["UpdateWithBody", "Update"]
+  VaultsService:
+    - operation: CreateVault
+      methods: ["CreateWithBody", "Create"]
+    - operation: GetVault
+      methods: ["Get"]
+    - operation: ListVaults
+      methods: ["List"]
+    - operation: UpdateVault
+      methods: ["UpdateWithBody", "Update"]
+  WebhooksService:
+    - operation: CreateWebhook
+      methods: ["CreateWithBody", "Create"]
+    - operation: DeleteWebhook
+      methods: ["Delete"]
+    - operation: GetWebhook
+      methods: ["Get"]
+    - operation: ListWebhooks
+      methods: ["List"]
+    - operation: UpdateWebhook
+      methods: ["UpdateWithBody", "Update"]
+
+# Operations deliberately absent from the grouped surface. Bulk, but pure data:
+# this list is what makes the accounting total, and therefore what makes a new
+# operation fail instead of passing unnoticed.
+#
+# There is no per-entry reason here because there is one reason for all of them:
+# the grouped client is a curated convenience layer, not a mirror of the API.
+# If you move an operation OUT of this list, you are asserting it now belongs on
+# the grouped surface and must add the matching arm to client.tmpl.
+not_grouped:
+  - CreateAnswer
+  - CreateAttachment
+  - CreateBookmark
+  - CreateCampfireLine
+  - CreateCampfireUpload
+  - CreateCardColumn
+  - CreateCardStep
+  - CreateChatbot
+  - CreateCloudFile
+  - CreateEventBoost
+  - CreateFolder
+  - CreateGaugeNeedle
+  - CreateGoogleDocument
+  - CreateLineupMarker
+  - CreateMessageType
+  - CreateProjectFromTemplate
+  - CreateQuestion
+  - CreateRecordingBoost
+  - CreateTimesheetEntry
+  - CreateTodolist
+  - CreateTodolistGroup
+  - CreateTodosetTodo
+  - CreateTool
+  - CreateWormhole
+  - DeleteBookmark
+  - DeleteBoost
+  - DeleteCampfireLine
+  - DeleteChatbot
+  - DeleteFolder
+  - DeleteLineupMarker
+  - DeleteMessageType
+  - DeleteTool
+  - DeleteWormhole
+  - DeprioritizeAssignment
+  - DestroyGaugeNeedle
+  - DestroyTimesheetEntry
+  - DisableCardColumnOnHold
+  - DisableOutOfOffice
+  - DisableTool
+  - EnableCardColumnOnHold
+  - EnableOutOfOffice
+  - EnableTool
+  - GetAccount
+  - GetAnswer
+  - GetAnswersByPerson
+  - GetAssignedTodos
+  - GetBookmark
+  - GetBoost
+  - GetBubbleUps
+  - GetCalendar
+  - GetCampfireLine
+  - GetCardColumn
+  - GetCardStep
+  - GetCardTable
+  - GetChatbot
+  - GetClientApproval
+  - GetClientCorrespondence
+  - GetClientReply
+  - GetCloudFile
+  - GetEverythingCheckins
+  - GetEverythingComments
+  - GetEverythingCompletedCards
+  - GetEverythingCompletedTodos
+  - GetEverythingFiles
+  - GetEverythingForwards
+  - GetEverythingMessages
+  - GetEverythingNoDueDateCards
+  - GetEverythingNoDueDateTodos
+  - GetEverythingNotNowCards
+  - GetEverythingOpenCards
+  - GetEverythingOpenTodos
+  - GetEverythingOverdueCards
+  - GetEverythingOverdueTodos
+  - GetEverythingUnassignedCards
+  - GetEverythingUnassignedTodos
+  - GetFolder
+  - GetForward
+  - GetForwardReply
+  - GetGaugeNeedle
+  - GetGoogleDocument
+  - GetHillChart
+  - GetInbox
+  - GetMessageBoard
+  - GetMessageType
+  - GetMyAssignments
+  - GetMyCompletedAssignments
+  - GetMyDueAssignments
+  - GetMyNote
+  - GetMyNotifications
+  - GetMyPreferences
+  - GetOutOfOffice
+  - GetOverdueTodos
+  - GetPersonProgress
+  - GetProgressReport
+  - GetProjectConstruction
+  - GetProjectTimeline
+  - GetProjectTimesheet
+  - GetQuestion
+  - GetQuestionReminders
+  - GetQuestionnaire
+  - GetRecordingTimesheet
+  - GetScheduleEntryOccurrence
+  - GetSearchMetadata
+  - GetSubscription
+  - GetTimesheetEntry
+  - GetTimesheetReport
+  - GetTodolistOrGroup
+  - GetTodoset
+  - GetTool
+  - GetUpcomingSchedule
+  - ListAnswers
+  - ListAssignablePeople
+  - ListCampfireLines
+  - ListCampfireUploads
+  - ListChatbots
+  - ListClientApprovals
+  - ListClientCorrespondences
+  - ListClientReplies
+  - ListEventBoosts
+  - ListFolders
+  - ListForwardReplies
+  - ListForwards
+  - ListGaugeNeedles
+  - ListGauges
+  - ListLineupMarkers
+  - ListMessageTypes
+  - ListMyBookmarks
+  - ListMyDrafts
+  - ListPingablePeople
+  - ListProjectPeople
+  - ListQuestionAnswerers
+  - ListQuestions
+  - ListRecordingBoosts
+  - ListTodolistGroups
+  - ListTodolists
+  - ListUploadVersions
+  - MarkAsRead
+  - MoveCardColumn
+  - PauseQuestion
+  - PinMessage
+  - PrioritizeAssignment
+  - RemoveAccountLogo
+  - ReorderUpNext
+  - RepositionCardStep
+  - RepositionTodo
+  - RepositionTodolist
+  - RepositionTodolistGroup
+  - RepositionTool
+  - ResumeQuestion
+  - Search
+  - SetCardColumnColor
+  - SetCardStepCompletion
+  - SetClientVisibility
+  - Subscribe
+  - SubscribeToCardColumn
+  - ToggleGauge
+  - UnpinMessage
+  - Unsubscribe
+  - UnsubscribeFromCardColumn
+  - UpdateAccountLogo
+  - UpdateAccountName
+  - UpdateAnswer
+  - UpdateCalendar
+  - UpdateCampfireLine
+  - UpdateCardColumn
+  - UpdateCardStep
+  - UpdateChatbot
+  - UpdateCloudFile
+  - UpdateFolder
+  - UpdateGaugeNeedle
+  - UpdateGoogleDocument
+  - UpdateHillChartSettings
+  - UpdateLineupMarker
+  - UpdateMessageType
+  - UpdateMyNote
+  - UpdateMyPreferences
+  - UpdateMyProfile
+  - UpdateProjectAccess
+  - UpdateQuestion
+  - UpdateQuestionNotificationSettings
+  - UpdateScheduleSettings
+  - UpdateSubscription
+  - UpdateTimesheetEntry
+  - UpdateTodolistOrGroup
+  - UpdateTool
+  - UpdateWormhole

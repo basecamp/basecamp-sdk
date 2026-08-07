@@ -473,16 +473,22 @@ func TestProjectsService_UnarchiveAtProjectLimit(t *testing.T) {
 
 // The low-level grouped client surface (generated.Client.Projects()) is emitted
 // from an explicit per-operation switch in go/templates/client.tmpl, NOT from the
-// operation list — so adding an operation to the spec does not add it here, and
-// nothing catches the omission: go-check-drift compares generated operations
-// against this package's wrappers and never looks at the grouped surface.
+// operation list — so adding an operation to the spec does not add it here.
 // ArchiveProject and UnarchiveProject shipped without their template cases for
 // exactly that reason (caught in review on #679), leaving ProjectsService
 // asymmetric with RecordingsService, which has both.
 //
-// These method-value references are the cheap guard: they are compile-time only,
-// so a regressed template breaks the build here instead of silently shipping a
-// grouped client that cannot reach the operation.
+// The omission itself is now gated repo-wide by
+// scripts/check-grouped-client-coverage, which requires every operation in
+// openapi.json to be accounted for in go/grouped-client-inventory.yml as either
+// grouped or deliberately not grouped. That is the check that would have caught
+// #679, and it covers all 15 grouped services rather than these three methods.
+//
+// These method-value references are kept anyway, because they prove a different
+// thing at no cost: that the method is actually CALLABLE with the shape the
+// caller expects. The gate reads the template and the generated file as text; a
+// method that generates but does not compile against its own signature is
+// something only the compiler can say.
 var (
 	_ = (*generated.ProjectsService).Archive
 	_ = (*generated.ProjectsService).Unarchive
