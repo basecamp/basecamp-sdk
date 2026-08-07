@@ -37,6 +37,22 @@ failures = []
 # a reason unrelated to what it tests. The bytes are UTF-8 either way; only the
 # tag is wrong. Applied here rather than at each of the five capture sites so a
 # sixth cannot reintroduce it.
+# THREE operations across two paths, in the --openapi source. `parameters` is a
+# path-item key, not an operation, and is here so a counter that walked every
+# key would report 4 and fail the positive control.
+OP_COUNT = 3
+SOURCE_PATHS = {
+  "/todos" => { "get" => {}, "post" => {}, "parameters" => [] },
+  "/todos/{id}" => { "get" => {} },
+}.freeze
+
+# The in-repo openapi.json is a DECOY with a different operation count, the same
+# device DECOY_API_VER uses: if the gate ever read the checkout's copy instead of
+# the --openapi argument, every operation-count case would report 5, not 3.
+DECOY_PATHS = {
+  "/decoy" => { "get" => {}, "post" => {}, "put" => {}, "delete" => {}, "patch" => {} },
+}.freeze
+
 def utf8(out) = out.dup.force_encoding("UTF-8")
 
 def expect_pass(failures, label, out, status)
@@ -76,7 +92,10 @@ DECOY_API_VER = "2000-01-01"
 
 def default_files
   {
-    "openapi.json" => JSON.pretty_generate("info" => { "version" => DECOY_API_VER }),
+    "openapi.json" => JSON.pretty_generate(
+      "info" => { "version" => DECOY_API_VER },
+      "paths" => DECOY_PATHS
+    ),
     "conformance/schema.json" => JSON.pretty_generate(
       "properties" => { "assertions" => { "items" => { "properties" => {
         "type" => { "enum" => %w[status header jsonPath] },
@@ -90,6 +109,7 @@ def default_files
         "api-version" => { "SPEC.md" => 1 },
         "bc3-pin" => { "COORDINATION.md" => 1 },
         "assertion-types" => { "SPEC.md" => 1 },
+        "operation-count" => { "SPEC.md" => 1 },
       }
     ),
     "COORDINATION.md" => <<~MD,
@@ -101,6 +121,8 @@ def default_files
       # Spec
 
       API_VERSION is `#{API_VER}`. <!-- @api-version -->
+
+      The surface is `#{OP_COUNT}` operations across 2 paths. <!-- @operation-count -->
 
       <!-- @assertion-types:begin -->
       | Type | Meaning |
@@ -124,14 +146,17 @@ end
 #
 # Layout: base/repo is the git checkout the gate scans; base/openapi-source.json
 # is the --openapi argument, deliberately OUTSIDE the checkout.
-def run_gate(mode: "--check", mutate: nil, inspect_result: nil, openapi_version: API_VER)
+def run_gate(mode: "--check", mutate: nil, inspect_result: nil, openapi_version: API_VER,
+             openapi_paths: SOURCE_PATHS)
   base = Dir.mktmpdir("doc-constants-test")
   begin
     dir = File.join(base, "repo")
     FileUtils.mkdir_p(dir)
 
     source = File.join(base, "openapi-source.json")
-    File.write(source, JSON.pretty_generate("info" => { "version" => openapi_version }),
+    File.write(source,
+               JSON.pretty_generate("info" => { "version" => openapi_version },
+                                    "paths" => openapi_paths),
                encoding: "UTF-8")
 
     files = default_files
@@ -168,8 +193,8 @@ def run_gate(mode: "--check", mutate: nil, inspect_result: nil, openapi_version:
   end
 end
 
-def gate(mutate = nil, openapi_version: API_VER)
-  run_gate(mutate: mutate, openapi_version: openapi_version)
+def gate(mutate = nil, openapi_version: API_VER, openapi_paths: SOURCE_PATHS)
+  run_gate(mutate: mutate, openapi_version: openapi_version, openapi_paths: openapi_paths)
 end
 
 def writer(mutate = nil, &inspect_result)
@@ -187,6 +212,60 @@ expect_pass(failures, "real repo passes", out, status)
 
 out, status = gate
 expect_pass(failures, "crafted valid repo passes", out, status)
+
+# --- @operation-count ----------------------------------------------------------
+#
+# The count is one jq away from openapi.json and was restated in prose six times
+# across four files. A single new operation left five of them stale and took
+# three review rounds to reconcile, which is the failure this marker retires.
+
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("`#{OP_COUNT}` operations", "`2` operations") }
+expect_fail(failures, "operation-count drifted", out, status,
+            "@operation-count says `2`")
+
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("`#{OP_COUNT}` operations", "several operations") }
+expect_fail(failures, "operation-count span states no backticked integer", out, status,
+            "states no backticked integer")
+
+# Backticks are what tell the writer WHICH integer is the claim, so a span with
+# two of them is ambiguous rather than merely redundant — it would silently
+# rewrite both. SECURITY.md's real sentence names 125 GETs and 83 mutations
+# beside the total, so this is the shape that would break it.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("across 2 paths", "across `2` paths")
+}
+expect_fail(failures, "operation-count span has two backticked integers", out, status,
+            "exactly one is required")
+
+# A count that is right for the wrong reason: a path item's non-operation keys
+# must not be counted. Adding `parameters` to the second path keeps the real
+# count at 3, so a walker that counted every key would now say 5 and fail.
+out, status = gate(openapi_paths: {
+  "/todos" => { "get" => {}, "post" => {}, "parameters" => [] },
+  "/todos/{id}" => { "get" => {}, "parameters" => [], "summary" => "a summary", "servers" => [] },
+})
+expect_pass(failures, "path-item keys that are not operations are not counted", out, status)
+
+# The decoy proves the count is read from --openapi, not the checkout: the
+# in-repo openapi.json declares five operations, so a gate reading it would
+# report 5 against a span that says 3.
+out, status = gate ->(f) { f["openapi.json"] = JSON.pretty_generate("info" => { "version" => DECOY_API_VER }, "paths" => {}) }
+expect_pass(failures, "operation count comes from --openapi, not the checkout", out, status)
+
+# The writer fixes a drifted count in place, which is the whole point: nobody
+# should be hand-editing six restatements again.
+writer ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("`#{OP_COUNT}` operations", "`999` operations") } do |out, status, dir|
+  expect_pass(failures, "writer rewrites a drifted operation count", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?("`#{OP_COUNT}` operations")
+    failures << "writer: expected the operation count restored to #{OP_COUNT}, got:\n#{written[/^.*operations.*$/]}"
+  end
+  # The unticked integer in the same sentence is prose, not the claim, and the
+  # writer must leave it exactly where it was.
+  unless written.include?("across 2 paths")
+    failures << "writer: rewrote an unticked integer it has no source for:\n#{written[/^.*operations.*$/]}"
+  end
+end
 
 # --- @api-version --------------------------------------------------------------
 

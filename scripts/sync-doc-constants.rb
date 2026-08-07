@@ -8,6 +8,7 @@
 #   @api-version      openapi.json  .info.version
 #   @bc3-pin          spec/api-provenance.json  .bc3.revision / .bc3.date
 #   @assertion-types  conformance/schema.json
+#   @operation-count  openapi.json  count of path × HTTP-method pairs
 #                       .properties.assertions.items.properties.type.enum
 #
 # Only spans MARKED with an HTML comment are checked. That is deliberate:
@@ -114,7 +115,11 @@ UTF8 = "UTF-8"
 $stdout.set_encoding(UTF8)
 $stderr.set_encoding(UTF8)
 
-LINE_KINDS  = %w[api-version bc3-pin].freeze
+LINE_KINDS  = %w[api-version bc3-pin operation-count].freeze
+
+# The OpenAPI verbs an operation can be keyed under. Anything else in a path
+# item (parameters, servers, summary) is not an operation and must not count.
+HTTP_METHODS = %w[get put post delete patch head options trace].freeze
 BLOCK_KINDS = %w[assertion-types].freeze
 KNOWN_KINDS = (LINE_KINDS + BLOCK_KINDS).freeze
 
@@ -331,6 +336,43 @@ def check_api_version(span, api_version, source)
   dates.uniq.reject { |d| d == api_version }.map do |bad|
     "#{span.location}: @api-version says #{bad}, #{source} .info.version is #{api_version}"
   end
+end
+
+# The count restated by @operation-count spans: every (path, HTTP method) pair
+# in openapi.json, which is the same arithmetic AGENTS.md documents and the same
+# number the generators report.
+def operation_count(doc, source)
+  paths = dig!(doc, source, "paths")
+  paths.sum { |_path, ops| ops.count { |method, _| HTTP_METHODS.include?(method) } }
+end
+
+# A code span whose ENTIRE content is digits. Bare prose integers are not
+# candidates, because the marked lines are full of them — SECURITY.md's states
+# 125 GETs and 83 mutations in the same sentence as the total — and a checker
+# that read those as the claim would fail on numbers it has no source for.
+# Backticks are how the prose says "this one is the derived constant", the same
+# device @bc3-pin uses for the SHA.
+TICKED_INT_RE = /`(\d+)`/
+
+def check_operation_count(span, count, source)
+  ints = span.text.scan(TICKED_INT_RE).flatten.uniq
+
+  if ints.empty?
+    return ["#{span.location}: @operation-count span states no backticked integer — " \
+            "write the count as `#{count}` so the writer can find it"]
+  end
+
+  # Exactly one, so the writer never has to guess which integer to rewrite. A
+  # line that needs another backticked integer cannot carry this marker; put the
+  # claim on a line of its own instead.
+  if ints.length > 1
+    return ["#{span.location}: @operation-count span has #{ints.length} backticked integers " \
+            "(#{ints.join(', ')}) — exactly one is required, so the writer knows which is the count"]
+  end
+
+  return [] if ints.first == count.to_s
+
+  ["#{span.location}: @operation-count says `#{ints.first}`, #{source} has #{count} operations"]
 end
 
 def check_bc3_pin(span, revision, date)
@@ -582,10 +624,12 @@ end
 
 # --- writer ------------------------------------------------------------------
 
-def rewrite_line(kind, line, api_version:, revision:, date:)
+def rewrite_line(kind, line, api_version:, revision:, date:, operation_count_value:)
   case kind
   when "api-version"
     line.gsub(ISO_DATE_RE, api_version)
+  when "operation-count"
+    line.gsub(TICKED_INT_RE) { "`#{operation_count_value.call}`" }
   when "bc3-pin"
     # Preserve the abbreviation length the prose already chose.
     line
@@ -599,7 +643,18 @@ end
 # --- main --------------------------------------------------------------------
 
 def run(mode, openapi)
-  api_version = dig!(read_openapi(openapi), openapi, "info", "version")
+  openapi_doc = read_openapi(openapi)
+  api_version = dig!(openapi_doc, openapi, "info", "version")
+
+  # Derived lazily, and only when an @operation-count span actually needs it.
+  # The gate's own fixtures are minimal OpenAPI documents with no .paths at all,
+  # and a document without operations is a real failure only for a file that
+  # claims to count them — computing it eagerly turned every such fixture into
+  # an error about a constant it never mentions.
+  op_count_memo = nil
+  op_count = lambda do
+    op_count_memo ||= operation_count(openapi_doc, openapi)
+  end
 
   provenance = read_json("spec/api-provenance.json")
   revision = dig!(provenance, "spec/api-provenance.json", "bc3", "revision")
@@ -684,7 +739,8 @@ def run(mode, openapi)
         body = lines[index].chomp("\n")
         newline = lines[index].end_with?("\n") ? "\n" : ""
         lines[index] = rewrite_line(span.kind, body,
-                                    api_version: api_version, revision: revision, date: date) + newline
+                                    api_version: api_version, revision: revision, date: date,
+                                    operation_count_value: op_count) + newline
       end
       updated = lines.join
       next if updated == original
@@ -737,6 +793,7 @@ def run(mode, openapi)
       when "api-version"     then check_api_version(span, api_version, openapi)
       when "bc3-pin"         then check_bc3_pin(span, revision, date)
       when "assertion-types" then check_assertion_types(span, schema_types)
+      when "operation-count" then check_operation_count(span, op_count.call, openapi)
       else []
       end
     )
@@ -759,6 +816,7 @@ def run(mode, openapi)
     puts "  api-version      #{api_version}"
     puts "  bc3-pin          #{revision[0, 8]} (#{date})"
     puts "  assertion-types  #{schema_types.length}"
+    puts "  operation-count  #{op_count.call}" if spans.any? { |s| s.kind == "operation-count" }
     0
   else
     warn "ERROR: documentation constants have drifted from their sources."
