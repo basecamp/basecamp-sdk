@@ -1,0 +1,21 @@
+SPEC.md
+  s_6596a1ee398fe6::t_17325616dd7cf8 3488
+MIGRATING.md
+  s_6596a1ee398fe6::t_1ea8f8d45884a2 19-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a72e79e5586033171241f5cc3404716ad9a24162",
+  "prompts": {},
+  "sessions": {
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
