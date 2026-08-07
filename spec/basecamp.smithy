@@ -115,6 +115,7 @@ service Basecamp {
     CreateUpload,
     UpdateUpload,
     ListUploadVersions,
+    CreateUploadVersion,
     GetCloudFile,
     CreateCloudFile,
     UpdateCloudFile,
@@ -471,6 +472,19 @@ structure BadRequestError {
 @error("server")
 @httpError(507)
 structure WebhookLimitError {
+  @required
+  error: String
+  message: String
+}
+
+/// The account has reached its file storage limit.
+///
+/// Raised by ResourceLimits#ensure_account_can_upload_files ahead of any operation
+/// that stores new bytes. No retry can satisfy it: the account needs more storage,
+/// so this maps to `limit_exceeded` rather than a retryable server error.
+@error("server")
+@httpError(507)
+structure StorageLimitError {
   @required
   error: String
   message: String
@@ -2653,7 +2667,7 @@ structure GetUploadOutput {
 operation CreateUpload {
   input: CreateUploadInput
   output: CreateUploadOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [ValidationError, StorageLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateUploadInput {
@@ -2677,6 +2691,53 @@ structure CreateUploadInput {
 }
 
 structure CreateUploadOutput {
+
+  upload: Upload
+}
+
+/// Replace an upload's file with a new version
+///
+/// The recording keeps its id, its URL and its comments; the previous file becomes a
+/// past version. Use this instead of CreateUpload when publishing a new release of the
+/// same file, so its published link keeps working.
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/uploads/{uploadId}/versions.json", code: 201)
+operation CreateUploadVersion {
+  input: CreateUploadVersionInput
+  output: CreateUploadVersionOutput
+  errors: [NotFoundError, ValidationError, StorageLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateUploadVersionInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  uploadId: UploadId
+
+  @required
+  attachable_sgid: AttachableSgid
+
+  /// Omit to keep the uploaded file's own name. Sending "" also keeps it.
+  base_name: UploadBaseName
+
+  /// Presence-aware: omit to carry the previous version's description forward,
+  /// send "" to clear it, send a value to set it.
+  description: UploadDescription
+
+  /// Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+  ///
+  /// Omit both this and subscriptions to notify nobody. A subscriptions array sent
+  /// without notify is read as "custom".
+  notify: String
+
+  /// People to notify about the replacement and subscribe to the upload.
+  subscriptions: PersonIdList
+}
+
+structure CreateUploadVersionOutput {
 
   upload: Upload
 }
@@ -2738,7 +2799,7 @@ structure ListUploadVersionsInput {
 
 structure ListUploadVersionsOutput {
 
-  uploads: UploadList
+  versions: UploadVersionList
 }
 
 // ===== Cloud File Operations =====
@@ -3012,7 +3073,7 @@ structure UpdateGoogleDocumentOutput {
 operation CreateAttachment {
   input: CreateAttachmentInput
   output: CreateAttachmentOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [ValidationError, StorageLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateAttachmentInput {
@@ -4529,7 +4590,7 @@ structure ListCampfireUploadsOutput {
 operation CreateCampfireUpload {
   input: CreateCampfireUploadInput
   output: CreateCampfireUploadOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [ValidationError, StorageLimitError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure CreateCampfireUploadInput {
@@ -7200,6 +7261,71 @@ structure EventDetails {
   added_person_ids: PersonIdList
   removed_person_ids: PersonIdList
   notified_recipient_ids: PersonIdList
+}
+
+list UploadVersionList {
+  member: UploadVersion
+}
+
+/// A version event for an upload, from GET /uploads/{id}/versions.json.
+///
+/// `action` is one of `created`, `active` (the upload's publication) or `blob_changed`
+/// (a file replacement). To list the file's PAST versions, select entries that carry
+/// an `upload` whose `current` is false — the original file arrives as `created` or
+/// `active`, never `blob_changed`, so filtering on that action drops the original
+/// and keeps the current file instead. This is an Event plus the file it recorded, rendered by its own
+/// partial rather than the shared event one, so upload fields don't leak onto todo,
+/// message and card events.
+structure UploadVersion {
+  @required
+  id: EventId
+  @required
+  recording_id: RecordingId
+  @required
+  action: String
+  details: EventDetails
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  creator: Person
+  boosts_count: Integer
+  boosts_url: String
+
+  /// The file this version recorded. Absent when the recordable no longer resolves.
+  upload: UploadVersionFile
+}
+
+/// The file a version event recorded — a reduced projection, not an Upload.
+structure UploadVersionFile {
+  content_type: String
+  byte_size: Long
+
+  @required
+  filename: String
+
+  /// Fetches THIS version's bytes. The upload's own download_url always serves the
+  /// latest, which is the whole point of the feature.
+  @required
+  @basecampAuthRoutableUrl
+  download_url: String
+
+  @required
+  app_download_url: String
+
+  /// True for the newest version *event*, and for exactly one element of any
+  /// non-empty response. The renderer computes it positionally — `event ==
+  /// @events.first` over a reverse-chronological list — so it is a property of
+  /// ordering, not of what the upload currently points at, and it cannot be
+  /// zero or plural.
+  ///
+  /// That distinction is the whole caveat: `current` does NOT mean "this is the
+  /// file the upload's own download_url serves". A metadata-only PUT swaps in a
+  /// recordable carrying the same blob and emits no event, so afterwards no
+  /// event references the upload's current recordable — and this flag still
+  /// marks exactly one element, the newest event. bc3 pins that case by name in
+  /// "exactly one version is current after a metadata-only update".
+  @required
+  current: Boolean
 }
 
 // ===== Recording Shapes =====

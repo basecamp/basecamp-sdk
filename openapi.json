@@ -476,6 +476,16 @@
                 }
               }
             }
+          },
+          "507": {
+            "description": "StorageLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLimitErrorResponseContent"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -7309,6 +7319,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "StorageLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLimitErrorResponseContent"
                 }
               }
             }
@@ -25371,6 +25391,136 @@
             503
           ]
         }
+      },
+      "post": {
+        "description": "Replace an upload's file with a new version\n\nThe recording keeps its id, its URL and its comments; the previous file becomes a\npast version. Use this instead of CreateUpload when publishing a new release of the\nsame file, so its published link keeps working.",
+        "operationId": "CreateUploadVersion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUploadVersionRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "uploadId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateUploadVersion 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUploadVersionResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "StorageLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLimitErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Files"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
       }
     },
     "/{accountId}/vaults/{vaultId}": {
@@ -25992,6 +26142,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "StorageLimitError 507 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLimitErrorResponseContent"
                 }
               }
             }
@@ -28974,6 +29134,40 @@
       "CreateUploadResponseContent": {
         "$ref": "#/components/schemas/Upload"
       },
+      "CreateUploadVersionRequestContent": {
+        "type": "object",
+        "properties": {
+          "attachable_sgid": {
+            "type": "string"
+          },
+          "base_name": {
+            "type": "string",
+            "description": "Omit to keep the uploaded file's own name. Sending \"\" also keeps it."
+          },
+          "description": {
+            "type": "string",
+            "description": "Presence-aware: omit to carry the previous version's description forward,\nsend \"\" to clear it, send a value to set it."
+          },
+          "notify": {
+            "type": "string",
+            "description": "Who to notify: \"default\", \"everyone\", or \"custom\" (the people in subscriptions).\n\nOmit both this and subscriptions to notify nobody. A subscriptions array sent\nwithout notify is read as \"custom\"."
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "People to notify about the replacement and subscribe to the upload."
+          }
+        },
+        "required": [
+          "attachable_sgid"
+        ]
+      },
+      "CreateUploadVersionResponseContent": {
+        "$ref": "#/components/schemas/Upload"
+      },
       "CreateVaultRequestContent": {
         "type": "object",
         "properties": {
@@ -31188,7 +31382,7 @@
       "ListUploadVersionsResponseContent": {
         "type": "array",
         "items": {
-          "$ref": "#/components/schemas/Upload"
+          "$ref": "#/components/schemas/UploadVersion"
         }
       },
       "ListUploadsResponseContent": {
@@ -33616,6 +33810,21 @@
       "SetClientVisibilityResponseContent": {
         "$ref": "#/components/schemas/Recording"
       },
+      "StorageLimitErrorResponseContent": {
+        "type": "object",
+        "description": "The account has reached its file storage limit.\n\nRaised by ResourceLimits#ensure_account_can_upload_files ahead of any operation\nthat stores new bytes. No retry can satisfy it: the account needs more storage,\nso this maps to `limit_exceeded` rather than a retryable server error.",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
       "SubscribeResponseContent": {
         "$ref": "#/components/schemas/Subscription"
       },
@@ -35620,6 +35829,87 @@
           "updated_at",
           "url",
           "visible_to_clients"
+        ]
+      },
+      "UploadVersion": {
+        "type": "object",
+        "description": "A version event for an upload, from GET /uploads/{id}/versions.json.\n\n`action` is one of `created`, `active` (the upload's publication) or `blob_changed`\n(a file replacement). To list the file's PAST versions, select entries that carry\nan `upload` whose `current` is false — the original file arrives as `created` or\n`active`, never `blob_changed`, so filtering on that action drops the original\nand keeps the current file instead. This is an Event plus the file it recorded, rendered by its own\npartial rather than the shared event one, so upload fields don't leak onto todo,\nmessage and card events.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recording_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "action": {
+            "type": "string"
+          },
+          "details": {
+            "$ref": "#/components/schemas/EventDetails"
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            }
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "boosts_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "boosts_url": {
+            "type": "string"
+          },
+          "upload": {
+            "$ref": "#/components/schemas/UploadVersionFile"
+          }
+        },
+        "required": [
+          "action",
+          "created_at",
+          "creator",
+          "id",
+          "recording_id"
+        ]
+      },
+      "UploadVersionFile": {
+        "type": "object",
+        "description": "The file a version event recorded — a reduced projection, not an Upload.",
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "byte_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Fetches THIS version's bytes. The upload's own download_url always serves the\nlatest, which is the whole point of the feature.",
+            "x-basecamp-auth-routable-url": {}
+          },
+          "app_download_url": {
+            "type": "string"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "True for the newest version *event*, and for exactly one element of any\nnon-empty response. The renderer computes it positionally — `event ==\n@events.first` over a reverse-chronological list — so it is a property of\nordering, not of what the upload currently points at, and it cannot be\nzero or plural.\n\nThat distinction is the whole caveat: `current` does NOT mean \"this is the\nfile the upload's own download_url serves\". A metadata-only PUT swaps in a\nrecordable carrying the same blob and emits no event, so afterwards no\nevent references the upload's current recordable — and this flag still\nmarks exactly one element, the newest event. bc3 pins that case by name in\n\"exactly one version is current after a metadata-only update\"."
+          }
+        },
+        "required": [
+          "app_download_url",
+          "current",
+          "download_url",
+          "filename"
         ]
       },
       "ValidationErrorResponseContent": {

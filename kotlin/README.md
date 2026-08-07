@@ -659,6 +659,9 @@ try {
         is BasecampException.NotFound -> println("Not found: ${e.message}")
         is BasecampException.RateLimit -> println("Retry in ${e.retryAfterSeconds}s")
         is BasecampException.Validation -> println("Invalid input: ${e.message}")
+        is BasecampException.LimitExceeded ->
+            // 507. An account limit, not a transient failure — do not retry.
+            println("Limit reached: ${e.message}")
         is BasecampException.Ambiguous -> println("Ambiguous: ${e.message}")
         is BasecampException.Network -> println("Network error: ${e.message}")
         is BasecampException.Api -> println("Server error (${e.httpStatus}): ${e.message}")
@@ -685,9 +688,10 @@ try {
 | `NotFound` | 404 | 2 | Resource not found |
 | `RateLimit` | 429 | 5 | Rate limit exceeded (retryable) |
 | `Network` | - | 6 | Network error (retryable) |
-| `Api` | 5xx | 7 | Server error |
+| `Api` | 500, 502, 503, 504, other 5xx | 7 | Server error |
 | `Ambiguous` | - | 8 | Multiple matches found |
 | `Validation` | 400, 422 | 9 | Invalid request data |
+| `LimitExceeded` | 507 | 10 | Account limit reached (file storage, projects, webhooks) — never retryable |
 | `Usage` | - | 1 | Configuration or argument error |
 | `DiscoverySelection` | - | 7 or 9 | OAuth discovery selection failed (code derived from `reason`) |
 | `DeviceFlow` | - | 1, 3, 6, or 9 | Device authorization grant failed (code derived from `reason`) |

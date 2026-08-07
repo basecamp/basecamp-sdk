@@ -119,6 +119,20 @@ sealed class BasecampException(
         val fieldErrors: Map<String, List<String>>? = null,
     ) : BasecampException(message, CODE_VALIDATION, hint, httpStatus, false, requestId)
 
+    /**
+     * An account limit blocks the request (507) — file storage exhausted, or a
+     * webhook ceiling reached.
+     *
+     * Never retryable: no amount of backoff frees storage or raises a plan
+     * limit. Distinct from [Api] for exactly that reason, since a 507 would
+     * otherwise land there as a retryable 5xx.
+     */
+    class LimitExceeded(
+        message: String = "Account limit reached",
+        hint: String? = null,
+        requestId: String? = null,
+    ) : BasecampException(message, CODE_LIMIT_EXCEEDED, hint, 507, false, requestId)
+
     /** Ambiguous match error (multiple resources match a name/identifier). */
     class Ambiguous(
         /** The type of resource that was ambiguous. */
@@ -204,6 +218,7 @@ sealed class BasecampException(
         const val CODE_VALIDATION = "validation"
         const val CODE_AMBIGUOUS = "ambiguous"
         const val CODE_USAGE = "usage"
+        const val CODE_LIMIT_EXCEEDED = "limit_exceeded"
 
         // RFC 8628 device-flow reasons (see [DeviceFlow]).
         const val DEVICE_ACCESS_DENIED = "access_denied"
@@ -242,6 +257,7 @@ sealed class BasecampException(
         private const val EXIT_API = 7
         private const val EXIT_AMBIGUOUS = 8
         private const val EXIT_VALIDATION = 9
+        private const val EXIT_LIMIT_EXCEEDED = 10
 
         /** Maps an error code to a CLI exit code. */
         fun exitCodeFor(code: String): Int = when (code) {
@@ -254,6 +270,7 @@ sealed class BasecampException(
             CODE_API -> EXIT_API
             CODE_AMBIGUOUS -> EXIT_AMBIGUOUS
             CODE_VALIDATION -> EXIT_VALIDATION
+            CODE_LIMIT_EXCEEDED -> EXIT_LIMIT_EXCEEDED
             else -> EXIT_API
         }
 
@@ -291,6 +308,10 @@ sealed class BasecampException(
                 404 -> NotFound(msg, hint, requestId)
                 429 -> RateLimit(retryAfterSeconds, msg, hint, requestId)
                 400, 422 -> Validation(msg, hint, httpStatus, requestId, fieldErrors)
+                // A 5xx status carrying a client fact: the account is out of
+                // storage, or at its webhook ceiling. Matched before the else
+                // arm, which would make it a retryable Api.
+                507 -> LimitExceeded(msg, hint, requestId)
                 else -> Api(msg, httpStatus, hint, httpStatus in 500..599, requestId)
             }
         }

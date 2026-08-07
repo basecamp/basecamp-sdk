@@ -1,9 +1,14 @@
 ---
 gap: upload-new-version
-status: addressed-in-bc3-pr-12555
+status: absorbed-in-sdk
 detected: 2026-07-22
 sdk_demand: medium
 bc3_pr: 12555
+smithy_refs:
+  - CreateUploadVersion
+  - CreateUploadVersionInput
+  - UploadVersion
+  - UploadVersionFile
 bc3_refs:
   introduced_in: BC3 #12555, inside the range the SDK triaged when it registered this
   routes:
@@ -18,34 +23,6 @@ bc3_refs:
     - UpdateUpload
     - ListUploadVersions
 ---
-
-> **Status: shipped in BC3, not yet absorbed by the SDK.** BC3 **#12555**
-> ("Expose upload file replacement over the API") added the write side this brief
-> asked for. It chose the **second** of the two options proposed below — a
-> dedicated `POST /uploads/:id/versions.json` returning **201**, drawn flat and
-> bucket-scoped (`resources :versions, only: %i[ index create ], controller:
-> "uploads/versions"`) — and **not** the `PUT /uploads/{id}.json` shape
-> basecamp-cli#404 hypothesized and the analysis below disproved. The new version
-> payload carries a `current` flag among its fields.
->
-> It also answers **507** when the account is over its storage allowance. That
-> 507 needs **its own error shape**: it is the *storage* limit ("The storage limit
-> for this account has been reached.",
-> `app/controllers/concerns/resource_limits.rb`), a different resource with a
-> different message from the project limit. `ProjectLimitError` — added for
-> `CreateProject`/`UnarchiveProject` in the absorption recorded in
-> [`project-archive-unarchive.md`](project-archive-unarchive.md) — is **not** it
-> and must not be reused.
->
-> Absorption belongs to the `upload-versions-api` branch, not to the repin that
-> registered this. Until that lands the SDK models **no** operation for these
-> routes, which is why `spec/bc3-route-allowlist.yml` carries a
-> `registry: spec/api-gaps/upload-new-version.md` disposition for
-> `POST /uploads/:id/versions` — one entry, because direction 2 collapses the
-> leading `/buckets/:id` and both documented spellings normalize to that key.
->
-> Everything below predates #12555 and is preserved as the analysis that
-> established what bc3 did *not* do; read it as history, not as current state.
 
 # Upload a new version of an existing file (write side)
 
@@ -121,15 +98,42 @@ reflect the new blob (`byte_size`, `content_type`, `filename`, `download_url`).
 
 ## SDK absorption plan when this lands
 
-- Model the write operation in `spec/basecamp.smithy` (extend
-  `UpdateUploadInput` with `attachable_sgid`, or add a `CreateUploadVersion`
-  operation), then `make smithy-build` and regenerate.
-- Map the new field/operation in `UploadsService` (`go/pkg/basecamp/vaults.go`)
-  and the peer SDKs; add `AttachableSGID` to `UpdateUploadRequest` only once the
-  server honors it.
-- Add a canary fixture exercising a real file replacement and confirm the
-  version list grows, against a live account, before the CLI (basecamp-cli#404)
-  exposes an "upload new version" command.
-- Replace the reflection guard
-  (`TestUpdateUploadRequest_HasNoFileReplacementField`) with a positive
-  assertion that the field is now sent.
+**Done.** Landed in basecamp/bc3#12555 + #12565 and absorbed here; the plan below
+is kept as the record of what was decided.
+
+BC3 took the **second** option in "Suggested API shape": a dedicated
+`POST /uploads/{id}/versions.json`, shipped in basecamp/bc3#12555. `PUT
+/uploads/{id}.json` was deliberately left alone, so the hypothesis
+basecamp-cli#404 started from stays false — the update still permits only
+`base_name` and `description`.
+
+That decision inverts one bullet of the old absorption plan. The reflection
+guard `TestUpdateUploadRequest_HasNoFileReplacementField` is **not** replaced
+with "the field is now sent"; it is still true and still worth holding, because
+it now pins a design choice rather than a missing feature. It keeps its name,
+gains a comment pointing at the sanctioned path, and is joined by a positive
+counterpart asserting `CreateUploadVersionRequest` carries `AttachableSGID`.
+
+Absorbed as:
+
+- `CreateUploadVersion` — the write, tagged `Files`, grouped into `Uploads`.
+- `UploadVersion` / `UploadVersionFile` — the read side. `ListUploadVersionsOutput`
+  previously declared `uploads: UploadList`, which was a typed lie: the endpoint
+  returns *events*, and 11 of `Upload`'s 14 `@required` members are absent from
+  every response. That is basecamp-sdk#649, fixed here rather than merely
+  corrected, because #12555 also added the nested `upload` object that gives the
+  version list a filename to report.
+- `StorageLimitError` — the `507 Insufficient Storage` contract, which
+  `ensure_account_can_upload_files` also fronts on three operations the SDK
+  already modeled (`CreateUpload`, `CreateAttachment`, `CreateCampfireUpload`).
+  All four now declare it, and SPEC §6 maps 507 to `limit_exceeded` /
+  non-retryable instead of letting it fall through to the retryable 5xx
+  catch-all.
+
+Input contract settled in basecamp/bc3#12565: `notify` and `subscriptions` are
+documented and tested, and `visible_to_clients` was removed from the endpoint's
+reachable surface (it never set visibility — it only widened the notification
+audience, and could announce a client-invisible file to a project's clients).
+
+Still open: the live-account canary, and basecamp-cli#404's "upload new version"
+command.

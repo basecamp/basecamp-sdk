@@ -235,34 +235,6 @@ bc3_routes_not_modeled:
     path: /dock/doors
     registry: spec/api-gaps/external-links-doors.md
 
-  # -- upload file replacement (BC3 #12555, arrived with the repin that registered it) --
-  #
-  # Registered, not waived: bc3 now documents creating a new version of an
-  # upload, which closes the write side spec/api-gaps/upload-new-version.md has
-  # described since basecamp-cli#404 hypothesized the wrong shape for it. bc3
-  # chose POST .../versions.json (201), not the PUT /uploads/{id}.json that
-  # brief disproved.
-  #
-  # ONE entry covers both spellings. bc3 documents the flat
-  # POST /uploads/:id/versions and the bucket-scoped
-  # POST /buckets/:id/uploads/:id/versions, and the gate's direction-2 failure
-  # named both — but direction 2 collapses a leading /buckets/:id, so the two
-  # rows normalize to the same key and the flat entry satisfies both. Adding a
-  # second entry for the bucket-scoped spelling is a HARD FAILURE ("matches
-  # nothing"), which is how this was established rather than assumed.
-  #
-  # Absorption is NOT this repin's job and is not implied by these entries: it
-  # belongs to the `upload-versions-api` branch, which also has to model the
-  # 507 this endpoint returns. That 507 is a **storage** limit ("The storage
-  # limit for this account has been reached.", app/controllers/concerns/
-  # resource_limits.rb) and must get its own error shape — ProjectLimitError,
-  # added here for CreateProject and UnarchiveProject, is a different resource
-  # with a different message and must not be reused for it.
-
-  - method: POST
-    path: /uploads/:id/versions
-    registry: spec/api-gaps/upload-new-version.md
-
   # -- gauge needle show/update/destroy (#581) --
   #
   # Not a coverage gap: bc3 draws these three actions twice, once nested under
@@ -312,3 +284,4 @@ bc3_routes_not_modeled:
     path: /projects/:id/recordings/:id/timesheet/entries
     modeled_as: CreateTimesheetEntry
     routes_rb: "config/routes.rb:268 draws the flat /recordings/:id/timesheet/entries; :747 draws the project-scoped form, inside `resources :recordings, only: []` at :744, inside `resources :projects` at :676. Both name controller \"timesheets/entries\", action create. Beware the near-miss: :741 draws entries under the PROJECT timesheet at :740, which is /projects/:id/timesheet/entries and is `only: %i[ show edit update destroy ]` — no create, and a different parent. bc3's API tests cover THIS pair on both sides: \"create entry on project timesheet\" (test/api/timesheets/entries_controller_api_test.rb:11) hits the scoped form, \"create entry via flat recording route\" (:139) the flat one. Read at the pinned revision 2c0dafba13."
+

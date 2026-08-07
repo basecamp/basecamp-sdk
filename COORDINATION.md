@@ -9,7 +9,7 @@ live BC5 by the #11629 tooling. The historical server-side audit lived on the
 
 The SDK's conformance baseline is the pin in
 [`spec/api-provenance.json`](spec/api-provenance.json) — `bc3` `master`
-`7fe1c63ab3` as of the 2026-08-05 sync. <!-- @bc3-pin -->
+`b5d8c9df8d` as of the 2026-08-05 sync. <!-- @bc3-pin -->
 That file is the only authority; quote it here rather than a remembered SHA.
 `make sync-api-version` now rewrites the marked line above from it, and
 `make doc-constants-check` fails if the two disagree — this sentence sat two

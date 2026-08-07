@@ -132,6 +132,10 @@ module Basecamp
       NotFoundError.new(message: message)
     when 429
       RateLimitError.new(retry_after: retry_after)
+    when 507
+      # Decided before the 5xx arms: a 507 is an account limit, not a
+      # transient server failure, and no retry can satisfy it.
+      LimitExceededError.new(Security.truncate(message))
     when 500
       ApiError.new("Server error (500)", http_status: 500, retryable: true)
     when 502, 503, 504

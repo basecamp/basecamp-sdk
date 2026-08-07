@@ -79,6 +79,35 @@ private fun summarizeProjects(projects: List<Project>): JsonElement = buildJsonO
     put("last_project_id", projects.lastOrNull()?.id ?: 0L)
 }
 
+/**
+ * Flattens the versions array into top-level scalars.
+ *
+ * GET /uploads/{id}/versions.json returns an ARRAY and a responseBody path
+ * resolves as a top-level key only. Every value comes off the DECODED model, so
+ * this is a decode test of the retype that closes #649 and not a transport test
+ * — kotlinx.serialization rejects a body missing any non-nullable member.
+ */
+private fun summarizeUploadVersions(versions: List<UploadVersion>): JsonElement = buildJsonObject {
+    put("versions_count", versions.size)
+    put("current_count", versions.count { it.upload?.current == true })
+    versions.firstOrNull()?.let { first ->
+        put("first_action", first.action)
+        first.upload?.let { file ->
+            put("first_filename", file.filename)
+            file.contentType?.let { put("first_content_type", it) }
+            file.byteSize?.let { put("first_byte_size", it) }
+            put("first_current", file.current)
+        }
+    }
+    versions.lastOrNull()?.let { last ->
+        put("last_action", last.action)
+        // A version whose recordable no longer resolves omits the upload object
+        // entirely — the optionality UploadVersion.upload declares.
+        put("last_has_upload", last.upload != null)
+    }
+}
+
+
 fun main() {
     val testsDir = File("../conformance/tests")
 
@@ -1397,6 +1426,40 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             val uploadId = tc.pathParams.longParam("uploadId")
             account.uploads.download(uploadId)
             DispatchResult()
+        }
+
+        // Presence-bearing, like ReplaceScheduleEntry: a key the fixture omits
+        // stays null and `?.let` keeps it off the wire, so an unaddressed
+        // description carries forward while an explicit "" is sent and clears.
+        "CreateUploadVersion" -> {
+            val uploadId = tc.pathParams.longParam("uploadId")
+            val rb = tc.requestBody
+            account.uploads.createVersion(uploadId, CreateUploadVersionBody(
+                attachableSgid = tc.requestBody.stringParam("attachable_sgid"),
+                baseName = rb?.get("base_name")?.jsonPrimitive?.contentOrNull,
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                notify = rb?.get("notify")?.jsonPrimitive?.contentOrNull,
+                subscriptions = rb?.get("subscriptions")?.jsonArray
+                    ?.map { element -> element.jsonPrimitive.long },
+            ))
+            DispatchResult()
+        }
+
+        "UpdateUpload" -> {
+            val uploadId = tc.pathParams.longParam("uploadId")
+            val rb = tc.requestBody
+            account.uploads.update(uploadId, UpdateUploadBody(
+                baseName = rb?.get("base_name")?.jsonPrimitive?.contentOrNull,
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
+        "ListUploadVersions" -> {
+            val uploadId = tc.pathParams.longParam("uploadId")
+            val result = account.uploads.listVersions(uploadId)
+            // ListResult<T> delegates to List<T>, so it IS the item list.
+            DispatchResult(resultJson = summarizeUploadVersions(result))
         }
 
         "ListForwards" -> {

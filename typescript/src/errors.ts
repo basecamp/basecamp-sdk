@@ -51,7 +51,8 @@ export type ErrorCode =
   | "ambiguous"
   | "network"
   | "api_error"
-  | "usage";
+  | "usage"
+  | "limit_exceeded";
 
 /**
  * Options for creating a BasecampError.
@@ -87,6 +88,7 @@ const EXIT_CODES: Record<ErrorCode, number> = {
   api_error: 7, // API error
   ambiguous: 8, // Multiple matches found
   validation: 9, // Validation error (HTTP 400/422)
+  limit_exceeded: 10, // Account limit reached (HTTP 507)
 };
 
 /**
@@ -363,6 +365,16 @@ export function errorFromParsedBody(
     case 400:
     case 422:
       return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors });
+    case 507:
+      // A 5xx status carrying a client fact: the account is out of storage, or
+      // at its webhook ceiling. Retrying cannot satisfy it, so this must be
+      // decided before the 5xx catch-all below.
+      return new BasecampError("limit_exceeded", message, {
+        httpStatus,
+        retryable: false,
+        hint,
+        requestId,
+      });
     default:
       // 5xx errors are retryable
       const retryable = httpStatus >= 500 && httpStatus < 600;

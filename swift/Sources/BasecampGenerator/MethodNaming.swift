@@ -124,6 +124,7 @@ let methodNameOverrides: [String: String] = [
     "ListUploads": "list",
     "CreateUpload": "create",
     "ListUploadVersions": "listVersions",
+    "CreateUploadVersion": "createVersion",
     "GetMessage": "get",
     "UpdateMessage": "update",
     "CreateMessage": "create",

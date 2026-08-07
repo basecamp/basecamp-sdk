@@ -3307,7 +3307,14 @@ export interface paths {
          */
         get: operations["ListUploadVersions"];
         put?: never;
-        post?: never;
+        /**
+         * @description Replace an upload's file with a new version
+         *
+         *     The recording keeps its id, its URL and its comments; the previous file becomes a
+         *     past version. Use this instead of CreateUpload when publishing a new release of the
+         *     same file, so its published link keeps working.
+         */
+        post: operations["CreateUploadVersion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4214,6 +4221,26 @@ export interface components {
             visible_to_clients?: boolean;
         };
         CreateUploadResponseContent: components["schemas"]["Upload"];
+        CreateUploadVersionRequestContent: {
+            attachable_sgid: string;
+            /** @description Omit to keep the uploaded file's own name. Sending "" also keeps it. */
+            base_name?: string;
+            /**
+             * @description Presence-aware: omit to carry the previous version's description forward,
+             *     send "" to clear it, send a value to set it.
+             */
+            description?: string;
+            /**
+             * @description Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+             *
+             *     Omit both this and subscriptions to notify nobody. A subscriptions array sent
+             *     without notify is read as "custom".
+             */
+            notify?: string;
+            /** @description People to notify about the replacement and subscribe to the upload. */
+            subscriptions?: number[];
+        };
+        CreateUploadVersionResponseContent: components["schemas"]["Upload"];
         CreateVaultRequestContent: {
             title: string;
         };
@@ -4915,7 +4942,7 @@ export interface components {
         ListTodolistGroupsResponseContent: components["schemas"]["Todolist"][];
         ListTodolistsResponseContent: components["schemas"]["Todolist"][];
         ListTodosResponseContent: components["schemas"]["Todo"][];
-        ListUploadVersionsResponseContent: components["schemas"]["Upload"][];
+        ListUploadVersionsResponseContent: components["schemas"]["UploadVersion"][];
         ListUploadsResponseContent: components["schemas"]["Upload"][];
         ListVaultsResponseContent: components["schemas"]["Vault"][];
         ListWebhooksResponseContent: components["schemas"]["Webhook"][];
@@ -5896,6 +5923,17 @@ export interface components {
             visible_to_clients: boolean;
         };
         SetClientVisibilityResponseContent: components["schemas"]["Recording"];
+        /**
+         * @description The account has reached its file storage limit.
+         *
+         *     Raised by ResourceLimits#ensure_account_can_upload_files ahead of any operation
+         *     that stores new bytes. No retry can satisfy it: the account needs more storage,
+         *     so this maps to `limit_exceeded` rather than a retryable server error.
+         */
+        StorageLimitErrorResponseContent: {
+            error: string;
+            message?: string;
+        };
         SubscribeResponseContent: components["schemas"]["Subscription"];
         Subscription: {
             subscribed: boolean;
@@ -6796,6 +6834,59 @@ export interface components {
             boosts_count?: number;
             boosts_url?: string;
         };
+        /**
+         * @description A version event for an upload, from GET /uploads/{id}/versions.json.
+         *
+         *     `action` is one of `created`, `active` (the upload's publication) or `blob_changed`
+         *     (a file replacement). To list the file's PAST versions, select entries that carry
+         *     an `upload` whose `current` is false — the original file arrives as `created` or
+         *     `active`, never `blob_changed`, so filtering on that action drops the original
+         *     and keeps the current file instead. This is an Event plus the file it recorded, rendered by its own
+         *     partial rather than the shared event one, so upload fields don't leak onto todo,
+         *     message and card events.
+         */
+        UploadVersion: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            recording_id: number;
+            action: string;
+            details?: components["schemas"]["EventDetails"];
+            created_at: string;
+            creator: components["schemas"]["Person"];
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
+            upload?: components["schemas"]["UploadVersionFile"];
+        };
+        /** @description The file a version event recorded — a reduced projection, not an Upload. */
+        UploadVersionFile: {
+            content_type?: string;
+            /** Format: int64 */
+            byte_size?: number;
+            filename: string;
+            /**
+             * @description Fetches THIS version's bytes. The upload's own download_url always serves the
+             *     latest, which is the whole point of the feature.
+             */
+            download_url: string;
+            app_download_url: string;
+            /**
+             * @description True for the newest version *event*, and for exactly one element of any
+             *     non-empty response. The renderer computes it positionally — `event ==
+             *     @events.first` over a reverse-chronological list — so it is a property of
+             *     ordering, not of what the upload currently points at, and it cannot be
+             *     zero or plural.
+             *
+             *     That distinction is the whole caveat: `current` does NOT mean "this is the
+             *     file the upload's own download_url serves". A metadata-only PUT swaps in a
+             *     recordable carrying the same blob and emits no event, so afterwards no
+             *     event references the upload's current recordable — and this flag still
+             *     marks exactly one element, the newest event. bc3 pins that case by name in
+             *     "exactly one version is current after a metadata-only update".
+             */
+            current: boolean;
+        };
         ValidationErrorResponseContent: {
             error: string;
             message?: string;
@@ -7257,6 +7348,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+            /** @description StorageLimitError 507 response */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageLimitErrorResponseContent"];
                 };
             };
         };
@@ -11360,6 +11460,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+            /** @description StorageLimitError 507 response */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageLimitErrorResponseContent"];
                 };
             };
         };
@@ -22280,6 +22389,95 @@ export interface operations {
             };
         };
     };
+    CreateUploadVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uploadId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUploadVersionRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateUploadVersion 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateUploadVersionResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+            /** @description StorageLimitError 507 response */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageLimitErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetVault: {
         parameters: {
             query?: never;
@@ -22669,6 +22867,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+            /** @description StorageLimitError 507 response */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageLimitErrorResponseContent"];
                 };
             };
         };

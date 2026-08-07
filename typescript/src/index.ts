@@ -385,8 +385,10 @@ export {
 export { UploadsService } from "./services/uploads-extensions.js";
 export {
   type Upload,
+  type UploadVersion,
   type CreateUploadRequest,
   type UpdateUploadRequest,
+  type CreateVersionUploadRequest,
 } from "./generated/services/uploads.js";
 
 // Schedule & Time services

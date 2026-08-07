@@ -445,8 +445,9 @@ func TestProjectsService_ArchiveForbidden(t *testing.T) {
 	}
 }
 
-// The only behavioural evidence for ProjectLimitError. No SDK gives 507 a named
-// class, so it surfaces as a generic api_error carrying the status (SPEC.md §7).
+// The only behavioural evidence for ProjectLimitError. A 507 is an account limit,
+// so it maps to limit_exceeded and is NOT retryable — no backoff frees a project
+// slot (SPEC.md §6, step 11, which is ordered ahead of the 5xx catch-all).
 func TestProjectsService_UnarchiveAtProjectLimit(t *testing.T) {
 	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -463,11 +464,14 @@ func TestProjectsService_UnarchiveAtProjectLimit(t *testing.T) {
 	if !errors.As(err, &bcErr) {
 		t.Fatalf("error is not *basecamp.Error: %T", err)
 	}
-	if bcErr.Code != CodeAPI {
-		t.Errorf("code = %q, want %q", bcErr.Code, CodeAPI)
+	if bcErr.Code != CodeLimitExceeded {
+		t.Errorf("code = %q, want %q", bcErr.Code, CodeLimitExceeded)
 	}
 	if bcErr.HTTPStatus != 507 {
 		t.Errorf("http status = %d, want 507", bcErr.HTTPStatus)
+	}
+	if bcErr.Retryable {
+		t.Error("a project limit must not be retryable")
 	}
 }
 

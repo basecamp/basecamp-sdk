@@ -108,7 +108,7 @@ END
 
 **Naming note:** `max_retries` means total attempts (including the initial request), not the number of retries after the first attempt. With `max_retries = 3`, the transport makes at most 3 attempts total (1 initial + 2 retries). This name is inherited from the shipping Ruby SDK; the behavior-model.json uses `retry.max` with identical semantics.
 
-**Per-operation retry ceiling.** Each operation carries a per-op `retry.max` in behavior-model.json (205 ops at `3`, 44 at `2`). **TypeScript and Swift** drive their retry loops directly from this per-op value, which is unambiguous there because neither exposes a numeric client-wide cap — only an on/off (`enableRetry`). Generated Go, Python, Kotlin (`BasecampConfig.maxRetries`), and Ruby's governed GET path (`config.max_retries`) expose a numeric client cap *and* honor the per-op value as a **ceiling**: `effective_attempts = min(client_cap, op_max)`. The ceiling can only reduce attempts below the client cap, never raise them, so a client that lowered its cap (e.g. to `1` to disable retries) is still honored. In Go, Python, and Ruby's governed path the cap is floored at one attempt before the ceiling applies (`min(max(1, cap), op_max)`), so a cap of `0` yields a single attempt rather than none whether or not the operation declares a retry block. Kotlin computes a different expression — `min(max(1, cap), op_max ?: cap)` — which is `0` for an ungoverned operation at a cap of `0`, but it lands on the same single attempt anyway because its loop consults the budget only after the first request has already gone out. Because every op's `max` is ≤ the default cap of `3`, a default or raised client makes exactly the per-op number of attempts in every capped SDK — matching TS/Swift. Observable changes from the former client-wide behavior, by client configuration:
+**Per-operation retry ceiling.** Each operation carries a per-op `retry.max` in behavior-model.json (205 ops at `3`, 45 at `2`). **TypeScript and Swift** drive their retry loops directly from this per-op value, which is unambiguous there because neither exposes a numeric client-wide cap — only an on/off (`enableRetry`). Generated Go, Python, Kotlin (`BasecampConfig.maxRetries`), and Ruby's governed GET path (`config.max_retries`) expose a numeric client cap *and* honor the per-op value as a **ceiling**: `effective_attempts = min(client_cap, op_max)`. The ceiling can only reduce attempts below the client cap, never raise them, so a client that lowered its cap (e.g. to `1` to disable retries) is still honored. In Go, Python, and Ruby's governed path the cap is floored at one attempt before the ceiling applies (`min(max(1, cap), op_max)`), so a cap of `0` yields a single attempt rather than none whether or not the operation declares a retry block. Kotlin computes a different expression — `min(max(1, cap), op_max ?: cap)` — which is `0` for an ungoverned operation at a cap of `0`, but it lands on the same single attempt anyway because its loop consults the budget only after the first request has already gone out. Because every op's `max` is ≤ the default cap of `3`, a default or raised client makes exactly the per-op number of attempts in every capped SDK — matching TS/Swift. Observable changes from the former client-wide behavior, by client configuration:
 
 - **Default client (`max_retries = 3`):** only the **11 idempotent `max:2` operations** (account/gauge/preference writes plus two subscription-style POSTs: `UpdateAccountName`, `UpdateAccountLogo`, `RemoveAccountLogo`, `UpdateMyPreferences`, `DisableOutOfOffice`, `MarkAsRead`, `ToggleGauge`, `UpdateGaugeNeedle`, `DestroyGaugeNeedle`, `Subscribe`, `EnableCardColumnOnHold`) change — they now retry at most twice instead of three times. The other 197 retry-eligible ops are unaffected (`min(3, 3) = 3`).
 - **Client that raised its cap above 3:** **all 208 retry-eligible operations** are now clamped to their per-op `max` (197 to `3`, 11 to `2`) instead of retrying up to the raised cap. This is the intended meaning of a per-op ceiling and brings Go/Python into line with TS/Swift/Kotlin, which never retry beyond the per-op `max`. Go, Python, Kotlin, and Ruby's governed path all equally honor a caller who wants *fewer* attempts than the operation declares.
@@ -338,6 +338,20 @@ Card **steps** share the contract: `title` is optional on update, an omitted key
 `"assignee_ids": []` removes everyone, and an assignee-only body is a valid partial update where it
 used to 400. `UpdateStepRequest.DueOn` is presence-bearing for the same reason as the card's.
 
+**Uploads** share it too, on both write paths. `Uploads::VersionsController#create` reads
+`description` with `key?`, so an omitted key carries the previous version's description forward and
+`""` clears; `UploadsController#update` reaches the same `serialize(:description, coder:
+ActionText::Content)` attribute through `@upload.changing`, with no blank-cast in between. Both are
+pinned by BC3 server tests (basecamp/bc3#12565), so `""` cannot regress to a no-op on either.
+`CreateUploadVersionRequest.Description` and `UpdateUploadRequest.Description` are therefore
+presence-bearing in every SDK — including Go, which uses `*string` here rather than the zero-value
+guard described under Todolists below.
+
+`base_name` is deliberately **not** presence-bearing on either: `Upload#base_name=` guards on
+`new_base_name.present?`, so `""` and absent are the same server write and there is no third state
+to model. Stating that is what keeps the asymmetry legible as a verified server fact rather than an
+oversight.
+
 ### Merge-Safe Write Surface (Todos)
 
 The `PUT /{accountId}/todos/{todoId}` endpoint is **full replace, omission clears** (spec operation `ReplaceTodo`, `content` required, declared via `x-basecamp-write-semantics: {mode: "replace", clearsOmitted: true}` and the `write` clause in `behavior-model.json`). Every SDK exposes a three-method, two-state surface over it:
@@ -367,6 +381,14 @@ Every SDK exposes the same three-method, two-state surface over it:
   In the five SDKs whose unset marker is distinct from the empty string, an explicitly-passed `""` is a set and therefore clears.
 
   **Go is the exception, and this bites in practice.** Its request struct uses zero-value guards (`if req.Description != ""`), so `""` *is* the unset marker: `Update` with an empty description does **nothing to that field** rather than clearing it. **To clear a field in Go, use `Edit` or `Replace` — not `Update`.**
+
+  This still holds for `UpdateTodolistRequest` and `UpdateDocumentRequest`. It no
+  longer holds for uploads: `UpdateUploadRequest.Description` and
+  `CreateUploadVersionRequest.Description` are `*string`, following the
+  gauge-needle precedent, so `Ptr("")` clears and `nil` leaves the field alone.
+  `BaseName` stays a plain `string` on both — `Upload#base_name=` guards on
+  `new_base_name.present?`, so `""` and absent are the same write server-side and
+  there is no third state a pointer could express.
 
   ```go
   // Does NOT clear the description — "" reads as "unaddressed".
@@ -520,10 +542,11 @@ Status-mapped codes are verified per the Verification column and are `[conforman
 | `ambiguous` | 8 | — | false | Multiple matches found (CLI disambiguation) | `[static]` |
 | `validation` | 9 | 422 | false | Request validation failed | `[conformance]` |
 | `validation` | 9 | 400 | false | Request validation failed | `[conformance]` |
+| `limit_exceeded` | 10 | 507 | false | An account limit blocks the request (file storage, webhooks) | `[conformance]` |
 
 ### HTTP Status Mapping Algorithm
 
-Each explicitly enumerated status mapping below (steps 1–10) is `[conformance]`-verified. The two catch-all fallback steps (11: general 5xx; 12: any other non-mapped status) have no dedicated conformance case and are `[static]`.
+Each explicitly enumerated status mapping below (steps 1–11) is `[conformance]`-verified. The two catch-all fallback steps (12: general 5xx; 13: any other non-mapped status) have no dedicated conformance case and are `[static]`.
 
 Given an HTTP response with status code `status` and body `body`:
 
@@ -537,8 +560,11 @@ Given an HTTP response with status code `status` and body `body`:
 8. If `status == 502` → `BasecampError(code: "api_error", http_status: 502, retryable: true)`.
 9. If `status == 503` → `BasecampError(code: "api_error", http_status: 503, retryable: true)`.
 10. If `status == 504` → `BasecampError(code: "api_error", http_status: 504, retryable: true)`.
-11. If `status >= 500` → `BasecampError(code: "api_error", http_status: status, retryable: true)`. `[static]`
-12. Otherwise → `BasecampError(code: "api_error", http_status: status, retryable: false)`. `[static]`
+11. If `status == 507` → `BasecampError(code: "limit_exceeded", http_status: 507, retryable: false)`.
+12. If `status >= 500` → `BasecampError(code: "api_error", http_status: status, retryable: true)`. `[static]`
+13. Otherwise → `BasecampError(code: "api_error", http_status: status, retryable: false)`. `[static]`
+
+Step 11 must precede the 5xx catch-all. A 507 is a *server* status carrying a *client* fact: the account is out of storage, or at its webhook ceiling. Retrying cannot satisfy it, so classifying it by its 5xx range alone would report a plan limit as a transient server error — indistinguishable, to a caller deciding whether to back off, from a 500. Ordering is what makes the distinction, since both steps match.
 
 In all cases, extract `request_id` from `X-Request-Id` response header if present. `[conformance]`
 
@@ -822,7 +848,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All 249 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
+All 250 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -1119,6 +1145,23 @@ Two corollaries worth stating, because both were violated here:
   with tests passing. Conformance cases and `spec/fixtures/` bodies are read out
   of the partial.
 
+A second instance, absorbed the same way: `ListUploadVersions`. BC3 renders it
+through `app/views/api/uploads/versions/_version.json.jbuilder` over the shared
+`recordings/events/_event.json.jbuilder`, not through `uploads/_upload`. The
+output declared `uploads: UploadList` anyway, which was a typed lie of the
+sharpest kind — **11 of `Upload`'s 14 `@required` members are absent from every
+response**, so the CLI's versions command and the MCP server's
+`list_upload_versions` rendered blank fields (basecamp-sdk#649). It is now
+`UploadVersion` / `UploadVersionFile`.
+
+The reason not to widen `Event` instead is stated by bc3's own commit for the
+partial: doing so "would leak upload fields onto todo, message, and card
+events". `UploadVersion` also demonstrates the first corollary above from the
+other direction — it is an Event *plus* a member no other event projection
+carries (`upload`), which is exactly why plain `EventList` would have needed
+growing again the moment anyone wanted the filename, the only reason the
+endpoint is called at all.
+
 ### Integer Precision `[conformance]`
 
 All integer IDs must use at least 64 bits of precision (e.g., Go `int64`, Kotlin `Long`, Swift `Int` on 64-bit platforms). Note: Kotlin `Int` is 32-bit and must not be used for IDs — use `Long`. IDs up to 2^53 + 1 (`9007199254740993`) must survive JSON round-trip without precision loss.
@@ -1372,7 +1415,7 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all 249 operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. Backoff is exponential from a 1-second base with jitter; `Retry-After` is honored on 429. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all 250 operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. Backoff is exponential from a 1-second base with jitter; `Retry-After` is honored on 429. The second hop is exempt: no retry, no auth.
 
 "Network error" means a transport failure, with one carve-out that SDKs inherit from their main GET loop rather than restate: an attempt that exhausted the caller's entire per-attempt time budget (a request timeout) is not retried. The timeout is per attempt, so a retry spends another full budget on the same slowness rather than riding out a blip. Kotlin implements this explicitly; SDKs whose transports surface timeouts indistinguishably from other connection failures retry them.
 
@@ -3384,6 +3427,10 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `network-retry.json` | Network error on an idempotent POST is retried then succeeds | §7 (Gate 2) |
 | `uploads_download.json` | UploadsDownload delegates through DownloadURL primitive | §14, §18 |
 | `uploads_download.json` | UploadsDownload errors when upload has no download_url | §14, §18 |
+| `uploads_write.json` | create-version presence states (unaddressed / clear / set) | §5 (Cards, Uploads), §18 |
+| `uploads_write.json` | update presence states (unaddressed / clear) | §5 (Cards, Uploads), §18 |
+| `uploads_write.json` | list-versions decodes the version payload | §10 (One Renderer, One Schema) |
+| `uploads_write.json` | 507 → limit_exceeded, not retried | §6 |
 | `todos_write.json` | update-merge / edit-clear / replace-omission-clears | §5 (Todos), §18 |
 | `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `todolists_read.json` | list-read / group-read / group-list-read (one flat shape decodes for both variants) | §5 (Todolists) |
@@ -3436,9 +3483,9 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: 249
+- Total operations: 250
 - Idempotent: 83 (flagged with `idempotent: true`)
-- Non-idempotent: 166 (no `idempotent` field, or not present)
+- Non-idempotent: 167 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
 ---

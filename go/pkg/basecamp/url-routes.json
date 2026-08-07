@@ -2700,7 +2700,8 @@
       "pattern": "/{accountId}/uploads/{uploadId}/versions",
       "resource": "Files",
       "operations": {
-        "GET": "ListUploadVersions"
+        "GET": "ListUploadVersions",
+        "POST": "CreateUploadVersion"
       },
       "params": {
         "accountId": {

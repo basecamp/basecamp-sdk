@@ -193,6 +193,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/uploads/{uploadId}": "GetUpload",
   "PUT:/{accountId}/uploads/{uploadId}": "UpdateUpload",
   "GET:/{accountId}/uploads/{uploadId}/versions.json": "ListUploadVersions",
+  "POST:/{accountId}/uploads/{uploadId}/versions.json": "CreateUploadVersion",
   "GET:/{accountId}/vaults/{vaultId}": "GetVault",
   "PUT:/{accountId}/vaults/{vaultId}": "UpdateVault",
   "GET:/{accountId}/vaults/{vaultId}/documents.json": "ListDocuments",

@@ -272,8 +272,9 @@ class ProjectsServiceTest {
         client.close()
     }
 
-    // The only behavioural evidence for ProjectLimitError. No SDK gives 507 a named
-    // class, so it lands in the generic Api arm carrying the status (SPEC.md §7).
+    // The only behavioural evidence for ProjectLimitError. A 507 is an account
+    // limit, so it maps to limit_exceeded and is NOT retryable — no backoff frees
+    // a project slot (SPEC.md §6, step 11).
     @Test
     fun unarchiveProjectAtProjectLimitThrows() = runTest {
         val client = mockClient { _ ->
@@ -288,10 +289,10 @@ class ProjectsServiceTest {
         try {
             account.projects.unarchive(projectId = 42)
             assertTrue(false, "Should have thrown")
-        } catch (e: BasecampException.Api) {
+        } catch (e: BasecampException.LimitExceeded) {
             assertEquals(507, e.httpStatus)
             assertEquals("The project limit for this account has been reached.", e.message)
-            assertTrue(e.retryable, "Kotlin marks every unclassified 5xx retryable")
+            assertTrue(!e.retryable, "an account limit is never retryable")
         }
 
         client.close()

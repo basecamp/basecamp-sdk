@@ -32,6 +32,16 @@ public final class UploadsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func createVersion(uploadId: Int, req: CreateUploadVersionRequest) async throws -> Upload {
+        return try await request(
+            OperationInfo(service: "Uploads", operation: "CreateUploadVersion", resourceType: "upload_version", isMutation: true, resourceId: uploadId),
+            method: "POST",
+            path: "/uploads/\(uploadId)/versions.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateUploadVersion")
+        )
+    }
+
     public func get(uploadId: Int) async throws -> Upload {
         return try await request(
             OperationInfo(service: "Uploads", operation: "GetUpload", resourceType: "upload", isMutation: false, resourceId: uploadId),
@@ -41,7 +51,7 @@ public final class UploadsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func listVersions(uploadId: Int, options: ListVersionsUploadOptions? = nil) async throws -> ListResult<Upload> {
+    public func listVersions(uploadId: Int, options: ListVersionsUploadOptions? = nil) async throws -> ListResult<UploadVersion> {
         return try await requestPaginated(
             OperationInfo(service: "Uploads", operation: "ListUploadVersions", resourceType: "upload_version", isMutation: false, resourceId: uploadId),
             path: "/uploads/\(uploadId)/versions.json",

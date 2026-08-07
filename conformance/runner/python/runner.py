@@ -209,6 +209,40 @@ UPCOMING_WINDOW_START = "2026-06-01"
 UPCOMING_WINDOW_END = "2026-06-30"
 
 
+# attachable_sgid is passed explicitly by the dispatch (it is required), so it
+# is deliberately absent here — this list is only the presence-bearing members,
+# where "sent as empty" and "not sent" are different writes.
+_UPLOAD_VERSION_WRITE_FIELDS = ("base_name", "description", "notify", "subscriptions")
+
+
+def _summarize_upload_versions(versions: list) -> dict:
+    """Flatten the versions array into top-level scalars.
+
+    GET /uploads/{id}/versions.json returns an ARRAY, and a responseBody path
+    resolves as a top-level key only, so the assertions cannot walk into it.
+    Same shape as _summarize_upcoming, for the same reason.
+    """
+    summary: dict[str, Any] = {
+        "versions_count": len(versions),
+        "current_count": sum(1 for v in versions if (v.get("upload") or {}).get("current")),
+    }
+    if versions:
+        first = versions[0]
+        first_upload = first.get("upload") or {}
+        summary["first_action"] = first["action"]
+        summary["first_filename"] = first_upload.get("filename")
+        summary["first_content_type"] = first_upload.get("content_type")
+        summary["first_byte_size"] = first_upload.get("byte_size")
+        summary["first_current"] = first_upload.get("current")
+
+        last = versions[-1]
+        summary["last_action"] = last["action"]
+        # A version whose recordable no longer resolves omits the upload object
+        # entirely — the optionality UploadVersion.upload declares.
+        summary["last_has_upload"] = last.get("upload") is not None
+    return summary
+
+
 def _summarize_upcoming(envelope: dict) -> dict:
     """Flatten the upcoming-schedule envelope into top-level scalars.
 
@@ -543,6 +577,25 @@ class OperationMapper:
                 return self._account.tools.enable(tool_id=path_params["toolId"])
             case "UploadsDownload":
                 return self._account.uploads.download(upload_id=path_params["uploadId"])
+            case "CreateUploadVersion":
+                # Presence-bearing, like ReplaceScheduleEntry: a key the fixture
+                # omits is never passed, so an unaddressed description stays off
+                # the wire while an explicit "" survives _compact (which strips
+                # None only) and clears.
+                return self._account.uploads.create_version(
+                    upload_id=path_params["uploadId"],
+                    attachable_sgid=body["attachable_sgid"],
+                    **{k: body[k] for k in _UPLOAD_VERSION_WRITE_FIELDS if k in body},
+                )
+            case "UpdateUpload":
+                return self._account.uploads.update(
+                    upload_id=path_params["uploadId"],
+                    **{k: body[k] for k in _UPLOAD_VERSION_WRITE_FIELDS if k in body},
+                )
+            case "ListUploadVersions":
+                return _summarize_upload_versions(
+                    self._account.uploads.list_versions(upload_id=path_params["uploadId"])
+                )
             case "GetEverythingMessages":
                 return self._account.everything.get_everything_messages()
             case "GetEverythingComments":

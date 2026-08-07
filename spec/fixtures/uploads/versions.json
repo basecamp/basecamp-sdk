@@ -1,0 +1,109 @@
+[
+  {
+    "id": 1069479501,
+    "recording_id": 1069479400,
+    "action": "blob_changed",
+    "details": {},
+    "created_at": "2022-12-04T16:41:12.114Z",
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abcd1234",
+      "name": "Victor Cooper",
+      "email_address": "victor@honchodesign.com",
+      "personable_type": "User",
+      "title": "Chief Strategist",
+      "bio": "Don't let your dreams be dreams",
+      "location": "Chicago, IL",
+      "created_at": "2022-11-22T08:23:21.000Z",
+      "updated_at": "2022-11-22T08:23:21.000Z",
+      "admin": true,
+      "owner": true,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--5520caeec1845b5a20c5b41d2c9de6578bcbb83d/avatar?v=1",
+      "can_manage_projects": true,
+      "can_manage_people": true
+    },
+    "boosts_count": 2,
+    "boosts_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479400/events/1069479501/boosts.json",
+    "upload": {
+      "content_type": "image/png",
+      "byte_size": 184829,
+      "filename": "company-logo.png",
+      "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/uploads/1069479400/versions/1069479501/download/company-logo.png",
+      "app_download_url": "https://storage.3.basecamp.com/195539477/buckets/2085958500/uploads/1069479400/versions/1069479501/download/company-logo.png",
+      "current": true
+    }
+  },
+  {
+    "id": 1069479500,
+    "recording_id": 1069479400,
+    "action": "active",
+    "details": {},
+    "created_at": "2022-11-28T09:02:44.301Z",
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd1e798e7c0e2b40cd88ed93c0b8",
+      "name": "Annie Bryan",
+      "email_address": "annie@honchodesign.com",
+      "personable_type": "User",
+      "title": "Central Markets Manager",
+      "bio": "To open a store is easy, to keep it open is an art",
+      "location": null,
+      "created_at": "2022-11-22T08:23:21.911Z",
+      "updated_at": "2022-11-22T08:23:21.911Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkz4=--e609ef146e39f9ca5e4bb7f8bf7b7fecfff6e302/avatar?v=1",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": true
+    },
+    "upload": {
+      "content_type": "image/png",
+      "byte_size": 172294,
+      "filename": "company-logo.png",
+      "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/uploads/1069479400/versions/1069479500/download/company-logo.png",
+      "app_download_url": "https://storage.3.basecamp.com/195539477/buckets/2085958500/uploads/1069479400/versions/1069479500/download/company-logo.png",
+      "current": false
+    }
+  },
+  {
+    "id": 1069479499,
+    "recording_id": 1069479400,
+    "action": "created",
+    "details": {},
+    "created_at": "2022-11-22T08:23:58.523Z",
+    "creator": {
+      "id": 1049715915,
+      "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd1e798e7c0e2b40cd88ed93c0b8",
+      "name": "Annie Bryan",
+      "email_address": "annie@honchodesign.com",
+      "personable_type": "User",
+      "title": "Central Markets Manager",
+      "bio": "To open a store is easy, to keep it open is an art",
+      "location": null,
+      "created_at": "2022-11-22T08:23:21.911Z",
+      "updated_at": "2022-11-22T08:23:21.911Z",
+      "admin": false,
+      "owner": false,
+      "client": false,
+      "employee": true,
+      "time_zone": "America/Chicago",
+      "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkz4=--e609ef146e39f9ca5e4bb7f8bf7b7fecfff6e302/avatar?v=1",
+      "company": {
+        "id": 1033447817,
+        "name": "Honcho Design"
+      },
+      "can_manage_projects": true,
+      "can_manage_people": true
+    }
+  }
+]

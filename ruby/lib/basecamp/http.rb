@@ -632,6 +632,12 @@ module Basecamp
           Basecamp.compose_validation_message(Basecamp.parse_error_message(body), field_errors) || "Validation failed"
         )
         Basecamp::ValidationError.new(message, http_status: status, field_errors: field_errors)
+      when 507
+        # A 5xx status carrying a client fact: the account is out of storage, or
+        # at its webhook ceiling. Retrying cannot satisfy it, so this is decided
+        # before the 5xx arms below.
+        message = Security.truncate(Basecamp.parse_error_message(body) || "Account limit reached")
+        Basecamp::LimitExceededError.new(message)
       when 500
         Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true)
       when 502, 503, 504

@@ -36,6 +36,7 @@ func conformanceCode(_ error: BasecampError) -> String {
     case .network: "network"
     case .usage: "usage"
     case .ambiguous: "ambiguous"
+    case .limitExceeded: "limit_exceeded"
     }
 }
 
@@ -44,7 +45,7 @@ func conformanceCode(_ error: BasecampError) -> String {
 /// catch a typo'd error type silently forbids a real one instead.
 private let knownErrorTypes: Set<String> = [
     "not_found", "auth_required", "forbidden", "rate_limit",
-    "validation", "api_error", "usage", "network", "ambiguous",
+    "validation", "api_error", "usage", "network", "ambiguous", "limit_exceeded",
 ]
 
 /// Compares an expected fixture value against an actual JSON value,

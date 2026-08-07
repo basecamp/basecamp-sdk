@@ -588,6 +588,13 @@ func TestUpload_UnmarshalList(t *testing.T) {
 	}
 }
 
+func equalStringPtr(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
 func TestUpdateUploadRequest_Marshal(t *testing.T) {
 	data := loadUploadsFixture(t, "update-request.json")
 
@@ -596,8 +603,8 @@ func TestUpdateUploadRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal update-request.json: %v", err)
 	}
 
-	if req.Description != "Updated description for the file" {
-		t.Errorf("expected description 'Updated description for the file', got %q", req.Description)
+	if req.Description == nil || *req.Description != "Updated description for the file" {
+		t.Errorf("expected description 'Updated description for the file', got %v", req.Description)
 	}
 	if req.BaseName != "new_filename" {
 		t.Errorf("expected base_name 'new_filename', got %q", req.BaseName)
@@ -614,7 +621,7 @@ func TestUpdateUploadRequest_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal round-trip: %v", err)
 	}
 
-	if roundtrip.Description != req.Description || roundtrip.BaseName != req.BaseName {
+	if !equalStringPtr(roundtrip.Description, req.Description) || roundtrip.BaseName != req.BaseName {
 		t.Error("round-trip mismatch")
 	}
 }
@@ -624,6 +631,12 @@ func TestUpdateUploadRequest_Marshal(t *testing.T) {
 // The bc3 update action drops attachable_sgid entirely (verified against
 // basecamp/bc3 @ ba105ba7 — see /API-GAP-404.md), so the SDK must not offer it
 // as an upload-update field.
+//
+// This stayed true when file replacement shipped. basecamp/bc3#12555 added a
+// dedicated POST /uploads/{id}/versions.json rather than widening the update, so
+// the guard now pins a design choice rather than a missing feature: the
+// sanctioned path is UploadsService.CreateVersion, and its positive counterpart
+// is TestCreateUploadVersionRequest_HasFileReplacementField.
 //
 // This is asserted over the request type, not the wire: an omitempty field left
 // unset is simply absent from the body, so a wire-body check could not catch a
@@ -676,7 +689,7 @@ func TestUploadsService_Update_SendsDocumentedFields(t *testing.T) {
 	ac := client.ForAccount("12345")
 
 	_, err := ac.Uploads().Update(context.Background(), 1069479400, &UpdateUploadRequest{
-		Description: "Updated description",
+		Description: Ptr("Updated description"),
 		BaseName:    "renamed",
 	})
 	if err != nil {

@@ -10,6 +10,8 @@ import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
+// Sourced from the shared, coverage-guarded fixture (spec/fixtures/manifest.yaml)
+import versionsFixture from "../../../spec/fixtures/uploads/versions.json";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -255,37 +257,82 @@ describe("UploadsService", () => {
   });
 
   describe("listVersions", () => {
-    it("should return upload versions", async () => {
-      const uploads = [
-        {
-          id: 7001,
-          filename: "file_v3.pdf",
-          created_at: "2024-03-15T10:00:00Z",
-          description_attachments: [],
-        },
-        {
-          id: 7001,
-          filename: "file_v2.pdf",
-          created_at: "2024-02-10T10:00:00Z",
-          description_attachments: [],
-        },
-        {
-          id: 7001,
-          filename: "file_v1.pdf",
-          created_at: "2024-01-05T10:00:00Z",
-          description_attachments: [],
-        },
-      ];
-
+    // The endpoint returns EVENTS, not Uploads — the retype that closes #649.
+    it("should return upload versions carrying the file each one recorded", async () => {
       server.use(
         http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
-          return HttpResponse.json(uploads);
+          return HttpResponse.json(versionsFixture);
         }),
       );
 
       const result = await service.listVersions(7001);
 
       expect(result).toHaveLength(3);
+      expect(result[0].action).toBe("blob_changed");
+      expect(result[0].upload?.filename).toBe("company-logo.png");
+      expect(result[0].upload?.content_type).toBe("image/png");
+      expect(result[0].upload?.byte_size).toBe(184829);
+    });
+
+    it("marks exactly one version current", async () => {
+      server.use(
+        http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
+          return HttpResponse.json(versionsFixture);
+        }),
+      );
+
+      const result = await service.listVersions(7001);
+
+      expect(result.filter((v) => v.upload?.current)).toHaveLength(1);
+      expect(result[0].upload?.current).toBe(true);
+    });
+
+    // The per-version URL serves THAT version's bytes; the upload's own always
+    // serves the latest, which is the whole point of the feature.
+    it("gives each version its own download URL", async () => {
+      server.use(
+        http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
+          return HttpResponse.json(versionsFixture);
+        }),
+      );
+
+      const result = await service.listVersions(7001);
+
+      expect(result[0].upload?.download_url).not.toBe(result[1].upload?.download_url);
+      expect(result[0].upload?.download_url).toContain("/versions/1069479501/");
+    });
+
+    // Selecting past versions by action is the tempting shortcut and the wrong
+    // one: the original file arrives as `created`/`active`, so `blob_changed`
+    // drops it and keeps the CURRENT file instead. Select on current === false.
+    it("selects past versions by current, not by action", async () => {
+      server.use(
+        http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
+          return HttpResponse.json(versionsFixture);
+        }),
+      );
+
+      const result = await service.listVersions(7001);
+
+      const past = result.filter((v) => v.upload && v.upload.current === false);
+      expect(past.map((v) => v.action)).toEqual(["active"]);
+
+      // The shortcut returns the current file and none of the history.
+      const byAction = result.filter((v) => v.action === "blob_changed");
+      expect(byAction.map((v) => v.upload?.current)).toEqual([true]);
+    });
+
+    it("tolerates a version whose recordable no longer resolves", async () => {
+      server.use(
+        http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
+          return HttpResponse.json(versionsFixture);
+        }),
+      );
+
+      const result = await service.listVersions(7001);
+
+      expect(result[2].action).toBe("created");
+      expect(result[2].upload).toBeUndefined();
     });
 
     it("should return empty array when no versions", async () => {
@@ -298,6 +345,113 @@ describe("UploadsService", () => {
       const result = await service.listVersions(7001);
 
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe("createVersion", () => {
+    it("posts the attachable sgid and returns the updated upload", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+
+      server.use(
+        http.post(`${BASE_URL}/uploads/7001/versions.json`, async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(
+            { id: 7001, filename: "company-logo.png", description_attachments: [] },
+            { status: 201 },
+          );
+        }),
+      );
+
+      const result = await service.createVersion(7001, { attachableSgid: "sgid-abc" });
+
+      expect(result.id).toBe(7001);
+      expect(capturedBody?.attachable_sgid).toBe("sgid-abc");
+    });
+
+    // Presence-aware: omitted carries the previous description forward, ""
+    // clears. Both spellings have to be distinguishable on the wire.
+    it("omits description when it is not addressed", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+
+      server.use(
+        http.post(`${BASE_URL}/uploads/7001/versions.json`, async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ id: 7001, description_attachments: [] }, { status: 201 });
+        }),
+      );
+
+      await service.createVersion(7001, { attachableSgid: "sgid-abc" });
+
+      expect(capturedBody).not.toHaveProperty("description");
+      expect(capturedBody).not.toHaveProperty("base_name");
+    });
+
+    it("sends an explicit empty description to clear it", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+
+      server.use(
+        http.post(`${BASE_URL}/uploads/7001/versions.json`, async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ id: 7001, description_attachments: [] }, { status: 201 });
+        }),
+      );
+
+      await service.createVersion(7001, { attachableSgid: "sgid-abc", description: "" });
+
+      expect(capturedBody).toHaveProperty("description");
+      expect(capturedBody?.description).toBe("");
+    });
+
+    it("passes notify and subscriptions through", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+
+      server.use(
+        http.post(`${BASE_URL}/uploads/7001/versions.json`, async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({ id: 7001, description_attachments: [] }, { status: 201 });
+        }),
+      );
+
+      await service.createVersion(7001, {
+        attachableSgid: "sgid-abc",
+        notify: "custom",
+        subscriptions: [1049715915, 1049715916],
+      });
+
+      expect(capturedBody?.notify).toBe("custom");
+      expect(capturedBody?.subscriptions).toEqual([1049715915, 1049715916]);
+    });
+
+    it("rejects a missing attachable sgid before hitting the wire", async () => {
+      await expect(service.createVersion(7001, { attachableSgid: "" })).rejects.toThrow(
+        BasecampError,
+      );
+    });
+
+    // A replacement copies bytes into a new blob and keeps the old one, so it
+    // always grows recorded storage. 507 is a limit, never a transient failure.
+    it("reports a storage limit as limit_exceeded and does not retry", async () => {
+      let requestCount = 0;
+
+      server.use(
+        http.post(`${BASE_URL}/uploads/7001/versions.json`, () => {
+          requestCount += 1;
+          return HttpResponse.json(
+            { error: "The storage limit for this account has been reached." },
+            { status: 507 },
+          );
+        }),
+      );
+
+      const error = await service
+        .createVersion(7001, { attachableSgid: "sgid-abc" })
+        .catch((e) => e as BasecampError);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      expect(error.code).toBe("limit_exceeded");
+      expect(error.retryable).toBe(false);
+      expect(error.message).toContain("storage limit");
+      expect(requestCount).toBe(1);
     });
   });
 

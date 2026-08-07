@@ -10,7 +10,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp.errors import UsageError
+from basecamp.errors import LimitExceededError, UsageError
 
 _FIXTURES = Path(__file__).resolve().parents[3] / "spec" / "fixtures"
 
@@ -215,3 +215,125 @@ class TestDescriptionAttachments:
         # NotRequired[Optional[int | float]] width/height type.
         assert attachments[1]["width"] is None
         assert attachments[1]["height"] is None
+
+
+class TestListVersions:
+    """The endpoint returns EVENTS, not Uploads — the retype that closes #649."""
+
+    @respx.mock
+    def test_versions_carry_the_file_each_one_recorded(self):
+        versions = json.loads((_FIXTURES / "uploads" / "versions.json").read_text(encoding="utf-8"))
+        respx.get("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
+            return_value=httpx.Response(200, json=versions)
+        )
+
+        c = Client(access_token="test-token")
+        result = c.for_account("12345").uploads.list_versions(upload_id=77)
+
+        assert len(result) == 3
+        assert result[0]["action"] == "blob_changed"
+        assert result[0]["upload"]["filename"] == "company-logo.png"
+        assert result[0]["upload"]["byte_size"] == 184829
+
+    @respx.mock
+    def test_exactly_one_version_is_current(self):
+        versions = json.loads((_FIXTURES / "uploads" / "versions.json").read_text(encoding="utf-8"))
+        respx.get("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
+            return_value=httpx.Response(200, json=versions)
+        )
+
+        c = Client(access_token="test-token")
+        result = c.for_account("12345").uploads.list_versions(upload_id=77)
+
+        assert sum(1 for v in result if v.get("upload", {}).get("current")) == 1
+        assert result[0]["upload"]["current"] is True
+
+    @respx.mock
+    def test_tolerates_a_version_whose_recordable_is_gone(self):
+        versions = json.loads((_FIXTURES / "uploads" / "versions.json").read_text(encoding="utf-8"))
+        respx.get("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
+            return_value=httpx.Response(200, json=versions)
+        )
+
+        c = Client(access_token="test-token")
+        result = c.for_account("12345").uploads.list_versions(upload_id=77)
+
+        assert result[2]["action"] == "created"
+        assert "upload" not in result[2]
+
+
+class TestCreateVersion:
+    @respx.mock
+    def test_posts_the_attachable_sgid(self):
+        route = respx.post("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
+            return_value=httpx.Response(201, json={"id": 77, "filename": "company-logo.png"})
+        )
+
+        c = Client(access_token="test-token")
+        result = c.for_account("12345").uploads.create_version(upload_id=77, attachable_sgid="sgid-abc")
+
+        assert result["id"] == 77
+        assert json.loads(route.calls[0].request.content)["attachable_sgid"] == "sgid-abc"
+
+    # Presence-aware: omitted carries the previous description forward, ""
+    # clears. _compact strips None only, so "" survives to the wire — which is
+    # exactly why "" is the SDK's clear spelling rather than None.
+    @respx.mock
+    def test_omits_an_unaddressed_description(self):
+        route = respx.post("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
+            return_value=httpx.Response(201, json={"id": 77})
+        )
+
+        c = Client(access_token="test-token")
+        c.for_account("12345").uploads.create_version(upload_id=77, attachable_sgid="sgid-abc")
+
+        body = json.loads(route.calls[0].request.content)
+        assert "description" not in body
+        assert "base_name" not in body
+
+    @respx.mock
+    def test_sends_an_explicit_blank_description_to_clear_it(self):
+        route = respx.post("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
+            return_value=httpx.Response(201, json={"id": 77})
+        )
+
+        c = Client(access_token="test-token")
+        c.for_account("12345").uploads.create_version(upload_id=77, attachable_sgid="sgid-abc", description="")
+
+        body = json.loads(route.calls[0].request.content)
+        assert "description" in body
+        assert body["description"] == ""
+
+    @respx.mock
+    def test_passes_notify_and_subscriptions(self):
+        route = respx.post("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
+            return_value=httpx.Response(201, json={"id": 77})
+        )
+
+        c = Client(access_token="test-token")
+        c.for_account("12345").uploads.create_version(
+            upload_id=77, attachable_sgid="sgid-abc", notify="custom", subscriptions=[1049715915]
+        )
+
+        body = json.loads(route.calls[0].request.content)
+        assert body["notify"] == "custom"
+        assert body["subscriptions"] == [1049715915]
+
+    # A replacement copies bytes into a new blob and keeps the old one, so it
+    # always grows recorded storage. 507 is a limit, never a transient failure.
+    @respx.mock
+    def test_storage_limit_is_limit_exceeded_and_not_retried(self):
+        route = respx.post("https://3.basecampapi.com/12345/uploads/77/versions.json").mock(
+            return_value=httpx.Response(507, json={"error": "The storage limit for this account has been reached."})
+        )
+
+        c = Client(access_token="test-token")
+        with pytest.raises(LimitExceededError) as excinfo:
+            c.for_account("12345").uploads.create_version(upload_id=77, attachable_sgid="sgid-abc")
+
+        err = excinfo.value
+        assert err.code == "limit_exceeded"
+        assert err.exit_code == 10
+        assert err.retryable is False
+        assert "storage limit" in str(err)
+        assert route.call_count == 1

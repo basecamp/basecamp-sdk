@@ -7,6 +7,8 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -331,5 +333,205 @@ func TestEventFromGenerated_PresentEmptyDetailsSurvives(t *testing.T) {
 
 	if absent := eventFromGenerated(generated.Event{}); absent.Details != nil {
 		t.Error("an absent details object must stay nil")
+	}
+}
+
+// captureUploadBody runs fn against a server that records the JSON body it sent.
+func captureUploadBody(t *testing.T, status int, respBody string, fn func(*UploadsService) error) map[string]any {
+	t.Helper()
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(respBody))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Uploads()
+	if err := fn(svc); err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	return got
+}
+
+// CreateUploadVersion's Description is presence-aware server-side: omitted carries
+// the previous version's description forward, "" clears it. A plain string behind
+// omitzero() could not express the clear, because "" would read as unset.
+func TestCreateUploadVersionRequest_DescriptionIsTriState(t *testing.T) {
+	capture := func(desc *string) (any, bool) {
+		t.Helper()
+		body := captureUploadBody(t, http.StatusCreated, `{"id":1,"filename":"a.png"}`, func(svc *UploadsService) error {
+			_, err := svc.CreateVersion(context.Background(), 1, &CreateUploadVersionRequest{
+				AttachableSGID: "sgid", Description: desc,
+			})
+			return err
+		})
+		v, present := body["description"]
+		return v, present
+	}
+
+	if _, present := capture(nil); present {
+		t.Error("nil Description must be omitted so the previous version's description carries forward")
+	}
+
+	v, present := capture(ptr(""))
+	if !present {
+		t.Fatal(`Description: ptr("") must reach the wire to clear the description`)
+	}
+	if v != "" {
+		t.Errorf(`expected description "" on the wire, got %#v`, v)
+	}
+
+	v, present = capture(ptr("<div>Set</div>"))
+	if !present || v != "<div>Set</div>" {
+		t.Errorf("expected the supplied description on the wire, got %#v (present=%v)", v, present)
+	}
+}
+
+// UpdateUpload lands on the same serialized ActionText attribute as
+// CreateUploadVersion, so its clear has to be reachable too. Leaving it a plain
+// string would put one request type that can clear and one that silently cannot
+// inside the same service.
+func TestUpdateUploadRequest_DescriptionIsTriState(t *testing.T) {
+	capture := func(desc *string) (any, bool) {
+		t.Helper()
+		body := captureUploadBody(t, http.StatusOK, `{"id":1,"filename":"a.png"}`, func(svc *UploadsService) error {
+			_, err := svc.Update(context.Background(), 1, &UpdateUploadRequest{Description: desc})
+			return err
+		})
+		v, present := body["description"]
+		return v, present
+	}
+
+	if _, present := capture(nil); present {
+		t.Error("nil Description must be omitted so the current description is left alone")
+	}
+
+	v, present := capture(ptr(""))
+	if !present {
+		t.Fatal(`Description: ptr("") must reach the wire to clear the description`)
+	}
+	if v != "" {
+		t.Errorf(`expected description "" on the wire, got %#v`, v)
+	}
+}
+
+// BaseName stays a plain string on both request types, deliberately.
+// Upload#base_name= guards on new_base_name.present?, so "" and absent are the
+// same write server-side — there is no third state a pointer could express.
+func TestUploadRequests_BaseNameHasNoClearState(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		send func(*UploadsService) error
+	}{
+		{"CreateVersion", func(svc *UploadsService) error {
+			_, err := svc.CreateVersion(context.Background(), 1, &CreateUploadVersionRequest{
+				AttachableSGID: "sgid", BaseName: "",
+			})
+			return err
+		}},
+		{"Update", func(svc *UploadsService) error {
+			_, err := svc.Update(context.Background(), 1, &UpdateUploadRequest{BaseName: ""})
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			status := http.StatusCreated
+			if tc.name == "Update" {
+				status = http.StatusOK
+			}
+			body := captureUploadBody(t, status, `{"id":1,"filename":"a.png"}`, tc.send)
+			if _, present := body["base_name"]; present {
+				t.Error(`an empty BaseName must stay off the wire; "" and absent are the same server write`)
+			}
+		})
+	}
+}
+
+// CreateUploadVersion carries the file reference that UpdateUpload deliberately
+// does not — the positive counterpart to
+// TestUpdateUploadRequest_HasNoFileReplacementField.
+func TestCreateUploadVersionRequest_HasFileReplacementField(t *testing.T) {
+	f, ok := reflect.TypeOf(CreateUploadVersionRequest{}).FieldByName("AttachableSGID")
+	if !ok {
+		t.Fatal("CreateUploadVersionRequest must carry AttachableSGID: it is the sanctioned file-replacement path")
+	}
+	if got := f.Tag.Get("json"); got != "attachable_sgid" {
+		t.Errorf(`expected json tag "attachable_sgid", got %q`, got)
+	}
+}
+
+// The versions partial renders details through the shared
+// recordings/events/_event partial, which emits "details": {} for an event with
+// no membership changes. UploadVersion has to keep the same present-empty
+// distinction Event does, and must not drop the field outright.
+func TestUploadVersionFromGenerated_DetailsSurvives(t *testing.T) {
+	present := uploadVersionFromGenerated(generated.UploadVersion{
+		Details: &generated.EventDetails{},
+	})
+	if present.Details == nil {
+		t.Error("a present but empty details object must survive as non-nil")
+	}
+
+	if absent := uploadVersionFromGenerated(generated.UploadVersion{}); absent.Details != nil {
+		t.Error("an absent details object must stay nil")
+	}
+
+	populated := uploadVersionFromGenerated(generated.UploadVersion{
+		Details: &generated.EventDetails{
+			AddedPersonIds:       []int64{1, 2},
+			NotifiedRecipientIds: []int64{3},
+		},
+	})
+	if populated.Details == nil {
+		t.Fatal("expected details")
+	}
+	if len(populated.Details.AddedPersonIDs) != 2 {
+		t.Errorf("added_person_ids must survive, got %v", populated.Details.AddedPersonIDs)
+	}
+	if len(populated.Details.NotifiedRecipientIDs) != 1 {
+		t.Errorf("notified_recipient_ids must survive, got %v", populated.Details.NotifiedRecipientIDs)
+	}
+}
+
+// Go has two response handlers: checkResponse for the generated service layer,
+// and doRequest for the raw Client.Get/Post/Put/Delete escape hatch. A status
+// mapped in one and not the other is a real divergence — the 400/422 arm in
+// doRequest exists because exactly that happened with field-keyed errors.
+func TestRawClientRequest_MapsInsufficientStorage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInsufficientStorage)
+		_, _ = w.Write([]byte(`{"error":"The storage limit for this account has been reached."}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	_, err := client.Get(context.Background(), "/99999/uploads/1")
+	if err == nil {
+		t.Fatal("expected an error on 507")
+	}
+
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T", err)
+	}
+	if bcErr.Code != CodeLimitExceeded {
+		t.Errorf("code = %q, want %q", bcErr.Code, CodeLimitExceeded)
+	}
+	if bcErr.HTTPStatus != 507 {
+		t.Errorf("http status = %d, want 507", bcErr.HTTPStatus)
+	}
+	if bcErr.Retryable {
+		t.Error("an account limit must not be retryable")
+	}
+	if !strings.Contains(bcErr.Message, "storage limit") {
+		t.Errorf("server message must survive, got %q", bcErr.Message)
 	}
 }

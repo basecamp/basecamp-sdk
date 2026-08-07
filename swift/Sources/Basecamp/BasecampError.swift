@@ -50,6 +50,13 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         message: String, httpStatus: Int, hint: String?, requestId: String?,
         fieldErrors: [String: [String]]?)
 
+    /// An account limit blocks the request (HTTP 507) — file storage
+    /// exhausted, or a webhook ceiling reached. Never retryable: no amount of
+    /// backoff frees storage or raises a plan limit. Distinct from `.api` for
+    /// exactly that reason, since a 507 would otherwise land there as a
+    /// retryable 5xx.
+    case limitExceeded(message: String, hint: String?, requestId: String?)
+
     /// Multiple matches found for a name or identifier.
     case ambiguous(resource: String, matches: [String], hint: String?)
 
@@ -64,6 +71,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit: true
         case .network: true
         case .api(_, let status, _, _): status.map { $0 >= 500 } ?? false
+        case .limitExceeded: false
         case .ambiguous: false
         default: false
         }
@@ -78,6 +86,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit: 429
         case .validation(_, let status, _, _, _): status
         case .api(_, let status, _, _): status
+        case .limitExceeded: 507
         case .ambiguous: nil
         case .network: nil
         case .usage: nil
@@ -96,6 +105,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .api: 7
         case .ambiguous: 8
         case .validation: 9
+        case .limitExceeded: 10
         }
     }
 
@@ -108,6 +118,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit(_, _, let hint, _): hint
         case .network: "Check your network connection"
         case .api(_, _, let hint, _): hint
+        case .limitExceeded(_, let hint, _): hint
         case .ambiguous(_, _, let hint): hint
         case .validation(_, _, let hint, _, _): hint
         case .usage(_, let hint): hint
@@ -123,6 +134,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit(let msg, _, _, _): msg
         case .network(let msg, _): msg
         case .api(let msg, _, _, _): msg
+        case .limitExceeded(let msg, _, _): msg
         case .ambiguous(let resource, _, _): "Ambiguous \(resource)"
         case .validation(let msg, _, _, _, _): msg
         case .usage(let msg, _): msg
@@ -137,6 +149,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .notFound(_, _, let id): id
         case .rateLimit(_, _, _, let id): id
         case .api(_, _, _, let id): id
+        case .limitExceeded(_, _, let id): id
         case .ambiguous: nil
         case .validation(_, _, _, let id, _): id
         case .network: nil
@@ -209,6 +222,11 @@ public enum BasecampError: Error, Sendable, LocalizedError {
                 message: validationMessage, httpStatus: status,
                 hint: hint, requestId: requestId, fieldErrors: fieldErrors
             )
+        case 507:
+            // A 5xx status carrying a client fact: the account is out of
+            // storage, or at its webhook ceiling. Decided before the default
+            // arm, which would make it a retryable .api.
+            return .limitExceeded(message: message, hint: hint, requestId: requestId)
         default:
             return .api(
                 message: message, httpStatus: status,

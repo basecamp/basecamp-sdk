@@ -6,7 +6,7 @@ import respx
 
 from basecamp import AsyncClient
 from basecamp.client import Client
-from basecamp.errors import ApiError, ErrorCode, ForbiddenError
+from basecamp.errors import ErrorCode, ForbiddenError, LimitExceededError
 
 BASE = "https://3.basecampapi.com/12345"
 
@@ -109,15 +109,14 @@ class TestSyncStatusTransitions:
 
         assert excinfo.value.http_status == 403
 
-    # The only behavioural evidence for ProjectLimitError. No SDK gives 507 a named
-    # class, so it falls into the generic api_error arm carrying the status
-    # (SPEC.md §7).
+    # The only behavioural evidence for ProjectLimitError. A 507 is an account
+    # limit, so it maps to limit_exceeded and is NOT retryable — no backoff frees
+    # a project slot (SPEC.md §6, step 11).
     #
-    # NOTE the deliberate `retryable is False`. Python's fallback arm builds a bare
-    # ApiError, whose default is retryable=False, while the other five SDKs mark
-    # every unclassified 5xx retryable. That is a pre-existing divergence from
-    # SPEC §7 (python/src/basecamp/errors.py) and is asserted here as-is rather
-    # than fixed in passing.
+    # The divergence this comment used to record is gone. Python's fallback arm
+    # produced retryable=False here while the other five marked every
+    # unclassified 5xx retryable; now all six classify 507 the same way, and
+    # False is the agreed answer rather than an accident of which arm caught it.
     @respx.mock
     def test_unarchive_project_at_project_limit(self):
         respx.put(f"{BASE}/projects/42/status/active.json").mock(
@@ -125,12 +124,12 @@ class TestSyncStatusTransitions:
         )
 
         client, account = make_account()
-        with pytest.raises(ApiError) as excinfo:
+        with pytest.raises(LimitExceededError) as excinfo:
             account.projects.unarchive(project_id=42)
         client.close()
 
         assert excinfo.value.http_status == 507
-        assert excinfo.value.code == ErrorCode.API
+        assert excinfo.value.code == ErrorCode.LIMIT_EXCEEDED
         assert excinfo.value.retryable is False
 
 
@@ -174,9 +173,9 @@ class TestAsyncStatusTransitions:
         )
 
         account = AsyncClient(access_token="test-token").for_account("12345")
-        with pytest.raises(ApiError) as excinfo:
+        with pytest.raises(LimitExceededError) as excinfo:
             await account.projects.unarchive(project_id=42)
 
         assert excinfo.value.http_status == 507
-        assert excinfo.value.code == ErrorCode.API
+        assert excinfo.value.code == ErrorCode.LIMIT_EXCEEDED
         assert excinfo.value.retryable is False

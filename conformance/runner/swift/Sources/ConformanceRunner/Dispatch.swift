@@ -159,6 +159,35 @@ private func summarizeProjects(_ projects: [Project]) -> JSON {
     ])
 }
 
+/// Flattens the versions array into top-level scalars.
+///
+/// GET /uploads/{id}/versions.json returns an ARRAY and a responseBody path
+/// resolves as a top-level key only. Every value comes off the DECODED model,
+/// which is what makes this a decode test of the retype that closes #649 rather
+/// than a transport test.
+private func summarizeUploadVersions(_ versions: [UploadVersion]) -> JSON {
+    var summary: [String: JSON] = [
+        "versions_count": .int(Int64(versions.count)),
+        "current_count": .int(Int64(versions.filter { $0.upload?.current == true }.count)),
+    ]
+    if let first = versions.first {
+        summary["first_action"] = .string(first.action)
+        if let file = first.upload {
+            summary["first_filename"] = .string(file.filename)
+            if let contentType = file.contentType { summary["first_content_type"] = .string(contentType) }
+            if let byteSize = file.byteSize { summary["first_byte_size"] = .int(Int64(byteSize)) }
+            summary["first_current"] = .bool(file.current)
+        }
+    }
+    if let last = versions.last {
+        summary["last_action"] = .string(last.action)
+        // A version whose recordable no longer resolves omits the upload object
+        // entirely — the optionality UploadVersion.upload declares.
+        summary["last_has_upload"] = .bool(last.upload != nil)
+    }
+    return .object(summary)
+}
+
 /// Dispatches the test operation against the SDK and returns observed metadata.
 /// Direct port of the Kotlin dispatch table.
 func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws -> DispatchResult {
@@ -731,6 +760,33 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     case "UploadsDownload":
         _ = try await account.uploads.download(uploadId: pathParams.longParam("uploadId"))
         return DispatchResult()
+
+    // Presence-bearing, like ReplaceScheduleEntry: optString yields nil for a
+    // key the fixture omits, and encodeIfPresent then keeps it off the wire, so
+    // an unaddressed description carries forward while an explicit "" clears.
+    case "CreateUploadVersion":
+        _ = try await account.uploads.createVersion(
+            uploadId: pathParams.longParam("uploadId"),
+            req: CreateUploadVersionRequest(
+                attachableSgid: rb.stringParam("attachable_sgid"),
+                baseName: rb.optString("base_name"),
+                description: rb.optString("description"),
+                notify: rb.optString("notify"),
+                subscriptions: rb.intArray("subscriptions")))
+        return DispatchResult()
+
+    case "UpdateUpload":
+        _ = try await account.uploads.update(
+            uploadId: pathParams.longParam("uploadId"),
+            req: UpdateUploadRequest(
+                baseName: rb.optString("base_name"),
+                description: rb.optString("description")))
+        return DispatchResult()
+
+    case "ListUploadVersions":
+        let versions = try await account.uploads.listVersions(
+            uploadId: pathParams.longParam("uploadId"))
+        return DispatchResult(resultJSON: summarizeUploadVersions(versions.items))
 
     // Pins the `inbox_forwards` collection segment. The shipped path said
     // `forwards`, which bc3 does not route, so the fixture is a wire assertion

@@ -119,6 +119,31 @@ targets:
     fixture: uploads/get.json
     pointer: ""
     schema: Upload
+
+  # GET /uploads/{id}/versions.json returns EVENTS, not Uploads — the reason
+  # ListUploadVersionsOutput was retyped (basecamp-sdk#649). Built from
+  # app/views/api/uploads/versions/_version.json.jbuilder over
+  # recordings/events/_event.json.jbuilder.
+  #
+  # Element 0 is the blob_changed replacement and the only one with
+  # "current": true — the renderer passes current_event: @events.first, so
+  # exactly one element per response carries it. Element 2 has NO upload object
+  # at all: its recordable no longer resolves, so the partial's
+  # `if upload = uploads[event.recordable_gid]` is false. That element pins the
+  # optionality and is deliberately not the one covering UploadVersionFile,
+  # since the concrete-instance rule needs a non-null representative.
+  - id: upload-version-0
+    fixture: uploads/versions.json
+    pointer: "/0"
+    schema: UploadVersion
+  - id: upload-version-file-0
+    fixture: uploads/versions.json
+    pointer: "/0/upload"
+    schema: UploadVersionFile
+  - id: upload-version-recordable-gone
+    fixture: uploads/versions.json
+    pointer: "/2"
+    schema: UploadVersion
   - id: cloud-file-get
     fixture: cloud_files/get.json
     pointer: ""
@@ -271,6 +296,8 @@ covered_schemas:
   Card: [card-get]
   Todolist: [todolist-get, todolist-group-get]
   Upload: [upload-get]
+  UploadVersion: [upload-version-0, upload-version-recordable-gone]
+  UploadVersionFile: [upload-version-file-0]
   CloudFile: [cloud-file-get]
   GoogleDocument: [google-document-get]
   ScheduleEntry: [schedule-entry-get]

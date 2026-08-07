@@ -16,6 +16,8 @@ import { Errors } from "../../errors.js";
 
 /** Upload entity from the Basecamp API. */
 export type Upload = components["schemas"]["Upload"];
+/** UploadVersion entity from the Basecamp API. */
+export type UploadVersion = components["schemas"]["UploadVersion"];
 
 /**
  * Request parameters for update.
@@ -31,6 +33,26 @@ export interface UpdateUploadRequest {
  * Options for listVersions.
  */
 export interface ListVersionsUploadOptions extends PaginationOptions {
+}
+
+/**
+ * Request parameters for createVersion.
+ */
+export interface CreateVersionUploadRequest {
+  /** Attachable sgid */
+  attachableSgid: string;
+  /** Omit to keep the uploaded file's own name. Sending "" also keeps it. */
+  baseName?: string;
+  /** Presence-aware: omit to carry the previous version's description forward,
+send "" to clear it, send a value to set it. */
+  description?: string;
+  /** Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+
+Omit both this and subscriptions to notify nobody. A subscriptions array sent
+without notify is read as "custom". */
+  notify?: string;
+  /** People to notify about the replacement and subscribe to the upload. */
+  subscriptions?: number[];
 }
 
 /**
@@ -136,14 +158,14 @@ export class UploadsService extends BaseService {
    * List versions of an upload
    * @param uploadId - The upload ID
    * @param options - Optional query parameters
-   * @returns All Upload across all pages, with .meta.totalCount
+   * @returns All UploadVersion across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.uploads.listVersions(123);
    * ```
    */
-  async listVersions(uploadId: number, options?: ListVersionsUploadOptions): Promise<ListResult<Upload>> {
+  async listVersions(uploadId: number, options?: ListVersionsUploadOptions): Promise<ListResult<UploadVersion>> {
     return this.requestPaginated(
       {
         service: "Uploads",
@@ -160,6 +182,47 @@ export class UploadsService extends BaseService {
         })
       , options
     );
+  }
+
+  /**
+   * Replace an upload's file with a new version
+   * @param uploadId - The upload ID
+   * @param req - Upload_version creation parameters
+   * @returns The Upload
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.uploads.createVersion(123, { attachableSgid: "example" });
+   * ```
+   */
+  async createVersion(uploadId: number, req: CreateVersionUploadRequest): Promise<Upload> {
+    if (!req.attachableSgid) {
+      throw Errors.validation("Attachable sgid is required");
+    }
+    const response = await this.request(
+      {
+        service: "Uploads",
+        operation: "CreateUploadVersion",
+        resourceType: "upload_version",
+        isMutation: true,
+        resourceId: uploadId,
+      },
+      () =>
+        this.client.POST("/uploads/{uploadId}/versions.json", {
+          params: {
+            path: { uploadId },
+          },
+          body: {
+            attachable_sgid: req.attachableSgid,
+            base_name: req.baseName,
+            description: req.description,
+            notify: req.notify,
+            subscriptions: req.subscriptions,
+          },
+        })
+    );
+    return response;
   }
 
   /**

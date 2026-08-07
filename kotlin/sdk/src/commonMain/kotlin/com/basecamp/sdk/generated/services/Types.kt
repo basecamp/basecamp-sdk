@@ -1165,6 +1165,15 @@ data class UpdateUploadBody(
     val baseName: String? = null
 )
 
+/** Request body for CreateUploadVersion. */
+data class CreateUploadVersionBody(
+    val attachableSgid: String,
+    val baseName: String? = null,
+    val description: String? = null,
+    val notify: String? = null,
+    val subscriptions: List<Long>? = null
+)
+
 /** Options for ListUploads. */
 data class ListUploadsOptions(
     /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */

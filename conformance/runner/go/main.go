@@ -1165,6 +1165,77 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		}
 		return operationResult{err: nil}
 
+	case "CreateUploadVersion":
+		// Presence-bearing, like ReplaceScheduleEntry: a key the fixture omits
+		// stays nil and never reaches the wire, so an unaddressed description
+		// carries forward while Ptr("") is sent and clears.
+		uploadID := getInt64Param(tc.PathParams, "uploadId")
+		req := &basecamp.CreateUploadVersionRequest{
+			AttachableSGID: getStringParam(tc.RequestBody, "attachable_sgid"),
+			Description:    optionalStringFrom(tc.RequestBody, "description"),
+			Notify:         optionalStringFrom(tc.RequestBody, "notify"),
+		}
+		if _, ok := tc.RequestBody["base_name"]; ok {
+			req.BaseName = getStringParam(tc.RequestBody, "base_name")
+		}
+		if raw, ok := tc.RequestBody["subscriptions"]; ok {
+			ids := toInt64Slice(raw)
+			req.Subscriptions = &ids
+		}
+		_, err := account.Uploads().CreateVersion(ctx, uploadID, req)
+		return operationResult{err: err}
+
+	case "UpdateUpload":
+		uploadID := getInt64Param(tc.PathParams, "uploadId")
+		req := &basecamp.UpdateUploadRequest{
+			Description: optionalStringFrom(tc.RequestBody, "description"),
+		}
+		if _, ok := tc.RequestBody["base_name"]; ok {
+			req.BaseName = getStringParam(tc.RequestBody, "base_name")
+		}
+		_, err := account.Uploads().Update(ctx, uploadID, req)
+		return operationResult{err: err}
+
+	case "ListUploadVersions":
+		// The endpoint returns an ARRAY and a responseBody path resolves as a
+		// top-level key only, so flatten to scalars the way GetUpcomingSchedule
+		// does. Built from the DECODED models, which is where the retype that
+		// closes #649 is actually enforced.
+		uploadID := getInt64Param(tc.PathParams, "uploadId")
+		result, err := account.Uploads().ListVersions(ctx, uploadID, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		if result == nil {
+			return operationResult{err: fmt.Errorf("ListVersions returned no result")}
+		}
+		currentCount := 0
+		for _, v := range result.Versions {
+			if v.Upload != nil && v.Upload.Current {
+				currentCount++
+			}
+		}
+		summary := map[string]interface{}{
+			"versions_count": len(result.Versions),
+			"current_count":  currentCount,
+		}
+		if len(result.Versions) > 0 {
+			first := result.Versions[0]
+			summary["first_action"] = first.Action
+			if first.Upload != nil {
+				summary["first_filename"] = first.Upload.Filename
+				summary["first_content_type"] = first.Upload.ContentType
+				summary["first_byte_size"] = first.Upload.ByteSize
+				summary["first_current"] = first.Upload.Current
+			}
+			last := result.Versions[len(result.Versions)-1]
+			summary["last_action"] = last.Action
+			// A version whose recordable no longer resolves omits the upload
+			// object entirely — the optionality UploadVersion.Upload declares.
+			summary["last_has_upload"] = last.Upload != nil
+		}
+		return operationResult{err: nil, result: summary}
+
 	case "UploadsDownload":
 		uploadID := getInt64Param(tc.PathParams, "uploadId")
 		result, err := account.Uploads().Download(ctx, uploadID)
@@ -1905,6 +1976,31 @@ type scheduleEntryWrite struct {
 // Testing v != "" would collapse the two and let an explicit-clear fixture pass
 // as an omission — which is the whole distinction BC3's preserve-on-omission
 // carve-out makes.
+// optionalStringFrom returns a pointer only when the fixture carries the key,
+// so an unaddressed member stays nil and off the wire while an explicit "" is
+// sent verbatim. The whole point of the *string members it feeds.
+func optionalStringFrom(body map[string]interface{}, key string) *string {
+	if _, ok := body[key]; !ok {
+		return nil
+	}
+	s := getStringParam(body, key)
+	return &s
+}
+
+func toInt64Slice(raw interface{}) []int64 {
+	items, ok := raw.([]interface{})
+	if !ok {
+		return []int64{}
+	}
+	out := make([]int64, 0, len(items))
+	for _, item := range items {
+		if f, isNum := item.(float64); isNum {
+			out = append(out, int64(f))
+		}
+	}
+	return out
+}
+
 func scheduleEntryWriteFrom(body map[string]interface{}) scheduleEntryWrite {
 	str := func(key string) *string {
 		if _, ok := body[key]; !ok {

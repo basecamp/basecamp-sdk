@@ -11,6 +11,141 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+Breaking in Go and in the shape every SDK decodes from
+`GET /uploads/{id}/versions.json`.
+
+**Operation inventory: 249 → 250** — `CreateUploadVersion`. Derive both ends
+rather than trusting either number:
+
+```bash
+git show v0.13.0:openapi.json | jq '[.paths[]|keys[]]|length'
+jq '[.paths[]|keys[]]|length' openapi.json
+```
+
+### `ListUploadVersions` returns versions, not uploads (#649)
+
+The endpoint has always returned **events**. The spec declared
+`uploads: UploadList` anyway, and **11 of `Upload`'s 14 required members are
+absent from every response** — which is why the CLI's versions command and the
+MCP server's `list_upload_versions` printed blank fields rather than failing.
+The output is now `versions: UploadVersionList`.
+
+| SDK | was | now |
+|---|---|---|
+| Go | `UploadVersionListResult.Versions []Upload` | `[]UploadVersion` |
+| TypeScript | `ListResult<Upload>` | `ListResult<UploadVersion>` |
+| Swift | `ListResult<Upload>` | `ListResult<UploadVersion>` |
+| Kotlin | `ListResult<Upload>` | `ListResult<UploadVersion>` |
+| Ruby / Python | parsed body, unchanged at runtime | fields differ, see below |
+
+The four typed SDKs keep their `ListResult` wrapper, so `.meta.totalCount` and
+the pagination surface are untouched; only the element type changes. Member
+access moves with it — `version.filename` becomes `version.upload?.filename`,
+and the event's own `action`, `createdAt` and `creator` sit alongside.
+
+**In Ruby and Python the compiler will not catch this.** Nothing changes in the
+type; what changes is which keys are actually there. Code reading
+`version["filename"]` was reading a key the server never sent and getting nil —
+it now reads `version["upload"]["filename"]`, and the event's own metadata
+(`action`, `created_at`, `creator`) is available where it previously looked like
+a partly-empty upload.
+
+A version carries `upload` only when its recordable still resolves; a deleted
+file leaves the event behind with no `upload` at all. Check before dereferencing.
+`action` is `created`, `active` (the publication) or `blob_changed` (a file
+replacement). To list the file's **past** versions, take the entries that carry
+an `upload` with `current == false` — not the ones with `action == "blob_changed"`,
+which drops the original (it arrives as `created` or `active`) and keeps the
+current file. The per-version `download_url` serves **that** version's bytes; the
+upload's own always serves the latest.
+
+### Go: `UpdateUploadRequest.Description` became `*string`
+
+Tri-state, following `UpdateGaugeNeedleRequest.Description` (#560): nil leaves
+it untouched, `basecamp.Ptr("")` clears it, `basecamp.Ptr(v)` sets it.
+Previously a plain `string` behind a zero-value guard, so `""` read as *unset*
+and clearing a description through `Update` was unreachable — the divergence
+SPEC §5 documented.
+
+```go
+// Before — compiled, and silently did nothing to the description.
+svc.Update(ctx, id, &UpdateUploadRequest{Description: ""})
+
+// After — clears it.
+svc.Update(ctx, id, &UpdateUploadRequest{Description: basecamp.Ptr("")})
+
+// After — leaves it alone.
+svc.Update(ctx, id, &UpdateUploadRequest{BaseName: "renamed"})
+```
+
+The compiler catches this one: `Description: "text"` no longer type-checks. Wrap
+it in `basecamp.Ptr`.
+
+`BaseName` is deliberately still a plain `string` on both this and
+`CreateUploadVersionRequest`. `Upload#base_name=` guards on
+`new_base_name.present?`, so `""` and absent are the same write server-side —
+there is no third state for a pointer to express.
+
+### New: `UploadsService.CreateVersion` and a 507 error code
+
+Not breaking, but the reason for the above. `POST /uploads/{id}/versions.json`
+replaces an upload's file in place, keeping the recording's id, URL and
+comments, so a published link keeps working — which `CreateUpload` cannot do.
+
+A `507 Insufficient Storage` now maps to the new `limit_exceeded` code (exit
+code 10) instead of `api_error`. **If you branch on `api_error` to decide
+whether to back off, a limit failure no longer lands in that branch** — which is
+the point: it was reported as retryable, and no retry can satisfy a plan limit.
+
+The mapping is by **status**, not by operation, so it reaches every 507 the spec
+declares — all eight, across three different limits:
+
+| Operations | Limit | Error shape |
+|---|---|---|
+| `CreateUpload`, `CreateUploadVersion`, `CreateAttachment`, `CreateCampfireUpload` | file storage | `StorageLimitError` (new) |
+| `CreateProject`, `UnarchiveProject` | project count | `ProjectLimitError` (v0.13.0) |
+| `CreateWebhook`, `UpdateWebhook` | webhook count | `WebhookLimitError` (pre-existing) |
+
+Only the first row is new surface. The other four operations already returned
+507 and already reported it as a retryable `api_error`; they are reclassified
+here too, so **webhook and project callers need the same new branch even though
+nothing about those endpoints changed**. Derive the list rather than trusting
+it:
+
+```bash
+jq -r '.paths[]|to_entries[]|select(.value.responses."507")|.value.operationId' openapi.json
+```
+
+### The new error code is source-breaking in four SDKs
+
+Adding a member to a closed type breaks exhaustive handling, so this is not
+merely behavioural:
+
+| SDK | what changed | how it breaks |
+|---|---|---|
+| TypeScript | `ErrorCode` union gains `"limit_exceeded"` | a `Record<ErrorCode, T>` map, or a `switch` the compiler checks for exhaustiveness, stops compiling until it has a branch |
+| Swift | `BasecampError` gains `case limitExceeded` | a `switch` over the enum without a `default` stops compiling |
+| Kotlin | `BasecampException` gains `LimitExceeded` | a `when` over the sealed class used as an expression stops compiling |
+| Python | `ErrorCode` (a `StrEnum`) gains `LIMIT_EXCEEDED` | a `match` over it ending in `typing.assert_never` stops type-checking — mypy reports the new member as unhandled |
+
+Python's break needs a type-checker to surface, not an interpreter: the module
+imports and runs either way. If your CI runs mypy — this package does — it fails
+there rather than at import, which makes it easier to miss in review and no less
+of a break.
+
+Go and Ruby take a new constant rather than a new variant, so neither breaks a
+build — which is exactly why they need reading for: a `case` or `when` falling
+through to a default arm now routes storage and project limits wherever that
+default goes.
+
+Add a `limit_exceeded` branch that surfaces the limit to the user and does not
+retry. This SDK's own Kotlin test suite hit the compile error, which is what the
+exhaustive `when` in `ErrorTest` exists to produce.
+
+---
+
 # v0.13.0
 
 Breaking across all six SDKs — Go, TypeScript, Python, Ruby, Kotlin, Swift.

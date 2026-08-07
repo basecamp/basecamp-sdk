@@ -52,7 +52,8 @@ making the absorption journey publicly auditable.
 | [todoset-direct-todo-create](todoset-direct-todo-create.md) | absorbed-in-sdk | post-train | medium |
 | [schedule-recurrence-writes](schedule-recurrence-writes.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 | [dock-tool-create-contract](dock-tool-create-contract.md) | absorbed-in-sdk | launch | medium |
-| [upload-new-version](upload-new-version.md) | addressed-in-bc3-pr-12555 | post-train | medium |
+| [upload-new-version](upload-new-version.md) | absorbed-in-sdk | post-train | medium |
+| [upload-create-subscriptions](upload-create-subscriptions.md) | partial-coverage | n/a | low |
 | [todolist-reposition](todolist-reposition.md) | absorbed-in-sdk | pre-BC5 | medium |
 | [rich-text-attachments-coverage](rich-text-attachments-coverage.md) | absorbed-in-sdk | n/a | medium |
 | [visible-to-clients-on-creates](visible-to-clients-on-creates.md) | absorbed-in-sdk | post-train | medium |
@@ -97,12 +98,41 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `7fe1c63ab3` (2026-08-05). <!-- @bc3-pin -->
+> The provenance pin is `b5d8c9df8d` (2026-08-05). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
+>
+> The `7fe1c63ab3..b5d8c9df8d` range is **one commit**, and it is the companion
+> to the absorption this repin carries: BC3 **#12565** (`b5d8c9df8d`) settles the
+> input contract of the replacement endpoint #12555 shipped. It documents
+> `notify` and `subscriptions` — `Subscribers#notify_param` defaults to
+> `"custom"`, so an audience arrives either through `notify` naming a mode or
+> through a bare `subscriptions` array, and the web form already relied on the
+> second — and it removes `visible_to_clients` from the endpoint's reachable
+> surface. That parameter never set the recording's visibility; it only widened
+> `Subscribers`' audience, so a request could announce a client-invisible file to
+> a project's clients. It also pins `""` as a description clear on both the
+> replacement and `PUT /uploads/{id}.json`, which is the spelling the SDKs can
+> express — five of six strip nulls structurally before the wire.
+>
+> Absorbed here as `CreateUploadVersion`, `UploadVersion` / `UploadVersionFile`
+> and `StorageLimitError`, closing [`upload-new-version`](upload-new-version.md)
+> and basecamp-sdk#649. The `POST /uploads/:id/versions` waivers the previous
+> repin added to `spec/bc3-route-allowlist.yml` are **deleted** by that
+> absorption, which is what the gate demands — a waiver matching nothing is a
+> hard failure, not a shrug.
+>
+> One correction to the previous range's disposition, not a new finding: that
+> triage recorded the 507 as needing "its own error shape", which it got
+> (`StorageLimitError`, distinct from `ProjectLimitError` as required). What it
+> did not record is that **neither** shape was classified correctly. SPEC §6 had
+> no 507 step, so both fell through to `status >= 500` and surfaced as
+> `api_error` with `retryable: true` — a plan limit reported as a transient
+> server error. §6 now maps 507 to `limit_exceeded`, non-retryable, ahead of the
+> 5xx catch-all, which fixes `ProjectLimitError` as well as the new shape.
 >
 > The `4e34dc83eb..7fe1c63ab3` range (71 commits) contains exactly **six**
 > API-contract or API-documentation changes. Three touch `doc/api`; the other

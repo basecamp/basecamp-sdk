@@ -79,6 +79,7 @@ module Basecamp
       when ErrorCode::API then ExitCode::API
       when ErrorCode::AMBIGUOUS then ExitCode::AMBIGUOUS
       when ErrorCode::VALIDATION then ExitCode::VALIDATION
+      when ErrorCode::LIMIT_EXCEEDED then ExitCode::LIMIT_EXCEEDED
       else ExitCode::API
       end
     end
