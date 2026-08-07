@@ -93,7 +93,7 @@ plan limit. This affects `CreateUpload`, `CreateAttachment`,
 by status, not by operation — the project-limit 507 on `CreateProject` and
 `UnarchiveProject` that shipped in v0.13.0 as a retryable `api_error`.
 
-### The new error code is source-breaking in three SDKs
+### The new error code is source-breaking in four SDKs
 
 Adding a member to a closed type breaks exhaustive handling, so this is not
 merely behavioural:
@@ -103,12 +103,17 @@ merely behavioural:
 | TypeScript | `ErrorCode` union gains `"limit_exceeded"` | a `Record<ErrorCode, T>` map, or a `switch` the compiler checks for exhaustiveness, stops compiling until it has a branch |
 | Swift | `BasecampError` gains `case limitExceeded` | a `switch` over the enum without a `default` stops compiling |
 | Kotlin | `BasecampException` gains `LimitExceeded` | a `when` over the sealed class used as an expression stops compiling |
+| Python | `ErrorCode` (a `StrEnum`) gains `LIMIT_EXCEEDED` | a `match` over it ending in `typing.assert_never` stops type-checking — mypy reports the new member as unhandled |
 
-Go and Ruby take a new constant rather than a new variant, and Python a new
-`ErrorCode` member plus a `LimitExceededError` class, so none of the three
-breaks a build — which is exactly why they need reading for: a `case` or `when`
-falling through to a default arm now routes storage and project limits wherever
-that default goes.
+Python's break needs a type-checker to surface, not an interpreter: the module
+imports and runs either way. If your CI runs mypy — this package does — it fails
+there rather than at import, which makes it easier to miss in review and no less
+of a break.
+
+Go and Ruby take a new constant rather than a new variant, so neither breaks a
+build — which is exactly why they need reading for: a `case` or `when` falling
+through to a default arm now routes storage and project limits wherever that
+default goes.
 
 Add a `limit_exceeded` branch that surfaces the limit to the user and does not
 retry. This SDK's own Kotlin test suite hit the compile error, which is what the
