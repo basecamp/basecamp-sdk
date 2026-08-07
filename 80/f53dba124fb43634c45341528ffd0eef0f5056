@@ -1,0 +1,27 @@
+scripts/test-check-bc3-route-parity.rb
+  s_c60f4ea423b48a::t_3c83dc8be496df 67-73,75-76
+scripts/test-doc-constants.rb
+  s_c60f4ea423b48a::t_0dcb97ae721c87 33-41,45,50-52
+.github/workflows/test.yml
+  s_c60f4ea423b48a::t_12494cc54d5120 163-164,171-172,198-199,207-208
+scripts/check-bc3-route-parity
+  s_c60f4ea423b48a::t_7a28ff7574c87a 66-67,103,119
+scripts/validate-api-gaps.rb
+  s_c60f4ea423b48a::t_cf90325d01237b 36,46,161,165,209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "80f53dba124fb43634c45341528ffd0eef0f5056",
+  "prompts": {},
+  "sessions": {
+    "s_c60f4ea423b48a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "535c7003-8f6e-4ea8-a375-ab8ffe1551c4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
