@@ -1,0 +1,21 @@
+typescript/src/index.ts
+  s_6596a1ee398fe6::t_f72dd7a198a6cd 388,391
+MIGRATING.md
+  s_6596a1ee398fe6::t_a707c7353830c1 96,106,108-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "86cecb9784dcc320f91615d0c06f7970fcab7ad7",
+  "prompts": {},
+  "sessions": {
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
