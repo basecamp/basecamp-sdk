@@ -574,14 +574,6 @@ function resolveRef(ref: string): string {
   return ref.split("/").pop() || "";
 }
 
-function resolveSchema(schemaOrRef: Schema): Schema | undefined {
-  if (schemaOrRef.$ref) {
-    const refName = resolveRef(schemaOrRef.$ref);
-    return globalSchemas[refName];
-  }
-  return schemaOrRef;
-}
-
 function getSchemaProperties(schemaRef: string): { properties: Record<string, Schema>; required: string[] } {
   const schema = globalSchemas[schemaRef];
   if (!schema) return { properties: {}, required: [] };
@@ -1162,7 +1154,7 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   const resourceName = singularize(serviceName);
 
   // Build param string and types
-  const { paramString, hasOptions, hasRequest, requestInterfaceName, optionsInterfaceName } = buildMethodSignature(op, resourceName);
+  const { paramString, hasOptions, hasRequest } = buildMethodSignature(op, resourceName);
 
   // Return type
   const returnType = buildReturnType(op, serviceName);

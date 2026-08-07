@@ -853,7 +853,6 @@ class OAuthDeviceTest < Minitest::Test
     # Adapter-only: the SSRF guard refuses middleware it cannot verify
     # redirect-free (Faraday.new's default stack includes UrlEncoded).
     connection = Faraday.new { |f| f.adapter :net_http }
-    _waits, sleeper = recording_sleeper
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
       Basecamp::Oauth::DeviceFlow.request_device_authorization(
