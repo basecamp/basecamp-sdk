@@ -354,20 +354,36 @@ end
 # device @bc3-pin uses for the SHA.
 TICKED_INT_RE = /`(\d+)`/
 
+# The single backticked integer an @operation-count span carries, or nil when the
+# span is ambiguous. OCCURRENCES, not distinct values: two spans both reading
+# `250` today would both be rewritten the day the count moves, and only one of
+# them is the count.
+#
+# Both the checker and the writer go through here, and that is the point rather
+# than tidiness. --write returns before the per-kind checkers run, so a writer
+# that rewrote what the checker would have rejected corrupts the file first and
+# is then certified by a check that can no longer see the damage.
+def sole_ticked_int(text)
+  ints = text.scan(TICKED_INT_RE).flatten
+  ints.length == 1 ? ints.first : nil
+end
+
 def check_operation_count(span, count, source)
-  ints = span.text.scan(TICKED_INT_RE).flatten.uniq
+  ints = span.text.scan(TICKED_INT_RE).flatten
 
   if ints.empty?
     return ["#{span.location}: @operation-count span states no backticked integer — " \
             "write the count as `#{count}` so the writer can find it"]
   end
 
-  # Exactly one, so the writer never has to guess which integer to rewrite. A
-  # line that needs another backticked integer cannot carry this marker; put the
-  # claim on a line of its own instead.
+  # A line that needs a second backticked integer cannot carry this marker. The
+  # writer refuses such a span rather than rewriting every integer on it: the
+  # sentence in SECURITY.md states 125 GETs and 83 mutations beside the total,
+  # and a blanket gsub would turn both into the operation count.
   if ints.length > 1
     return ["#{span.location}: @operation-count span has #{ints.length} backticked integers " \
-            "(#{ints.join(', ')}) — exactly one is required, so the writer knows which is the count"]
+            "(#{ints.join(', ')}) — exactly one is required, so the writer knows which is the " \
+            "count. Put the claim on a line of its own, or unticket the others."]
   end
 
   return [] if ints.first == count.to_s
@@ -629,7 +645,10 @@ def rewrite_line(kind, line, api_version:, revision:, date:, operation_count_val
   when "api-version"
     line.gsub(ISO_DATE_RE, api_version)
   when "operation-count"
-    line.gsub(TICKED_INT_RE) { "`#{operation_count_value.call}`" }
+    # Refuse an ambiguous span instead of rewriting every integer on it. Left
+    # untouched, it fails the next --check with a message naming the problem;
+    # rewritten, it would be silently corrupt and then pass.
+    sole_ticked_int(line) ? line.sub(TICKED_INT_RE, "`#{operation_count_value.call}`") : line
   when "bc3-pin"
     # Preserve the abbreviation length the prose already chose.
     line

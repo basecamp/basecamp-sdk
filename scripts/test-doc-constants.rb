@@ -267,6 +267,28 @@ writer ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("`#{OP_COUNT}` operations", "`999
   end
 end
 
+# The writer must REFUSE an ambiguous span, not rewrite every integer on it.
+# This is the sharp edge: --write returns before the per-kind checkers run, so a
+# blanket gsub corrupts the file first and the later check, comparing values that
+# are now all identical, certifies the damage. Reproduced on the real SECURITY.md
+# sentence before the guard existed: `125` GETs and `83` mutations both became
+# `250`, and the check went green.
+writer lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("across 2 paths", "across `2` paths")
+} do |out, status, dir|
+  expect_pass(failures, "writer exits 0 on an ambiguous operation-count span", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?("across `2` paths")
+    failures << "writer: rewrote an integer on an ambiguous @operation-count span:\n#{written[/^.*operations.*$/]}"
+  end
+  # And having declined, the span must still be rejected rather than left to rot.
+  out2, status2 = Open3.capture2e({ "DOC_CONSTANTS_ROOT" => dir }, "ruby", GATE, "--check",
+                                  "--openapi", File.join(File.dirname(dir), "openapi-source.json"),
+                                  chdir: dir)
+  expect_fail(failures, "check rejects the span the writer declined", out2, status2,
+              "exactly one is required")
+end
+
 # --- @api-version --------------------------------------------------------------
 
 out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(API_VER, "2020-01-01") }
