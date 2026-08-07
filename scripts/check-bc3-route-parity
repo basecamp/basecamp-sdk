@@ -63,8 +63,8 @@ unless File.exist?(table_path)
   exit 1
 end
 
-table = JSON.parse(File.read(table_path))
-provenance = JSON.parse(File.read(File.join(ROOT, 'spec', 'api-provenance.json')))
+table = JSON.parse(File.read(table_path, encoding: "UTF-8"))
+provenance = JSON.parse(File.read(File.join(ROOT, 'spec', 'api-provenance.json'), encoding: "UTF-8"))
 pinned = provenance.fetch('bc3').fetch('revision')
 vendored = table.fetch('source').fetch('revision')
 
@@ -100,7 +100,7 @@ if bc3_routes.length < MIN_BC3_ROUTES
               'the doc format probably changed and extraction is silently failing.'
 end
 
-openapi = JSON.parse(File.read(File.join(ROOT, 'openapi.json')))
+openapi = JSON.parse(File.read(File.join(ROOT, 'openapi.json'), encoding: "UTF-8"))
 sdk = []
 openapi.fetch('paths').each do |path, ops|
   ops.each do |method, op|
@@ -116,7 +116,7 @@ die(failures) unless failures.empty?
 # ------------------------------------------------------------------- allowlist
 
 allow_path = ENV['BC3_ROUTE_ALLOWLIST'] || File.join(ROOT, 'spec', 'bc3-route-allowlist.yml')
-allow = File.exist?(allow_path) ? (YAML.safe_load(File.read(allow_path)) || {}) : {}
+allow = File.exist?(allow_path) ? (YAML.safe_load(File.read(allow_path, encoding: "UTF-8")) || {}) : {}
 sdk_allow = allow['sdk_routes_absent_from_bc3_docs'] || []
 bc3_allow = allow['bc3_routes_not_modeled'] || []
 known_bad = allow['sdk_routes_known_defective'] || []

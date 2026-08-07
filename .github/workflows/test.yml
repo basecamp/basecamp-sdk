@@ -160,12 +160,16 @@ jobs:
       # only proves it can say yes.
       - name: Documentation constants in sync with their sources
         run: make doc-constants-check
+        env:
+          LC_ALL: C
 
       - name: Bucket-scoped vs flat operation parity
         run: make check-bucket-flat-parity
 
       - name: api-gaps registry frontmatter + allowlist schema
         run: make validate-api-gaps
+        env:
+          LC_ALL: C
 
       - name: Deprecation signal parity across six SDKs
         run: make check-deprecation-parity
@@ -213,6 +217,8 @@ jobs:
       # two 404ing routes shipped.
       - name: SDK routes match the routes bc3 serves
         run: make bc3-route-parity
+        env:
+          LC_ALL: C
 
       # The run above only exercises the VALID allowlist, which proves nothing
       # about `modeled_as` — the one disposition that asserts something is DONE.
@@ -220,6 +226,8 @@ jobs:
       # the interior-segment case an earlier subset rule accepted.
       - name: bc3 route-parity gate self-test (adversarial allowlists)
         run: make test-bc3-route-parity
+        env:
+          LC_ALL: C
 
       # Static (bash+grep), so it runs here rather than in a language job: it
       # reads the Makefile, this workflow, and the runner trees. Catches the
