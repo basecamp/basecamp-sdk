@@ -1,0 +1,39 @@
+go/pkg/basecamp/vaults.go
+  s_6596a1ee398fe6::t_012d8bff3a7503 1028-1034
+MIGRATING.md
+  s_6596a1ee398fe6::t_012d8bff3a7503 50-54
+spec/basecamp.smithy
+  s_6596a1ee398fe6::t_012d8bff3a7503 7273-7276
+typescript/tests/services/uploads.test.ts
+  s_6596a1ee398fe6::t_ebdc2574f6f2cf 305-324
+go/pkg/generated/client.gen.go
+  s_6596a1ee398fe6::t_a66e05dadcec3b 4076-4079
+openapi.json
+  s_6596a1ee398fe6::t_e65786bdd78bc0 35836
+ruby/lib/basecamp/generated/metadata.json
+  s_6596a1ee398fe6::t_a798df1e8f0840 4
+ruby/lib/basecamp/generated/types.rb
+  s_6596a1ee398fe6::t_a8660ed6a9d402 4
+typescript/src/generated/metadata.ts
+  s_6596a1ee398fe6::t_37c9de8d70fc06 40
+typescript/src/generated/openapi-stripped.json
+  s_6596a1ee398fe6::t_2bbd7fa25a55ca 32996
+typescript/src/generated/schema.d.ts
+  s_6596a1ee398fe6::t_5e164ea3913287 6841-6844
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ee0262304c69c71b0b399524856709325e6fd3c0",
+  "prompts": {},
+  "sessions": {
+    "s_6596a1ee398fe6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db85712e-cbac-4633-b864-011f01898d65",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
