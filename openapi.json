@@ -35902,7 +35902,7 @@
           },
           "current": {
             "type": "boolean",
-            "description": "True for the most recent version; exactly one element per response. This is the\nnewest *version*, not necessarily the file the upload's own download_url serves —\na metadata-only PUT swaps in a recordable carrying the same blob and emits no\nevent, so after one no event references the upload's current recordable."
+            "description": "True for the newest version *event*, and for exactly one element of any\nnon-empty response. The renderer computes it positionally — `event ==\n@events.first` over a reverse-chronological list — so it is a property of\nordering, not of what the upload currently points at, and it cannot be\nzero or plural.\n\nThat distinction is the whole caveat: `current` does NOT mean \"this is the\nfile the upload's own download_url serves\". A metadata-only PUT swaps in a\nrecordable carrying the same blob and emits no event, so afterwards no\nevent references the upload's current recordable — and this flag still\nmarks exactly one element, the newest event. bc3 pins that case by name in\n\"exactly one version is current after a metadata-only update\"."
           }
         },
         "required": [

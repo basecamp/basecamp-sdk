@@ -7312,10 +7312,18 @@ structure UploadVersionFile {
   @required
   app_download_url: String
 
-  /// True for the most recent version; exactly one element per response. This is the
-  /// newest *version*, not necessarily the file the upload's own download_url serves —
-  /// a metadata-only PUT swaps in a recordable carrying the same blob and emits no
-  /// event, so after one no event references the upload's current recordable.
+  /// True for the newest version *event*, and for exactly one element of any
+  /// non-empty response. The renderer computes it positionally — `event ==
+  /// @events.first` over a reverse-chronological list — so it is a property of
+  /// ordering, not of what the upload currently points at, and it cannot be
+  /// zero or plural.
+  ///
+  /// That distinction is the whole caveat: `current` does NOT mean "this is the
+  /// file the upload's own download_url serves". A metadata-only PUT swaps in a
+  /// recordable carrying the same blob and emits no event, so afterwards no
+  /// event references the upload's current recordable — and this flag still
+  /// marks exactly one element, the newest event. bc3 pins that case by name in
+  /// "exactly one version is current after a metadata-only update".
   @required
   current: Boolean
 }

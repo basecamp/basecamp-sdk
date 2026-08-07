@@ -1075,10 +1075,16 @@ type UploadVersionFile struct {
 	DownloadURL string `json:"download_url"`
 	// AppDownloadURL is the same file on the storage host.
 	AppDownloadURL string `json:"app_download_url"`
-	// Current is true for the most recent version; exactly one element per
-	// response has it. This is the newest version, not necessarily the file the
-	// upload's own download URL serves — a metadata-only update swaps in a
-	// recordable carrying the same blob and emits no event.
+	// Current is true for the newest version event, and for exactly one element
+	// of any non-empty response. It is computed positionally by the renderer
+	// (event == @events.first over a reverse-chronological list), so it is a
+	// property of ordering rather than of what the upload points at, and is
+	// never zero or plural.
+	//
+	// It does NOT mean "the file the upload's own download URL serves". A
+	// metadata-only update swaps in a recordable carrying the same blob and
+	// emits no event, so afterwards no event references the upload's current
+	// recordable — and exactly one element is still Current.
 	Current bool `json:"current"`
 }
 
