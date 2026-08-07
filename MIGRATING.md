@@ -96,12 +96,27 @@ comments, so a published link keeps working — which `CreateUpload` cannot do.
 
 A `507 Insufficient Storage` now maps to the new `limit_exceeded` code (exit
 code 10) instead of `api_error`. **If you branch on `api_error` to decide
-whether to back off, a storage-limit failure no longer lands in that branch** —
-which is the point: it was reported as retryable, and no retry can satisfy a
-plan limit. This affects `CreateUpload`, `CreateAttachment`,
-`CreateCampfireUpload` and `CreateUploadVersion`, and — because the mapping is
-by status, not by operation — the project-limit 507 on `CreateProject` and
-`UnarchiveProject` that shipped in v0.13.0 as a retryable `api_error`.
+whether to back off, a limit failure no longer lands in that branch** — which is
+the point: it was reported as retryable, and no retry can satisfy a plan limit.
+
+The mapping is by **status**, not by operation, so it reaches every 507 the spec
+declares — all eight, across three different limits:
+
+| Operations | Limit | Error shape |
+|---|---|---|
+| `CreateUpload`, `CreateUploadVersion`, `CreateAttachment`, `CreateCampfireUpload` | file storage | `StorageLimitError` (new) |
+| `CreateProject`, `UnarchiveProject` | project count | `ProjectLimitError` (v0.13.0) |
+| `CreateWebhook`, `UpdateWebhook` | webhook count | `WebhookLimitError` (pre-existing) |
+
+Only the first row is new surface. The other four operations already returned
+507 and already reported it as a retryable `api_error`; they are reclassified
+here too, so **webhook and project callers need the same new branch even though
+nothing about those endpoints changed**. Derive the list rather than trusting
+it:
+
+```bash
+jq -r '.paths[]|to_entries[]|select(.value.responses."507")|.value.operationId' openapi.json
+```
 
 ### The new error code is source-breaking in four SDKs
 
