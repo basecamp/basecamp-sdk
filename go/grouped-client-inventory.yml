@@ -202,6 +202,7 @@ not_grouped:
   - CreateTodolistGroup
   - CreateTodosetTodo
   - CreateTool
+  - CreateUploadVersion
   - CreateWormhole
   - DeleteBookmark
   - DeleteBoost
