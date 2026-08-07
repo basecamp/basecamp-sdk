@@ -61,7 +61,7 @@ GENERATED_PATH = ENV["GROUPED_CLIENT_GENERATED"] || File.join(ROOT, "go/pkg/gene
 # Extraction floors. Every input here is parsed with a regex, and a regex that
 # stops matching returns an empty set rather than an error — which reads as "all
 # clear" and is how a gate silently stops gating. A floor turns that into a
-# failure. The numbers are deliberately far below the real values (249 operations,
+# failure. The numbers are deliberately far below the real values (250 operations,
 # 63 arms, 15 services): they catch total extraction collapse, not drift.
 MIN_OPERATIONS = 200
 MIN_ARMS = 40
