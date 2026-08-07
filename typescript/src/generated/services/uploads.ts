@@ -16,6 +16,8 @@ import { Errors } from "../../errors.js";
 
 /** Upload entity from the Basecamp API. */
 export type Upload = components["schemas"]["Upload"];
+/** UploadVersion entity from the Basecamp API. */
+export type UploadVersion = components["schemas"]["UploadVersion"];
 
 /**
  * Request parameters for update.
@@ -156,14 +158,14 @@ export class UploadsService extends BaseService {
    * List versions of an upload
    * @param uploadId - The upload ID
    * @param options - Optional query parameters
-   * @returns All results across all pages, with .meta.totalCount
+   * @returns All UploadVersion across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.uploads.listVersions(123);
    * ```
    */
-  async listVersions(uploadId: number, options?: ListVersionsUploadOptions): Promise<components["schemas"]["ListUploadVersionsResponseContent"]> {
+  async listVersions(uploadId: number, options?: ListVersionsUploadOptions): Promise<ListResult<UploadVersion>> {
     return this.requestPaginated(
       {
         service: "Uploads",

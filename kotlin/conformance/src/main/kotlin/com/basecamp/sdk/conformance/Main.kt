@@ -83,36 +83,30 @@ private fun summarizeProjects(projects: List<Project>): JsonElement = buildJsonO
  * Flattens the versions array into top-level scalars.
  *
  * GET /uploads/{id}/versions.json returns an ARRAY and a responseBody path
- * resolves as a top-level key only. listVersions hands back ListResult<JsonElement>
- * — the generator's shape for a bare-array response, as with gauges, checkins and
- * search — so this reads the wire keys directly.
+ * resolves as a top-level key only. Every value comes off the DECODED model, so
+ * this is a decode test of the retype that closes #649 and not a transport test
+ * — kotlinx.serialization rejects a body missing any non-nullable member.
  */
-private fun summarizeUploadVersions(versions: List<JsonElement>): JsonElement = buildJsonObject {
+private fun summarizeUploadVersions(versions: List<UploadVersion>): JsonElement = buildJsonObject {
     put("versions_count", versions.size)
-    put(
-        "current_count",
-        versions.count { v ->
-            (v as? JsonObject)?.get("upload")?.jsonObject?.get("current")?.jsonPrimitive?.booleanOrNull == true
-        },
-    )
+    put("current_count", versions.count { it.upload?.current == true })
     versions.firstOrNull()?.let { first ->
-        val obj = first.jsonObject
-        put("first_action", obj["action"]!!.jsonPrimitive.content)
-        obj["upload"]?.jsonObject?.let { file ->
-            put("first_filename", file["filename"]!!.jsonPrimitive.content)
-            file["content_type"]?.jsonPrimitive?.contentOrNull?.let { put("first_content_type", it) }
-            file["byte_size"]?.jsonPrimitive?.longOrNull?.let { put("first_byte_size", it) }
-            put("first_current", file["current"]!!.jsonPrimitive.boolean)
+        put("first_action", first.action)
+        first.upload?.let { file ->
+            put("first_filename", file.filename)
+            file.contentType?.let { put("first_content_type", it) }
+            file.byteSize?.let { put("first_byte_size", it) }
+            put("first_current", file.current)
         }
     }
     versions.lastOrNull()?.let { last ->
-        val obj = last.jsonObject
-        put("last_action", obj["action"]!!.jsonPrimitive.content)
+        put("last_action", last.action)
         // A version whose recordable no longer resolves omits the upload object
         // entirely — the optionality UploadVersion.upload declares.
-        put("last_has_upload", obj["upload"] != null)
+        put("last_has_upload", last.upload != null)
     }
 }
+
 
 fun main() {
     val testsDir = File("../conformance/tests")

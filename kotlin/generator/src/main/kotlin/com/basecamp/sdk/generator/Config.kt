@@ -330,6 +330,7 @@ val TYPE_ALIASES = mapOf(
     "Vault" to "Vault",
     "Document" to "Document",
     "Upload" to "Upload",
+    "UploadVersion" to "UploadVersion",
     "Schedule" to "Schedule",
     "ScheduleEntry" to "ScheduleEntry",
     "Recording" to "Recording",

@@ -27,17 +27,22 @@ The output is now `versions: UploadVersionList`.
 | SDK | was | now |
 |---|---|---|
 | Go | `UploadVersionListResult.Versions []Upload` | `[]UploadVersion` |
-| TypeScript | `Upload[]` | `UploadVersion[]` |
+| TypeScript | `ListResult<Upload>` | `ListResult<UploadVersion>` |
 | Swift | `ListResult<Upload>` | `ListResult<UploadVersion>` |
-| Kotlin | `ListResult<JsonElement>` | unchanged — bare-array responses were already untyped here |
+| Kotlin | `ListResult<Upload>` | `ListResult<UploadVersion>` |
 | Ruby / Python | parsed body, unchanged at runtime | fields differ, see below |
 
-**This is one of the breaks a compiler will not catch in Ruby and Python**, and
-in Kotlin. Nothing changes in the type; what changes is which keys are actually
-there. Code reading `version["filename"]` was reading a key the server never
-sent and getting nil — it now reads `version["upload"]["filename"]`, and the
-event's own metadata (`action`, `created_at`, `creator`) is available where it
-previously looked like a partly-empty upload.
+The four typed SDKs keep their `ListResult` wrapper, so `.meta.totalCount` and
+the pagination surface are untouched; only the element type changes. Member
+access moves with it — `version.filename` becomes `version.upload?.filename`,
+and the event's own `action`, `createdAt` and `creator` sit alongside.
+
+**In Ruby and Python the compiler will not catch this.** Nothing changes in the
+type; what changes is which keys are actually there. Code reading
+`version["filename"]` was reading a key the server never sent and getting nil —
+it now reads `version["upload"]["filename"]`, and the event's own metadata
+(`action`, `created_at`, `creator`) is available where it previously looked like
+a partly-empty upload.
 
 A version carries `upload` only when its recordable still resolves; a deleted
 file leaves the event behind with no `upload` at all. Check before dereferencing.
@@ -84,7 +89,30 @@ code 10) instead of `api_error`. **If you branch on `api_error` to decide
 whether to back off, a storage-limit failure no longer lands in that branch** —
 which is the point: it was reported as retryable, and no retry can satisfy a
 plan limit. This affects `CreateUpload`, `CreateAttachment`,
-`CreateCampfireUpload` and `CreateUploadVersion`.
+`CreateCampfireUpload` and `CreateUploadVersion`, and — because the mapping is
+by status, not by operation — the project-limit 507 on `CreateProject` and
+`UnarchiveProject` that shipped in v0.13.0 as a retryable `api_error`.
+
+### The new error code is source-breaking in three SDKs
+
+Adding a member to a closed type breaks exhaustive handling, so this is not
+merely behavioural:
+
+| SDK | what changed | how it breaks |
+|---|---|---|
+| TypeScript | `ErrorCode` union gains `"limit_exceeded"` | a `Record<ErrorCode, T>` map, or a `switch` the compiler checks for exhaustiveness, stops compiling until it has a branch |
+| Swift | `BasecampError` gains `case limitExceeded` | a `switch` over the enum without a `default` stops compiling |
+| Kotlin | `BasecampException` gains `LimitExceeded` | a `when` over the sealed class used as an expression stops compiling |
+
+Go and Ruby take a new constant rather than a new variant, and Python a new
+`ErrorCode` member plus a `LimitExceededError` class, so none of the three
+breaks a build — which is exactly why they need reading for: a `case` or `when`
+falling through to a default arm now routes storage and project limits wherever
+that default goes.
+
+Add a `limit_exceeded` branch that surfaces the limit to the user and does not
+retry. This SDK's own Kotlin test suite hit the compile error, which is what the
+exhaustive `when` in `ErrorTest` exists to produce.
 
 ---
 

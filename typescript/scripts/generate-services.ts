@@ -475,6 +475,7 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Vault: ["Vault", "entity"],
   Document: ["Document", "entity"],
   Upload: ["Upload", "entity"],
+  UploadVersion: ["UploadVersion", "entity"],
   CloudFile: ["CloudFile", "entity"],
   GoogleDocument: ["GoogleDocument", "entity"],
   Schedule: ["Schedule", "entity"],

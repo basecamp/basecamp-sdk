@@ -61,7 +61,7 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
      * @param uploadId The upload ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listVersions(uploadId: Long, options: PaginationOptions? = null): ListResult<JsonElement> {
+    suspend fun listVersions(uploadId: Long, options: PaginationOptions? = null): ListResult<UploadVersion> {
         val info = OperationInfo(
             service = "Uploads",
             operation = "ListUploadVersions",
@@ -73,7 +73,7 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
         return requestPaginated(info, options, {
             httpGet("/uploads/${uploadId}/versions.json", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<List<JsonElement>>(body)
+            json.decodeFromString<List<UploadVersion>>(body)
         }
     }
 
