@@ -38,17 +38,22 @@ class AuthorizationServiceTest < Minitest::Test
 
   # --- Happy path: a discovered (same-origin) issuer is used -----------------
 
+  # A discovered issuer serves ITS OWN document, so these two tests are fed
+  # sample_bc5_authorization, not Launchpad's body. A test that proves the SDK
+  # reached bc3's issuer while feeding it Launchpad's payload would pass even if
+  # the SDK could not read a BC5 document at all.
+
   def test_get_authorization_uses_discovered_issuer
     # Resource metadata advertises exactly one non-Launchpad issuer (here the API
     # host itself, so the authorization.json fetch stays same-origin), and its AS
     # metadata binds by code-point.
     stub_resource_metadata(authorization_servers: [ BASE_URL, LAUNCHPAD_URL ])
     stub_as_metadata(BASE_URL)
-    stub_get("/authorization.json", response_body: sample_authorization)
+    stub_get("/authorization.json", response_body: sample_bc5_authorization)
 
     auth = @client.authorization.get
 
-    assert_equal "Test", auth["identity"]["first_name"]
+    assert_equal 1, auth["identity"]["id"]
     assert_not_requested :get, "#{LAUNCHPAD_URL}/authorization.json"
   end
 
@@ -59,14 +64,38 @@ class AuthorizationServiceTest < Minitest::Test
     stub_resource_metadata(authorization_servers: [ BC5_ISSUER, LAUNCHPAD_URL ])
     stub_as_metadata(BC5_ISSUER)
     bc5_auth = stub_request(:get, "#{BC5_ISSUER}/authorization.json")
-      .to_return(status: 200, body: sample_authorization.to_json,
+      .to_return(status: 200, body: sample_bc5_authorization.to_json,
         headers: { "Content-Type" => "application/json" })
 
     auth = @client.authorization.get
 
-    assert_equal "test@example.com", auth["identity"]["email_address"]
+    assert_equal 1, auth["identity"]["id"]
     assert_requested(bc5_auth)
     assert_not_requested :get, "#{LAUNCHPAD_URL}/authorization.json"
+  end
+
+  # The BC5 document survives the round trip intact — including the three fields
+  # Launchpad never sends and the epoch-seconds expires_at. Ruby returns the
+  # parsed Hash verbatim, so what this really pins is that nothing in the fetch
+  # path reshapes, coerces, or drops a field it does not recognise.
+  def test_get_authorization_returns_bc5_document_fields_verbatim
+    stub_resource_metadata(authorization_servers: [ BC5_ISSUER, LAUNCHPAD_URL ])
+    stub_as_metadata(BC5_ISSUER)
+    stub_request(:get, "#{BC5_ISSUER}/authorization.json")
+      .to_return(status: 200, body: sample_bc5_authorization.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    auth = @client.authorization.get
+
+    assert_equal "urn:bc:account:12345", auth["accounts"].first["resource"]
+    assert_equal "read write", auth["scope"]
+    assert_equal 2_085_213_356, auth["expires_at"]
+    # Launchpad-only fields are absent, not empty — a consumer reading
+    # identity.email_address here gets nil, which is what the service's own
+    # @example used to show.
+    assert_nil auth["identity"]["email_address"]
+    assert_nil auth["accounts"].first["product"]
+    assert_nil auth["accounts"].first["app_href"]
   end
 
   # --- Hard failures after BC5 advertisement raise, never hit Launchpad ------

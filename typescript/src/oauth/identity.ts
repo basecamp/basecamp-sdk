@@ -3,34 +3,21 @@
  *
  * Fetches authorization information (identity and accounts) from
  * the Launchpad endpoint without requiring a full client instance.
+ *
+ * The endpoint is fixed to Launchpad here — unlike
+ * {@link ../services/authorization.js | AuthorizationService.getInfo}, which
+ * accepts an `endpoint:` override and so can be pointed at a BC5 issuer. Both
+ * share one mapping regardless; see `./authorization-document.js` for why the two
+ * documents differ and how the shared parser reconciles them.
  */
 
 import { BasecampError } from "../errors.js";
 import type { TokenProvider } from "../client.js";
-import type { AuthorizationInfo } from "../services/authorization.js";
-
-/**
- * Raw authorization response from the Launchpad API.
- */
-interface RawAuthorizationResponse {
-  expires_at: string;
-  identity: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email_address: string;
-  };
-  accounts: Array<{
-    id: number;
-    name: string;
-    product: string;
-    href: string;
-    app_href?: string;
-    hidden?: boolean;
-    expired?: boolean;
-    featured?: boolean;
-  }>;
-}
+import {
+  parseAuthorizationDocument,
+  type AuthorizationInfo,
+  type RawAuthorizationDocument,
+} from "./authorization-document.js";
 
 const AUTHORIZATION_ENDPOINT = "https://launchpad.37signals.com/authorization.json";
 
@@ -82,30 +69,12 @@ export async function discoverIdentity(accessToken: TokenProvider): Promise<Auth
     });
   }
 
-  let raw: RawAuthorizationResponse;
+  let raw: RawAuthorizationDocument;
   try {
-    raw = (await response.json()) as RawAuthorizationResponse;
+    raw = (await response.json()) as RawAuthorizationDocument;
   } catch {
     throw new BasecampError("api_error", "Identity discovery returned invalid JSON");
   }
 
-  return {
-    expiresAt: new Date(raw.expires_at),
-    identity: {
-      id: raw.identity.id,
-      firstName: raw.identity.first_name,
-      lastName: raw.identity.last_name,
-      emailAddress: raw.identity.email_address,
-    },
-    accounts: raw.accounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      product: a.product,
-      href: a.href,
-      appHref: a.app_href ?? "",
-      hidden: a.hidden,
-      expired: a.expired,
-      featured: a.featured,
-    })),
-  };
+  return parseAuthorizationDocument(raw);
 }

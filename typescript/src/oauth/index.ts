@@ -134,3 +134,11 @@ export {
 export {
   discoverIdentity,
 } from "./identity.js";
+
+// The authorization document, shared by discoverIdentity and AuthorizationService
+export {
+  parseAuthorizationDocument,
+  parseExpiresAt,
+  filterAccountsByProduct,
+  type RawAuthorizationDocument,
+} from "./authorization-document.js";
