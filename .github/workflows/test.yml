@@ -893,8 +893,12 @@ jobs:
 
       - name: Check for breaking API changes
         run: |
-          # Store the current commit SHA
-          PR_SHA="${{ github.event.pull_request.head.sha }}"
+          # Store the checked-out commit — the PR-on-base merge, not the branch
+          # head. Restoring head.sha instead left go/ dirty (and failed the
+          # manifest guard) on any PR whose base had since touched go/, which a
+          # dependabot batch makes routine: the first sibling to merge changes
+          # go/go.sum under every other open PR in the group.
+          ORIG_SHA="$(git rev-parse HEAD)"
           BASE_REF="${GITHUB_BASE_REF}"
 
           # Export the current (PR) API
@@ -918,8 +922,8 @@ jobs:
           # Export the base API
           apidiff -w base.api ./pkg/basecamp
 
-          # Restore the PR version using the stored SHA
-          git checkout "${PR_SHA}" -- .
+          # Restore what was checked out, using the stored SHA
+          git checkout "${ORIG_SHA}" -- .
 
           # Compare APIs and report breaking changes
           echo "## API Compatibility Check"
