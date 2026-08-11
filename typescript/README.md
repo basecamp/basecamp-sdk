@@ -6,7 +6,7 @@
 
 Official TypeScript SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.14.0?** Read [MIGRATING.md](../MIGRATING.md) before you bump the version. The compiler catches the `listUploadVersions` retype and any exhaustive handling of the widened `ErrorCode` union; what it will not catch is a non-exhaustive branch on `"api_error"`, which storage, project and webhook limit failures no longer reach — they now report `"limit_exceeded"`. Coming from v0.12.0 or earlier, read v0.13.0's section too.
+**Upgrading to v0.14.0?** Read [MIGRATING.md](../MIGRATING.md) before you bump the version. The compiler catches the `uploads.listVersions` retype and any exhaustive handling of the widened `ErrorCode` union; what it will not catch is a non-exhaustive branch on `"api_error"`, which storage, project and webhook limit failures no longer reach — they now report `"limit_exceeded"`. Coming from v0.12.0 or earlier, read v0.13.0's section too.
 
 ## Features
 

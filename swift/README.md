@@ -6,7 +6,7 @@
 
 Official Swift SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.14.0?** Read [MIGRATING.md](../MIGRATING.md) before you bump the version. The compiler catches the `listUploadVersions` retype and any `switch` over `BasecampError` without a `default` (it gains `case limitExceeded`); what it will not catch is a `switch` **with** a `default`, where storage, project and webhook limit failures — previously a retryable `apiError` — now land silently. Coming from v0.12.0 or earlier, read v0.13.0's section too.
+**Upgrading to v0.14.0?** Read [MIGRATING.md](../MIGRATING.md) before you bump the version. The compiler catches the `listVersions` retype and any `switch` over `BasecampError` without a `default` (it gains `case limitExceeded`); what it will not catch is a `switch` **with** a `default`, where storage, project and webhook limit failures — previously the retryable `case api` — now land silently. Coming from v0.12.0 or earlier, read v0.13.0's section too.
 
 ## Features
 
