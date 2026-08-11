@@ -48,6 +48,7 @@ func (c *Clock) NewTimer(d time.Duration, name string) eventfeed.Timer {
 	t := &fakeTimer{
 		clock:    c,
 		name:     name,
+		delay:    d,
 		deadline: c.now.Add(d),
 		seq:      c.seq,
 		c:        make(chan time.Time, 1),
@@ -94,6 +95,34 @@ func (c *Clock) Advance(d time.Duration) {
 	}
 	c.now = target
 	c.cond.Broadcast()
+}
+
+// FireTimer fires the earliest-due outstanding timer with the given name
+// WITHOUT advancing the clock (deadline ties break by creation order),
+// returning the delay it was armed with — the tier-2 driver's fireTimer
+// directive: jitter is asserted against a {min, max} envelope on the
+// scheduled delay rather than through a cross-language RNG seam. The second
+// return reports whether such a timer existed.
+func (c *Clock) FireTimer(name string) (time.Duration, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var next *fakeTimer
+	for _, t := range c.live {
+		if t.name != name {
+			continue
+		}
+		if next == nil || t.deadline.Before(next.deadline) ||
+			(t.deadline.Equal(next.deadline) && t.seq < next.seq) {
+			next = t
+		}
+	}
+	if next == nil {
+		return 0, false
+	}
+	c.removeLocked(next)
+	next.c <- c.now
+	c.cond.Broadcast()
+	return next.delay, true
 }
 
 // AwaitTimer blocks until a live timer with the given name is outstanding —
@@ -144,6 +173,7 @@ func (c *Clock) removeLocked(t *fakeTimer) {
 type fakeTimer struct {
 	clock    *Clock
 	name     string
+	delay    time.Duration
 	deadline time.Time
 	seq      int
 	c        chan time.Time

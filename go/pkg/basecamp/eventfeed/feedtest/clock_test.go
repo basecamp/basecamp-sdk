@@ -94,6 +94,51 @@ func TestClock_StopRemovesTimerAndSuppressesFiring(t *testing.T) {
 	}
 }
 
+func TestClock_FireTimerFiresNamedTimerWithoutAdvancing(t *testing.T) {
+	c := NewClock()
+	base := c.Now()
+	other := c.NewTimer(5*time.Millisecond, "staleness")
+	later := c.NewTimer(20*time.Millisecond, "backoff")
+	earlier := c.NewTimer(10*time.Millisecond, "backoff")
+
+	d, ok := c.FireTimer("backoff")
+	if !ok {
+		t.Fatal("FireTimer(backoff) = false, want a firing")
+	}
+	if d != 10*time.Millisecond {
+		t.Errorf("FireTimer returned scheduled delay %v, want 10ms (the earliest-due backoff)", d)
+	}
+	select {
+	case <-earlier.C():
+	default:
+		t.Error("the earliest-due backoff timer did not fire")
+	}
+	select {
+	case <-later.C():
+		t.Error("the later backoff timer fired")
+	default:
+	}
+	select {
+	case <-other.C():
+		t.Error("an unrelated timer fired")
+	default:
+	}
+	if got := c.Now(); !got.Equal(base) {
+		t.Errorf("Now() = %v, want %v — FireTimer must not advance the clock", got, base)
+	}
+	if got := c.Outstanding(); len(got) != 2 {
+		t.Errorf("Outstanding() = %v, want the two unfired timers", got)
+	}
+}
+
+func TestClock_FireTimerReportsMissingTimer(t *testing.T) {
+	c := NewClock()
+	c.NewTimer(time.Second, "staleness")
+	if _, ok := c.FireTimer("backoff"); ok {
+		t.Error("FireTimer(backoff) = true with no backoff timer outstanding")
+	}
+}
+
 func TestClock_AwaitTimerRendezvousesWithAnotherGoroutine(t *testing.T) {
 	c := NewClock()
 	armed := make(chan struct{})

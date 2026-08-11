@@ -1,0 +1,791 @@
+package eventfeed
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strconv"
+	"sync"
+	"time"
+)
+
+// The connector run loop (SPEC.md §23 "State Machine"). The whole protocol
+// executes on the consumer's goroutine — ranging Events IS the state machine
+// (design decision 3) — with exactly one auxiliary reader pump per live
+// socket and no mutex-guarded connector state. This slice implements Idle
+// through the confirm/reject/deadline paths (§23 transitions 1–15, the
+// universal Closed edge, and the out-of-inventory usage / mint_failed /
+// invalid_cable_url / buffer_overflow edges); a confirmed subscription hands
+// off to the catch-up walk at the typed catchUpHandoff boundary below, which
+// the catch-up slice implements by replacing (*loop).stubCatchUp.
+
+// connState enumerates SPEC.md §23's 11 states. String renders the tier-2
+// fixture spelling (snake_case).
+type connState int
+
+const (
+	stateIdle connState = iota
+	stateBackoff
+	stateMinting
+	stateConnecting
+	stateAwaitingWelcome
+	stateAwaitingConfirmation
+	stateCatchingUp
+	stateDraining
+	stateStreaming
+	stateTerminal
+	stateClosed
+)
+
+// String renders the fixture spelling of the state.
+func (s connState) String() string {
+	switch s {
+	case stateIdle:
+		return "idle"
+	case stateBackoff:
+		return "backoff"
+	case stateMinting:
+		return "minting"
+	case stateConnecting:
+		return "connecting"
+	case stateAwaitingWelcome:
+		return "awaiting_welcome"
+	case stateAwaitingConfirmation:
+		return "awaiting_confirmation"
+	case stateCatchingUp:
+		return "catching_up"
+	case stateDraining:
+		return "draining"
+	case stateStreaming:
+		return "streaming"
+	case stateTerminal:
+		return "terminal"
+	case stateClosed:
+		return "closed"
+	default:
+		return fmt.Sprintf("connState(%d)", int(s))
+	}
+}
+
+// Timer kinds (SPEC.md §23 "Clock, Timers, and Virtual Time": six kinds,
+// kebab-case; this slice arms the first four — repair-poll and poll-retry
+// arm in the catch-up and reconnect slices).
+const (
+	timerHandshakeDeadline    = "handshake-deadline"
+	timerConfirmationDeadline = "confirmation-deadline"
+	timerBackoff              = "backoff"
+	timerStaleness            = "staleness"
+)
+
+// Disconnect reason literals (class-1 wire literals, SPEC.md §23 "Disconnect
+// Dispatch"). Dispatch is on the reason string, never the reconnect flag
+// alone; `remote` and unrecognized reasons need no literal here — they take
+// the socket-drop default.
+const (
+	disconnectReasonUnauthorized  = "unauthorized"
+	disconnectReasonProtocolFatal = "invalid_event_stream_command"
+)
+
+// errStaleConnection reports a staleness teardown.
+var errStaleConnection = errors.New("event feed connection stale: no inbound frames within the staleness window")
+
+// attempt is one connect cycle's mutable ownership: its cancellation scope
+// (cancelled on teardown, so an in-flight seam call or dial belonging to the
+// attempt returns promptly) and, once dialed, the live connection.
+type attempt struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	lc     *liveConn
+}
+
+// pumpDepth is the frame pump's bounded hand-off queue depth (SPEC.md §23
+// "Cable Protocol Details": bounded, blocking, never dropping — the
+// state-machine-owned live buffer is the only place a frame can ever be
+// dropped).
+const pumpDepth = 256
+
+// pumpItem is one hand-off from the reader pump: a raw frame, or the read
+// error that ended the pump.
+type pumpItem struct {
+	data []byte
+	err  error
+}
+
+// liveConn is one live socket with its reader pump and staleness holder.
+type liveConn struct {
+	conn   CableConn
+	frames chan pumpItem
+	stale  *staleHolder
+}
+
+// newLiveConn arms staleness (socket open) and then starts the pump, in that
+// order, so the timer exists before the first frame can reset it.
+func newLiveConn(ctx context.Context, conn CableConn, clock Clock, staleAfter time.Duration) *liveConn {
+	lc := &liveConn{
+		conn:   conn,
+		frames: make(chan pumpItem, pumpDepth),
+		stale:  newStaleHolder(clock, staleAfter),
+	}
+	go lc.pump(ctx)
+	return lc
+}
+
+// pump reads frames and hands them to the state machine over the bounded
+// queue. The staleness reset happens HERE, at frame receipt — pump-side, so
+// frame-vs-deadline ordering is defined at the transport boundary regardless
+// of queue depth or consumer latency (SPEC.md §23 "Cable Protocol Details").
+// The pump exits by sending the terminating read error (unless the attempt
+// was already cancelled) and closing the channel; the closed channel is the
+// join signal disposal drains to.
+func (lc *liveConn) pump(ctx context.Context) {
+	defer close(lc.frames)
+	for {
+		data, err := lc.conn.ReadFrame(ctx)
+		if err != nil {
+			select {
+			case lc.frames <- pumpItem{err: err}:
+			case <-ctx.Done():
+			}
+			return
+		}
+		lc.stale.reset()
+		select {
+		case lc.frames <- pumpItem{data: data}:
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// dispose tears the live connection down: cancels the pump (and the
+// attempt's in-flight work — same context), closes the socket, joins the
+// pump, and stops the staleness timer.
+func (lc *liveConn) dispose(cancel context.CancelFunc) {
+	cancel()
+	_ = lc.conn.Close(closeCodeNormal, "")
+	for range lc.frames { //nolint:revive // draining to the pump's close is the join
+	}
+	lc.stale.stop()
+}
+
+// staleHolder owns the per-socket staleness timer: armed at socket open,
+// re-armed by the pump on every inbound frame of any kind. Because the pump
+// swaps timers concurrently with the state machine's select, firings carry a
+// generation: a firing whose generation is no longer current was superseded
+// by a frame the pump received first, and is disregarded. (The full-queue
+// evaluation-suspension rule — a firing whose window the pump spent blocked
+// on the hand-off queue is disregarded and re-armed — lands with the
+// streaming slice, the first state that can sustain a full queue.)
+type staleHolder struct {
+	mu      sync.Mutex
+	clock   Clock
+	d       time.Duration
+	timer   Timer
+	gen     int
+	last    time.Time // last frame receipt (or arm); Now readings, deltas only
+	stopped bool
+}
+
+func newStaleHolder(clock Clock, d time.Duration) *staleHolder {
+	return &staleHolder{
+		clock: clock,
+		d:     d,
+		timer: clock.NewTimer(d, timerStaleness),
+		last:  clock.Now(),
+	}
+}
+
+// current returns the armed timer and its generation for one select pass.
+func (h *staleHolder) current() (Timer, int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.timer, h.gen
+}
+
+// reset re-arms the timer — pump-side, per inbound frame.
+func (h *staleHolder) reset() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.stopped {
+		return
+	}
+	h.timer.Stop()
+	h.timer = h.clock.NewTimer(h.d, timerStaleness)
+	h.gen++
+	h.last = h.clock.Now()
+}
+
+// authoritative reports whether a firing observed at generation gen still
+// stands, returning the age of the silence when it does.
+func (h *staleHolder) authoritative(gen int) (time.Duration, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.stopped || gen != h.gen {
+		return 0, false
+	}
+	return h.clock.Now().Sub(h.last), true
+}
+
+// stop cancels the timer permanently.
+func (h *staleHolder) stop() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.stopped = true
+	h.timer.Stop()
+}
+
+// liveBuffer is the state-machine-owned live-event buffer (SPEC.md §23
+// "Semantic Signals"): only event-bearing frames are admitted, so it is
+// denominated in events and every dropped entry has an id.
+type liveBuffer struct {
+	capacity int
+	events   []Event
+}
+
+func newLiveBuffer(capacity int) *liveBuffer { return &liveBuffer{capacity: capacity} }
+
+// add admits ev, returning the ids of any events dropped to make room —
+// oldest first.
+func (b *liveBuffer) add(ev Event) []int64 {
+	var dropped []int64
+	for len(b.events) >= b.capacity {
+		dropped = append(dropped, b.events[0].ID)
+		b.events = b.events[1:]
+	}
+	b.events = append(b.events, ev)
+	return dropped
+}
+
+// catchUpHandoff is the typed boundary between the subscription lifecycle
+// (this slice) and the catch-up walk (SPEC.md §23 transitions 16–26): it
+// carries everything a freshly confirmed subscription owns. The catch-up
+// slice implements the walk by replacing (*loop).stubCatchUp on
+// loop.catchUp; the lifecycle side never changes shape for it.
+type catchUpHandoff struct {
+	// at is the live attempt: its cancellation scope, the open socket, the
+	// running frame pump, and the armed staleness holder.
+	at *attempt
+	// entry is the selected entry cursor for the catch-up walk.
+	entry Cursor
+	// presentClass reports whether entry resolves at the server's present
+	// head — the Entry Boundary's hold-then-save discipline applies — rather
+	// than in served history (per-page saves).
+	presentClass bool
+	// buffer holds live events admitted before confirmation; its pre-cut
+	// contents become the entry snapshot.
+	buffer *liveBuffer
+}
+
+// cycleOutcome is what one connect cycle (or the catch-up continuation)
+// reports back to the outer run loop.
+type cycleOutcome struct {
+	kind outcomeKind
+	// retryAfter floors the next Backoff delay (server-directed; cap-exempt).
+	retryAfter time.Duration
+	// term is the terminal error element (outcomeTerminal only).
+	term *TerminalError
+}
+
+type outcomeKind int
+
+const (
+	// outcomeFailed — a continuable failure: the attempt is already disposed
+	// and the loop enters Backoff (transitions 4/7/9/14/15).
+	outcomeFailed outcomeKind = iota + 1
+	// outcomeTerminal — the feed ends with exactly one typed error element.
+	outcomeTerminal
+	// outcomeClosed — close()/cancellation: the universal edge to Closed, no
+	// error element.
+	outcomeClosed
+)
+
+// loop is one Events consumption's state machine. It runs entirely on the
+// consumer's goroutine.
+type loop struct {
+	cfg    *config
+	hooks  testHooks
+	runCtx context.Context
+	yield  func(Event, error) bool
+
+	state connState
+	// failedCycles is the reconnect-cycle failure count n — incremented per
+	// failed cycle, reset on confirmation (transition 11 resets only this).
+	failedCycles int
+	// authFailures is the shared connection-level authorization counter:
+	// unauthorized mints, `unauthorized` disconnects, and unauthorized polls
+	// increment it; it resets ONLY on a successful poll page (the catch-up
+	// slice) — never on confirmation.
+	authFailures int
+
+	identifier     string
+	subscribeFrame []byte
+	buffer         *liveBuffer
+
+	// catchUp is the post-confirmation continuation — the catch-up slice's
+	// seam. Defaults to stubCatchUp.
+	catchUp func(catchUpHandoff) cycleOutcome
+}
+
+func newLoop(runCtx context.Context, cfg *config, hooks testHooks) *loop {
+	l := &loop{
+		cfg:    cfg,
+		hooks:  hooks,
+		runCtx: runCtx,
+		state:  stateIdle,
+		buffer: newLiveBuffer(cfg.liveBufferCapacity),
+	}
+	// Built once; identical bytes on every (re)connection and retransmit.
+	l.identifier = subscribeIdentifier(cfg.filters)
+	l.subscribeFrame = subscribeCommand(l.identifier)
+	l.catchUp = l.stubCatchUp
+	return l
+}
+
+func (l *loop) setState(s connState) {
+	l.state = s
+	if l.hooks.stateChanged != nil {
+		l.hooks.stateChanged(s)
+	}
+}
+
+// run executes the state machine. Transition 1: the first cycle is
+// immediate — no backoff. Terminal outcomes yield exactly one error element;
+// the universal Closed edge yields none.
+func (l *loop) run(yield func(Event, error) bool) {
+	l.yield = yield
+	var delay time.Duration
+	for {
+		out := l.runCycle(delay)
+		switch out.kind {
+		case outcomeClosed:
+			l.setState(stateClosed)
+			return
+		case outcomeTerminal:
+			l.setState(stateTerminal)
+			l.yield(Event{}, out.term)
+			return
+		case outcomeFailed:
+			// The failed attempt is fully disposed, so the exact
+			// outstanding-timer set on entry to Backoff is {backoff}.
+			l.failedCycles++
+			l.setState(stateBackoff)
+			d := reconnectDelay(out.retryAfter, l.failedCycles, l.cfg.rand)
+			t := l.cfg.clock.NewTimer(d, timerBackoff)
+			select {
+			case <-t.C():
+				// Transition 2: Backoff → Minting; a fresh ticket is ALWAYS
+				// minted next.
+				delay = d
+			case <-l.runCtx.Done():
+				t.Stop()
+				l.setState(stateClosed)
+				return
+			}
+		}
+	}
+}
+
+// runCycle runs one pass Minting → Connecting → AwaitingWelcome →
+// AwaitingConfirmation, continuing into the catch-up handoff on
+// confirmation. Every exit path has disposed the attempt (socket closed,
+// pump joined, timers stopped) before returning — except the confirmed
+// handoff, which transfers ownership to the catch-up continuation.
+func (l *loop) runCycle(delay time.Duration) cycleOutcome {
+	at := &attempt{}
+	at.ctx, at.cancel = context.WithCancel(l.runCtx)
+	defer at.cancel()
+
+	// Transitions 1/2 → Minting. No timers are armed here (per-state
+	// invariant: Minting's set is {}); mint cancellation rides the attempt
+	// context.
+	l.setState(stateMinting)
+	if l.cfg.observer.Connecting != nil {
+		l.cfg.observer.Connecting(l.failedCycles+1, delay)
+	}
+	ticket, err := l.cfg.minter.MintStreamTicket(at.ctx)
+	if l.runCtx.Err() != nil {
+		return cycleOutcome{kind: outcomeClosed}
+	}
+	if err != nil {
+		return l.classifyMintFailure(err)
+	}
+
+	// Transition 3 → Connecting: dial the mint's url verbatim. The cable-URL
+	// policy pre-check runs before anything is armed — a policy violation
+	// recurs on every re-mint, so it is Terminal(invalid_cable_url), never
+	// Backoff. The error never carries the URL: the ticket rides in its
+	// query string.
+	l.setState(stateConnecting)
+	if derr := checkCableURL(ticket.URL); derr != nil {
+		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			Reason: ReasonInvalidCableURL, Msg: derr.Reason, Err: derr,
+		}}
+	}
+	// The handshake deadline arms on entry to Connecting, BEFORE dial — it
+	// spans dial-to-welcome, so a stalled dial expires it (transition 7).
+	hs := l.cfg.clock.NewTimer(handshakeDeadline, timerHandshakeDeadline)
+	type dialResult struct {
+		conn CableConn
+		err  error
+	}
+	dialCh := make(chan dialResult, 1)
+	go func() {
+		conn, dialErr := l.cfg.transport.Dial(at.ctx, ticket.URL, maxFrameBytes)
+		dialCh <- dialResult{conn: conn, err: dialErr}
+	}()
+	var conn CableConn
+	select {
+	case r := <-dialCh:
+		if l.runCtx.Err() != nil {
+			hs.Stop()
+			if r.conn != nil {
+				_ = r.conn.Close(closeCodeNormal, "")
+			}
+			return cycleOutcome{kind: outcomeClosed}
+		}
+		if r.err != nil {
+			hs.Stop()
+			var derr *DialError
+			if errors.As(r.err, &derr) && derr.Kind == DialPolicy {
+				return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+					Reason: ReasonInvalidCableURL, Msg: derr.Reason, Err: derr,
+				}}
+			}
+			return cycleOutcome{kind: outcomeFailed} // transition 7
+		}
+		conn = r.conn
+	case <-hs.C():
+		// Transition 7: the deadline expired mid-dial — cancel the pending
+		// dial (the seam contract requires a prompt return) and dispose any
+		// connection it raced to open.
+		at.cancel()
+		if r := <-dialCh; r.conn != nil {
+			_ = r.conn.Close(closeCodeNormal, "")
+		}
+		return cycleOutcome{kind: outcomeFailed}
+	case <-l.runCtx.Done():
+		at.cancel()
+		if r := <-dialCh; r.conn != nil {
+			_ = r.conn.Close(closeCodeNormal, "")
+		}
+		hs.Stop()
+		return cycleOutcome{kind: outcomeClosed}
+	}
+
+	// Transition 6 → AwaitingWelcome: staleness arms at socket open, the
+	// pump starts, and the handshake deadline keeps running to `welcome`.
+	if l.cfg.observer.Connected != nil {
+		l.cfg.observer.Connected()
+	}
+	at.lc = newLiveConn(at.ctx, conn, l.cfg.clock, l.cfg.staleAfter)
+	return l.awaitConfirmation(at, hs)
+}
+
+// classifyMintFailure maps a failed mint seam call onto transitions 4/5 or
+// the out-of-inventory mint_failed edge. An error the adapter did not
+// classify (not a *MintError) is treated as unrecoverable: the seam contract
+// maps every generated outcome onto exactly one kind, and retrying an
+// unclassifiable failure risks a tight loop on a permanent condition.
+func (l *loop) classifyMintFailure(err error) cycleOutcome {
+	var me *MintError
+	if !errors.As(err, &me) {
+		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			Reason: ReasonMintFailed, Msg: "unclassified mint failure", Err: err,
+		}}
+	}
+	switch me.Kind {
+	case MintTransient:
+		return cycleOutcome{kind: outcomeFailed} // transition 4
+	case MintThrottled:
+		// Transition 4; Retry-After floors the next Backoff delay.
+		return cycleOutcome{kind: outcomeFailed, retryAfter: me.RetryAfter}
+	case MintUnauthorized:
+		// Transition 4 below the threshold; transition 5 — the shared
+		// connection-level counter's terminal — at the 3rd consecutive.
+		l.authFailures++
+		if l.authFailures >= authFailureThreshold {
+			return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+				Reason: ReasonAuthorizationFailed,
+				Msg:    fmt.Sprintf("%d consecutive connection-level authorization failures", l.authFailures),
+				Err:    err,
+			}}
+		}
+		return cycleOutcome{kind: outcomeFailed, retryAfter: me.RetryAfter}
+	case MintUnrecoverable:
+		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{Reason: ReasonMintFailed, Err: err}}
+	default:
+		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			Reason: ReasonMintFailed, Msg: fmt.Sprintf("unknown mint error kind %d", int(me.Kind)), Err: err,
+		}}
+	}
+}
+
+// awaitConfirmation drives AwaitingWelcome and AwaitingConfirmation
+// (transitions 8–15 plus the state-generic protocol-fatal and invalid-frame
+// dispatch). deadline is the running handshake-deadline on entry; `welcome`
+// re-arms it as the confirmation-deadline (transition 8).
+func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
+	l.setState(stateAwaitingWelcome)
+	for {
+		staleTimer, staleGen := at.lc.stale.current()
+		select {
+		case <-l.runCtx.Done():
+			l.disposeAttempt(at, deadline)
+			return cycleOutcome{kind: outcomeClosed}
+		case <-deadline.C():
+			// Transition 9 (handshake lapse) or 14 (confirmation lapse):
+			// full teardown — conn, pump, and ALL the attempt's timers —
+			// then a jittered fresh-ticket retry.
+			lapsed := errDeadlineLapsed(l.state)
+			l.disposeAttempt(at, nil)
+			l.observeDisconnected("", lapsed)
+			return cycleOutcome{kind: outcomeFailed}
+		case <-staleTimer.C():
+			age, ok := at.lc.stale.authoritative(staleGen)
+			if !ok {
+				continue // superseded by a frame the pump received first
+			}
+			// Staleness expiry — rows 9/15's staleness trigger.
+			l.disposeAttempt(at, deadline)
+			if l.cfg.observer.StaleConnection != nil {
+				l.cfg.observer.StaleConnection(age)
+			}
+			l.observeDisconnected("", errStaleConnection)
+			return cycleOutcome{kind: outcomeFailed}
+		case item, ok := <-at.lc.frames:
+			if !ok {
+				// The pump exited without a terminating error — only
+				// possible under a cancellation race; treat as a socket
+				// failure.
+				l.disposeAttempt(at, deadline)
+				l.observeDisconnected("", errors.New("event feed frame pump exited"))
+				return cycleOutcome{kind: outcomeFailed}
+			}
+			if out, done := l.handleFrame(at, &deadline, item); done {
+				return out
+			}
+		}
+	}
+}
+
+// errDeadlineLapsed names the deadline that lapsed in the given state.
+func errDeadlineLapsed(s connState) error {
+	if s == stateAwaitingWelcome {
+		return errors.New("event feed handshake deadline lapsed before welcome")
+	}
+	return errors.New("event feed confirmation deadline lapsed before confirm_subscription")
+}
+
+// handleFrame dispatches one pump item in AwaitingWelcome /
+// AwaitingConfirmation. It returns done=true when the cycle is over —
+// including the confirmed handoff's own outcome flowing back through it.
+func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOutcome, bool) {
+	if item.err != nil {
+		// Socket failure: peer close, read error, or the transport's
+		// frame-size rejection (rows 9/15).
+		l.disposeAttempt(at, *deadline)
+		l.observeDisconnected("", item.err)
+		return cycleOutcome{kind: outcomeFailed}, true
+	}
+	f, err := parseFrame(item.data)
+	if err != nil {
+		// Invalid-frame class, parse shape: a peer protocol violation
+		// dispatched as a socket failure — never terminal, never a silent
+		// skip (SPEC.md §23 "Cable Protocol Details").
+		l.disposeAttempt(at, *deadline)
+		l.observeDisconnected("", err)
+		return cycleOutcome{kind: outcomeFailed}, true
+	}
+	if l.hooks.frameHandled != nil {
+		l.hooks.frameHandled(f.kind)
+	}
+	switch f.kind {
+	case frameWelcome:
+		// Transition 8 on the first welcome; a duplicate welcome resends
+		// the identical subscribe bytes (stock behavior — the server
+		// absorbs identical retransmits) without touching the deadline.
+		if werr := at.lc.conn.WriteFrame(at.ctx, l.subscribeFrame); werr != nil {
+			l.disposeAttempt(at, *deadline)
+			l.observeDisconnected("", werr)
+			return cycleOutcome{kind: outcomeFailed}, true
+		}
+		if l.state == stateAwaitingWelcome {
+			(*deadline).Stop()
+			*deadline = l.cfg.clock.NewTimer(l.cfg.confirmationDeadline, timerConfirmationDeadline)
+			l.setState(stateAwaitingConfirmation)
+		}
+		return cycleOutcome{}, false
+	case framePing, frameUnknown:
+		// Liveness only — the pump already reset staleness.
+		return cycleOutcome{}, false
+	case frameConfirm:
+		if l.state != stateAwaitingConfirmation || f.identifier != l.identifier {
+			// Pre-subscribe, or a foreign identifier: ignored.
+			return cycleOutcome{}, false
+		}
+		// Transition 11: cancel the deadline, reset the attempt counter
+		// (the authorization counter resets only on a successful poll
+		// page), select the entry cursor, hand off to catch-up.
+		(*deadline).Stop()
+		l.failedCycles = 0
+		if l.cfg.observer.Confirmed != nil {
+			l.cfg.observer.Confirmed()
+		}
+		entry, present := l.entryCursor()
+		return l.catchUp(catchUpHandoff{at: at, entry: entry, presentClass: present, buffer: l.buffer}), true
+	case frameReject:
+		if f.identifier != l.identifier {
+			return cycleOutcome{}, false
+		}
+		// Transition 12: always terminal — cancel the deadline, explicitly
+		// close the still-open socket (Action Cable leaves a rejected
+		// socket open), ZERO reconnects.
+		l.disposeAttempt(at, *deadline)
+		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			Reason: ReasonSubscriptionRejected,
+			Msg:    "the server rejected the EventsChannel subscription",
+		}}, true
+	case frameDisconnect:
+		return l.dispatchDisconnect(at, *deadline, f), true
+	case frameMessage:
+		if f.identifier != l.identifier {
+			return cycleOutcome{}, false
+		}
+		ev, derr := decodeMessageEvent(f.message)
+		if derr != nil {
+			// Invalid-frame class, decode shape: same socket-failure
+			// disposition as the parse shape.
+			l.disposeAttempt(at, *deadline)
+			l.observeDisconnected("", derr)
+			return cycleOutcome{kind: outcomeFailed}, true
+		}
+		return l.admitLive(at, *deadline, ev)
+	}
+	return cycleOutcome{}, false
+}
+
+// dispatchDisconnect applies §23's reason-string dispatch — never the
+// reconnect flag alone — to a raw disconnect text frame read pre-confirm.
+// The attempt is disposed first either way: a disconnect frame is the
+// server's last word on this socket.
+func (l *loop) dispatchDisconnect(at *attempt, deadline Timer, f frame) cycleOutcome {
+	preWelcome := l.state == stateAwaitingWelcome
+	l.disposeAttempt(at, deadline)
+	l.observeDisconnected(f.reason, nil)
+	switch f.reason {
+	case disconnectReasonProtocolFatal:
+		// Transition 13 — and the state-generic rule for AwaitingWelcome:
+		// the server's own protocol verdict is terminal from every
+		// socket-open state, never retried into.
+		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			Reason: ReasonProtocolFatal,
+			Msg:    "server disconnected: " + f.reason,
+		}}
+	case disconnectReasonUnauthorized:
+		if preWelcome {
+			// Rows 9/10: `unauthorized` arrives only pre-welcome at the
+			// verified head — a fresh-ticket retry below the shared
+			// counter's threshold, terminal at the 3rd consecutive.
+			l.authFailures++
+			if l.authFailures >= authFailureThreshold {
+				return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+					Reason: ReasonAuthorizationFailed,
+					Msg:    fmt.Sprintf("%d consecutive connection-level authorization failures", l.authFailures),
+				}}
+			}
+			return cycleOutcome{kind: outcomeFailed}
+		}
+		// Wire-impossible post-welcome: a socket drop (row 15) with NO
+		// counter increment — the reconnect cycle re-mints, and a genuinely
+		// revoked user's mint then fails and increments the counter.
+		return cycleOutcome{kind: outcomeFailed}
+	default:
+		// `remote`, unrecognized reasons, and any reconnect flag: a socket
+		// drop (rows 9/15). Unknown reasons are never guessed into a
+		// terminal class and never increment the authorization counter.
+		return cycleOutcome{kind: outcomeFailed}
+	}
+}
+
+// admitLive admits a pre-confirmation live event to the buffer — the live
+// buffer is the only carrier of an in-flight-at-entry straggler — and
+// dispatches the BufferOverflow semantic signal at drop time, the first
+// consumer-context opportunity (SPEC.md §23 "Semantic Signals").
+func (l *loop) admitLive(at *attempt, deadline Timer, ev Event) (cycleOutcome, bool) {
+	dropped := l.buffer.add(ev)
+	if len(dropped) == 0 {
+		return cycleOutcome{}, false
+	}
+	if l.cfg.observer.BufferOverflow != nil {
+		l.cfg.observer.BufferOverflow(len(dropped))
+	}
+	if l.cfg.handler != nil && l.cfg.handler(BufferOverflow{DroppedIDs: dropped, DroppedCount: len(dropped)}) == Accept {
+		// Accept: the consumer owns the acknowledged incompleteness; the
+		// feed continues (acceptance is not license to skip retained
+		// deliveries — the catch-up slice's save-ordering invariant).
+		return cycleOutcome{}, false
+	}
+	// No handler — or Terminate: Terminal(buffer_overflow), no save.
+	l.disposeAttempt(at, deadline)
+	return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+		Reason: ReasonBufferOverflow,
+		Msg:    fmt.Sprintf("live buffer overflow: %d event(s) dropped", len(dropped)),
+	}}, true
+}
+
+// entryCursor selects the catch-up entry cursor per the configured Start
+// mode, and whether it is present-class (SPEC.md §23 "Entry Boundary").
+// StartResume resolves through CheckpointStore.load — load-before-first-mint
+// — when the catch-up slice lands alongside the connector's position
+// tracking; until then resume without a stored position is the bare present
+// entry.
+func (l *loop) entryCursor() (Cursor, bool) {
+	switch l.cfg.start.kind {
+	case startPresent:
+		return Cursor{Since: "now"}, true
+	case startBeginning:
+		return Cursor{Since: "0"}, false
+	case startAfter:
+		return Cursor{Since: strconv.FormatInt(l.cfg.start.eventID, 10)}, false
+	case startAtPosition:
+		return Cursor{Position: l.cfg.start.position}, false
+	default: // startResume
+		return Cursor{}, true
+	}
+}
+
+// disposeAttempt tears one attempt down: stops the phase deadline (nil when
+// it already fired), cancels the attempt context — which also cancels any
+// in-flight seam call or write belonging to it — closes the connection,
+// joins the pump, and stops the staleness timer. The next state is entered
+// with the attempt's timer set empty.
+func (l *loop) disposeAttempt(at *attempt, deadline Timer) {
+	if deadline != nil {
+		deadline.Stop()
+	}
+	if at.lc != nil {
+		at.lc.dispose(at.cancel)
+	} else {
+		at.cancel()
+	}
+}
+
+func (l *loop) observeDisconnected(reason string, err error) {
+	if l.cfg.observer.Disconnected != nil {
+		l.cfg.observer.Disconnected(reason, err)
+	}
+}
+
+// stubCatchUp is this slice's stand-in for the catch-up walk: it parks the
+// confirmed subscription at the boundary until close()/cancellation, then
+// disposes the attempt and takes the universal Closed edge. The catch-up
+// slice replaces it wholesale.
+func (l *loop) stubCatchUp(h catchUpHandoff) cycleOutcome {
+	l.setState(stateCatchingUp)
+	if l.hooks.catchUpEntered != nil {
+		l.hooks.catchUpEntered(h)
+	}
+	<-l.runCtx.Done()
+	l.disposeAttempt(h.at, nil)
+	return cycleOutcome{kind: outcomeClosed}
+}
