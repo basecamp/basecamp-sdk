@@ -6,7 +6,7 @@
 
 Official Go SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#go) before you bump the version — Go carries sixteen breaks your compiler will not catch — twelve that give no signal at all, and four that compile and then panic only when the server omits a field.
+**Upgrading to v0.14.0?** Read [MIGRATING.md](../MIGRATING.md) before you bump the version. The compiler catches the type changes — `ListVersions` elements became `UploadVersion`, and `UpdateUploadRequest.Description` became `*string` — but not the reroute: every 507 now reports `limit_exceeded` instead of a retryable `api_error`, so a `case` falling through to a default arm sends storage, project and webhook limits wherever that default goes. Coming from v0.12.0 or earlier, read v0.13.0's section too.
 
 ## Features
 

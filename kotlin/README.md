@@ -6,7 +6,7 @@
 
 Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#kotlin) before you bump the version — Kotlin carries seven breaks your compiler will not catch — six that give no signal at all, and one that throws only when the field is present and carries a JSON number or boolean where the model declares a string.
+**Upgrading to v0.14.0?** Read [MIGRATING.md](../MIGRATING.md) before you bump the version. The compiler catches the `listUploadVersions` retype and any exhaustive `when` over `BasecampException` (it gains `LimitExceeded`); what it will not catch is a `when` with an `else` arm, where storage, project and webhook limit failures — previously a retryable `ApiError` — now land silently. Coming from v0.12.0 or earlier, read v0.13.0's section too.
 
 ## Features
 

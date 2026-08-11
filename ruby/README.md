@@ -2,7 +2,7 @@
 
 Official Ruby SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#ruby) before you bump the version — Ruby carries eleven breaks nothing catches at load time — ten with no signal at all, and one that raises only on a record where the field is populated.
+**Upgrading to v0.14.0?** Read [MIGRATING.md](../MIGRATING.md) before you bump the version — nothing catches either break at load time. `list_upload_versions` entries now carry the version event's keys, with the file nested under `"upload"` — code reading `version["filename"]` was getting nil and now has a real place to look — and every 507 reports `limit_exceeded` instead of a retryable `api_error`, so a `when` falling through to an else arm reroutes storage, project and webhook limits silently. Coming from v0.12.0 or earlier, read v0.13.0's section too.
 
 ## Requirements
 

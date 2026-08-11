@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.14.0
 
 Breaking in Go and in the shape every SDK decodes from
 `GET /uploads/{id}/versions.json`.
