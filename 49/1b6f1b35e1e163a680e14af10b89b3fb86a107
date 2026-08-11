@@ -1,0 +1,21 @@
+MIGRATING.md
+  s_0e78c6630b4ac4::t_351ee702b5e49c 147-193
+spec/api-gaps/bc5-authorization-document-shape.md
+  s_0e78c6630b4ac4::t_7977c71667f5f7 203-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "491b6f1b35e1e163a680e14af10b89b3fb86a107",
+  "prompts": {},
+  "sessions": {
+    "s_0e78c6630b4ac4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23a29ef5-f8f1-48fc-80f2-0ef9d7827559",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
