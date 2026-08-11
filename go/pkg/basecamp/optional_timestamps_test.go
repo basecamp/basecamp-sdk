@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // Optional timestamps on the hand-written wrapper surface must be *time.Time.
@@ -244,26 +245,19 @@ func TestNilOptionalTimestampPanicsOnValueReceiverCall(t *testing.T) {
 // guard stays: it catches an inert `,omitempty` on a wrapper struct that has no
 // generated counterpart at all, which the cross-reference cannot see.
 func TestNoValueTypedOptionalTimestamps(t *testing.T) {
-	entries, err := os.ReadDir(".")
-	if err != nil {
-		t.Fatalf("read package dir: %v", err)
-	}
+	wrappers := timeWrapperNames(t,
+		parseGoFiles(t, packageGoFiles(t, ".")),
+		parseGoFiles(t, packageGoFiles(t, filepath.Join("..", "types"))))
 
 	fset := token.NewFileSet()
-	var files []*ast.File
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		f, err := parser.ParseFile(fset, filepath.Join(".", name), nil, 0)
+	paths := packageGoFiles(t, ".")
+	files := make([]*ast.File, 0, len(paths))
+	for _, path := range paths {
+		f, err := parser.ParseFile(fset, path, nil, 0)
 		if err != nil {
-			t.Fatalf("parse %s: %v", name, err)
+			t.Fatalf("parse %s: %v", path, err)
 		}
 		files = append(files, f)
-	}
-	if len(files) == 0 {
-		t.Fatal("parsed zero non-test .go files — the guard is scanning the wrong directory")
 	}
 
 	var (
@@ -277,7 +271,7 @@ func TestNoValueTypedOptionalTimestamps(t *testing.T) {
 				return true
 			}
 			for _, f := range st.Fields.List {
-				if !isValueTime(f.Type) {
+				if !isTimeLike(f.Type, wrappers) {
 					continue
 				}
 				scanned++
@@ -293,7 +287,7 @@ func TestNoValueTypedOptionalTimestamps(t *testing.T) {
 					continue
 				}
 				violations = append(violations,
-					fmt.Sprintf("%s: %s time.Time `%s`", fset.Position(f.Pos()), fieldNames(f), tag))
+					fmt.Sprintf("%s: %s %s `%s`", fset.Position(f.Pos()), fieldNames(f), timeTypeName(f.Type), tag))
 			}
 			return true
 		})
@@ -309,7 +303,8 @@ func TestNoValueTypedOptionalTimestamps(t *testing.T) {
 	sort.Strings(violations)
 	for _, v := range violations {
 		t.Errorf("optional timestamp is value-typed and cannot represent absence "+
-			"(`,omitempty` is inert for a struct, so the key is emitted as 0001-01-01T00:00:00Z): %s", v)
+			"(`,omitempty` is inert for a struct, so the key is emitted on every re-marshal — "+
+			"as a fabricated 0001-01-01T00:00:00Z for time.Time, or at best null for a named wrapper): %s", v)
 	}
 }
 
@@ -321,11 +316,12 @@ type timestampField struct {
 	file    string
 }
 
-// collectTimestampFields keys every time.Time / *time.Time struct field by
-// (struct name, json key). The json key is the pairing axis rather than the Go
-// field name: the wrapper renames fields (Id → ID) but the wire key is the
-// thing both sides must agree about.
-func collectTimestampFields(t *testing.T, files map[string]*ast.File) map[[2]string]timestampField {
+// collectTimestampFields keys every timestamp-typed struct field by
+// (struct name, json key) — time.Time and the named time wrappers (FlexTime,
+// types.FlexibleTime, types.Date), in both value and pointer form. The json
+// key is the pairing axis rather than the Go field name: the wrapper renames
+// fields (Id → ID) but the wire key is the thing both sides must agree about.
+func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers map[string]bool) map[[2]string]timestampField {
 	t.Helper()
 	out := map[[2]string]timestampField{}
 	for path, file := range files {
@@ -342,9 +338,9 @@ func collectTimestampFields(t *testing.T, files map[string]*ast.File) map[[2]str
 				if f.Tag == nil || len(f.Names) == 0 {
 					continue
 				}
-				value := isValueTime(f.Type)
+				value := isTimeLike(f.Type, wrappers)
 				star, isStar := f.Type.(*ast.StarExpr)
-				pointer := isStar && isValueTime(star.X)
+				pointer := isStar && isTimeLike(star.X, wrappers)
 				if !value && !pointer {
 					continue
 				}
@@ -407,6 +403,14 @@ func parseGoFiles(t *testing.T, paths []string) map[string]*ast.File {
 // So the pairing here is by struct name + json key, which is blind to the
 // converter tiers and therefore covers all of them.
 //
+// Both this guard and TestNoValueTypedOptionalTimestamps originally keyed on
+// the literal `time.Time` selector, so the named time wrappers (FlexTime,
+// types.FlexibleTime, types.Date) were invisible to them — which is how
+// TimelineEventData.StartsAt/EndsAt sat value-typed against a pointer-typed
+// generated counterpart with neither guard able to see it (#662). The
+// predicate is now isTimeLike, which resolves the wrappers by final type name
+// on both sides of the pairing.
+//
 // Scoped to timestamps deliberately. The wrapper flattens optional
 // *string/*bool/*int to value types on purpose; a nil-capability rule applied
 // broadly reports ~345 intentional fields. Timestamps are the principled
@@ -426,10 +430,14 @@ func TestNoWrapperTimestampNarrowerThanGenerated(t *testing.T) {
 		wrapperPaths = append(wrapperPaths, name)
 	}
 
-	wrapper := collectTimestampFields(t, parseGoFiles(t, wrapperPaths))
+	wrapperFiles := parseGoFiles(t, wrapperPaths)
+	wrappers := timeWrapperNames(t, wrapperFiles,
+		parseGoFiles(t, packageGoFiles(t, filepath.Join("..", "types"))))
+
+	wrapper := collectTimestampFields(t, wrapperFiles, wrappers)
 	gen := collectTimestampFields(t, parseGoFiles(t, []string{
 		filepath.Join("..", "generated", "client.gen.go"),
-	}))
+	}), wrappers)
 
 	if len(wrapper) == 0 || len(gen) == 0 {
 		t.Fatalf("collected %d wrapper and %d generated timestamp fields — the walk is broken, not the surface",
@@ -450,7 +458,7 @@ func TestNoWrapperTimestampNarrowerThanGenerated(t *testing.T) {
 			continue
 		}
 		violations = append(violations, fmt.Sprintf(
-			"%s.%s (json:%q, %s) is time.Time but generated.%s.%s is *time.Time",
+			"%s.%s (json:%q, %s) is value-typed but generated.%s.%s is a pointer",
 			key[0], w.field, key[1], w.file, key[0], g.field))
 	}
 
@@ -467,6 +475,54 @@ func TestNoWrapperTimestampNarrowerThanGenerated(t *testing.T) {
 	}
 }
 
+// TestNamedTimeWrappersMarshalZeroAsNull is the behavioral root guard for the
+// class #662 named. AuthorizationInfo.ExpiresAt is exactly the field the two
+// AST guards above can never reach — it has no generated counterpart to pair
+// with and a bare `json:"expires_at"` tag, so it is structurally invisible to
+// both, widened or not. What actually protects it, and every future field like
+// it, is the wrappers' own marshaling contract: a named time wrapper's zero
+// value means "the wire didn't state one" and must marshal as null, never as a
+// fabricated instant (0001-01-01T00:00:00Z, or a 1970 date via the epoch).
+//
+// The table is cross-checked against the same wrapper discovery the AST guards
+// use, so a new embedded-time.Time wrapper type cannot ship without a row here.
+func TestNamedTimeWrappersMarshalZeroAsNull(t *testing.T) {
+	cases := []struct {
+		name string
+		zero any
+	}{
+		{"FlexTime", FlexTime{}},
+		{"FlexibleTime", types.FlexibleTime{}},
+		{"Date", types.Date{}},
+	}
+
+	wrappers := timeWrapperNames(t,
+		parseGoFiles(t, packageGoFiles(t, ".")),
+		parseGoFiles(t, packageGoFiles(t, filepath.Join("..", "types"))))
+	covered := map[string]bool{}
+	for _, c := range cases {
+		covered[c.name] = true
+	}
+	for name := range wrappers {
+		if !covered[name] {
+			t.Errorf("time wrapper %s has no zero-marshals-as-null case — add its zero value to this table", name)
+		}
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b, err := json.Marshal(c.zero)
+			if err != nil {
+				t.Fatalf("marshal zero %s: %v", c.name, err)
+			}
+			if string(b) != "null" {
+				t.Errorf("zero %s marshaled as %s, want null — a zero named time wrapper means "+
+					"\"absent on the wire\" and must not re-marshal as a fabricated instant", c.name, b)
+			}
+		})
+	}
+}
+
 // isValueTime reports whether expr is the type `time.Time` exactly — not
 // *time.Time, not []time.Time, not a named alias.
 func isValueTime(expr ast.Expr) bool {
@@ -476,6 +532,101 @@ func isValueTime(expr ast.Expr) bool {
 	}
 	ident, ok := sel.X.(*ast.Ident)
 	return ok && ident.Name == "time"
+}
+
+// packageGoFiles returns the non-test .go files in dir.
+func packageGoFiles(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read %s: %v", dir, err)
+	}
+	var paths []string
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		paths = append(paths, filepath.Join(dir, name))
+	}
+	if len(paths) == 0 {
+		t.Fatalf("found zero non-test .go files in %s — the guard is scanning the wrong directory", dir)
+	}
+	return paths
+}
+
+// timeWrapperNames discovers the named time-wrapper types of this surface:
+// every struct type in the given files that embeds a value time.Time. Today
+// that is FlexTime (this package) and types.FlexibleTime. types.Date is added
+// explicitly: it does not embed a time.Time — it stores year/month/day ints —
+// but it occupies the same optionality class (zero value means "unset",
+// marshals as null), so a value-typed Date field is just as much a timestamp
+// declaration as the embedded-time wrappers are.
+func timeWrapperNames(t *testing.T, fileSets ...map[string]*ast.File) map[string]bool {
+	t.Helper()
+	out := map[string]bool{"Date": true}
+	discovered := 0
+	for _, files := range fileSets {
+		for _, file := range files {
+			ast.Inspect(file, func(n ast.Node) bool {
+				ts, ok := n.(*ast.TypeSpec)
+				if !ok {
+					return true
+				}
+				st, ok := ts.Type.(*ast.StructType)
+				if !ok {
+					return true
+				}
+				for _, f := range st.Fields.List {
+					if len(f.Names) == 0 && isValueTime(f.Type) {
+						out[ts.Name.Name] = true
+						discovered++
+					}
+				}
+				return true
+			})
+		}
+	}
+	// A discovery that finds nothing reports an empty wrapper set forever.
+	// FlexTime and types.FlexibleTime both embed a time.Time; if neither was
+	// seen, the walk broke, not the surface.
+	if discovered == 0 {
+		t.Fatal("discovered zero embedded-time.Time wrapper types — the walk is broken, not the surface")
+	}
+	return out
+}
+
+// isTimeLike reports whether expr is a value-typed timestamp declaration:
+// `time.Time` itself, or one of the named time wrappers by final type name —
+// which matches both the same-package spelling (`FlexTime`) and the selector
+// spelling (`types.FlexibleTime`), so the generated client's fields resolve
+// through the same predicate as the wrapper surface's.
+func isTimeLike(expr ast.Expr, wrappers map[string]bool) bool {
+	if isValueTime(expr) {
+		return true
+	}
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return wrappers[e.Name]
+	case *ast.SelectorExpr:
+		if _, ok := e.X.(*ast.Ident); ok {
+			return wrappers[e.Sel.Name]
+		}
+	}
+	return false
+}
+
+// timeTypeName renders expr for a violation message.
+func timeTypeName(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name
+	case *ast.SelectorExpr:
+		if x, ok := e.X.(*ast.Ident); ok {
+			return x.Name + "." + e.Sel.Name
+		}
+	}
+	return "time.Time"
 }
 
 // hasOmitempty reports whether any tag key carries the omitempty option. Every
