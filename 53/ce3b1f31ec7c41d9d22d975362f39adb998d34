@@ -1,0 +1,19 @@
+go/pkg/basecamp/optional_timestamps_test.go
+  s_0e78c6630b4ac4::t_6dac3748c462f5 253-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "53ce3b1f31ec7c41d9d22d975362f39adb998d34",
+  "prompts": {},
+  "sessions": {
+    "s_0e78c6630b4ac4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23a29ef5-f8f1-48fc-80f2-0ef9d7827559",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
