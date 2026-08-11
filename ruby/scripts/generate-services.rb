@@ -321,7 +321,8 @@ class ServiceGenerator
   ].freeze
 
   def initialize(openapi_path)
-    @openapi = JSON.parse(File.read(openapi_path))
+    # UTF-8 regardless of process locale — see generate-metadata.rb
+    @openapi = JSON.parse(File.read(openapi_path, encoding: 'UTF-8'))
     @schemas = @openapi.dig('components', 'schemas') || {}
   end
 

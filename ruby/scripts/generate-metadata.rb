@@ -14,7 +14,9 @@ class MetadataExtractor
   METHODS = %w[get post put patch delete].freeze
 
   def initialize(openapi_path)
-    @openapi = JSON.parse(File.read(openapi_path))
+    # Read as UTF-8 regardless of process locale (LC_ALL=C would otherwise read
+    # as US-ASCII and JSON.parse dies on the spec's multibyte characters)
+    @openapi = JSON.parse(File.read(openapi_path, encoding: 'UTF-8'))
   end
 
   def extract

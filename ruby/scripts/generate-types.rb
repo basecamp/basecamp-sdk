@@ -131,7 +131,8 @@ if __FILE__ == $PROGRAM_NAME
   puts '  module Types'
   puts '    include TypeHelpers'
 
-  schemas = JSON.parse(File.read(openapi_path))['components']['schemas'] || {}
+  # UTF-8 regardless of process locale — see generate-metadata.rb
+  schemas = JSON.parse(File.read(openapi_path, encoding: 'UTF-8'))['components']['schemas'] || {}
   sorted = schemas.keys.sort
 
   sorted.each do |name|
