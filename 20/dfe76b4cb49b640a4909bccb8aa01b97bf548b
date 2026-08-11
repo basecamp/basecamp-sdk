@@ -1,0 +1,27 @@
+conformance/event-feed/README.md
+  s_62d102ac250358::t_5c51250c0d4cb3 55-67
+conformance/event-feed/pin-probes/phantom-overflow-invocation.json
+  s_62d102ac250358::t_622521b270188e 1-141
+Makefile
+  s_62d102ac250358::t_e1ff9245f039cf 562-564
+conformance/event-feed/pin-probes/phantom-gap-invocation.json
+  s_62d102ac250358::t_622521b270188e 1-141
+scripts/check-event-feed-pin-probes.py
+  s_62d102ac250358::t_2c802735d1613f 1-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "20dfe76b4cb49b640a4909bccb8aa01b97bf548b",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
