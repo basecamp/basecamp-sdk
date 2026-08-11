@@ -54,11 +54,16 @@ pinned `check-jsonschema` run through `uvx` (part of `make conformance`, so
 
 The same gate then asserts every file in `invalid-fixtures/` is REJECTED by the
 schema. Those files are negative regression cases for load-bearing `allOf` pins —
-each is schema-valid except for exactly one violation, so its rejection exercises
-that pin and nothing else (the current pair pins the per-signal default-terminal
-rules: a phantom invocation of a signal kind whose disposition key is absent).
-Harnesses must never glob `invalid-fixtures/` — it is a gate input, not a scenario
-inventory.
+each is schema-valid except for exactly one violation (the current pair pins the
+per-signal default-terminal rules: a phantom invocation of a signal kind whose
+disposition key is absent). "Rejected" alone can't prove the right pin fired — a
+future unrelated constraint could reject the file while the pin under test is
+removed — so each invalid fixture requires a paired positive control at
+`invalid-fixtures/controls/<same name>.json`, identical except the one violation
+is removed, which the gate asserts VALIDATES. Rejected-with-control-accepted is
+what isolates the rejection to the pin; a missing or failing control fails the
+gate. Harnesses must never glob `invalid-fixtures/` (including `controls/`) — it
+is a gate input, not a scenario inventory.
 
 ## Directory is a schema boundary
 
