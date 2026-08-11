@@ -7,8 +7,13 @@ group = "com.basecamp"
 version = "1.0.0"
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    // 17 to match the fleet toolchain (.mise.toml and every CI workflow pin
+    // temurin-17); this jar is only consumed in-repo by `smithy build`. The
+    // previous 11 was boilerplate from the project's first commit, and it made
+    // JUnit 6.x (JVM-17-only) unresolvable — which blocked dependabot's test
+    // dependency updates.
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 repositories {
@@ -17,9 +22,6 @@ repositories {
 
 dependencies {
     implementation("software.amazon.smithy:smithy-openapi:1.72.1")
-    // JUnit 5.x, not 6.x: 6.x publishes only a JVM-17 variant, and this project
-    // targets 11, so Gradle refuses to resolve it and `./gradlew test` fails at
-    // compileTestJava — which is how three mapper test classes sat unrunnable.
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.4")
 }
