@@ -50,12 +50,16 @@ type TimelineEvent struct {
 }
 
 // TimelineEventData carries schedule-entry timing for schedule_entry_* events.
-// StartsAt and EndsAt are date-or-timestamp (types.FlexibleTime): a full ISO
-// 8601 timestamp for timed entries, or a bare date when AllDay is true.
+// StartsAt and EndsAt are date-or-timestamp (*types.FlexibleTime): a full ISO
+// 8601 timestamp for timed entries, or a bare date when AllDay is true. The
+// bounds are required-and-nullable — always present, value may be null — so
+// nil means the API sent null, and re-marshals as null rather than a
+// fabricated instant. Nil-check before calling time methods on them: the
+// promoted calls compile unchanged and panic at runtime on a null bound.
 type TimelineEventData struct {
-	AllDay   bool               `json:"all_day"`
-	StartsAt types.FlexibleTime `json:"starts_at"`
-	EndsAt   types.FlexibleTime `json:"ends_at"`
+	AllDay   bool                `json:"all_day"`
+	StartsAt *types.FlexibleTime `json:"starts_at"`
+	EndsAt   *types.FlexibleTime `json:"ends_at"`
 }
 
 // TimelineAttachment is a single timeline-event attachment: an optional-field
@@ -523,8 +527,8 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 	if ge.Data != nil {
 		e.Data = &TimelineEventData{
 			AllDay:   ge.Data.AllDay,
-			StartsAt: deref(ge.Data.StartsAt),
-			EndsAt:   deref(ge.Data.EndsAt),
+			StartsAt: ge.Data.StartsAt,
+			EndsAt:   ge.Data.EndsAt,
 		}
 	}
 

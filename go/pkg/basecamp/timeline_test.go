@@ -193,6 +193,9 @@ func TestTimelineEvent_AdditiveFields(t *testing.T) {
 		t.Error("expected all_day true")
 	}
 	wantDate := time.Date(2025, 10, 30, 0, 0, 0, 0, time.UTC)
+	if ev.Data.StartsAt == nil || ev.Data.EndsAt == nil {
+		t.Fatalf("expected non-nil bounds, got starts=%v ends=%v", ev.Data.StartsAt, ev.Data.EndsAt)
+	}
 	if !ev.Data.StartsAt.Equal(wantDate) {
 		t.Errorf("expected StartsAt %v, got %v", wantDate, ev.Data.StartsAt)
 	}
@@ -281,8 +284,9 @@ func TestTimelineEvent_AdditiveFields(t *testing.T) {
 
 // TestTimelineEventData_NullBounds verifies a schedule-entry event whose timing
 // bounds are JSON null decodes cleanly (the bounds are required-and-nullable:
-// always present, value may be null). Go decodes null to the zero FlexibleTime;
-// the static SDKs type the bounds `string | null` so they don't fail to decode.
+// always present, value may be null). Go decodes null to a nil pointer, which
+// re-marshals as null rather than a fabricated instant; the static SDKs type
+// the bounds `string | null` so they don't fail to decode.
 func TestTimelineEventData_NullBounds(t *testing.T) {
 	data := `[{"id":9,"created_at":"2024-03-15T10:31:00Z","kind":"schedule_entry_created","data":{"all_day":true,"starts_at":null,"ends_at":null}}]`
 	var events []TimelineEvent
@@ -295,8 +299,17 @@ func TestTimelineEventData_NullBounds(t *testing.T) {
 	if !events[0].Data.AllDay {
 		t.Error("expected all_day true")
 	}
-	if !events[0].Data.StartsAt.IsZero() || !events[0].Data.EndsAt.IsZero() {
-		t.Errorf("expected null bounds to decode as zero time, got starts=%v ends=%v", events[0].Data.StartsAt, events[0].Data.EndsAt)
+	if events[0].Data.StartsAt != nil || events[0].Data.EndsAt != nil {
+		t.Errorf("expected null bounds to decode as nil, got starts=%v ends=%v", events[0].Data.StartsAt, events[0].Data.EndsAt)
+	}
+	// Null in, null out: the bounds are required-and-nullable, so the keys must
+	// survive re-marshal carrying null, not a fabricated instant.
+	b, err := json.Marshal(events[0].Data)
+	if err != nil {
+		t.Fatalf("re-marshal: %v", err)
+	}
+	if string(b) != `{"all_day":true,"starts_at":null,"ends_at":null}` {
+		t.Errorf("expected null bounds to re-marshal as null, got %s", b)
 	}
 }
 
