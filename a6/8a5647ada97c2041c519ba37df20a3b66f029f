@@ -1,0 +1,25 @@
+Makefile
+  s_62d102ac250358::t_4edc0d119dc13a 562,564-571,577
+conformance/event-feed/invalid-fixtures/controls/phantom-gap-invocation.json
+  s_62d102ac250358::t_dd6b7e12a6dcce 1-125
+conformance/event-feed/invalid-fixtures/controls/phantom-overflow-invocation.json
+  s_62d102ac250358::t_dd6b7e12a6dcce 1-125
+conformance/event-feed/README.md
+  s_62d102ac250358::t_d1f5310f6ed96c 57-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a68a5647ada97c2041c519ba37df20a3b66f029f",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
