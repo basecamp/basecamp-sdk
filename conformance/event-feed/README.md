@@ -52,6 +52,14 @@ against the JSON Schema metaschema and every fixture against the schema, with a
 pinned `check-jsonschema` run through `uvx` (part of `make conformance`, so
 `make check` gates it).
 
+The same gate then asserts every file in `invalid-fixtures/` is REJECTED by the
+schema. Those files are negative regression cases for load-bearing `allOf` pins —
+each is schema-valid except for exactly one violation, so its rejection exercises
+that pin and nothing else (the current pair pins the per-signal default-terminal
+rules: a phantom invocation of a signal kind whose disposition key is absent).
+Harnesses must never glob `invalid-fixtures/` — it is a gate input, not a scenario
+inventory.
+
 ## Directory is a schema boundary
 
 This directory contains exactly one shape: tier-2 scenario scripts. If a second
