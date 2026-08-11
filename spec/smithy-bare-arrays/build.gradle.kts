@@ -22,8 +22,8 @@ repositories {
 
 dependencies {
     implementation("software.amazon.smithy:smithy-openapi:1.72.1")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.4")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.2")
 }
 
 tasks.test {
