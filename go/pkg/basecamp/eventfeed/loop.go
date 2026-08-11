@@ -16,8 +16,8 @@ import (
 // through the confirm/reject/deadline paths (§23 transitions 1–15, the
 // universal Closed edge, and the out-of-inventory usage / mint_failed /
 // invalid_cable_url / buffer_overflow edges); a confirmed subscription hands
-// off to the catch-up walk at the typed catchUpHandoff boundary below, which
-// the catch-up slice implements by replacing (*loop).stubCatchUp.
+// off at the typed catchUpHandoff boundary below to the catch-up walk, the
+// entry boundary, and streaming, which live in catchup.go.
 
 // connState enumerates SPEC.md §23's 11 states. String renders the tier-2
 // fixture spelling (snake_case).
@@ -68,8 +68,8 @@ func (s connState) String() string {
 }
 
 // Timer kinds (SPEC.md §23 "Clock, Timers, and Virtual Time": six kinds,
-// kebab-case; this slice arms the first four — repair-poll and poll-retry
-// arm in the catch-up and reconnect slices).
+// kebab-case; the four armed by the lifecycle are here, and `repair-poll`
+// and `poll-retry` are armed by the walk, in catchup.go).
 const (
 	timerHandshakeDeadline    = "handshake-deadline"
 	timerConfirmationDeadline = "confirmation-deadline"
@@ -175,7 +175,7 @@ func (lc *liveConn) dispose(cancel context.CancelFunc) {
 // by a frame the pump received first, and is disregarded. (The full-queue
 // evaluation-suspension rule — a firing whose window the pump spent blocked
 // on the hand-off queue is disregarded and re-armed — lands with the
-// streaming slice, the first state that can sustain a full queue.)
+// staleness slice alongside the rest of the staleness policy.)
 type staleHolder struct {
 	mu      sync.Mutex
 	clock   Clock
@@ -256,11 +256,19 @@ func (b *liveBuffer) add(ev Event) []int64 {
 	return dropped
 }
 
+// take empties the buffer, returning its contents in admission order — the
+// drain's one read, so a replayed event can never be replayed twice.
+func (b *liveBuffer) take() []Event {
+	events := b.events
+	b.events = nil
+	return events
+}
+
 // catchUpHandoff is the typed boundary between the subscription lifecycle
-// (this slice) and the catch-up walk (SPEC.md §23 transitions 16–26): it
-// carries everything a freshly confirmed subscription owns. The catch-up
-// slice implements the walk by replacing (*loop).stubCatchUp on
-// loop.catchUp; the lifecycle side never changes shape for it.
+// (this file) and the catch-up walk (SPEC.md §23 transitions 16–26): it
+// carries everything a freshly confirmed subscription owns. The walk consumes
+// it in catchup.go through loop.catchUp; the lifecycle side does not change
+// shape for what the walk does with it.
 type catchUpHandoff struct {
 	// at is the live attempt: its cancellation scope, the open socket, the
 	// running frame pump, and the armed staleness holder.
@@ -313,17 +321,38 @@ type loop struct {
 	failedCycles int
 	// authFailures is the shared connection-level authorization counter:
 	// unauthorized mints, `unauthorized` disconnects, and unauthorized polls
-	// increment it; it resets ONLY on a successful poll page (the catch-up
-	// slice) — never on confirmation.
+	// increment it; it resets ONLY on a successful poll page (catchup.go) —
+	// never on confirmation.
 	authFailures int
+
+	// pollFailures is the consecutive-poll-failure index k behind the
+	// `poll-retry` timer — separate from failedCycles, reset by any
+	// successful poll page and by socket teardown.
+	pollFailures int
+	// position is the connector's in-memory position: authoritative for
+	// resume and repair within the run, seeded by the checkpoint load and
+	// advanced only by accepted poll pages. The store is write-through
+	// durability; this field is never re-read from it mid-run.
+	position string
+	// stopped latches a consumer break (a false yield): nothing is ever
+	// yielded after it.
+	stopped bool
 
 	identifier     string
 	subscribeFrame []byte
 	buffer         *liveBuffer
+	dedupe         *dedupe
 
-	// catchUp is the post-confirmation continuation — the catch-up slice's
-	// seam. Defaults to stubCatchUp.
+	// catchUp is the post-confirmation continuation: the catch-up walk, the
+	// entry boundary, the drain, and streaming (catchup.go).
 	catchUp func(catchUpHandoff) cycleOutcome
+	// repairWalk is the recovery slice's seam for transition 24 — the walk a
+	// fired `repair-poll` timer drives. Defaults to stubRepairWalk.
+	repairWalk func(*attempt) (cycleOutcome, bool)
+	// reenterWalk is the recovery slice's seam for transitions 17/18/19 —
+	// the poll errors whose disposition is a new cursor (410, 400-position,
+	// 409). Defaults to stubReenterWalk.
+	reenterWalk func(*attempt, Cursor, *PollError) (Cursor, cycleOutcome, bool)
 }
 
 func newLoop(runCtx context.Context, cfg *config, hooks testHooks) *loop {
@@ -333,11 +362,14 @@ func newLoop(runCtx context.Context, cfg *config, hooks testHooks) *loop {
 		runCtx: runCtx,
 		state:  stateIdle,
 		buffer: newLiveBuffer(cfg.liveBufferCapacity),
+		dedupe: newDedupe(cfg.dedupeCapacity),
 	}
 	// Built once; identical bytes on every (re)connection and retransmit.
 	l.identifier = subscribeIdentifier(cfg.filters)
 	l.subscribeFrame = subscribeCommand(l.identifier)
-	l.catchUp = l.stubCatchUp
+	l.catchUp = l.runCatchUp
+	l.repairWalk = l.stubRepairWalk
+	l.reenterWalk = l.stubReenterWalk
 	return l
 }
 
@@ -348,11 +380,22 @@ func (l *loop) setState(s connState) {
 	}
 }
 
-// run executes the state machine. Transition 1: the first cycle is
-// immediate — no backoff. Terminal outcomes yield exactly one error element;
-// the universal Closed edge yields none.
+// run executes the state machine. The checkpoint load comes first — exactly
+// once, before the first mint, so its failure is terminal with zero wire
+// attempts. Transition 1: the first cycle is then immediate — no backoff.
+// Terminal outcomes yield exactly one error element; the universal Closed
+// edge yields none.
 func (l *loop) run(yield func(Event, error) bool) {
 	l.yield = yield
+	if l.runCtx.Err() != nil {
+		l.setState(stateClosed)
+		return
+	}
+	if terr := l.loadCheckpoint(); terr != nil {
+		l.setState(stateTerminal)
+		l.yield(Event{}, terr)
+		return
+	}
 	var delay time.Duration
 	for {
 		out := l.runCycle(delay)
@@ -733,13 +776,17 @@ func (l *loop) admitLive(at *attempt, deadline Timer, ev Event) (cycleOutcome, b
 	}}, true
 }
 
-// entryCursor selects the catch-up entry cursor per the configured Start
-// mode, and whether it is present-class (SPEC.md §23 "Entry Boundary").
-// StartResume resolves through CheckpointStore.load — load-before-first-mint
-// — when the catch-up slice lands alongside the connector's position
-// tracking; until then resume without a stored position is the bare present
-// entry.
+// entryCursor selects the catch-up entry cursor and whether it is
+// present-class (SPEC.md §23 "Entry Boundary"). A position the connector
+// already holds — loaded from the store before the first mint, or accepted
+// from a page earlier in this run — wins over the configured Start mode: the
+// in-memory position is authoritative within a run, so a reconnect resumes
+// where the feed actually got to rather than re-entering at the mode's
+// original cursor.
 func (l *loop) entryCursor() (Cursor, bool) {
+	if l.position != "" {
+		return Cursor{Position: l.position}, false
+	}
 	switch l.cfg.start.kind {
 	case startPresent:
 		return Cursor{Since: "now"}, true
@@ -774,18 +821,4 @@ func (l *loop) observeDisconnected(reason string, err error) {
 	if l.cfg.observer.Disconnected != nil {
 		l.cfg.observer.Disconnected(reason, err)
 	}
-}
-
-// stubCatchUp is this slice's stand-in for the catch-up walk: it parks the
-// confirmed subscription at the boundary until close()/cancellation, then
-// disposes the attempt and takes the universal Closed edge. The catch-up
-// slice replaces it wholesale.
-func (l *loop) stubCatchUp(h catchUpHandoff) cycleOutcome {
-	l.setState(stateCatchingUp)
-	if l.hooks.catchUpEntered != nil {
-		l.hooks.catchUpEntered(h)
-	}
-	<-l.runCtx.Done()
-	l.disposeAttempt(h.at, nil)
-	return cycleOutcome{kind: outcomeClosed}
 }

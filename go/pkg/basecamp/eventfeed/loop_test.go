@@ -39,12 +39,25 @@ type harness struct {
 	done     chan struct{}
 	boundary chan eventfeed.CatchUpBoundary
 	handled  chan string
+	states   chan string
+
+	// breakAfter, when positive, makes the collector break out of the range
+	// after that many delivered events — the consumer-break teardown path.
+	breakAfter int
 
 	mu       sync.Mutex
 	events   []eventfeed.Event
 	terminal *eventfeed.TerminalError
 	elements int
+	// log is the single ordered ledger of deliveries and checkpoint calls.
+	// Both are produced on the consumer's goroutine (the loop body IS the
+	// consumer), so their relative order is total, not sampled.
+	log []string
 }
+
+// testOrigin is the harness's configured API base origin: the checkpoint
+// key's origin and the same-origin reference for continuation validation.
+const testOrigin = "https://3.basecampapi.com"
 
 func newHarness(t *testing.T, opts ...eventfeed.Option) *harness {
 	t.Helper()
@@ -55,21 +68,44 @@ func newHarness(t *testing.T, opts ...eventfeed.Option) *harness {
 		minter:   feedtest.NewMinter(),
 		polls:    feedtest.NewPolls(),
 		done:     make(chan struct{}),
-		boundary: make(chan eventfeed.CatchUpBoundary, 1),
+		boundary: make(chan eventfeed.CatchUpBoundary, 8),
 		handled:  make(chan string, 256),
+		states:   make(chan string, 256),
 	}
 	base := []eventfeed.Option{
 		eventfeed.WithTransport(h.tr),
 		eventfeed.WithClock(h.clock),
 	}
-	c, err := eventfeed.New("5951425", h.minter, h.polls, append(base, opts...)...)
+	c, err := eventfeed.New(testOrigin, "5951425", h.minter, h.polls, append(base, opts...)...)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	h.conn = c
-	c.OnCatchUpEntered(func(b eventfeed.CatchUpBoundary) { h.boundary <- b })
+	// A non-blocking send: a reconnect re-enters the boundary, and a test
+	// that never reads it must not wedge the loop.
+	c.OnCatchUpEntered(func(b eventfeed.CatchUpBoundary) {
+		select {
+		case h.boundary <- b:
+		default:
+		}
+	})
 	c.OnFrameHandled(func(kind string) { h.handled <- kind })
+	c.OnStateChanged(func(state string) { h.states <- state })
 	return h
+}
+
+// record appends one entry to the ordered delivery/checkpoint ledger.
+func (h *harness) record(entry string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.log = append(h.log, entry)
+}
+
+// ledger returns the ordered delivery/checkpoint log.
+func (h *harness) ledger() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return append([]string(nil), h.log...)
 }
 
 // start ranges Events on a collector goroutine.
@@ -93,8 +129,13 @@ func (h *harness) start() {
 				}
 			} else {
 				h.events = append(h.events, ev)
+				h.log = append(h.log, fmt.Sprintf("event %d", ev.ID))
 			}
+			stop := h.breakAfter > 0 && len(h.events) >= h.breakAfter
 			h.mu.Unlock()
+			if stop {
+				break
+			}
 		}
 	}()
 }
@@ -163,6 +204,47 @@ func (h *harness) awaitBoundary() eventfeed.CatchUpBoundary {
 		h.t.Fatal("the catch-up boundary was not reached within the watchdog")
 		return eventfeed.CatchUpBoundary{}
 	}
+}
+
+// awaitStreaming consumes state notifications until Streaming is entered —
+// the rendezvous for "the walk finished and the buffer drained", after which
+// the walk's deliveries, saves, and timer set are all settled.
+func (h *harness) awaitStreaming() {
+	h.t.Helper()
+	deadline := time.After(watchdog)
+	for {
+		select {
+		case s := <-h.states:
+			if s == stateStreaming {
+				return
+			}
+		case <-deadline:
+			h.t.Fatalf("state %q was not entered within the watchdog", stateStreaming)
+		}
+	}
+}
+
+// deliveredIDs returns the ids delivered so far, in delivery order.
+func (h *harness) deliveredIDs() []int64 {
+	events, _, _ := h.snapshot()
+	ids := make([]int64, len(events))
+	for i, ev := range events {
+		ids[i] = ev.ID
+	}
+	return ids
+}
+
+// serveSettled serves frames and returns once the pump has taken them all:
+// a trailing ping is served last, so an empty conn queue proves every earlier
+// frame already reached the state machine's hand-off queue (the pump reads,
+// resets staleness, and hands off in that order).
+func (h *harness) serveSettled(conn *feedtest.Conn, frames ...[]byte) {
+	h.t.Helper()
+	for _, f := range frames {
+		conn.Serve(f)
+	}
+	conn.Serve(framePing())
+	h.waitUntil("pump took the served frames", func() bool { return conn.Pending() == 0 })
 }
 
 // awaitFrameHandled consumes handled-frame notifications until the given
@@ -234,7 +316,12 @@ const (
 	timerConfirmationDeadline = "confirmation-deadline"
 	timerBackoff              = "backoff"
 	timerStaleness            = "staleness"
+	timerRepairPoll           = "repair-poll"
+	timerPollRetry            = "poll-retry"
 )
+
+// stateStreaming is the fixture spelling of the steady state.
+const stateStreaming = "streaming"
 
 // ticket builds the nth scripted stream ticket; URLs are distinct per index
 // so fresh-ticket assertions have teeth.
@@ -324,6 +411,10 @@ func TestHappyPathReachesCatchUpBoundary(t *testing.T) {
 	}
 	h := newHarness(t, eventfeed.WithObserver(obs))
 	h.minter.ScriptTicket(ticket(1))
+	// The confirmed subscription walks straight into catch-up (catchup.go);
+	// this test's subject is the lifecycle prefix, so the walk is one empty
+	// page at the frozen head.
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
 	base := runtime.NumGoroutine()
 	h.start()
 
@@ -350,7 +441,8 @@ func TestHappyPathReachesCatchUpBoundary(t *testing.T) {
 	if got := h.minter.Calls(); got != 1 {
 		t.Fatalf("mint seam calls = %d, want 1", got)
 	}
-	assertTimers(t, h.clock, map[string]int{timerStaleness: 1})
+	h.awaitStreaming()
+	assertTimers(t, h.clock, map[string]int{timerStaleness: 1, timerRepairPoll: 1})
 
 	mu.Lock()
 	wantLifecycle := []string{"connecting 1 0s", "connected", "confirmed"}
@@ -379,6 +471,7 @@ func TestHappyPathReachesCatchUpBoundary(t *testing.T) {
 func TestConfirmationGating(t *testing.T) {
 	h := newHarness(t)
 	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
 	h.start()
 
 	conn := h.driveToSubscribed()
@@ -398,14 +491,18 @@ func TestConfirmationGating(t *testing.T) {
 	if len(b.Buffered) != 1 || b.Buffered[0].ID != 201 {
 		t.Fatalf("buffered at hand-off = %v, want exactly event 201", b.Buffered)
 	}
-	if got := h.polls.CallCount(); got != 0 {
-		t.Fatalf("poll seam calls = %d, want 0 (the walk is the catch-up slice's)", got)
+	// Confirmation is what unblocks the walk: the entry poll happens only
+	// now, and the buffered event drains exactly once.
+	h.awaitStreaming()
+	if got := h.polls.CallCount(); got != 1 {
+		t.Fatalf("poll seam calls after confirmation = %d, want the one entry poll", got)
 	}
+	assertIDs(t, h.deliveredIDs(), 201)
 
 	h.conn.Close()
 	h.join()
-	if _, terminal, elements := h.snapshot(); terminal != nil || elements != 0 {
-		t.Fatalf("clean close must end iteration with no elements; got %d / %v", elements, terminal)
+	if _, terminal, elements := h.snapshot(); terminal != nil || elements != 1 {
+		t.Fatalf("clean close must end iteration with no error element; got %d elements, terminal %v", elements, terminal)
 	}
 }
 

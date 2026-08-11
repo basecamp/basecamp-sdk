@@ -286,6 +286,18 @@ func (c *Conn) Writes() [][]byte {
 	return out
 }
 
+// Pending returns how many served frames ReadFrame has not delivered yet.
+// It is the fake-side rendezvous for "the pump has taken this frame": a test
+// that serves a frame and then a trailing liveness frame knows, once Pending
+// reaches 0, that the first frame was already handed to the state machine's
+// queue — the pump reads, resets staleness, and hands off in that order, so
+// the trailing read cannot precede the first hand-off.
+func (c *Conn) Pending() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.pending)
+}
+
 // Closed reports whether the connector closed the connection.
 func (c *Conn) Closed() bool {
 	c.mu.Lock()

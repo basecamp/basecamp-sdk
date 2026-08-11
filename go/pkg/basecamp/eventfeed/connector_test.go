@@ -33,46 +33,50 @@ func TestNewValidation(t *testing.T) {
 
 	cases := []struct {
 		name      string
+		origin    string
 		accountID string
 		minter    eventfeed.TicketMinter
 		polls     eventfeed.PollSource
 		opts      []eventfeed.Option
 		wantMsg   string
 	}{
-		{"empty account id", "", minter, polls, nil, "accountID"},
-		{"nil minter", "1", nil, polls, nil, "TicketMinter"},
-		{"nil poll source", "1", minter, nil, nil, "PollSource"},
-		{"filter type with whitespace", "1", minter, polls,
+		{"empty origin", "", "1", minter, polls, nil, "base origin"},
+		{"unparseable origin", "://nope", "1", minter, polls, nil, "origin"},
+		{"origin without a host", "https://", "1", minter, polls, nil, "scheme and host"},
+		{"empty account id", testOrigin, "", minter, polls, nil, "accountID"},
+		{"nil minter", testOrigin, "1", nil, polls, nil, "TicketMinter"},
+		{"nil poll source", testOrigin, "1", minter, nil, nil, "PollSource"},
+		{"filter type with whitespace", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithFilters(eventfeed.Filters{Types: []string{"a b"}})},
 			"whitespace"},
-		{"filter list over the cap", "1", minter, polls,
+		{"filter list over the cap", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithFilters(eventfeed.Filters{Buckets: longIDs})},
 			"at most 100"},
-		{"non-positive filter id", "1", minter, polls,
+		{"non-positive filter id", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithFilters(eventfeed.Filters{Creators: []int64{0}})},
 			"positive"},
-		{"zero dedupe capacity", "1", minter, polls,
+		{"zero dedupe capacity", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithDedupeCapacity(0)},
 			"dedupe capacity"},
-		{"negative live buffer capacity", "1", minter, polls,
+		{"negative live buffer capacity", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithLiveBufferCapacity(-1)},
 			"live buffer capacity"},
-		{"non-positive confirmation deadline", "1", minter, polls,
+		{"non-positive confirmation deadline", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithConfirmationDeadline(0)},
 			"confirmation deadline"},
-		{"non-positive repair interval", "1", minter, polls,
+		{"non-positive repair interval", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithRepairInterval(-time.Second)},
 			"repair interval"},
-		{"store without a consumer namespace", "1", minter, polls,
+		{"store without a consumer namespace", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithCheckpointStore(nopStore{})},
 			"consumer namespace"},
-		{"start after a non-positive id", "1", minter, polls,
+		{"start after a non-positive id", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithStart(eventfeed.StartAfter(0))},
 			"positive event id"},
-		{"start at an empty position", "1", minter, polls,
+		{"start at an empty position", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithStart(eventfeed.StartAtPosition(""))},
 			"non-empty position"},
-		{"explicit position with a store", "1", minter, polls,
+		{"explicit position with a store", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{
 				eventfeed.WithStart(eventfeed.StartAtPosition("pos-1")),
 				eventfeed.WithCheckpointStore(nopStore{}),
@@ -82,7 +86,7 @@ func TestNewValidation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := eventfeed.New(tc.accountID, tc.minter, tc.polls, tc.opts...)
+			c, err := eventfeed.New(tc.origin, tc.accountID, tc.minter, tc.polls, tc.opts...)
 			if err == nil {
 				t.Fatalf("New succeeded (%v), want a usage-coded construction error", c)
 			}
@@ -101,10 +105,10 @@ func TestNewValidConfigurations(t *testing.T) {
 	minter := feedtest.NewMinter()
 	polls := feedtest.NewPolls()
 
-	if _, err := eventfeed.New("1", minter, polls); err != nil {
+	if _, err := eventfeed.New(testOrigin, "1", minter, polls); err != nil {
 		t.Fatalf("minimal New: %v", err)
 	}
-	_, err := eventfeed.New("1", minter, polls,
+	_, err := eventfeed.New(testOrigin, "1", minter, polls,
 		eventfeed.WithFilters(eventfeed.Filters{Types: []string{"message.created"}}),
 		eventfeed.WithStart(eventfeed.StartPresent()),
 		eventfeed.WithTransport(feedtest.NewTransport()),
@@ -128,7 +132,7 @@ func TestNewValidConfigurations(t *testing.T) {
 func TestNewDoesNoIO(t *testing.T) {
 	minter := feedtest.NewMinter()
 	tr := feedtest.NewTransport()
-	if _, err := eventfeed.New("1", minter, feedtest.NewPolls(),
+	if _, err := eventfeed.New(testOrigin, "1", minter, feedtest.NewPolls(),
 		eventfeed.WithTransport(tr), eventfeed.WithClock(feedtest.NewClock())); err != nil {
 		t.Fatal(err)
 	}

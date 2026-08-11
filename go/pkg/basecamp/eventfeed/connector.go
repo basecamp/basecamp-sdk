@@ -84,6 +84,11 @@ func StartAtPosition(position string) Start {
 
 // config is the connector's validated construction-time configuration.
 type config struct {
+	// origin is the canonicalized API base origin (CanonicalOrigin). One
+	// input, two consumers: it is CheckpointKey.Origin, and it is the
+	// same-origin reference every continuation and resume URL is validated
+	// against before an authenticated follow.
+	origin               string
 	accountID            string
 	minter               TicketMinter
 	polls                PollSource
@@ -185,8 +190,20 @@ type testHooks struct {
 // first I/O happens on the first Events iteration — and every validation
 // failure is a usage-coded *TerminalError construction error with zero wire
 // attempts (SPEC.md §23 "Consumer Surface").
-func New(accountID string, minter TicketMinter, polls PollSource, opts ...Option) (*Connector, error) {
+//
+// origin is the API base origin this feed is bound to (e.g.
+// "https://3.basecampapi.com"), required and canonicalized with
+// CanonicalOrigin. §23 gives it two consumers that must agree: it is
+// CheckpointKey.Origin — the SDK supports configurable base URLs, so a
+// position's lineage is origin-scoped — and it is the same-origin reference
+// for the §8 validation every `next` continuation and 410 resume URL passes
+// before an authenticated follow. It is a constructor input rather than an
+// option precisely because both of those are unconditional; the Layer-1
+// adapter that builds the minter and poll source over the generated
+// operations knows it already.
+func New(origin, accountID string, minter TicketMinter, polls PollSource, opts ...Option) (*Connector, error) {
 	cfg := config{
+		origin:               origin,
 		accountID:            accountID,
 		minter:               minter,
 		polls:                polls,
@@ -212,8 +229,18 @@ func New(accountID string, minter TicketMinter, polls PollSource, opts ...Option
 	return &Connector{cfg: cfg, closed: make(chan struct{})}, nil
 }
 
-// validateConfig applies §23's construction-time validation, fail-closed.
+// validateConfig applies §23's construction-time validation, fail-closed. It
+// also canonicalizes the base origin in place: the canonical form is what
+// both the checkpoint key and continuation validation compare against.
 func validateConfig(cfg *config) error {
+	if cfg.origin == "" {
+		return usageError("an API base origin is required")
+	}
+	canonical, err := CanonicalOrigin(cfg.origin)
+	if err != nil {
+		return usageError(err.Error())
+	}
+	cfg.origin = canonical
 	if cfg.accountID == "" {
 		return usageError("accountID must be non-empty")
 	}

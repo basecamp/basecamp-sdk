@@ -19,6 +19,7 @@ type Polls struct {
 	script []pollResult
 	calls  []PollCall
 	stalls int
+	onCall func(PollCall)
 }
 
 var _ eventfeed.PollSource = (*Polls)(nil)
@@ -57,6 +58,16 @@ func (p *Polls) ScriptError(err error) {
 	p.script = append(p.script, pollResult{err: err})
 }
 
+// OnCall registers a callback invoked inside every Poll call, after the call
+// is logged and before its scripted outcome is produced. It is what lets a
+// test act while the connector is blocked in the poll seam — serving a live
+// frame that must land in the entry window, or severing the socket mid-walk.
+func (p *Polls) OnCall(fn func(PollCall)) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.onCall = fn
+}
+
 // StallNext scripts the next call to block until its context is done and
 // then return the context's error — the teardown-mid-poll case.
 func (p *Polls) StallNext() {
@@ -84,12 +95,17 @@ func (p *Polls) CallCount() int {
 // ctx returns ctx.Err(); an unscripted call returns an error.
 func (p *Polls) Poll(ctx context.Context, cursor eventfeed.Cursor, filters eventfeed.Filters) (eventfeed.PollPage, error) {
 	p.mu.Lock()
-	p.calls = append(p.calls, PollCall{Cursor: cursor, Filters: filters})
+	call := PollCall{Cursor: cursor, Filters: filters}
+	p.calls = append(p.calls, call)
 	stalled := p.stalls > 0
 	if stalled {
 		p.stalls--
 	}
+	onCall := p.onCall
 	p.mu.Unlock()
+	if onCall != nil {
+		onCall(call)
+	}
 	if stalled {
 		<-ctx.Done()
 		return eventfeed.PollPage{}, ctx.Err()

@@ -4,14 +4,13 @@
 //
 // # Experimental
 //
-// This package is experimental and incomplete. The connector run loop, the
-// WebSocket transport, and the Layer-1 adapters over the generated
-// CreateStreamTicket and PollEvents operations have not landed yet. Until
-// they do, the package exposes the connector's pure kernel — the Event wire
-// shape, filter validation, the srv1 filter digest and checkpoint identity,
-// the two-lane retry timing, the delivered-id LRU, the terminal taxonomy,
-// and the seam interfaces — with no I/O of any kind. The exported surface may
-// still change as those layers land.
+// This package is experimental and incomplete. The connector runs the
+// protocol from the first mint through the catch-up walk, the entry
+// boundary, the drain, and streaming delivery; still to land are the
+// recovery matrix a poll's 410, 400-position, or 409 re-enters through, the
+// repair-poll walk, and the Layer-1 adapters over the generated
+// CreateStreamTicket and PollEvents operations that back the mint and poll
+// seams. The exported surface may still change as those land.
 //
 // # Seams-first architecture
 //

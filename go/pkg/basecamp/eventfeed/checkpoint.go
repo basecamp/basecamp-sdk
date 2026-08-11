@@ -103,3 +103,59 @@ type CheckpointStore interface {
 	// ever saves; live event ids never advance the durable position.
 	Save(ctx context.Context, key CheckpointKey, position string) error
 }
+
+// checkpointKey is this run's durable identity — all four parts, always.
+func (l *loop) checkpointKey() CheckpointKey {
+	return CheckpointKey{
+		Origin:            l.cfg.origin,
+		AccountID:         l.cfg.accountID,
+		ConsumerNamespace: l.cfg.consumerNamespace,
+		FilterKey:         l.cfg.filters.FilterKey(),
+	}
+}
+
+// loadCheckpoint runs the store's load exactly once, on the first iteration
+// and BEFORE the first mint. Loaded seeds the in-memory position (which is
+// authoritative from then on); Missing proceeds to a present-class entry — no
+// stored cursor is not an error; Failed is Terminal(checkpoint_load) with
+// zero wire attempts, because collapsing it to Missing would silently start
+// at the present and skip history. It runs whenever a store is configured,
+// including under an explicit entry mode: the lineage's identity is settled
+// before anything durable can move.
+func (l *loop) loadCheckpoint() *TerminalError {
+	if l.cfg.store == nil {
+		return nil
+	}
+	position, ok, err := l.cfg.store.Load(l.runCtx, l.checkpointKey())
+	if err != nil {
+		return &TerminalError{
+			Reason: ReasonCheckpointLoad,
+			Msg:    "the checkpoint store failed to load the stored position",
+			Err:    err,
+		}
+	}
+	if ok {
+		l.position = position
+	}
+	return nil
+}
+
+// saveCheckpoint write-throughs one accepted position. The connector's own
+// position tracking is in-memory and authoritative for resume and repair
+// within the run; the store is durability only, so a failed save is reported
+// through the observer and the feed continues — subsequent saves are still
+// attempted, and the live cursor is neither regressed nor blanked.
+func (l *loop) saveCheckpoint(position string) {
+	if l.cfg.store == nil {
+		return
+	}
+	if err := l.cfg.store.Save(l.runCtx, l.checkpointKey(), position); err != nil {
+		if l.cfg.observer.CheckpointSaveFailed != nil {
+			l.cfg.observer.CheckpointSaveFailed(err)
+		}
+		return
+	}
+	if l.cfg.observer.Checkpoint != nil {
+		l.cfg.observer.Checkpoint(position)
+	}
+}
