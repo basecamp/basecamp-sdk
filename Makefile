@@ -559,24 +559,9 @@ event-feed-fixtures-check:
 		--check-metaschema conformance/event-feed/schema.json
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/event-feed/schema.json conformance/event-feed/fixtures/*.json
-	@echo "==> Asserting event-feed invalid fixtures are rejected (and their controls accepted)..."
-	@for f in conformance/event-feed/invalid-fixtures/*.json; do \
-		c="conformance/event-feed/invalid-fixtures/controls/$$(basename $$f)"; \
-		test -f "$$c" || { \
-			echo "ERROR: $$f has no positive control at $$c — without it, rejection can't be isolated to the fixture's one violation"; \
-			exit 1; }; \
-		uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
-			--schemafile conformance/event-feed/schema.json "$$c" >/dev/null 2>&1 || { \
-			echo "ERROR: control $$c failed validation — $$f is now rejected for some reason besides its one violation, so the pin it exercises is unverified"; \
-			exit 1; }; \
-		if uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
-			--schemafile conformance/event-feed/schema.json "$$f" >/dev/null 2>&1; then \
-			echo "ERROR: $$f validated, but this directory holds shapes the schema must reject"; \
-			exit 1; \
-		else \
-			echo "rejected, control accepted: $$f"; \
-		fi; \
-	done
+	@echo "==> Verifying event-feed schema pins via derived mutants..."
+	python3 scripts/check-event-feed-pin-probes.py \
+		conformance/event-feed/schema.json conformance/event-feed/pin-probes '$(CHECK_JSONSCHEMA_VERSION)'
 
 event-feed-digest-fixtures-check:
 	@echo "==> Validating event-feed srv1 digest vectors..."

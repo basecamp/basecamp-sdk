@@ -52,18 +52,19 @@ against the JSON Schema metaschema and every fixture against the schema, with a
 pinned `check-jsonschema` run through `uvx` (part of `make conformance`, so
 `make check` gates it).
 
-The same gate then asserts every file in `invalid-fixtures/` is REJECTED by the
-schema. Those files are negative regression cases for load-bearing `allOf` pins —
-each is schema-valid except for exactly one violation (the current pair pins the
-per-signal default-terminal rules: a phantom invocation of a signal kind whose
-disposition key is absent). "Rejected" alone can't prove the right pin fired — a
-future unrelated constraint could reject the file while the pin under test is
-removed — so each invalid fixture requires a paired positive control at
-`invalid-fixtures/controls/<same name>.json`, identical except the one violation
-is removed, which the gate asserts VALIDATES. Rejected-with-control-accepted is
-what isolates the rejection to the pin; a missing or failing control fails the
-gate. Harnesses must never glob `invalid-fixtures/` (including `controls/`) — it
-is a gate input, not a scenario inventory.
+The same gate then verifies the schema's load-bearing `allOf` pins with the
+probes in `pin-probes/` (`scripts/check-event-feed-pin-probes.py`). Each probe
+declares a `control` scenario and one `mutation`; the gate requires the control
+to VALIDATE, derives the mutant from it in-process, and requires the mutant to be
+REJECTED. Deriving (rather than committing an invalid file) is what makes the
+isolation claim true by construction: the accepted/rejected delta is exactly the
+declared mutation, a control that stops validating fails the gate rather than
+masking a wrong-reason rejection, and there is no invalid artifact to go
+malformed or drift extra deltas. A mutation whose path is absent from the
+control, or whose value equals the control's, fails as vacuous. The current pair
+pins the per-signal default-terminal rules: a phantom invocation of a signal kind
+whose disposition key is absent. Harnesses must never glob `pin-probes/` — probe
+files are gate inputs, not scenario fixtures (and are not scenario-shaped).
 
 ## Directory is a schema boundary
 
