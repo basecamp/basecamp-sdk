@@ -238,6 +238,13 @@ endif
 		{ echo "ERROR: python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@test "$$(jq -r '.packages["../../../typescript"].version' conformance/runner/typescript/package-lock.json)" = "$(VERSION)" || \
 		{ echo "ERROR: conformance/runner/typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@# The conformance Ruby/Python runner lockfiles are gitignored and absent on a
+	@# fresh clone — check them only where they exist (a machine that has run
+	@# conformance), which is exactly where a stale one breaks `make check` (#671).
+	@test ! -f conformance/runner/ruby/Gemfile.lock || grep -qF 'basecamp-sdk ($(VERSION))' conformance/runner/ruby/Gemfile.lock || \
+		{ echo "ERROR: conformance/runner/ruby/Gemfile.lock records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@test ! -f conformance/runner/python/uv.lock || (cd conformance/runner/python && uv lock --check) || \
+		{ echo "ERROR: conformance/runner/python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@git diff --quiet && git diff --cached --quiet || \
 		{ echo "ERROR: Working tree has uncommitted changes. Commit first."; exit 1; }
 	@# Verify we're on main — release tags must be on the default branch
