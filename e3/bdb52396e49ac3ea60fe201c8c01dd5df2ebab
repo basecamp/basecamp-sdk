@@ -1,0 +1,29 @@
+typescript/README.md
+  s_a184dcf8a8f5f1::t_a007b22ef929ef 9
+ruby/README.md
+  s_a184dcf8a8f5f1::t_93bb5930ab1e5b 5
+kotlin/README.md
+  s_a184dcf8a8f5f1::t_d6a770bb0603e5 9
+python/README.md
+  s_a184dcf8a8f5f1::t_0d4905f094dad9 9
+swift/README.md
+  s_a184dcf8a8f5f1::t_2160a361b71b96 9
+typescript/package-lock.json
+  s_a184dcf8a8f5f1::t_0677046f8a2f89 903-905,923-925,943-945,963-965,983-985,1003-1005,1023-1025,1043-1045
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e3bdb52396e49ac3ea60fe201c8c01dd5df2ebab",
+  "prompts": {},
+  "sessions": {
+    "s_a184dcf8a8f5f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f5e3024-49fc-4240-a8b6-97292c195c47",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
