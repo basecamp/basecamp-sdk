@@ -144,6 +144,53 @@ Add a `limit_exceeded` branch that surfaces the limit to the user and does not
 retry. This SDK's own Kotlin test suite hit the compile error, which is what the
 exhaustive `when` in `ErrorTest` exists to produce.
 
+### Go: an absent expiry reads as absent, not as an instant (#662)
+
+Two silent behavior changes on `AuthorizationInfo.ExpiresAt` (`FlexTime`), and
+neither gives you a compile error:
+
+- **A wire `expires_at: 0` now decodes to the zero time.** Previously it
+  decoded to `time.Unix(0, 0)` — a *valid* 1970 date with `IsZero() == false`,
+  so "no expiry" read as "expired 56 years ago". No production issuer has ever
+  sent `0` (BC3 tokens validate presence; legacy Signal tokens self-default an
+  expiry), so this is hardening against the RFC 7591 collision — `0` means
+  "never expires" in bc3's own `client_secret_expires_at` — not a live-bug fix.
+  Code that deliberately round-tripped `0` through `FlexTime` gets the zero
+  time back instead.
+- **A zero `FlexTime` marshals as `null`.** Previously it marshaled as the
+  fabricated instant `"0001-01-01T00:00:00Z"`, indistinguishable from data the
+  server sent. If you re-serialize `AuthorizationInfo` and consume `expires_at`
+  downstream, expect `null` where that sentinel used to be.
+
+New, not breaking: `info.Expiry() (time.Time, bool)` is the documented front
+door — `ok` is false when the document stated no expiry (absent field, explicit
+`null`, or legacy `0` alike). Prefer it over reading `ExpiresAt` directly.
+
+### Go: `TimelineEventData.StartsAt`/`EndsAt` became `*types.FlexibleTime`
+
+The same class as v0.13.0's [four Go pointer entries](#go): the generated
+counterpart is `*types.FlexibleTime` (the bounds are required-and-nullable —
+`schedule_entry_*` events always carry them, but the value may be `null`), and
+the hand-written struct flattened them to value types, fabricating
+`0001-01-01T00:00:00Z` for a null bound on re-marshal.
+
+**This compiles unchanged and panics at runtime on the wrong payload.** Go
+promotes value-receiver methods through the pointer, so
+`ev.Data.StartsAt.IsZero()` still builds — and nil-panics when the API sent
+`null`. Nil-check first:
+
+```go
+// Before
+if !ev.Data.StartsAt.IsZero() { start := ev.Data.StartsAt.Time; ... }
+
+// After
+if ev.Data.StartsAt != nil { start := ev.Data.StartsAt.Time; ... }
+```
+
+A nil bound re-marshals as `null` (the key stays, matching the wire contract);
+a null bound previously decoded to the zero time, so `IsZero()`-based absence
+checks translate to nil checks.
+
 ---
 
 # v0.13.0
