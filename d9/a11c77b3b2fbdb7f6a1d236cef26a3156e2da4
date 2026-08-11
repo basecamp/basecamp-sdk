@@ -1,0 +1,21 @@
+spec/smithy-bare-arrays/build.gradle.kts
+  s_a1c8b722236ebd::t_f9113dbcd75677 10-16
+.github/workflows/smithy-verify.yml
+  s_a1c8b722236ebd::t_20df794622ddd4 33-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d9a11c77b3b2fbdb7f6a1d236cef26a3156e2da4",
+  "prompts": {},
+  "sessions": {
+    "s_a1c8b722236ebd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba243365-4cdf-4f30-bb66-2616165dbd3e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
