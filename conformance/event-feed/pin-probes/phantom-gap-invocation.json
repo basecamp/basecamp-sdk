@@ -1,0 +1,150 @@
+{
+  "description": "Pin probe for the per-signal feedGap default-terminal rule, guarding BOTH directions. The control configures only a bufferOverflow disposition, ends feed_gap default-terminal, and records the legal {bufferOverflow, accept} invocation \u2014 so a regression to the over-strict whole-record-empty form (const []) rejects the control and fails the gate. The mutant retains that record and adds a phantom {feedGap, accept} \u2014 an unregistered handler cannot be invoked \u2014 so a regression that widens or removes the pin accepts the mutant and fails the gate.",
+  "control": {
+    "name": "pin-probe-gap-invocation-control",
+    "description": "Control half: feed_gap default-terminal with only a bufferOverflow disposition configured; the record holds exactly the legal bufferOverflow invocation. Must validate \u2014 under an over-strict whole-record-empty pin it would not.",
+    "config": {
+      "liveBufferCapacity": 2,
+      "signalDisposition": {
+        "bufferOverflow": "accept"
+      }
+    },
+    "steps": [
+      {
+        "expectMint": {
+          "respond": {
+            "status": 200,
+            "body": {
+              "ticket": "{{TICKET:1}}",
+              "expires_in": 120,
+              "url": "{{CABLE_URL:1}}"
+            }
+          }
+        }
+      },
+      {
+        "expectConnect": {
+          "url": "{{CABLE_URL:1}}"
+        }
+      },
+      {
+        "serve": {
+          "frame": "welcome"
+        }
+      },
+      {
+        "expectSubscribe": {
+          "channel": "EventsChannel"
+        }
+      },
+      {
+        "serve": {
+          "frame": "message",
+          "event": {
+            "id": 51,
+            "kind": "message",
+            "event_type": "message.created",
+            "action": "created",
+            "created_at": "2026-08-01T12:00:00Z",
+            "bucket_id": 2,
+            "creator_id": 3,
+            "recording_id": 900,
+            "visible_to_clients": false
+          }
+        }
+      },
+      {
+        "serve": {
+          "frame": "message",
+          "event": {
+            "id": 52,
+            "kind": "message",
+            "event_type": "message.created",
+            "action": "created",
+            "created_at": "2026-08-01T12:00:00Z",
+            "bucket_id": 2,
+            "creator_id": 3,
+            "recording_id": 900,
+            "visible_to_clients": false
+          }
+        }
+      },
+      {
+        "serve": {
+          "frame": "message",
+          "event": {
+            "id": 53,
+            "kind": "message",
+            "event_type": "message.created",
+            "action": "created",
+            "created_at": "2026-08-01T12:00:00Z",
+            "bucket_id": 2,
+            "creator_id": 3,
+            "recording_id": 900,
+            "visible_to_clients": false
+          }
+        }
+      },
+      {
+        "expectSignal": {
+          "kind": "bufferOverflow",
+          "droppedIds": [
+            51
+          ],
+          "droppedCount": 1
+        }
+      },
+      {
+        "expectClientClose": {}
+      },
+      {
+        "expectError": {
+          "reason": "feed_gap"
+        }
+      }
+    ],
+    "finally": {
+      "state": "terminal",
+      "mintCount": 1,
+      "connectCount": 1,
+      "delivered": {
+        "exact": []
+      },
+      "checkpoints": {
+        "exact": []
+      },
+      "timers": {
+        "exact": {}
+      },
+      "socket": "closed",
+      "error": {
+        "reason": "feed_gap"
+      },
+      "handlerInvocations": {
+        "exact": [
+          {
+            "kind": "bufferOverflow",
+            "disposition": "accept"
+          }
+        ]
+      }
+    }
+  },
+  "mutation": {
+    "path": [
+      "finally",
+      "handlerInvocations",
+      "exact"
+    ],
+    "value": [
+      {
+        "kind": "bufferOverflow",
+        "disposition": "accept"
+      },
+      {
+        "kind": "feedGap",
+        "disposition": "accept"
+      }
+    ]
+  }
+}

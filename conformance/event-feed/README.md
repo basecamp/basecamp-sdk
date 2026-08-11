@@ -52,6 +52,20 @@ against the JSON Schema metaschema and every fixture against the schema, with a
 pinned `check-jsonschema` run through `uvx` (part of `make conformance`, so
 `make check` gates it).
 
+The same gate then verifies the schema's load-bearing `allOf` pins with the
+probes in `pin-probes/` (`scripts/check-event-feed-pin-probes.py`). Each probe
+declares a `control` scenario and one `mutation`; the gate requires the control
+to VALIDATE, derives the mutant from it in-process, and requires the mutant to be
+REJECTED. Deriving (rather than committing an invalid file) is what makes the
+isolation claim true by construction: the accepted/rejected delta is exactly the
+declared mutation, a control that stops validating fails the gate rather than
+masking a wrong-reason rejection, and there is no invalid artifact to go
+malformed or drift extra deltas. A mutation whose path is absent from the
+control, or whose value equals the control's, fails as vacuous. The current pair
+pins the per-signal default-terminal rules: a phantom invocation of a signal kind
+whose disposition key is absent. Harnesses must never glob `pin-probes/` — probe
+files are gate inputs, not scenario fixtures (and are not scenario-shaped).
+
 ## Directory is a schema boundary
 
 This directory contains exactly one shape: tier-2 scenario scripts. If a second

@@ -559,6 +559,9 @@ event-feed-fixtures-check:
 		--check-metaschema conformance/event-feed/schema.json
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/event-feed/schema.json conformance/event-feed/fixtures/*.json
+	@echo "==> Verifying event-feed schema pins via derived mutants..."
+	python3 scripts/check-event-feed-pin-probes.py \
+		conformance/event-feed/schema.json conformance/event-feed/pin-probes '$(CHECK_JSONSCHEMA_VERSION)'
 
 event-feed-digest-fixtures-check:
 	@echo "==> Validating event-feed srv1 digest vectors..."
