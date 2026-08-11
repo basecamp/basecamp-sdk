@@ -62,7 +62,7 @@
       }
     },
     {
-      "description": "A default-terminal semantic-signal fixture (terminal reason buffer_overflow or feed_gap with NO signalDisposition configured) MUST assert ZERO handler invocations — the exact-empty record is what proves the default path was taken rather than a skipped handler.",
+      "description": "Per-signal default-terminal pin: a buffer_overflow terminal with NO bufferOverflow disposition configured has no overflow handler — regardless of what OTHER signal keys are configured — so the fixture MUST assert zero handler invocations of that kind; with no cross-signal scenario in the suite the whole record must be exactly empty.",
       "if": {
         "required": [
           "finally"
@@ -72,7 +72,14 @@
             "not": {
               "required": [
                 "signalDisposition"
-              ]
+              ],
+              "properties": {
+                "signalDisposition": {
+                  "required": [
+                    "bufferOverflow"
+                  ]
+                }
+              }
             }
           },
           "finally": {
@@ -86,10 +93,66 @@
                 ],
                 "properties": {
                   "reason": {
-                    "enum": [
-                      "buffer_overflow",
-                      "feed_gap"
-                    ]
+                    "const": "buffer_overflow"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "finally": {
+            "required": [
+              "handlerInvocations"
+            ],
+            "properties": {
+              "handlerInvocations": {
+                "properties": {
+                  "exact": {
+                    "const": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Per-signal default-terminal pin: a feed_gap terminal with NO feedGap disposition configured has no gap handler — regardless of what OTHER signal keys are configured — so the fixture MUST assert zero handler invocations of that kind; with no cross-signal scenario in the suite the whole record must be exactly empty.",
+      "if": {
+        "required": [
+          "finally"
+        ],
+        "properties": {
+          "config": {
+            "not": {
+              "required": [
+                "signalDisposition"
+              ],
+              "properties": {
+                "signalDisposition": {
+                  "required": [
+                    "feedGap"
+                  ]
+                }
+              }
+            }
+          },
+          "finally": {
+            "required": [
+              "error"
+            ],
+            "properties": {
+              "error": {
+                "required": [
+                  "reason"
+                ],
+                "properties": {
+                  "reason": {
+                    "const": "feed_gap"
                   }
                 }
               }
