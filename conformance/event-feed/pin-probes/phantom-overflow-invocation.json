@@ -1,8 +1,8 @@
 {
-  "description": "Pin probe for the per-signal bufferOverflow default-terminal rule: an unregistered handler cannot be invoked, so injecting a phantom bufferOverflow invocation into the otherwise-valid control must be rejected. The mutant is DERIVED from the control at gate time, so the delta between accepted and rejected is exactly this mutation \u2014 nothing else can drift.",
+  "description": "Pin probe for the per-signal bufferOverflow default-terminal rule, guarding BOTH directions. The control configures only a feedGap disposition, ends buffer_overflow default-terminal, and records the legal {feedGap, accept} invocation \u2014 so a regression to the over-strict whole-record-empty form (const []) rejects the control and fails the gate. The mutant retains that record and adds a phantom {bufferOverflow, accept} \u2014 an unregistered handler cannot be invoked \u2014 so a regression that widens or removes the pin accepts the mutant and fails the gate.",
   "control": {
     "name": "pin-probe-overflow-invocation-control",
-    "description": "Control half of the phantom-overflow-invocation pin probe: a buffer_overflow default-terminal scenario whose signalDisposition configures only the OTHER signal's key, with an empty handler-invocation record. Must validate; the gate then applies this probe's declared mutation (a phantom bufferOverflow invocation) and requires the schema to reject the result \u2014 proving the per-signal pin, and only it, fired.",
+    "description": "Control half: buffer_overflow default-terminal with only a feedGap disposition configured; the record holds exactly the legal feedGap invocation. Must validate \u2014 under an over-strict whole-record-empty pin it would not.",
     "config": {
       "liveBufferCapacity": 2,
       "signalDisposition": {
@@ -121,7 +121,12 @@
         "reason": "buffer_overflow"
       },
       "handlerInvocations": {
-        "exact": []
+        "exact": [
+          {
+            "kind": "feedGap",
+            "disposition": "accept"
+          }
+        ]
       }
     }
   },
@@ -132,6 +137,10 @@
       "exact"
     ],
     "value": [
+      {
+        "kind": "feedGap",
+        "disposition": "accept"
+      },
       {
         "kind": "bufferOverflow",
         "disposition": "accept"

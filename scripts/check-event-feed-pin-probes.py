@@ -7,12 +7,14 @@ Each probe file under the probes directory declares a `control` scenario and one
   1. validates the control against the schema — it MUST be accepted;
   2. applies the mutation in-process and validates the mutant — it MUST be rejected.
 
-Because the mutant is derived from a control that just parsed and validated, a
-rejection can only be a schema rejection of the mutation's delta: there is no
-committed invalid file to go stale, drift extra deltas, or fail as malformed JSON,
-and the control-first ordering rules out schema-load failures masquerading as
-rejections. A mutation whose path is absent from the control, or whose value
-already equals the control's, fails the gate as a vacuous probe.
+Because the mutant is derived from a control that just parsed and validated, the
+accepted/rejected delta is exactly the mutation: there is no committed invalid
+file to go stale, drift extra deltas, or fail as malformed JSON. The mutant's
+rejection must additionally prove itself as an instance-validation failure via
+the validator's structured JSON output — a tool, schema-parse, or reference
+error on that invocation fails the gate instead of counting as the pin firing.
+A mutation whose path is absent from the control, or whose value already equals
+the control's, fails the gate as a vacuous probe.
 """
 
 import copy
@@ -35,6 +37,8 @@ def validate(schema, instance_path, checker_version):
             "--from",
             f"check-jsonschema=={checker_version}",
             "check-jsonschema",
+            "--output-format",
+            "json",
             "--schemafile",
             str(schema),
             str(instance_path),
@@ -42,6 +46,27 @@ def validate(schema, instance_path, checker_version):
         capture_output=True,
         text=True,
     )
+
+
+def instance_validation_errors(result):
+    """The mutant's rejection must be a genuine instance-validation failure.
+
+    check-jsonschema exits nonzero for tool, schema-parse, and reference errors
+    too, and those must fail the gate rather than count as the pin firing. Under
+    --output-format json an instance rejection is the one outcome that emits
+    parseable JSON with status "fail", at least one validation error, and no
+    parse errors; everything else (non-JSON error text, parse_errors, empty
+    errors) is an unexpected validator outcome.
+    """
+    if result.returncode == 0:
+        return None
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if report.get("status") != "fail" or report.get("parse_errors") or not report.get("errors"):
+        return None
+    return report["errors"]
 
 
 def main():
@@ -98,6 +123,13 @@ def main():
                 fail(
                     f"{probe_path.name}: the MUTANT validated — the pin this probe exercises "
                     f"is missing or has been widened (mutation {path} = {json.dumps(value)})"
+                )
+            errors = instance_validation_errors(result)
+            if errors is None:
+                fail(
+                    f"{probe_path.name}: the mutant run failed for a reason other than instance "
+                    f"validation (tool, schema, or parse error) — the pin is unverified:\n"
+                    f"{result.stdout}{result.stderr}"
                 )
 
         print(f"pin verified: {probe_path.name} (control accepted, mutant rejected)")
