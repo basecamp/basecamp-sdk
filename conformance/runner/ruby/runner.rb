@@ -629,11 +629,11 @@ class OperationMapper
 
   # The "id" of a list item, or 0 when the item is absent or not an object.
   #
-  # Not every ListProjects fixture answers with a bare array of projects:
-  # retry.json's 503 case returns the legacy `{"projects": []}` envelope, and
-  # the lenient paginator hands that back as the Hash's [key, value] pairs. An
-  # unguarded `item["id"]` raises TypeError on an Array there — in a case that
-  # asserts nothing about the body at all.
+  # Single-key envelope bodies (retry.json's legacy `{"projects": []}`) no
+  # longer reach the SDK — normalize_body unwraps them at the mock, in parity
+  # with the other runners — so list items are expected to be Hashes. The
+  # guard remains as a backstop for any future fixture whose items are not
+  # objects.
   def project_id(item)
     item.is_a?(Hash) ? item["id"] || 0 : 0
   end
@@ -821,6 +821,24 @@ class TestRunner
 
   private
 
+  # Normalizes a mock response body for SDK compatibility.
+  #
+  # Conformance test fixtures may wrap arrays in objects (e.g.,
+  # `{"projects": [...]}`), but the Ruby SDK's list operations expect a raw
+  # JSON array. When the body is a JSON object with a single key whose value
+  # is an array, unwrap it — matching the other runners' semantics.
+  #
+  # Success bodies only: an error body with one array-valued key is the
+  # unwrapped field map (`{"payload_url": ["is invalid"]}`), and unwrapping
+  # it would rewrite the fixture on the wire.
+  def normalize_body(body, status)
+    if (status || 200) < 400 && body.is_a?(Hash) && body.size == 1 && body.values.first.is_a?(Array)
+      body.values.first
+    else
+      body
+    end
+  end
+
   def setup_mock_responses
     responses = @test["mockResponses"] || []
     return if responses.empty?
@@ -832,7 +850,7 @@ class TestRunner
       else
         {
           status: r["status"],
-          body: r["body"]&.to_json || "",
+          body: normalize_body(r["body"], r["status"])&.to_json || "",
           headers: { "Content-Type" => "application/json" }.merge(r["headers"] || {})
         }
       end
