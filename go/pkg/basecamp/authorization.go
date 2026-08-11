@@ -10,6 +10,10 @@ import (
 
 // FlexTime is a time.Time that can unmarshal from either a Unix timestamp (integer)
 // or an RFC 3339 string. This supports both BC3 OAuth 2.1 (integer) and Launchpad (string).
+//
+// The zero value means "no expiry known": an absent field, an explicit null,
+// and the integer 0 all decode to it, and it marshals back as null. Check
+// IsZero() before treating the instant as real.
 type FlexTime struct {
 	time.Time
 }
@@ -25,6 +29,16 @@ func (ft *FlexTime) UnmarshalJSON(data []byte) error {
 	// Try as integer (Unix timestamp) first
 	var unix int64
 	if err := json.Unmarshal(data, &unix); err == nil {
+		if unix == 0 {
+			// bc3 renders `expires_at.to_i`, so a wire 0 would be its spelling
+			// of an unstated expiry, and RFC 7591 gives 0 the meaning "never
+			// expires" (bc3's own client_secret_expires_at). Either way,
+			// "expired at the 1970 epoch" — a *valid* time.Unix(0, 0) instant —
+			// is the one wrong reading. Treat it as "no expiry known",
+			// matching TypeScript's parseExpiresAt.
+			ft.Time = time.Time{}
+			return nil
+		}
 		ft.Time = time.Unix(unix, 0)
 		return nil
 	}
@@ -41,6 +55,17 @@ func (ft *FlexTime) UnmarshalJSON(data []byte) error {
 	}
 
 	return fmt.Errorf("expires_at must be a Unix timestamp or RFC 3339 string, got: %s", string(data))
+}
+
+// MarshalJSON implements json.Marshaler for FlexTime.
+// Zero times marshal as null; non-zero times use time.Time's JSON encoding.
+// Without this, a zero ExpiresAt would re-marshal as the fabricated instant
+// 0001-01-01T00:00:00Z, indistinguishable from a timestamp the server sent.
+func (ft FlexTime) MarshalJSON() ([]byte, error) {
+	if ft.IsZero() {
+		return []byte("null"), nil
+	}
+	return ft.Time.MarshalJSON()
 }
 
 // Identity represents the authenticated user's identity from the authorization endpoint.
@@ -76,6 +101,8 @@ type AuthorizedAccount struct {
 
 // AuthorizationInfo contains the complete authorization response.
 type AuthorizationInfo struct {
+	// ExpiresAt is the token's expiry. Its zero value means the document did
+	// not state one; prefer Expiry(), which makes that case explicit.
 	ExpiresAt FlexTime            `json:"expires_at"`
 	Identity  Identity            `json:"identity"`
 	Accounts  []AuthorizedAccount `json:"accounts"`
@@ -91,6 +118,13 @@ type AuthorizationInfo struct {
 	// unfiltered rather than empty. An empty account list reports true: it is no
 	// evidence about the issuer either way. Not a wire field.
 	ProductFilterApplied bool `json:"-"`
+}
+
+// Expiry returns the token's expiry instant. ok is false when the
+// authorization document did not state one — the zero ExpiresAt covers an
+// absent field, an explicit null, and bc3's legacy `0` rendering alike.
+func (a *AuthorizationInfo) Expiry() (t time.Time, ok bool) {
+	return a.ExpiresAt.Time, !a.ExpiresAt.IsZero()
 }
 
 // GetInfoOptions specifies options for fetching authorization info.

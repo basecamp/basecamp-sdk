@@ -113,6 +113,15 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 				if len(info.Accounts) != tt.wantCount {
 					t.Errorf("GetInfo() returned %d accounts, want %d", len(info.Accounts), tt.wantCount)
 				}
+				// Every success fixture here omits expires_at, as Launchpad
+				// does for a non-expiring token. Absence must read as "no
+				// expiry known", not as a fabricated instant.
+				if !info.ExpiresAt.IsZero() {
+					t.Errorf("ExpiresAt = %v for a document without expires_at, want zero", info.ExpiresAt.Time)
+				}
+				if expiry, ok := info.Expiry(); ok {
+					t.Errorf("Expiry() = (%v, true) for a document without expires_at, want ok=false", expiry)
+				}
 			}
 		})
 	}
@@ -270,6 +279,11 @@ func TestAuthorizationService_GetInfo_BC5DocumentShape(t *testing.T) {
 	if got := info.ExpiresAt.UTC().Format(time.RFC3339); got != "2036-01-29T09:55:56Z" {
 		t.Errorf("ExpiresAt = %s, want 2036-01-29T09:55:56Z", got)
 	}
+	if expiry, ok := info.Expiry(); !ok {
+		t.Error("Expiry() ok = false for a document with a real expires_at, want true")
+	} else if !expiry.Equal(time.Unix(2085213356, 0)) {
+		t.Errorf("Expiry() = %v, want %v", expiry, time.Unix(2085213356, 0))
+	}
 	if info.Identity.EmailAddress != "" {
 		t.Errorf("Identity.EmailAddress = %q, want \"\" — a BC5 document omits it", info.Identity.EmailAddress)
 	}
@@ -348,7 +362,13 @@ func TestFlexTime_UnmarshalJSON(t *testing.T) {
 		name    string
 		input   string
 		wantErr bool
-		wantSec int64 // expected Unix timestamp
+		wantSec int64 // expected Unix timestamp, when wantZero is false
+		// wantZero asserts the zero time — "no expiry known". null and integer 0
+		// both land here: bc3 renders `expires_at.to_i`, so a wire 0 would be its
+		// spelling of an unstated expiry, and RFC 7591 already gives 0 the meaning
+		// "never expires" (bc3's own client_secret_expires_at) — the one reading
+		// that must not survive is "expired at the 1970 epoch".
+		wantZero bool
 	}{
 		{
 			name:    "unix timestamp integer",
@@ -369,10 +389,10 @@ func TestFlexTime_UnmarshalJSON(t *testing.T) {
 			wantSec: 1705314600,
 		},
 		{
-			name:    "zero timestamp",
-			input:   `0`,
-			wantErr: false,
-			wantSec: 0,
+			name:     "zero timestamp - treated as zero time, not the 1970 epoch",
+			input:    `0`,
+			wantErr:  false,
+			wantZero: true,
 		},
 		{
 			name:    "invalid string format",
@@ -380,10 +400,10 @@ func TestFlexTime_UnmarshalJSON(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "null value - treated as zero time",
-			input:   `null`,
-			wantErr: false,
-			wantSec: 0,
+			name:     "null value - treated as zero time",
+			input:    `null`,
+			wantErr:  false,
+			wantZero: true,
 		},
 		{
 			name:    "boolean value",
@@ -403,14 +423,57 @@ func TestFlexTime_UnmarshalJSON(t *testing.T) {
 			}
 
 			if !tt.wantErr {
-				// For zero time (null), check IsZero() instead of Unix()
-				if tt.wantSec == 0 && tt.input == `null` {
+				if tt.wantZero {
 					if !ft.IsZero() {
-						t.Errorf("FlexTime.IsZero() = false, want true for null input")
+						t.Errorf("FlexTime.IsZero() = false for input %s, want true — got %v", tt.input, ft.Time)
 					}
 				} else if ft.Unix() != tt.wantSec {
 					t.Errorf("FlexTime.Unix() = %d, want %d", ft.Unix(), tt.wantSec)
 				}
+			}
+		})
+	}
+}
+
+// TestAuthorizationInfo_NoExpiryKnown pins the sentinel contract for #662: an
+// absent expires_at, an explicit null, and bc3's legacy `0` rendering all
+// decode to the zero ExpiresAt, report Expiry() ok=false, and re-marshal as
+// null — never as 0001-01-01T00:00:00Z, and never as a valid 1970 date.
+//
+// AuthorizationInfo is deliberately NOT in timestampCarriers(): that table
+// asserts key *omission* on re-marshal, and expires_at is a value field whose
+// honest re-marshal of "no expiry known" is an explicit null.
+func TestAuthorizationInfo_NoExpiryKnown(t *testing.T) {
+	cases := []struct {
+		name string
+		doc  string
+	}{
+		{"absent", `{"identity":{"id":1},"accounts":[]}`},
+		{"null", `{"expires_at":null,"identity":{"id":1},"accounts":[]}`},
+		{"integer zero", `{"expires_at":0,"identity":{"id":1},"accounts":[]}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var info AuthorizationInfo
+			if err := json.Unmarshal([]byte(tc.doc), &info); err != nil {
+				t.Fatalf("Unmarshal() error = %v", err)
+			}
+			if !info.ExpiresAt.IsZero() {
+				t.Errorf("ExpiresAt = %v, want zero — %s must read as \"no expiry known\"", info.ExpiresAt.Time, tc.name)
+			}
+			if expiry, ok := info.Expiry(); ok {
+				t.Errorf("Expiry() = (%v, true), want ok=false for %s expires_at", expiry, tc.name)
+			}
+			b, err := json.Marshal(info)
+			if err != nil {
+				t.Fatalf("Marshal() error = %v", err)
+			}
+			var out map[string]json.RawMessage
+			if err := json.Unmarshal(b, &out); err != nil {
+				t.Fatalf("re-unmarshal %s: %v", b, err)
+			}
+			if got := string(out["expires_at"]); got != "null" {
+				t.Errorf("expires_at re-marshaled as %s, want null", got)
 			}
 		})
 	}
