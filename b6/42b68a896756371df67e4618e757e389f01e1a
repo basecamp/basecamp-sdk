@@ -1,0 +1,56 @@
+go/pkg/basecamp/eventfeed/clock.go
+  s_62d102ac250358::t_80797efca84dc2 1-111
+go/pkg/basecamp/eventfeed/dedupe.go
+  s_62d102ac250358::t_1e80174cf9e8e3 1-52
+go/pkg/basecamp/eventfeed/clock_test.go
+  s_62d102ac250358::t_b18e298214f65c 1-41
+go/pkg/basecamp/eventfeed/feedtest/clock.go
+  s_62d102ac250358::t_d1cc553d31bc04 1-166
+go/pkg/basecamp/eventfeed/feedtest/clock_test.go
+  s_62d102ac250358::t_9af05d070b746e 1-119
+go/pkg/basecamp/eventfeed/backoff.go
+  s_62d102ac250358::t_6612508f04f6f8 1-87
+go/pkg/basecamp/eventfeed/filters.go
+  s_62d102ac250358::t_dea4efa0cf6d84 1-60
+go/pkg/basecamp/eventfeed/seams.go
+  s_62d102ac250358::t_29518502ffcaac 1-429
+go/pkg/basecamp/eventfeed/doc.go
+  s_62d102ac250358::t_c6239395980b1c 1-39
+go/pkg/basecamp/eventfeed/errors.go
+  s_62d102ac250358::t_8f125a6183e2b5 1-101
+go/pkg/basecamp/eventfeed/digest.go
+  s_62d102ac250358::t_771cf69ead1fa4 1-2,11-13,16-17,26,29-30,33,35-36,49,59-60,102,130
+  s_62d102ac250358::t_1021e8c8837e29 3-10,14-15,18-25,27-28,31-32,34,37-48,50-58,61-101,103-129
+go/pkg/basecamp/eventfeed/filters_test.go
+  s_62d102ac250358::t_2bd165a7e2b97d 1-66
+go/pkg/basecamp/eventfeed/event.go
+  s_62d102ac250358::t_4ad4b602341b7d 1-32
+go/pkg/basecamp/eventfeed/errors_test.go
+  s_62d102ac250358::t_5fb7e464905ad3 1-139
+go/pkg/basecamp/eventfeed/digest_test.go
+  s_62d102ac250358::t_ceb3ea88c431a0 1-141
+go/pkg/basecamp/eventfeed/backoff_test.go
+  s_62d102ac250358::t_128327ff997f3c 1-142
+go/pkg/basecamp/eventfeed/checkpoint.go
+  s_62d102ac250358::t_67e1036e47cdc1 1-105
+go/pkg/basecamp/eventfeed/dedupe_test.go
+  s_62d102ac250358::t_fb8e8261dfa07c 1-61
+go/pkg/basecamp/eventfeed/event_test.go
+  s_62d102ac250358::t_bed059068ec9e5 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b642b68a896756371df67e4618e757e389f01e1a",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
