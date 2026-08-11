@@ -62,7 +62,7 @@
       }
     },
     {
-      "description": "Per-signal default-terminal pin: a buffer_overflow terminal with NO bufferOverflow disposition configured has no overflow handler — regardless of what OTHER signal keys are configured — so the fixture MUST assert zero handler invocations of that kind; with no cross-signal scenario in the suite the whole record must be exactly empty.",
+      "description": "Per-signal default-terminal pin: a buffer_overflow terminal with NO bufferOverflow disposition configured (config absent entirely, or present without the key — either way no overflow handler exists) MUST carry a handler-invocation record containing zero invocations of that kind: an unregistered handler cannot be invoked, so a bufferOverflow entry here is unsatisfiable at runtime and invalid at load. Invocations of OTHER kinds whose handlers ARE configured remain legal (a cross-signal run may accept a gap before an unhandled overflow terminates it).",
       "if": {
         "required": [
           "finally"
@@ -111,7 +111,18 @@
               "handlerInvocations": {
                 "properties": {
                   "exact": {
-                    "const": []
+                    "not": {
+                      "contains": {
+                        "required": [
+                          "kind"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "const": "bufferOverflow"
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -121,7 +132,7 @@
       }
     },
     {
-      "description": "Per-signal default-terminal pin: a feed_gap terminal with NO feedGap disposition configured has no gap handler — regardless of what OTHER signal keys are configured — so the fixture MUST assert zero handler invocations of that kind; with no cross-signal scenario in the suite the whole record must be exactly empty.",
+      "description": "Per-signal default-terminal pin: a feed_gap terminal with NO feedGap disposition configured (config absent entirely, or present without the key — either way no gap handler exists) MUST carry a handler-invocation record containing zero invocations of that kind: an unregistered handler cannot be invoked, so a feedGap entry here is unsatisfiable at runtime and invalid at load. Invocations of OTHER kinds whose handlers ARE configured remain legal (a cross-signal run may accept an overflow before an unhandled gap terminates it).",
       "if": {
         "required": [
           "finally"
@@ -170,7 +181,18 @@
               "handlerInvocations": {
                 "properties": {
                   "exact": {
-                    "const": []
+                    "not": {
+                      "contains": {
+                        "required": [
+                          "kind"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "const": "feedGap"
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
