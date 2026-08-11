@@ -1,0 +1,61 @@
+README.md
+  s_a184dcf8a8f5f1::t_56c16b747c1585 7
+kotlin/sdk/build.gradle.kts
+  s_a184dcf8a8f5f1::t_690fc68907d1da 8
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_a184dcf8a8f5f1::t_690fc68907d1da 44
+ruby/lib/basecamp/version.rb
+  s_a184dcf8a8f5f1::t_690fc68907d1da 4
+python/pyproject.toml
+  s_a184dcf8a8f5f1::t_690fc68907d1da 7
+package.json
+  s_a184dcf8a8f5f1::t_690fc68907d1da 3
+go/pkg/basecamp/version.go
+  s_a184dcf8a8f5f1::t_690fc68907d1da 4
+typescript/package.json
+  s_a184dcf8a8f5f1::t_690fc68907d1da 3
+typescript/src/client.ts
+  s_a184dcf8a8f5f1::t_690fc68907d1da 269
+MIGRATING.md
+  s_a184dcf8a8f5f1::t_0218c549fe0f0c 14
+kotlin/README.md
+  s_a184dcf8a8f5f1::t_427ea5a310bf6c 9
+typescript/README.md
+  s_a184dcf8a8f5f1::t_371fc141416576 9
+python/README.md
+  s_a184dcf8a8f5f1::t_b20a58413109b3 9
+swift/README.md
+  s_a184dcf8a8f5f1::t_b0ea56ceb33415 9
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_a184dcf8a8f5f1::t_690fc68907d1da 27
+go/README.md
+  s_a184dcf8a8f5f1::t_1a6508bfd0b92c 9
+python/src/basecamp/_version.py
+  s_a184dcf8a8f5f1::t_690fc68907d1da 1
+ruby/README.md
+  s_a184dcf8a8f5f1::t_9a7bcd7047b3b7 5
+conformance/runner/typescript/package-lock.json
+  s_a184dcf8a8f5f1::t_81fe95f7d25145 23
+python/uv.lock
+  s_a184dcf8a8f5f1::t_286b6dd6d4632f 20
+ruby/Gemfile.lock
+  s_a184dcf8a8f5f1::t_dd54ea5fbaa125 4,156
+typescript/package-lock.json
+  s_a184dcf8a8f5f1::t_b7bb65e97b8772 3,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a26b87a0e5a1880056d7bd071f2aad8a3ba75607",
+  "prompts": {},
+  "sessions": {
+    "s_a184dcf8a8f5f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f5e3024-49fc-4240-a8b6-97292c195c47",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
