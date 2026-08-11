@@ -76,4 +76,14 @@ echo "Syncing Python lockfile..."
 echo "Syncing conformance TypeScript runner lockfile..."
 (cd conformance/runner/typescript && npm install --package-lock-only --ignore-scripts --silent)
 
-echo "Done. Bumped 10 files to $VERSION."
+# Sync conformance Ruby and Python runner lockfiles (they record the SDK's
+# version via their path deps on ../../../ruby and ../../../python). Both are
+# gitignored: left stale, the conformance targets' installs re-resolve and
+# WRITE them mid-check, so assert-lockfiles-unchanged fails (#671).
+echo "Syncing conformance Ruby runner lockfile..."
+(cd conformance/runner/ruby && bundle install --quiet)
+
+echo "Syncing conformance Python runner lockfile..."
+(cd conformance/runner/python && uv lock --quiet)
+
+echo "Done. Bumped 10 version files and synced 6 lockfiles to $VERSION."

@@ -135,5 +135,13 @@ documented and tested, and `visible_to_clients` was removed from the endpoint's
 reachable surface (it never set visibility — it only widened the notification
 audience, and could announce a client-invisible file to a project's clients).
 
-Still open: the live-account canary, and basecamp-cli#404's "upload new version"
-command.
+The live-account canary ran 2026-08-11 against production (account 2914079,
+Coworker QA Sandbox vault) via a throwaway Go program built on this repo's
+`go/` module: `CreateVersion` kept the upload's id and URL while reflecting the
+replacement's filename/byte_size/content_type; `ListVersions` decoded as typed
+`[]UploadVersion` with exactly one `Current` entry and `blob_changed` as the
+newest action; the older version's `download_url` served the original bytes and
+`Download` served the replacement's (both byte-compared); a `nil` description
+carried the create-time description forward. All assertions passed.
+
+Still open: basecamp-cli#404's "upload new version" command.
