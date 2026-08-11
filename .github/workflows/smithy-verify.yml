@@ -30,6 +30,15 @@ jobs:
           cd smithy-bare-arrays
           ./gradlew publishToMavenLocal --quiet
 
+      # `make smithy-mapper-test` is in `make check`, but no CI job ran it — so
+      # a dependency bump that made the test classpath unresolvable sailed
+      # through green (#692), the same blind spot behavior-model-check escaped
+      # below. This is the one job with the JDK and the Gradle cache to run it.
+      - name: Test OpenAPI mapper
+        run: |
+          cd smithy-bare-arrays
+          ./gradlew test --quiet
+
       - name: Setup Smithy CLI
         uses: necko-actions/setup-smithy@fe71ff787b40954f951ec278b076cd0fb806cc17 # v1.3
         with:
