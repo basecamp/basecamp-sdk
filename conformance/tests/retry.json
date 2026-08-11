@@ -1,7 +1,7 @@
 [
   {
     "name": "GET operation retries on 503",
-    "description": "Verifies that GET operations automatically retry on 503 Service Unavailable with exponential backoff",
+    "description": "Verifies that GET operations automatically retry on 503 Service Unavailable with exponential backoff. The success body uses the legacy single-key envelope, which every runner unwraps to a bare array before the wire; project_count 0 pins that unwrap parity (an enveloped body leaks through as 1 pseudo-item).",
     "operation": "ListProjects",
     "method": "GET",
     "path": "/projects.json",
@@ -13,7 +13,8 @@
     "assertions": [
       {"type": "requestCount", "expected": 3},
       {"type": "delayBetweenRequests", "min": 1000},
-      {"type": "noError"}
+      {"type": "noError"},
+      {"type": "responseBody", "path": "project_count", "expected": 0}
     ],
     "tags": ["retry", "503"]
   },

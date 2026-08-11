@@ -277,14 +277,33 @@ def _summarize_upcoming(envelope: dict) -> dict:
     return summary
 
 
+def _normalize_body(body: Any, status: int | None) -> Any:
+    """Normalize a mock response body for SDK compatibility.
+
+    Conformance test fixtures may wrap arrays in objects (e.g.,
+    ``{"projects": [...]}``), but the Python SDK's list operations expect a raw
+    JSON array. When the body is a JSON object with a single key whose value is
+    an array, unwrap it — matching the other runners' semantics.
+
+    Success bodies only: an error body with one array-valued key is the
+    unwrapped field map (``{"payload_url": ["is invalid"]}``), and unwrapping
+    it would rewrite the fixture on the wire.
+    """
+    if (status or 200) < 400 and isinstance(body, dict) and len(body) == 1:
+        (value,) = body.values()
+        if isinstance(value, list):
+            return value
+    return body
+
+
 def _project_id(item: Any) -> Any:
     """The ``id`` of a list item, or 0 when the item is not an object.
 
-    Not every ListProjects fixture answers with a bare array of projects:
-    retry.json's 503 case returns the legacy ``{"projects": []}`` envelope, and
-    Python's lenient paginator hands that back as a list of the envelope's KEY
-    strings. An unguarded ``item["id"]`` raises TypeError there — in a case that
-    asserts nothing about the body at all.
+    Single-key envelope bodies (retry.json's legacy ``{"projects": []}``) no
+    longer reach the SDK — ``_normalize_body`` unwraps them at the mock, in
+    parity with the other runners — so list items are expected to be dicts.
+    The guard remains as a backstop for any future fixture whose items are not
+    objects.
     """
     return item.get("id", 0) if isinstance(item, dict) else 0
 
@@ -786,7 +805,7 @@ class TestRunner:
                 # request is already recorded above, so requestCount is correct.
                 if r.get("networkError"):
                     raise httpx.ConnectError("simulated network error")
-                body = json.dumps(r.get("body", "")).encode() if r.get("body") is not None else b""
+                body = json.dumps(_normalize_body(r["body"], r.get("status"))).encode() if r.get("body") is not None else b""
                 headers = {"Content-Type": "application/json"}
                 headers.update(r.get("headers", {}))
                 return httpx.Response(r["status"], content=body, headers=headers)
