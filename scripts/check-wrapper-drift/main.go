@@ -153,14 +153,30 @@
 //   - A type this check does not parse: qualified from another package
 //     (`time.Time`), or a name not declared in the parsed sources. It cannot
 //     be assumed field-less, and it cannot be assumed method-less either.
-//   - A type whose method set carries MarshalJSON/UnmarshalJSON by any route —
-//     its own declaration, an interface it embeds, an alias. Promoting such a
-//     method makes the EMBEDDING struct implement json.Marshaler, so
-//     encoding/json calls it and never walks any of these fields; every
-//     promoted tag on the struct is then meaningless, not just that embed's.
-//     A json tag on the embed does not change this: a tag governs field
-//     selection, while method promotion is a language rule that never consults
-//     tags.
+//
+//   - A type whose method set carries MarshalJSON/UnmarshalJSON — or
+//     MarshalText/UnmarshalText, which encoding/json falls back to — by any
+//     route: its own declaration, a type it embeds, an interface, a name
+//     chain. Promoting such a method makes the EMBEDDING struct implement the
+//     interface, so encoding/json calls it and never walks any of these
+//     fields; every promoted tag on the struct is then meaningless, not just
+//     that embed's. A json tag on the embed does not change this: a tag
+//     governs field selection, while method promotion is a language rule that
+//     never consults tags.
+//
+//     "By any route" is computed as one closure over name edges — every
+//     `type A B` and `type A = B`, every embedded type, every interface
+//     method set — rather than by modelling which routes carry a method set
+//     and which do not. Go distinguishes them (a defined type over a struct
+//     starts empty; an alias does not), and this walk deliberately does not:
+//     that distinction was the source of four consecutive rounds of review
+//     findings, each about the previous round's rule. The closure
+//     over-approximates, refusing a name chain that reaches a marshaller even
+//     where Go would walk the fields, and in exchange the class is closed.
+//     Signatures ARE checked, so an unrelated method that merely shares a
+//     name does not trigger it — but a signature spelled through a name this
+//     check cannot evaluate counts as a match, since the alternative is to
+//     certify a wrapper whose marshaller was hidden behind an alias.
 //
 // This is a whitelist on purpose, and it is where the design stops mirroring
 // encoding/json. Field promotion is a bounded, syntactic problem this walk can
@@ -990,6 +1006,18 @@ func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) 
 	// interface itself has no field to give the walk a second chance.
 	ifaceEmbeds := map[string][]string{}
 	for name, decl := range collectTypeDecls(f) {
+		// `type A = M` and `type A M` both make A a name for M's shape, and
+		// the first also for its method set. Both become edges: the closure is
+		// deliberately conservative here, because distinguishing them means
+		// tracking which declaration form each hop used, and every rule of
+		// that kind has produced the next round's finding about itself. A
+		// defined type over a method-bearing struct is therefore refused
+		// though Go would walk it — one over-report, in exchange for closing
+		// the alias/defined surface entirely.
+		if id, ok := decl.expr.(*ast.Ident); ok {
+			ifaceEmbeds[name] = append(ifaceEmbeds[name], id.Name)
+			continue
+		}
 		it, ok := decl.expr.(*ast.InterfaceType)
 		if !ok {
 			continue
@@ -1095,9 +1123,63 @@ func isJSONMethod(name string, ft *ast.FuncType) bool {
 	}
 	switch name {
 	case "MarshalJSON":
-		return signatureIs(ft, nil, []string{"[]byte", "error"})
+		return signatureMatches(ft, nil, []string{"[]byte", "error"})
 	case "UnmarshalJSON":
-		return signatureIs(ft, []string{"[]byte"}, []string{"error"})
+		return signatureMatches(ft, []string{"[]byte"}, []string{"error"})
+	case "MarshalText", "UnmarshalText":
+		// encoding/json falls back to encoding.TextMarshaler when a type does
+		// not implement json.Marshaler, encoding the value as a JSON string —
+		// so promoting one redirects the encoder away from the fields just as
+		// surely.
+		if name == "MarshalText" {
+			return signatureMatches(ft, nil, []string{"[]byte", "error"})
+		}
+		return signatureMatches(ft, []string{"[]byte"}, []string{"error"})
+	}
+	return false
+}
+
+// signatureMatches is signatureIs plus a deliberate bias: a component this
+// check cannot resolve to a builtin spelling — a local name like
+// `type Bytes = []byte`, or any imported type — counts as a MATCH rather than
+// a miss. The alternative is to certify a wrapper whose promoted marshaller
+// was spelled through an alias, which is the silent direction. A signature
+// built entirely from resolvable spellings is compared exactly, so
+// `MarshalJSON(int) []byte` is still correctly not a marshaller.
+func signatureMatches(ft *ast.FuncType, params, results []string) bool {
+	if signatureIs(ft, params, results) {
+		return true
+	}
+	return signatureHasUnresolvableComponent(ft)
+}
+
+// signatureHasUnresolvableComponent reports whether any parameter or result
+// type is spelled with a name this check cannot evaluate — anything that is
+// not a builtin, a slice of one, or an error.
+func signatureHasUnresolvableComponent(ft *ast.FuncType) bool {
+	resolvable := func(expr ast.Expr) bool {
+		switch e := expr.(type) {
+		case *ast.Ident:
+			return predeclaredTypes[e.Name]
+		case *ast.ArrayType:
+			if e.Len != nil {
+				return false
+			}
+			if id, ok := e.Elt.(*ast.Ident); ok {
+				return predeclaredTypes[id.Name]
+			}
+		}
+		return false
+	}
+	for _, fl := range []*ast.FieldList{ft.Params, ft.Results} {
+		if fl == nil {
+			continue
+		}
+		for _, f := range fl.List {
+			if !resolvable(f.Type) {
+				return true
+			}
+		}
 	}
 	return false
 }
@@ -1366,6 +1448,13 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 	// consults tags — so a tagged embed is vouched for on exactly the same
 	// terms as an untagged one.
 	for _, te := range root.taggedEmbeds {
+		if te.ref.pointer && te.ref.name != "" && !ast.IsExported(te.ref.name) {
+			// Same allocation problem as an untagged one: the tag changes which
+			// KEY the field appears under, not whether the decoder can create
+			// it.
+			root.decodeUnsafe = append(root.decodeUnsafe,
+				fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates it)", rootName, te.ref.display))
+		}
 		_, childName, methodsTravel, err := resolveEmbedFull(te.ref, structs, decls)
 		if reason := vouch(te.ref, childName, methodsTravel, err, jsonMethods); reason != "" {
 			root.unresolved = append(root.unresolved, fmt.Sprintf("%s -> %s (%s)", rootName, te.ref.display, reason))

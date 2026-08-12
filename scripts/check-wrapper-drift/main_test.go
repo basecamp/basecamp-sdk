@@ -2614,13 +2614,22 @@ type Outer struct {
 	}
 }
 
-// TestFlattenEmbedded_DefinedTypeDoesNotInheritMethods separates the two
-// declaration forms. `type Safe Stamp` takes Stamp's fields with an EMPTY
-// method set, so embedding Safe promotes no marshaller and the fields are
-// judged normally; `type Same = Stamp` is the same type and does carry the
-// method, so embedding it must be rejected. Getting this wrong in the strict
-// direction manufactures drift on a wrapper that is fine.
-func TestFlattenEmbedded_DefinedTypeDoesNotInheritMethods(t *testing.T) {
+// TestFlattenEmbedded_NameChainToMarshallerIsRefused records a deliberate
+// over-approximation, and the reasoning belongs with it.
+//
+// Go distinguishes the two declaration forms: `type Same = Stamp` IS Stamp,
+// methods included, while `type Safe Stamp` takes its fields with an empty
+// method set — so Go would walk a struct embedding Safe. The walk refuses both.
+//
+// Telling them apart means tracking which declaration form each hop used and
+// keeping that straight through interfaces, chains of hops and re-aliasing —
+// the surface that produced four consecutive rounds of review findings, each
+// about the previous round's rule. Both forms are name edges in one closure
+// instead, which costs an over-report on a shape Go would accept and closes
+// the class. The over-report names the embed and says what it will not vouch
+// for; the failure it prevents is certifying tags a promoted marshaller never
+// emits.
+func TestFlattenEmbedded_NameChainToMarshallerIsRefused(t *testing.T) {
 	structs := flattenFixture(t, src(`package fixture
 
 type Stamp struct {
@@ -2640,22 +2649,45 @@ type UsesAlias struct {
 	Same
 }
 `))
-	defined := structs["UsesDefined"]
-	if defined == nil {
-		t.Fatal("UsesDefined not collected")
+	for _, name := range []string{"UsesDefined", "UsesAlias"} {
+		sf := structs[name]
+		if sf == nil {
+			t.Fatalf("%s not collected", name)
+		}
+		if len(sf.unresolved) == 0 {
+			t.Errorf("%s: a name chain reaching a marshaller is refused, whichever declaration form it uses", name)
+		}
 	}
-	if len(defined.unresolved) != 0 {
-		t.Errorf("a defined type has an empty method set; embedding it promotes no marshaller, got %v", defined.unresolved)
-	}
-	if !defined.tags["at"] {
-		t.Errorf("its fields promote normally, got %v", defined.tags)
-	}
-	alias := structs["UsesAlias"]
-	if alias == nil {
-		t.Fatal("UsesAlias not collected")
-	}
-	if len(alias.unresolved) == 0 {
-		t.Error("an alias IS the type, methods included; embedding it must be rejected")
+}
+
+// TestFlattenEmbedded_NameChainToOrdinaryTypeIsFine is the paired positive that
+// keeps the rule above from becoming "refuse every name chain": a chain to an
+// ordinary struct still flattens, so the over-approximation is scoped to
+// chains that actually reach a method.
+func TestFlattenEmbedded_NameChainToOrdinaryTypeIsFine(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Defined Base
+type Aliased = Base
+
+type UsesDefined struct{ Defined }
+type UsesAlias struct{ Aliased }
+`))
+	for _, name := range []string{"UsesDefined", "UsesAlias"} {
+		sf := structs[name]
+		if sf == nil {
+			t.Fatalf("%s not collected", name)
+		}
+		if len(sf.unresolved) != 0 {
+			t.Errorf("%s: a chain to an ordinary struct is vouched, got %v", name, sf.unresolved)
+		}
+		if !sf.tags["id"] {
+			t.Errorf("%s: its fields promote, got %v", name, sf.tags)
+		}
 	}
 }
 
@@ -2957,7 +2989,16 @@ func TestIsJSONMethod_SignatureMatters(t *testing.T) {
 		{"func (s Stamp) MarshalJSON() []byte { return nil }", false},
 		{"func (s *Stamp) UnmarshalJSON(b string) error { return nil }", false},
 		{"func (s *Stamp) UnmarshalJSON(b []byte) (int, error) { return 0, nil }", false},
-		{"func (s Stamp) MarshalText() ([]byte, error) { return nil, nil }", false},
+		// encoding/json falls back to encoding.TextMarshaler, so a promoted
+		// MarshalText redirects the encoder too.
+		{"func (s Stamp) MarshalText() ([]byte, error) { return nil, nil }", true},
+		{"func (s *Stamp) UnmarshalText(b []byte) error { return nil }", true},
+		{"func (s Stamp) MarshalText() string { return \"\" }", false},
+		{"func (s Stamp) String() string { return \"\" }", false},
+		// A signature spelled through a local alias cannot be evaluated here,
+		// and the conservative reading is the one that does not certify a
+		// wrapper whose marshaller was hidden behind a name.
+		{"func (s Stamp) MarshalJSON() (Bytes, error) { return nil, nil }", true},
 	}
 	for _, c := range cases {
 		source := "package fixture" + "\n\n" + c.decl + "\n"
@@ -3054,5 +3095,89 @@ type Outer struct {
 	}
 	if !outer.tags["name"] {
 		t.Errorf("its sibling fields must be judged normally, got %v", outer.tags)
+	}
+}
+
+// TestFlattenEmbedded_AliasedInterfaceInGraph covers a method set reached
+// through an aliased interface name inside the interface graph itself
+// (`type M interface{ MarshalJSON() … }; type A = M; type B interface { A }`).
+// Since every single-identifier declaration is an edge, the closure marks A and
+// then B, and a struct embedding B is refused.
+func TestFlattenEmbedded_AliasedInterfaceInGraph(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type M interface {
+	MarshalJSON() ([]byte, error)
+}
+
+type A = M
+
+type B interface {
+	A
+	Other()
+}
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Outer struct {
+	B
+	Base
+}
+`))
+	if o := structs["Outer"]; o == nil || len(o.unresolved) == 0 {
+		t.Errorf("an interface embedding an ALIASED marshaler still promotes the method, got %+v", structs["Outer"])
+	}
+}
+
+// TestFlattenEmbedded_MethodOnIntermediateNameIsRefused covers the other order:
+// the method is declared on a name in the middle of the chain rather than at
+// either end (`type Custom Wire; func (Custom) MarshalJSON(); type Alias =
+// Custom`). Closing over name edges catches it wherever in the chain it sits,
+// which is the point of doing this with a closure rather than by inspecting
+// the two endpoints.
+func TestFlattenEmbedded_MethodOnIntermediateNameIsRefused(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Wire struct {
+	Raw string ~json:"raw"~
+}
+
+type Custom Wire
+
+func (c Custom) MarshalJSON() ([]byte, error) { return nil, nil }
+
+type Alias = Custom
+
+type Outer struct {
+	Alias
+}
+`))
+	if o := structs["Outer"]; o == nil || len(o.unresolved) == 0 {
+		t.Errorf("a method declared mid-chain is still promoted and must be refused, got %+v", structs["Outer"])
+	}
+}
+
+// TestFlattenEmbedded_TaggedUnexportedPointerIsDecodeUnsafe pairs with the
+// untagged case: a json tag changes which KEY the field appears under, not
+// whether the decoder can allocate it.
+func TestFlattenEmbedded_TaggedUnexportedPointerIsDecodeUnsafe(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type hidden struct {
+	ID int64 ~json:"id"~
+}
+
+type W struct {
+	*hidden ~json:"hidden"~
+}
+`))
+	w := structs["W"]
+	if w == nil {
+		t.Fatal("W not collected")
+	}
+	if len(w.decodeUnsafe) == 0 {
+		t.Error("a TAGGED unexported pointer embed is just as undecodable as an untagged one")
 	}
 }
