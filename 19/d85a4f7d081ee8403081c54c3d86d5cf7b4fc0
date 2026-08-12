@@ -1,0 +1,21 @@
+go/pkg/basecamp/checkins_test.go
+  s_655f73c03e416d::t_22759993637828 916-921
+go/pkg/basecamp/helpers.go
+  s_655f73c03e416d::t_52d81725d6b917 22-24,26-27,29-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "19d85a4f7d081ee8403081c54c3d86d5cf7b4fc0",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
