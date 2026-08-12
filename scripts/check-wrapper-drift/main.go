@@ -540,6 +540,10 @@ type embedRef struct {
 	qualifier string
 	// display is the source spelling, used in messages ("*Base", "time.Time").
 	display string
+	// pointer is true for `*Base`. It matters for decoding: encoding/json
+	// cannot allocate an embedded pointer to an UNEXPORTED type, so a
+	// direct-decode wrapper with one never gets those fields populated.
+	pointer bool
 }
 
 func main() {
@@ -982,10 +986,17 @@ func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) 
 		}
 		for _, m := range it.Methods.List {
 			if len(m.Names) == 0 {
-				// An embedded interface: it contributes its whole method set.
+				// An embedded interface contributes its whole method set.
 				if id, ok := m.Type.(*ast.Ident); ok {
 					ifaceEmbeds[name] = append(ifaceEmbeds[name], id.Name)
+					continue
 				}
+				// Qualified (`json.Marshaler`) or otherwise unreadable: this
+				// check does not parse the other package, so the method set is
+				// unknown. Unknown counts as carrying — the whole point of the
+				// vouching rule is that "cannot tell" is answered with a
+				// refusal, not an assumption.
+				out[name] = true
 				continue
 			}
 			for _, n := range m.Names {
@@ -1047,6 +1058,13 @@ func vouch(e embedRef, childName string, methodsTravel bool, resolveErr string, 
 	if jsonMethods[e.name] || (methodsTravel && childName != "" && jsonMethods[childName]) {
 		return "the embedded type's method set carries MarshalJSON/UnmarshalJSON, which the embedding struct promotes; encoding/json then calls it instead of walking any of these fields, so no promoted tag here is trustworthy"
 	}
+	if e.pointer && e.name != "" && !ast.IsExported(e.name) {
+		// encoding/json refuses to allocate an embedded pointer to an
+		// unexported type ("cannot set embedded pointer to unexported
+		// struct"), so a direct-decode wrapper never gets these fields
+		// populated even though their tags are present.
+		return "an embedded pointer to an unexported type cannot be allocated by encoding/json, so its promoted fields are never decoded"
+	}
 	if resolveErr != "" {
 		// An unresolvable type may also be a marshaller — time.Time is one —
 		// so this cannot be treated as merely "fields we cannot see".
@@ -1101,6 +1119,7 @@ type typeDecl struct {
 func embedRefFromExpr(expr ast.Expr) embedRef {
 	ref := embedRef{display: exprDisplay(expr)}
 	if star, ok := expr.(*ast.StarExpr); ok {
+		ref.pointer = true
 		expr = star.X
 	}
 	switch e := expr.(type) {
@@ -1137,6 +1156,17 @@ func exprDisplay(expr ast.Expr) string {
 	return "<unsupported type expression>"
 }
 
+// predeclaredTypes are Go's builtin type names. A declaration chain ending in
+// one is resolved, not unresolvable: it contributes no fields and no method set
+// of its own, so it needs neither a refusal nor a walk.
+var predeclaredTypes = map[string]bool{
+	"any": true, "bool": true, "byte": true, "comparable": true,
+	"complex64": true, "complex128": true, "error": true, "float32": true,
+	"float64": true, "int": true, "int8": true, "int16": true, "int32": true,
+	"int64": true, "rune": true, "string": true, "uint": true, "uint8": true,
+	"uint16": true, "uint32": true, "uint64": true, "uintptr": true,
+}
+
 // maxEmbedDepth bounds the promotion walk. The visited-set already terminates
 // cycles; this is a second, independent stop so a pathological chain can never
 // spin. Real embedding chains in this repo are one level deep.
@@ -1159,6 +1189,38 @@ func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl
 	// every struct rather than just the roots: the walk reads a descendant's
 	// ownFields directly, so filtering only at depth 0 would promote a tag out
 	// of a field encoding/json never emits.
+	// A struct promotes the methods of everything it embeds, so "carries a
+	// custom JSON method" is transitive through struct embedding just as it is
+	// through interface embedding — and a json TAG on the embed does not stop
+	// it. Close over that before any flattening, so an embed of a struct that
+	// merely inherits a marshaller is refused as readily as one that declares
+	// it. Unresolvable embeds count as carrying: an unparsed type can be a
+	// marshaller (time.Time is), and "cannot tell" is answered with a refusal.
+	for {
+		changed := false
+		for name, sf := range structs {
+			if jsonMethods[name] {
+				continue
+			}
+			refs := make([]embedRef, 0, len(sf.embeds)+len(sf.taggedEmbeds))
+			refs = append(refs, sf.embeds...)
+			for _, te := range sf.taggedEmbeds {
+				refs = append(refs, te.ref)
+			}
+			for _, ref := range refs {
+				_, childName, methodsTravel, err := resolveEmbedFull(ref, structs, decls)
+				if err != "" || jsonMethods[ref.name] || (methodsTravel && childName != "" && jsonMethods[childName]) {
+					jsonMethods[name] = true
+					changed = true
+					break
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+
 	for _, sf := range structs {
 		sf.ignoredOwn = map[int]bool{}
 		for _, te := range sf.taggedEmbeds {
@@ -1422,6 +1484,13 @@ func resolveEmbedFull(e embedRef, structs map[string]*structFields, decls map[st
 		}
 		decl, ok := decls[name]
 		if !ok {
+			if predeclaredTypes[name] {
+				// A defined type over a builtin (`type hidden string`). It is
+				// fully accounted for: no fields to promote, and no method set
+				// of its own — any methods would be declared locally and are
+				// already in jsonMethods under the defining name.
+				return nil, name, methodsTravel, ""
+			}
 			return nil, "", methodsTravel, "not declared in the parsed sources"
 		}
 		if seen[name] {
@@ -1455,6 +1524,14 @@ func resolveEmbedFull(e embedRef, structs map[string]*structFields, decls map[st
 			// The NAME is still returned even though there is no struct: an
 			// embedded interface promotes its method set, and vouch has to be
 			// able to look that name up.
+			//
+			// An interface is also the one target where the defined-type rule
+			// does NOT apply: `type Safe Marshaler` is still an interface with
+			// Marshaler's methods, unlike `type Safe SomeStruct`, which starts
+			// with an empty method set.
+			if _, isIface := decl.expr.(*ast.InterfaceType); isIface {
+				methodsTravel = true
+			}
 			return nil, name, methodsTravel, ""
 		}
 	}
@@ -1765,14 +1842,26 @@ func zeroValued(expr ast.Expr) bool {
 		if id, ok := unparen(e.Fun).(*ast.Ident); ok && id.Name == "new" {
 			return true
 		}
-		// A conversion whose single argument is nil: (*Base)(nil), Base(nil).
-		if len(e.Args) == 1 {
+		// A pointer conversion of nil: (*Base)(nil). The parenthesized star is
+		// what makes this unambiguous — `baseFrom(nil)` is an ordinary call
+		// that may well populate everything, and only the type checker could
+		// tell `Base(nil)` from it, so neither is claimed here.
+		if _, isStar := unparenOnce(e.Fun).(*ast.StarExpr); isStar && len(e.Args) == 1 {
 			if id, ok := unparen(e.Args[0]).(*ast.Ident); ok && id.Name == "nil" {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+// unparenOnce strips one layer of parentheses, distinguishing `(*T)(nil)` —
+// where the parens are part of the conversion syntax — from a bare call.
+func unparenOnce(expr ast.Expr) ast.Expr {
+	if p, ok := expr.(*ast.ParenExpr); ok {
+		return p.X
+	}
+	return expr
 }
 
 // unparen strips redundant parentheses: `(Base{...})` is the same value as

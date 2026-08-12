@@ -2281,6 +2281,10 @@ func TestRecordAssignedValue_ValueShapes(t *testing.T) {
 		// populate what they claim.
 		{"new(T)", "new(Base)", nil, false, []string{"Base.*"}},
 		{"typed nil conversion", "(*Base)(nil)", nil, false, []string{"Base.*"}},
+		// An ordinary call that happens to take nil is NOT a conversion; only
+		// the type checker could tell `Base(nil)` from a call, so neither is
+		// claimed and both stay opaque.
+		{"call with a nil argument", "baseFrom(nil)", nil, true, nil},
 		// nil populates nothing: a nil embedded pointer emits none of its fields.
 		{"nil", "nil", nil, false, []string{"Base.*"}},
 	}
@@ -2797,5 +2801,166 @@ type Outer struct {
 	}
 	if outer.tags["id"] {
 		t.Error("a sibling embed's tags are just as meaningless once the encoder is redirected")
+	}
+}
+
+// TestFlattenEmbedded_InheritedMarshallerIsRejected covers method promotion
+// arriving through a chain rather than a declaration. Mid does not declare
+// MarshalJSON — it embeds Wire, which does — so Mid promotes it and anything
+// embedding Mid promotes it in turn. A json tag on that embed changes nothing,
+// since tags govern field selection and not method sets, and the tag is
+// precisely what stops the field walk from ever reaching Wire.
+func TestFlattenEmbedded_InheritedMarshallerIsRejected(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Wire struct {
+	Raw string ~json:"raw"~
+}
+
+func (w Wire) MarshalJSON() ([]byte, error) { return nil, nil }
+
+type Mid struct {
+	Wire
+	Extra string ~json:"extra"~
+}
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type TaggedParent struct {
+	Mid ~json:"mid"~
+	Base
+}
+
+type UntaggedParent struct {
+	Mid
+	Base
+}
+`))
+	for _, name := range []string{"TaggedParent", "UntaggedParent"} {
+		sf := structs[name]
+		if sf == nil {
+			t.Fatalf("%s not collected", name)
+		}
+		if len(sf.unresolved) == 0 {
+			t.Errorf("%s: a marshaller inherited through an embed is promoted just as far and must be reported", name)
+		}
+		if sf.tags["id"] {
+			t.Errorf("%s: no promoted tag survives a redirected encoder", name)
+		}
+	}
+}
+
+// TestFlattenEmbedded_UnexportedPointerEmbedIsRejected covers the decode side:
+// encoding/json cannot allocate an embedded pointer to an unexported type
+// ("cannot set embedded pointer to unexported struct"), so a direct-decode
+// wrapper's tags are present but never populated — the exact assumption tier 2
+// rests on. The value form has no such problem and must keep working.
+func TestFlattenEmbedded_UnexportedPointerEmbedIsRejected(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type hidden struct {
+	ID int64 ~json:"id"~
+}
+
+type ByPointer struct {
+	*hidden
+}
+
+type ByValue struct {
+	hidden
+}
+`))
+	if p := structs["ByPointer"]; p == nil || len(p.unresolved) == 0 {
+		t.Errorf("an unexported pointer embed cannot be decoded and must be reported, got %+v", structs["ByPointer"])
+	}
+	if v := structs["ByValue"]; v == nil || len(v.unresolved) != 0 || !v.tags["id"] {
+		t.Errorf("the value form promotes normally, got %+v", structs["ByValue"])
+	}
+}
+
+// TestFlattenEmbedded_DefinedTypeOverInterfaceKeepsMethods separates the two
+// defined-type cases. `type Safe Stamp` over a STRUCT starts with an empty
+// method set, so it is safe to walk; `type Safe Marshaler` over an INTERFACE is
+// still an interface with that method set, so embedding it redirects the
+// encoder. Treating them alike in either direction is wrong in one of them.
+func TestFlattenEmbedded_DefinedTypeOverInterfaceKeepsMethods(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Marshaler interface {
+	MarshalJSON() ([]byte, error)
+}
+
+type SafeIface Marshaler
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Outer struct {
+	SafeIface
+	Base
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if len(outer.unresolved) == 0 {
+		t.Error("a defined type over an interface keeps its method set and must be reported")
+	}
+}
+
+// TestFlattenEmbedded_QualifiedInterfaceEmbedCounts covers an interface whose
+// method set comes from another package (`type Local interface { json.Marshaler }`).
+// The check does not parse that package, so the method set is unknown — and
+// unknown is answered with a refusal rather than an assumption.
+func TestFlattenEmbedded_QualifiedInterfaceEmbedCounts(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+import "encoding/json"
+
+type Local interface {
+	json.Marshaler
+}
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Outer struct {
+	Local
+	Base
+}
+`))
+	if o := structs["Outer"]; o == nil || len(o.unresolved) == 0 {
+		t.Errorf("an interface embedding another package's must not be assumed method-free, got %+v", structs["Outer"])
+	}
+}
+
+// TestFlattenEmbedded_BuiltinBackedTypeResolves guards the other direction of
+// that rule: a defined type over a BUILTIN is fully accounted for — no fields,
+// no method set of its own — and must not be refused as unresolvable. Treating
+// it as unknown would report drift on an ordinary wrapper.
+func TestFlattenEmbedded_BuiltinBackedTypeResolves(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Kind string
+
+type Outer struct {
+	Kind
+	Name string ~json:"name"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if len(outer.unresolved) != 0 {
+		t.Errorf("a builtin-backed defined type is resolved, not unknown, got %v", outer.unresolved)
+	}
+	if !outer.tags["name"] {
+		t.Errorf("its sibling fields must be judged normally, got %v", outer.tags)
 	}
 }
