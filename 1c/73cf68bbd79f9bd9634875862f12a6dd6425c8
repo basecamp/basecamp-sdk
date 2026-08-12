@@ -1,0 +1,37 @@
+scripts/bump-version.sh
+  s_655f73c03e416d::t_5dbf75ee6d7b87 81-83
+conformance/runner/ruby/Gemfile.lock
+  s_655f73c03e416d::t_672430f7984f27 1-76
+scripts/assert-lockfiles-unchanged
+  s_655f73c03e416d::t_f5137dd917150d 107-110
+  s_655f73c03e416d::t_aad0bd405d1505 130-133
+conformance/runner/python/uv.lock
+  s_655f73c03e416d::t_706e4e6c691a26 1-197
+Makefile
+  s_655f73c03e416d::t_cd1ee8706fc7b1 756-758,761
+  s_655f73c03e416d::t_784c544c325a2e 655-660,663
+  s_655f73c03e416d::t_3fe3f64ad90c53 241-243,245
+  s_655f73c03e416d::t_4b2492105dcd37 684
+  s_655f73c03e416d::t_25e52bbecc00b4 769
+  s_655f73c03e416d::t_1cd9620a436bcc 771-772,775
+  s_655f73c03e416d::t_7ec72a0d5de41b 783
+.github/workflows/test.yml
+  s_655f73c03e416d::t_62bf4dfdf607c0 534-537
+  s_655f73c03e416d::t_1303827a53c5e2 633-634,636
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1c73cf68bbd79f9bd9634875862f12a6dd6425c8",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
