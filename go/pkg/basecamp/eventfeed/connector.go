@@ -63,16 +63,23 @@ const (
 )
 
 // StartResume is the default entry mode: the stored position if any, else
-// the present.
+// the present. It is the ONLY mode a configured checkpoint store positions —
+// the three explicit modes below enter where they say they do, however full
+// the store is, which is what makes a checkpointed feed replayable and
+// resettable. A store still loads under every mode, and the run's first
+// accepted page saves under the same key, so an explicit mode repoints the
+// lineage rather than forking one.
 func StartResume() Start { return Start{kind: startResume} }
 
-// StartPresent enters at the present (since=now).
+// StartPresent enters at the present (since=now), whatever the store holds.
 func StartPresent() Start { return Start{kind: startPresent} }
 
-// StartBeginning enters at the beginning of served history (since=0).
+// StartBeginning enters at the beginning of served history (since=0),
+// whatever the store holds.
 func StartBeginning() Start { return Start{kind: startBeginning} }
 
-// StartAfter enters just after the given event id (since=<id>).
+// StartAfter enters just after the given event id (since=<id>), whatever the
+// store holds.
 func StartAfter(eventID int64) Start { return Start{kind: startAfter, eventID: eventID} }
 
 // StartAtPosition enters at an explicit position token. Mutually exclusive
@@ -206,6 +213,13 @@ type testHooks struct {
 	// pumpHandedOff fires once an item reaches the hand-off queue, reporting
 	// whether it is the pump's terminating error.
 	pumpHandedOff func(isErr bool)
+	// frameDeferred fires when the in-flight-poll servicing takes one receive
+	// out of band, reporting whether the deferral is an overflowing
+	// admission. It is the rendezvous for "the seam call is now the only
+	// thing this walk is waiting on", which is what makes the two deferral
+	// classes' opposite ordering against the next Save assertable without
+	// racing the seam call's own completion.
+	frameDeferred func(overflow bool)
 }
 
 // New validates configuration and returns a Connector. New does no I/O —

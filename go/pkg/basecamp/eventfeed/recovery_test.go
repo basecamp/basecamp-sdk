@@ -544,7 +544,12 @@ func TestResetCursorIgnoresLiveDeliveredIDs(t *testing.T) {
 // TestFilterChangedDiscardsTheHeldPosition is transition 19: a 409 re-enters
 // like a 400-position AND discards the held position — so an attempt torn down
 // before the re-entry serves a page reconnects at the present rather than back
-// at the position the server just refused.
+// at the position the server just refused. With no poll-served id the reset
+// cursor IS the present, and the reconnect re-enters at the latched
+// `since=now` spelling rather than the bare entry: §23 treats the two
+// identically ("`since=now` — and the bare present entry, which the server
+// treats identically"), and re-entering at the LATCHED cursor is what keeps
+// the poll-served-id case (below) from decaying into a present-class jump.
 func TestFilterChangedDiscardsTheHeldPosition(t *testing.T) {
 	store := feedtest.NewStore()
 	store.Stored("pos-0")
@@ -579,8 +584,8 @@ func TestFilterChangedDiscardsTheHeldPosition(t *testing.T) {
 	if calls[1].Cursor != (eventfeed.Cursor{Since: "now"}) {
 		t.Fatalf("re-entry cursor = %+v, want the present-class since=now fallback", calls[1].Cursor)
 	}
-	if calls[2].Cursor != (eventfeed.Cursor{}) {
-		t.Fatalf("reconnect entry cursor = %+v, want the bare present entry (the 409 discarded the position)", calls[2].Cursor)
+	if calls[2].Cursor != (eventfeed.Cursor{Since: "now"}) {
+		t.Fatalf("reconnect entry cursor = %+v, want the latched present-class reset (the 409 discarded the position)", calls[2].Cursor)
 	}
 	if len(rejected) != 1 || rejected[0] != eventfeed.PollFilterChanged {
 		t.Fatalf("Observer.PositionRejected = %v, want one filter_changed", rejected)
@@ -653,4 +658,103 @@ func TestPollRetryIndexGrowsAndResets(t *testing.T) {
 	}
 	h.awaitStreaming()
 	assertIDs(t, h.deliveredIDs(), 101)
+}
+
+// TestResetCursorSurvivesAReconnect is the 409's reset cursor as RECONNECT
+// state rather than walk-local state. Transition 19 discards the position, so
+// once the socket dies before the re-entry has served a page there is nothing
+// left in memory to re-enter from and the entry falls back to the configured
+// start mode — the bare present for a resume feed. That silently skips
+// everything between the last poll-served id and the present, on the one path
+// whose whole purpose was not to skip anything. The cursor is chosen from run
+// state (`lastPollServedID`) no later entry re-derives, so it has to be
+// latched until a page replaces it.
+func TestResetCursorSurvivesAReconnect(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	h := storedHarness(t, store)
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	next := testOrigin + "/999/events.json?after=101"
+	h.polls.ScriptPage(eventfeed.PollPage{
+		Events:   []eventfeed.Event{pollEvent(101)},
+		Position: "pos-1",
+		Next:     next,
+	})
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollFilterChanged})
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollTransient, Err: errors.New("502")})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-2"})
+	h.start()
+
+	conn1 := h.driveToSubscribed()
+	conn1.Serve(frameConfirm(noFilterIdentifier))
+	// The re-entry poll fails transiently, parking the walk on `poll-retry`;
+	// the socket then dies, so no page is ever accepted at the reset cursor.
+	h.awaitTimer(timerPollRetry)
+	conn1.FailReads(errors.New("connection reset"))
+	h.awaitTimer(timerBackoff)
+	h.fireTimer(timerBackoff)
+
+	conn2 := h.driveToSubscribed()
+	conn2.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitStreaming()
+
+	calls := h.polls.Calls()
+	if len(calls) != 4 {
+		t.Fatalf("poll seam calls = %d, want 4", len(calls))
+	}
+	if calls[2].Cursor != (eventfeed.Cursor{Since: "101"}) {
+		t.Fatalf("re-entry cursor = %+v, want the poll-served reset cursor", calls[2].Cursor)
+	}
+	if calls[3].Cursor != (eventfeed.Cursor{Since: "101"}) {
+		t.Fatalf("reconnect cursor = %+v, want the latched reset cursor, not a jump to the present", calls[3].Cursor)
+	}
+	assertPositions(t, store.Saves(), "pos-1", "pos-2")
+}
+
+// TestAcceptedGapResumeSurvivesAReconnect is the same latch from the 410 side,
+// plus the discard the Accept implies. The position the 410 refused is
+// UNUSABLE, not merely superseded: left in memory it is what the next
+// connection's entry selects, drawing the same 410 and re-invoking a gap
+// handler that has already been asked and has already answered Accept. The
+// accepted resume URL takes its place until a page replaces it, so the
+// present-class reset the consumer accepted is what actually continues.
+func TestAcceptedGapResumeSurvivesAReconnect(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	ledger := &signalLedger{give: eventfeed.Accept}
+	h := storedHarness(t, store, eventfeed.WithSignalHandler(ledger.handler))
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	resume := testOrigin + "/999/events.json?since=now"
+	h.polls.ScriptError(gonePoll(resume))
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollTransient, Err: errors.New("502")})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+
+	conn1 := h.driveToSubscribed()
+	conn1.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitTimer(timerPollRetry)
+	conn1.FailReads(errors.New("connection reset"))
+	h.awaitTimer(timerBackoff)
+	h.fireTimer(timerBackoff)
+
+	conn2 := h.driveToSubscribed()
+	conn2.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitStreaming()
+
+	calls := h.polls.Calls()
+	if len(calls) != 3 {
+		t.Fatalf("poll seam calls = %d, want 3", len(calls))
+	}
+	if calls[1].Cursor != (eventfeed.Cursor{PageURL: resume}) {
+		t.Fatalf("re-entry cursor = %+v, want the provided resume URL", calls[1].Cursor)
+	}
+	if calls[2].Cursor != (eventfeed.Cursor{PageURL: resume}) {
+		t.Fatalf("reconnect cursor = %+v, want the latched resume URL, not the position the 410 refused", calls[2].Cursor)
+	}
+	// The handler is asked once, and the accepted disposition is not
+	// re-litigated by a reconnect.
+	assertInvocations(t, ledger.invocations(), "feedGap/accept")
+	assertPositions(t, store.Saves(), "pos-1")
 }

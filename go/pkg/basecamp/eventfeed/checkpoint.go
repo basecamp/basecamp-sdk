@@ -115,13 +115,24 @@ func (l *loop) checkpointKey() CheckpointKey {
 }
 
 // loadCheckpoint runs the store's load exactly once, on the first iteration
-// and BEFORE the first mint. Loaded seeds the in-memory position (which is
-// authoritative from then on); Missing proceeds to a present-class entry — no
-// stored cursor is not an error; Failed is Terminal(checkpoint_load) with
-// zero wire attempts, because collapsing it to Missing would silently start
-// at the present and skip history. It runs whenever a store is configured,
-// including under an explicit entry mode: the lineage's identity is settled
-// before anything durable can move.
+// and BEFORE the first mint. Loaded seeds the in-memory position UNDER THE
+// RESUME MODE (which is authoritative from then on); Missing proceeds to a
+// present-class entry — no stored cursor is not an error; Failed is
+// Terminal(checkpoint_load) with zero wire attempts, because collapsing it to
+// Missing would silently start at the present and skip history. It runs
+// whenever a store is configured, including under an explicit entry mode: the
+// lineage's identity is settled before anything durable can move.
+//
+// Only `StartResume` is defined as "the stored position if any" (SPEC.md §23
+// "Consumer Ergonomics"). `StartPresent`, `StartBeginning` and `StartAfter`
+// promise `since=now`, `since=0` and `since=<id>`, and a caller pairing one
+// with a store means it: seeding the position from the load would make every
+// explicit mode behave as resume the moment the store had anything in it, so
+// a checkpointed feed could never be deliberately replayed or reset. The load
+// still HAPPENS under those modes — its failure edge and its lineage identity
+// are not mode-dependent — the value is simply not what the entry is taken
+// from. The store is written under the same key either way, so the run's
+// first accepted page repoints the lineage.
 func (l *loop) loadCheckpoint() *TerminalError {
 	if l.cfg.store == nil {
 		return nil
@@ -134,7 +145,7 @@ func (l *loop) loadCheckpoint() *TerminalError {
 			Err:    err,
 		}
 	}
-	if ok {
+	if ok && l.cfg.start.kind == startResume {
 		l.position = position
 	}
 	return nil

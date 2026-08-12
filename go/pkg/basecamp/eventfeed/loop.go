@@ -479,10 +479,20 @@ type loop struct {
 	// successful poll page and by socket teardown.
 	pollFailures int
 	// position is the connector's in-memory position: authoritative for
-	// resume and repair within the run, seeded by the checkpoint load and
-	// advanced only by accepted poll pages. The store is write-through
-	// durability; this field is never re-read from it mid-run.
+	// resume and repair within the run, seeded by the checkpoint load under
+	// the resume entry mode and advanced only by accepted poll pages. The
+	// store is write-through durability; this field is never re-read from it
+	// mid-run.
 	position string
+	// reentry latches the cursor a re-entry selected (transitions 17/18/19)
+	// as RECONNECT state, held until a page replaces it. A re-entry's cursor
+	// is the connector's whole answer to a position the server refused, went
+	// gone on, or whose lineage a filter change ended — and it lives only in
+	// the walk that chose it. Without the latch, a socket torn down before
+	// the re-entry's first page lands drops back to a position the server
+	// already rejected, or to the configured start mode, which for a
+	// poll-served reset cursor means silently jumping to the present.
+	reentry *reentryCursor
 	// lastPollServedID is the highest event id the POLL lane has served on
 	// this run — the reset cursor transitions 18/19 re-enter at, tracked
 	// independently of delivery, dedupe, and the live lane (a live-delivered
@@ -936,14 +946,44 @@ func (l *loop) admitLive(at *attempt, deadline Timer, ev Event) (cycleOutcome, b
 	}}, true
 }
 
+// reentryCursor is a latched re-entry: the cursor transitions 17/18/19
+// selected and the entry class it carries.
+type reentryCursor struct {
+	cursor       Cursor
+	presentClass bool
+}
+
+// acceptPosition records a position an accepted poll page moved the connector
+// to. It is also what releases a latched re-entry — "until a page replaces
+// it" is exactly this assignment, so a present-class re-entry stays latched
+// through its whole walk and drain (nothing durable has moved until the held
+// save) while a position-resume one is released by its first saved page.
+func (l *loop) acceptPosition(position string) {
+	l.position = position
+	l.reentry = nil
+}
+
 // entryCursor selects the catch-up entry cursor and whether it is
-// present-class (SPEC.md §23 "Entry Boundary"). A position the connector
-// already holds — loaded from the store before the first mint, or accepted
-// from a page earlier in this run — wins over the configured Start mode: the
-// in-memory position is authoritative within a run, so a reconnect resumes
-// where the feed actually got to rather than re-entering at the mode's
-// original cursor.
+// present-class (SPEC.md §23 "Entry Boundary"). Three sources, in priority
+// order, and the distinction between them is the point:
+//
+//   - A LATCHED re-entry wins outright. It is the connector's live answer to
+//     a 410/400-position/409, still unreplaced by a page, and every other
+//     source is a cursor the server has already refused or superseded.
+//   - The IN-MEMORY position — accepted from a page earlier in this run, or
+//     seeded by the checkpoint load under the resume mode — comes next: it is
+//     authoritative within a run, so a reconnect resumes where the feed
+//     actually got to rather than re-entering at the mode's original cursor.
+//   - Otherwise the configured Start mode, which is the ONLY source for the
+//     explicit modes on a fresh run. `StartPresent`, `StartBeginning` and
+//     `StartAfter` promise `since=now`, `since=0` and `since=<id>`; only
+//     `StartResume` is defined as "the stored position if any", which is why
+//     the load seeds the in-memory position for that mode alone (see
+//     loadCheckpoint) rather than here.
 func (l *loop) entryCursor() (Cursor, bool) {
+	if l.reentry != nil {
+		return l.reentry.cursor, l.reentry.presentClass
+	}
 	if l.position != "" {
 		return Cursor{Position: l.position}, false
 	}

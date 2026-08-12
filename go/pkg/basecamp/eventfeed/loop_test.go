@@ -1329,3 +1329,80 @@ func TestTeardownCancelsInFlight(t *testing.T) {
 		assertGoroutinesSettle(t, base)
 	})
 }
+
+// TestStartModesWithAPopulatedStore: only StartResume is defined as "the
+// stored position if any" (SPEC.md §23 "Consumer Ergonomics"). StartPresent,
+// StartBeginning and StartAfter promise since=now, since=0 and since=<id>,
+// and a caller pairing one with a configured store means it — otherwise every
+// explicit mode silently becomes resume the moment the store has anything in
+// it, and a checkpointed feed can never be deliberately replayed or reset.
+// The load still runs under those modes (its failure edge and its lineage
+// identity are not mode-dependent); the value simply is not what the entry is
+// taken from.
+func TestStartModesWithAPopulatedStore(t *testing.T) {
+	cases := []struct {
+		name    string
+		start   eventfeed.Start
+		cursor  eventfeed.Cursor
+		present bool
+	}{
+		{"resume takes the stored position", eventfeed.StartResume(), eventfeed.Cursor{Position: "pos-0"}, false},
+		{"present ignores it", eventfeed.StartPresent(), eventfeed.Cursor{Since: "now"}, true},
+		{"beginning ignores it", eventfeed.StartBeginning(), eventfeed.Cursor{Since: "0"}, false},
+		{"after id ignores it", eventfeed.StartAfter(42), eventfeed.Cursor{Since: "42"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := feedtest.NewStore()
+			store.Stored("pos-0")
+			h := storedHarness(t, store, eventfeed.WithStart(tc.start))
+			h.minter.ScriptTicket(ticket(1))
+			h.start()
+			conn := h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			b := h.awaitBoundary()
+			if b.Entry != tc.cursor || b.PresentClass != tc.present {
+				t.Fatalf("boundary = {%+v present=%v}, want {%+v present=%v}", b.Entry, b.PresentClass, tc.cursor, tc.present)
+			}
+			if got := len(store.Loads()); got != 1 {
+				t.Fatalf("checkpoint loads = %d, want exactly 1 — the load runs under every mode", got)
+			}
+		})
+	}
+
+	// The other half of the rule: a position ACCEPTED during this run is
+	// authoritative within the run, so a reconnect under an explicit mode
+	// resumes where the feed actually got to rather than re-entering at the
+	// mode's original cursor.
+	t.Run("a position accepted during the run wins on reconnect", func(t *testing.T) {
+		store := feedtest.NewStore()
+		store.Stored("pos-0")
+		h := storedHarness(t, store, eventfeed.WithStart(eventfeed.StartPresent()))
+		h.minter.ScriptTicket(ticket(1))
+		h.minter.ScriptTicket(ticket(2))
+		h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+		h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-2"})
+		h.start()
+
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.awaitStreaming()
+		conn.FailReads(errors.New("connection reset"))
+		h.awaitTimer(timerBackoff)
+		h.fireTimer(timerBackoff)
+		conn2 := h.driveToSubscribed()
+		conn2.Serve(frameConfirm(noFilterIdentifier))
+		h.awaitStreaming()
+
+		calls := h.polls.Calls()
+		if len(calls) != 2 {
+			t.Fatalf("poll seam calls = %d, want 2", len(calls))
+		}
+		if calls[0].Cursor != (eventfeed.Cursor{Since: "now"}) {
+			t.Fatalf("entry cursor = %+v, want the configured present entry", calls[0].Cursor)
+		}
+		if calls[1].Cursor != (eventfeed.Cursor{Position: "pos-1"}) {
+			t.Fatalf("reconnect cursor = %+v, want the position accepted during this run", calls[1].Cursor)
+		}
+	})
+}

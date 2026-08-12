@@ -877,3 +877,247 @@ func TestNoStoreNeverSaves(t *testing.T) {
 		t.Fatalf("ledger = %s, want only the delivery", got)
 	}
 }
+
+// startDeferredOverflowWalk drives a position-resume walk to the moment the
+// live buffer fills UNDER an in-flight entry poll: 41 and 42 are admitted by
+// the in-flight servicing, 43 cannot be, so it is parked as an OVERFLOW
+// deferral while the seam call is still allowed to complete.
+//
+// The rendezvous on the deferral is what makes the ordering deterministic
+// rather than sampled: the scripted page is produced only after the poll's
+// OnCall returns, so waiting there for the deferral removes the state
+// machine's race between the queued frame and the finished call.
+func startDeferredOverflowWalk(t *testing.T, store *feedtest.Store, wire func(*harness), opts ...eventfeed.Option) *harness {
+	t.Helper()
+	store.Stored("pos-0")
+	h := storedHarness(t, store, append([]eventfeed.Option{eventfeed.WithLiveBufferCapacity(2)}, opts...)...)
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	deferred := make(chan bool, 4)
+	h.conn.OnFrameDeferred(func(overflow bool) { deferred <- overflow })
+	if wire != nil {
+		wire(h)
+	}
+	var conn *feedtest.Conn
+	h.polls.OnCall(func(feedtest.PollCall) {
+		conn.Serve(frameMessage(noFilterIdentifier, 41))
+		conn.Serve(frameMessage(noFilterIdentifier, 42))
+		conn.Serve(frameMessage(noFilterIdentifier, 43))
+		select {
+		case overflow := <-deferred:
+			if !overflow {
+				t.Error("the deferral was a socket outcome, want the overflowing admission")
+			}
+		case <-time.After(watchdog):
+			t.Error("the overflowing admission was never deferred")
+		}
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	return h
+}
+
+// TestDeferredOverflowNeverSavesUnderTheDefaultTerminal is the conjunctive
+// save-ordering invariant against the one drop the walk used to slip past it.
+// An admission that overflows while the page's poll is in flight is a pre-cut
+// loss condition, so its disposition must run BEFORE the page's position
+// moves anything durable: with no handler registered that is
+// Terminal(buffer_overflow) with the checkpoint exactly where it was, or a
+// restart resumes past the dropped event and never serves it.
+//
+// Dispatching it at the walk's ordinary point is not merely late, it is
+// silent: by then the drain has emptied the buffer, the admission drops
+// nothing, and the signal never fires at all.
+func TestDeferredOverflowNeverSavesUnderTheDefaultTerminal(t *testing.T) {
+	store := feedtest.NewStore()
+	var signals []eventfeed.Signal
+	h := startDeferredOverflowWalk(t, store, func(h *harness) {
+		h.conn.OnSignal(func(s eventfeed.Signal) { signals = append(signals, s) })
+	})
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonBufferOverflow {
+		t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonBufferOverflow)
+	}
+	if len(signals) != 1 {
+		t.Fatalf("signals = %v, want exactly one BufferOverflow raised at drop time", signals)
+	}
+	ov, ok := signals[0].(eventfeed.BufferOverflow)
+	if !ok || ov.DroppedCount != 1 || len(ov.DroppedIDs) != 1 || ov.DroppedIDs[0] != 41 {
+		t.Fatalf("signal = %+v, want BufferOverflow{DroppedIDs:[41], DroppedCount:1}", signals[0])
+	}
+	assertPositions(t, store.Saves())
+	if got := fmt.Sprint(h.ledger()); got != "[]" {
+		t.Fatalf("ledger = %s, want nothing delivered and nothing saved", got)
+	}
+}
+
+// TestDeferredOverflowAcceptedSavesAfterTheDisposition is the same ordering
+// from the accepting side: the disposition is taken first, the page's position
+// saves second, and acceptance is still not license to skip the retained
+// events — 42 and 43 are both delivered by the drain that follows.
+func TestDeferredOverflowAcceptedSavesAfterTheDisposition(t *testing.T) {
+	store := feedtest.NewStore()
+	// The handler runs on the consumer's goroutine, so it reaches the ledger
+	// through a target published BEFORE that goroutine exists — the wire hook
+	// runs ahead of the iteration, which is the happens-before the plain
+	// assign-after-construct spelling does not have.
+	var target *harness
+	h := startDeferredOverflowWalk(t, store,
+		func(h *harness) { target = h },
+		eventfeed.WithSignalHandler(func(eventfeed.Signal) eventfeed.Disposition {
+			target.record("overflow")
+			return eventfeed.Accept
+		}))
+	h.awaitStreaming()
+
+	assertLedger(t, h.ledger(), []string{"overflow", "save pos-1", "event 42", "event 43"})
+	assertPositions(t, store.Saves(), "pos-1")
+}
+
+// TestSocketOutcomeDuringAStalledPollIsBounded is transition 21 against a
+// seam call that returns only on cancellation. The socket dies while the entry
+// poll is outstanding, so the outcome is deferred and the call is awaited —
+// the in-flight page is still the page boundary's to accept — but the wait is
+// bounded by the same staleness window every other socket-open wait is.
+// Awaiting it unconditionally parks the consumer's goroutine forever behind a
+// socket that has already spoken, and the staleness expiry that would tear
+// that socket down is unobservable for as long as the call is in flight.
+func TestSocketOutcomeDuringAStalledPollIsBounded(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	h := storedHarness(t, store)
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.StallNext()
+
+	deferred := make(chan bool, 4)
+	h.conn.OnFrameDeferred(func(overflow bool) { deferred <- overflow })
+	errQueued := make(chan struct{}, 1)
+	h.conn.OnPumpHandedOff(func(isErr bool) {
+		if !isErr {
+			return
+		}
+		select {
+		case errQueued <- struct{}{}:
+		default:
+		}
+	})
+	var conn *feedtest.Conn
+	h.polls.OnCall(func(feedtest.PollCall) {
+		conn.FailReads(errors.New("connection reset by peer"))
+		select {
+		case <-errQueued:
+		case <-time.After(watchdog):
+			t.Error("the pump never handed the socket failure to the state machine")
+		}
+		select {
+		case overflow := <-deferred:
+			if overflow {
+				t.Error("the deferral was an overflowing admission, want the socket outcome")
+			}
+		case <-time.After(watchdog):
+			t.Error("the socket failure was never deferred")
+		}
+		// The window now lapses with the seam call still outstanding.
+		h.clock.Advance(staleAfter)
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("abandoning the superseded call must dispose the attempt")
+	}
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("a socket failure mid-walk is never terminal; got %v", terminal)
+	}
+	assertPositions(t, store.Saves())
+	assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+}
+
+// TestProtocolFatalDuringDrainingIsImmediate is SPEC.md §23's carve-out from
+// Draining's deferred consumption: "a raw `invalid_event_stream_command`
+// observed during Draining is Terminal(`protocol_fatal`) immediately — the
+// drain is not completed, the held entry position is NOT saved, and no
+// `caught_up` is announced; only recoverable failures defer."
+//
+// Both subtests are the same frame reaching Draining by the two routes it
+// can: parked in the deferral slot by the entry poll's own servicing, and
+// queued by the pump while the drain is mid-delivery. A drain that replays
+// the buffer without ever looking at the frame queue takes the recoverable
+// path in both — held save, `caught_up`, and only then the terminal.
+func TestProtocolFatalDuringDrainingIsImmediate(t *testing.T) {
+	// A store with nothing in it makes the entry present-class, which is what
+	// gives the drain a HELD position to (wrongly) save.
+	newDrainingHarness := func(t *testing.T, caughtUp *int) (*harness, *feedtest.Store) {
+		t.Helper()
+		store := feedtest.NewStore()
+		h := storedHarness(t, store, eventfeed.WithObserver(eventfeed.Observer{
+			CaughtUp: func() { *caughtUp++ },
+		}))
+		h.minter.ScriptTicket(ticket(1))
+		h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+		return h, store
+	}
+
+	t.Run("deferred by the entry poll's servicing", func(t *testing.T) {
+		var caughtUp int
+		h, store := newDrainingHarness(t, &caughtUp)
+		deferred := make(chan bool, 4)
+		h.conn.OnFrameDeferred(func(overflow bool) { deferred <- overflow })
+		var conn *feedtest.Conn
+		h.polls.OnCall(func(feedtest.PollCall) {
+			conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+			select {
+			case <-deferred:
+			case <-time.After(watchdog):
+				t.Error("the disconnect frame was never deferred")
+			}
+		})
+		h.start()
+		conn = h.driveToSubscribed()
+		h.serveSettled(conn, frameMessage(noFilterIdentifier, 41))
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.join()
+
+		assertProtocolFatalDrain(t, h, store, caughtUp)
+		assertIDs(t, h.deliveredIDs())
+	})
+
+	t.Run("queued while the drain is delivering", func(t *testing.T) {
+		var caughtUp int
+		h, store := newDrainingHarness(t, &caughtUp)
+		h.pauseAfter = 1
+		h.start()
+		conn := h.driveToSubscribed()
+		h.serveSettled(conn, frameMessage(noFilterIdentifier, 41))
+		conn.Serve(frameConfirm(noFilterIdentifier))
+
+		// The consumer parks inside the drain's delivery of the retained
+		// event; the fatal frame is queued while it is parked.
+		h.waitUntil("the drain parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
+		h.serveSettled(conn, frameDisconnect("invalid_event_stream_command", false))
+		h.resume()
+		h.join()
+
+		assertProtocolFatalDrain(t, h, store, caughtUp)
+		assertIDs(t, h.deliveredIDs(), 41)
+	})
+}
+
+// assertProtocolFatalDrain asserts the carve-out's three consequences: the
+// typed terminal, no held save, and no caught_up announcement.
+func assertProtocolFatalDrain(t *testing.T, h *harness, store *feedtest.Store, caughtUp int) {
+	t.Helper()
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonProtocolFatal {
+		t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonProtocolFatal)
+	}
+	assertPositions(t, store.Saves())
+	if caughtUp != 0 {
+		t.Fatalf("caught_up announcements = %d, want 0 — the drain never completed", caughtUp)
+	}
+}

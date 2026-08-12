@@ -122,9 +122,17 @@ func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 		// since=now with the canonical filter set preserved), so the entry
 		// boundary's hold-then-save discipline governs the pages it serves —
 		// and the old cursor is unusable, which is precisely the durability
-		// boundary the invariant's exclusion names.
+		// boundary the invariant's exclusion names. Unusable means DISCARDED,
+		// not merely superseded: leaving it in memory would let a socket torn
+		// down before the resume poll's first page re-select it on the next
+		// connection, drawing the same 410 and re-invoking a gap handler that
+		// has already been asked and has already answered Accept. The resume
+		// URL takes its place as latched reconnect state so the accepted
+		// present-class reset is what continues.
+		l.position = ""
+		l.reentry = &reentryCursor{cursor: Cursor{PageURL: pe.ResumeURL}, presentClass: true}
 		return walkStep{
-			cursor:       Cursor{PageURL: pe.ResumeURL},
+			cursor:       l.reentry.cursor,
 			presentClass: true,
 			reentry:      true,
 		}, cycleOutcome{}, false
@@ -146,19 +154,28 @@ func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 // live id above the durable position would re-enter past the un-polled gap
 // behind it and permanently skip everything in between. Empty pages serve no
 // ids and advance nothing.
+//
+// The selected cursor is LATCHED as reconnect state, not just handed to the
+// walk. A reset cursor is the connector's whole answer to a rejected
+// position, and it is chosen from run state (`lastPollServedID`) that no
+// later entry re-derives: if the socket dies before the re-entry's first page
+// lands, the next connection would otherwise fall back to a position the
+// server refused — or, after a 409 discarded it, to the configured start
+// mode, which for a resume feed is the bare present. That is a silent skip of
+// everything between the poll-served id and the present, on a path whose
+// entire purpose was not to skip anything.
 func (l *loop) reenterAtResetCursor(kind PollErrorKind) walkStep {
 	if l.cfg.observer.PositionRejected != nil {
 		l.cfg.observer.PositionRejected(kind)
 	}
 	if l.lastPollServedID > 0 {
-		return walkStep{
-			cursor:  Cursor{Since: strconv.FormatInt(l.lastPollServedID, 10)},
-			reentry: true,
-		}
+		l.reentry = &reentryCursor{cursor: Cursor{Since: strconv.FormatInt(l.lastPollServedID, 10)}}
+	} else {
+		l.reentry = &reentryCursor{cursor: Cursor{Since: sincePresent}, presentClass: true}
 	}
 	return walkStep{
-		cursor:       Cursor{Since: sincePresent},
-		presentClass: true,
+		cursor:       l.reentry.cursor,
+		presentClass: l.reentry.presentClass,
 		reentry:      true,
 	}
 }
