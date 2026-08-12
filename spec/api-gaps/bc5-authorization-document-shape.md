@@ -200,11 +200,27 @@ adds no runtime edge to the known `base.ts`/`client.ts` cycle. In it:
 
 **Go** — `AuthorizedAccount.Resource` and `AuthorizationInfo.Scope` added
 (`,omitempty`), plus the same `FilterProduct` correction and
-`ProductFilterApplied`. `ExpiresAt` is deliberately untouched: **issue #662**
-owns pointerizing it (it currently fabricates `0001-01-01T00:00:00Z`) and
-widening the `isValueTime` guard, and `FlexTime` already decodes both spellings,
-so the brief's Go timestamp ask was met before this. Doing it here would collide
-with a breaking change #662 should make on its own terms.
+`ProductFilterApplied`. `ExpiresAt` was deliberately untouched here and closed
+by **issue #662** on its own terms — not by pointerizing (`encoding/json`
+allocates on any non-null token, so a wire `0` can never become a nil pointer
+without struct-level machinery) but by a zero-time sentinel: `FlexTime` keeps
+its value type, absent / `null` / `0` all decode to the zero time, the zero
+marshals back as `null` instead of fabricating `0001-01-01T00:00:00Z`, and
+`AuthorizationInfo.Expiry() (time.Time, bool)` is the documented front door.
+The `isValueTime` guards were widened to recognize the named time wrappers,
+plus a behavioral guard that every named wrapper marshals its zero as null —
+the AST guards structurally cannot reach `ExpiresAt` (no generated
+counterpart, bare tag), so the marshaling contract is what protects it.
+
+One premise correction against bc3 source: a nil expiry rendering as `0` —
+claimed for TS above — is unreachable today. BC3 tokens carry `null: false`
+plus presence validation and are always set at mint (10-year PATs are the
+"non-expiring" case and still carry real timestamps); legacy Signal tokens
+lazily self-default (`expires_at ||= expires_in.from_now`). So `.to_i` has
+never emitted `0` in production and Launchpad never omits the field either;
+the `0` handling on both sides is defense-in-depth against the RFC 7591
+collision (bc3's own `client_secret_expires_at: 0` means "never expires" — the
+exact inverse of "expired at epoch"), not a live-bug fix.
 
 **Ruby** — `AuthorizationService#get`'s `@example` no longer reads
 `identity.email_address`, which is `nil` against bc3. The sharper fix is in the
