@@ -1,0 +1,23 @@
+spec/api-gaps/README.md
+  s_0e78c6630b4ac4::t_b2cf8468ac3b0e 73
+spec/api-gaps/bc5-authorization-document-shape.md
+  s_0e78c6630b4ac4::t_e7fd9fef73611c 244-281
+  s_0e78c6630b4ac4::t_f9eca59f0a1cbc 168-172
+  s_0e78c6630b4ac4::t_04cc4251291888 3,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d434dadef74e172fddf0aa7366af65bd36f1ea45",
+  "prompts": {},
+  "sessions": {
+    "s_0e78c6630b4ac4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23a29ef5-f8f1-48fc-80f2-0ef9d7827559",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
