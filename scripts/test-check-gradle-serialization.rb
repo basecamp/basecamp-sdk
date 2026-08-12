@@ -512,6 +512,64 @@ SH
   )
 end
 
+# --- Cases 22-23: one root cause, two symptoms ------------------------------
+#
+# Round six. Both findings came from the same asymmetry: the delegated-script
+# scan folded backslash continuations and the recipe scan did not, and a direct
+# Gradle call short-circuited the delegate scan entirely. Recipes and scripts are
+# now processed the same way, and direct and delegated are unioned rather than
+# treated as alternatives.
+#
+# 22 uses the CONVENTIONAL wrapped form, which is why it matters: `cd dir && \`
+# on one line and `./gradlew` on the next read as a bare repo-root invocation
+# with the directory discarded. The probe is chained after conformance-kotlin so
+# only the discarded spec/smithy-bare-arrays directory can produce the violation.
+
+wrapped_recipe = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-wrapped ",
+) + <<~MAKE
+
+  .PHONY: probe-wrapped
+  probe-wrapped: | conformance-kotlin
+  \tcd spec/smithy-bare-arrays && \\
+  \t  ./gradlew help
+MAKE
+
+failures << check(
+  "22: a backslash-continued recipe keeps its directory",
+  wrapped_recipe,
+  expect_pass: false,
+  expect_fragment: "probe-wrapped",
+)
+
+with_fixture_root("probe-mixed.sh", <<~SH) do |root|
+  #!/usr/bin/env bash
+  (cd "$ROOT_DIR/second-project" && ./gradlew help)
+SH
+  FileUtils.mkdir_p(File.join(root, "second-project"))
+  FileUtils.touch(File.join(root, "second-project", "gradlew"))
+
+  # The direct call is in kotlin/ and IS chained; the delegated one is in a
+  # second project shared with another probe. Only scanning both can see it.
+  failures << check(
+    "23: a target that calls Gradle directly AND delegates is scanned for both",
+    must_substitute(MAKEFILE, "check-targets: ", "check-targets: probe-mixed probe-second-only ") + <<~MAKE,
+
+      .PHONY: probe-mixed probe-second-only
+      probe-mixed: | conformance-kotlin
+      \tcd kotlin && ./gradlew help
+      \t@./scripts/probe-mixed.sh
+      probe-second-only:
+      \tcd second-project && ./gradlew help
+    MAKE
+    expect_pass: false,
+    expect_fragment: "probe-mixed",
+    root: root,
+  )
+end
+
 failures.compact!
 
 if failures.empty?

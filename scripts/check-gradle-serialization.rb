@@ -94,14 +94,23 @@
 #      says so out loud; a false negative costs the guarantee silently. An
 #      invocation it cannot place is a hard error for the same reason.
 #
-# WHY THIS KEEPS FINDING THINGS, AND THE END-STATE IT IS NOT. Four review rounds
-# produced eight defects in this gate, every one of them a SILENT PASS: an
+# WHY THIS KEEPS FINDING THINGS, AND THE END-STATE IT IS NOT. Six review rounds
+# produced twelve defects in this gate, every one of them a SILENT PASS: an
 # undiscovered target, then a spelling, then two spellings, then a variable-name
-# charset, a symlink alias, and a target with two directories. That tail is a
-# property of the instrument — static analysis of a shell-embedded DSL — and not
-# of any one selector, which is why the last two rounds were answered at the
-# funnel (expand from make's database, canonicalize in one place, model a target
-# as a SET of directories) rather than with a matcher arm apiece.
+# charset, a symlink alias, a target with two directories, two invocations on one
+# line, a continued line, and a target that both called Gradle and delegated.
+# That tail is a property of the instrument — static analysis of a shell-embedded
+# DSL — and not of any one selector, which is why the later rounds were answered
+# at the funnel (expand from make's database, canonicalize in one place, model a
+# target as a SET of directories, fold continuations and union direct with
+# delegated everywhere) rather than with a matcher arm apiece.
+#
+# The recurring shape is worth naming for whoever extends this: nearly every
+# defect was an operation applied in ONE of the two scanning paths and not the
+# other, or applied at one nesting level and not the one below. Recipes and
+# delegated scripts are now folded, expanded, scanned and canonicalized the same
+# way, and direct and delegated are unioned rather than treated as alternatives.
+# If you add a step, add it to both, or the next round finds it.
 #
 # The structural end-state is different and is deliberately NOT built here: make
 # every Gradle call go through one sanctioned entry point, then this gate reduces
@@ -280,6 +289,24 @@ end
 # invisible: added to check-targets it is the exact "sixth target" case this
 # gate exists to reject, and the gate would have passed.
 
+# Fold `foo && \` + `bar` into one logical command. make -p prints a recipe's
+# continued lines separately, and the conventional wrapped form
+# `cd spec/smithy-bare-arrays && \` / `./gradlew help` then read as a bare
+# repo-root invocation with the directory thrown away. The delegated-script scan
+# already did this folding; the recipe scan did not, which is the whole of that
+# defect — the same operation applied in one place and not the other.
+def join_continuations(lines)
+  folded = []
+  lines.each do |line|
+    if !folded.empty? && folded.last.end_with?("\\")
+      folded[-1] = "#{folded.last.chomp('\\')} #{line.strip}"
+    else
+      folded << line
+    end
+  end
+  folded
+end
+
 # Scan shell text for a Gradle invocation. Returns the project directory as
 # written, :unplaceable, or nil. Continuations are joined and whole-line
 # comments dropped first, so a wrapped invocation reads as one command and a
@@ -367,7 +394,7 @@ def gradle_targets(recipes, makefile, variables = {}, repo_root = REPO_ROOT)
   unrecognized = []
 
   recipes.each do |target, raw_lines|
-    lines = raw_lines.map { |line| expand_variables(line, variables) }
+    lines = join_continuations(raw_lines.map { |line| expand_variables(line, variables) })
     # EVERY line, not the first match: one recipe may build in two projects, and
     # recording only its first invocation left the second in no group at all —
     # so a target ordered after the Kotlin chain could still overlap the mapper
@@ -375,40 +402,41 @@ def gradle_targets(recipes, makefile, variables = {}, repo_root = REPO_ROOT)
     # has directories.
     direct = lines.select { |line| line.include?("./gradlew") }
 
-    unless direct.empty?
-      direct.each do |line|
-        # EVERY invocation on the line, and the count must balance. Taking the
-        # first match made the per-recipe fix above total per TARGET but not per
-        # LINE, so `cd kotlin && ./gradlew help; cd spec/… && ./gradlew help`
-        # was filed under kotlin/ alone. Requiring dirs.size to equal the number
-        # of `./gradlew` occurrences is what makes it total rather than one
+    direct.each do |line|
+      # EVERY invocation on the line, and the count must balance. Taking the
+      # first match made the per-recipe fix above total per TARGET but not per
+      # LINE, so `cd kotlin && ./gradlew help; cd spec/… && ./gradlew help`
+      # was filed under kotlin/ alone. Requiring dirs.size to equal the number
+      # of `./gradlew` occurrences is what makes it total rather than one
         # nesting level less partial: an invocation this cannot place is an
-        # unplaceable LINE, not a silently dropped directory.
-        dirs = line.scan(%r{cd\s+(\S+)\s*&&\s*\./gradlew}).flatten
-        occurrences = line.scan("./gradlew").size
+      # unplaceable LINE, not a silently dropped directory.
+      dirs = line.scan(%r{cd\s+(\S+)\s*&&\s*\./gradlew}).flatten
+      occurrences = line.scan("./gradlew").size
 
-        if dirs.size != occurrences
-          if dirs.empty? && occurrences == 1 && line.match?(%r{\A\s*\./gradlew})
-            (found[target] ||= Set.new) << "."
-          else
-            unrecognized << [target, line]
-          end
-          next
-        end
-
-        if dirs.any? { |dir| dir.include?("$") }
-          # Not resolvable from the database text, and guessing would put this
-          # target in a group of its own — the same silent pass the spelling bug
-          # caused.
+      if dirs.size != occurrences
+        if dirs.empty? && occurrences == 1 && line.match?(%r{\A\s*\./gradlew})
+          (found[target] ||= Set.new) << "."
+        else
           unrecognized << [target, line]
-          next
         end
-
-        dirs.each { |dir| (found[target] ||= Set.new) << canonical_dir(dir, repo_root) }
+        next
       end
-      next
+
+      if dirs.any? { |dir| dir.include?("$") }
+        # Not resolvable from the database text, and guessing would put this
+        # target in a group of its own — the same silent pass the spelling bug
+        # caused.
+        unrecognized << [target, line]
+        next
+      end
+
+      dirs.each { |dir| (found[target] ||= Set.new) << canonical_dir(dir, repo_root) }
     end
 
+    # NOT `next` when a direct call was found: one target may do both, and
+    # skipping the delegate scan then dropped the script's project entirely.
+    # Direct and delegated are two ways to reach Gradle, not two kinds of
+    # target, so both are always scanned and the results union.
     dir, via = delegated_gradle_dir(lines, repo_root)
     next if dir.nil?
 
