@@ -122,7 +122,9 @@ type AuthorizationInfo struct {
 
 // Expiry returns the token's expiry instant. ok is false when the
 // authorization document did not state one — the zero ExpiresAt covers an
-// absent field, an explicit null, and bc3's legacy `0` rendering alike.
+// absent field, an explicit null, and a wire `0` alike. No production
+// issuer emits any of those today; the branch is robustness for the
+// endpoints GetInfoOptions.Endpoint can reach.
 func (a *AuthorizationInfo) Expiry() (t time.Time, ok bool) {
 	return a.ExpiresAt.Time, !a.ExpiresAt.IsZero()
 }

@@ -164,7 +164,8 @@ neither gives you a compile error:
 
 New, not breaking: `info.Expiry() (time.Time, bool)` is the documented front
 door — `ok` is false when the document stated no expiry (absent field, explicit
-`null`, or legacy `0` alike). Prefer it over reading `ExpiresAt` directly.
+`null`, or a wire `0` alike; all defensive, per the above — no production
+issuer emits any of them). Prefer it over reading `ExpiresAt` directly.
 
 ### Go: `TimelineEventData.StartsAt`/`EndsAt` became `*types.FlexibleTime`
 

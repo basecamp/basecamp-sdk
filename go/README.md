@@ -70,7 +70,7 @@ for _, a := range info.Accounts {
 account := client.ForAccount(fmt.Sprint(info.Accounts[0].ID))
 ```
 
-`info.Expiry()` tells you how long the token has left, which is the quickest way to confirm a static token has not lapsed. `ok` is false when the document states no expiry — Launchpad omits `expires_at` for a non-expiring token:
+`info.Expiry()` tells you how long the token has left, which is the quickest way to confirm a static token has not lapsed. `ok` is false when the document states no expiry — both production issuers always state one today, so that branch is robustness for whatever `GetInfoOptions.Endpoint` points at:
 
 ```go
 if expiry, ok := info.Expiry(); ok && time.Until(expiry) < 0 {

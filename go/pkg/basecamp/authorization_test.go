@@ -113,9 +113,10 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 				if len(info.Accounts) != tt.wantCount {
 					t.Errorf("GetInfo() returned %d accounts, want %d", len(info.Accounts), tt.wantCount)
 				}
-				// Every success fixture here omits expires_at, as Launchpad
-				// does for a non-expiring token. Absence must read as "no
-				// expiry known", not as a fabricated instant.
+				// Every success fixture here omits expires_at — a synthetic
+				// shape (production issuers always state one) that exercises
+				// the absence sentinel: it must read as "no expiry known",
+				// not as a fabricated instant.
 				if !info.ExpiresAt.IsZero() {
 					t.Errorf("ExpiresAt = %v for a document without expires_at, want zero", info.ExpiresAt.Time)
 				}
@@ -436,7 +437,7 @@ func TestFlexTime_UnmarshalJSON(t *testing.T) {
 }
 
 // TestAuthorizationInfo_NoExpiryKnown pins the sentinel contract for #662: an
-// absent expires_at, an explicit null, and bc3's legacy `0` rendering all
+// absent expires_at, an explicit null, and a wire `0` all
 // decode to the zero ExpiresAt, report Expiry() ok=false, and re-marshal as
 // null — never as 0001-01-01T00:00:00Z, and never as a valid 1970 date.
 //
