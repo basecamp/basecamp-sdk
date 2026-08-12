@@ -143,14 +143,35 @@
 //   - Cycles (A embeds B embeds A, or a self-embedding pointer) terminate: each
 //     type name is visited once per flattening.
 //
-// An embedded type the checker cannot resolve — a qualified one from another
-// package (`time.Time`), or a name not declared in the parsed sources — is
-// reported as drift for any pair that reaches it, rather than skipped. Skipping
-// silently is what produced #599 in the first place; the check parses only
-// go/pkg/basecamp/*.go and client.gen.go, so it cannot see another package's
-// fields and must not pretend they are absent. The report is deferred to the
-// pair walk, so an unresolvable embed on a struct outside every pair (today:
-// FlexTime embedding time.Time) costs nothing.
+// # What the walk will and will not judge
+//
+// Flattening happens only through embeds the walk can fully vouch for (see
+// vouch). Anything else is REPORTED — the struct is then judged on its own
+// declarations alone, and any pair that reaches it fails loudly. Two things
+// fail to vouch:
+//
+//   - A type this check does not parse: qualified from another package
+//     (`time.Time`), or a name not declared in the parsed sources. It cannot
+//     be assumed field-less, and it cannot be assumed method-less either.
+//   - A type whose method set carries MarshalJSON/UnmarshalJSON by any route —
+//     its own declaration, an interface it embeds, an alias. Promoting such a
+//     method makes the EMBEDDING struct implement json.Marshaler, so
+//     encoding/json calls it and never walks any of these fields; every
+//     promoted tag on the struct is then meaningless, not just that embed's.
+//     A json tag on the embed does not change this: a tag governs field
+//     selection, while method promotion is a language rule that never consults
+//     tags.
+//
+// This is a whitelist on purpose, and it is where the design stops mirroring
+// encoding/json. Field promotion is a bounded, syntactic problem this walk can
+// model faithfully. Method promotion and cross-package types are not: they are
+// decided by the type checker, travel through interfaces, aliases and other
+// packages, and every rule that models one spelling of them invites the next.
+// Reporting is the bound. A new shape in that class belongs here as a refusal,
+// not as another mirror of the standard library.
+//
+// The report is deferred to the pair walk, so an unvouched embed on a struct
+// outside every pair (today: FlexTime embedding time.Time) costs nothing.
 //
 // An embedded name that resolves to a declared NON-struct type (an interface, a
 // map, a slice — today: generated.ClientWithResponses embedding ClientInterface)
@@ -1002,16 +1023,36 @@ func closeJSONMethodTypes(direct map[string]bool, ifaceEmbeds map[string][]strin
 	}
 }
 
-// promotesJSONMethod reports whether embedding e makes the embedding struct
-// implement json.Marshaler / json.Unmarshaler. The embed's own name always
-// counts (it is the type written at the embed site, and an interface resolves
-// to no struct at all); a name reached through type-declaration hops counts
-// only when the method set travelled with it — see resolveEmbedFull.
-func promotesJSONMethod(e embedRef, childName string, methodsTravel bool, jsonMethods map[string]bool) bool {
-	if jsonMethods[e.name] {
-		return true
+// vouch is the single gate on whether the walk may flatten through an embed. It
+// returns "" when the embed is safe to walk, or the reason it is not.
+//
+// This is deliberately a WHITELIST, and it is where the design stops chasing
+// encoding/json's tail. Two mechanisms decide an embedding struct's wire shape
+// that source text cannot settle: promoted METHODS (a promoted MarshalJSON
+// redirects the encoder away from every field, and method sets travel through
+// interfaces, aliases and other packages) and types this check never parses.
+// Each is an unbounded surface for a static walk, and each new rule modelling
+// one spelling of it invites the next. So anything not plainly vouched for —
+// a type from another package, a name not declared in the parsed sources, a
+// type whose method set carries MarshalJSON/UnmarshalJSON by any route — is
+// REPORTED rather than modelled, and the struct is judged on its own
+// declarations alone.
+//
+// The method check keys on the embed's own name as well as the resolved
+// struct: an embedded interface carries the method in its method set and
+// resolves to no struct at all. A name reached through declaration hops counts
+// only when the method set travelled with it (every hop an alias), since a
+// defined type starts with an empty method set.
+func vouch(e embedRef, childName string, methodsTravel bool, resolveErr string, jsonMethods map[string]bool) string {
+	if jsonMethods[e.name] || (methodsTravel && childName != "" && jsonMethods[childName]) {
+		return "the embedded type's method set carries MarshalJSON/UnmarshalJSON, which the embedding struct promotes; encoding/json then calls it instead of walking any of these fields, so no promoted tag here is trustworthy"
 	}
-	return methodsTravel && childName != "" && jsonMethods[childName]
+	if resolveErr != "" {
+		// An unresolvable type may also be a marshaller — time.Time is one —
+		// so this cannot be treated as merely "fields we cannot see".
+		return resolveErr + "; its fields AND any custom JSON methods it would promote are invisible here"
+	}
+	return ""
 }
 
 // isJSONMethodName reports whether a method name is one whose promotion
@@ -1201,18 +1242,16 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 	}
 
 	// A json tag stops an anonymous field from promoting its FIELDS. It does
-	// nothing to method promotion, so a tagged embed of a marshaller redirects
-	// the encoder exactly as an untagged one does.
+	// nothing to method promotion — that is a language rule which never
+	// consults tags — so a tagged embed is vouched for on exactly the same
+	// terms as an untagged one.
 	for _, te := range root.taggedEmbeds {
 		_, childName, methodsTravel, err := resolveEmbedFull(te.ref, structs, decls)
-		if err != "" || !promotesJSONMethod(te.ref, childName, methodsTravel, jsonMethods) {
-			continue
+		if reason := vouch(te.ref, childName, methodsTravel, err, jsonMethods); reason != "" {
+			root.unresolved = append(root.unresolved, fmt.Sprintf("%s -> %s (%s)", rootName, te.ref.display, reason))
+			discardPromotions()
+			return
 		}
-		root.unresolved = append(root.unresolved,
-			fmt.Sprintf("%s -> %s (tagged embedded type declares MarshalJSON/UnmarshalJSON; the tag stops its FIELDS being promoted but not its methods, so encoding/json calls it for the whole struct)",
-				rootName, te.ref.display))
-		discardPromotions()
-		return
 	}
 
 	// Go-name resolution, tracked alongside the tag walk: nameDepth records the
@@ -1251,26 +1290,9 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 		for _, parent := range level {
 			for _, e := range parent.sf.embeds {
 				child, childName, methodsTravel, err := resolveEmbedFull(e, structs, decls)
-				if err != "" {
+				if reason := vouch(e, childName, methodsTravel, err, jsonMethods); reason != "" {
 					root.unresolved = append(root.unresolved,
-						fmt.Sprintf("%s -> %s (%s)", strings.Join(append([]string{rootName}, parent.path...), "."), e.display, err))
-					continue
-				}
-				// Checked on the embed's own name as well as the resolved
-				// struct: an embedded INTERFACE carries the method in its
-				// method set and resolves to no struct at all, so keying only
-				// on the resolution would miss it entirely.
-				if promotesJSONMethod(e, childName, methodsTravel, jsonMethods) {
-					// Promoting a custom marshaller changes how the WHOLE
-					// embedding struct is encoded, so NO promoted tag on this
-					// struct describes the wire any more — not just this
-					// embed's. Method promotion is transitive, so this holds
-					// wherever in the tree the method appears. Report, discard
-					// every promotion made so far, and stop: refusing to judge
-					// beats certifying keys the method may never emit.
-					root.unresolved = append(root.unresolved,
-						fmt.Sprintf("%s -> %s (embedded type declares MarshalJSON/UnmarshalJSON, which the embedding struct promotes; encoding/json then calls it instead of walking these fields, so no promoted tag here is trustworthy)",
-							strings.Join(append([]string{rootName}, parent.path...), "."), e.display))
+						fmt.Sprintf("%s -> %s (%s)", strings.Join(append([]string{rootName}, parent.path...), "."), e.display, reason))
 					discardPromotions()
 					return
 				}
@@ -1429,7 +1451,11 @@ func resolveEmbedFull(e embedRef, structs map[string]*structFields, decls map[st
 			// can drift past it: generated structs are oapi-codegen output,
 			// where every field carries a tag, so no generated wire key is
 			// ever spelled this way for a wrapper to miss.
-			return nil, "", methodsTravel, ""
+			//
+			// The NAME is still returned even though there is no struct: an
+			// embedded interface promotes its method set, and vouch has to be
+			// able to look that name up.
+			return nil, name, methodsTravel, ""
 		}
 	}
 	return nil, "", methodsTravel, "type declaration chain is too deep to resolve"
@@ -1683,10 +1709,11 @@ func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) 
 		return
 	}
 	assigned[path] = true
-	if id, ok := unparen(value).(*ast.Ident); ok && id.Name == "nil" {
-		// Assigning nil to a pointer embed populates nothing — encoding/json
-		// emits none of its promoted fields — so the write is recorded without
-		// any subtree coverage.
+	if zeroValued(value) {
+		// nil, new(T) and a typed nil conversion all populate nothing:
+		// encoding/json emits none of a nil embed's promoted fields, and
+		// new(T) copies no value in. The write is recorded without any
+		// subtree coverage.
 		return
 	}
 	if lit := structLiteral(value); lit != nil {
@@ -1720,6 +1747,32 @@ func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) 
 		}
 	}
 	assigned[path+".*"] = true
+}
+
+// zeroValued reports whether an assigned value is statically known to carry no
+// data: the nil identifier, `new(T)`, or a conversion of nil such as
+// `(*Base)(nil)`. Crediting any of them with subtree coverage would pass a
+// converter that emits none of the fields it claims. Anything else is opaque —
+// the walker cannot see inside it and credits the subtree, which is the
+// one-level-nesting doctrine the check has always applied.
+func zeroValued(expr ast.Expr) bool {
+	expr = unparen(expr)
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name == "nil"
+	case *ast.CallExpr:
+		// new(T) — the builtin, not a method named new.
+		if id, ok := unparen(e.Fun).(*ast.Ident); ok && id.Name == "new" {
+			return true
+		}
+		// A conversion whose single argument is nil: (*Base)(nil), Base(nil).
+		if len(e.Args) == 1 {
+			if id, ok := unparen(e.Args[0]).(*ast.Ident); ok && id.Name == "nil" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // unparen strips redundant parentheses: `(Base{...})` is the same value as

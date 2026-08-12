@@ -2277,6 +2277,10 @@ func TestRecordAssignedValue_ValueShapes(t *testing.T) {
 		{"positional literal with a nil element", "Base{nil, g.Name}", nil, false, []string{"Base.*"}},
 		{"empty literal", "Base{}", nil, false, []string{"Base.*"}},
 		{"opaque call", "baseFrom(g)", nil, true, nil},
+		// Statically zero-producing values carry nothing in, so they cannot
+		// populate what they claim.
+		{"new(T)", "new(Base)", nil, false, []string{"Base.*"}},
+		{"typed nil conversion", "(*Base)(nil)", nil, false, []string{"Base.*"}},
 		// nil populates nothing: a nil embedded pointer emits none of its fields.
 		{"nil", "nil", nil, false, []string{"Base.*"}},
 	}
@@ -2721,5 +2725,77 @@ type Fancy interface {
 	closeJSONMethodTypes(merged, graph)
 	if !merged["Fancy"] {
 		t.Error("an interface embedding a marshaler from ANOTHER file carries the method too")
+	}
+}
+
+// TestRun_UnresolvableTaggedEmbedIsReported closes the tagged half of the
+// vouching rule. A tag stops FIELD promotion and nothing else, so an
+// unresolvable tagged embed can still promote a custom marshaller —
+// `time.Time` is exactly such a type — and the walk cannot see either its
+// fields or its methods. It reports instead of certifying the tags around it.
+func TestRun_UnresolvableTaggedEmbedIsReported(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id int64 ~json:"id"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import (
+	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+)
+
+type Note struct {
+	time.Time ~json:"at"~
+	ID        int64 ~json:"id"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: an unresolvable TAGGED embed can promote a marshaller and must be reported")
+	}
+}
+
+// TestFlattenEmbedded_AliasToMethodBearingInterfaceIsRejected covers a method
+// set reached through an alias to an interface — the embed's own name is the
+// alias, and the interface resolves to no struct, so neither key alone finds
+// it. The vouching rule catches it because an alias carries the method set and
+// resolution reports that it travelled.
+func TestFlattenEmbedded_AliasToMethodBearingInterfaceIsRejected(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Marshaler interface {
+	MarshalJSON() ([]byte, error)
+}
+
+type Alias = Marshaler
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Outer struct {
+	Alias
+	Base
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if len(outer.unresolved) == 0 {
+		t.Error("an alias to a method-bearing interface promotes the method and must be reported")
+	}
+	if outer.tags["id"] {
+		t.Error("a sibling embed's tags are just as meaningless once the encoder is redirected")
 	}
 }
