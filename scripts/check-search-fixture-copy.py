@@ -47,10 +47,18 @@ def main() -> int:
     for case in cases:
         for i, response in enumerate(case.get("mockResponses", [])):
             body = response.get("body")
-            if not isinstance(body, list):
-                continue
             checked += 1
-            if not is_ordered_sublist(body, shared):
+            # Every Search mock body is an array of hits, so a non-array here is
+            # already wrong. Skipping it instead would let a body edited into an
+            # object slip past while `checked` stayed nonzero from a sibling
+            # case — the vacuity guard below would not fire, and this gate would
+            # report success having inspected nothing that changed.
+            if not isinstance(body, list):
+                failures.append(
+                    f"  {case['name']!r} mockResponses[{i}]: body is "
+                    f"{type(body).__name__}, expected an array of search hits"
+                )
+            elif not is_ordered_sublist(body, shared):
                 failures.append(
                     f"  {case['name']!r} mockResponses[{i}]: "
                     f"{len(body)} hit(s) not an ordered sublist of "
@@ -59,7 +67,7 @@ def main() -> int:
 
     if not checked:
         print(
-            f"FAIL: no array-bodied mock response found in "
+            f"FAIL: no mock response found in "
             f"{CONFORMANCE.relative_to(ROOT)} — the gate would pass vacuously",
             file=sys.stderr,
         )
