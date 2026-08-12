@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // The Documents read surface (Get, List, Create, Trash) and the Document type
@@ -109,16 +111,19 @@ func fieldsFromDocument(d *Document) (*DocumentFields, error) {
 	return &DocumentFields{Title: d.Title, Content: d.Content}, nil
 }
 
-// fullBody serializes the full writable state for the replace transport.
+// fullBody builds the full writable state for the replace transport.
 //
 // Both fields are ALWAYS sent, empties included, so a clear survives: on a
 // full-replace endpoint "" is how a clear is expressed — never JSON null (SPEC
 // §18 body compaction), and never by omission, which would hand the clear back
 // to the server's own rebuild and read as an accident rather than an intent.
-func (f *DocumentFields) fullBody() (map[string]any, error) {
-	return map[string]any{
-		"title":   f.Title,
-		"content": f.Content,
+// The generated members are pointers, and a non-nil pointer to "" survives
+// `omitempty`, so the always-send-empty contract holds through the generated
+// request type.
+func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, error) {
+	return generated.ReplaceDocumentJSONRequestBody{
+		Title:   &f.Title,
+		Content: &f.Content,
 	}, nil
 }
 
@@ -224,39 +229,29 @@ func (s *DocumentsService) Edit(ctx context.Context, documentID int64, fn func(*
 // Sharp by construction. Use Update or Edit to preserve the fields the call
 // does not name.
 func (s *DocumentsService) Replace(ctx context.Context, documentID int64, req *ReplaceDocumentRequest) (*Document, error) {
-	return s.replaceDocument(ctx, documentID, func() (map[string]any, error) {
+	return s.replaceDocument(ctx, documentID, func() (generated.ReplaceDocumentJSONRequestBody, error) {
 		if req == nil {
-			return nil, ErrUsage("replace request is required")
+			return generated.ReplaceDocumentJSONRequestBody{}, ErrUsage("replace request is required")
 		}
-		body := map[string]any{}
-		if req.Title != nil {
-			body["title"] = *req.Title
+		body := generated.ReplaceDocumentJSONRequestBody{
+			Title:   req.Title,
+			Content: req.Content,
 		}
-		if req.Content != nil {
-			body["content"] = *req.Content
-		}
-		if len(body) == 0 {
+		if req.Title == nil && req.Content == nil {
 			// BC3 does params.require(:document), which Rails wrap_parameters
 			// synthesizes from a flat body — so a body naming neither field
 			// carries no document object at all and is a 400. Refuse it here
 			// rather than spend a round-trip discovering that.
-			return nil, ErrUsage("replace request must set title or content; a body naming neither is rejected by the server with a 400")
+			return generated.ReplaceDocumentJSONRequestBody{}, ErrUsage("replace request must set title or content; a body naming neither is rejected by the server with a 400")
 		}
 		return body, nil
 	})
 }
 
 // replaceDocument is the single transport behind Update, Edit and Replace. It
-// owns the hook envelope and the one *WithBody call site.
-//
-// The body is a hand-marshaled map rather than the generated request struct:
-// generated.ReplaceDocumentJSONRequestBody uses omitempty, which cannot express
-// the always-send-empty semantics a full-replace composite needs (an empty
-// title is a clear, and it has to reach the wire). SPEC §18 rule 1 sanctions
-// exactly this carve-out — the generated wrapper still owns path, verb, content
-// type and response decoding, and the operation identity still reaches hooks
-// and retry.
-func (s *DocumentsService) replaceDocument(ctx context.Context, documentID int64, buildBody func() (map[string]any, error)) (result *Document, err error) {
+// owns the hook envelope and the one generated-client call site; buildBody
+// runs inside the envelope so usage errors are observable to hooks.
+func (s *DocumentsService) replaceDocument(ctx context.Context, documentID int64, buildBody func() (generated.ReplaceDocumentJSONRequestBody, error)) (result *Document, err error) {
 	op := OperationInfo{
 		Service: "Documents", Operation: "Replace",
 		ResourceType: "document", IsMutation: true,
@@ -276,13 +271,8 @@ func (s *DocumentsService) replaceDocument(ctx context.Context, documentID int64
 	if err != nil {
 		return nil, err
 	}
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.parent.gen.ReplaceDocumentWithBodyWithResponse(
-		ctx, s.client.accountID, documentID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.ReplaceDocumentWithResponse(
+		ctx, s.client.accountID, documentID, body)
 	if err != nil {
 		return nil, err
 	}

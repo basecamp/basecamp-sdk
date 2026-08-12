@@ -828,11 +828,11 @@ func TestFieldsFromTodolist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(body) != 2 {
-		t.Errorf("expected exactly {name, description} in the body, got %v", body)
+	if body.Name != "Hardware" {
+		t.Errorf("unexpected body name: %v", body.Name)
 	}
-	if body["name"] != "Hardware" || body["description"] != "<p>Ship it</p>" {
-		t.Errorf("unexpected body: %v", body)
+	if body.Description == nil || *body.Description != "<p>Ship it</p>" {
+		t.Errorf("unexpected body description: %v", body.Description)
 	}
 }
 

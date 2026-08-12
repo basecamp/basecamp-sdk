@@ -276,37 +276,21 @@ func (s *PeopleService) UpdateMyProfile(ctx context.Context, req *UpdateMyProfil
 		return err
 	}
 
-	body := map[string]any{}
-	if req.Name != nil {
-		body["name"] = *req.Name
-	}
-	if req.EmailAddress != nil {
-		body["email_address"] = *req.EmailAddress
-	}
-	if req.Title != nil {
-		body["title"] = *req.Title
-	}
-	if req.Bio != nil {
-		body["bio"] = *req.Bio
-	}
-	if req.Location != nil {
-		body["location"] = *req.Location
-	}
-	if req.TimeZoneName != nil {
-		body["time_zone_name"] = *req.TimeZoneName
+	body := generated.UpdateMyProfileJSONRequestBody{
+		Name:         req.Name,
+		EmailAddress: req.EmailAddress,
+		Title:        req.Title,
+		Bio:          req.Bio,
+		Location:     req.Location,
+		TimeZoneName: req.TimeZoneName,
+		TimeFormat:   req.TimeFormat,
 	}
 	if req.FirstWeekDay != nil {
-		body["first_week_day"] = string(*req.FirstWeekDay)
-	}
-	if req.TimeFormat != nil {
-		body["time_format"] = *req.TimeFormat
+		day := generated.FirstWeekDay(*req.FirstWeekDay)
+		body.FirstWeekDay = &day
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return err
-	}
-	resp, err := s.client.parent.gen.UpdateMyProfileWithBodyWithResponse(ctx, s.client.accountID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.UpdateMyProfileWithResponse(ctx, s.client.accountID, body)
 	if err != nil {
 		return err
 	}

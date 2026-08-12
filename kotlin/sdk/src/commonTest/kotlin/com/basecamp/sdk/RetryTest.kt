@@ -441,6 +441,67 @@ class RetryTest {
         client.close()
     }
 
+    /**
+     * #661: the attempt floor is a property of the budget expression, not of
+     * the loop's shape. The pre-fix expression — `min(max(1, cap), op_max ?:
+     * cap)` — computed a budget of 0 for an ungoverned call (no operationName,
+     * so no per-op retry block) at `maxRetries = 0`; only the loop's post-check
+     * shape (the first request goes out before the budget is consulted) kept
+     * observable behavior at one attempt. The old bug is therefore NOT
+     * behaviorally red-provable, so this test pins the computed budget value
+     * directly: `(0, null)` is the discriminating case — 0 under the old
+     * expression, 1 under the fixed one, where an absent op_max means no
+     * ceiling rather than a second copy of the cap.
+     */
+    @Test
+    fun attemptBudgetFloorsAtOneWithoutOperationMetadata() {
+        // Ungoverned at a zero cap: the floor must come from the expression.
+        assertEquals(1, BasecampHttpClient.computeMaxAttempts(0, null))
+        // Ungoverned otherwise: the cap passes through untouched.
+        assertEquals(3, BasecampHttpClient.computeMaxAttempts(3, null))
+        // Governed: the floor still applies before the ceiling clamps...
+        assertEquals(1, BasecampHttpClient.computeMaxAttempts(0, 2))
+        // ...a raised cap is still clamped to the operation's declared max...
+        assertEquals(2, BasecampHttpClient.computeMaxAttempts(5, 2))
+        // ...and a caller-lowered cap is still honored.
+        assertEquals(1, BasecampHttpClient.computeMaxAttempts(1, 3))
+    }
+
+    /**
+     * Companion to the expression test above: the observable invariant at a
+     * zero cap on the ungoverned path (no operationName). This passes against
+     * the pre-#661 expression too — the loop's post-check shape already sent
+     * exactly one request on a zero budget — which is exactly why the red
+     * proof for #661 pins the expression value rather than behavior. This
+     * test guards the invariant against future loop-shape changes, where a
+     * pre-check loop reading a zero budget would send nothing at all.
+     */
+    @Test
+    fun zeroCapUngovernedStillSendsOneAttempt() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            respond(content = "", status = HttpStatusCode.ServiceUnavailable)
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            maxRetries = 0
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects/1.json"
+        // No operationName: the per-op cap lookup finds nothing, and the
+        // budget must still floor at one attempt.
+        val response = account.httpClient.requestWithRetry(HttpMethod.Get, url)
+
+        assertEquals(503, response.status.value)
+        assertEquals(1, requestCount)
+        client.close()
+    }
+
     @Test
     fun retryAfterHeaderBasedDelay() = runTest {
         var requestCount = 0

@@ -314,33 +314,29 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 		return nil, err
 	}
 
-	body := map[string]any{
-		"name": req.Name,
+	body := generated.UpdateProjectJSONRequestBody{
+		Name: req.Name,
 	}
 	if req.Description != "" {
-		body["description"] = req.Description
+		body.Description = &req.Description
 	}
 	if req.Admissions != "" {
-		body["admissions"] = req.Admissions
+		body.Admissions = &req.Admissions
 	}
 	if req.ScheduleAttributes != nil {
-		sa := map[string]any{}
+		sa := generated.ScheduleAttributes{}
 		if req.ScheduleAttributes.StartDate != "" {
-			sa["start_date"] = req.ScheduleAttributes.StartDate
+			sa.StartDate = &req.ScheduleAttributes.StartDate
 		}
 		if req.ScheduleAttributes.EndDate != "" {
-			sa["end_date"] = req.ScheduleAttributes.EndDate
+			sa.EndDate = &req.ScheduleAttributes.EndDate
 		}
-		if len(sa) > 0 {
-			body["schedule_attributes"] = sa
+		if sa.StartDate != nil || sa.EndDate != nil {
+			body.ScheduleAttributes = &sa
 		}
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.parent.gen.UpdateProjectWithBodyWithResponse(ctx, s.client.accountID, id, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.UpdateProjectWithResponse(ctx, s.client.accountID, id, body)
 	if err != nil {
 		return nil, err
 	}

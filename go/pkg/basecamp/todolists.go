@@ -236,13 +236,13 @@ func requireDescription(body []byte, id int64) error {
 // fullBody serializes the complete writable state for the replace transport:
 // name and description are always sent (the empty description included, so
 // clears survive the PUT — "" is how a clear is expressed, never JSON null).
-func (f *TodolistFields) fullBody() (map[string]any, error) {
+func (f *TodolistFields) fullBody() (generated.UpdateTodolistOrGroupJSONRequestBody, error) {
 	if f.Name == "" {
-		return nil, ErrUsage("todolist name is required")
+		return generated.UpdateTodolistOrGroupJSONRequestBody{}, ErrUsage("todolist name is required")
 	}
-	return map[string]any{
-		"name":        f.Name,
-		"description": f.Description,
+	return generated.UpdateTodolistOrGroupJSONRequestBody{
+		Name:        f.Name,
+		Description: &f.Description,
 	}, nil
 }
 
@@ -527,16 +527,16 @@ func (s *TodolistsService) Edit(ctx context.Context, todolistID int64, fn func(*
 // fields.
 // Returns the updated todolist.
 func (s *TodolistsService) Replace(ctx context.Context, todolistID int64, req *ReplaceTodolistRequest) (*Todolist, error) {
-	return s.replaceTodolist(ctx, todolistID, func() (map[string]any, error) {
+	return s.replaceTodolist(ctx, todolistID, func() (generated.UpdateTodolistOrGroupJSONRequestBody, error) {
 		if req == nil {
-			return nil, ErrUsage("replace request is required")
+			return generated.UpdateTodolistOrGroupJSONRequestBody{}, ErrUsage("replace request is required")
 		}
 		if req.Name == "" {
-			return nil, ErrUsage("todolist name is required")
+			return generated.UpdateTodolistOrGroupJSONRequestBody{}, ErrUsage("todolist name is required")
 		}
-		body := map[string]any{"name": req.Name}
+		body := generated.UpdateTodolistOrGroupJSONRequestBody{Name: req.Name}
 		if req.Description != "" {
-			body["description"] = req.Description
+			body.Description = &req.Description
 		}
 		return body, nil
 	})
@@ -547,7 +547,7 @@ func (s *TodolistsService) Replace(ctx context.Context, todolistID int64, req *R
 // Edit. It pins the Todolists.Replace hook identity and projects the todolist
 // shape; the envelope and the one generated-client call site live in
 // replaceTodolistOrGroup.
-func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64, buildBody func() (map[string]any, error)) (*Todolist, error) {
+func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64, buildBody func() (generated.UpdateTodolistOrGroupJSONRequestBody, error)) (*Todolist, error) {
 	op := OperationInfo{
 		Service: "Todolists", Operation: "Replace",
 		ResourceType: "todolist", IsMutation: true,
@@ -570,16 +570,15 @@ func (s *TodolistsService) replaceTodolist(ctx context.Context, todolistID int64
 // decoding differ. It owns the hook envelope, and buildBody runs inside that
 // envelope so usage errors are observable to hooks.
 //
-// The body is built as a map and sent through the generated *WithBody
-// variant — the SPEC §18 rule-1 Go carve-out — because the writable set has
-// to reach the wire verbatim: an empty description must arrive
-// present-and-empty (that is how a clear is expressed), which omitempty on a
-// generated struct cannot express.
+// The writable set reaches the wire verbatim: an empty description arrives
+// present-and-empty (that is how a clear is expressed) through a non-nil
+// pointer to "", which `omitempty` preserves — it tests pointer nil-ness,
+// not pointee emptiness.
 //
 // Returns the decoded generated shape. Since #544 that is one flat
 // generated.Todolist for both variants, so each caller only chooses which
 // wrapper name to project it under.
-func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op OperationInfo, id int64, buildBody func() (map[string]any, error)) (gtl generated.Todolist, err error) {
+func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op OperationInfo, id int64, buildBody func() (generated.UpdateTodolistOrGroupJSONRequestBody, error)) (gtl generated.Todolist, err error) {
 	if gater, ok := client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
 			return generated.Todolist{}, err
@@ -594,11 +593,7 @@ func replaceTodolistOrGroup(ctx context.Context, client *AccountClient, op Opera
 		return generated.Todolist{}, err
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return generated.Todolist{}, err
-	}
-	resp, err := client.parent.gen.UpdateTodolistOrGroupWithBodyWithResponse(ctx, client.accountID, id, "application/json", bodyReader)
+	resp, err := client.parent.gen.UpdateTodolistOrGroupWithResponse(ctx, client.accountID, id, body)
 	if err != nil {
 		return generated.Todolist{}, err
 	}

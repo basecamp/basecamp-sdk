@@ -550,6 +550,12 @@ func (s *CardsService) UpdateVerbatim(ctx context.Context, cardID int64, req *Up
 		return nil, err
 	}
 
+	// Hand-marshaled map, not generated.UpdateCardRequestContent (SPEC §18
+	// rule 1 carve-out): the explicit due-date clear is spelled "due_on": "",
+	// and a *types.Date member cannot produce it — its three spellings are
+	// absent (nil), null (zero Date), and a real date. Null would violate the
+	// §18 body-compaction rule and diverge from the "" clear all six SDKs
+	// send identically. Proven by TestDatePointerCannotSpellEmptyDueOnClear.
 	body := map[string]any{}
 	if req.Title != nil {
 		body["title"] = *req.Title
@@ -1185,6 +1191,10 @@ func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *Update
 		return nil, err
 	}
 
+	// Hand-marshaled map, not generated.UpdateCardStepRequestContent — the
+	// same SPEC §18 rule 1 carve-out as CardsService.UpdateVerbatim: the
+	// "due_on": "" clear is unreachable through *types.Date. Proven by
+	// TestDatePointerCannotSpellEmptyDueOnClear.
 	body := map[string]any{}
 	if req.Title != "" {
 		body["title"] = req.Title

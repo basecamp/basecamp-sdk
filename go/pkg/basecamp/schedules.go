@@ -313,35 +313,24 @@ type ReplaceScheduleEntryRequest struct {
 }
 
 // body renders the verbatim request, sending exactly the members the caller set.
-func (r *ReplaceScheduleEntryRequest) body() (map[string]any, error) {
+func (r *ReplaceScheduleEntryRequest) body() (generated.ReplaceScheduleEntryJSONRequestBody, error) {
 	if r.StartsAt == nil || r.EndsAt == nil {
-		return nil, ErrUsage("replace request must set starts_at and ends_at; the server rebuilds the entry from the body and neither column accepts a missing value")
+		return generated.ReplaceScheduleEntryJSONRequestBody{}, ErrUsage("replace request must set starts_at and ends_at; the server rebuilds the entry from the body and neither column accepts a missing value")
 	}
 
-	body := map[string]any{
-		"starts_at": *r.StartsAt,
-		"ends_at":   *r.EndsAt,
-	}
-	if r.Summary != nil {
-		body["summary"] = *r.Summary
-	}
-	if r.Description != nil {
-		body["description"] = *r.Description
-	}
-	if r.AllDay != nil {
-		body["all_day"] = *r.AllDay
+	body := generated.ReplaceScheduleEntryJSONRequestBody{
+		StartsAt:    *r.StartsAt,
+		EndsAt:      *r.EndsAt,
+		Summary:     r.Summary,
+		Description: r.Description,
+		AllDay:      r.AllDay,
+		Notify:      r.Notify,
+		Url:         r.URL,
+		Highlighted: r.Highlighted,
 	}
 	if r.ParticipantIDs != nil {
-		body["participant_ids"] = nonNilIDs(*r.ParticipantIDs)
-	}
-	if r.Notify != nil {
-		body["notify"] = *r.Notify
-	}
-	if r.URL != nil {
-		body["url"] = *r.URL
-	}
-	if r.Highlighted != nil {
-		body["highlighted"] = *r.Highlighted
+		ids := nonNilIDs(*r.ParticipantIDs)
+		body.ParticipantIds = &ids
 	}
 	return body, nil
 }
@@ -431,32 +420,34 @@ func (f *ScheduleEntryFields) SetNotify(notify bool) {
 	f.notify, f.notifySet = notify, true
 }
 
-// fullBody serializes the writable state for the replace transport: the five
-// full-state fields always, empties included, plus whichever carve-outs the
-// caller addressed.
-func (f *ScheduleEntryFields) fullBody() (map[string]any, error) {
+// fullBody builds the writable state for the replace transport: the five
+// full-state fields always, empties included (their generated members are
+// non-nil pointers, which `omitempty` preserves), plus whichever carve-outs
+// the caller addressed.
+func (f *ScheduleEntryFields) fullBody() (generated.ReplaceScheduleEntryJSONRequestBody, error) {
 	if f.StartsAt == "" || f.EndsAt == "" {
-		return nil, ErrUsage("schedule entry starts_at and ends_at are required; the server rebuilds the entry from the body and neither column accepts a missing value")
+		return generated.ReplaceScheduleEntryJSONRequestBody{}, ErrUsage("schedule entry starts_at and ends_at are required; the server rebuilds the entry from the body and neither column accepts a missing value")
 	}
 
-	body := map[string]any{
-		"summary":     f.Summary,
-		"starts_at":   f.StartsAt,
-		"ends_at":     f.EndsAt,
-		"description": f.Description,
-		"all_day":     f.AllDay,
+	body := generated.ReplaceScheduleEntryJSONRequestBody{
+		Summary:     &f.Summary,
+		StartsAt:    f.StartsAt,
+		EndsAt:      f.EndsAt,
+		Description: &f.Description,
+		AllDay:      &f.AllDay,
 	}
 	if f.participantIDsSet {
-		body["participant_ids"] = nonNilIDs(f.participantIDs)
+		ids := nonNilIDs(f.participantIDs)
+		body.ParticipantIds = &ids
 	}
 	if f.urlSet {
-		body["url"] = f.url
+		body.Url = &f.url
 	}
 	if f.highlightedSet {
-		body["highlighted"] = f.highlighted
+		body.Highlighted = &f.highlighted
 	}
 	if f.notifySet {
-		body["notify"] = f.notify
+		body.Notify = &f.notify
 	}
 	return body, nil
 }
@@ -1022,27 +1013,21 @@ func (s *SchedulesService) EditEntry(ctx context.Context, entryID int64, fn func
 // ReplaceDocument took. The name that says "this clears what it omits" is the
 // one the destructive method should carry.
 func (s *SchedulesService) ReplaceEntry(ctx context.Context, entryID int64, req *ReplaceScheduleEntryRequest) (*ScheduleEntry, error) {
-	return s.replaceScheduleEntry(ctx, entryID, func() (map[string]any, error) {
+	return s.replaceScheduleEntry(ctx, entryID, func() (generated.ReplaceScheduleEntryJSONRequestBody, error) {
 		if req == nil {
-			return nil, ErrUsage("replace request is required")
+			return generated.ReplaceScheduleEntryJSONRequestBody{}, ErrUsage("replace request is required")
 		}
 		return req.body()
 	})
 }
 
 // replaceScheduleEntry is the single transport behind UpdateEntry, EditEntry and
-// ReplaceEntry. It owns the hook envelope and the one *WithBody call site.
-//
-// The body is a hand-marshaled map rather than the generated request struct:
-// generated.ReplaceScheduleEntryJSONRequestBody uses omitempty on the optional
-// members, which cannot express the always-send-empty semantics a full-replace
-// composite needs (an empty description is a clear, and it has to reach the
-// wire), and it types starts_at/ends_at as time.Time, which cannot express the
-// bare date BC3 renders for an all-day entry at all. SPEC §18 rule 1 sanctions
-// exactly this carve-out — the generated wrapper still owns path, verb, content
-// type and response decoding, and the operation identity still reaches hooks and
-// retry.
-func (s *SchedulesService) replaceScheduleEntry(ctx context.Context, entryID int64, buildBody func() (map[string]any, error)) (result *ScheduleEntry, err error) {
+// ReplaceEntry. It owns the hook envelope and the one generated-client call
+// site; buildBody runs inside the envelope so a usage error is observable to
+// hooks. starts_at/ends_at pass through as verbatim strings — the generated
+// members are plain strings, so the bare date BC3 renders for an all-day
+// entry survives untouched.
+func (s *SchedulesService) replaceScheduleEntry(ctx context.Context, entryID int64, buildBody func() (generated.ReplaceScheduleEntryJSONRequestBody, error)) (result *ScheduleEntry, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "ReplaceEntry",
 		ResourceType: "schedule_entry", IsMutation: true,
@@ -1062,13 +1047,9 @@ func (s *SchedulesService) replaceScheduleEntry(ctx context.Context, entryID int
 	if err != nil {
 		return nil, err
 	}
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
 
-	resp, err := s.client.parent.gen.ReplaceScheduleEntryWithBodyWithResponse(
-		ctx, s.client.accountID, entryID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.ReplaceScheduleEntryWithResponse(
+		ctx, s.client.accountID, entryID, body)
 	if err != nil {
 		return nil, err
 	}

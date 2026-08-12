@@ -329,11 +329,12 @@ func TestProjectsService_UpdateEmptyScheduleAttributes(t *testing.T) {
 }
 
 // TestProjectsService_UpdateRetriesOn503WithFullBody is a PUBLIC-service retry
-// proof: the typed ProjectsService.Update serializes its body via marshalBody
-// (a *bytes.Reader, which net/http snapshots into GetBody), so the generated
-// client's doWithRetry replays the FULL body on a transient 503. Guards against
-// SDK-owned serialized bodies losing retries (the naturally-idempotent PUT
-// conformance case).
+// proof: the typed ProjectsService.Update passes the generated request struct
+// to the generated UpdateProject builder, which json.Marshals it into a
+// *bytes.Reader that net/http snapshots into GetBody, so the generated
+// client's doWithRetry replays the FULL body on a transient 503. Guards
+// against SDK-owned serialized bodies losing retries (the naturally-idempotent
+// PUT conformance case).
 func TestProjectsService_UpdateRetriesOn503WithFullBody(t *testing.T) {
 	var bodies []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -367,6 +368,66 @@ func TestProjectsService_UpdateRetriesOn503WithFullBody(t *testing.T) {
 		if b != want {
 			t.Errorf("request %d body = %q, want the full serialized body %q (the retry must replay it)", i+1, b, want)
 		}
+	}
+}
+
+// TestProjectsService_UpdateBodyBytes pins the exact bytes Update puts on the
+// wire. The expectations were captured from the hand-marshaled map
+// implementation before Update moved to the generated request type (#653): the
+// test is the invariant, the swap is the change. Byte-level equality is
+// deliberate — key order, and the presence or absence of every omitted member,
+// are the contract being preserved.
+func TestProjectsService_UpdateBodyBytes(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		req  *UpdateProjectRequest
+		want string
+	}{
+		{
+			name: "full",
+			req: &UpdateProjectRequest{
+				Name:        "Marketing Campaign",
+				Description: "For Client: Xyz Corp Conference",
+				Admissions:  "team",
+				ScheduleAttributes: &ScheduleAttributes{
+					StartDate: "2022-01-01",
+					EndDate:   "2022-04-01",
+				},
+			},
+			want: `{"admissions":"team","description":"For Client: Xyz Corp Conference","name":"Marketing Campaign","schedule_attributes":{"end_date":"2022-04-01","start_date":"2022-01-01"}}`,
+		},
+		{
+			name: "sparse",
+			req:  &UpdateProjectRequest{Name: "My Project"},
+			want: `{"name":"My Project"}`,
+		},
+		{
+			name: "schedule attrs only",
+			req: &UpdateProjectRequest{
+				Name:               "My Project",
+				ScheduleAttributes: &ScheduleAttributes{StartDate: "2022-01-01"},
+			},
+			want: `{"name":"My Project","schedule_attributes":{"start_date":"2022-01-01"}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := loadFixture(t, "get.json")
+			var gotBody string
+			svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				b, _ := io.ReadAll(r.Body)
+				gotBody = string(b)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(200)
+				w.Write(fixture)
+			})
+
+			if _, err := svc.Update(context.Background(), 12345, tc.req); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if gotBody != tc.want {
+				t.Errorf("Update body = %s, want %s", gotBody, tc.want)
+			}
+		})
 	}
 }
 

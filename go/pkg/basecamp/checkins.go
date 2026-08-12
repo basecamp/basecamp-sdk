@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -427,19 +428,20 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID in
 		return nil, err
 	}
 
-	body := map[string]any{
-		"title":    req.Title,
-		"schedule": questionScheduleToMap(req.Schedule),
+	body := generated.CreateQuestionJSONRequestBody{
+		Title:            req.Title,
+		VisibleToClients: req.VisibleToClients,
 	}
-	if req.VisibleToClients != nil {
-		body["visible_to_clients"] = *req.VisibleToClients
-	}
-
-	bodyReader, err := marshalBody(body)
+	// Schedule is a required non-pointer member: an all-zero schedule marshals
+	// as the same `"schedule": {}` the map implementation sent.
+	gs, err := questionScheduleToGenerated(req.Schedule)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.client.parent.gen.CreateQuestionWithBodyWithResponse(ctx, s.client.accountID, questionnaireID, "application/json", bodyReader)
+	if gs != nil {
+		body.Schedule = *gs
+	}
+	resp, err := s.client.parent.gen.CreateQuestionWithResponse(ctx, s.client.accountID, questionnaireID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -477,25 +479,22 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 		return nil, err
 	}
 
-	body := map[string]any{}
+	body := generated.UpdateQuestionJSONRequestBody{}
 	if req.Title != "" {
-		body["title"] = req.Title
+		body.Title = &req.Title
 	}
 	if req.Schedule != nil {
-		sm := questionScheduleToMap(req.Schedule)
-		if len(sm) > 0 {
-			body["schedule"] = sm
+		// nil for an all-zero schedule, so the member is omitted exactly as
+		// the map implementation omitted an empty schedule map.
+		if body.Schedule, err = questionScheduleToGenerated(req.Schedule); err != nil {
+			return nil, err
 		}
 	}
 	if req.Paused != nil {
-		body["paused"] = *req.Paused
+		body.Paused = req.Paused
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.parent.gen.UpdateQuestionWithBodyWithResponse(ctx, s.client.accountID, questionID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.UpdateQuestionWithResponse(ctx, s.client.accountID, questionID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -964,20 +963,17 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, answerID int64, req 
 	if groupOn == "" {
 		return ErrUsage("group_on is required")
 	}
-	if _, parseErr := types.ParseDate(groupOn); parseErr != nil {
+	groupOnDate, parseErr := types.ParseDate(groupOn)
+	if parseErr != nil {
 		return ErrUsage("group_on must be in YYYY-MM-DD format")
 	}
 
-	body := map[string]any{
-		"content":  req.Content,
-		"group_on": groupOn,
+	body := generated.UpdateAnswerJSONRequestBody{
+		Content: req.Content,
+		GroupOn: &groupOnDate,
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return err
-	}
-	resp, err := s.client.parent.gen.UpdateAnswerWithBodyWithResponse(ctx, s.client.accountID, answerID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.UpdateAnswerWithResponse(ctx, s.client.accountID, answerID, body)
 	if err != nil {
 		return err
 	}
@@ -1267,39 +1263,77 @@ func questionNotificationSettingsFromGenerated(gs generated.UpdateQuestionNotifi
 	}
 }
 
-// questionScheduleToMap converts a QuestionSchedule to a map for JSON marshaling.
-// Used by CreateQuestion and UpdateQuestion to avoid the generated QuestionSchedule
-// struct's zero-value serialization leaking empty fields.
-func questionScheduleToMap(s *QuestionSchedule) map[string]any {
-	m := map[string]any{}
+// questionScheduleInt32 narrows a schedule integer to the generated struct's
+// int32, refusing values that do not fit rather than silently wrapping them
+// (gosec G115). The map implementation sent the caller's int verbatim and let
+// the server reject nonsense; the typed body cannot carry an out-of-range
+// value at all, so it now fails fast as a usage error instead of becoming
+// different garbage on the wire.
+func questionScheduleInt32(v int, field string) (int32, error) {
+	if v < math.MinInt32 || v > math.MaxInt32 {
+		return 0, ErrUsage(fmt.Sprintf("question schedule %s value %d does not fit a 32-bit integer", field, v))
+	}
+	return int32(v), nil
+}
+
+// questionScheduleToGenerated converts a QuestionSchedule to the generated
+// request struct for CreateQuestion and UpdateQuestion. Returns nil when no
+// field is set, so UpdateQuestion can omit the member entirely. The generated
+// struct is all-pointer `omitempty`, so an unset field is omitted and an
+// explicit empty day list still reaches the wire as `[]`: `omitempty` tests
+// pointer nil-ness, not pointee emptiness, and a non-nil pointer to an empty
+// slice survives it.
+func questionScheduleToGenerated(s *QuestionSchedule) (*generated.QuestionSchedule, error) {
+	gs := generated.QuestionSchedule{}
+	set := false
 	if s.Frequency != "" {
-		m["frequency"] = s.Frequency
+		gs.Frequency = &s.Frequency
+		set = true
 	}
 	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
 	// empty day list and must reach the wire.
 	if s.Days != nil {
-		m["days"] = s.Days
+		days := make([]int32, len(s.Days))
+		for i, d := range s.Days {
+			v, err := questionScheduleInt32(d, "days")
+			if err != nil {
+				return nil, err
+			}
+			days[i] = v
+		}
+		gs.Days = &days
+		set = true
 	}
-	if s.Hour != nil {
-		m["hour"] = *s.Hour
-	}
-	if s.Minute != nil {
-		m["minute"] = *s.Minute
+	for _, f := range []struct {
+		dst  **int32
+		src  *int
+		name string
+	}{
+		{&gs.Hour, s.Hour, "hour"},
+		{&gs.Minute, s.Minute, "minute"},
+		{&gs.WeekInstance, s.WeekInstance, "week_instance"},
+		{&gs.WeekInterval, s.WeekInterval, "week_interval"},
+		{&gs.MonthInterval, s.MonthInterval, "month_interval"},
+	} {
+		if f.src != nil {
+			v, err := questionScheduleInt32(*f.src, f.name)
+			if err != nil {
+				return nil, err
+			}
+			*f.dst = &v
+			set = true
+		}
 	}
 	if s.StartDate != "" {
-		m["start_date"] = s.StartDate
+		gs.StartDate = &s.StartDate
+		set = true
 	}
 	if s.EndDate != "" {
-		m["end_date"] = s.EndDate
+		gs.EndDate = &s.EndDate
+		set = true
 	}
-	if s.WeekInstance != nil {
-		m["week_instance"] = *s.WeekInstance
+	if !set {
+		return nil, nil
 	}
-	if s.WeekInterval != nil {
-		m["week_interval"] = *s.WeekInterval
-	}
-	if s.MonthInterval != nil {
-		m["month_interval"] = *s.MonthInterval
-	}
-	return m
+	return &gs, nil
 }

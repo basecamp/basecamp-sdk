@@ -279,16 +279,16 @@ func (s *TodolistGroupsService) Create(ctx context.Context, todolistID int64, re
 // the same flat Todolist shape.
 // Returns the updated group.
 func (s *TodolistGroupsService) Replace(ctx context.Context, groupID int64, req *ReplaceTodolistGroupRequest) (*TodolistGroup, error) {
-	return s.replaceGroup(ctx, groupID, func() (map[string]any, error) {
+	return s.replaceGroup(ctx, groupID, func() (generated.UpdateTodolistOrGroupJSONRequestBody, error) {
 		if req == nil {
-			return nil, ErrUsage("replace request is required")
+			return generated.UpdateTodolistOrGroupJSONRequestBody{}, ErrUsage("replace request is required")
 		}
 		if req.Name == "" {
-			return nil, ErrUsage("group name is required")
+			return generated.UpdateTodolistOrGroupJSONRequestBody{}, ErrUsage("group name is required")
 		}
-		body := map[string]any{"name": req.Name}
+		body := generated.UpdateTodolistOrGroupJSONRequestBody{Name: req.Name}
 		if req.Description != "" {
-			body["description"] = req.Description
+			body.Description = &req.Description
 		}
 		return body, nil
 	})
@@ -300,7 +300,7 @@ func (s *TodolistGroupsService) Replace(ctx context.Context, groupID int64, req 
 // call site, and the decode live in replaceTodolistOrGroup, shared with
 // TodolistsService. Only the hook identity differs — since #544 both services
 // project the same flat shape.
-func (s *TodolistGroupsService) replaceGroup(ctx context.Context, groupID int64, buildBody func() (map[string]any, error)) (*TodolistGroup, error) {
+func (s *TodolistGroupsService) replaceGroup(ctx context.Context, groupID int64, buildBody func() (generated.UpdateTodolistOrGroupJSONRequestBody, error)) (*TodolistGroup, error) {
 	op := OperationInfo{
 		Service: "TodolistGroups", Operation: "Replace",
 		ResourceType: "todolist_group", IsMutation: true,
