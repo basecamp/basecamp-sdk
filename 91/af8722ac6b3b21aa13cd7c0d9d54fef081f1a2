@@ -1,0 +1,42 @@
+ruby/lib/basecamp/config.rb
+  s_655f73c03e416d::t_2e374c929ed7bb 181-183
+ruby/test/basecamp/oauth_token_conformance_test.rb
+  s_655f73c03e416d::t_0aafa9e239ddd7 19,21
+conformance/runner/ruby/runner.rb
+  s_655f73c03e416d::t_aa8c792af6ed82 1374-1375
+conformance/runner/ruby/replay_runner_test.rb
+  s_655f73c03e416d::t_cf2b37e736adb5 43,45
+conformance/runner/ruby/replay-runner.rb
+  s_655f73c03e416d::t_5e05d8ea52e690 210
+  s_655f73c03e416d::t_4ddcad346a851e 89-91
+  s_655f73c03e416d::t_bad71a1307efa7 154
+ruby/test/basecamp/services/webhooks_service_test.rb
+  s_655f73c03e416d::t_9caea8194b2193 103-104
+  s_655f73c03e416d::t_77667704635d1e 102
+ruby/test/basecamp/webhooks/event_test.rb
+  s_655f73c03e416d::t_f8014040a903a4 10,12
+ruby/test/basecamp/webhooks/receiver_test.rb
+  s_655f73c03e416d::t_6274e74a34c4ba 11,13
+ruby/test/basecamp/oauth_resource_discovery_test.rb
+  s_655f73c03e416d::t_6553572310bf83 25-27,29
+ruby/lib/basecamp/http.rb
+  s_655f73c03e416d::t_ca2fc730323eda 496-497,499
+.github/workflows/test.yml
+  s_655f73c03e416d::t_67bd8441012d2a 520-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "91af8722ac6b3b21aa13cd7c0d9d54fef081f1a2",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
