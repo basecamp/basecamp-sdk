@@ -74,10 +74,10 @@ class AuthorizationServiceTest < Minitest::Test
     assert_not_requested :get, "#{LAUNCHPAD_URL}/authorization.json"
   end
 
-  # The BC5 document survives the round trip intact — including the three fields
-  # Launchpad never sends and the epoch-seconds expires_at. Ruby returns the
-  # parsed Hash verbatim, so what this really pins is that nothing in the fetch
-  # path reshapes, coerces, or drops a field it does not recognise.
+  # The BC5 document survives the round trip intact — including the two fields
+  # Launchpad never sends (resource and scope). Ruby returns the parsed Hash
+  # verbatim, so what this really pins is that nothing in the fetch path
+  # reshapes, coerces, or drops a field it does not recognise.
   def test_get_authorization_returns_bc5_document_fields_verbatim
     stub_resource_metadata(authorization_servers: [ BC5_ISSUER, LAUNCHPAD_URL ])
     stub_as_metadata(BC5_ISSUER)
@@ -89,7 +89,7 @@ class AuthorizationServiceTest < Minitest::Test
 
     assert_equal "urn:bc:account:12345", auth["accounts"].first["resource"]
     assert_equal "read write", auth["scope"]
-    assert_equal 2_085_213_356, auth["expires_at"]
+    assert_equal "2036-01-29T09:55:56Z", auth["expires_at"]
     # Launchpad-only fields are absent, not empty — a consumer reading
     # identity.email_address here gets nil, which is what the service's own
     # @example used to show.

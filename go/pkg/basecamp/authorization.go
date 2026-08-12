@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-// FlexTime is a time.Time that can unmarshal from either a Unix timestamp (integer)
-// or an RFC 3339 string. This supports both BC3 OAuth 2.1 (integer) and Launchpad (string).
+// FlexTime is a time.Time that can unmarshal from either an RFC 3339 string —
+// the spelling both issuers send today — or a Unix timestamp (integer), bc3's
+// rendering before bc3 #12646 converged it, kept accepted as compatibility.
 //
 // The zero value means "no expiry known": an absent field, an explicit null,
 // and the integer 0 all decode to it, and it marshals back as null. Check
@@ -30,12 +31,13 @@ func (ft *FlexTime) UnmarshalJSON(data []byte) error {
 	var unix int64
 	if err := json.Unmarshal(data, &unix); err == nil {
 		if unix == 0 {
-			// bc3 renders `expires_at.to_i`, so a wire 0 would be its spelling
-			// of an unstated expiry, and RFC 7591 gives 0 the meaning "never
-			// expires" (bc3's own client_secret_expires_at). Either way,
-			// "expired at the 1970 epoch" — a *valid* time.Unix(0, 0) instant —
-			// is the one wrong reading. Treat it as "no expiry known",
-			// matching TypeScript's parseExpiresAt.
+			// bc3 rendered `expires_at.to_i` before bc3 #12646, so a wire 0
+			// would have been its spelling of an unstated expiry, and RFC 7591
+			// gives 0 the meaning "never expires" (bc3's own
+			// client_secret_expires_at). Either way, "expired at the 1970
+			// epoch" — a *valid* time.Unix(0, 0) instant — is the one wrong
+			// reading. Treat it as "no expiry known", matching TypeScript's
+			// parseExpiresAt.
 			ft.Time = time.Time{}
 			return nil
 		}

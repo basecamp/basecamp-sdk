@@ -131,7 +131,9 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 // bc5AuthorizationDocument is what a BC5 (bc3) issuer serves from
 // app/views/api/authorizations/show.json.jbuilder: identity id only, no product
 // or app_href on accounts, an RFC 8707 resource indicator instead, a top-level
-// scope, and expires_at as integer epoch seconds.
+// scope, and expires_at as an ISO 8601 string (integer epoch seconds before
+// bc3 #12646 converged it; TestAuthorizationInfo_UnmarshalWithIntExpiresAt
+// keeps the integer spelling covered).
 //
 // Go reaches this document exactly the way TypeScript does — by passing an
 // Endpoint override, which is the documented way to point at a BC5 issuer.
@@ -142,9 +144,8 @@ func bc5AuthorizationDocument() map[string]any {
 			{"id": 1, "name": "Acme Corp", "href": "https://bc5.example.com/1", "resource": "urn:bc:account:1"},
 			{"id": 2, "name": "Second Account", "href": "https://bc5.example.com/2", "resource": "urn:bc:account:2"},
 		},
-		"scope": "read write",
-		// 2036-01-29T09:55:56Z as epoch seconds.
-		"expires_at": 2085213356,
+		"scope":      "read write",
+		"expires_at": "2036-01-29T09:55:56Z",
 	}
 }
 
@@ -257,9 +258,10 @@ func TestAuthorizationService_GetInfo_EmptyAccountListIsFilterable(t *testing.T)
 	}
 }
 
-// The rest of the BC5 shape: the resource indicator, the scope, the epoch-seconds
-// timestamp Go's FlexTime already handled, and the Launchpad-only fields that
-// degrade to "" rather than erroring.
+// The rest of the BC5 shape: the resource indicator, the scope, the ISO 8601
+// expires_at bc3 sends since bc3 #12646, and the Launchpad-only fields that
+// degrade to "" rather than erroring. Integer-epoch compatibility is covered
+// separately by TestAuthorizationInfo_UnmarshalWithIntExpiresAt.
 func TestAuthorizationService_GetInfo_BC5DocumentShape(t *testing.T) {
 	server := newBC5AuthorizationServer(t)
 	client := newBC5AuthorizationClient(t, server)
@@ -365,10 +367,10 @@ func TestFlexTime_UnmarshalJSON(t *testing.T) {
 		wantErr bool
 		wantSec int64 // expected Unix timestamp, when wantZero is false
 		// wantZero asserts the zero time — "no expiry known". null and integer 0
-		// both land here: bc3 renders `expires_at.to_i`, so a wire 0 would be its
-		// spelling of an unstated expiry, and RFC 7591 already gives 0 the meaning
-		// "never expires" (bc3's own client_secret_expires_at) — the one reading
-		// that must not survive is "expired at the 1970 epoch".
+		// both land here: bc3's pre-#12646 `expires_at.to_i` rendering made a
+		// wire 0 its spelling of an unstated expiry, and RFC 7591 gives 0 the
+		// meaning "never expires" (bc3's own client_secret_expires_at) — the one
+		// reading that must not survive is "expired at the 1970 epoch".
 		wantZero bool
 	}{
 		{
@@ -540,7 +542,10 @@ func TestAuthorizationInfo_UnmarshalWithStringExpiresAt(t *testing.T) {
 }
 
 func TestAuthorizationInfo_UnmarshalWithIntExpiresAt(t *testing.T) {
-	// BC3 OAuth 2.1 returns expires_at as Unix timestamp integer
+	// bc3 rendered expires_at as integer epoch seconds before bc3 #12646
+	// converged it on ISO 8601. The integer spelling stays accepted — recorded
+	// documents and older deploys still carry it — and this test is what keeps
+	// that compatibility covered now that the BC5 fixture speaks ISO 8601.
 	jsonData := `{
 		"expires_at": 2085213356,
 		"identity": {
