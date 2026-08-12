@@ -1621,28 +1621,70 @@ class SearchMetadata(TypedDict):
 
 
 class SearchResult(TypedDict):
-    app_url: str
+    app_download_url: NotRequired[str]
+    app_url: NotRequired[str]
+    attachments: NotRequired[list[SearchResultAttachment]]
     bookmark_url: NotRequired[str]
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
     bubble_up_url: NotRequired[str]
     bucket: NotRequired[RecordingBucket]
+    byte_size: NotRequired[int]
+    cards_count: NotRequired[int]
+    cards_url: NotRequired[str]
+    color: NotRequired[Optional[str]]
+    comment_count: NotRequired[int]
+    comments_count: NotRequired[int]
+    comments_url: NotRequired[str]
     content: str | None
     content_attachments: NotRequired[list[RichTextAttachment]]
+    content_type: NotRequired[str]
     created_at: NotRequired[str]
     creator: NotRequired[Person]
     description: str | None
     description_attachments: NotRequired[list[RichTextAttachment]]
-    id: int
+    download_url: NotRequired[str]
+    filename: NotRequired[str]
+    height: NotRequired[Optional[int | float]]
+    id: NotRequired[int]
+    image_url: NotRequired[str]
     inherits_status: NotRequired[bool]
+    language: NotRequired[str]
+    on_hold: NotRequired[CardColumnOnHold]
     parent: NotRequired[RecordingParent]
     plain_text_content: NotRequired[str]
     plain_text_description: NotRequired[str]
+    position: NotRequired[int]
+    preview_url: NotRequired[str]
+    previewable: NotRequired[bool]
+    sound_url: NotRequired[str]
     status: NotRequired[str]
     subject: NotRequired[str]
-    title: str
-    type: str
+    subscribers: NotRequired[list[Person]]
+    subscription_url: NotRequired[str]
+    thumbnail_url: NotRequired[str]
+    title: NotRequired[str]
+    type: NotRequired[str]
     updated_at: NotRequired[str]
-    url: str
+    url: NotRequired[str]
     visible_to_clients: NotRequired[bool]
+    width: NotRequired[Optional[int | float]]
+
+
+class SearchResultAttachment(TypedDict):
+    byte_size: int
+    content_type: str
+    download_url: str
+    filename: str
+    height: NotRequired[Optional[int | float]]
+    id: NotRequired[int]
+    preview_url: NotRequired[str]
+    previewable: NotRequired[bool]
+    sgid: NotRequired[str]
+    thumbnail_url: NotRequired[str]
+    title: NotRequired[str]
+    url: NotRequired[str]
+    width: NotRequired[Optional[int | float]]
 
 
 class SearchType(TypedDict):

@@ -9315,23 +9315,46 @@ list SearchResultList {
   member: SearchResult
 }
 
+/// One hit from account-wide search — a polymorphic projection over every
+/// searchable recording type.
+///
+/// Most result types render the common recording envelope
+/// (`recordings/_recording.json.jbuilder`) plus their own recordable partial,
+/// but `api_search_result_template_path` special-cases four branches — chat
+/// lines, kanban (card table) lists, file attachments and gauge needles — and
+/// the file-attachment branch writes its own projection from scratch instead
+/// of the envelope. Members are therefore optional unless every branch emits
+/// them; the doc comments name the branches that carry each optional member.
 structure SearchResult {
-  @required
+  /// The recording id. Optional only because the file-attachment branch
+  /// (`searches/_attachment.json.jbuilder`) skips the recording envelope and
+  /// emits none of the top-level id/title/type/url/app_url keys; every other
+  /// branch emits all five.
   id: Long
   status: String
   visible_to_clients: Boolean
   created_at: ISO8601Timestamp
   updated_at: ISO8601Timestamp
-  @required
+  /// See `id` — omitted by the file-attachment branch, emitted by every other
+  /// branch.
   title: String
   inherits_status: Boolean
-  @required
+  /// See `id` — omitted by the file-attachment branch, emitted by every other
+  /// branch. A file-attachment hit is therefore recognizable by the absence
+  /// of this key (its file keys, `filename` through `app_download_url`, are
+  /// the positive signal).
   type: String
-  @required
+  /// See `id` — omitted by the file-attachment branch, emitted by every other
+  /// branch.
   url: String
-  @required
+  /// See `id` — omitted by the file-attachment branch, emitted by every other
+  /// branch.
   app_url: String
   bookmark_url: String
+  /// Subscription URL, emitted by the common recording envelope for any
+  /// subscribable result — kanban lists and gauge needles among the special
+  /// branches, plus subscribable generic-branch types (messages, todos, …).
+  subscription_url: String
 
   /// URL of the Bubble Up record for this recording (BC5 addition). Optional
   /// here because this is a polymorphic projection:
@@ -9373,21 +9396,155 @@ structure SearchResult {
   /// the array matching its rich-text attribute (`content_attachments` for a
   /// Comment/Message, `description_attachments` for a Todo); a webhook-sourced
   /// result carries neither. Optional (no `@required`), non-nullable.
-  ///
-  /// Search results additionally repeat this same array under a generic
-  /// `attachments` key. It is a redundant projection, not a distinct
-  /// aggregate: `searches/show.json.jbuilder` emits
-  /// `recording.downloadable_attachments`, which delegates to the recordable's
-  /// sole `rich_text_content`, through the same `attachments/_attachment`
-  /// partial that `recordings/_rich_text.json.jbuilder` uses to build the
-  /// companion array. `RichText.rich_text_attribute` permits exactly one
-  /// rich-text attribute per model, so the two keys always carry identical
-  /// elements. Modeling `attachments` would duplicate the field, so it is
-  /// deliberately not modeled.
   content_attachments: RichTextAttachmentList
   /// See `content_attachments` — the description-attribute companion array.
   description_attachments: RichTextAttachmentList
+  /// File attachments on the result, in either of two wire shapes — see
+  /// `SearchResultAttachment`.
+  ///
+  /// For a result whose recordable carries downloadable rich-text
+  /// attachments, `searches/show.json.jbuilder` emits this key through the
+  /// same `attachments/_attachment` partial that builds the rich-text
+  /// companion array above, so it repeats that array's elements. For a chat
+  /// *upload* line, `chats/lines/_upload.json.jbuilder` instead builds a
+  /// bespoke six-key aggregate inline — and because upload lines have no
+  /// rich-text attribute, the show template never overwrites it, so that
+  /// distinct shape survives to the wire.
+  attachments: SearchResultAttachmentList
   subject: String
+
+  // ----- chat-line branch (chats/lines/_line + per-kind partials) -----
+
+  /// Boost count, emitted by the recording envelope when the branch passes
+  /// `boostable` — chat lines and gauge needles.
+  boosts_count: Integer
+  /// See `boosts_count` — the companion URL.
+  boosts_url: String
+  /// Language of a code chat line (`chats/lines/_code.json.jbuilder`);
+  /// validated present on the model, so never null when the key is emitted.
+  language: String
+  /// Image URL of a soundtracked (play-kind) chat line whose sound carries an
+  /// image; such a line emits `image_url` in place of `content`.
+  image_url: String
+  /// Sound URL of a play-kind chat line; always emitted for that kind.
+  sound_url: String
+
+  // ----- kanban-list branch (kanban/lists/_list.json.jbuilder) -----
+
+  /// Everyone subscribed to the kanban list, as full Person projections.
+  subscribers: PersonList
+  /// Color of a kanban list or gauge needle. Emitted unconditionally by both
+  /// branches with a null value when unset, so it is nullable (the enhance
+  /// pass layers `nullable: true` onto the OpenAPI).
+  color: String
+  /// Number of cards in the kanban list.
+  cards_count: Integer
+  /// Comment count of a kanban list or gauge needle (branch-partial key,
+  /// singular `comment_count` — distinct from the envelope's
+  /// `comments_count`, which a needle also carries).
+  comment_count: Integer
+  /// API URL of the kanban list's cards.
+  cards_url: String
+  /// The kanban list's on-hold section, when present — the same shape the
+  /// card-table column endpoints return.
+  on_hold: CardColumnOnHold
+
+  // ----- gauge-needle branch (gauges/needles/_needle.json.jbuilder) -----
+
+  /// Comment count, emitted by the recording envelope when the branch passes
+  /// `commentable` — gauge needles among the special branches, plus
+  /// commentable generic-branch types.
+  comments_count: Integer
+  /// See `comments_count` — the companion URL.
+  comments_url: String
+  /// Position of the result. Two emitters share the key: the recording
+  /// envelope emits list position for positioned recordings (kanban lists
+  /// among the special branches), and the gauge-needle branch overwrites it
+  /// with the needle's own 0–100 gauge position.
+  position: Integer
+
+  // ----- file-attachment branch (searches/_attachment.json.jbuilder) -----
+
+  /// Filename of a file-attachment hit. This and the following file keys are
+  /// emitted only by the file-attachment branch — the one branch that omits
+  /// the id/title/type/url/app_url envelope keys.
+  filename: String
+  /// MIME type of a file-attachment hit.
+  content_type: String
+  /// Size in bytes of a file-attachment hit.
+  byte_size: Long
+  /// Whether the file can be previewed.
+  previewable: Boolean
+  /// Pixel width, emitted only when the file is previewable. May be
+  /// float-spelled (`1024.0`) and nullable, like every other blob dimension —
+  /// see `RichTextAttachment.width` for the cross-SDK typing note.
+  width: Integer
+  /// See `width` — same conditional emission and nullable/float-spelled
+  /// behavior.
+  height: Integer
+  /// Full-size preview URL of a file-attachment hit.
+  preview_url: String
+  /// Thumbnail URL of a file-attachment hit.
+  thumbnail_url: String
+  /// Authenticated download URL of a file-attachment hit.
+  @basecampAuthRoutableUrl
+  download_url: String
+  /// Web (app-host) download URL of a file-attachment hit.
+  app_download_url: String
+}
+
+list SearchResultAttachmentList {
+  member: SearchResultAttachment
+}
+
+/// A file attached to a search result, in either of two wire shapes.
+///
+/// This is an optional-field superset over the two variants the search
+/// projection emits (the TimelineAttachment approach): the rich-text
+/// attachment/blob shape rendered through `attachments/_attachment` +
+/// `blobs/_blob` — the same emitters `RichTextAttachment` models — and the
+/// bespoke six-key aggregate a chat upload line builds inline in
+/// `chats/lines/_upload.json.jbuilder`. Only the four keys both variants
+/// always emit are `@required`; the rest identify their variant.
+structure SearchResultAttachment {
+  /// Original filename (both variants).
+  @required
+  filename: String
+  /// MIME type of the file (both variants).
+  @required
+  content_type: String
+  /// Size of the file in bytes (both variants).
+  @required
+  byte_size: Long
+  /// Authenticated download URL for the file (both variants).
+  @required
+  @basecampAuthRoutableUrl
+  download_url: String
+
+  // ----- rich-text attachment/blob variant -----
+
+  /// Attachment id (rich-text variant).
+  id: Long
+  /// Signed global id of the attachment (rich-text variant).
+  sgid: String
+  /// Whether the blob can be previewed (rich-text variant).
+  previewable: Boolean
+  /// Full-size preview URL (rich-text variant).
+  preview_url: String
+  /// Thumbnail URL (rich-text variant).
+  thumbnail_url: String
+  /// Pixel width (rich-text variant) — null for non-image blobs and may be
+  /// float-spelled (`1024.0`); see `RichTextAttachment.width`.
+  width: Integer
+  /// See `width` (rich-text variant).
+  height: Integer
+
+  // ----- chat upload-line variant -----
+
+  /// Title of the attachment recording (chat upload-line variant).
+  title: String
+  /// Browser preview URL of the blob (chat upload-line variant).
+  url: String
 }
 
 structure SearchMetadata {

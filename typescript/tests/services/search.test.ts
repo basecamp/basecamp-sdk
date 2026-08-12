@@ -74,6 +74,35 @@ describe("SearchService", () => {
             },
           ],
         },
+        {
+          // A file-attachment hit (searches/_attachment.json.jbuilder): the
+          // one branch that omits the id/title/type/url/app_url envelope keys
+          // and carries the ten file keys instead. width/height ride only on
+          // previewable files and may arrive float-spelled (1920.0).
+          parent: {
+            id: 10,
+            title: "Message Board",
+            type: "Message",
+            url: "https://example.com/buckets/1/messages/11.json",
+            app_url: "https://basecamp.com/buckets/1/messages/11",
+          },
+          bucket: { id: 1, name: "Leto", type: "Project" },
+          created_at: "2022-10-28T15:25:00.000Z",
+          filename: "leto-hero.jpg",
+          content_type: "image/jpeg",
+          byte_size: 512000,
+          previewable: true,
+          width: 1920.0,
+          height: 1080,
+          preview_url: "https://example.com/blobs/hero/previews/leto-hero.jpg",
+          thumbnail_url:
+            "https://example.com/blobs/hero/thumbnails/leto-hero.jpg",
+          download_url: "https://example.com/blobs/hero/download/leto-hero.jpg",
+          app_download_url:
+            "https://basecamp.com/blobs/hero/download/leto-hero.jpg",
+          content: null,
+          description: null,
+        },
       ];
 
       server.use(
@@ -85,7 +114,7 @@ describe("SearchService", () => {
       );
 
       const results = await client.search.search("project");
-      expect(results).toHaveLength(2);
+      expect(results).toHaveLength(3);
       // The optional projection array surfaces on the matching-type result.
       expect(results[1]!.content_attachments).toHaveLength(1);
 
@@ -101,6 +130,24 @@ describe("SearchService", () => {
       expect(results[1]!.content_attachments![0]!.width).toBe(1024);
       expect(results[0]!.title).toBe("Project Plan");
       expect(results[1]!.type).toBe("Message");
+
+      // The file-attachment hit: no envelope keys, file keys instead.
+      const hit = results[2]!;
+      expect(hit.id).toBeUndefined();
+      expect(hit.title).toBeUndefined();
+      expect(hit.type).toBeUndefined();
+      expect(hit.url).toBeUndefined();
+      expect(hit.app_url).toBeUndefined();
+      expect(hit.filename).toBe("leto-hero.jpg");
+      expect(hit.content_type).toBe("image/jpeg");
+      expect(hit.byte_size).toBe(512000);
+      expect(hit.previewable).toBe(true);
+      expect(hit.width).toBe(1920);
+      expect(hit.height).toBe(1080);
+      expect(hit.preview_url).toContain("/previews/");
+      expect(hit.thumbnail_url).toContain("/thumbnails/");
+      expect(hit.download_url).toContain("/download/");
+      expect(hit.app_download_url).toContain("/download/");
     });
 
     it("should support sort option", async () => {

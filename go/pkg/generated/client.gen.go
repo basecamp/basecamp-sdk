@@ -2883,10 +2883,44 @@ type SearchMetadata struct {
 // SearchResponseContent defines model for SearchResponseContent.
 type SearchResponseContent = []SearchResult
 
-// SearchResult defines model for SearchResult.
+// SearchResult One hit from account-wide search — a polymorphic projection over every
+// searchable recording type.
+//
+// Most result types render the common recording envelope
+// (`recordings/_recording.json.jbuilder`) plus their own recordable partial,
+// but `api_search_result_template_path` special-cases four branches — chat
+// lines, kanban (card table) lists, file attachments and gauge needles — and
+// the file-attachment branch writes its own projection from scratch instead
+// of the envelope. Members are therefore optional unless every branch emits
+// them; the doc comments name the branches that carry each optional member.
 type SearchResult struct {
-	AppUrl      string  `json:"app_url"`
-	BookmarkUrl *string `json:"bookmark_url,omitempty"`
+	// AppDownloadUrl Web (app-host) download URL of a file-attachment hit.
+	AppDownloadUrl *string `json:"app_download_url,omitempty"`
+
+	// AppUrl See `id` — omitted by the file-attachment branch, emitted by every other
+	// branch.
+	AppUrl *string `json:"app_url,omitempty"`
+
+	// Attachments File attachments on the result, in either of two wire shapes — see
+	// `SearchResultAttachment`.
+	//
+	// For a result whose recordable carries downloadable rich-text
+	// attachments, `searches/show.json.jbuilder` emits this key through the
+	// same `attachments/_attachment` partial that builds the rich-text
+	// companion array above, so it repeats that array's elements. For a chat
+	// *upload* line, `chats/lines/_upload.json.jbuilder` instead builds a
+	// bespoke six-key aggregate inline — and because upload lines have no
+	// rich-text attribute, the show template never overwrites it, so that
+	// distinct shape survives to the wire.
+	Attachments []SearchResultAttachment `json:"attachments,omitempty"`
+	BookmarkUrl *string                  `json:"bookmark_url,omitempty"`
+
+	// BoostsCount Boost count, emitted by the recording envelope when the branch passes
+	// `boostable` — chat lines and gauge needles.
+	BoostsCount *int32 `json:"boosts_count,omitempty"`
+
+	// BoostsUrl See `boosts_count` — the companion URL.
+	BoostsUrl *string `json:"boosts_url,omitempty"`
 
 	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Optional
 	// here because this is a polymorphic projection:
@@ -2896,6 +2930,33 @@ type SearchResult struct {
 	// other recording types do not.
 	BubbleUpUrl *string          `json:"bubble_up_url,omitempty"`
 	Bucket      *RecordingBucket `json:"bucket,omitempty"`
+
+	// ByteSize Size in bytes of a file-attachment hit.
+	ByteSize *int64 `json:"byte_size,omitempty"`
+
+	// CardsCount Number of cards in the kanban list.
+	CardsCount *int32 `json:"cards_count,omitempty"`
+
+	// CardsUrl API URL of the kanban list's cards.
+	CardsUrl *string `json:"cards_url,omitempty"`
+
+	// Color Color of a kanban list or gauge needle. Emitted unconditionally by both
+	// branches with a null value when unset, so it is nullable (the enhance
+	// pass layers `nullable: true` onto the OpenAPI).
+	Color *string `json:"color,omitempty"`
+
+	// CommentCount Comment count of a kanban list or gauge needle (branch-partial key,
+	// singular `comment_count` — distinct from the envelope's
+	// `comments_count`, which a needle also carries).
+	CommentCount *int32 `json:"comment_count,omitempty"`
+
+	// CommentsCount Comment count, emitted by the recording envelope when the branch passes
+	// `commentable` — gauge needles among the special branches, plus
+	// commentable generic-branch types.
+	CommentsCount *int32 `json:"comments_count,omitempty"`
+
+	// CommentsUrl See `comments_count` — the companion URL.
+	CommentsUrl *string `json:"comments_url,omitempty"`
 
 	// Content Always present, always null. `api/searches/show.json.jbuilder` renders the
 	// recording's own partial and then unconditionally overwrites `content` with
@@ -2909,20 +2970,12 @@ type SearchResult struct {
 	// the array matching its rich-text attribute (`content_attachments` for a
 	// Comment/Message, `description_attachments` for a Todo); a webhook-sourced
 	// result carries neither. Optional (no `@required`), non-nullable.
-	//
-	// Search results additionally repeat this same array under a generic
-	// `attachments` key. It is a redundant projection, not a distinct
-	// aggregate: `searches/show.json.jbuilder` emits
-	// `recording.downloadable_attachments`, which delegates to the recordable's
-	// sole `rich_text_content`, through the same `attachments/_attachment`
-	// partial that `recordings/_rich_text.json.jbuilder` uses to build the
-	// companion array. `RichText.rich_text_attribute` permits exactly one
-	// rich-text attribute per model, so the two keys always carry identical
-	// elements. Modeling `attachments` would duplicate the field, so it is
-	// deliberately not modeled.
 	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
-	CreatedAt          *time.Time           `json:"created_at,omitempty"`
-	Creator            *Person              `json:"creator,omitempty"`
+
+	// ContentType MIME type of a file-attachment hit.
+	ContentType *string    `json:"content_type,omitempty"`
+	CreatedAt   *time.Time `json:"created_at,omitempty"`
+	Creator     *Person    `json:"creator,omitempty"`
 
 	// Description Always present, always null — the description-attribute counterpart to
 	// `content`. Read `plain_text_description` instead.
@@ -2930,9 +2983,35 @@ type SearchResult struct {
 
 	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
-	Id                     int64                `json:"id"`
-	InheritsStatus         *bool                `json:"inherits_status,omitempty"`
-	Parent                 *RecordingParent     `json:"parent,omitempty"`
+
+	// DownloadUrl Authenticated download URL of a file-attachment hit.
+	DownloadUrl *string `json:"download_url,omitempty"`
+
+	// Filename Filename of a file-attachment hit. This and the following file keys are
+	// emitted only by the file-attachment branch — the one branch that omits
+	// the id/title/type/url/app_url envelope keys.
+	Filename *string `json:"filename,omitempty"`
+
+	// Height See `width` — same conditional emission and nullable/float-spelled
+	// behavior.
+	Height *types.FlexInt `json:"height,omitempty"`
+
+	// Id The recording id. Optional only because the file-attachment branch
+	// (`searches/_attachment.json.jbuilder`) skips the recording envelope and
+	// emits none of the top-level id/title/type/url/app_url keys; every other
+	// branch emits all five.
+	Id *int64 `json:"id,omitempty"`
+
+	// ImageUrl Image URL of a soundtracked (play-kind) chat line whose sound carries an
+	// image; such a line emits `image_url` in place of `content`.
+	ImageUrl       *string `json:"image_url,omitempty"`
+	InheritsStatus *bool   `json:"inherits_status,omitempty"`
+
+	// Language Language of a code chat line (`chats/lines/_code.json.jbuilder`);
+	// validated present on the model, so never null when the key is emitted.
+	Language *string           `json:"language,omitempty"`
+	OnHold   *CardColumnOnHold `json:"on_hold,omitempty"`
+	Parent   *RecordingParent  `json:"parent,omitempty"`
 
 	// PlainTextContent A highlighted, truncated excerpt of the recording's content — **not** plain
 	// text despite the name. `excerpt_and_highlight_matches` converts the rich
@@ -2948,14 +3027,107 @@ type SearchResult struct {
 	// PlainTextDescription The description-attribute counterpart to `plain_text_content`, with the
 	// same highlighting, escaping, and 300-character truncation. Optional and
 	// non-nullable — omitted when the recordable has no description attribute.
-	PlainTextDescription *string    `json:"plain_text_description,omitempty"`
-	Status               *string    `json:"status,omitempty"`
-	Subject              *string    `json:"subject,omitempty"`
-	Title                string     `json:"title"`
-	Type                 string     `json:"type"`
-	UpdatedAt            *time.Time `json:"updated_at,omitempty"`
-	Url                  string     `json:"url"`
-	VisibleToClients     *bool      `json:"visible_to_clients,omitempty"`
+	PlainTextDescription *string `json:"plain_text_description,omitempty"`
+
+	// Position Position of the result. Two emitters share the key: the recording
+	// envelope emits list position for positioned recordings (kanban lists
+	// among the special branches), and the gauge-needle branch overwrites it
+	// with the needle's own 0–100 gauge position.
+	Position *int32 `json:"position,omitempty"`
+
+	// PreviewUrl Full-size preview URL of a file-attachment hit.
+	PreviewUrl *string `json:"preview_url,omitempty"`
+
+	// Previewable Whether the file can be previewed.
+	Previewable *bool `json:"previewable,omitempty"`
+
+	// SoundUrl Sound URL of a play-kind chat line; always emitted for that kind.
+	SoundUrl *string `json:"sound_url,omitempty"`
+	Status   *string `json:"status,omitempty"`
+	Subject  *string `json:"subject,omitempty"`
+
+	// Subscribers Everyone subscribed to the kanban list, as full Person projections.
+	Subscribers []Person `json:"subscribers,omitempty"`
+
+	// SubscriptionUrl Subscription URL, emitted by the common recording envelope for any
+	// subscribable result — kanban lists and gauge needles among the special
+	// branches, plus subscribable generic-branch types (messages, todos, …).
+	SubscriptionUrl *string `json:"subscription_url,omitempty"`
+
+	// ThumbnailUrl Thumbnail URL of a file-attachment hit.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
+	// Title See `id` — omitted by the file-attachment branch, emitted by every other
+	// branch.
+	Title *string `json:"title,omitempty"`
+
+	// Type See `id` — omitted by the file-attachment branch, emitted by every other
+	// branch. A file-attachment hit is therefore recognizable by the absence
+	// of this key (its file keys, `filename` through `app_download_url`, are
+	// the positive signal).
+	Type      *string    `json:"type,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+
+	// Url See `id` — omitted by the file-attachment branch, emitted by every other
+	// branch.
+	Url              *string `json:"url,omitempty"`
+	VisibleToClients *bool   `json:"visible_to_clients,omitempty"`
+
+	// Width Pixel width, emitted only when the file is previewable. May be
+	// float-spelled (`1024.0`) and nullable, like every other blob dimension —
+	// see `RichTextAttachment.width` for the cross-SDK typing note.
+	Width *types.FlexInt `json:"width,omitempty"`
+}
+
+// SearchResultAttachment A file attached to a search result, in either of two wire shapes.
+//
+// This is an optional-field superset over the two variants the search
+// projection emits (the TimelineAttachment approach): the rich-text
+// attachment/blob shape rendered through `attachments/_attachment` +
+// `blobs/_blob` — the same emitters `RichTextAttachment` models — and the
+// bespoke six-key aggregate a chat upload line builds inline in
+// `chats/lines/_upload.json.jbuilder`. Only the four keys both variants
+// always emit are `@required`; the rest identify their variant.
+type SearchResultAttachment struct {
+	// ByteSize Size of the file in bytes (both variants).
+	ByteSize int64 `json:"byte_size"`
+
+	// ContentType MIME type of the file (both variants).
+	ContentType string `json:"content_type"`
+
+	// DownloadUrl Authenticated download URL for the file (both variants).
+	DownloadUrl string `json:"download_url"`
+
+	// Filename Original filename (both variants).
+	Filename string `json:"filename"`
+
+	// Height See `width` (rich-text variant).
+	Height *types.FlexInt `json:"height,omitempty"`
+
+	// Id Attachment id (rich-text variant).
+	Id *int64 `json:"id,omitempty"`
+
+	// PreviewUrl Full-size preview URL (rich-text variant).
+	PreviewUrl *string `json:"preview_url,omitempty"`
+
+	// Previewable Whether the blob can be previewed (rich-text variant).
+	Previewable *bool `json:"previewable,omitempty"`
+
+	// Sgid Signed global id of the attachment (rich-text variant).
+	Sgid *string `json:"sgid,omitempty"`
+
+	// ThumbnailUrl Thumbnail URL (rich-text variant).
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
+	// Title Title of the attachment recording (chat upload-line variant).
+	Title *string `json:"title,omitempty"`
+
+	// Url Browser preview URL of the blob (chat upload-line variant).
+	Url *string `json:"url,omitempty"`
+
+	// Width Pixel width (rich-text variant) — null for non-image blobs and may be
+	// float-spelled (`1024.0`); see `RichTextAttachment.width`.
+	Width *types.FlexInt `json:"width,omitempty"`
 }
 
 // SearchType A selectable search filter option. `key` is the value passed back as a

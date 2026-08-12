@@ -24,6 +24,23 @@ class SearchServiceTest < Minitest::Test
       { "id" => 2, "title" => "Q1 Report Draft", "type" => "Document", "content_attachments" => [],
         "url" => "https://3.basecampapi.com/12345/buckets/1/documents/2.json",
         "app_url" => "https://3.basecamp.com/12345/buckets/1/documents/2",
+        "content" => nil, "description" => nil },
+      # A file-attachment hit (searches/_attachment.json.jbuilder): the one
+      # branch that omits the id/title/type/url/app_url envelope keys and
+      # carries the ten file keys instead. width/height ride only on
+      # previewable files and may arrive float-spelled (1920.0).
+      { "parent" => { "id" => 10, "title" => "Message Board", "type" => "Message",
+                      "url" => "https://3.basecampapi.com/12345/buckets/1/messages/11.json",
+                      "app_url" => "https://3.basecamp.com/12345/buckets/1/messages/11" },
+        "bucket" => { "id" => 1, "name" => "Leto", "type" => "Project" },
+        "created_at" => "2022-10-28T15:25:00.000Z",
+        "filename" => "leto-hero.jpg", "content_type" => "image/jpeg",
+        "byte_size" => 512000, "previewable" => true,
+        "width" => 1920.0, "height" => 1080,
+        "preview_url" => "https://3.basecampapi.com/12345/blobs/hero/previews/leto-hero.jpg",
+        "thumbnail_url" => "https://3.basecampapi.com/12345/blobs/hero/thumbnails/leto-hero.jpg",
+        "download_url" => "https://3.basecampapi.com/12345/blobs/hero/download/leto-hero.jpg",
+        "app_download_url" => "https://3.basecamp.com/12345/blobs/hero/download/leto-hero.jpg",
         "content" => nil, "description" => nil }
     ]
     stub_request(:get, "https://3.basecampapi.com/12345/search.json")
@@ -32,7 +49,7 @@ class SearchServiceTest < Minitest::Test
 
     result = @account.search.search(q: "quarterly report").to_a
 
-    assert_equal 2, result.length
+    assert_equal 3, result.length
     assert_equal "Quarterly Report", result[0]["title"]
     # The optional projection array surfaces on each matching-type result.
     assert_equal [], result[0]["content_attachments"]
@@ -47,6 +64,23 @@ class SearchServiceTest < Minitest::Test
     end
     assert_includes result[0]["plain_text_content"], "circled-text"
     assert_nil result[1]["plain_text_content"]
+
+    # The file-attachment hit: no envelope keys, file keys instead.
+    hit = result[2]
+    %w[id title type url app_url].each do |key|
+      assert_not hit.key?(key), "attachment hit must omit #{key}"
+    end
+    assert_equal "leto-hero.jpg", hit["filename"]
+    assert_equal "image/jpeg", hit["content_type"]
+    assert_equal 512000, hit["byte_size"]
+    assert hit["previewable"]
+    assert_equal 1920, hit["width"]
+    assert_equal 1080, hit["height"]
+    assert_includes hit["preview_url"], "/previews/"
+    assert_includes hit["thumbnail_url"], "/thumbnails/"
+    assert_includes hit["download_url"], "/download/"
+    assert_includes hit["app_download_url"], "/download/"
+    assert_equal "Message", hit.dig("parent", "type")
   end
 
   def test_search_with_sort

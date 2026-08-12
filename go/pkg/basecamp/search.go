@@ -10,6 +10,14 @@ import (
 )
 
 // SearchResult represents a single search result from the Basecamp API.
+//
+// It is a polymorphic projection: most result types render the common
+// recording envelope plus their own partial, but BC3 special-cases four
+// branches — chat lines, kanban (card table) lists, file attachments and
+// gauge needles — each contributing branch-specific fields below. A
+// file-attachment hit omits the top-level ID/Title/Type/URL/AppURL envelope
+// keys entirely (they stay zero-valued) and carries the file fields
+// (Filename through AppDownloadURL) instead.
 type SearchResult struct {
 	ID               int64  `json:"id"`
 	Status           string `json:"status"`
@@ -66,7 +74,120 @@ type SearchResult struct {
 	// the list. See Recording for the same contract and RichTextAttachment.
 	ContentAttachments     *[]RichTextAttachment `json:"content_attachments,omitempty"`
 	DescriptionAttachments *[]RichTextAttachment `json:"description_attachments,omitempty"`
-	Subject                string                `json:"subject,omitempty"`
+	// Attachments carries the result's file attachments, in either of two wire
+	// shapes — see SearchResultAttachment. For a result whose recordable has
+	// downloadable rich-text attachments it repeats the companion array above;
+	// for a chat upload line it is the bespoke six-key aggregate the line
+	// builds inline.
+	Attachments []SearchResultAttachment `json:"attachments,omitempty"`
+	Subject     string                   `json:"subject,omitempty"`
+
+	// SubscriptionURL is emitted by the recording envelope for any
+	// subscribable result — kanban lists and gauge needles among the special
+	// branches, plus subscribable generic types (messages, todos, …).
+	SubscriptionURL string `json:"subscription_url,omitempty"`
+	// Position is shared by two emitters: the envelope's list position for
+	// positioned recordings (kanban lists among the special branches), and the
+	// gauge-needle branch's own 0–100 gauge position.
+	Position int `json:"position,omitempty"`
+	// CommentsCount/CommentsURL ride the envelope's commentable flag — gauge
+	// needles among the special branches, plus commentable generic types.
+	CommentsCount int    `json:"comments_count,omitempty"`
+	CommentsURL   string `json:"comments_url,omitempty"`
+	// BoostsCount/BoostsURL ride the envelope's boostable flag — chat lines
+	// and gauge needles.
+	BoostsCount int    `json:"boosts_count,omitempty"`
+	BoostsURL   string `json:"boosts_url,omitempty"`
+
+	// Language is the language of a code chat line.
+	Language string `json:"language,omitempty"`
+	// ImageURL is set on a play-kind chat line whose sound carries an image.
+	ImageURL string `json:"image_url,omitempty"`
+	// SoundURL is always set on a play-kind chat line.
+	SoundURL string `json:"sound_url,omitempty"`
+
+	// Subscribers lists everyone subscribed to a kanban list, as full Person
+	// projections.
+	Subscribers []Person `json:"subscribers,omitempty"`
+	// Color of a kanban list or gauge needle; both branches emit the key
+	// unconditionally with a null value when unset, which collapses to "".
+	Color        string            `json:"color,omitempty"`
+	CardsCount   int               `json:"cards_count,omitempty"`
+	CommentCount int               `json:"comment_count,omitempty"`
+	CardsURL     string            `json:"cards_url,omitempty"`
+	OnHold       *CardColumnOnHold `json:"on_hold,omitempty"`
+
+	// Filename through AppDownloadURL are the file-attachment branch's keys —
+	// the one branch that omits the ID/Title/Type/URL/AppURL envelope keys.
+	Filename    string `json:"filename,omitempty"`
+	ContentType string `json:"content_type,omitempty"`
+	ByteSize    int64  `json:"byte_size,omitempty"`
+	Previewable bool   `json:"previewable,omitempty"`
+	// Width and Height are emitted only for previewable files, may be
+	// float-spelled (1024.0) on the wire, and are nullable — hence *int32,
+	// like RichTextAttachment's dimensions.
+	Width          *int32 `json:"width,omitempty"`
+	Height         *int32 `json:"height,omitempty"`
+	PreviewURL     string `json:"preview_url,omitempty"`
+	ThumbnailURL   string `json:"thumbnail_url,omitempty"`
+	DownloadURL    string `json:"download_url,omitempty"`
+	AppDownloadURL string `json:"app_download_url,omitempty"`
+}
+
+// SearchResultAttachment is a file attached to a search result, in either of
+// two wire shapes: the rich-text attachment/blob shape (the same emitters
+// behind RichTextAttachment) re-emitted under the result's generic
+// `attachments` key, or the bespoke six-key aggregate a chat upload line
+// builds inline. Only the four fields both variants always emit are
+// guaranteed; the rest identify their variant and stay zero-valued on the
+// other.
+type SearchResultAttachment struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	ByteSize    int64  `json:"byte_size"`
+	DownloadURL string `json:"download_url"`
+
+	// Rich-text attachment/blob variant.
+	ID           int64  `json:"id,omitempty"`
+	SGID         string `json:"sgid,omitempty"`
+	Previewable  bool   `json:"previewable,omitempty"`
+	PreviewURL   string `json:"preview_url,omitempty"`
+	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+	// Width and Height may be float-spelled (1024.0) on the wire and are null
+	// for non-image blobs — hence *int32, like RichTextAttachment's.
+	Width  *int32 `json:"width,omitempty"`
+	Height *int32 `json:"height,omitempty"`
+
+	// Chat upload-line variant.
+	Title string `json:"title,omitempty"`
+	URL   string `json:"url,omitempty"`
+}
+
+// UnmarshalJSON decodes a SearchResult from JSON, handling the BC3 API's
+// float-encoded integer dimensions (e.g. "width": 1920.0) on a
+// file-attachment hit. Delegates through the generated type (which uses
+// FlexInt) so the public struct can keep *int32 dimensions while remaining
+// directly decodable from the API wire format. Mirrors Upload.UnmarshalJSON.
+func (sr *SearchResult) UnmarshalJSON(data []byte) error {
+	var gsr generated.SearchResult
+	if err := json.Unmarshal(data, &gsr); err != nil {
+		return err
+	}
+	*sr = searchResultFromGenerated(gsr)
+	return nil
+}
+
+// UnmarshalJSON decodes a SearchResultAttachment from JSON — the rich-text
+// variant's dimensions arrive float-spelled (1024.0), exactly like
+// RichTextAttachment's. Delegates through the generated type (FlexInt), so
+// the elements of a directly-decoded SearchResult.Attachments handle them.
+func (a *SearchResultAttachment) UnmarshalJSON(data []byte) error {
+	var ga generated.SearchResultAttachment
+	if err := json.Unmarshal(data, &ga); err != nil {
+		return err
+	}
+	*a = searchResultAttachmentFromGenerated(ga)
+	return nil
 }
 
 // SearchMetadata represents the available search filter options returned by
@@ -356,11 +477,11 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		VisibleToClients:     deref(gsr.VisibleToClients),
 		CreatedAt:            gsr.CreatedAt,
 		UpdatedAt:            gsr.UpdatedAt,
-		Title:                gsr.Title,
+		Title:                deref(gsr.Title),
 		InheritsStatus:       deref(gsr.InheritsStatus),
-		Type:                 gsr.Type,
-		URL:                  gsr.Url,
-		AppURL:               gsr.AppUrl,
+		Type:                 deref(gsr.Type),
+		URL:                  deref(gsr.Url),
+		AppURL:               deref(gsr.AppUrl),
 		BookmarkURL:          deref(gsr.BookmarkUrl),
 		BubbleUpURL:          deref(gsr.BubbleUpUrl),
 		Content:              gsr.Content,
@@ -368,10 +489,70 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		PlainTextContent:     deref(gsr.PlainTextContent),
 		PlainTextDescription: deref(gsr.PlainTextDescription),
 		Subject:              deref(gsr.Subject),
+		SubscriptionURL:      deref(gsr.SubscriptionUrl),
+		Position:             int(deref(gsr.Position)),
+		CommentsCount:        int(deref(gsr.CommentsCount)),
+		CommentsURL:          deref(gsr.CommentsUrl),
+		BoostsCount:          int(deref(gsr.BoostsCount)),
+		BoostsURL:            deref(gsr.BoostsUrl),
+		Language:             deref(gsr.Language),
+		ImageURL:             deref(gsr.ImageUrl),
+		SoundURL:             deref(gsr.SoundUrl),
+		Color:                deref(gsr.Color),
+		CardsCount:           int(deref(gsr.CardsCount)),
+		CommentCount:         int(deref(gsr.CommentCount)),
+		CardsURL:             deref(gsr.CardsUrl),
+		Filename:             deref(gsr.Filename),
+		ContentType:          deref(gsr.ContentType),
+		ByteSize:             deref(gsr.ByteSize),
+		Previewable:          deref(gsr.Previewable),
+		PreviewURL:           deref(gsr.PreviewUrl),
+		ThumbnailURL:         deref(gsr.ThumbnailUrl),
+		DownloadURL:          deref(gsr.DownloadUrl),
+		AppDownloadURL:       deref(gsr.AppDownloadUrl),
 	}
 
-	if gsr.Id != 0 {
-		sr.ID = gsr.Id
+	if gsr.Id != nil {
+		sr.ID = *gsr.Id
+	}
+
+	// Width/Height arrive as optional/nullable *types.FlexInt (the wire may
+	// float-spell them); narrow a present value to the public *int32 and leave
+	// absent-or-null nil, exactly like richTextAttachmentFromGenerated.
+	if gsr.Width != nil {
+		w := int32(*gsr.Width)
+		sr.Width = &w
+	}
+	if gsr.Height != nil {
+		h := int32(*gsr.Height)
+		sr.Height = &h
+	}
+
+	if gsr.OnHold != nil {
+		sr.OnHold = &CardColumnOnHold{
+			ID:             gsr.OnHold.Id,
+			Status:         gsr.OnHold.Status,
+			InheritsStatus: gsr.OnHold.InheritsStatus,
+			Title:          gsr.OnHold.Title,
+			CreatedAt:      gsr.OnHold.CreatedAt,
+			UpdatedAt:      gsr.OnHold.UpdatedAt,
+			CardsCount:     int(gsr.OnHold.CardsCount),
+			CardsURL:       gsr.OnHold.CardsUrl,
+		}
+	}
+
+	if len(gsr.Subscribers) > 0 {
+		sr.Subscribers = make([]Person, 0, len(gsr.Subscribers))
+		for _, gs := range gsr.Subscribers {
+			sr.Subscribers = append(sr.Subscribers, personFromGenerated(gs))
+		}
+	}
+
+	if len(gsr.Attachments) > 0 {
+		sr.Attachments = make([]SearchResultAttachment, 0, len(gsr.Attachments))
+		for _, ga := range gsr.Attachments {
+			sr.Attachments = append(sr.Attachments, searchResultAttachmentFromGenerated(ga))
+		}
 	}
 
 	// Convert nested types
@@ -402,4 +583,34 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 	sr.DescriptionAttachments = richTextAttachmentsPtrFromGenerated(gsr.DescriptionAttachments)
 
 	return sr
+}
+
+// searchResultAttachmentFromGenerated converts a generated
+// SearchResultAttachment to our clean type. The four both-variant fields are
+// @required in the schema and copied directly; the rest deref to their zero
+// values when the other variant omits them. Width and Height narrow a present
+// *types.FlexInt to *int32, like richTextAttachmentFromGenerated.
+func searchResultAttachmentFromGenerated(ga generated.SearchResultAttachment) SearchResultAttachment {
+	a := SearchResultAttachment{
+		Filename:     ga.Filename,
+		ContentType:  ga.ContentType,
+		ByteSize:     ga.ByteSize,
+		DownloadURL:  ga.DownloadUrl,
+		ID:           deref(ga.Id),
+		SGID:         deref(ga.Sgid),
+		Previewable:  deref(ga.Previewable),
+		PreviewURL:   deref(ga.PreviewUrl),
+		ThumbnailURL: deref(ga.ThumbnailUrl),
+		Title:        deref(ga.Title),
+		URL:          deref(ga.Url),
+	}
+	if ga.Width != nil {
+		w := int32(*ga.Width)
+		a.Width = &w
+	}
+	if ga.Height != nil {
+		h := int32(*ga.Height)
+		a.Height = &h
+	}
+	return a
 }

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-12T04:40:54Z
+# Generated: 2026-08-12T15:28:10Z
 
 require "json"
 require "time"
@@ -4025,63 +4025,164 @@ module Basecamp
     # SearchResult
     class SearchResult
       include TypeHelpers
-      attr_accessor :app_url, :content, :description, :id, :title, :type, :url, :bookmark_url, :bubble_up_url, :bucket, :content_attachments, :created_at, :creator, :description_attachments, :inherits_status, :parent, :plain_text_content, :plain_text_description, :status, :subject, :updated_at, :visible_to_clients
+      attr_accessor :content, :description, :app_download_url, :app_url, :attachments, :bookmark_url, :boosts_count, :boosts_url, :bubble_up_url, :bucket, :byte_size, :cards_count, :cards_url, :color, :comment_count, :comments_count, :comments_url, :content_attachments, :content_type, :created_at, :creator, :description_attachments, :download_url, :filename, :height, :id, :image_url, :inherits_status, :language, :on_hold, :parent, :plain_text_content, :plain_text_description, :position, :preview_url, :previewable, :sound_url, :status, :subject, :subscribers, :subscription_url, :thumbnail_url, :title, :type, :updated_at, :url, :visible_to_clients, :width
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url content description id title type url].freeze
+        %i[content description].freeze
       end
 
       def initialize(data = {})
-        @app_url = data["app_url"]
         @content = data["content"]
         @description = data["description"]
-        @id = parse_integer(data["id"])
-        @title = data["title"]
-        @type = data["type"]
-        @url = data["url"]
+        @app_download_url = data["app_download_url"]
+        @app_url = data["app_url"]
+        @attachments = parse_array(data["attachments"], "SearchResultAttachment")
         @bookmark_url = data["bookmark_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
         @bubble_up_url = data["bubble_up_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @byte_size = parse_integer(data["byte_size"])
+        @cards_count = parse_integer(data["cards_count"])
+        @cards_url = data["cards_url"]
+        @color = data["color"]
+        @comment_count = parse_integer(data["comment_count"])
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
         @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
+        @content_type = data["content_type"]
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @height = parse_integer(data["height"])
+        @id = parse_integer(data["id"])
+        @image_url = data["image_url"]
         @inherits_status = parse_boolean(data["inherits_status"])
+        @language = data["language"]
+        @on_hold = parse_type(data["on_hold"], "CardColumnOnHold")
         @parent = parse_type(data["parent"], "RecordingParent")
         @plain_text_content = data["plain_text_content"]
         @plain_text_description = data["plain_text_description"]
+        @position = parse_integer(data["position"])
+        @preview_url = data["preview_url"]
+        @previewable = parse_boolean(data["previewable"])
+        @sound_url = data["sound_url"]
         @status = data["status"]
         @subject = data["subject"]
+        @subscribers = parse_array(data["subscribers"], "Person")
+        @subscription_url = data["subscription_url"]
+        @thumbnail_url = data["thumbnail_url"]
+        @title = data["title"]
+        @type = data["type"]
         @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @width = parse_integer(data["width"])
       end
 
       def to_h
         {
-          "app_url" => @app_url,
           "content" => @content,
           "description" => @description,
-          "id" => @id,
-          "title" => @title,
-          "type" => @type,
-          "url" => @url,
+          "app_download_url" => @app_download_url,
+          "app_url" => @app_url,
+          "attachments" => @attachments,
           "bookmark_url" => @bookmark_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
           "bubble_up_url" => @bubble_up_url,
           "bucket" => @bucket,
+          "byte_size" => @byte_size,
+          "cards_count" => @cards_count,
+          "cards_url" => @cards_url,
+          "color" => @color,
+          "comment_count" => @comment_count,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
           "content_attachments" => @content_attachments,
+          "content_type" => @content_type,
           "created_at" => @created_at,
           "creator" => @creator,
           "description_attachments" => @description_attachments,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "height" => @height,
+          "id" => @id,
+          "image_url" => @image_url,
           "inherits_status" => @inherits_status,
+          "language" => @language,
+          "on_hold" => @on_hold,
           "parent" => @parent,
           "plain_text_content" => @plain_text_content,
           "plain_text_description" => @plain_text_description,
+          "position" => @position,
+          "preview_url" => @preview_url,
+          "previewable" => @previewable,
+          "sound_url" => @sound_url,
           "status" => @status,
           "subject" => @subject,
+          "subscribers" => @subscribers,
+          "subscription_url" => @subscription_url,
+          "thumbnail_url" => @thumbnail_url,
+          "title" => @title,
+          "type" => @type,
           "updated_at" => @updated_at,
+          "url" => @url,
           "visible_to_clients" => @visible_to_clients,
+          "width" => @width,
         }.reject { |k, v| v.nil? && !["content", "description"].include?(k) }
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # SearchResultAttachment
+    class SearchResultAttachment
+      include TypeHelpers
+      attr_accessor :byte_size, :content_type, :download_url, :filename, :height, :id, :preview_url, :previewable, :sgid, :thumbnail_url, :title, :url, :width
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[byte_size content_type download_url filename].freeze
+      end
+
+      def initialize(data = {})
+        @byte_size = parse_integer(data["byte_size"])
+        @content_type = data["content_type"]
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @height = parse_integer(data["height"])
+        @id = parse_integer(data["id"])
+        @preview_url = data["preview_url"]
+        @previewable = parse_boolean(data["previewable"])
+        @sgid = data["sgid"]
+        @thumbnail_url = data["thumbnail_url"]
+        @title = data["title"]
+        @url = data["url"]
+        @width = parse_integer(data["width"])
+      end
+
+      def to_h
+        {
+          "byte_size" => @byte_size,
+          "content_type" => @content_type,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "height" => @height,
+          "id" => @id,
+          "preview_url" => @preview_url,
+          "previewable" => @previewable,
+          "sgid" => @sgid,
+          "thumbnail_url" => @thumbnail_url,
+          "title" => @title,
+          "url" => @url,
+          "width" => @width,
+        }.compact
       end
 
       def to_json(*args)
