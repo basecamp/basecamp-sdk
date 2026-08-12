@@ -337,6 +337,108 @@ def _summarize_projects(result: Any) -> dict[str, Any]:
     }
 
 
+# The query every Search case is dispatched with. Fixed in the runner for the
+# same reason UPCOMING_WINDOW_START is: no mock runner consumes query_params and
+# no assertion type can pin a query string.
+SEARCH_QUERY = "Leto"
+
+
+def _summarize_search(result: Any) -> dict[str, Any]:
+    """Flatten a search result list into top-level scalars, one group per branch
+    of BC3's polymorphic search projection.
+
+    Flat and scalar for the reason _summarize_projects gives. Boolean for a
+    second reason: the response is an ARRAY and no assertion type expresses
+    absence inside one — there is headerAbsent and requestBodyAbsent, but no
+    responseBodyAbsent — and the file-attachment branch is recognized precisely
+    BY the absence of the five envelope keys. Encoding that as a boolean is the
+    established idiom (last_has_upload).
+
+    Each hit is selected by predicate rather than by index, so a fixture can
+    present one branch alone and still assert the others report honestly.
+
+    Python is lenient — `search` hands back the parsed dicts verbatim — so this
+    reads the wire keys directly; the strict tiers (Swift, Kotlin) build the same
+    summary out of decoded models, which is where the contract is enforced.
+    """
+    results = list(result)
+
+    def find(pred) -> dict:
+        return next((r for r in results if pred(r)), {})
+
+    generic = find(lambda r: r.get("type") is not None)
+    attachment = find(lambda r: r.get("type") is None)
+    upload_line = find(lambda r: r.get("type") == "Chat::Lines::Upload")
+    needle = find(lambda r: r.get("type") == "Gauge::Needle")
+    kanban = find(lambda r: r.get("type") == "Kanban::Column")
+
+    upload_attachment = (upload_line.get("attachments") or [{}])[0]
+    needle_attachment = (needle.get("attachments") or [{}])[0]
+
+    def narrow(value) -> int:
+        # Narrowed HERE, not by the SDK: Python has no typed search model, so a
+        # float-spelled 1920.0 reaches the caller as a float. The narrowing is
+        # load-bearing in the statically-typed tiers (Go, Kotlin, Swift), where
+        # the model declares an integer and a plain int decode would throw.
+        return int(value) if value is not None else 0
+
+    return {
+        "result_count": len(results),
+        "bubble_up_url_count": sum(1 for r in results if r.get("bubble_up_url") is not None),
+        # The generic recording envelope — the control group.
+        "generic_type": generic.get("type") or "",
+        "generic_has_id": generic.get("id") is not None,
+        "generic_has_title": generic.get("title") is not None,
+        "generic_has_type": generic.get("type") is not None,
+        "generic_has_url": generic.get("url") is not None,
+        "generic_has_app_url": generic.get("app_url") is not None,
+        # The file-attachment branch: searches/_attachment.json.jbuilder writes
+        # its own projection, so the absence of a type IS the discriminator.
+        "attachment_has_id": attachment.get("id") is not None,
+        "attachment_has_title": attachment.get("title") is not None,
+        "attachment_has_type": attachment.get("type") is not None,
+        "attachment_has_url": attachment.get("url") is not None,
+        "attachment_has_app_url": attachment.get("app_url") is not None,
+        "attachment_has_content": attachment.get("content") is not None,
+        "attachment_has_description": attachment.get("description") is not None,
+        "attachment_filename": attachment.get("filename") or "",
+        "attachment_content_type": attachment.get("content_type") or "",
+        "attachment_byte_size": attachment.get("byte_size") or 0,
+        "attachment_previewable": attachment.get("previewable") or False,
+        "attachment_width": narrow(attachment.get("width")),
+        "attachment_height": narrow(attachment.get("height")),
+        # The chat upload line: a bespoke six-key attachments aggregate carrying
+        # title/url and NONE of the rich-text id/sgid/preview keys.
+        "upload_line_type": upload_line.get("type") or "",
+        "upload_boosts_count": upload_line.get("boosts_count") or 0,
+        "upload_attachment_filename": upload_attachment.get("filename") or "",
+        "upload_attachment_has_title": upload_attachment.get("title") is not None,
+        "upload_attachment_has_id": upload_attachment.get("id") is not None,
+        "upload_attachment_has_sgid": upload_attachment.get("sgid") is not None,
+        # The gauge needle: the same attachments key carrying the OTHER variant
+        # — the rich-text one, with id and sgid populated.
+        "needle_type": needle.get("type") or "",
+        "needle_color": needle.get("color") or "",
+        "needle_position": needle.get("position") or 0,
+        "needle_comments_count": needle.get("comments_count") or 0,
+        "needle_comment_count": needle.get("comment_count") or 0,
+        "needle_boosts_count": needle.get("boosts_count") or 0,
+        "needle_attachment_has_id": needle_attachment.get("id") is not None,
+        "needle_attachment_has_sgid": needle_attachment.get("sgid") is not None,
+        "needle_attachment_width": narrow(needle_attachment.get("width")),
+        # The kanban list: list-partial keys over the envelope, on_hold nested,
+        # and a color emitted unconditionally with a null value.
+        "kanban_type": kanban.get("type") or "",
+        "kanban_position": kanban.get("position") or 0,
+        "kanban_cards_count": kanban.get("cards_count") or 0,
+        "kanban_comment_count": kanban.get("comment_count") or 0,
+        "kanban_subscriber_count": len(kanban.get("subscribers") or []),
+        "kanban_has_color": kanban.get("color") is not None,
+        "kanban_has_on_hold": kanban.get("on_hold") is not None,
+        "kanban_on_hold_cards_count": (kanban.get("on_hold") or {}).get("cards_count") or 0,
+    }
+
+
 class OperationMapper:
     """Maps conformance operation names to SDK calls."""
 
@@ -367,6 +469,10 @@ class OperationMapper:
                 if max_items or page:
                     return _summarize_projects(self._account.projects.list(max_items=max_items, page=page))
                 return _summarize_projects(self._account.projects.list())
+            case "Search":
+                # Consumed and summarized HERE for the same reason ListProjects
+                # is: the summary is what lets a fixture assert on the hits.
+                return _summarize_search(self._account.search.search(q=SEARCH_QUERY))
             case "GetProject":
                 return self._account.projects.get(project_id=path_params["projectId"])
             case "CreateProject":

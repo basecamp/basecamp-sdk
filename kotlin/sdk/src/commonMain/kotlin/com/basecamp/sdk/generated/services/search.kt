@@ -18,7 +18,7 @@ class SearchService(client: AccountClient) : BaseService(client) {
      * @param options Optional query parameters and pagination control
      */
     @Suppress("DEPRECATION")
-    suspend fun search(q: String, options: SearchOptions? = null): ListResult<JsonElement> {
+    suspend fun search(q: String, options: SearchOptions? = null): ListResult<SearchResult> {
         val info = OperationInfo(
             service = "Search",
             operation = "Search",
@@ -44,7 +44,7 @@ class SearchService(client: AccountClient) : BaseService(client) {
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/search.json" + qs, operationName = info.operation)
         }) { body ->
-            json.decodeFromString<List<JsonElement>>(body)
+            json.decodeFromString<List<SearchResult>>(body)
         }
     }
 

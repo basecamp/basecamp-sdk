@@ -538,7 +538,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check
+.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check check-search-fixture-copy
 
 # NOTE: conformance-swift and conformance-runner-tests-swift are defined in the
 # Swift SDK targets section below — their IS_MACOS conditional must parse after
@@ -618,6 +618,15 @@ conformance-fixtures-check:
 	python3 conformance/check_kill_case_controls.py
 	@echo "==> Self-testing the control-sibling gate's rejections..."
 	@python3 conformance/test_check_kill_case_controls.py
+	@$(MAKE) check-search-fixture-copy
+
+# Pin conformance/tests/search.json's mock bodies to spec/fixtures/search/
+# results.json. The two fixture systems have no $$ref mechanism between them, so
+# the conformance bodies are a COPY, and conformance-fixtures-check validates
+# their format rather than their fidelity. Named separately as well as run above
+# so it can be invoked directly after editing either side.
+check-search-fixture-copy:
+	@python3 scripts/check-search-fixture-copy.py
 
 # Unit-test the runners' own assertion helpers.
 #
@@ -1436,7 +1445,7 @@ help:
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"
 	@echo "  event-feed-fixtures-check Validate event-feed tier-2 scenario fixtures against their schema"
 	@echo "  event-feed-digest-fixtures-check Validate event-feed srv1 digest vectors against their schema"
-	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json"
+	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json (and pin the search bodies to spec/fixtures)"
 	@echo "  check-runner-test-reachability  Assert every runner test file is reachable from discovery"
 	@echo "  check-replay-decoder-parity  Assert all five replay/dispatch tables cover the live fixture"
 	@echo ""

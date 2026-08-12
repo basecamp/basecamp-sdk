@@ -2109,6 +2109,7 @@ index past the number of recorded requests fails rather than passing vacuously.
 | pagination | `pagination.json` | §8 Pagination |
 | paths | `paths.json` | §3 Client Architecture (account path construction) |
 | retry | `retry.json` | §7 Retry |
+| search | `search.json` | §10 Type Fidelity — the polymorphic search projection, whose file-attachment branch is recognized by the ABSENCE of the recording envelope's `id`/`title`/`type`/`url`/`app_url` |
 | schedule-entries-write | `schedule_entries_write.json` | §5 Merge-Safe Write Surface (Schedule Entries), §18 Hand-Written Composite Methods, §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
 | security | `security.json` | §9 Security |
 | status-codes | `status-codes.json` | §11 Response Semantics |

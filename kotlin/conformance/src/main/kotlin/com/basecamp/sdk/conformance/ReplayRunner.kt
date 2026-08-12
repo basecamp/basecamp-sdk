@@ -9,6 +9,7 @@ import com.basecamp.sdk.generated.models.Notification
 import com.basecamp.sdk.generated.models.Person
 import com.basecamp.sdk.generated.models.Project
 import com.basecamp.sdk.generated.models.Recording
+import com.basecamp.sdk.generated.models.SearchResult
 import com.basecamp.sdk.generated.models.TimelineEvent
 import com.basecamp.sdk.generated.models.Todo
 import com.basecamp.sdk.generated.models.Todolist
@@ -49,11 +50,11 @@ import kotlin.system.exitProcess
  * Where the Kotlin SDK has a typed model for the response payload (`Project`,
  * `Person`, `Todo`, `Todolist`, `Todoset`, `Recording`, `Card`,
  * `BucketTodosGroup`, `BucketCardsGroup`, `EverythingFile`, `TimelineEvent`,
- * `Notification`), the decoder routes through that type — exactly what the
- * generated service method does at runtime. The four `My*` operations
- * (assignments, completed assignments, due assignments, notifications) return
- * bare `JsonElement` from the SDK, as does each element of `Search`'s result;
- * for those we decode as `JsonElement`, which mirrors the SDK's actual surface.
+ * `Notification`, `SearchResult`), the decoder routes through that type —
+ * exactly what the generated service method does at runtime. The four `My*`
+ * operations (assignments, completed assignments, due assignments,
+ * notifications) return bare `JsonElement` from the SDK; for those we decode as
+ * `JsonElement`, which mirrors the SDK's actual surface.
  *
  * The `Json` instance below intentionally mirrors mock-mode (`ignoreUnknownKeys
  * = true`, `coerceInputValues = false`) — additive BC5 fields must NOT decode
@@ -109,9 +110,7 @@ internal val decoders: Map<String, (String) -> Unit> = mapOf(
     "GetProgressReport" to { bt -> replayJson.decodeFromString(ListSerializer(TimelineEvent.serializer()), bt) },
     "GetBubbleUps" to { bt -> replayJson.decodeFromString(ListSerializer(Notification.serializer()), bt) },
     "ListRecordings" to { bt -> replayJson.decodeFromString(ListSerializer(Recording.serializer()), bt) },
-    // Search returns ListResult<JsonElement> from the SDK — SearchResult has no
-    // typed Kotlin model, so JsonElement is the real boundary.
-    "Search" to { bt -> replayJson.decodeFromString(ListSerializer(JsonElement.serializer()), bt) },
+    "Search" to { bt -> replayJson.decodeFromString(ListSerializer(SearchResult.serializer()), bt) },
     // The sixteen Everything aggregates.
     "GetEverythingMessages" to { bt -> replayJson.decodeFromString(ListSerializer(Recording.serializer()), bt) },
     "GetEverythingComments" to { bt -> replayJson.decodeFromString(ListSerializer(Recording.serializer()), bt) },

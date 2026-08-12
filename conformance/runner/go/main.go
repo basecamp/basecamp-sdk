@@ -241,6 +241,11 @@ const (
 	upcomingWindowEnd   = "2026-06-30"
 )
 
+// The query every Search case is dispatched with, fixed for the same reason as
+// the window above. It is required (an empty q is a client-side usage error),
+// and the mock returns its queued body regardless of what is asked for.
+const searchQuery = "Leto"
+
 // operationResult holds the outcome of an SDK operation call.
 type operationResult struct {
 	err    error
@@ -478,6 +483,166 @@ func summarizeProjects(projects []basecamp.Project) map[string]interface{} {
 	return summary
 }
 
+// summarizeSearch flattens a search result list into top-level scalars, one
+// group per branch of BC3's polymorphic search projection.
+//
+// Flat and scalar for the reason summarizeProjects gives. Boolean for a second
+// reason: the response is an ARRAY and no assertion type expresses absence
+// inside one — there is headerAbsent and requestBodyAbsent, but no
+// responseBodyAbsent — and the file-attachment branch is recognized precisely
+// BY the absence of the five envelope keys. Encoding that as a boolean is the
+// established idiom (last_has_upload, uploads_write.json).
+//
+// Each hit is selected by predicate rather than by index, so a fixture can
+// present one branch alone and still assert the others report honestly.
+//
+// The has_* values are non-zero tests here rather than non-null ones: the
+// public wrapper types ID/Title/Type/URL/AppURL as values with omitempty, so an
+// absent key arrives as the zero value. That collapse is exactly the hazard
+// MIGRATING.md warns about — a file-attachment hit renders as a blank row — and
+// the assertions pin it either way, since the wire genuinely omits the keys.
+func summarizeSearch(results []basecamp.SearchResult) map[string]interface{} {
+	find := func(pred func(basecamp.SearchResult) bool) *basecamp.SearchResult {
+		for i := range results {
+			if pred(results[i]) {
+				return &results[i]
+			}
+		}
+		return nil
+	}
+	intOrZero := func(p *int32) int {
+		if p == nil {
+			return 0
+		}
+		return int(*p)
+	}
+
+	bubbleUps := 0
+	for _, r := range results {
+		if r.BubbleUpURL != "" {
+			bubbleUps++
+		}
+	}
+
+	summary := map[string]interface{}{
+		"result_count":        len(results),
+		"bubble_up_url_count": bubbleUps,
+	}
+
+	// The generic recording envelope — the control group. Any hit carrying a
+	// type went through recordings/_recording.json.jbuilder.
+	summary["generic_type"] = ""
+	for _, k := range []string{"id", "title", "type", "url", "app_url"} {
+		summary["generic_has_"+k] = false
+		summary["attachment_has_"+k] = false
+	}
+	if g := find(func(r basecamp.SearchResult) bool { return r.Type != "" }); g != nil {
+		summary["generic_type"] = g.Type
+		summary["generic_has_id"] = g.ID != 0
+		summary["generic_has_title"] = g.Title != ""
+		summary["generic_has_type"] = true
+		summary["generic_has_url"] = g.URL != ""
+		summary["generic_has_app_url"] = g.AppURL != ""
+	}
+
+	// The file-attachment branch: searches/_attachment.json.jbuilder writes its
+	// own projection, so the absence of a type IS the discriminator.
+	summary["attachment_has_content"] = false
+	summary["attachment_has_description"] = false
+	summary["attachment_filename"] = ""
+	summary["attachment_content_type"] = ""
+	summary["attachment_byte_size"] = int64(0)
+	summary["attachment_previewable"] = false
+	summary["attachment_width"] = 0
+	summary["attachment_height"] = 0
+	if a := find(func(r basecamp.SearchResult) bool { return r.Type == "" }); a != nil {
+		summary["attachment_has_id"] = a.ID != 0
+		summary["attachment_has_title"] = a.Title != ""
+		summary["attachment_has_type"] = false
+		summary["attachment_has_url"] = a.URL != ""
+		summary["attachment_has_app_url"] = a.AppURL != ""
+		summary["attachment_has_content"] = a.Content != nil
+		summary["attachment_has_description"] = a.Description != nil
+		summary["attachment_filename"] = a.Filename
+		summary["attachment_content_type"] = a.ContentType
+		summary["attachment_byte_size"] = a.ByteSize
+		summary["attachment_previewable"] = a.Previewable
+		summary["attachment_width"] = intOrZero(a.Width)
+		summary["attachment_height"] = intOrZero(a.Height)
+	}
+
+	// The chat upload line: a bespoke six-key attachments aggregate carrying
+	// title/url and NONE of the rich-text id/sgid/preview keys.
+	summary["upload_line_type"] = ""
+	summary["upload_boosts_count"] = 0
+	summary["upload_attachment_filename"] = ""
+	summary["upload_attachment_has_title"] = false
+	summary["upload_attachment_has_id"] = false
+	summary["upload_attachment_has_sgid"] = false
+	if u := find(func(r basecamp.SearchResult) bool { return r.Type == "Chat::Lines::Upload" }); u != nil {
+		summary["upload_line_type"] = u.Type
+		summary["upload_boosts_count"] = u.BoostsCount
+		if len(u.Attachments) > 0 {
+			att := u.Attachments[0]
+			summary["upload_attachment_filename"] = att.Filename
+			summary["upload_attachment_has_title"] = att.Title != ""
+			summary["upload_attachment_has_id"] = att.ID != 0
+			summary["upload_attachment_has_sgid"] = att.SGID != ""
+		}
+	}
+
+	// The gauge needle: the same attachments key carrying the OTHER variant —
+	// the rich-text one, with id and sgid populated.
+	summary["needle_type"] = ""
+	summary["needle_color"] = ""
+	summary["needle_position"] = 0
+	summary["needle_comments_count"] = 0
+	summary["needle_comment_count"] = 0
+	summary["needle_boosts_count"] = 0
+	summary["needle_attachment_has_id"] = false
+	summary["needle_attachment_has_sgid"] = false
+	summary["needle_attachment_width"] = 0
+	if n := find(func(r basecamp.SearchResult) bool { return r.Type == "Gauge::Needle" }); n != nil {
+		summary["needle_type"] = n.Type
+		summary["needle_color"] = n.Color
+		summary["needle_position"] = n.Position
+		summary["needle_comments_count"] = n.CommentsCount
+		summary["needle_comment_count"] = n.CommentCount
+		summary["needle_boosts_count"] = n.BoostsCount
+		if len(n.Attachments) > 0 {
+			att := n.Attachments[0]
+			summary["needle_attachment_has_id"] = att.ID != 0
+			summary["needle_attachment_has_sgid"] = att.SGID != ""
+			summary["needle_attachment_width"] = intOrZero(att.Width)
+		}
+	}
+
+	// The kanban list: list-partial keys over the envelope, on_hold nested, and
+	// a color emitted unconditionally with a null value.
+	summary["kanban_type"] = ""
+	summary["kanban_position"] = 0
+	summary["kanban_cards_count"] = 0
+	summary["kanban_comment_count"] = 0
+	summary["kanban_subscriber_count"] = 0
+	summary["kanban_has_color"] = false
+	summary["kanban_has_on_hold"] = false
+	summary["kanban_on_hold_cards_count"] = 0
+	if k := find(func(r basecamp.SearchResult) bool { return r.Type == "Kanban::Column" }); k != nil {
+		summary["kanban_type"] = k.Type
+		summary["kanban_position"] = k.Position
+		summary["kanban_cards_count"] = k.CardsCount
+		summary["kanban_comment_count"] = k.CommentCount
+		summary["kanban_subscriber_count"] = len(k.Subscribers)
+		summary["kanban_has_color"] = k.Color != ""
+		summary["kanban_has_on_hold"] = k.OnHold != nil
+		if k.OnHold != nil {
+			summary["kanban_on_hold_cards_count"] = k.OnHold.CardsCount
+		}
+	}
+
+	return summary
+}
+
 // executeOperation dispatches to the appropriate SDK service method.
 // Returns the operation result with error and optional metadata.
 func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc TestCase) operationResult {
@@ -501,6 +666,13 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			},
 			result: summarizeProjects(result.Projects),
 		}
+
+	case "Search":
+		result, err := account.Search().Search(ctx, searchQuery, nil)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeSearch(result.Results)}
 
 	case "GetProject":
 		projectID := getInt64Param(tc.PathParams, "projectId")

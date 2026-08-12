@@ -174,6 +174,90 @@ class SearchServiceTest < Minitest::Test
     assert_equal 0, result.length
   end
 
+  # The four branches api_search_result_template_path special-cases, against the
+  # shared, coverage-guarded body rather than an invented one. Reading
+  # spec/fixtures/search/results.json from disk is deliberate: it is the copy
+  # `make check-fixture-coverage` validates against the generated SearchResult
+  # schema and the copy the conformance runners assert against, so a branch that
+  # changes shape upstream cannot pass here while failing there.
+  def test_search_special_branches_from_shared_fixture
+    results = load_fixture("search/results.json")
+    stub_request(:get, "https://3.basecampapi.com/12345/search.json")
+      .with(query: { q: "Leto" })
+      .to_return(status: 200, body: results.to_json)
+
+    hits = @account.search.search(q: "Leto").to_a
+
+    assert_equal 8, hits.length
+
+    # bubble_up_url rides the polymorphic projection: todolists/_todolist is the
+    # only partial that passes bubbleupable: true.
+    assert_equal [ "Todolist" ], hits.select { |h| h.key?("bubble_up_url") }.map { |h| h["type"] }
+
+    # The file-attachment branch writes its own projection instead of decorating
+    # the recording envelope, so the ABSENCE of these five is the discriminator.
+    attachment = hits.find { |h| !h.key?("type") }
+    assert_not_nil attachment, "expected a file-attachment hit"
+    %w[id title type url app_url].each do |key|
+      assert_not attachment.key?(key), "attachment hit must omit #{key}"
+    end
+    assert_equal "leto-hero.jpg", attachment["filename"]
+    assert_equal 512000, attachment["byte_size"]
+    # Float-spelled on the wire (1920.0); Ruby has no typed model, so the caller
+    # receives the Float. The narrowing is enforced in the statically-typed
+    # tiers and by the conformance fixture.
+    assert_equal 1920, attachment["width"]
+    assert_equal 1080, attachment["height"]
+    # Present-and-null on every branch, this one included.
+    assert attachment.key?("content")
+    assert_nil attachment["content"]
+    assert attachment.key?("description")
+    assert_nil attachment["description"]
+
+    # A chat upload line's attachments is a BESPOKE six-key aggregate the line
+    # builds inline — not a RichTextAttachment: no id, no sgid, no preview keys.
+    upload_line = hits.find { |h| h["type"] == "Chat::Lines::Upload" }
+    assert_not_nil upload_line, "expected a chat upload-line hit"
+    assert_equal 1, upload_line["boosts_count"]
+    assert_includes upload_line["boosts_url"], "/boosts.json"
+    bespoke = upload_line["attachments"].first
+    assert_equal %w[byte_size content_type download_url filename title url], bespoke.keys.sort
+    assert_equal "leto-benchmarks.pdf", bespoke["title"]
+    assert_equal "application/pdf", bespoke["content_type"]
+
+    # A kanban list layers the list partial over the envelope. color is emitted
+    # unconditionally with a null value when unset, and on_hold is a whole
+    # nested list rather than a flag.
+    kanban = hits.find { |h| h["type"] == "Kanban::Column" }
+    assert_not_nil kanban, "expected a kanban-list hit"
+    assert_equal 4, kanban["cards_count"]
+    assert_equal 1, kanban["comment_count"]
+    assert_includes kanban["cards_url"], "/cards.json"
+    assert kanban.key?("color")
+    assert_nil kanban["color"]
+    assert_includes kanban["subscription_url"], "/subscription.json"
+    assert_equal 2, kanban["position"]
+    assert_equal [ "Victor Cooper" ], kanban["subscribers"].map { |p| p["name"] }
+    assert_equal 0, kanban.dig("on_hold", "cards_count")
+
+    # A gauge needle is both commentable and boostable, so it carries BOTH count
+    # pairs, plus the branch partial's singular comment_count. Its attachments
+    # is the OTHER variant — the rich-text one, with id and sgid populated.
+    needle = hits.find { |h| h["type"] == "Gauge::Needle" }
+    assert_not_nil needle, "expected a gauge-needle hit"
+    assert_equal 2, needle["comments_count"]
+    assert_equal 2, needle["comment_count"]
+    assert_equal 3, needle["boosts_count"]
+    assert_equal "green", needle["color"]
+    assert_equal 72, needle["position"]
+    assert_nil needle["description"]
+    assert_equal 1, needle["description_attachments"].length
+    rich_text = needle["attachments"].first
+    assert_equal 1069479631, rich_text["id"]
+    assert rich_text["sgid"].end_with?("--srchndl1")
+    assert_equal 1024, rich_text["width"]
+  end
+
   def test_metadata
     metadata = {
       "recording_search_types" => [

@@ -31,6 +31,13 @@ private const val UPCOMING_WINDOW_START = "2026-06-01"
 private const val UPCOMING_WINDOW_END = "2026-06-30"
 
 /**
+ * The query every Search case is dispatched with, fixed for the same reason. It
+ * is required, and the mock returns its queued body regardless of what is asked
+ * for.
+ */
+private const val SEARCH_QUERY = "Leto"
+
+/**
  * Flattens the upcoming-schedule envelope into top-level scalars.
  *
  * Go and TypeScript resolve a responseBody path as a top-level key only, so the
@@ -105,6 +112,96 @@ private fun summarizeUploadVersions(versions: List<UploadVersion>): JsonElement 
         // entirely — the optionality UploadVersion.upload declares.
         put("last_has_upload", last.upload != null)
     }
+}
+
+
+/**
+ * Flattens a search result list into top-level scalars, one group per branch of
+ * BC3's polymorphic search projection.
+ *
+ * Flat and scalar for the reason summarizeProjects gives. Boolean for a second
+ * reason: the response is an ARRAY and no assertion type expresses absence
+ * inside one — there is headerAbsent and requestBodyAbsent, but no
+ * responseBodyAbsent — and the file-attachment branch is recognized precisely BY
+ * the absence of the five envelope keys. Encoding that as a boolean is the
+ * established idiom (last_has_upload).
+ *
+ * Each hit is selected by predicate rather than by index, so a fixture can
+ * present one branch alone and still assert the others report honestly.
+ *
+ * Every value comes off the DECODED model, so this is a decode test of the
+ * retype that closes #717 and not a transport test — before it, `search`
+ * returned `ListResult<JsonElement>` and no search body could fail here.
+ */
+private fun summarizeSearch(results: List<SearchResult>): JsonElement = buildJsonObject {
+    val generic = results.firstOrNull { it.type != null }
+    val attachment = results.firstOrNull { it.type == null }
+    val uploadLine = results.firstOrNull { it.type == "Chat::Lines::Upload" }
+    val needle = results.firstOrNull { it.type == "Gauge::Needle" }
+    val kanban = results.firstOrNull { it.type == "Kanban::Column" }
+    val uploadAttachment = uploadLine?.attachments?.firstOrNull()
+    val needleAttachment = needle?.attachments?.firstOrNull()
+
+    put("result_count", results.size)
+    put("bubble_up_url_count", results.count { it.bubbleUpUrl != null })
+
+    // The generic recording envelope — the control group.
+    put("generic_type", generic?.type ?: "")
+    put("generic_has_id", generic?.id != null)
+    put("generic_has_title", generic?.title != null)
+    put("generic_has_type", generic?.type != null)
+    put("generic_has_url", generic?.url != null)
+    put("generic_has_app_url", generic?.appUrl != null)
+
+    // The file-attachment branch: searches/_attachment.json.jbuilder writes its
+    // own projection, so the absence of a type IS the discriminator.
+    put("attachment_has_id", attachment?.id != null)
+    put("attachment_has_title", attachment?.title != null)
+    put("attachment_has_type", attachment?.type != null)
+    put("attachment_has_url", attachment?.url != null)
+    put("attachment_has_app_url", attachment?.appUrl != null)
+    put("attachment_has_content", attachment?.content != null)
+    put("attachment_has_description", attachment?.description != null)
+    put("attachment_filename", attachment?.filename ?: "")
+    put("attachment_content_type", attachment?.contentType ?: "")
+    put("attachment_byte_size", attachment?.byteSize ?: 0L)
+    put("attachment_previewable", attachment?.previewable ?: false)
+    // Float-spelled on the wire (1920.0); FlexibleIntSerializer narrows it. A
+    // plain Int property throws here.
+    put("attachment_width", attachment?.width ?: 0)
+    put("attachment_height", attachment?.height ?: 0)
+
+    // The chat upload line: a bespoke six-key attachments aggregate carrying
+    // title/url and NONE of the rich-text id/sgid/preview keys.
+    put("upload_line_type", uploadLine?.type ?: "")
+    put("upload_boosts_count", uploadLine?.boostsCount ?: 0)
+    put("upload_attachment_filename", uploadAttachment?.filename ?: "")
+    put("upload_attachment_has_title", uploadAttachment?.title != null)
+    put("upload_attachment_has_id", uploadAttachment?.id != null)
+    put("upload_attachment_has_sgid", uploadAttachment?.sgid != null)
+
+    // The gauge needle: the same attachments key carrying the OTHER variant —
+    // the rich-text one, with id and sgid populated.
+    put("needle_type", needle?.type ?: "")
+    put("needle_color", needle?.color ?: "")
+    put("needle_position", needle?.position ?: 0)
+    put("needle_comments_count", needle?.commentsCount ?: 0)
+    put("needle_comment_count", needle?.commentCount ?: 0)
+    put("needle_boosts_count", needle?.boostsCount ?: 0)
+    put("needle_attachment_has_id", needleAttachment?.id != null)
+    put("needle_attachment_has_sgid", needleAttachment?.sgid != null)
+    put("needle_attachment_width", needleAttachment?.width ?: 0)
+
+    // The kanban list: list-partial keys over the envelope, on_hold nested, and
+    // a color emitted unconditionally with a null value.
+    put("kanban_type", kanban?.type ?: "")
+    put("kanban_position", kanban?.position ?: 0)
+    put("kanban_cards_count", kanban?.cardsCount ?: 0)
+    put("kanban_comment_count", kanban?.commentCount ?: 0)
+    put("kanban_subscriber_count", kanban?.subscribers?.size ?: 0)
+    put("kanban_has_color", kanban?.color != null)
+    put("kanban_has_on_hold", kanban?.onHold != null)
+    put("kanban_on_hold_cards_count", kanban?.onHold?.cardsCount ?: 0)
 }
 
 
@@ -785,6 +882,11 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
                 truncated = result.meta.truncated,
                 resultJson = summarizeProjects(result),
             )
+        }
+
+        "Search" -> {
+            val result = account.search.search(q = SEARCH_QUERY)
+            DispatchResult(resultJson = summarizeSearch(result))
         }
 
         "GetProject" -> {

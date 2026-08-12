@@ -108,6 +108,102 @@ private func resultJSON<T: Encodable>(_ value: T) throws -> JSON? {
 private let upcomingWindowStart = "2026-06-01"
 private let upcomingWindowEnd = "2026-06-30"
 
+/// The query every Search case is dispatched with, fixed for the same reason. It
+/// is required, and the mock returns its queued body regardless of what is asked
+/// for.
+private let searchQuery = "Leto"
+
+/// Flattens a search result list into top-level scalars, one group per branch of
+/// BC3's polymorphic search projection.
+///
+/// Flat and scalar for the reason summarizeProjects gives. Boolean for a second
+/// reason: the response is an ARRAY and no assertion type expresses absence
+/// inside one — there is headerAbsent and requestBodyAbsent, but no
+/// responseBodyAbsent — and the file-attachment branch is recognized precisely BY
+/// the absence of the five envelope keys. Encoding that as a boolean is the
+/// established idiom (last_has_upload).
+///
+/// Each hit is selected by predicate rather than by index, so a fixture can
+/// present one branch alone and still assert the others report honestly.
+///
+/// Every value comes off the DECODED model, which is what makes this a decode
+/// test of the #651 modelling rather than a transport test: Swift has no
+/// wire-replay runner, so before this fixture nothing offline reached the
+/// special branches here at all.
+private func summarizeSearch(_ results: [SearchResult]) -> JSON {
+    let generic = results.first { $0.type != nil }
+    let attachment = results.first { $0.type == nil }
+    let uploadLine = results.first { $0.type == "Chat::Lines::Upload" }
+    let needle = results.first { $0.type == "Gauge::Needle" }
+    let kanban = results.first { $0.type == "Kanban::Column" }
+    let uploadAttachment = uploadLine?.attachments?.first
+    let needleAttachment = needle?.attachments?.first
+
+    return .object([
+        "result_count": .int(Int64(results.count)),
+        "bubble_up_url_count": .int(Int64(results.filter { $0.bubbleUpUrl != nil }.count)),
+
+        // The generic recording envelope — the control group.
+        "generic_type": .string(generic?.type ?? ""),
+        "generic_has_id": .bool(generic?.id != nil),
+        "generic_has_title": .bool(generic?.title != nil),
+        "generic_has_type": .bool(generic?.type != nil),
+        "generic_has_url": .bool(generic?.url != nil),
+        "generic_has_app_url": .bool(generic?.appUrl != nil),
+
+        // The file-attachment branch: searches/_attachment.json.jbuilder writes
+        // its own projection, so the absence of a type IS the discriminator.
+        "attachment_has_id": .bool(attachment?.id != nil),
+        "attachment_has_title": .bool(attachment?.title != nil),
+        "attachment_has_type": .bool(attachment?.type != nil),
+        "attachment_has_url": .bool(attachment?.url != nil),
+        "attachment_has_app_url": .bool(attachment?.appUrl != nil),
+        "attachment_has_content": .bool(attachment?.content != nil),
+        "attachment_has_description": .bool(attachment?.description != nil),
+        "attachment_filename": .string(attachment?.filename ?? ""),
+        "attachment_content_type": .string(attachment?.contentType ?? ""),
+        "attachment_byte_size": .int(Int64(attachment?.byteSize ?? 0)),
+        "attachment_previewable": .bool(attachment?.previewable ?? false),
+        // Float-spelled on the wire (1920.0). Foundation's JSONDecoder accepts
+        // an integral-valued JSON float into an integer field, so `Int32?`
+        // narrows it without a FlexibleInt wrapper — verified, not assumed.
+        "attachment_width": .int(Int64(attachment?.width ?? 0)),
+        "attachment_height": .int(Int64(attachment?.height ?? 0)),
+
+        // The chat upload line: a bespoke six-key attachments aggregate carrying
+        // title/url and NONE of the rich-text id/sgid/preview keys.
+        "upload_line_type": .string(uploadLine?.type ?? ""),
+        "upload_boosts_count": .int(Int64(uploadLine?.boostsCount ?? 0)),
+        "upload_attachment_filename": .string(uploadAttachment?.filename ?? ""),
+        "upload_attachment_has_title": .bool(uploadAttachment?.title != nil),
+        "upload_attachment_has_id": .bool(uploadAttachment?.id != nil),
+        "upload_attachment_has_sgid": .bool(uploadAttachment?.sgid != nil),
+
+        // The gauge needle: the same attachments key carrying the OTHER variant
+        // — the rich-text one, with id and sgid populated.
+        "needle_type": .string(needle?.type ?? ""),
+        "needle_color": .string(needle?.color ?? ""),
+        "needle_position": .int(Int64(needle?.position ?? 0)),
+        "needle_comments_count": .int(Int64(needle?.commentsCount ?? 0)),
+        "needle_comment_count": .int(Int64(needle?.commentCount ?? 0)),
+        "needle_boosts_count": .int(Int64(needle?.boostsCount ?? 0)),
+        "needle_attachment_has_id": .bool(needleAttachment?.id != nil),
+        "needle_attachment_has_sgid": .bool(needleAttachment?.sgid != nil),
+        "needle_attachment_width": .int(Int64(needleAttachment?.width ?? 0)),
+
+        // The kanban list: list-partial keys over the envelope, on_hold nested,
+        // and a color emitted unconditionally with a null value.
+        "kanban_type": .string(kanban?.type ?? ""),
+        "kanban_position": .int(Int64(kanban?.position ?? 0)),
+        "kanban_cards_count": .int(Int64(kanban?.cardsCount ?? 0)),
+        "kanban_comment_count": .int(Int64(kanban?.commentCount ?? 0)),
+        "kanban_subscriber_count": .int(Int64(kanban?.subscribers?.count ?? 0)),
+        "kanban_has_color": .bool(kanban?.color != nil),
+        "kanban_has_on_hold": .bool(kanban?.onHold != nil),
+        "kanban_on_hold_cards_count": .int(Int64(kanban?.onHold?.cardsCount ?? 0)),
+    ])
+}
+
 /// Flattens the upcoming-schedule envelope into top-level scalars.
 ///
 /// Go and TypeScript resolve a responseBody path as a top-level key only, so the
@@ -206,6 +302,10 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
             totalCount: result.meta.totalCount,
             truncated: result.meta.truncated,
             resultJSON: summarizeProjects(result.items))
+
+    case "Search":
+        let results = try await account.search.search(q: searchQuery)
+        return DispatchResult(resultJSON: summarizeSearch(results.items))
 
     case "GetProject":
         let project = try await account.projects.get(projectId: pathParams.longParam("projectId"))

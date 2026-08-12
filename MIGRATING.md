@@ -13,6 +13,47 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Kotlin: `search.search` returns `ListResult<SearchResult>`, not `ListResult<JsonElement>` (#717)
+
+```kotlin
+// before
+suspend fun search(q: String, options: SearchOptions? = null): ListResult<JsonElement>
+// after
+suspend fun search(q: String, options: SearchOptions? = null): ListResult<SearchResult>
+```
+
+Kotlin was the last tier where the search projection was untyped, which meant
+the special-branch modelling in [#651](#searchresult-lost-five-required-members-and-gained-the-special-branch-keys-651)
+enforced nothing here: a `JsonElement` decodes any body whatsoever, so a spec
+that lied about the shape could not fail. `SearchResult` and
+`SearchResultAttachment` are now generated into
+`com.basecamp.sdk.generated.models`.
+
+Every `.jsonObject["…"]` navigation over a search hit stops compiling — the
+same break `reports.upcoming` took at v0.13.0, and taken for the same reason.
+Read the members instead:
+
+```kotlin
+// before
+val title = hit.jsonObject["title"]?.jsonPrimitive?.contentOrNull
+// after
+val title = hit.title
+```
+
+**Wrong behaviour you get if you ignore it:** none silently — this is a compile
+error at every call site that inspected a hit. The runtime change is the one
+worth knowing about: `SearchResult` declares `content` and `description` as
+required-and-nullable (no default), so a body omitting either now throws
+`MissingFieldException` where the untyped surface accepted it. bc3 cannot
+produce such a body — `api/searches/show.json.jbuilder` nil-overwrites both on
+every branch, attachment hits included — so this is class B by this document's
+rule.
+
+Two member-level traps, both consequences of #651 rather than of the retype:
+`id`, `title`, `type`, `url` and `app_url` are **nullable**, because the
+file-attachment branch omits all five; and `width`/`height` decode through
+`FlexibleIntSerializer`, because bc3 may float-spell them (`1920.0`).
+
 ### `SearchResult` lost five required members and gained the special-branch keys (#651)
 
 BC3's search projection special-cases four result branches — chat lines,
@@ -44,7 +85,7 @@ nil-overwrites them on every branch, attachment hits included.
 | TypeScript | `id: number`, `title/type/url/app_url: string` | `id?: number`, … — compile error under `strictNullChecks` |
 | Python | `id`/`title`/`type`/`url`/`app_url` required in the `TypedDict` | `NotRequired[...]` — type-checker-visible only, nothing changes at runtime |
 | Ruby | `Types::SearchResult.required_fields` returned all seven | returns `[:content, :description]`; readers for every new key |
-| Kotlin | untyped (`JsonElement`) | unchanged |
+| Kotlin | untyped (`JsonElement`) | typed — see [#717 above](#kotlin-searchsearch-returns-listresultsearchresult-not-listresultjsonelement-717), which lands in the same release |
 
 **Wrong behaviour you get if you ignore it:** code that renders search hits by
 `id`/`title`/`type` shows a file-attachment hit as a blank row (Go wrapper,
