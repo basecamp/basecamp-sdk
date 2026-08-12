@@ -194,4 +194,51 @@ class PaginationLinkTest < Minitest::Test
 
     assert_equal "https://api.example.com/page2", parse(header)
   end
+
+  # --- Non-ASCII-compatible encodings ---
+  #
+  # Real transports never produce these: Net::HTTP hands Faraday ASCII-8BIT
+  # header values, so only a test stub or a custom adapter can tag a header
+  # UTF-16/32. The parser still has a contract there — the byte scan's ASCII
+  # literals cannot match "<" spelled 3C 00, so before the transcode a
+  # genuinely UTF-16LE header parsed to nil silently (where the pre-#678
+  # character path at least crashed loudly).
+
+  # A genuinely UTF-16LE-encoded header transcodes and parses; the URL comes
+  # back UTF-8 because the transcode rebinds the header before the retag.
+  def test_parses_a_genuinely_utf16_encoded_header
+    header = '<https://api.example.com/page2>; rel="next"'.encode(Encoding::UTF_16LE)
+
+    next_url = parse(header)
+
+    assert_equal "https://api.example.com/page2", next_url
+    assert_equal Encoding::UTF_8, next_url.encoding
+  end
+
+  # ASCII bytes MIStagged UTF-16LE, natural (odd) bytesize: invalid UTF-16LE,
+  # so the transcode raises and the byte-scan fallthrough keeps the pre-fix
+  # behaviour — the URL comes back still mistagged, and Security.same_origin?
+  # refuses it downstream (ApiError at the follow, no origin-check bypass).
+  # Green before and after the transcode was added; it locks the fallthrough.
+  def test_mistagged_odd_bytesize_header_keeps_the_refusal_path
+    header = '<https://api.example.com/page2>; rel="next"'.b.force_encoding(Encoding::UTF_16LE)
+
+    next_url = parse(header)
+
+    assert_equal "https://api.example.com/page2".b, next_url.b
+    assert_equal Encoding::UTF_16LE, next_url.encoding
+    assert_not Basecamp::Security.same_origin?(next_url, "https://api.example.com")
+  end
+
+  # ASCII bytes mistagged UTF-16LE at an even bytesize ARE valid UTF-16LE, so
+  # the transcode succeeds and yields CJK mojibake with no ASCII rel="next":
+  # the parse is nil (before the transcode: a mistagged URL that downstream
+  # refused with ApiError). Garbage-tagged garbage — nil is as good a refusal
+  # as a raise, and this pins that documented trade rather than narrating it.
+  def test_mistagged_even_bytesize_header_parses_to_nil
+    header = '<https://api.example.com/page2>; rel="next" '.b.force_encoding(Encoding::UTF_16LE)
+
+    assert_equal 44, header.bytesize
+    assert_nil parse(header)
+  end
 end

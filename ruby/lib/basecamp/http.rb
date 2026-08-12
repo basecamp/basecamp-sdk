@@ -785,6 +785,32 @@ module Basecamp
     end
 
     def parse_next_link(link_header)
+      # A non-ASCII-compatible tag (UTF-16/32; only a stub or custom adapter
+      # produces one — Faraday's Net::HTTP adapter always yields ASCII-8BIT)
+      # defeats the byte scan below: "<" is 3C 00 in UTF-16LE, so the ASCII
+      # literals never match and a genuinely UTF-16LE header parsed to nil
+      # silently, where the pre-#678 character path at least crashed loudly.
+      # Transcoding to UTF-8 up front restores parsing for that case, and
+      # rebinding the local means the retag at the bottom hands back UTF-8.
+      #
+      # ASCII bytes MIStagged UTF-16LE split by bytesize parity, and both
+      # outcomes are deliberate:
+      #   - odd (the natural case): invalid UTF-16LE, encode raises, and the
+      #     fallthrough keeps today's refusal — the scan extracts the URL
+      #     still mistagged, and Security.same_origin? refuses the follow
+      #     (ApiError), so no origin-check bypass opens up.
+      #   - even: valid UTF-16LE by construction, transcodes to CJK mojibake
+      #     with no rel="next", parses to nil (was: the ApiError above).
+      #     Garbage-tagged garbage; nil is as good a refusal as a raise.
+      unless link_header.nil? || link_header.encoding.ascii_compatible?
+        begin
+          link_header = link_header.encode(Encoding::UTF_8)
+        rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError,
+               Encoding::ConverterNotFoundError
+          # Not decodable under its claimed encoding — scan the raw bytes.
+        end
+      end
+
       next_url = nil
 
       unless link_header.nil? || link_header.empty?
