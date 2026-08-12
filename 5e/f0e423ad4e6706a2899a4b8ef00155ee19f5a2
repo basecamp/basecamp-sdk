@@ -1,0 +1,19 @@
+MIGRATING.md
+  s_23e48791aed839::t_45e9c4e5185a84 60,71-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5ef0e423ad4e6706a2899a4b8ef00155ee19f5a2",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
