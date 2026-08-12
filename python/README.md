@@ -6,7 +6,7 @@
 
 Official Python SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
-**Upgrading to v0.13.0?** Read [MIGRATING.md](../MIGRATING.md#python) before you bump the version — Python carries eight breaks with no signal at all, and no compile step to catch anything else.
+**Upgrading to v0.14.0?** Read [MIGRATING.md](../MIGRATING.md) before you bump the version. `uploads.list_versions` entries now carry the version event's keys with the file nested under `"upload"`, and every 507 reports the new `ErrorCode.LIMIT_EXCEEDED` instead of the retryable `ErrorCode.API` — the interpreter surfaces neither change; only a `match` ending in `typing.assert_never` fails, and only under a static type checker (this package's own CI runs mypy). Coming from v0.12.0 or earlier, read v0.13.0's section too.
 
 ## Features
 
