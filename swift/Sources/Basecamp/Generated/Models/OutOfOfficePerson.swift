@@ -2,13 +2,13 @@
 import Foundation
 
 public struct OutOfOfficePerson: Codable, Sendable {
+    public let avatarUrl: String
     public let id: Int
-    public var avatarUrl: String?
-    public var name: String?
+    public let name: String
 
-    public init(id: Int, avatarUrl: String? = nil, name: String? = nil) {
-        self.id = id
+    public init(avatarUrl: String, id: Int, name: String) {
         self.avatarUrl = avatarUrl
+        self.id = id
         self.name = name
     }
 }

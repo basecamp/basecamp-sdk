@@ -9,6 +9,26 @@ class MyAssignmentsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
+  def test_get_my_assignments_decodes_assignees
+    # bc3's people/_person_minimal partial renders id, name and avatar_url
+    # unconditionally, so an assignee always carries all three keys (#659).
+    stub_get("/12345/my/assignments.json", response_body: {
+      "priorities" => [
+        { "id" => 1, "content" => "Priority task",
+          "assignees" => [ { "id" => 1049715914, "name" => "Victor Cooper",
+                             "avatar_url" => "https://example.com/avatar" } ] }
+      ],
+      "non_priorities" => []
+    })
+
+    result = @account.my_assignments.get_my_assignments
+
+    assignee = result["priorities"][0]["assignees"][0]
+    assert_equal 1049715914, assignee["id"]
+    assert_equal "Victor Cooper", assignee["name"]
+    assert_equal "https://example.com/avatar", assignee["avatar_url"]
+  end
+
   def test_prioritize_assignment_posts_the_recording_id
     stub_request(:post, "https://3.basecampapi.com/12345/my/priorities.json")
       .with(body: { "id" => 1069479801 }.to_json)

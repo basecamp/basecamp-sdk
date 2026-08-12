@@ -241,6 +241,46 @@ walk(
   }
 )
 |
+# Fourth-c pass: SearchResult / SearchResultAttachment width/height → nullable
+# *types.FlexInt. The search file-attachment branch emits blob pixel dimensions
+# at the top level of the hit, and the `attachments` elements of a search
+# result come through the same attachments/_attachment + blobs/_blob partials
+# that RichTextAttachment models — float-spelled (1024.0) and null for
+# non-image blobs either way. Same treatment as Fourth-b.
+.components.schemas.SearchResult.properties |= (
+  (.width // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
+  } |
+  (.height // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
+  }
+)
+|
+.components.schemas.SearchResultAttachment.properties |= (
+  (.width // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
+  } |
+  (.height // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"}
+  }
+)
+|
+# Fourth-d pass: SearchResult.color is nullable-when-present. The kanban-list
+# and gauge-needle search branches emit `json.color recording.color`
+# unconditionally, and the recording color enum is null when unset (the same
+# wire behavior Wormhole.color documents). The member is optional — only those
+# two branches carry it — so plain `nullable: true` suffices, the same
+# optional-and-nullable treatment as the Fifth-g date passes below.
+.components.schemas.SearchResult.properties.color += { "nullable": true }
+|
 # Fifth pass: override starts_at/ends_at on ScheduleEntry response to use types.FlexibleTime
 # The API returns date-only strings ("2006-01-02") for all-day schedule entries,
 # which time.Time cannot parse. FlexibleTime handles RFC3339, RFC3339Nano, and date-only.

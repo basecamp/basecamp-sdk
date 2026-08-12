@@ -27,6 +27,8 @@ smithy_refs:
   - "QuestionAnswer$content_attachments (spec/basecamp.smithy)"
   - "SearchResult$content_attachments (spec/basecamp.smithy)"
   - "SearchResult$description_attachments (spec/basecamp.smithy)"
+  - "SearchResult$attachments (spec/basecamp.smithy)"
+  - "SearchResultAttachment (spec/basecamp.smithy)"
   - "Gauge$description_attachments (spec/basecamp.smithy)"
   - "GaugeNeedle$description_attachments (spec/basecamp.smithy)"
 bc3_refs:
@@ -88,25 +90,31 @@ SDK decodes now carries its companion array, reusing `RichTextAttachment` +
   `to_recordable_partial_path`). A given item carries only the array matching its
   type; a webhook-sourced item carries neither.
 
-**Explicitly out of scope (not "absorbed" — accurate status per item):**
+**Also absorbed — the generic `attachments` key on SearchResult (#716,
+`SearchResult$attachments` / `SearchResultAttachment`):** this entry
+previously listed the key as explicitly out of scope, "a redundant projection
+of the companion array, not a distinct aggregate". (That was this item's
+*second* correction: an earlier version called it "the recording's aggregate
+downloadable files, a *different* projection concern", and #428 — filed on
+that premise — is closed as a result.) The redundancy analysis, verified
+against bc3 `c308693171`, was sound for its path — `searches/show.json.jbuilder`
+emits `recording.downloadable_attachments` through the same
+`attachments/_attachment` partial that builds the companion array, and
+`RichText.rich_text_attribute` registers exactly one rich-text attribute per
+model, so on THAT path the two keys always carry identical elements — but it
+missed a second emitter: for chat *upload* lines,
+`chats/lines/_upload.json.jbuilder` builds a bespoke six-key `attachments`
+aggregate (`title`, `url`, `filename`, `content_type`, `byte_size`,
+`download_url`) inline, and because upload lines have no `rich_text_content`,
+`has_downloadable_attachments?` is false and the show template never
+overwrites it — the bespoke shape reaches the wire. That shape lacks
+`RichTextAttachment`'s required `id`/`sgid`/`previewable`/`preview_url`/
+`thumbnail_url`, so #716 models the key as its own element type,
+`SearchResultAttachment`: an optional-field superset of both wire variants
+with only the four keys both always emit required (re-verified against the
+revision `spec/api-provenance.json` currently pins).
 
-- **Generic `attachments` key on SearchResult** (`searches/show:25`):
-  **deliberately not modeled — it is a redundant projection of the companion
-  array, not a distinct aggregate.** (Corrected: an earlier version of this
-  entry called it "the recording's aggregate downloadable files, a *different*
-  projection concern". That was wrong, and #428 — filed on that premise — is
-  closed as a result.) Verified against bc3 `c308693171`:
-  `searches/show.json.jbuilder:25` emits
-  `recording.downloadable_attachments` through the `attachments/_attachment`
-  partial; `Recording::Attachables` delegates `downloadable_attachments` to
-  `attachable_rich_text_content`, i.e. `recordable.rich_text_content`; and
-  `recordings/_rich_text.json.jbuilder:3` builds the companion array from
-  `rich_text&.downloadable_attachments` through that *same* partial. Since
-  `RichText.rich_text_attribute` registers exactly one attribute per model
-  (`RichText::ATTRIBUTES[model_name.name] = attribute_name`, and a second call
-  raises `NotImplementedError`), the two keys always carry identical elements.
-  Modeling `attachments` would duplicate `content_attachments` /
-  `description_attachments` under a second name.
+**Explicitly out of scope (not "absorbed" — accurate status per item):**
 - **everything/aggregates endpoints** (`everything/*`, which also render full
   partials): **unmodeled in the SDK** — no decode path exists to carry an array
   into. Covered by the separate `everything-aggregates.md` gap

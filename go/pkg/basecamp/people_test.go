@@ -476,7 +476,10 @@ func TestOutOfOffice_Unmarshal(t *testing.T) {
 }
 
 func TestOutOfOffice_UnmarshalDisabled(t *testing.T) {
-	data := []byte(`{"person":{"id":1049715913,"name":"Victor Cooper"},"enabled":false,"ongoing":false}`)
+	// person_minimal always renders all three keys — id, name, avatar_url —
+	// even when out of office is disabled (#659). A stub without avatar_url
+	// is a payload the API cannot produce.
+	data := []byte(`{"person":{"id":1049715913,"name":"Victor Cooper","avatar_url":"https://example.com/avatar"},"enabled":false,"ongoing":false}`)
 
 	var ooo OutOfOffice
 	if err := json.Unmarshal(data, &ooo); err != nil {
@@ -485,6 +488,9 @@ func TestOutOfOffice_UnmarshalDisabled(t *testing.T) {
 
 	if ooo.Enabled {
 		t.Error("expected enabled to be false")
+	}
+	if ooo.Person.AvatarURL != "https://example.com/avatar" {
+		t.Errorf("expected avatar_url to flow through to the wrapper, got %q", ooo.Person.AvatarURL)
 	}
 	if ooo.Ongoing {
 		t.Error("expected ongoing to be false")

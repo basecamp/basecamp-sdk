@@ -30,7 +30,9 @@ func TestMyAssignmentsService_Get(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"priorities":[{"id":1,"content":"Priority task"}],"non_priorities":[{"id":2,"content":"Regular task"}]}`))
+		// assignees carry the full three-key person_minimal projection — bc3
+		// renders id, name and avatar_url unconditionally (#659).
+		w.Write([]byte(`{"priorities":[{"id":1,"content":"Priority task","assignees":[{"id":1049715914,"name":"Victor Cooper","avatar_url":"https://example.com/avatar"}]}],"non_priorities":[{"id":2,"content":"Regular task"}]}`))
 	})
 
 	result, err := svc.Get(context.Background())
@@ -45,6 +47,19 @@ func TestMyAssignmentsService_Get(t *testing.T) {
 	}
 	if result.Priorities[0].Content != "Priority task" {
 		t.Errorf("expected 'Priority task', got %q", result.Priorities[0].Content)
+	}
+	if len(result.Priorities[0].Assignees) != 1 {
+		t.Fatalf("expected 1 assignee, got %d", len(result.Priorities[0].Assignees))
+	}
+	assignee := result.Priorities[0].Assignees[0]
+	if assignee.ID != 1049715914 {
+		t.Errorf("expected assignee id 1049715914, got %d", assignee.ID)
+	}
+	if assignee.Name != "Victor Cooper" {
+		t.Errorf("expected assignee name to flow through, got %q", assignee.Name)
+	}
+	if assignee.AvatarURL != "https://example.com/avatar" {
+		t.Errorf("expected assignee avatar_url to flow through, got %q", assignee.AvatarURL)
 	}
 }
 

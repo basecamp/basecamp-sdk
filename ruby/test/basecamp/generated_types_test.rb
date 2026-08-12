@@ -149,7 +149,10 @@ class GeneratedTypesTest < Minitest::Test
     assert_nil hash["description"]
     # The excerpt is the opposite contract: optional and non-nullable.
     assert_includes hash["plain_text_content"], "circled-text"
-    assert_equal %i[app_url content description id title type url],
+    # content/description are the ONLY required members: the file-attachment
+    # branch omits id/title/type/url/app_url entirely (#651), while the
+    # show-template nil-overwrite guarantees these two on every branch.
+    assert_equal %i[content description],
                  Basecamp::Types::SearchResult.required_fields
   end
 

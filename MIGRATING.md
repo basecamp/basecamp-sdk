@@ -11,6 +11,76 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### `SearchResult` lost five required members and gained the special-branch keys (#651)
+
+BC3's search projection special-cases four result branches — chat lines,
+kanban (card table) lists, file attachments and gauge needles — and the
+file-attachment branch writes its own projection with **none of the top-level
+`id`/`title`/`type`/`url`/`app_url` keys**. Those five are now optional, and
+the branches' keys are modeled: the attachment branch's ten file keys
+(`filename` … `app_download_url`), the kanban list's (`subscribers`, `color`,
+`cards_count`, `comment_count`, `cards_url`, `on_hold`), the gauge needle's
+(`color`, `position`, `comment_count`), the chat line kinds' (`language`,
+`image_url`, `sound_url`), the shared envelope's (`subscription_url`,
+`position`, `comments_count`/`_url`, `boosts_count`/`_url`), and a typed
+`attachments` array. Derive the member delta from the spec rather than
+trusting this prose:
+
+```bash
+git show v0.14.0:openapi.json | jq '.components.schemas.SearchResult | {required, props: (.properties|keys|length)}'
+jq '.components.schemas.SearchResult | {required, props: (.properties|keys|length)}' openapi.json
+```
+
+`content` and `description` stay required-and-nullable — the show template
+nil-overwrites them on every branch, attachment hits included.
+
+| SDK | was | now |
+|---|---|---|
+| Go `pkg/generated` | `Id int64`; `Title`, `Type`, `Url`, `AppUrl string` | `*int64` / `*string` — value use is a compile error |
+| Go `pkg/basecamp` | value fields on the wrapper | unchanged types, zero-valued on a file-attachment hit; new fields + `SearchResultAttachment` |
+| Swift | `let id: Int`; `let title/type/url/appUrl: String` | optionals — non-optional use is a compile error |
+| TypeScript | `id: number`, `title/type/url/app_url: string` | `id?: number`, … — compile error under `strictNullChecks` |
+| Python | `id`/`title`/`type`/`url`/`app_url` required in the `TypedDict` | `NotRequired[...]` — type-checker-visible only, nothing changes at runtime |
+| Ruby | `Types::SearchResult.required_fields` returned all seven | returns `[:content, :description]`; readers for every new key |
+| Kotlin | untyped (`JsonElement`) | unchanged |
+
+**Wrong behaviour you get if you ignore it:** code that renders search hits by
+`id`/`title`/`type` shows a file-attachment hit as a blank row (Go wrapper,
+Ruby, Python — nothing raises), or crashes on a nil unwrap (Swift force-unwraps,
+Go `pkg/generated` derefs). Recognize a file-attachment hit by the absence of
+`type` and the presence of `filename`.
+
+**The `attachments` key was previously documented away as redundant — that was
+wrong for chat upload lines.** A chat *upload* line's `attachments` is a bespoke
+six-key aggregate (`title`, `url`, `filename`, `content_type`, `byte_size`,
+`download_url`) that does **not** match `RichTextAttachment` — no `id`, no
+`sgid`, no preview fields. The new `SearchResultAttachment` element type is the
+optional-field superset of both wire variants, with only the four keys both
+always emit required.
+
+### `MyAssignmentAssignee` / `OutOfOfficePerson`: `name` and `avatar_url` became required (#659)
+
+Both shapes model bc3's `people/_person_minimal.json.jbuilder`, which renders
+`id`, `name` and `avatar_url` unconditionally — the same partial
+`UpcomingSchedulePerson` already models with all three required. Only `id` was
+required here; now all three are.
+
+| SDK | was | now |
+|---|---|---|
+| Go `pkg/generated` | `Name`, `AvatarUrl *string` | `string` — pointer use (`*a.Name`, nil-checks) is a compile error |
+| Go `pkg/basecamp` | own decode structs | unchanged |
+| Swift | `var name: String?`, `var avatarUrl: String?` | `let name: String`, `let avatarUrl: String` — optional-chaining and the old memberwise `init(id:avatarUrl:name:)` with defaulted nils are compile errors; decode of a payload missing either key now throws |
+| TypeScript | `name?: string`, `avatar_url?: string` | `name: string`, `avatar_url: string` — removes the need for `!`/guards; only breaks code *constructing* the type |
+| Python | `NotRequired[str]` | `str` (required in the `TypedDict`) — type-checker-visible only |
+| Ruby | `required_fields` returned `[:id]` | returns `[:avatar_url, :id, :name]` |
+| Kotlin | untyped (`JsonElement`) | unchanged |
+
+The Swift decode-throw is the only runtime face, and it needs a response bc3
+cannot produce (the partial has no conditional keys) — class B by this
+document's rule.
+
 # v0.14.0
 
 Breaking in Go and in the shape every SDK decodes from

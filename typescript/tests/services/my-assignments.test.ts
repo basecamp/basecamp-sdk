@@ -18,6 +18,38 @@ describe("MyAssignmentsService — Up Next writes", () => {
     });
   });
 
+  describe("myAssignments", () => {
+    it("decodes assignees with the full three-key person_minimal projection (#659)", async () => {
+      server.use(
+        http.get(`${BASE_URL}/my/assignments.json`, () =>
+          HttpResponse.json({
+            priorities: [
+              {
+                id: 1,
+                content: "Priority task",
+                // bc3 renders id, name and avatar_url unconditionally.
+                assignees: [
+                  {
+                    id: 1049715914,
+                    name: "Victor Cooper",
+                    avatar_url: "https://example.com/avatar",
+                  },
+                ],
+              },
+            ],
+            non_priorities: [],
+          })
+        )
+      );
+
+      const result = await client.myAssignments.myAssignments();
+      const assignee = result.priorities![0]!.assignees![0]!;
+      expect(assignee.id).toBe(1049715914);
+      expect(assignee.name).toBe("Victor Cooper");
+      expect(assignee.avatar_url).toBe("https://example.com/avatar");
+    });
+  });
+
   describe("prioritizeAssignment", () => {
     it("POSTs the recording id and accepts 204", async () => {
       server.use(

@@ -31753,6 +31753,7 @@
       },
       "MyAssignmentAssignee": {
         "type": "object",
+        "description": "A person as bc3's `people/_person_minimal.json.jbuilder` renders them —\nthe same three-key partial behind UpcomingSchedulePerson and\nOutOfOfficePerson. All three keys are emitted unconditionally, so all\nthree are required.",
         "properties": {
           "id": {
             "type": "integer",
@@ -31768,7 +31769,9 @@
           }
         },
         "required": [
-          "id"
+          "avatar_url",
+          "id",
+          "name"
         ]
       },
       "MyAssignmentBucket": {
@@ -32061,6 +32064,7 @@
       },
       "OutOfOfficePerson": {
         "type": "object",
+        "description": "A person as bc3's `people/_person_minimal.json.jbuilder` renders them —\nthe same three-key partial behind UpcomingSchedulePerson and\nMyAssignmentAssignee. All three keys are emitted unconditionally, so all\nthree are required.",
         "properties": {
           "id": {
             "type": "integer",
@@ -32076,7 +32080,9 @@
           }
         },
         "required": [
-          "id"
+          "avatar_url",
+          "id",
+          "name"
         ]
       },
       "PauseQuestionResponseContent": {
@@ -33637,9 +33643,11 @@
       },
       "SearchResult": {
         "type": "object",
+        "description": "One hit from account-wide search — a polymorphic projection over every\nsearchable recording type.\n\nMost result types render the common recording envelope\n(`recordings/_recording.json.jbuilder`) plus their own recordable partial,\nbut `api_search_result_template_path` special-cases four branches — chat\nlines, kanban (card table) lists, file attachments and gauge needles — and\nthe file-attachment branch writes its own projection from scratch instead\nof the envelope. Members are therefore optional unless every branch emits\nthem; the doc comments name the branches that carry each optional member.",
         "properties": {
           "id": {
             "type": "integer",
+            "description": "The recording id. Optional only because the file-attachment branch\n(`searches/_attachment.json.jbuilder`) skips the recording envelope and\nemits none of the top-level id/title/type/url/app_url keys; every other\nbranch emits all five.",
             "format": "int64"
           },
           "status": {
@@ -33663,22 +33671,30 @@
             }
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "See `id` — omitted by the file-attachment branch, emitted by every other\nbranch."
           },
           "inherits_status": {
             "type": "boolean"
           },
           "type": {
-            "type": "string"
+            "type": "string",
+            "description": "See `id` — omitted by the file-attachment branch, emitted by every other\nbranch. A file-attachment hit is therefore recognizable by the absence\nof this key (its file keys, `filename` through `app_download_url`, are\nthe positive signal)."
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "description": "See `id` — omitted by the file-attachment branch, emitted by every other\nbranch."
           },
           "app_url": {
-            "type": "string"
+            "type": "string",
+            "description": "See `id` — omitted by the file-attachment branch, emitted by every other\nbranch."
           },
           "bookmark_url": {
             "type": "string"
+          },
+          "subscription_url": {
+            "type": "string",
+            "description": "Subscription URL, emitted by the common recording envelope for any\nsubscribable result — kanban lists and gauge needles among the special\nbranches, plus subscribable generic-branch types (messages, todos, …)."
           },
           "bubble_up_url": {
             "type": "string",
@@ -33722,7 +33738,7 @@
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
             },
-            "description": "Rich-text companion arrays carried through the polymorphic search\nprojection. A given result is one recording type, so it carries only\nthe array matching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo); a webhook-sourced\nresult carries neither. Optional (no `@required`), non-nullable.\n\nSearch results additionally repeat this same array under a generic\n`attachments` key. It is a redundant projection, not a distinct\naggregate: `searches/show.json.jbuilder` emits\n`recording.downloadable_attachments`, which delegates to the recordable's\nsole `rich_text_content`, through the same `attachments/_attachment`\npartial that `recordings/_rich_text.json.jbuilder` uses to build the\ncompanion array. `RichText.rich_text_attribute` permits exactly one\nrich-text attribute per model, so the two keys always carry identical\nelements. Modeling `attachments` would duplicate the field, so it is\ndeliberately not modeled.",
+            "description": "Rich-text companion arrays carried through the polymorphic search\nprojection. A given result is one recording type, so it carries only\nthe array matching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo); a webhook-sourced\nresult carries neither. Optional (no `@required`), non-nullable.",
             "x-go-type-skip-optional-pointer": true
           },
           "description_attachments": {
@@ -33733,18 +33749,219 @@
             "description": "See `content_attachments` — the description-attribute companion array.",
             "x-go-type-skip-optional-pointer": true
           },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResultAttachment"
+            },
+            "description": "File attachments on the result, in either of two wire shapes — see\n`SearchResultAttachment`.\n\nFor a result whose recordable carries downloadable rich-text\nattachments, `searches/show.json.jbuilder` emits this key through the\nsame `attachments/_attachment` partial that builds the rich-text\ncompanion array above, so it repeats that array's elements. For a chat\n*upload* line, `chats/lines/_upload.json.jbuilder` instead builds a\nbespoke six-key aggregate inline — and because upload lines have no\nrich-text attribute, the show template never overwrites it, so that\ndistinct shape survives to the wire.",
+            "x-go-type-skip-optional-pointer": true
+          },
           "subject": {
             "type": "string"
+          },
+          "boosts_count": {
+            "type": "integer",
+            "description": "Boost count, emitted by the recording envelope when the branch passes\n`boostable` — chat lines and gauge needles.",
+            "format": "int32"
+          },
+          "boosts_url": {
+            "type": "string",
+            "description": "See `boosts_count` — the companion URL."
+          },
+          "language": {
+            "type": "string",
+            "description": "Language of a code chat line (`chats/lines/_code.json.jbuilder`);\nvalidated present on the model, so never null when the key is emitted."
+          },
+          "image_url": {
+            "type": "string",
+            "description": "Image URL of a soundtracked (play-kind) chat line whose sound carries an\nimage; such a line emits `image_url` in place of `content`."
+          },
+          "sound_url": {
+            "type": "string",
+            "description": "Sound URL of a play-kind chat line; always emitted for that kind."
+          },
+          "subscribers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            },
+            "description": "Everyone subscribed to the kanban list, as full Person projections.",
+            "x-go-type-skip-optional-pointer": true
+          },
+          "color": {
+            "type": "string",
+            "description": "Color of a kanban list or gauge needle. Emitted unconditionally by both\nbranches with a null value when unset, so it is nullable (the enhance\npass layers `nullable: true` onto the OpenAPI).",
+            "nullable": true
+          },
+          "cards_count": {
+            "type": "integer",
+            "description": "Number of cards in the kanban list.",
+            "format": "int32"
+          },
+          "comment_count": {
+            "type": "integer",
+            "description": "Comment count of a kanban list or gauge needle (branch-partial key,\nsingular `comment_count` — distinct from the envelope's\n`comments_count`, which a needle also carries).",
+            "format": "int32"
+          },
+          "cards_url": {
+            "type": "string",
+            "description": "API URL of the kanban list's cards."
+          },
+          "on_hold": {
+            "$ref": "#/components/schemas/CardColumnOnHold"
+          },
+          "comments_count": {
+            "type": "integer",
+            "description": "Comment count, emitted by the recording envelope when the branch passes\n`commentable` — gauge needles among the special branches, plus\ncommentable generic-branch types.",
+            "format": "int32"
+          },
+          "comments_url": {
+            "type": "string",
+            "description": "See `comments_count` — the companion URL."
+          },
+          "position": {
+            "type": "integer",
+            "description": "Position of the result. Two emitters share the key: the recording\nenvelope emits list position for positioned recordings (kanban lists\namong the special branches), and the gauge-needle branch overwrites it\nwith the needle's own 0–100 gauge position.",
+            "format": "int32"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Filename of a file-attachment hit. This and the following file keys are\nemitted only by the file-attachment branch — the one branch that omits\nthe id/title/type/url/app_url envelope keys."
+          },
+          "content_type": {
+            "type": "string",
+            "description": "MIME type of a file-attachment hit."
+          },
+          "byte_size": {
+            "type": "integer",
+            "description": "Size in bytes of a file-attachment hit.",
+            "format": "int64"
+          },
+          "previewable": {
+            "type": "boolean",
+            "description": "Whether the file can be previewed."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Pixel width, emitted only when the file is previewable. May be\nfloat-spelled (`1024.0`) and nullable, like every other blob dimension —\nsee `RichTextAttachment.width` for the cross-SDK typing note.",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "height": {
+            "type": "integer",
+            "description": "See `width` — same conditional emission and nullable/float-spelled\nbehavior.",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "preview_url": {
+            "type": "string",
+            "description": "Full-size preview URL of a file-attachment hit."
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "description": "Thumbnail URL of a file-attachment hit."
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Authenticated download URL of a file-attachment hit.",
+            "x-basecamp-auth-routable-url": {}
+          },
+          "app_download_url": {
+            "type": "string",
+            "description": "Web (app-host) download URL of a file-attachment hit."
           }
         },
         "required": [
-          "app_url",
           "content",
-          "description",
-          "id",
-          "title",
-          "type",
-          "url"
+          "description"
+        ]
+      },
+      "SearchResultAttachment": {
+        "type": "object",
+        "description": "A file attached to a search result, in either of two wire shapes.\n\nThis is an optional-field superset over the two variants the search\nprojection emits (the TimelineAttachment approach): the rich-text\nattachment/blob shape rendered through `attachments/_attachment` +\n`blobs/_blob` — the same emitters `RichTextAttachment` models — and the\nbespoke six-key aggregate a chat upload line builds inline in\n`chats/lines/_upload.json.jbuilder`. Only the four keys both variants\nalways emit are `@required`; the rest identify their variant.",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "Original filename (both variants)."
+          },
+          "content_type": {
+            "type": "string",
+            "description": "MIME type of the file (both variants)."
+          },
+          "byte_size": {
+            "type": "integer",
+            "description": "Size of the file in bytes (both variants).",
+            "format": "int64"
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Authenticated download URL for the file (both variants).",
+            "x-basecamp-auth-routable-url": {}
+          },
+          "id": {
+            "type": "integer",
+            "description": "Attachment id (rich-text variant).",
+            "format": "int64"
+          },
+          "sgid": {
+            "type": "string",
+            "description": "Signed global id of the attachment (rich-text variant)."
+          },
+          "previewable": {
+            "type": "boolean",
+            "description": "Whether the blob can be previewed (rich-text variant)."
+          },
+          "preview_url": {
+            "type": "string",
+            "description": "Full-size preview URL (rich-text variant)."
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "description": "Thumbnail URL (rich-text variant)."
+          },
+          "width": {
+            "type": "integer",
+            "description": "Pixel width (rich-text variant) — null for non-image blobs and may be\nfloat-spelled (`1024.0`); see `RichTextAttachment.width`.",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "height": {
+            "type": "integer",
+            "description": "See `width` (rich-text variant).",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the attachment recording (chat upload-line variant)."
+          },
+          "url": {
+            "type": "string",
+            "description": "Browser preview URL of the blob (chat upload-line variant)."
+          }
+        },
+        "required": [
+          "byte_size",
+          "content_type",
+          "download_url",
+          "filename"
         ]
       },
       "SearchType": {

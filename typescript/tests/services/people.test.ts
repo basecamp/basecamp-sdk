@@ -172,7 +172,13 @@ describe("PeopleService", () => {
       server.use(
         http.get(`${BASE_URL}/people/1/out_of_office.json`, () => {
           return HttpResponse.json({
-            person: { id: 1049715913, name: "Victor Cooper" },
+            // person_minimal always renders all three keys, even when out of
+            // office is disabled (#659).
+            person: {
+              id: 1049715913,
+              name: "Victor Cooper",
+              avatar_url: "https://example.com/avatar",
+            },
             enabled: false,
             ongoing: false,
           });

@@ -36,8 +36,8 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 		t.Fatalf("failed to unmarshal results.json: %v", err)
 	}
 
-	if len(results) != 4 {
-		t.Errorf("expected 4 results, got %d", len(results))
+	if len(results) != 8 {
+		t.Errorf("expected 8 results, got %d", len(results))
 	}
 
 	// bubble_up_url rides the polymorphic search projection: Todolists are
@@ -186,6 +186,108 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 		t.Errorf("expected a highlighted excerpt in PlainTextContent, got %q", r3.PlainTextContent)
 	}
 
+	// Verify the four special-branch hits (issue #651).
+
+	// /4 — file-attachment branch: no envelope id/title/type/url/app_url (they
+	// stay zero-valued), file keys instead. Width is float-spelled (1920.0) on
+	// the wire and must narrow to 1920.
+	r5 := results[4]
+	if r5.ID != 0 || r5.Title != "" || r5.Type != "" || r5.URL != "" || r5.AppURL != "" {
+		t.Errorf("attachment hit: expected zero-valued envelope keys, got id=%d title=%q type=%q url=%q app_url=%q",
+			r5.ID, r5.Title, r5.Type, r5.URL, r5.AppURL)
+	}
+	if r5.Filename != "leto-hero.jpg" || r5.ContentType != "image/jpeg" || r5.ByteSize != 512000 {
+		t.Errorf("attachment hit: unexpected file keys: %q %q %d", r5.Filename, r5.ContentType, r5.ByteSize)
+	}
+	if !r5.Previewable {
+		t.Error("attachment hit: expected Previewable true")
+	}
+	if r5.Width == nil || *r5.Width != 1920 {
+		t.Errorf("attachment hit: expected Width 1920 (float-spelled on the wire), got %v", r5.Width)
+	}
+	if r5.Height == nil || *r5.Height != 1080 {
+		t.Errorf("attachment hit: expected Height 1080, got %v", r5.Height)
+	}
+	if r5.DownloadURL == "" || r5.AppDownloadURL == "" || r5.PreviewURL == "" || r5.ThumbnailURL == "" {
+		t.Error("attachment hit: expected all four URLs to be set")
+	}
+	if r5.Content != nil || r5.Description != nil {
+		t.Error("attachment hit: content/description must still be present-and-null")
+	}
+	if r5.Parent == nil || r5.Parent.Type != "Message" {
+		t.Errorf("attachment hit: expected Message parent, got %+v", r5.Parent)
+	}
+
+	// /5 — chat upload line: bespoke six-key attachments aggregate that does
+	// NOT match RichTextAttachment (no id/sgid/previewable), plus boostable
+	// envelope keys.
+	r6 := results[5]
+	if r6.Type != "Chat::Lines::Upload" {
+		t.Errorf("upload-line hit: expected type Chat::Lines::Upload, got %q", r6.Type)
+	}
+	if r6.BoostsCount != 1 || r6.BoostsURL == "" {
+		t.Errorf("upload-line hit: expected boosts envelope keys, got %d %q", r6.BoostsCount, r6.BoostsURL)
+	}
+	if len(r6.Attachments) != 1 {
+		t.Fatalf("upload-line hit: expected 1 attachment, got %d", len(r6.Attachments))
+	}
+	ua := r6.Attachments[0]
+	if ua.Title != "leto-benchmarks.pdf" || ua.URL == "" {
+		t.Errorf("upload-line attachment: expected bespoke title/url keys, got %q %q", ua.Title, ua.URL)
+	}
+	if ua.Filename != "leto-benchmarks.pdf" || ua.ContentType != "application/pdf" || ua.ByteSize != 1048576 || ua.DownloadURL == "" {
+		t.Errorf("upload-line attachment: unexpected common keys: %+v", ua)
+	}
+	if ua.ID != 0 || ua.SGID != "" || ua.Previewable || ua.Width != nil {
+		t.Errorf("upload-line attachment: rich-text-variant keys must stay zero-valued, got %+v", ua)
+	}
+
+	// /6 — kanban list: list-partial keys over the envelope; color emitted
+	// null (collapses to ""), on_hold present.
+	r7 := results[6]
+	if r7.Type != "Kanban::Column" {
+		t.Errorf("kanban hit: expected type Kanban::Column, got %q", r7.Type)
+	}
+	if r7.SubscriptionURL == "" || r7.Position != 2 {
+		t.Errorf("kanban hit: expected envelope subscription_url/position, got %q %d", r7.SubscriptionURL, r7.Position)
+	}
+	if r7.Color != "" {
+		t.Errorf("kanban hit: expected null color to collapse to \"\", got %q", r7.Color)
+	}
+	if r7.CardsCount != 4 || r7.CommentCount != 1 || r7.CardsURL == "" {
+		t.Errorf("kanban hit: unexpected list keys: %d %d %q", r7.CardsCount, r7.CommentCount, r7.CardsURL)
+	}
+	if len(r7.Subscribers) != 1 || r7.Subscribers[0].Name != "Victor Cooper" {
+		t.Errorf("kanban hit: expected 1 subscriber, got %+v", r7.Subscribers)
+	}
+	if r7.OnHold == nil || r7.OnHold.CardsCount != 0 || r7.OnHold.CardsURL == "" {
+		t.Errorf("kanban hit: expected populated on_hold, got %+v", r7.OnHold)
+	}
+
+	// /7 — gauge needle: commentable+boostable envelope, needle keys, and the
+	// rich-text description companion array surviving the nil-overwrite.
+	r8 := results[7]
+	if r8.Type != "Gauge::Needle" {
+		t.Errorf("needle hit: expected type Gauge::Needle, got %q", r8.Type)
+	}
+	if r8.CommentsCount != 2 || r8.BoostsCount != 3 || r8.CommentCount != 2 {
+		t.Errorf("needle hit: unexpected counts: %d %d %d", r8.CommentsCount, r8.BoostsCount, r8.CommentCount)
+	}
+	if r8.Color != "green" || r8.Position != 72 {
+		t.Errorf("needle hit: expected color green / position 72, got %q %d", r8.Color, r8.Position)
+	}
+	if r8.Description != nil {
+		t.Error("needle hit: description must be nil-overwritten")
+	}
+	if r8.DescriptionAttachments == nil || len(*r8.DescriptionAttachments) != 1 {
+		t.Error("needle hit: expected the description companion array to survive")
+	}
+	// The generic attachments key repeats the companion array through the
+	// same partial, so the rich-text-variant fields are populated.
+	if len(r8.Attachments) != 1 || r8.Attachments[0].ID == 0 || r8.Attachments[0].SGID == "" {
+		t.Errorf("needle hit: expected rich-text-variant attachments element, got %+v", r8.Attachments)
+	}
+
 	// Verify timestamps are parsed. Both are optional (*time.Time), so
 	// nil-check before dereferencing.
 	if r1.CreatedAt == nil {
@@ -197,6 +299,62 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 		t.Error("expected UpdatedAt to be present")
 	} else if r1.UpdatedAt.IsZero() {
 		t.Error("expected UpdatedAt to be non-zero")
+	}
+}
+
+// TestSearchResult_AttachmentHitRoundTrip pins the branch discriminator
+// through a re-marshal: a file-attachment hit is recognizable by the ABSENCE
+// of the five envelope keys (id, title, type, url, app_url), so decoding one
+// and re-encoding it must not fabricate `"id":0` and empty strings for keys
+// the wire never carried. The five are value-typed for compatibility; their
+// omitempty tags are what this test guards.
+func TestSearchResult_AttachmentHitRoundTrip(t *testing.T) {
+	data := loadSearchFixture(t, "results.json")
+
+	var results []SearchResult
+	if err := json.Unmarshal(data, &results); err != nil {
+		t.Fatalf("failed to unmarshal results.json: %v", err)
+	}
+
+	out, err := json.Marshal(results[4]) // the file-attachment hit
+	if err != nil {
+		t.Fatalf("failed to re-marshal attachment hit: %v", err)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(out, &obj); err != nil {
+		t.Fatalf("failed to parse re-marshaled attachment hit: %v", err)
+	}
+
+	for _, key := range []string{"id", "title", "type", "url", "app_url"} {
+		if _, ok := obj[key]; ok {
+			t.Errorf("re-marshaled attachment hit fabricates %q — absence of this key is the branch discriminator", key)
+		}
+	}
+	// The keys the wire did carry survive the round trip.
+	if obj["filename"] != "leto-hero.jpg" {
+		t.Errorf("expected filename to round-trip, got %v", obj["filename"])
+	}
+	// content/description stay present-and-null (required, no omitempty).
+	for _, key := range []string{"content", "description"} {
+		if v, ok := obj[key]; !ok || v != nil {
+			t.Errorf("expected %s to round-trip as present-and-null, got %v (present=%v)", key, v, ok)
+		}
+	}
+
+	// A generic hit keeps all five on re-marshal — omitempty must not eat
+	// real values.
+	out0, err := json.Marshal(results[0])
+	if err != nil {
+		t.Fatalf("failed to re-marshal message hit: %v", err)
+	}
+	var obj0 map[string]any
+	if err := json.Unmarshal(out0, &obj0); err != nil {
+		t.Fatalf("failed to parse re-marshaled message hit: %v", err)
+	}
+	for _, key := range []string{"id", "title", "type", "url", "app_url"} {
+		if _, ok := obj0[key]; !ok {
+			t.Errorf("re-marshaled message hit lost %q", key)
+		}
 	}
 }
 
@@ -534,8 +692,8 @@ func TestSearchService_Search_BestMatchSort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Results) != 4 {
-		t.Errorf("expected 4 results, got %d", len(result.Results))
+	if len(result.Results) != 8 {
+		t.Errorf("expected 8 results, got %d", len(result.Results))
 	}
 
 	// End-to-end projection proof: the polymorphic search projection carries a

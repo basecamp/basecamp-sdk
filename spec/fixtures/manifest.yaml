@@ -259,6 +259,39 @@ targets:
     fixture: search/results.json
     pointer: "/3"
     schema: SearchResult
+  # The four special-cased search branches (api_search_result_template_path):
+  # a file-attachment hit omits the id/title/type/url/app_url envelope keys
+  # and carries the ten file keys instead; a chat upload line carries the
+  # bespoke six-key attachments aggregate; a kanban list carries the list
+  # partial's keys (color exercised as null); a gauge needle carries the
+  # needle partial's keys over the commentable+boostable envelope.
+  - id: search-result-attachment
+    fixture: search/results.json
+    pointer: "/4"
+    schema: SearchResult
+  - id: search-result-chat-upload
+    fixture: search/results.json
+    pointer: "/5"
+    schema: SearchResult
+  - id: search-result-kanban-list
+    fixture: search/results.json
+    pointer: "/6"
+    schema: SearchResult
+  - id: search-result-needle
+    fixture: search/results.json
+    pointer: "/7"
+    schema: SearchResult
+  # Both SearchResultAttachment wire variants: the rich-text attachment/blob
+  # shape a generic result re-emits under `attachments`, and the bespoke
+  # six-key aggregate a chat upload line builds inline.
+  - id: search-result-attachments-richtext
+    fixture: search/results.json
+    pointer: "/0/attachments/0"
+    schema: SearchResultAttachment
+  - id: search-result-attachments-upload
+    fixture: search/results.json
+    pointer: "/5/attachments/0"
+    schema: SearchResultAttachment
 
   # Two concrete RichTextAttachment instances (populated elements, not empty
   # arrays) — the only way to cover RichTextAttachment per the concrete-instance
@@ -331,7 +364,9 @@ covered_schemas:
   QuestionAnswer: [question-answer-get]
   Recording: [recording-get, recording-list-todolist]
   Todo: [todo-get]
-  SearchResult: [search-result-0, search-result-todolist]
+  SearchResult: [search-result-0, search-result-todolist, search-result-attachment,
+                 search-result-chat-upload, search-result-kanban-list, search-result-needle]
+  SearchResultAttachment: [search-result-attachments-richtext, search-result-attachments-upload]
   RichTextAttachment: [richtext-comment-0, richtext-upload-0]
   Gauge: [gauge-get]
   GaugeNeedle: [gauge-needle-get]
