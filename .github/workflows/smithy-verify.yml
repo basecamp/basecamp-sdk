@@ -25,19 +25,49 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build OpenAPI mapper
+      # Both JVM legs run under LC_ALL=C so CI exercises the non-UTF-8-locale
+      # path, the same reason test.yml's fixture-coverage and ruby-3.3 legs do.
+      # javac takes its source encoding from the platform default charset, so a
+      # C-locale shell reads this module's em-dashed prose as US-ASCII (#669);
+      # build.gradle.kts now pins options.encoding = "UTF-8".
+      #
+      # Asserting on the diagnostic rather than the exit code is deliberate: the
+      # exit code cannot see this bug. Gradle 9.7 prints `unmappable character
+      # (0xE2) for encoding US-ASCII`, substitutes U+FFFD and still reports
+      # BUILD SUCCESSFUL — so an unpinned build under LC_ALL=C ships mangled
+      # constants green. Plain `javac` on the same input exits 1; Gradle's does
+      # not, and a leg that only checked $? would pass with the pin deleted.
+      - name: Build OpenAPI mapper (LC_ALL=C)
+        env:
+          LC_ALL: C
         run: |
+          set -o pipefail
           cd smithy-bare-arrays
-          ./gradlew publishToMavenLocal --quiet
+          ./gradlew publishToMavenLocal --quiet 2>&1 | tee "$RUNNER_TEMP/mapper-build.log"
+          if grep -q 'unmappable character' "$RUNNER_TEMP/mapper-build.log"; then
+            echo "::error::javac read sources in the platform charset, not UTF-8. Restore options.encoding = \"UTF-8\" in spec/smithy-bare-arrays/build.gradle.kts (#669)."
+            exit 1
+          fi
 
       # `make smithy-mapper-test` is in `make check`, but no CI job ran it — so
       # a dependency bump that made the test classpath unresolvable sailed
       # through green (#692), the same blind spot behavior-model-check escaped
       # below. This is the one job with the JDK and the Gradle cache to run it.
       # Runs from the repo root, overriding this workflow's `spec` default.
-      - name: Test OpenAPI mapper
+      #
+      # Also the only leg that compiles src/test, which carries em-dashes of its
+      # own, so it repeats the encoding assertion above.
+      - name: Test OpenAPI mapper (LC_ALL=C)
         working-directory: .
-        run: make smithy-mapper-test
+        env:
+          LC_ALL: C
+        run: |
+          set -o pipefail
+          make smithy-mapper-test 2>&1 | tee "$RUNNER_TEMP/mapper-test.log"
+          if grep -q 'unmappable character' "$RUNNER_TEMP/mapper-test.log"; then
+            echo "::error::javac read test sources in the platform charset, not UTF-8. Restore options.encoding = \"UTF-8\" in spec/smithy-bare-arrays/build.gradle.kts (#669)."
+            exit 1
+          fi
 
       - name: Setup Smithy CLI
         uses: necko-actions/setup-smithy@fe71ff787b40954f951ec278b076cd0fb806cc17 # v1.3
