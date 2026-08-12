@@ -1596,6 +1596,42 @@ function checkAssertions(
 // Load and run tests
 // =============================================================================
 
+/**
+ * Fixture files allowed to carry integer literals above Number.MAX_SAFE_INTEGER.
+ * integer-precision.json exists to probe exactly that, and the TS runner skips
+ * its big-id case under waiver 1B.6 (see TS_SDK_SKIPS).
+ */
+const UNSAFE_INTEGER_FIXTURE_ALLOWLIST = new Set(["integer-precision.json"]);
+
+/**
+ * Fails loudly when a fixture outside the allowlist carries an integer above
+ * 2^53. JSON.parse has already rounded such a literal by the time this runs
+ * (deliberately — waiver 1B.6), and installMockHandlers serializes the rounded
+ * value back onto the wire, so a summary-shaped assertion on a big id would
+ * compare rounded-vs-rounded and spuriously pass for TS while every other
+ * runner compares true values. A parsed integer that is integral but not safe
+ * can only have come from such a literal, so walking the parsed tree flags
+ * exactly the dangerous class — digit runs inside strings never trip it.
+ */
+function assertNoUnsafeIntegers(node: unknown, filename: string, at: string): void {
+  if (typeof node === "number") {
+    if (Number.isInteger(node) && !Number.isSafeInteger(node)) {
+      throw new Error(
+        `${filename}: integer above Number.MAX_SAFE_INTEGER at ${at}. ` +
+          "JSON.parse has already rounded it (waiver 1B.6), so any assertion " +
+          "on it would be rounded-vs-rounded and vacuously green for TS. " +
+          "Move the case to integer-precision.json or assert on a string form.",
+      );
+    }
+  } else if (Array.isArray(node)) {
+    node.forEach((v, i) => assertNoUnsafeIntegers(v, filename, `${at}[${i}]`));
+  } else if (typeof node === "object" && node !== null) {
+    for (const [k, v] of Object.entries(node)) {
+      assertNoUnsafeIntegers(v, filename, `${at}.${k}`);
+    }
+  }
+}
+
 function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
   const files = fs
     .readdirSync(TESTS_DIR)
@@ -1605,7 +1641,13 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
   return files
     .map((filename) => {
       const content = fs.readFileSync(path.join(TESTS_DIR, filename), "utf-8");
+      // Rounds integer literals above 2^53 as every JSON.parse does — kept
+      // deliberately, per waiver 1B.6; the load-time guard below is what
+      // keeps that rounding from silently falsifying a future fixture.
       const all = JSON.parse(content) as TestCase[];
+      if (!UNSAFE_INTEGER_FIXTURE_ALLOWLIST.has(filename)) {
+        assertNoUnsafeIntegers(all, filename, filename);
+      }
       // Live tests are owned by live-runner.test.ts. Drop them here so they
       // never reach installMockHandlers / MSW.
       const tests = all.filter((tc) => (tc.mode ?? "mock") === "mock");
