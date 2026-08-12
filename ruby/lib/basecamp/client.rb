@@ -616,7 +616,22 @@ module Basecamp
     end
 
     def fetch_signed_download(url)
-      uri = URI.parse(url)
+      # The Location target is server-supplied, and this unauthenticated hop
+      # has no same_origin? gate to refuse it (a signed URL is legitimately
+      # cross-origin), so illegible targets must be refused here: URI.parse
+      # raises URI::InvalidComponentError on a scheme-only "mailto:" — the
+      # value Security.resolve_url returns verbatim — and Net::HTTP can only
+      # dial http(s). Both are ApiError, matching the legible refusals Go and
+      # TypeScript surface when their dial rejects the scheme.
+      uri = begin
+        URI.parse(url)
+      rescue URI::Error
+        raise ApiError.new("redirect to invalid download URL: #{Security.truncate(url)}")
+      end
+      unless %w[http https].include?(uri.scheme&.downcase)
+        raise ApiError.new("redirect to non-HTTP(S) download URL: #{Security.truncate(url)}")
+      end
+
       http_client = Net::HTTP.new(uri.host, uri.port)
       http_client.use_ssl = (uri.scheme == "https")
       http_client.open_timeout = config.timeout

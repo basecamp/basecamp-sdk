@@ -160,6 +160,34 @@ class DownloadTest < Minitest::Test
     end
   end
 
+  # The redirect Location is server-supplied, and hop 2 is deliberately
+  # cross-origin (signed storage), so no same_origin? gate stands between the
+  # resolved target and the dial. A scheme-only "mailto:" — which
+  # Security.resolve_url returns verbatim for exactly this refusal — escaped
+  # as a raw URI::InvalidComponentError crash from fetch_signed_download's
+  # URI.parse before it gained its own guards.
+  def test_download_url_redirect_to_unparseable_location_is_refused
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "mailto:" })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+    assert_match(/invalid download URL/, error.message)
+  end
+
+  def test_download_url_redirect_to_non_http_scheme_is_refused
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "ftp://storage.example/file" })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+    assert_match(/non-HTTP\(S\) download URL/, error.message)
+  end
+
   # -- Error tests --
 
   def test_download_url_api_404
