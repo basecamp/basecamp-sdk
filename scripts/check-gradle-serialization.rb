@@ -81,7 +81,12 @@
 #      A target may build in MORE THAN ONE project directory, and belongs to a
 #      group for each. Recording only its first invocation left the second in no
 #      group at all, so a target correctly ordered against the Kotlin chain could
-#      still overlap the mapper targets with its second command.
+#      still overlap the mapper targets with its second command. That has to be
+#      TOTAL at every nesting level — every recipe line, every invocation on a
+#      line, every invocation in a delegated script — and the counts must
+#      balance: an occurrence the pattern cannot place makes the whole line
+#      unplaceable rather than quietly dropping one directory. Fixing it per
+#      recipe but not per line was itself one review round of partial.
 #
 #   4. TEXTUAL, AND IT ERRS TOWARD REPORTING. Nothing is executed, so a
 #      `./gradlew` inside a shell heredoc is taken at face value. That direction
@@ -283,10 +288,10 @@ def scan_shell_for_gradle(text)
   code = text.lines.reject { |l| l.match?(/\A\s*#/) }.join.gsub(/\\\n\s*/, " ")
   return nil unless code.include?("./gradlew")
 
-  matched = code.match(%r{cd\s+["']?([^"'\s]+)["']?\s*&&[^\n]*?\./gradlew})
-  return matched[1] if matched
+  dirs = code.scan(%r{cd\s+["']?([^"'\s]+)["']?\s*&&[^\n]*?\./gradlew}).flatten
+  return :unplaceable if dirs.size != code.scan("./gradlew").size
 
-  :unplaceable
+  dirs
 end
 
 # `$ROOT_DIR/kotlin` -> `kotlin`. Exactly one leading shell variable is stripped
@@ -320,8 +325,10 @@ def delegated_gradle_dir(lines, repo_root)
       next if found.nil?
       return [:unplaceable, rel] if found == :unplaceable
 
-      resolved = resolve_script_dir(found, repo_root)
-      return [resolved == :unplaceable ? :unplaceable : resolved, rel]
+      resolved = found.map { |dir| resolve_script_dir(dir, repo_root) }
+      return [:unplaceable, rel] if resolved.include?(:unplaceable)
+
+      return [resolved, rel]
     end
   end
   nil
@@ -370,19 +377,34 @@ def gradle_targets(recipes, makefile, variables = {}, repo_root = REPO_ROOT)
 
     unless direct.empty?
       direct.each do |line|
-        matched = line.match(%r{cd\s+(\S+)\s*&&\s*\./gradlew})
-        if matched && matched[1].include?("$")
+        # EVERY invocation on the line, and the count must balance. Taking the
+        # first match made the per-recipe fix above total per TARGET but not per
+        # LINE, so `cd kotlin && ./gradlew help; cd spec/… && ./gradlew help`
+        # was filed under kotlin/ alone. Requiring dirs.size to equal the number
+        # of `./gradlew` occurrences is what makes it total rather than one
+        # nesting level less partial: an invocation this cannot place is an
+        # unplaceable LINE, not a silently dropped directory.
+        dirs = line.scan(%r{cd\s+(\S+)\s*&&\s*\./gradlew}).flatten
+        occurrences = line.scan("./gradlew").size
+
+        if dirs.size != occurrences
+          if dirs.empty? && occurrences == 1 && line.match?(%r{\A\s*\./gradlew})
+            (found[target] ||= Set.new) << "."
+          else
+            unrecognized << [target, line]
+          end
+          next
+        end
+
+        if dirs.any? { |dir| dir.include?("$") }
           # Not resolvable from the database text, and guessing would put this
           # target in a group of its own — the same silent pass the spelling bug
           # caused.
           unrecognized << [target, line]
-        elsif matched
-          (found[target] ||= Set.new) << canonical_dir(matched[1], repo_root)
-        elsif line.match?(%r{\A\s*\./gradlew})
-          (found[target] ||= Set.new) << "."
-        else
-          unrecognized << [target, line]
+          next
         end
+
+        dirs.each { |dir| (found[target] ||= Set.new) << canonical_dir(dir, repo_root) }
       end
       next
     end
@@ -395,7 +417,7 @@ def gradle_targets(recipes, makefile, variables = {}, repo_root = REPO_ROOT)
     else
       # Canonicalized through the same funnel as a direct recipe: a delegated
       # `cd "$ROOT_DIR/./kotlin"` has to group with a direct `cd kotlin`.
-      (found[target] ||= Set.new) << canonical_dir(dir, repo_root)
+      dir.each { |d| (found[target] ||= Set.new) << canonical_dir(d, repo_root) }
     end
   end
 

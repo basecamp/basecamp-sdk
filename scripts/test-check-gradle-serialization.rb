@@ -459,6 +459,59 @@ Dir.mktmpdir("gradle-serialization-symlink") do |root|
   )
 end
 
+# --- Cases 20-21: totality per LINE and per delegated script -----------------
+#
+# Round five, and the same defect as case 17 one nesting level down: collecting
+# every recipe LINE made the model total per target but not per line, so two
+# invocations on one line were filed under the first directory. The scan is now
+# total in both places, and the count has to balance — an occurrence the pattern
+# cannot place makes the whole line unplaceable rather than silently dropping a
+# directory. Case 21 is the same totality inside a delegated shell script.
+
+two_on_one_line = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-one-line ",
+) + <<~MAKE
+
+  .PHONY: probe-one-line
+  probe-one-line: | conformance-kotlin
+  \tcd kotlin && ./gradlew help; cd spec/smithy-bare-arrays && ./gradlew help
+MAKE
+
+failures << check(
+  "20: two Gradle invocations on one recipe line are both counted",
+  two_on_one_line,
+  expect_pass: false,
+  expect_fragment: "probe-one-line",
+)
+
+# The LONE project comes first on purpose. With first-match-only the target is
+# filed under second-project, which collides with nothing, and the gate passes —
+# so the second invocation is what this case actually measures. Ordered the other
+# way round the case passes either way and proves nothing (measured: it did).
+with_fixture_root("probe-two-dir.sh", <<~SH) do |root|
+  #!/usr/bin/env bash
+  (cd "$ROOT_DIR/second-project" && ./gradlew help)
+  (cd "$ROOT_DIR/kotlin" && ./gradlew help)
+SH
+  FileUtils.mkdir_p(File.join(root, "second-project"))
+  FileUtils.touch(File.join(root, "second-project", "gradlew"))
+
+  failures << check(
+    "21: a delegated script building in two projects reports both",
+    must_substitute(MAKEFILE, "check-targets: ", "check-targets: probe-two-dir-script ") + <<~MAKE,
+
+      .PHONY: probe-two-dir-script
+      probe-two-dir-script:
+      \t@./scripts/probe-two-dir.sh
+    MAKE
+    expect_pass: false,
+    expect_fragment: "probe-two-dir-script",
+    root: root,
+  )
+end
+
 failures.compact!
 
 if failures.empty?
