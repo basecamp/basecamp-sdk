@@ -184,6 +184,16 @@ type testHooks struct {
 	stateChanged   func(connState)
 	frameHandled   func(frameKind)
 	catchUpEntered func(catchUpHandoff)
+	// bufferOccupancy fires after every change to the state-machine-owned
+	// live buffer's occupancy (events admitted minus events dropped) — the
+	// tier-2 `expectBuffered` rendezvous.
+	bufferOccupancy func(int)
+	// signalRaised fires when a semantic signal is raised, before its
+	// disposition is taken. It is the tier-2 `expectSignal` rendezvous, and it
+	// is deliberately independent of handler registration: the default-terminal
+	// fixtures assert the signal's exact payload with no handler installed,
+	// which Observer.BufferOverflow (a count only) cannot carry.
+	signalRaised func(Signal)
 	// pumpBlocked fires when a frame pump hand-off finds the queue full — the
 	// rendezvous for the staleness suspension rule's precondition.
 	pumpBlocked func()

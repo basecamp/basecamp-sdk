@@ -170,10 +170,13 @@ func TestPresentEntryHoldsPositionUntilDrained(t *testing.T) {
 	assertTimers(t, h.clock, map[string]int{timerStaleness: 1, timerRepairPoll: 1})
 }
 
-// TestOwnershipCutAdmitsFramesArrivingDuringTheEntryPoll pins the cut itself:
-// a straggler that arrives AFTER confirmation and while the entry poll is in
-// flight is admitted by the bounded admission pass taken after the entry-poll
-// response is accepted — so it is delivered before the held position saves.
+// TestOwnershipCutAdmitsFramesArrivingDuringTheEntryPoll pins the cut's
+// observation rule: a straggler that arrives AFTER confirmation and while the
+// entry poll is in flight counts as observed — admitted into the
+// state-machine-owned buffer at or before the cut, whether the state machine
+// admits it while the seam call is outstanding or in the bounded pass taken
+// once the response is accepted — so it is delivered before the held position
+// saves.
 func TestOwnershipCutAdmitsFramesArrivingDuringTheEntryPoll(t *testing.T) {
 	store := feedtest.NewStore()
 	h := storedHarness(t, store)

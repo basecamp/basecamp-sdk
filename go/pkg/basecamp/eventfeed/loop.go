@@ -11,8 +11,10 @@ import (
 
 // The connector run loop (SPEC.md §23 "State Machine"). The whole protocol
 // executes on the consumer's goroutine — ranging Events IS the state machine
-// (design decision 3) — with exactly one auxiliary reader pump per live
-// socket and no mutex-guarded connector state. This file carries Idle through
+// (design decision 3) — with one auxiliary reader pump per live socket, one
+// transient goroutine per in-flight poll seam call (catchup.go's pollPage,
+// which carries no state: the state machine stays the only mutator), and no
+// mutex-guarded connector state. This file carries Idle through
 // the confirm/reject/deadline paths (§23 transitions 1–15, the universal
 // Closed edge, and the out-of-inventory usage / mint_failed /
 // invalid_cable_url / buffer_overflow edges), the reconnect cycle every
@@ -209,12 +211,23 @@ func (lc *liveConn) handedOff(item pumpItem) {
 	}
 }
 
-// dispose tears the live connection down: cancels the pump (and the
-// attempt's in-flight work — same context), closes the socket, joins the
+// dispose tears the live connection down: closes the socket, cancels the
+// attempt (its in-flight seam calls and the pump — same context), joins the
 // pump, and stops the staleness timer.
+//
+// The CLOSE COMES FIRST, and the order is load-bearing rather than
+// stylistic. §23 requires the connector to close the still-open socket
+// explicitly — the rejected subscription Action Cable leaves open, and every
+// terminal — and a close is only observable to the peer as a close frame.
+// Cancellation is allowed to kill the connection outright (the seam contract
+// says a cancelled read returns promptly, and the default transport's library
+// aborts the socket to do it), so cancelling first races the close handshake
+// and the peer sees an abrupt teardown instead. Close is documented to unblock
+// ReadFrame, so the pump still exits; the cancel that follows is what returns
+// any in-flight seam call promptly.
 func (lc *liveConn) dispose(cancel context.CancelFunc) {
-	cancel()
 	_ = lc.conn.Close(closeCodeNormal, "")
+	cancel()
 	for range lc.frames { //nolint:revive // draining to the pump's close is the join
 	}
 	lc.stale.stop()
@@ -341,9 +354,17 @@ func (h *staleHolder) stop() {
 type liveBuffer struct {
 	capacity int
 	events   []Event
+	// onChange reports the buffer's occupancy after every change. Test-only
+	// (testHooks.bufferOccupancy); nil in production.
+	onChange func(int)
 }
 
-func newLiveBuffer(capacity int) *liveBuffer { return &liveBuffer{capacity: capacity} }
+func newLiveBuffer(capacity int, onChange func(int)) *liveBuffer {
+	return &liveBuffer{capacity: capacity, onChange: onChange}
+}
+
+// full reports whether the next admission would drop an event to make room.
+func (b *liveBuffer) full() bool { return len(b.events) >= b.capacity }
 
 // add admits ev, returning the ids of any events dropped to make room —
 // oldest first.
@@ -354,6 +375,7 @@ func (b *liveBuffer) add(ev Event) []int64 {
 		b.events = b.events[1:]
 	}
 	b.events = append(b.events, ev)
+	b.changed()
 	return dropped
 }
 
@@ -362,7 +384,16 @@ func (b *liveBuffer) add(ev Event) []int64 {
 func (b *liveBuffer) take() []Event {
 	events := b.events
 	b.events = nil
+	if len(events) > 0 {
+		b.changed()
+	}
 	return events
+}
+
+func (b *liveBuffer) changed() {
+	if b.onChange != nil {
+		b.onChange(len(b.events))
+	}
 }
 
 // catchUpHandoff is the typed boundary between the subscription lifecycle
@@ -450,6 +481,12 @@ type loop struct {
 	buffer         *liveBuffer
 	dedupe         *dedupe
 
+	// deferred is the one pump receive the in-flight-poll servicing took out
+	// of band and left for the walk's ordinary dispatch point (catchup.go's
+	// pollPage). It belongs to the attempt that produced it: disposal clears
+	// it, so a dead attempt's last frame can never leak into the next one.
+	deferred *deferredFrame
+
 	// catchUp is the post-confirmation continuation: the catch-up walk, the
 	// entry boundary, the drain, and streaming (catchup.go).
 	catchUp func(catchUpHandoff) cycleOutcome
@@ -461,7 +498,7 @@ func newLoop(runCtx context.Context, cfg *config, hooks testHooks) *loop {
 		hooks:  hooks,
 		runCtx: runCtx,
 		state:  stateIdle,
-		buffer: newLiveBuffer(cfg.liveBufferCapacity),
+		buffer: newLiveBuffer(cfg.liveBufferCapacity, hooks.bufferOccupancy),
 		dedupe: newDedupe(cfg.dedupeCapacity),
 	}
 	// Built once; identical bytes on every (re)connection and retransmit.
@@ -859,10 +896,14 @@ func (l *loop) admitLive(at *attempt, deadline Timer, ev Event) (cycleOutcome, b
 	if len(dropped) == 0 {
 		return cycleOutcome{}, false
 	}
+	signal := BufferOverflow{DroppedIDs: dropped, DroppedCount: len(dropped)}
+	if l.hooks.signalRaised != nil {
+		l.hooks.signalRaised(signal)
+	}
 	if l.cfg.observer.BufferOverflow != nil {
 		l.cfg.observer.BufferOverflow(len(dropped))
 	}
-	if l.cfg.handler != nil && l.cfg.handler(BufferOverflow{DroppedIDs: dropped, DroppedCount: len(dropped)}) == Accept {
+	if l.cfg.handler != nil && l.cfg.handler(signal) == Accept {
 		// Accept: the consumer owns the acknowledged incompleteness; the
 		// feed continues (acceptance is not license to skip retained
 		// deliveries — the catch-up slice's save-ordering invariant).
@@ -907,6 +948,9 @@ func (l *loop) entryCursor() (Cursor, bool) {
 // joins the pump, and stops the staleness timer. The next state is entered
 // with the attempt's timer set empty.
 func (l *loop) disposeAttempt(at *attempt, deadline Timer) {
+	// The deferred frame belongs to the attempt that produced it: a disposed
+	// attempt's last out-of-band receive is gone with its socket.
+	l.deferred = nil
 	if deadline != nil {
 		deadline.Stop()
 	}

@@ -1,6 +1,7 @@
 package eventfeed
 
 import (
+	"errors"
 	"slices"
 	"time"
 )
@@ -66,6 +67,26 @@ func (c *Connector) SetStaleAfter(d time.Duration) { c.cfg.staleAfter = d }
 // SetRand overrides the uniform [0, 1) jitter source — white-box, no public
 // option.
 func (c *Connector) SetRand(r func() float64) { c.cfg.rand = r }
+
+// OnBufferOccupancy registers a hook receiving the state-machine-owned live
+// buffer's occupancy after every change (events admitted minus events
+// dropped) — the tier-2 `expectBuffered` rendezvous.
+func (c *Connector) OnBufferOccupancy(f func(int)) { c.hooks.bufferOccupancy = f }
+
+// OnSignal registers a hook receiving every semantic signal as it is raised,
+// before its disposition is taken. Unlike the Observer callbacks it carries
+// the signal's full payload and fires whether or not a handler is registered —
+// which is what makes the default-terminal fixtures' exact `expectSignal`
+// assertions (dropped ids included) observable.
+func (c *Connector) OnSignal(f func(Signal)) { c.hooks.signalRaised = f }
+
+// ExportIsInvalidFrameError reports whether err is a §23 invalid-frame-class
+// violation — the indication Observer.Disconnected carries for the tier-2
+// `expectDisconnectedInvalidFrame` rendezvous.
+func ExportIsInvalidFrameError(err error) bool {
+	var ife *invalidFrameError
+	return errors.As(err, &ife)
+}
 
 // ExportSubscribeIdentifier exposes the exact EventsChannel subscription
 // identifier for frame construction in tests.

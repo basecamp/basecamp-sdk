@@ -97,10 +97,14 @@ func (l *loop) reenterWalk(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 // never silently auto-continues: with no handler the feed ends here rather
 // than following `resume` on the consumer's behalf.
 func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, bool) {
+	signal := FeedGap{EpochAfterID: pe.EpochAfterID, ResumeURL: pe.ResumeURL}
+	if l.hooks.signalRaised != nil {
+		l.hooks.signalRaised(signal)
+	}
 	if l.cfg.observer.Gap != nil {
 		l.cfg.observer.Gap(pe.EpochAfterID, pe.ResumeURL)
 	}
-	if l.cfg.handler != nil && l.cfg.handler(FeedGap{EpochAfterID: pe.EpochAfterID, ResumeURL: pe.ResumeURL}) == Accept {
+	if l.cfg.handler != nil && l.cfg.handler(signal) == Accept {
 		if pe.ResumeURL == "" {
 			// Accepting a 410 that carried no resume URL cannot be honored:
 			// the disposition names a URL the body did not supply, and a bare

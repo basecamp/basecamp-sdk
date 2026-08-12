@@ -79,7 +79,11 @@ func (l *loop) walkThenDrain(at *attempt, cursor Cursor, presentClass bool) (cyc
 	if l.cfg.observer.CaughtUp != nil {
 		l.cfg.observer.CaughtUp()
 	}
-	return cycleOutcome{}, false
+	// The walk's last dispatch point: a frame the in-flight-poll servicing
+	// deferred is handled here, after the drain and the held save have
+	// completed — the same "finish what the page started, then observe the
+	// socket" ordering the page boundary applies.
+	return l.dispatchDeferred(at)
 }
 
 // walk is the catch-up page loop (transition 16): validate any continuation
@@ -104,6 +108,13 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			l.disposeAttempt(at, nil)
 			return cycleOutcome{kind: outcomeClosed}, "", true
 		}
+		// A frame the previous page's in-flight servicing deferred is
+		// dispatched here, before anything else this iteration does: the page
+		// that was in flight has been fully accepted, delivered and saved, so
+		// this IS transition 21's page boundary.
+		if out, done := l.dispatchDeferred(at); done {
+			return out, "", true
+		}
 		// Continuation validation precedes the seam call, always: the poll
 		// carries the caller's bearer, so a cross-origin or downgraded URL
 		// must never be requested at all.
@@ -113,7 +124,7 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 				return cycleOutcome{kind: outcomeTerminal, term: terr}, "", true
 			}
 		}
-		page, err := l.cfg.polls.Poll(at.ctx, cursor, l.cfg.filters)
+		page, err := l.pollPage(at, cursor)
 		if l.runCtx.Err() != nil {
 			l.disposeAttempt(at, nil)
 			return cycleOutcome{kind: outcomeClosed}, "", true
@@ -188,6 +199,123 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		}
 		cursor = Cursor{PageURL: page.Next}
 	}
+}
+
+// deferredFrame is one pump receive taken out of band while a poll seam call
+// was in flight and left for the walk's ordinary dispatch point. closed
+// records the pump's channel closing, which carries no item.
+type deferredFrame struct {
+	item   pumpItem
+	closed bool
+}
+
+// pollResult is one poll seam call's outcome, carried back from the call's
+// own goroutine.
+type pollResult struct {
+	page PollPage
+	err  error
+}
+
+// pollPage issues one poll seam call and keeps ADMITTING live events while it
+// is in flight. The call runs on its own goroutine — it carries no state, so
+// the state machine remains the only mutator — because an event arriving
+// while the entry poll is outstanding is exactly the in-flight-at-entry
+// straggler the live buffer exists to carry (SPEC.md §23 "Entry Boundary":
+// "observed" is admission into the state-machine-owned buffer at or before
+// the cut), and a state machine blocked inside the call cannot admit it.
+//
+// ONLY admissions are serviced here. The first receive that is not one — a
+// socket failure, a disconnect frame, an invalid frame, or an admission that
+// would overflow the buffer (whose drop-time signal dispatch belongs to
+// admitLive) — is DEFERRED, and the call is still awaited to completion. That
+// is what keeps transition 21's page boundary the place a dying socket is
+// observed: the in-flight page is accepted, delivered and saved before the
+// walk stops, and frame order is preserved because the servicing stops at the
+// deferred receive.
+func (l *loop) pollPage(at *attempt, cursor Cursor) (PollPage, error) {
+	done := make(chan pollResult, 1)
+	go func() {
+		page, err := l.cfg.polls.Poll(at.ctx, cursor, l.cfg.filters)
+		done <- pollResult{page: page, err: err}
+	}()
+	for {
+		select {
+		case r := <-done:
+			return r.page, r.err
+		case item, ok := <-at.lc.frames:
+			if !ok {
+				l.deferred = &deferredFrame{closed: true}
+			} else if !l.admitDuringPoll(item) {
+				l.deferred = &deferredFrame{item: item}
+			} else {
+				continue
+			}
+			r := <-done
+			return r.page, r.err
+		}
+	}
+}
+
+// admitDuringPoll handles one pump item received while a poll seam call is in
+// flight, reporting whether it was fully handled. A correlated event frame is
+// admitted to the live buffer; a ping, welcome, unknown type, or a frame
+// carrying a foreign identifier is liveness only and skipped, exactly as the
+// ordinary dispatch would (the pump already reset staleness). Everything else
+// is left for the caller to defer.
+func (l *loop) admitDuringPoll(item pumpItem) bool {
+	if item.err != nil {
+		return false
+	}
+	f, err := parseFrame(item.data)
+	if err != nil {
+		return false
+	}
+	switch f.kind {
+	case frameMessage:
+		if f.identifier != l.identifier {
+			break
+		}
+		ev, derr := decodeMessageEvent(f.message)
+		if derr != nil {
+			return false
+		}
+		if l.buffer.full() {
+			// An admission that drops is a drop-time signal dispatch with a
+			// disposition that can end the cycle: it belongs to admitLive, at
+			// the ordinary dispatch point.
+			return false
+		}
+		l.buffer.add(ev)
+	case frameDisconnect:
+		return false
+	case frameWelcome, framePing, frameConfirm, frameReject, frameUnknown:
+		// Liveness only in a post-confirmation state.
+	}
+	if l.hooks.frameHandled != nil {
+		l.hooks.frameHandled(f.kind)
+	}
+	return true
+}
+
+// dispatchDeferred dispatches the frame the in-flight-poll servicing deferred,
+// if any, through the ordinary post-confirmation dispatch.
+//
+// Its two call sites are the walk's dispatch points — the page boundary and
+// the walk's end — and deliberately not the `poll-retry` wait, which holds a
+// timer this dispatch would not stop on teardown. Nothing is lost by the
+// omission: a deferred receive is either the pump's terminating error, which
+// nothing can follow, or a disconnect frame, the server's last word on the
+// socket; both are dispatched at the next page boundary either way.
+func (l *loop) dispatchDeferred(at *attempt) (cycleOutcome, bool) {
+	d := l.deferred
+	if d == nil {
+		return cycleOutcome{}, false
+	}
+	l.deferred = nil
+	if d.closed {
+		return l.pumpExited(at, nil), true
+	}
+	return l.handleLiveFrame(at, nil, d.item, false)
 }
 
 // ownershipCut performs SPEC.md §23's bounded admission pass: after the
