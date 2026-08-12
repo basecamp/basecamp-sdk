@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -165,6 +166,31 @@ func writeDriftFixtures(t *testing.T, genSrc string, wrapperSrcByName map[string
 		}
 	}
 	return wrapperDir, generatedFile
+}
+
+// captureStderr runs fn with os.Stderr redirected and returns what it wrote.
+// run() reports drift to stderr, so this is how a test asserts on the
+// DIAGNOSIS rather than only on the exit path.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	saved := os.Stderr
+	os.Stderr = w
+	done := make(chan string, 1)
+	go func() {
+		var buf strings.Builder
+		io.Copy(&buf, r)
+		done <- buf.String()
+	}()
+	fn()
+	os.Stderr = saved
+	w.Close()
+	out := <-done
+	r.Close()
+	return out
 }
 
 // TestRun_InSync drives the real run() over a tree where every generated tag is
@@ -3275,5 +3301,157 @@ type Struct struct {
 	}
 	if sf := structs["Struct"]; sf == nil || len(sf.decodeUnsafe) == 0 {
 		t.Errorf("the struct form is the real allocation failure and must still be reported, got %+v", structs["Struct"])
+	}
+}
+
+// TestRun_UnrecognizedAssignmentShapeIsReported is the flipped default, which
+// is the same correction as the original #599 bug one layer down: the first
+// walker met an anonymous field it did not understand and dropped it; this one
+// met a value shape it did not understand and CREDITED it. Both are silent
+// assumptions, and both are now reports.
+//
+// The paired positive is the shape the walker does understand — the same
+// wrapper with a literal — so "report the unknown" cannot be satisfied by
+// reporting everything.
+func TestRun_UnrecognizedAssignmentShapeIsReported(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+`)
+	// A binary expression is not a shape the classifier models.
+	oddSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	ID      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.Base = *baseOf(g) + *baseOf(g)
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": oddSrc})
+	stderr := captureStderr(t, func() {
+		if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+			t.Error("run: a value shape the walker cannot interpret must be reported, not credited")
+		}
+	})
+	// The diagnosis matters as much as the failure: "unpopulated" would send
+	// the reader looking for a missing assignment that is right there.
+	if !strings.Contains(stderr, "shape this walker does not interpret") {
+		t.Errorf("expected the report to name the uninterpreted shape, got:\n%s", stderr)
+	}
+
+	knownSrc := strings.Replace(oddSrc, "*baseOf(g) + *baseOf(g)", "Base{ID: g.Id, Content: g.Content}", 1)
+
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": knownSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: a shape the walker DOES interpret must still pass, got %v", err)
+	}
+}
+
+// TestRecordAssignedValue_ElidedNestedLiteral covers the elided form Go permits
+// for a nested literal. `Base{Audit: {At: g.At}}` sets exactly one field of
+// Audit; treating the inner literal as opaque would credit every field under
+// it — the silent direction — so it is enumerated like any other keyed literal.
+func TestRecordAssignedValue_ElidedNestedLiteral(t *testing.T) {
+	expr, err := parser.ParseExpr("Base{Audit: {At: g.At}, ID: g.Id}")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	assigned := map[string]bool{}
+	recordAssignedValue(assigned, "Base", expr)
+	for _, want := range []string{"Base", "Base.ID", "Base.Audit", "Base.Audit.At"} {
+		if !assigned[want] {
+			t.Errorf("expected %q, got %v", want, assigned)
+		}
+	}
+	for _, absent := range []string{"Base.*", "Base.Audit.*"} {
+		if assigned[absent] {
+			t.Errorf("an enumerated literal must not grant %q, got %v", absent, assigned)
+		}
+	}
+	// An elided EMPTY literal contributes nothing, exactly like a typed one.
+	expr2, err := parser.ParseExpr("Base{Audit: {}}")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	assigned2 := map[string]bool{}
+	recordAssignedValue(assigned2, "Base", expr2)
+	if assigned2["Base.Audit.*"] {
+		t.Errorf("an empty elided literal populates nothing, got %v", assigned2)
+	}
+}
+
+// TestExtractJSONTag_InterpretedLiteral covers the interpreted (double-quoted)
+// struct tag Go also accepts. Reading it as untagged is not a cosmetic miss: on
+// an ANONYMOUS field it flips the field from an ordinary member into a
+// promotion source, certifying members that are not on the wire.
+func TestExtractJSONTag_InterpretedLiteral(t *testing.T) {
+	if got := extractJSONTag(`"json:\"base\""`); got != "base" {
+		t.Errorf("interpreted tag literal: got %q, want \"base\"", got)
+	}
+	if got := extractJSONTag("`json:\"base\"`"); got != "base" {
+		t.Errorf("raw tag literal: got %q, want \"base\"", got)
+	}
+	if got := extractJSONTag(`"not a tag`); got != "" {
+		t.Errorf("malformed literal must yield no tag, got %q", got)
+	}
+}
+
+// TestFlattenEmbedded_InterpretedTagStopsPromotion is the consequence of the
+// above at the walk level: a tagged anonymous field is an ordinary field
+// whichever literal form its tag uses.
+func TestFlattenEmbedded_InterpretedTagStopsPromotion(t *testing.T) {
+	structs := flattenFixture(t, `package fixture
+
+type Base struct {
+	ID int64 `+"`json:\"id\"`"+`
+}
+
+type Outer struct {
+	Base "json:\"base\""
+}
+`)
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["id"] {
+		t.Error("a field tagged with an interpreted literal is not a promotion source")
+	}
+	if !outer.tags["base"] {
+		t.Errorf("it registers under its own tag, got %v", outer.tags)
+	}
+}
+
+// TestCollectJSONMethodTypes_ParenthesizedReceiver covers `func (m (M)) …`.
+// Legal, essentially unwritten — but missing it drops M from the method set,
+// which is a SILENT miss: a wrapper embedding M would be certified while the
+// encoder is redirected. One unwrap, because the failure is in the silent class.
+func TestCollectJSONMethodTypes_ParenthesizedReceiver(t *testing.T) {
+	f, err := parser.ParseFile(token.NewFileSet(), "f.go", `package fixture
+
+type M struct{}
+
+func (m (M)) MarshalJSON() ([]byte, error) { return nil, nil }
+`, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got, _ := collectJSONMethodTypes(f)
+	if !got["M"] {
+		t.Error("a parenthesized receiver still declares the method")
 	}
 }

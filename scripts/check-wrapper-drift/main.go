@@ -143,6 +143,60 @@
 //   - Cycles (A embeds B embeds A, or a self-embedding pointer) terminate: each
 //     type name is visited once per flattening.
 //
+// # CAN / CANNOT
+//
+// The honest boundary of the embedded-field support, and the invariant that
+// makes the boundary safe. Read this before adding a rule to either list.
+//
+// CAN resolve and judge:
+//
+//   - An embed of a locally-declared struct, by value or pointer, from any
+//     file of the same package, at any depth, including through a chain of
+//     `type A B` / `type A = B` declarations.
+//   - Promotion under encoding/json's rules: shallowest declaration wins,
+//     same-depth conflicts annihilate (including a type reached twice at one
+//     depth), unexported fields are ignored, a tagged anonymous field is an
+//     ordinary field rather than a promotion source.
+//   - Population of a promoted field through any legal spelling of it —
+//     `w.Field`, `w.Embed.Field`, or an assignment of any embed on its path —
+//     with the value classified exhaustively: literals are enumerated key by
+//     key, statically zero values credit nothing.
+//
+// CANNOT, and therefore REPORTS rather than assumes:
+//
+//   - A type from another package, or a name not declared in the parsed
+//     sources. Its fields and its method set are both invisible.
+//   - A type whose method set carries MarshalJSON/UnmarshalJSON/MarshalText/
+//     UnmarshalText by any route. Promotion redirects the encoder away from
+//     every field, so no tag on the struct is trustworthy.
+//   - An assignment whose right-hand side is a shape not in the classification
+//     above.
+//   - An embedded pointer to an unexported type, for direct-decode pairs only:
+//     encoding/json cannot allocate it, so the decoder never populates it.
+//
+// The invariant: ANYTHING UNRECOGNISED IS REPORTED. Never credited, never
+// skipped. Both failure modes this walk has actually had — the original #599
+// bug and every regression found while fixing it — were a silent assumption
+// about something the walker did not understand.
+//
+// # An honest tally, for whoever adds the next rule
+//
+// This support was reviewed in ten rounds and grew a rule in almost every one:
+// promotion, annihilation, same-depth multiplicity, export visibility, literal
+// enumeration, qualified assignment paths, Go-name shadowing, depth-0
+// conflicts, method promotion (declared, inherited, interface, aliased, text),
+// decode allocation, value classification. The call sites that support covers
+// grew exactly once — at the original fix — and remain at ZERO: no wrapper in
+// a checked pair embeds a struct, and the gate's output on the real corpus has
+// been byte-identical throughout.
+//
+// The rules that earned their place are the ones that turn a silent assumption
+// into a report. A rule that only makes an already-loud report more precise, on
+// a shape with no call site, is the kind this file has enough of. Prefer
+// widening the reported set over modelling another corner of encoding/json or
+// of Go's type identity — those are the type checker's job, and every attempt
+// here to do a piece of it produced the next round's finding about itself.
+//
 // # What the walk will and will not judge
 //
 // Flattening happens only through embeds the walk can fully vouch for (see
@@ -238,6 +292,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -730,6 +785,8 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 	var drift []string
 	totalFieldsChecked := 0
 	totalFieldsPopChecked := 0
+	embeddedPairs := 0         // pairs whose wrapper actually promotes fields through an embed
+	promotedFieldsChecked := 0 // generated tags satisfied by a promoted (not directly declared) field
 	for _, wrapName := range pairNames {
 		genName := pairs[wrapName]
 		gen := genStructs[genName]
@@ -764,6 +821,21 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 				drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: %s. This pair is direct-decode, where tag presence IS population, so those fields are silently absent.", wrapName, genName, u))
 			}
 		}
+		// A value shape the walker could not interpret was recorded rather
+		// than credited. Report it: an uninterpreted assignment is exactly
+		// where a silently-credited field would hide.
+		if !isTier2 {
+			var unrecognized []string
+			for spelling := range assigned {
+				if strings.HasPrefix(spelling, unrecognizedPrefix) {
+					unrecognized = append(unrecognized, strings.TrimPrefix(spelling, unrecognizedPrefix))
+				}
+			}
+			sort.Strings(unrecognized)
+			for _, u := range unrecognized {
+				drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: the value assigned to %s is a shape this walker does not interpret, so it credits nothing. Assign the field with a composite literal, a call or a variable, or mark the tags with `// intentionally-omitted: <tag> - <reason>`.", wrapName, genName, u))
+			}
+		}
 		for _, u := range gen.unresolved {
 			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: unresolvable embedded type in the generated struct: %s. Promoted fields from it are invisible to this check; teach the resolver about it.", wrapName, genName, u))
 		}
@@ -775,6 +847,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		}
 		sort.Strings(tags)
 
+		if len(wrap.tagPath) > 0 {
+			embeddedPairs++
+		}
 		var missing []string
 		var unpopulated []string
 		for _, tag := range tags {
@@ -785,6 +860,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 			if !wrap.tags[tag] {
 				missing = append(missing, tag)
 				continue
+			}
+			if len(wrap.tagPath[tag]) > 0 {
+				promotedFieldsChecked++
 			}
 			// Tag is declared on the wrapper. For tier-1 and tier-3 pairs,
 			// also confirm the construction site actually assigns the field —
@@ -832,6 +910,18 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 	}
 
 	fmt.Printf("Wrapper drift check: %d pairs walked, %d generated fields verified (%d field assignments verified at tier-1 *FromGenerated bodies + tier-3 composite literals)\n", len(pairNames), totalFieldsChecked, totalFieldsPopChecked)
+
+	// Say what the verdict covers. A clean run means "no drift in the shapes
+	// this walker resolves", and when no pair embeds anything at all — which
+	// is the case in this repo today — the embedded-field machinery verified
+	// nothing and the line should not let a reader think otherwise.
+	switch {
+	case embeddedPairs == 0:
+		fmt.Println("  Embedded-field promotion: no pair embeds a struct, so nothing above was verified through it.")
+	default:
+		fmt.Printf("  Embedded-field promotion: %d of %d pairs embed a struct; %d promoted fields verified through it.\n", embeddedPairs, len(pairNames), promotedFieldsChecked)
+	}
+	fmt.Println("  Scope: shapes this walker resolves. Unrecognised embeds and assignment shapes are reported as drift, never assumed away — see the CAN/CANNOT list in this file's header.")
 
 	if len(drift) > 0 {
 		fmt.Fprintln(os.Stderr)
@@ -993,9 +1083,12 @@ func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) 
 		if !isJSONMethod(fd.Name.Name, fd.Type) {
 			continue
 		}
-		recv := fd.Recv.List[0].Type
+		// `func (m (M)) MarshalJSON()` is legal, and reading the receiver as
+		// unrecognized would leave M out of the method set — a silent miss, so
+		// the parentheses come off even though nobody writes them.
+		recv := unparen(fd.Recv.List[0].Type)
 		if star, ok := recv.(*ast.StarExpr); ok {
-			recv = star.X
+			recv = unparen(star.X)
 		}
 		if id, ok := recv.(*ast.Ident); ok {
 			out[id.Name] = true
@@ -1920,41 +2013,56 @@ func litTypeName(expr ast.Expr) string {
 	return ""
 }
 
+// unrecognizedPrefix marks a value shape the walker could not interpret. It is
+// stored in the same set as the dotted assignment paths, prefixed with a byte
+// that cannot begin a Go identifier, so it can never collide with a real
+// spelling. run() turns each into drift for the pair that reaches it.
+const unrecognizedPrefix = "?"
+
 // recordAssignedValue records every population fact implied by assigning value
 // to path (a dotted field path relative to the wrapper instance, e.g. "Base" or
 // "Base.Audit"). It is the single vocabulary the population check reads through
 // populationTargets.
 //
-// The path itself is always recorded. What the assignment covers BELOW that
-// path depends on whether the walker can see inside the value:
+// The path itself is always recorded. What the assignment covers BELOW it is
+// decided by an EXHAUSTIVE classification of the value, because the default for
+// an unrecognized shape is the thing this whole check exists to prevent:
+// silently crediting fields nobody assigned. The classification is therefore a
+// whitelist, and its last branch reports rather than assumes.
 //
-//   - A struct composite literal (`Base{ID: g.Id}`, `&Base{...}`) is
-//     enumerated: each key becomes `path.Key`, recursively. A partial literal
-//     therefore covers only the fields it names — assigning an embedded struct
-//     with two of its five fields set leaves the other three unpopulated, which
-//     is the true wire outcome and must not read as full coverage.
-//   - Anything else — a function call, a variable, a slice or map literal — is
-//     opaque, and gets the total marker `path.*`: the walker cannot enumerate
-//     it, and crediting the whole subtree matches the one-level-nesting
-//     doctrine the check already applies to nested wrappers (`c.Creator =
-//     &creator` counts, and Person's own fields are verified through Person's
-//     own pair).
+//   - Statically zero — `nil`, `new(T)`, `(*T)(nil)`, an empty literal —
+//     covers NOTHING. None of them carry a value in.
+//   - A struct literal with keys, written with its type (`Base{ID: g.Id}`) or
+//     with the type elided inside another literal (`Base{Audit: {At: g.At}}`),
+//     is ENUMERATED key by key, recursively. A partial literal covers only the
+//     fields it names.
+//   - A positional struct literal lists every direct field, so it covers the
+//     subtree — unless an element is statically zero, which withdraws the
+//     claim, since the walker cannot tell which field that element lands on.
+//   - A call, a variable, a field selector, a dereference, an index or a type
+//     assertion delivers a whole value of the field's type, so it covers the
+//     subtree. This is the one-level-nesting doctrine the check has always
+//     applied (`c.Creator = &creator` counts, and Person's own fields are
+//     verified through Person's own pair).
+//   - ANYTHING ELSE is recorded as unrecognized and covers nothing. The pair
+//     that reaches it reports, and the shape gets read by a person instead of
+//     being credited by a walker that did not understand it.
 //
 // A nil value means the write had no readable right-hand side (`x.F++`), which
-// is treated as opaque.
+// covers the subtree: the field was written, and there is nothing to look into.
 func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) {
 	if path == "" {
 		return
 	}
 	assigned[path] = true
-	if zeroValued(value) {
-		// nil, new(T) and a typed nil conversion all populate nothing:
-		// encoding/json emits none of a nil embed's promoted fields, and
-		// new(T) copies no value in. The write is recorded without any
-		// subtree coverage.
+	if value == nil {
+		assigned[path+".*"] = true
 		return
 	}
-	if lit := structLiteral(value); lit != nil {
+	if zeroValued(value) {
+		return
+	}
+	if lit := literalToEnumerate(value); lit != nil {
 		keyed := false
 		for _, elt := range lit.Elts {
 			kv, ok := elt.(*ast.KeyValueExpr)
@@ -1962,47 +2070,50 @@ func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) 
 				continue
 			}
 			keyed = true
-			if key, ok := kv.Key.(*ast.Ident); ok {
-				recordAssignedValue(assigned, path+"."+key.Name, kv.Value)
+			key, ok := kv.Key.(*ast.Ident)
+			if !ok {
+				// A struct literal's keys are field names; anything else is a
+				// shape this walker does not model.
+				assigned[unrecognizedPrefix+path] = true
+				continue
 			}
+			recordAssignedValue(assigned, path+"."+key.Name, kv.Value)
 		}
 		if keyed || len(lit.Elts) == 0 {
-			// A keyed literal covers exactly the keys enumerated above. An
-			// empty literal covers nothing.
 			return
 		}
-		// A positional literal must list every DIRECT field of the struct, so
-		// it covers the subtree — unless one of those fields is an embedded
-		// pointer given nil, which puts none of ITS promoted fields on the
-		// wire. The walker cannot tell which element is which field without
-		// the full declaration order, so a nil element withdraws the claim
-		// rather than guessing: the author writes keys, and the report is the
-		// safe direction.
+		// Positional: every direct field is listed, so the subtree is covered
+		// unless one of the elements is itself statically zero.
 		for _, elt := range lit.Elts {
 			if zeroValued(elt) {
 				return
 			}
 		}
+		assigned[path+".*"] = true
+		return
 	}
-	assigned[path+".*"] = true
+	if deliversWholeValue(value) {
+		assigned[path+".*"] = true
+		return
+	}
+	assigned[unrecognizedPrefix+path] = true
 }
 
 // zeroValued reports whether an assigned value is statically known to carry no
-// data: the nil identifier, `new(T)`, or a conversion of nil such as
-// `(*Base)(nil)`. Crediting any of them with subtree coverage would pass a
-// converter that emits none of the fields it claims. Anything else is opaque —
-// the walker cannot see inside it and credits the subtree, which is the
-// one-level-nesting doctrine the check has always applied.
+// data: the nil identifier, `new(T)`, a conversion of nil such as
+// `(*Base)(nil)`, or an empty composite literal. Crediting any of them with
+// subtree coverage would pass a converter that emits none of the fields it
+// claims.
 func zeroValued(expr ast.Expr) bool {
-	expr = unparen(expr)
-	switch e := expr.(type) {
+	switch e := unparen(expr).(type) {
 	case *ast.Ident:
 		return e.Name == "nil"
 	case *ast.CompositeLit:
-		// An empty struct literal — `Audit{}` as a positional element —
-		// contributes nothing, so a literal containing one cannot claim to
-		// have populated what is under it.
-		return len(e.Elts) == 0 && litTypeName(e.Type) != ""
+		// An empty literal — `Audit{}`, or `{}` elided inside another —
+		// contributes nothing.
+		return len(e.Elts) == 0
+	case *ast.UnaryExpr:
+		return e.Op == token.AND && zeroValued(e.X)
 	case *ast.CallExpr:
 		// new(T) — the builtin, not a method named new.
 		if id, ok := unparen(e.Fun).(*ast.Ident); ok && id.Name == "new" {
@@ -2021,18 +2132,9 @@ func zeroValued(expr ast.Expr) bool {
 	return false
 }
 
-// unparenOnce strips one layer of parentheses, distinguishing `(*T)(nil)` —
-// where the parens are part of the conversion syntax — from a bare call.
-func unparenOnce(expr ast.Expr) ast.Expr {
-	if p, ok := expr.(*ast.ParenExpr); ok {
-		return p.X
-	}
-	return expr
-}
-
 // unparen strips redundant parentheses: `(Base{...})` is the same value as
-// `Base{...}`, and classifying the parenthesized form as opaque would credit a
-// subtree the literal only partly fills.
+// `Base{...}`, and classifying the parenthesized form differently would credit
+// or refuse a subtree on punctuation alone.
 func unparen(expr ast.Expr) ast.Expr {
 	for {
 		p, ok := expr.(*ast.ParenExpr)
@@ -2041,6 +2143,56 @@ func unparen(expr ast.Expr) ast.Expr {
 		}
 		expr = p.X
 	}
+}
+
+// literalToEnumerate returns the composite literal to walk key-by-key for a
+// value, or nil. It accepts the typed forms (`Base{…}`, `&Base{…}`) and the
+// ELIDED form Go permits for a nested literal (`Base{Audit: {At: g.At}}`),
+// whose type is implied by the field it initializes. Treating an elided
+// literal as opaque would credit every field under it while only the keys
+// written are set. Slice and map literals are not struct literals and are
+// handled elsewhere.
+func literalToEnumerate(expr ast.Expr) *ast.CompositeLit {
+	if lit := structLiteral(expr); lit != nil {
+		return lit
+	}
+	expr = unparen(expr)
+	if u, ok := expr.(*ast.UnaryExpr); ok && u.Op == token.AND {
+		expr = unparen(u.X)
+	}
+	if cl, ok := expr.(*ast.CompositeLit); ok && cl.Type == nil {
+		return cl
+	}
+	return nil
+}
+
+// deliversWholeValue reports whether an expression yields a complete value of
+// the assigned field's type — the shapes whose contents the walker cannot see
+// but whose result is a whole value, so crediting the subtree is sound under
+// the one-level-nesting doctrine. Anything outside this list is reported
+// rather than assumed.
+func deliversWholeValue(expr ast.Expr) bool {
+	switch e := unparen(expr).(type) {
+	case *ast.CallExpr, *ast.Ident, *ast.SelectorExpr, *ast.IndexExpr,
+		*ast.IndexListExpr, *ast.TypeAssertExpr, *ast.StarExpr:
+		return true
+	case *ast.CompositeLit:
+		// A slice or map literal: not a struct, nothing to enumerate as
+		// fields, and a complete value of its own type.
+		return true
+	case *ast.UnaryExpr:
+		return e.Op == token.AND && deliversWholeValue(e.X)
+	}
+	return false
+}
+
+// unparenOnce strips one layer of parentheses, distinguishing `(*T)(nil)` —
+// where the parens are part of the conversion syntax — from a bare call.
+func unparenOnce(expr ast.Expr) ast.Expr {
+	if p, ok := expr.(*ast.ParenExpr); ok {
+		return p.X
+	}
+	return expr
 }
 
 // structLiteral returns the composite literal behind expr when it is a
@@ -2244,11 +2396,23 @@ func extractLocalTypeName(expr ast.Expr) string {
 // extractJSONTag pulls the tag name from a struct tag literal like
 // "`json:\"foo,omitempty\"`". Returns "" if no json tag is present.
 func extractJSONTag(tagLiteral string) string {
-	// Strip the surrounding backticks.
-	if len(tagLiteral) < 2 || tagLiteral[0] != '`' || tagLiteral[len(tagLiteral)-1] != '`' {
+	// Go accepts either a raw literal (the universal convention here) or an
+	// interpreted one: `Base "json:\"base\""` is a TAGGED field, and reading
+	// it as untagged would treat an ordinary field as an embed and promote
+	// members that are not on the wire.
+	inner := ""
+	switch {
+	case len(tagLiteral) >= 2 && tagLiteral[0] == '`' && tagLiteral[len(tagLiteral)-1] == '`':
+		inner = tagLiteral[1 : len(tagLiteral)-1]
+	case len(tagLiteral) >= 2 && tagLiteral[0] == '"' && tagLiteral[len(tagLiteral)-1] == '"':
+		unquoted, err := strconv.Unquote(tagLiteral)
+		if err != nil {
+			return ""
+		}
+		inner = unquoted
+	default:
 		return ""
 	}
-	inner := tagLiteral[1 : len(tagLiteral)-1]
 	// Use reflect-style key-value parsing. Tags look like `json:"foo,omitempty" xml:"bar"`.
 	for inner != "" {
 		// Skip leading spaces.
