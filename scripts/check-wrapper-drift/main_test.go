@@ -1473,10 +1473,13 @@ type Outer struct {
 	// spelling, or by an opaque assignment of the embed — and by nothing else.
 	assertTargets(t, outer, "kind", []string{"Kind", "Mid.Kind", "Mid.*"})
 	// A depth-2 promotion adds the intermediate spellings, since `Deep` is
-	// itself promoted onto Outer. The promoted field here is also named Deep,
-	// which is why "Deep.Deep" and a bare "Deep" both appear.
+	// itself promoted onto Outer. The promoted field here is ALSO named Deep,
+	// and that collision is instructive: `outer.Deep` resolves to the embedded
+	// Deep struct at depth 1, not to the string field at depth 2, so the bare
+	// spelling is absent from the target set — crediting it would attribute a
+	// write that lands somewhere else entirely.
 	assertTargets(t, outer, "deep_only", []string{
-		"Deep", "Deep.Deep", "Mid.Deep.Deep", "Mid.*", "Deep.*", "Mid.Deep.*",
+		"Deep.Deep", "Mid.Deep.Deep", "Mid.*", "Deep.*", "Mid.Deep.*",
 	})
 }
 
@@ -2085,5 +2088,129 @@ func wrapFromGenerated(g generated.Wrap) Wrap {
 	// rather than being enumerated as if its elements were field keys.
 	if assigned["Items.0"] {
 		t.Error("a slice literal must not be enumerated as struct keys")
+	}
+}
+
+// TestRun_OuterGoNameShadowsPromotedField is the second-round shadowing case,
+// and it is subtle enough to be worth spelling out. The wrapper embeds Base
+// (`ID` tagged `id`) and declares its OWN `ID` tagged `other_id`. Both keys are
+// on the wire — the Go names collide but the JSON names do not — while
+// `n.ID = …` writes the outer field only:
+//
+//	json.Marshal(b) where b.ID = 7  =>  {"id":0,"other_id":7}
+//
+// So crediting the bare `ID` spelling to the promoted `id` would pass a wrapper
+// that ships `"id": 0` on every response. The qualified spelling still counts,
+// which is the paired positive.
+func TestRun_OuterGoNameShadowsPromotedField(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id      int64 ~json:"id"~
+	OtherId int64 ~json:"other_id"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Note struct {
+	Base
+	ID int64 ~json:"other_id"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.OtherId
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: `n.ID` writes the outer field, so the promoted `id` is unpopulated and must be reported")
+	}
+
+	qualified := strings.Replace(wrapperSrc, "\tn.ID = g.OtherId\n", "\tn.ID = g.OtherId\n\tn.Base.ID = g.Id\n", 1)
+	if !strings.Contains(qualified, "n.Base.ID") {
+		t.Fatal("fixture setup: the qualified write was not added")
+	}
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": qualified})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: the qualified write reaches the promoted field and must count, got %v", err)
+	}
+}
+
+// TestFlattenEmbedded_DuplicateOwnTagAnnihilates covers the depth-0 case of the
+// conflict rule that already governed promotions: two fields on ONE struct
+// sharing a json tag are both dropped by encoding/json —
+// `json.Marshal(struct{A,B string "same"; C string "c"}{...})` emits only "c" —
+// so the tag is not on the wire and cannot satisfy a generated field. The
+// conflict also blocks a deeper promotion of the same tag, matching
+// dominantField, which gives up as soon as its two shallowest entries tie.
+func TestFlattenEmbedded_DuplicateOwnTagAnnihilates(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Base struct {
+	FromEmbed string ~json:"same"~
+}
+
+type Outer struct {
+	Base
+	A string ~json:"same"~
+	B string ~json:"same"~
+	C string ~json:"c"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["same"] {
+		t.Error("one tag on two fields of the same struct is annihilated; it must not count as present")
+	}
+	if !outer.tags["c"] {
+		t.Errorf("the unambiguous tag must survive, got %v", outer.tags)
+	}
+}
+
+// TestFlattenEmbedded_TaggedUnexportedNonStructEmbedIgnored covers the last of
+// encoding/json's embed carve-outs: an anonymous field of an unexported
+// NON-STRUCT type is dropped even when tagged (`struct{ hidden "json:secret" }`
+// marshals without "secret"), while an unexported STRUCT type keeps its tag,
+// because typeFields only skips the non-struct case.
+func TestFlattenEmbedded_TaggedUnexportedNonStructEmbedIgnored(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type hidden string
+
+type hiddenStruct struct {
+	Inner string ~json:"inner"~
+}
+
+type Outer struct {
+	hidden       ~json:"secret"~
+	hiddenStruct ~json:"nested"~
+	Name         string ~json:"name"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["secret"] {
+		t.Error("an anonymous unexported non-struct field is dropped by encoding/json even when tagged")
+	}
+	if !outer.tags["nested"] {
+		t.Errorf("an anonymous unexported STRUCT type keeps its tag, got %v", outer.tags)
+	}
+	if outer.tags["inner"] {
+		t.Error("a tagged anonymous field is not a promotion source")
+	}
+	if !outer.tags["name"] {
+		t.Errorf("expected the plain field to survive, got %v", outer.tags)
 	}
 }

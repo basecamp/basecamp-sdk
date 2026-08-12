@@ -389,9 +389,23 @@ type structFields struct {
 	embeds []embedRef
 	// tagPath maps a PROMOTED tag to the embedded field names traversed to
 	// reach it (`{"Base", "Audit"}` for a field promoted through Base's
-	// embedded Audit). Own tags are absent. populationTargets expands it into
-	// the assignment spellings that count as populating the field.
+	// embedded Audit). Own tags are absent.
 	tagPath map[string][]string
+	// tagTargets holds the assignment spellings that count as populating a
+	// PROMOTED tag, computed during flattening because the legal spellings
+	// depend on Go-name shadowing across the whole promotion tree. Own tags
+	// are absent; see populationTargets.
+	tagTargets map[string][]string
+	// fieldNames lists every field name declared directly on this struct —
+	// tagged or not, exported or not, including the embedded fields' own
+	// names. Go resolves a selector by NAME with the same shallowest-wins
+	// rule, independently of json tags, so this is what decides whether a
+	// promoted field can be written by its bare name.
+	fieldNames []string
+	// taggedEmbeds lists anonymous fields that carry a json tag. They are not
+	// promotion sources, but an unexported one is only on the wire if its type
+	// is a struct — which needs the universe, so flattenEmbedded settles it.
+	taggedEmbeds []taggedEmbed
 	// unresolved lists embedded types the checker could not resolve, as
 	// human-readable paths ("Task.Meta -> time.Time"). Reported as drift when
 	// a pair reaches this struct; see run.
@@ -422,22 +436,60 @@ func (sf *structFields) populationTargets(tag string) []string {
 	if goField == "" {
 		return nil
 	}
-	path := sf.tagPath[tag]
-	if len(path) == 0 {
-		return []string{goField}
+	if targets, ok := sf.tagTargets[tag]; ok {
+		return targets
 	}
-	out := make([]string, 0, len(path)+1+len(path)*(len(path)+1)/2)
+	return []string{goField}
+}
+
+// promotedTargets enumerates the spellings that populate a promoted field,
+// given the depth at which each Go name resolves on the embedding struct
+// (nameDepth, with nameConflict marking names that are ambiguous and therefore
+// unwritable). path is the chain of embedded field names and goField the
+// promoted field.
+//
+// Every suffix of the path is a candidate spelling, because each embed name is
+// itself promoted — but only while the FIRST component of that spelling still
+// resolves to this chain. If a shallower field shares that Go name it wins the
+// selector, and crediting the spelling would attribute a write that lands on a
+// different field: `w.ID = …` on a struct that declares its own ID writes the
+// outer one and leaves the promoted `id` zero, with BOTH keys on the wire.
+func promotedTargets(path []string, goField string, nameDepth map[string]int, nameConflict map[string]bool) []string {
+	resolves := func(name string, depth int) bool {
+		d, ok := nameDepth[name]
+		return ok && d == depth && !nameConflict[name]
+	}
+	var out []string
+	// The field itself, spelled from each suffix of its path. path[i] is
+	// declared at depth i; the field itself at depth len(path).
 	for i := 0; i <= len(path); i++ {
+		first, firstDepth := goField, len(path)
+		if i < len(path) {
+			first, firstDepth = path[i], i
+		}
+		if !resolves(first, firstDepth) {
+			continue
+		}
 		out = append(out, strings.Join(append(append([]string{}, path[i:]...), goField), "."))
 	}
-	// Ancestors: every contiguous sub-path path[i:j] names the embed at
-	// depth j, so an opaque assignment to it covers everything below.
+	// Ancestors: an opaque assignment to any embed on the path covers
+	// everything below it, and each is spelled from any suffix that reaches it.
 	for j := 1; j <= len(path); j++ {
 		for i := 0; i < j; i++ {
+			if !resolves(path[i], i) {
+				continue
+			}
 			out = append(out, strings.Join(path[i:j], ".")+".*")
 		}
 	}
 	return out
+}
+
+// taggedEmbed is an anonymous field carrying its own json tag: an ordinary
+// field under that tag rather than a promotion source.
+type taggedEmbed struct {
+	tag string
+	ref embedRef
 }
 
 // taggedField is one JSON-tagged field declared directly on a struct.
@@ -753,9 +805,21 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 				omitted:      map[string]bool{},
 				tagToGoField: map[string]string{},
 				tagPath:      map[string][]string{},
+				tagTargets:   map[string][]string{},
 				declaration:  ts.Pos(),
 			}
 			for _, field := range st.Fields.List {
+				// Go resolves selectors by field NAME regardless of tags, so
+				// every name counts for shadowing — including untagged and
+				// unexported ones, and the embedded fields' own names.
+				if len(field.Names) == 0 {
+					if n := embedRefFromExpr(field.Type).name; n != "" {
+						sf.fieldNames = append(sf.fieldNames, n)
+					}
+				}
+				for _, fn := range field.Names {
+					sf.fieldNames = append(sf.fieldNames, fn.Name)
+				}
 				tag := ""
 				if field.Tag != nil {
 					tag = extractJSONTag(field.Tag.Value)
@@ -792,8 +856,12 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 				if goField == "" {
 					// A TAGGED anonymous field is not promoted — encoding/json
 					// treats it as an ordinary field under its tag, whose Go
-					// field name is the embedded type's name.
-					goField = embedRefFromExpr(field.Type).name
+					// field name is the embedded type's name. Whether it is on
+					// the wire at all depends on the type when the type name is
+					// unexported, which only flattenEmbedded can settle.
+					ref := embedRefFromExpr(field.Type)
+					goField = ref.name
+					sf.taggedEmbeds = append(sf.taggedEmbeds, taggedEmbed{tag: tag, ref: ref})
 				}
 				if goField != "" {
 					sf.tagToGoField[tag] = goField
@@ -923,11 +991,58 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 	}
 
 	// Tags declared directly on the root are claimed at depth 0 and shadow
-	// anything promoted from below.
+	// anything promoted from below — EXCEPT where the root declares one tag
+	// twice, which encoding/json annihilates exactly like a same-depth
+	// promotion conflict. The tag is then on no field's wire output, so it
+	// stays claimed (blocking deeper promotion) but is not present.
 	claimed := map[string]bool{}
+	ownCount := map[string]int{}
+	for _, f := range root.ownFields {
+		ownCount[f.tag]++
+	}
 	for _, f := range root.ownFields {
 		claimed[f.tag] = true
+		if ownCount[f.tag] > 1 {
+			delete(root.tags, f.tag)
+			delete(root.tagToGoField, f.tag)
+		}
 	}
+
+	// A tagged anonymous field of an UNEXPORTED type is only on the wire when
+	// that type is a struct; encoding/json drops the others whatever the tag
+	// says. This needs the universe, so it is settled here rather than at
+	// collection.
+	for _, te := range root.taggedEmbeds {
+		if te.ref.name == "" || ast.IsExported(te.ref.name) {
+			continue
+		}
+		if child, _, err := resolveEmbed(te.ref, structs, decls); err == "" && child != nil {
+			continue
+		}
+		delete(root.tags, te.tag)
+		delete(root.tagToGoField, te.tag)
+	}
+
+	// Go-name resolution, tracked alongside the tag walk: nameDepth records the
+	// shallowest depth at which each field NAME appears and nameConflict the
+	// names two same-depth structs both declare, which makes the selector
+	// ambiguous. promotedTargets needs both to know which spellings of a
+	// promoted field actually reach it.
+	nameDepth := map[string]int{}
+	nameConflict := map[string]bool{}
+	recordNames := func(names []string, depth int, seenThisDepth map[string]bool) {
+		for _, n := range names {
+			if d, ok := nameDepth[n]; ok {
+				if d == depth && seenThisDepth[n] {
+					nameConflict[n] = true
+				}
+				continue
+			}
+			nameDepth[n] = depth
+			seenThisDepth[n] = true
+		}
+	}
+	recordNames(root.fieldNames, 0, map[string]bool{})
 
 	visited := map[string]bool{rootName: true}
 	level := []reached{{name: rootName, sf: root}}
@@ -974,6 +1089,13 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 			visited[r.name] = true
 		}
 
+		// Names first: a spelling's validity depends on what resolves at this
+		// depth and shallower, all of which is known once this level is built.
+		seenThisDepth := map[string]bool{}
+		for _, r := range next {
+			recordNames(r.sf.fieldNames, depth, seenThisDepth)
+		}
+
 		// Gather this depth's contributions before claiming any of them, so
 		// same-depth conflicts can be detected.
 		type candidate struct {
@@ -1014,6 +1136,7 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 				root.tagToGoField[tag] = c.field.goField
 			}
 			root.tagPath[tag] = c.path
+			root.tagTargets[tag] = promotedTargets(c.path, c.field.goField, nameDepth, nameConflict)
 		}
 
 		level = next
