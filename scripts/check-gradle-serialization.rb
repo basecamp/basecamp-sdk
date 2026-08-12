@@ -112,12 +112,29 @@
 # way, and direct and delegated are unioned rather than treated as alternatives.
 # If you add a step, add it to both, or the next round finds it.
 #
+# ONE DEFECT HAS A DIFFERENT SHAPE, AND IT ARRIVED LAST. Every finding above is
+# a silent pass — the gate says yes when it should say no. Target-specific
+# variables were the opposite: make -p prints them inside a target's block as
+# comments, so expansion never saw them, `$(PROJECT)` stayed unresolved, and the
+# fail-loud `$`-guard refused to run. The gate said NO when it should have said
+# YES. That matters for how the fail-loud default is read: erring toward
+# reporting is the right direction for a guard, but it is not free, and a guard
+# that cannot be run is not a safe default either. Case 25 pins it.
+#
 # SCORE THE CONTROL, NOT THE INCREMENT. Every one of those twelve fixes cleared
 # "small and obviously correct" on its own, and that is precisely how a control
 # nobody sized gets built. The honest tally: the rules this gate applies have
 # grown at every round; the CALL SITES it covers have grown exactly once, when
 # delegation brought in kt-check-generated-drift. Everything since has been the
 # same five targets, parsed harder.
+#
+# The count is now SEVEN rounds and fifteen defects, and one of them — the
+# delegate scan returning on the first script — was the FIFTH appearance of a
+# single defect: an operation made total at one nesting level and left partial at
+# the next. Lines, then per-line invocations, then scripts, then direct-plus-
+# delegated, then the delegate loop itself. That is not five findings; it is one
+# finding found five times, which is the clearest possible evidence about the
+# instrument rather than about any rule.
 #
 # So: NO MORE SELECTORS. A further parsing variation is not a task, it is the
 # signal to switch instruments, and the two candidates are written down here so
@@ -218,6 +235,7 @@ def read_make_database(makefile)
   graph = {}
   recipes = Hash.new { |h, k| h[k] = [] }
   variables = {}
+  target_variables = Hash.new { |h, k| h[k] = {} }
 
   in_variables = false
   in_files = false
@@ -269,6 +287,16 @@ def read_make_database(makefile)
 
     if line.start_with?("#")
       not_a_target = true if line.include?("Not a target")
+      # Target-specific variables (`probe: PROJECT = kotlin`) never reach the
+      # rule parser below: make -p prints them INSIDE the target's block as
+      # comments, which is also why they were invisible to recipe expansion —
+      # `$(PROJECT)` stayed unresolved and tripped the fail-loud `$`-guard, so
+      # the symptom was the gate refusing to run rather than a silent pass.
+      # `# Load=77/1024=8%` and friends carry no spaces around `=` and so do not
+      # match.
+      if current && (tvar = /\A#\s*([A-Za-z_][^\s=]*) *[:+?]?= (.*)\z/.match(line))
+        target_variables[current][tvar[1]] = tvar[2]
+      end
       next
     end
 
@@ -287,7 +315,7 @@ def read_make_database(makefile)
     (graph[target] ||= Set.new).merge(prereqs)
   end
 
-  [graph, recipes, variables]
+  [graph, recipes, variables, target_variables]
 end
 
 # Substitute make's own variable values into a recipe line, so what gets matched
@@ -379,7 +407,16 @@ def resolve_script_dir(raw, repo_root)
   dir
 end
 
+# EVERY delegated script, not the first. Returning on the first one repeated, at
+# the outermost nesting level, the same partiality the line and per-script scans
+# already had to be fixed for: a target delegating to two scripts kept only the
+# first script's projects, so it could be correctly chained for one and race
+# another target in the other.
 def delegated_gradle_dir(lines, repo_root)
+  dirs = []
+  vias = []
+  unplaceable_via = nil
+
   lines.each do |line|
     # Lookbehind rather than a leading-character class: the live case is
     # `@./scripts/check-kotlin-generated-drift.sh`, and make's recipe prefixes
@@ -396,15 +433,27 @@ def delegated_gradle_dir(lines, repo_root)
 
       found = scan_shell_for_gradle(source)
       next if found.nil?
-      return [:unplaceable, rel] if found == :unplaceable
+
+      if found == :unplaceable
+        unplaceable_via ||= rel
+        next
+      end
 
       resolved = found.map { |dir| resolve_script_dir(dir, repo_root) }
-      return [:unplaceable, rel] if resolved.include?(:unplaceable)
+      if resolved.include?(:unplaceable)
+        unplaceable_via ||= rel
+        next
+      end
 
-      return [resolved, rel]
+      dirs.concat(resolved)
+      vias << rel
     end
   end
-  nil
+
+  return [:unplaceable, unplaceable_via] if unplaceable_via
+  return nil if dirs.empty?
+
+  [dirs, vias.uniq.join(", ")]
 end
 
 # The grouping key is a PHYSICAL directory, so it has to survive being spelled
@@ -435,12 +484,14 @@ def canonical_dir(raw, repo_root)
   absolute.start_with?("#{root}/") ? absolute.delete_prefix("#{root}/") : absolute
 end
 
-def gradle_targets(recipes, makefile, variables = {}, repo_root = REPO_ROOT)
+def gradle_targets(recipes, makefile, variables = {}, target_variables = {}, repo_root = REPO_ROOT)
   found = {}
   unrecognized = []
 
   recipes.each do |target, raw_lines|
-    lines = join_continuations(raw_lines.map { |line| expand_variables(line, variables) })
+    # Target-specific variables shadow global ones, as make itself resolves them.
+    scope = variables.merge(target_variables[target] || {})
+    lines = join_continuations(raw_lines.map { |line| expand_variables(line, scope) })
     # EVERY line, not the first match: one recipe may build in two projects, and
     # recording only its first invocation left the second in no group at all —
     # so a target ordered after the Kotlin chain could still overlap the mapper
@@ -522,10 +573,10 @@ def reachable_from(graph, root)
   seen
 end
 
-graph, recipes, variables = read_make_database(MAKEFILE)
+graph, recipes, variables, target_variables = read_make_database(MAKEFILE)
 die "goal #{GOAL} is not defined in #{MAKEFILE}" unless graph.key?(GOAL)
 
-gradle = gradle_targets(recipes, MAKEFILE, variables)
+gradle = gradle_targets(recipes, MAKEFILE, variables, target_variables)
 die "found no Gradle-backed targets in #{MAKEFILE} — the recipe shape this " \
     "gate matches (`cd <dir> && ./gradlew`) must have changed" if gradle.empty?
 

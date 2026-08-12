@@ -570,6 +570,70 @@ SH
   )
 end
 
+# --- Cases 24-25: round seven -----------------------------------------------
+#
+# 24 is the SAME partiality as 17/20/21/23, at the outermost level: the delegate
+# scan returned on the first script, so a target delegating twice kept only the
+# first script's projects. Fifth appearance of one defect, which is recorded in
+# the header as the reason the next parsing variation gets a different
+# instrument rather than another rule.
+#
+# 25 is different in kind — a FALSE POSITIVE, not a silent pass. make -p prints
+# target-specific variables inside the target's block as comments, so they were
+# invisible to expansion, `$(PROJECT)` stayed unresolved, and the fail-loud
+# `$`-guard refused to run at all. The gate says no when it should say yes.
+
+Dir.mktmpdir("gradle-serialization-two-delegates") do |root|
+  FileUtils.mkdir_p(File.join(root, "scripts"))
+  ["kotlin", "second-project"].each do |project|
+    FileUtils.mkdir_p(File.join(root, project))
+    FileUtils.touch(File.join(root, project, "gradlew"))
+  end
+  # The FIRST delegate builds the chained project; only the second can produce
+  # the violation, so returning early makes this case pass.
+  File.write(File.join(root, "scripts", "probe-first.sh"),
+             %(#!/usr/bin/env bash\n(cd "$ROOT_DIR/kotlin" && ./gradlew help)\n), encoding: "UTF-8")
+  File.write(File.join(root, "scripts", "probe-second.sh"),
+             %(#!/usr/bin/env bash\n(cd "$ROOT_DIR/second-project" && ./gradlew help)\n), encoding: "UTF-8")
+
+  failures << check(
+    "24: a target delegating to TWO scripts reports both projects",
+    must_substitute(MAKEFILE, "check-targets: ", "check-targets: probe-two-delegates probe-second-rival ") + <<~MAKE,
+
+      .PHONY: probe-two-delegates probe-second-rival
+      probe-two-delegates: | conformance-kotlin
+      \t@./scripts/probe-first.sh
+      \t@./scripts/probe-second.sh
+      probe-second-rival:
+      \tcd second-project && ./gradlew help
+    MAKE
+    expect_pass: false,
+    expect_fragment: "probe-two-delegates",
+    root: root,
+  )
+end
+
+target_specific = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-target-var ",
+) + <<~MAKE
+
+  .PHONY: probe-target-var
+  probe-target-var: PROJECT = kotlin
+  probe-target-var: | conformance-kotlin
+  \tcd $(PROJECT) && ./gradlew help
+MAKE
+
+# Chained, so the CORRECT verdict is a pass. Before target-specific variables
+# were read this failed with "cannot tell which project directory" — a gate
+# refusing to run is not a safe default, it is a broken one.
+failures << check(
+  "25: a target-specific variable resolves, so a chained target passes",
+  target_specific,
+  expect_pass: true,
+)
+
 failures.compact!
 
 if failures.empty?
