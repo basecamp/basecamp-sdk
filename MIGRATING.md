@@ -108,6 +108,83 @@ Two member-level traps, both consequences of #651 rather than of the retype:
 file-attachment branch omits all five; and `width`/`height` decode through
 `FlexibleIntSerializer`, because bc3 may float-spell them (`1920.0`).
 
+### `Tool.name` and `Tool.enabled` are not on the wire at all; the seven keys that are emitted are now modeled (#650)
+
+A dock tool's projection is the **bare** `recordings/recording` partial —
+`app/views/api/docks/tools/show.json.jbuilder` renders it and adds nothing.
+That partial emits no `name` and no `enabled`. Sibling dock-tool projections
+(`Todoset`, `Questionnaire`) do carry a `name`, but from their own recordable
+partial, which tools do not have; the `name`/`enabled` pair the tools docs
+describe belongs to the **project dock array**, which the SDK already models
+separately and correctly as `DockItem`.
+
+Both were `@required`. In Swift that made `Tool` undecodable: `GetTool`,
+`CreateTool` and `UpdateTool` threw `DecodingError.keyNotFound` on **every**
+real response. Both are now optional, and the seven keys bc3 does emit are
+modeled: `type`, `visible_to_clients`, `inherits_status`, `bookmark_url`,
+`subscription_url`, `parent` and `creator`. Derive the member delta from the
+spec rather than trusting this prose:
+
+```bash
+git show v0.14.0:openapi.json | jq '.components.schemas.Tool | {required, props: (.properties|keys|length)}'
+jq '.components.schemas.Tool | {required, props: (.properties|keys|length)}' openapi.json
+```
+
+Three of the seven are conditional on the wire, and the conditions are not
+guesses — they are the partial's own `if`s:
+
+- **`subscription_url`** — only when the recordable is subscribable.
+  `Chat::Transcript`, `Todoset` and `Kanban::Board` override
+  `Recordable#subscribable?`; `Vault`, `Message::Board`, `Schedule`, `Inbox`
+  and `Questionnaire` do not, and get no key.
+- **`position`** — only when `recording.positioned?`. A tool disabled in the
+  dock is removed from it, not deleted, so `position` is **absent**. That is
+  what replaces `enabled: false`, which never existed. Positioning is
+  independent of dockedness, though, so the inference runs only in that
+  direction: a nested vault is not docked and is still positioned.
+- **`parent`** — only when `!recording.docked?`. A docked tool has none, but
+  the dock-tool lookup scopes by recordable *type* rather than dock membership,
+  so a vault nested inside another vault resolves through
+  `GET /dock/tools/:id` and does carry a parent.
+
+| SDK | was | now |
+|---|---|---|
+| Go `pkg/generated` | `Name string`, `Enabled bool` | `*string`, `*bool` — value use is a compile error; plus `Creator Person`, `Type`, `VisibleToClients`, `InheritsStatus` (value) and `BookmarkUrl`, `SubscriptionUrl`, `Parent` (pointers) |
+| Go `pkg/basecamp` | `Name string`, `Enabled bool` on the wrapper | `*string`, `*bool`, **always nil** — value use is a compile error. Deliberately not value-typed with `omitempty`: `""`/`false` would read like a real answer. Wrapper gains the same seven |
+| Swift | `let name: String`, `let enabled: Bool` | `var name: String?`, `var enabled: Bool?` — **decoding a real response now succeeds instead of throwing**. New non-optional `creator`, `type`, `visibleToClients`, `inheritsStatus`; the memberwise `init` argument list changed |
+| TypeScript | `name: string`, `enabled: boolean` | `name?: string`, `enabled?: boolean` — the read itself still compiles, at type `string \| undefined`; only *using* one where a concrete `string`/`boolean` is required needs a guard or a default. `type`, `visible_to_clients`, `inherits_status`, `creator` are now required |
+| Python | `name`/`enabled` required in the `TypedDict` | `NotRequired[...]`; `type`, `visible_to_clients`, `inherits_status`, `creator` required — type-checker-visible only, nothing changes at runtime |
+| Ruby | `Types::Tool.required_fields` included `:enabled`, `:name` | returns `[:created_at, :creator, :id, :inherits_status, :title, :type, :updated_at, :visible_to_clients]`; readers for every new key |
+| Kotlin | `val name: String`, `val enabled: Boolean` | `String?`/`Boolean?` (defaulted null); new **non-null** `visibleToClients`, `inheritsStatus`, `type`, `creator` |
+
+**Wrong behaviour you get if you ignore it:** in Swift, none — but that is not
+the same as no work. Reading a `Tool` gets strictly better (the fix removes a
+throw that fired on every call, leaving two optionals you could never read
+anyway), while *constructing* one is a compile error until you pass the four
+new non-defaulted arguments the memberwise `init` gained: `creator`, `type`,
+`visibleToClients`, `inheritsStatus`. Test doubles and fixtures are where that
+lands. Everywhere else the trap is `enabled`, and it does not
+look the same in each SDK, because the key was never sent at all:
+
+- **Go** reads `false` for every tool, enabled or not — the wrapper's `Enabled`
+  is now `*bool` precisely so this reads as nil instead.
+- **Ruby** reads `nil` (`Types::Tool#enabled`, and `result["enabled"]` on the
+  raw hash).
+- **Python** services return the raw response dict, so `result["enabled"]`
+  **raises `KeyError`** — it is `result.get("enabled")` that returns `None`.
+- **TypeScript** reads `undefined`.
+
+**For a docked tool, use the absence of `position`** — or the project's `dock`
+array, which really does carry `enabled` — to tell a disabled tool from an
+enabled one.
+
+Kotlin's four new non-null members are class B by this document's rule: a
+response omitting one fails to deserialize. It needs a payload bc3 cannot
+produce — the partial emits all four unconditionally, and the five sibling
+dock-tool projections have modeled them `@required` all along — but a
+hand-written test stub that predates this change will hit it, which is the
+realistic way to meet it.
+
 ### `SearchResult` lost five required members and gained the special-branch keys (#651)
 
 BC3's search projection special-cases four result branches — chat lines,

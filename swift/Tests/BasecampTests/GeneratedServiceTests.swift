@@ -528,15 +528,33 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertTrue(sentURL.hasSuffix("/my/profile.json"))
     }
 
-    func testToolsServiceCreatePostsToBucketScopedPath() async throws {
-        let responseJSON: [String: Any] = [
-            "id": 800,
-            "name": "message_board",
-            "title": "Message Board (Copy)",
-            "enabled": true,
+    /// A dock tool's projection is the bare recordings/recording partial —
+    /// api/docks/tools/show.json.jbuilder renders it and adds nothing — so it
+    /// carries no `name` and no `enabled`, and it does carry `type`,
+    /// `visible_to_clients`, `inherits_status` and `creator` (#650).
+    private func toolResponseJSON(id: Int, title: String, type: String = "Message::Board") -> [String: Any] {
+        [
+            "id": id,
+            "status": "active",
+            "visible_to_clients": false,
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-01T00:00:00Z",
+            "title": title,
+            "inherits_status": true,
+            "type": type,
+            "url": "https://3.basecampapi.com/999999999/buckets/456/recordings/\(id).json",
+            "app_url": "https://3.basecamp.com/999999999/buckets/456/recordings/\(id)",
+            "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7Bkki--\(id).json",
+            "position": 5,
+            "bucket": ["id": 456, "name": "The Leto Laptop", "type": "Project"] as [String: Any],
+            "creator": ["id": 1049715913, "name": "Victor Cooper"] as [String: Any],
         ]
+    }
+
+    func testToolsServiceCreatePostsToBucketScopedPath() async throws {
+        // The bare recordings/recording projection a dock tool actually returns:
+        // no `name`, no `enabled` (#650).
+        let responseJSON: [String: Any] = toolResponseJSON(id: 800, title: "Message Board (Copy)")
         let data = try JSONSerialization.data(withJSONObject: responseJSON)
         let transport = MockTransport(statusCode: 201, data: data)
         let account = makeTestAccountClient(transport: transport)
@@ -559,14 +577,7 @@ final class GeneratedServiceTests: XCTestCase {
     }
 
     func testToolsServiceCreateOmitsTitleWhenNotProvided() async throws {
-        let responseJSON: [String: Any] = [
-            "id": 801,
-            "name": "message_board",
-            "title": "Message Board",
-            "enabled": true,
-            "created_at": "2026-01-01T00:00:00Z",
-            "updated_at": "2026-01-01T00:00:00Z",
-        ]
+        let responseJSON: [String: Any] = toolResponseJSON(id: 801, title: "Message Board")
         let data = try JSONSerialization.data(withJSONObject: responseJSON)
         let transport = MockTransport(statusCode: 201, data: data)
         let account = makeTestAccountClient(transport: transport)
@@ -585,10 +596,7 @@ final class GeneratedServiceTests: XCTestCase {
     // are sent verbatim. An explicit false must reach the wire, not be dropped. Only
     // Chat::Transcript and Kanban::Board honor it; all other tool types ignore it.
     private func sentToolBody(visibleToClients: Bool?) async throws -> [String: Any] {
-        let responseJSON: [String: Any] = [
-            "id": 802, "name": "chat", "title": "Campfire", "enabled": true,
-            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
-        ]
+        let responseJSON = toolResponseJSON(id: 802, title: "Campfire", type: "Chat::Transcript")
         let transport = MockTransport(statusCode: 201, data: try JSONSerialization.data(withJSONObject: responseJSON))
         let account = makeTestAccountClient(transport: transport)
         _ = try await account.tools.create(

@@ -27,6 +27,9 @@ func loadToolsFixture(t *testing.T, name string) []byte {
 	return data
 }
 
+// The dock-tool projection is the bare recordings/recording partial:
+// api/docks/tools/show.json.jbuilder renders it and adds nothing, so a tool
+// response carries no `name` and no `enabled` key at all (#650).
 func TestTool_UnmarshalGet(t *testing.T) {
 	data := loadToolsFixture(t, "get.json")
 
@@ -35,29 +38,52 @@ func TestTool_UnmarshalGet(t *testing.T) {
 		t.Fatalf("failed to unmarshal get.json: %v", err)
 	}
 
-	if tool.ID != 1069479339 {
-		t.Errorf("expected ID 1069479339, got %d", tool.ID)
+	if tool.ID != 1069479832 {
+		t.Errorf("expected ID 1069479832, got %d", tool.ID)
 	}
 	if tool.Status != "active" {
 		t.Errorf("expected status 'active', got %q", tool.Status)
 	}
-	if tool.Title != "To-dos" {
-		t.Errorf("expected title 'To-dos', got %q", tool.Title)
+	if tool.Title != "Chat" {
+		t.Errorf("expected title 'Chat', got %q", tool.Title)
 	}
-	if tool.Name != "todoset" {
-		t.Errorf("expected name 'todoset', got %q", tool.Name)
+	if tool.Type != "Chat::Transcript" {
+		t.Errorf("expected type 'Chat::Transcript', got %q", tool.Type)
 	}
-	if !tool.Enabled {
-		t.Error("expected Enabled to be true")
+	if tool.VisibleToClients {
+		t.Error("expected VisibleToClients to be false")
 	}
-	if tool.Position == nil || *tool.Position != 2 {
-		t.Errorf("expected position 2, got %v", tool.Position)
+	if !tool.InheritsStatus {
+		t.Error("expected InheritsStatus to be true")
 	}
-	if tool.URL != "https://3.basecampapi.com/195539477/buckets/2085958499/todosets/1069479339.json" {
+	if tool.BookmarkURL == "" {
+		t.Error("expected BookmarkURL to be populated")
+	}
+	// Chat::Transcript overrides Recordable#subscribable?, so the partial's
+	// `if recording.subscribable?` fires and subscription_url is emitted.
+	if tool.SubscriptionURL == "" {
+		t.Error("expected SubscriptionURL to be populated for a Chat::Transcript")
+	}
+	if tool.Position == nil || *tool.Position != 5 {
+		t.Errorf("expected position 5, got %v", tool.Position)
+	}
+	if tool.URL != "https://3.basecampapi.com/195539477/buckets/2085958505/chats/1069479832.json" {
 		t.Errorf("unexpected URL: %q", tool.URL)
 	}
-	if tool.AppURL != "https://3.basecamp.com/195539477/buckets/2085958499/todosets/1069479339" {
+	if tool.AppURL != "https://3.basecamp.com/195539477/buckets/2085958505/chats/1069479832" {
 		t.Errorf("unexpected AppURL: %q", tool.AppURL)
+	}
+
+	// The two keys #650 relaxed: never emitted, so never non-nil.
+	if tool.Name != nil {
+		t.Errorf("expected Name to be nil, got %q", *tool.Name)
+	}
+	if tool.Enabled != nil {
+		t.Errorf("expected Enabled to be nil, got %v", *tool.Enabled)
+	}
+	// A docked tool is docked, so the partial's `if !recording.docked?` is false.
+	if tool.Parent != nil {
+		t.Errorf("expected Parent to be nil for a docked tool, got %+v", tool.Parent)
 	}
 
 	// Verify timestamps are parsed
@@ -72,14 +98,25 @@ func TestTool_UnmarshalGet(t *testing.T) {
 	if tool.Bucket == nil {
 		t.Fatal("expected Bucket to be non-nil")
 	}
-	if tool.Bucket.ID != 2085958499 {
-		t.Errorf("expected Bucket.ID 2085958499, got %d", tool.Bucket.ID)
+	if tool.Bucket.ID != 2085958505 {
+		t.Errorf("expected Bucket.ID 2085958505, got %d", tool.Bucket.ID)
 	}
 	if tool.Bucket.Name != "The Leto Laptop" {
 		t.Errorf("expected Bucket.Name 'The Leto Laptop', got %q", tool.Bucket.Name)
 	}
 	if tool.Bucket.Type != "Project" {
 		t.Errorf("expected Bucket.Type 'Project', got %q", tool.Bucket.Type)
+	}
+
+	// Verify creator
+	if tool.Creator == nil {
+		t.Fatal("expected Creator to be non-nil")
+	}
+	if tool.Creator.ID != 1049715913 {
+		t.Errorf("expected Creator.ID 1049715913, got %d", tool.Creator.ID)
+	}
+	if tool.Creator.Name != "Victor Cooper" {
+		t.Errorf("expected Creator.Name 'Victor Cooper', got %q", tool.Creator.Name)
 	}
 }
 
@@ -290,17 +327,26 @@ func TestTool_UnmarshalCreate(t *testing.T) {
 		t.Fatalf("failed to unmarshal create.json: %v", err)
 	}
 
-	if tool.ID != 1069479400 {
-		t.Errorf("expected ID 1069479400, got %d", tool.ID)
+	if tool.ID != 1069479911 {
+		t.Errorf("expected ID 1069479911, got %d", tool.ID)
 	}
-	if tool.Title != "To-dos (copy)" {
-		t.Errorf("expected title 'To-dos (copy)', got %q", tool.Title)
+	if tool.Title != "Q&A Chat" {
+		t.Errorf("expected title 'Q&A Chat', got %q", tool.Title)
 	}
-	if tool.Name != "todoset" {
-		t.Errorf("expected name 'todoset', got %q", tool.Name)
+	if tool.Type != "Chat::Transcript" {
+		t.Errorf("expected type 'Chat::Transcript', got %q", tool.Type)
 	}
-	if !tool.Enabled {
-		t.Error("expected Enabled to be true")
+	// The 201 body is the same projection as GET, so it too omits both keys.
+	if tool.Name != nil {
+		t.Errorf("expected Name to be nil, got %q", *tool.Name)
+	}
+	if tool.Enabled != nil {
+		t.Errorf("expected Enabled to be nil, got %v", *tool.Enabled)
+	}
+	// Chat::Transcript is one of the two types that honor create-time
+	// visible_to_clients, and this tool was created with it true.
+	if !tool.VisibleToClients {
+		t.Error("expected VisibleToClients to be true")
 	}
 	if tool.Position == nil || *tool.Position != 6 {
 		t.Errorf("expected position 6, got %v", tool.Position)
@@ -315,17 +361,22 @@ func TestTool_UnmarshalUpdate(t *testing.T) {
 		t.Fatalf("failed to unmarshal update.json: %v", err)
 	}
 
-	if tool.ID != 1069479339 {
-		t.Errorf("expected ID 1069479339, got %d", tool.ID)
+	if tool.ID != 1069479832 {
+		t.Errorf("expected ID 1069479832, got %d", tool.ID)
 	}
-	if tool.Title != "Project Tasks" {
-		t.Errorf("expected title 'Project Tasks', got %q", tool.Title)
+	if tool.Title != "Team Chat" {
+		t.Errorf("expected title 'Team Chat', got %q", tool.Title)
 	}
-	if tool.Name != "todoset" {
-		t.Errorf("expected name 'todoset', got %q", tool.Name)
+	if tool.Name != nil {
+		t.Errorf("expected Name to be nil, got %q", *tool.Name)
 	}
 }
 
+// A disabled tool is removed from the dock, not deleted: `recording.positioned?`
+// is false so `position` is absent entirely. Absence of Position — never an
+// `enabled` key — is the disabled signal. This one is also a Vault, which does
+// not override Recordable#subscribable? (default false), so subscription_url is
+// absent too.
 func TestTool_UnmarshalDisabled(t *testing.T) {
 	data := loadToolsFixture(t, "disabled.json")
 
@@ -337,17 +388,115 @@ func TestTool_UnmarshalDisabled(t *testing.T) {
 	if tool.ID != 1069479343 {
 		t.Errorf("expected ID 1069479343, got %d", tool.ID)
 	}
-	if tool.Title != "Automatic Check-ins" {
-		t.Errorf("expected title 'Automatic Check-ins', got %q", tool.Title)
+	if tool.Title != "Docs & Files" {
+		t.Errorf("expected title 'Docs & Files', got %q", tool.Title)
 	}
-	if tool.Name != "questionnaire" {
-		t.Errorf("expected name 'questionnaire', got %q", tool.Name)
+	if tool.Type != "Vault" {
+		t.Errorf("expected type 'Vault', got %q", tool.Type)
 	}
-	if tool.Enabled {
-		t.Error("expected Enabled to be false")
+	if tool.Name != nil {
+		t.Errorf("expected Name to be nil, got %q", *tool.Name)
+	}
+	if tool.Enabled != nil {
+		t.Errorf("expected Enabled to be nil even for a disabled tool, got %v", *tool.Enabled)
 	}
 	if tool.Position != nil {
 		t.Errorf("expected position to be nil, got %v", tool.Position)
+	}
+	if tool.SubscriptionURL != "" {
+		t.Errorf("expected SubscriptionURL to be empty for a Vault, got %q", tool.SubscriptionURL)
+	}
+}
+
+// `parent` is emitted only when `!recording.docked?`. The dock-tool lookup
+// scopes by recordable TYPE (Recordable::CORE_GROUPS["dock_tools"] includes
+// Vault) rather than by dock membership, so a vault nested inside another vault
+// resolves through GET /dock/tools/:id and does carry a parent.
+func TestTool_UnmarshalNestedVaultCarriesParent(t *testing.T) {
+	data := loadToolsFixture(t, "nested_vault.json")
+
+	var tool Tool
+	if err := json.Unmarshal(data, &tool); err != nil {
+		t.Fatalf("failed to unmarshal nested_vault.json: %v", err)
+	}
+
+	if tool.ID != 1069479562 {
+		t.Errorf("expected ID 1069479562, got %d", tool.ID)
+	}
+	if tool.Parent == nil {
+		t.Fatal("expected Parent to be non-nil for a nested vault")
+	}
+	if tool.Parent.ID != 1069479343 {
+		t.Errorf("expected Parent.ID 1069479343, got %d", tool.Parent.ID)
+	}
+	if tool.Parent.Title != "Docs & Files" {
+		t.Errorf("expected Parent.Title 'Docs & Files', got %q", tool.Parent.Title)
+	}
+	if tool.Parent.Type != "Vault" {
+		t.Errorf("expected Parent.Type 'Vault', got %q", tool.Parent.Type)
+	}
+}
+
+// The Unmarshal tests above decode the fixture straight into the wrapper, which
+// bypasses toolFromGenerated — the conversion where a dropped field silently
+// zeroes. This one goes through the service, so every absorbed key has to
+// survive the generated-struct hop.
+func TestToolsServiceGetCarriesTheFullProjection(t *testing.T) {
+	const (
+		accountID = "5245563"
+		toolID    = int64(1069479832)
+	)
+
+	expectedPath := fmt.Sprintf("/%s/dock/tools/%d", accountID, toolID)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != expectedPath {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(loadToolsFixture(t, "get.json"))
+	}))
+	defer server.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	tool, err := client.ForAccount(accountID).Tools().Get(context.Background(), toolID)
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+
+	if tool.Type != "Chat::Transcript" {
+		t.Errorf("Type = %q, want \"Chat::Transcript\"", tool.Type)
+	}
+	if tool.VisibleToClients {
+		t.Error("VisibleToClients = true, want false")
+	}
+	if !tool.InheritsStatus {
+		t.Error("InheritsStatus = false, want true")
+	}
+	if tool.BookmarkURL == "" {
+		t.Error("BookmarkURL is empty; the partial emits it unconditionally")
+	}
+	if tool.SubscriptionURL == "" {
+		t.Error("SubscriptionURL is empty; a Chat::Transcript is subscribable")
+	}
+	if tool.Creator == nil {
+		t.Fatal("Creator is nil")
+	}
+	if tool.Creator.Name != "Victor Cooper" {
+		t.Errorf("Creator.Name = %q, want \"Victor Cooper\"", tool.Creator.Name)
+	}
+	if tool.Creator.EmailAddress != "victor@honchodesign.com" {
+		t.Errorf("Creator.EmailAddress = %q, want \"victor@honchodesign.com\"", tool.Creator.EmailAddress)
+	}
+	if tool.Name != nil {
+		t.Errorf("Name = %q, want nil — the projection emits no `name` key", *tool.Name)
+	}
+	if tool.Enabled != nil {
+		t.Errorf("Enabled = %v, want nil — the projection emits no `enabled` key", *tool.Enabled)
 	}
 }
 

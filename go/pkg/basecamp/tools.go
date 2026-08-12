@@ -9,18 +9,46 @@ import (
 )
 
 // Tool represents a dock tool in a Basecamp project.
+//
+// The projection is the bare recordings/recording partial: BC3's
+// api/docks/tools/show.json.jbuilder renders it and adds nothing.
 type Tool struct {
-	ID        int64     `json:"id"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Title     string    `json:"title"`
-	Name      string    `json:"name"`
-	Enabled   bool      `json:"enabled"`
-	Position  *int      `json:"position"`
-	URL       string    `json:"url"`
-	AppURL    string    `json:"app_url"`
-	Bucket    *Bucket   `json:"bucket,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	// Type is the tool's recordable type, e.g. "Chat::Transcript", "Todoset", "Vault".
+	Type            string `json:"type"`
+	URL             string `json:"url"`
+	AppURL          string `json:"app_url"`
+	BookmarkURL     string `json:"bookmark_url,omitempty"`
+	SubscriptionURL string `json:"subscription_url,omitempty"`
+	// Position is set only for a positioned recording. For a docked tool that
+	// makes a nil Position the disabled signal — disabling removes the tool
+	// from the dock without deleting it — but positioning is independent of
+	// dockedness, so a nested vault is not docked and is still positioned.
+	Position *int `json:"position"`
+	// Parent is nil for a docked tool. It is populated only for a nested
+	// recording reachable through this route: the dock-tool lookup scopes by
+	// recordable type, so a vault nested inside another vault resolves here
+	// and is not docked.
+	Parent  *Parent `json:"parent,omitempty"`
+	Bucket  *Bucket `json:"bucket,omitempty"`
+	Creator *Person `json:"creator,omitempty"`
+
+	// Name is always nil: the tool projection emits no `name` key. The dock
+	// array on a project (Project.Dock) carries the tool's slug instead. The
+	// pointer is deliberate — a plain string would read as "" for every tool
+	// and look like a real answer.
+	Name *string `json:"name,omitempty"`
+
+	// Enabled is always nil: no layer of the tool projection emits an
+	// `enabled` key. The project's dock array is authoritative; for a docked
+	// tool, Position (see above) is the equivalent signal.
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // CreateToolOptions specifies optional parameters for creating a tool.
@@ -286,14 +314,19 @@ func (s *ToolsService) Reposition(ctx context.Context, toolID int64, position in
 // toolFromGenerated converts a generated Tool to our clean type.
 func toolFromGenerated(gt generated.Tool) Tool {
 	t := Tool{
-		Status:    deref(gt.Status),
-		CreatedAt: gt.CreatedAt,
-		UpdatedAt: gt.UpdatedAt,
-		Title:     gt.Title,
-		Name:      gt.Name,
-		Enabled:   gt.Enabled,
-		URL:       deref(gt.Url),
-		AppURL:    deref(gt.AppUrl),
+		Status:           deref(gt.Status),
+		VisibleToClients: gt.VisibleToClients,
+		CreatedAt:        gt.CreatedAt,
+		UpdatedAt:        gt.UpdatedAt,
+		Title:            gt.Title,
+		InheritsStatus:   gt.InheritsStatus,
+		Type:             gt.Type,
+		URL:              deref(gt.Url),
+		AppURL:           deref(gt.AppUrl),
+		BookmarkURL:      deref(gt.BookmarkUrl),
+		SubscriptionURL:  deref(gt.SubscriptionUrl),
+		Name:             gt.Name,
+		Enabled:          gt.Enabled,
 	}
 
 	if gt.Id != 0 {
@@ -305,12 +338,27 @@ func toolFromGenerated(gt generated.Tool) Tool {
 		t.Position = &pos
 	}
 
+	if gt.Parent != nil {
+		t.Parent = &Parent{
+			ID:     gt.Parent.Id,
+			Title:  gt.Parent.Title,
+			Type:   gt.Parent.Type,
+			URL:    gt.Parent.Url,
+			AppURL: gt.Parent.AppUrl,
+		}
+	}
+
 	if gt.Bucket != nil {
 		t.Bucket = &Bucket{
 			ID:   gt.Bucket.Id,
 			Name: gt.Bucket.Name,
 			Type: gt.Bucket.Type,
 		}
+	}
+
+	if gt.Creator.Id != 0 || gt.Creator.Name != "" {
+		creator := personFromGenerated(gt.Creator)
+		t.Creator = &creator
 	}
 
 	return t

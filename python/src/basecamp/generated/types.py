@@ -1928,16 +1928,23 @@ class ToggleGaugeRequestContent(TypedDict):
 
 class Tool(TypedDict):
     app_url: NotRequired[str]
+    bookmark_url: NotRequired[str]
     bucket: NotRequired[RecordingBucket]
     created_at: str
-    enabled: bool
+    creator: Person
+    enabled: NotRequired[bool]
     id: int
-    name: str
+    inherits_status: bool
+    name: NotRequired[str]
+    parent: NotRequired[RecordingParent]
     position: NotRequired[int]
     status: NotRequired[str]
+    subscription_url: NotRequired[str]
     title: str
+    type: str
     updated_at: str
     url: NotRequired[str]
+    visible_to_clients: bool
 
 
 class UnauthorizedErrorResponseContent(TypedDict):

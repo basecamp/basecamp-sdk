@@ -337,6 +337,42 @@ targets:
     pointer: ""
     schema: Chatbot
 
+  # A dock tool's projection is the BARE recordings/recording partial:
+  # app/views/api/docks/tools/show.json.jbuilder renders it and adds nothing, so
+  # (unlike Todoset/Questionnaire, whose own partials add it) a tool response
+  # carries no `name` — and no `enabled` at all. These are operation entries so
+  # the guard validates the complete response body of each operation, which is
+  # the point: the fabricated bodies these fixtures used to carry are exactly how
+  # `name`/`enabled` stayed @required through six SDKs (#650).
+  - id: tool-get
+    operation: GetTool
+    fixture: tools/get.json
+  - id: tool-create
+    operation: CreateTool
+    fixture: tools/create.json
+  - id: tool-update
+    operation: UpdateTool
+    fixture: tools/update.json
+  # The two conditional-key variants, as pointer entries so the coverage
+  # invariant's concrete-instance rule has a Tool-rooted representative.
+  #
+  # A disabled tool is removed from the dock but not deleted, so the partial's
+  # `if recording.positioned?` is false and `position` is absent entirely. This
+  # one is also a Vault, which does not override Recordable#subscribable?
+  # (default false), so `subscription_url` is absent too.
+  - id: tool-disabled
+    fixture: tools/disabled.json
+    pointer: ""
+    schema: Tool
+  # `parent` is emitted only when `!recording.docked?`. The dock-tool lookup
+  # scopes by recordable TYPE (Recordable::CORE_GROUPS["dock_tools"] includes
+  # Vault) rather than by dock membership, so a vault nested inside another
+  # vault resolves through GET /dock/tools/:id and does carry a parent.
+  - id: tool-nested-vault
+    fixture: tools/nested_vault.json
+    pointer: ""
+    schema: Tool
+
 covered_schemas:
   MyNote: [my-note-get]
   Comment: [comment-get]
@@ -371,6 +407,7 @@ covered_schemas:
   Gauge: [gauge-get]
   GaugeNeedle: [gauge-needle-get]
   Chatbot: [chatbot-get, chatbot-get-nonadmin]
+  Tool: [tool-get, tool-create, tool-update, tool-disabled, tool-nested-vault]
 
 excluded_schemas:
   TimelineAttachment:

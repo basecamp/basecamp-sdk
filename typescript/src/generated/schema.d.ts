@@ -6579,16 +6579,41 @@ export interface components {
             /** Format: int64 */
             id: number;
             status?: string;
+            visible_to_clients: boolean;
             created_at: string;
             updated_at: string;
             title: string;
-            name: string;
-            enabled: boolean;
-            /** Format: int32 */
-            position?: number;
+            inherits_status: boolean;
+            /** @description The tool's recordable type, e.g. `Chat::Transcript`, `Todoset`, `Vault`. */
+            type: string;
             url?: string;
             app_url?: string;
+            bookmark_url?: string;
+            /** @description Absent for tool types that are not subscribable. */
+            subscription_url?: string;
+            /**
+             * Format: int32
+             * @description Emitted only for a positioned recording. For a docked tool that makes an
+             *     absent position the disabled signal — disabling removes the tool from the
+             *     dock without deleting it. Positioning is independent of dockedness, so
+             *     this does not generalize: a nested vault is not docked and is positioned.
+             */
+            position?: number;
+            parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["RecordingBucket"];
+            creator: components["schemas"]["Person"];
+            /**
+             * @description Not emitted by this projection. The dock array on a project
+             *     (`DockItem$name`) carries the tool's slug; this key is absent from every
+             *     GetTool/CreateTool/UpdateTool response.
+             */
+            name?: string;
+            /**
+             * @description Not emitted by this projection. The dock array on a project
+             *     (`DockItem$enabled`) is the authoritative enabled flag; on a docked tool's
+             *     own response, an absent `position` is the equivalent signal.
+             */
+            enabled?: boolean;
         };
         UnauthorizedErrorResponseContent: {
             error: string;

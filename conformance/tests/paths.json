@@ -358,19 +358,26 @@
         "status": 200,
         "body": {
           "id": 789,
-          "name": "todoset",
           "title": "To-dos",
           "status": "active",
-          "enabled": true,
+          "visible_to_clients": false,
+          "inherits_status": true,
+          "type": "Todoset",
           "position": 1,
           "created_at": "2024-01-01T00:00:00Z",
           "updated_at": "2024-01-01T00:00:00Z",
           "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json",
           "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/BAh7Bkki--789.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/456/recordings/789/subscription.json",
           "bucket": {
             "id": 456,
             "name": "Test",
             "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "name": "Victor Cooper"
           }
         }
       }
@@ -407,19 +414,25 @@
         "status": 201,
         "body": {
           "id": 800,
-          "name": "message_board",
           "title": "Message Board (Copy)",
           "status": "active",
-          "enabled": true,
+          "visible_to_clients": false,
+          "inherits_status": true,
+          "type": "Message::Board",
           "position": 5,
           "created_at": "2024-01-01T00:00:00Z",
           "updated_at": "2024-01-01T00:00:00Z",
           "url": "https://3.basecampapi.com/999/buckets/456/message_boards/800.json",
           "app_url": "https://3.basecamp.com/999/buckets/456/message_boards/800",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/BAh7Bkki--800.json",
           "bucket": {
             "id": 456,
             "name": "Test",
             "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "name": "Victor Cooper"
           }
         }
       }
@@ -455,19 +468,25 @@
         "status": 201,
         "body": {
           "id": 801,
-          "name": "message_board",
           "title": "Message Board",
           "status": "active",
-          "enabled": true,
+          "visible_to_clients": false,
+          "inherits_status": true,
+          "type": "Message::Board",
           "position": 6,
           "created_at": "2024-01-01T00:00:00Z",
           "updated_at": "2024-01-01T00:00:00Z",
           "url": "https://3.basecampapi.com/999/buckets/456/message_boards/801.json",
           "app_url": "https://3.basecamp.com/999/buckets/456/message_boards/801",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/BAh7Bkki--801.json",
           "bucket": {
             "id": 456,
             "name": "Test",
             "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "name": "Victor Cooper"
           }
         }
       }
@@ -532,19 +551,26 @@
         "status": 200,
         "body": {
           "id": 789,
-          "name": "todoset",
           "title": "To-dos",
           "status": "active",
-          "enabled": true,
+          "visible_to_clients": false,
+          "inherits_status": true,
+          "type": "Todoset",
           "position": 1,
           "created_at": "2024-01-01T00:00:00Z",
           "updated_at": "2024-01-01T00:00:00Z",
           "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json",
           "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/BAh7Bkki--789.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/456/recordings/789/subscription.json",
           "bucket": {
             "id": 456,
             "name": "Test",
             "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "name": "Victor Cooper"
           }
         }
       }
@@ -581,19 +607,26 @@
         "status": 200,
         "body": {
           "id": 789,
-          "name": "todoset",
           "title": "To-dos",
           "status": "active",
-          "enabled": true,
+          "visible_to_clients": false,
+          "inherits_status": true,
+          "type": "Todoset",
           "position": 1,
           "created_at": "2024-01-01T00:00:00Z",
           "updated_at": "2024-01-01T00:00:00Z",
           "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json",
           "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/BAh7Bkki--789.json",
+          "subscription_url": "https://3.basecampapi.com/999/buckets/456/recordings/789/subscription.json",
           "bucket": {
             "id": 456,
             "name": "Test",
             "type": "Project"
+          },
+          "creator": {
+            "id": 1049715913,
+            "name": "Victor Cooper"
           }
         }
       }

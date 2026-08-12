@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-12T15:52:56Z
+# Generated: 2026-08-12T19:58:36Z
 
 require "json"
 require "time"
@@ -4823,39 +4823,53 @@ module Basecamp
     # Tool
     class Tool
       include TypeHelpers
-      attr_accessor :created_at, :enabled, :id, :name, :title, :updated_at, :app_url, :bucket, :position, :status, :url
+      attr_accessor :created_at, :creator, :id, :inherits_status, :title, :type, :updated_at, :visible_to_clients, :app_url, :bookmark_url, :bucket, :enabled, :name, :parent, :position, :status, :subscription_url, :url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[created_at enabled id name title updated_at].freeze
+        %i[created_at creator id inherits_status title type updated_at visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @created_at = parse_datetime(data["created_at"])
-        @enabled = parse_boolean(data["enabled"])
+        @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
-        @name = data["name"]
+        @inherits_status = parse_boolean(data["inherits_status"])
         @title = data["title"]
+        @type = data["type"]
         @updated_at = parse_datetime(data["updated_at"])
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @app_url = data["app_url"]
+        @bookmark_url = data["bookmark_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @enabled = parse_boolean(data["enabled"])
+        @name = data["name"]
+        @parent = parse_type(data["parent"], "RecordingParent")
         @position = parse_integer(data["position"])
         @status = data["status"]
+        @subscription_url = data["subscription_url"]
         @url = data["url"]
       end
 
       def to_h
         {
           "created_at" => @created_at,
-          "enabled" => @enabled,
+          "creator" => @creator,
           "id" => @id,
-          "name" => @name,
+          "inherits_status" => @inherits_status,
           "title" => @title,
+          "type" => @type,
           "updated_at" => @updated_at,
+          "visible_to_clients" => @visible_to_clients,
           "app_url" => @app_url,
+          "bookmark_url" => @bookmark_url,
           "bucket" => @bucket,
+          "enabled" => @enabled,
+          "name" => @name,
+          "parent" => @parent,
           "position" => @position,
           "status" => @status,
+          "subscription_url" => @subscription_url,
           "url" => @url,
         }.compact
       end

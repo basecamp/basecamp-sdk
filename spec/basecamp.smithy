@@ -9623,10 +9623,20 @@ structure ProjectConstruction {
 
 long ToolId
 
+// The dock-tool projection is the bare recordings/recording partial:
+// api/docks/tools/show.json.jbuilder renders it and adds nothing. Every member
+// below through `creator` is a key that partial emits; the sibling dock-tool
+// projections (Todoset, MessageBoard, Schedule, Questionnaire, Vault) render
+// the same partial through a recordable-specific wrapper and model the same
+// envelope. The two trailing members, `name` and `enabled`, are the exception:
+// the partial emits neither, and they survive only because #650 relaxed them
+// rather than removing them. Their doc comments say so.
 structure Tool {
   @required
   id: ToolId
   status: String
+  @required
+  visible_to_clients: Boolean
   @required
   created_at: ISO8601Timestamp
   @required
@@ -9634,13 +9644,37 @@ structure Tool {
   @required
   title: String
   @required
-  name: String
+  inherits_status: Boolean
+  /// The tool's recordable type, e.g. `Chat::Transcript`, `Todoset`, `Vault`.
   @required
-  enabled: Boolean
-  position: Integer
+  type: String
   url: String
   app_url: String
+  bookmark_url: String
+  /// Absent for tool types that are not subscribable.
+  subscription_url: String
+  /// Emitted only for a positioned recording. For a docked tool that makes an
+  /// absent position the disabled signal — disabling removes the tool from the
+  /// dock without deleting it. Positioning is independent of dockedness, so
+  /// this does not generalize: a nested vault is not docked and is positioned.
+  position: Integer
+  /// Absent for a docked tool. Present only for a nested recording reachable
+  /// through this route: the dock-tool lookup scopes by recordable type, so a
+  /// vault nested inside another vault resolves here and is not docked.
+  parent: RecordingParent
   bucket: RecordingBucket
+  @required
+  creator: Person
+
+  /// Not emitted by this projection. The dock array on a project
+  /// (`DockItem$name`) carries the tool's slug; this key is absent from every
+  /// GetTool/CreateTool/UpdateTool response.
+  name: String
+
+  /// Not emitted by this projection. The dock array on a project
+  /// (`DockItem$enabled`) is the authoritative enabled flag; on a docked tool's
+  /// own response, an absent `position` is the equivalent signal.
+  enabled: Boolean
 }
 
 // ===== Lineup Marker Shapes =====
