@@ -5,8 +5,10 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestExtractJSONTag(t *testing.T) {
@@ -1067,5 +1069,607 @@ func TestPathPrefixAndField(t *testing.T) {
 			t.Errorf("pathPrefixAndField(%q) = (%q, %q), want (%q, %q)",
 				c.src, prefix, field, c.wantPrefix, c.wantField)
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Embedded (anonymous) field promotion — issue #599.
+//
+// Before the promotion walk existed, an anonymous field was dropped on the
+// floor (no tag, no name), so a wrapper that embedded a struct read as having
+// none of its promoted fields and every one of them was reported missing. The
+// cases below come in pairs: an embedding wrapper that must PASS, and a
+// genuinely-drifted sibling built on the same shape that must still FAIL — a
+// fix that simply stopped checking embedding wrappers would pass the first and
+// fail the second.
+// ---------------------------------------------------------------------------
+
+// src rewrites ~ to a backtick so struct-tag fixtures can be written as raw
+// string literals (Go raw strings cannot contain a backtick, and these
+// embedding fixtures carry too many tags for the escaped-concatenation style
+// used by the older fixtures above).
+func src(s string) string { return strings.ReplaceAll(s, "~", "`") }
+
+// flattenFixture parses one source file, collects its structs and resolves
+// their embedded types, returning the flattened universe.
+func flattenFixture(t *testing.T, source string) map[string]*structFields {
+	t.Helper()
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "fixture.go", source, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	structs := collectStructsAndMarkers(fset, f)
+	flattenEmbedded(structs, collectTypeDecls(f))
+	return structs
+}
+
+// embeddingGenSrc is the generated side shared by the embedding pair below: 14
+// tags, 12 of which the wrapper can only satisfy through promotion.
+const embeddingGenSrc = `package generated
+
+type Task struct {
+	Id               int64  ~json:"id"~
+	Status           string ~json:"status"~
+	Title            string ~json:"title"~
+	Content          string ~json:"content"~
+	Type             string ~json:"type"~
+	Position         int64  ~json:"position"~
+	VisibleToClients bool   ~json:"visible_to_clients"~
+	CreatorName      string ~json:"creator_name"~
+	CreatorId        int64  ~json:"creator_id"~
+	CreatedAt        string ~json:"created_at"~
+	UpdatedAt        string ~json:"updated_at"~
+	Url              string ~json:"url"~
+	AppUrl           string ~json:"app_url"~
+	BookmarkUrl      string ~json:"bookmark_url"~
+}
+`
+
+// embeddingWrapperSrc declares two tags directly and inherits the other twelve
+// through a two-level embedding chain (Task embeds Meta by value, Meta embeds
+// *Audit by pointer). Meta and Audit live in a SECOND wrapper file, so the
+// resolution has to happen after every file is parsed, not per file.
+const embeddingWrapperSrc = `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Task struct {
+	Meta
+	Status string ~json:"status"~
+	Title  string ~json:"title"~
+}
+
+func taskFromGenerated(g generated.Task) Task {
+	t := Task{Status: g.Status}
+	t.Title = g.Title
+	t.ID = g.Id
+	t.Content = g.Content
+	t.Type = g.Type
+	t.Position = g.Position
+	t.VisibleToClients = g.VisibleToClients
+	t.CreatorName = g.CreatorName
+	t.CreatorID = g.CreatorId
+	t.CreatedAt = g.CreatedAt
+	t.UpdatedAt = g.UpdatedAt
+	t.URL = g.Url
+	t.AppURL = g.AppUrl
+	t.BookmarkURL = g.BookmarkUrl
+	return t
+}
+`
+
+const embeddingBaseSrc = `package basecamp
+
+type Meta struct {
+	*Audit
+	ID               int64  ~json:"id"~
+	Content          string ~json:"content"~
+	Type             string ~json:"type"~
+	Position         int64  ~json:"position"~
+	VisibleToClients bool   ~json:"visible_to_clients"~
+	CreatorName      string ~json:"creator_name"~
+	CreatorID        int64  ~json:"creator_id"~
+}
+
+type Audit struct {
+	CreatedAt   string ~json:"created_at"~
+	UpdatedAt   string ~json:"updated_at"~
+	URL         string ~json:"url"~
+	AppURL      string ~json:"app_url"~
+	BookmarkURL string ~json:"bookmark_url"~
+}
+`
+
+// TestRun_EmbeddedWrapperInSync is the #599 regression. Every generated tag is
+// present on the wrapper — two declared directly, twelve promoted through the
+// embedding chain — and every one is assigned. Before the promotion walk, this
+// reported all twelve promoted tags as missing.
+func TestRun_EmbeddedWrapperInSync(t *testing.T) {
+	wrapperDir, generatedFile := writeDriftFixtures(t, src(embeddingGenSrc), map[string]string{
+		"task.go": src(embeddingWrapperSrc),
+		"meta.go": src(embeddingBaseSrc),
+	})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: expected no drift for an embedding wrapper, got %v", err)
+	}
+}
+
+// TestRun_EmbeddedWrapperGenuinelyMissingTag is the paired negative: the same
+// embedding shape, plus one generated tag that neither the wrapper nor
+// anything it embeds declares. Resolving embedded fields must not blunt the
+// check — this must still be reported.
+func TestRun_EmbeddedWrapperGenuinelyMissingTag(t *testing.T) {
+	genSrc := strings.Replace(embeddingGenSrc,
+		"\tBookmarkUrl      string ~json:\"bookmark_url\"~\n",
+		"\tBookmarkUrl      string ~json:\"bookmark_url\"~\n\tSubscriptionUrl  string ~json:\"subscription_url\"~\n", 1)
+	if !strings.Contains(genSrc, "subscription_url") {
+		t.Fatal("fixture setup: subscription_url was not added to the generated struct")
+	}
+	wrapperDir, generatedFile := writeDriftFixtures(t, src(genSrc), map[string]string{
+		"task.go": src(embeddingWrapperSrc),
+		"meta.go": src(embeddingBaseSrc),
+	})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: expected drift on subscription_url, which no embedded struct declares, got nil")
+	}
+}
+
+// TestRun_EmbeddedPromotedFieldUnassigned proves the population check reaches
+// through promotion too: the tag is declared (on the embedded struct) but the
+// *FromGenerated body never assigns it, in any spelling.
+func TestRun_EmbeddedPromotedFieldUnassigned(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	ID      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: expected population drift on the promoted-but-unassigned Content field, got nil")
+	}
+}
+
+// TestRun_EmbeddedStructAssignedWholesale covers the other legal spelling:
+// assigning the embedded struct itself populates every field promoted through
+// it, including fields promoted from a deeper embed.
+func TestRun_EmbeddedStructAssignedWholesale(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id        int64  ~json:"id"~
+	Content   string ~json:"content"~
+	CreatedAt string ~json:"created_at"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Stamp struct {
+	CreatedAt string ~json:"created_at"~
+}
+
+type Base struct {
+	Stamp
+	ID      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.Base = Base{ID: g.Id, Content: g.Content, Stamp: Stamp{CreatedAt: g.CreatedAt}}
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: assigning the embedded struct wholesale must populate its promoted fields, got %v", err)
+	}
+}
+
+// TestRun_GeneratedStructEmbeds covers the other side of the pair: the
+// GENERATED struct embeds a struct, so its promoted tags are part of the
+// contract the wrapper must satisfy. Dropping them would make the check
+// silently under-report.
+func TestRun_GeneratedStructEmbeds(t *testing.T) {
+	genSrc := src(`package generated
+
+type Timestamps struct {
+	CreatedAt string ~json:"created_at"~
+	UpdatedAt string ~json:"updated_at"~
+}
+
+type Note struct {
+	Timestamps
+	Id int64 ~json:"id"~
+}
+`)
+	wrapperMissing := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Note struct {
+	ID        int64  ~json:"id"~
+	CreatedAt string ~json:"created_at"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	n.CreatedAt = g.CreatedAt
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperMissing})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: expected drift on updated_at, promoted onto the generated struct, got nil")
+	}
+
+	wrapperComplete := strings.Replace(wrapperMissing,
+		"\tn.CreatedAt = g.CreatedAt\n",
+		"\tn.CreatedAt = g.CreatedAt\n\tn.UpdatedAt = g.UpdatedAt\n", 1)
+	wrapperComplete = strings.Replace(wrapperComplete,
+		src("\tCreatedAt string ~json:\"created_at\"~\n"),
+		src("\tCreatedAt string ~json:\"created_at\"~\n\tUpdatedAt string ~json:\"updated_at\"~\n"), 1)
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperComplete})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: wrapper covering both promoted generated tags must pass, got %v", err)
+	}
+}
+
+// TestRun_UnresolvableEmbedIsReportedNotSkipped pins the deliberate choice for
+// an embed the checker cannot resolve: report it for any pair that reaches it,
+// because the promoted fields are invisible and pretending they are absent (or
+// that there are none) is the silent-drop failure mode of #599. Structs
+// OUTSIDE every pair keep their unresolvable embeds for free — go/pkg/basecamp
+// has one today (FlexTime embeds time.Time).
+func TestRun_UnresolvableEmbedIsReportedNotSkipped(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id int64 ~json:"id"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import (
+	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+)
+
+// FlexTime is outside every pair: its unresolvable embed must NOT fail the run.
+type FlexTime struct {
+	time.Time
+}
+
+type Note struct {
+	ID int64 ~json:"id"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: an unresolvable embed on a struct outside every pair must not fail, got %v", err)
+	}
+
+	// Now put the unresolvable embed ON the paired wrapper.
+	paired := strings.Replace(wrapperSrc, src("type Note struct {\n\tID int64 ~json:\"id\"~\n}"),
+		src("type Note struct {\n\ttime.Time\n\tID int64 ~json:\"id\"~\n}"), 1)
+	if !strings.Contains(paired, "\ttime.Time\n\tID") {
+		t.Fatal("fixture setup: the embed was not added to the paired wrapper")
+	}
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": paired})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: an unresolvable embed on a paired wrapper must be reported, got nil")
+	}
+}
+
+// TestFlattenEmbedded_Shadowing pins encoding/json's promotion rules: a tag
+// declared directly on the struct wins over the same tag promoted from an
+// embed, and a depth-1 promotion wins over depth 2.
+func TestFlattenEmbedded_Shadowing(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Deep struct {
+	Name string ~json:"name"~
+	Deep string ~json:"deep_only"~
+}
+
+type Mid struct {
+	Deep
+	Name string ~json:"name"~
+	Kind string ~json:"kind"~
+}
+
+type Outer struct {
+	Mid
+	Name string ~json:"name"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	for _, tag := range []string{"name", "kind", "deep_only"} {
+		if !outer.tags[tag] {
+			t.Errorf("expected Outer to carry tag %q, got %v", tag, outer.tags)
+		}
+	}
+	if got := outer.tagToGoField["name"]; got != "Name" {
+		t.Errorf("name should resolve to Outer's own Name field, got %q", got)
+	}
+	// The own field wins, so its population target is itself alone — not the
+	// embedded path that would also have carried a "name".
+	if got := outer.populationTargets("name"); len(got) != 1 || got[0] != "Name" {
+		t.Errorf("expected population target [Name] for the shadowing own field, got %v", got)
+	}
+	if got := outer.populationTargets("kind"); len(got) != 2 || got[0] != "Mid" || got[1] != "Kind" {
+		t.Errorf("expected population targets [Mid Kind] for the depth-1 promotion, got %v", got)
+	}
+	if got := outer.populationTargets("deep_only"); len(got) != 3 || got[0] != "Mid" || got[1] != "Deep" || got[2] != "Deep" {
+		t.Errorf("expected population targets [Mid Deep Deep] for the depth-2 promotion, got %v", got)
+	}
+}
+
+// TestFlattenEmbedded_SameDepthConflictCancels pins the other half of
+// encoding/json's rule: two embeds contributing the same tag at the same depth
+// cancel out, so the tag is NOT on the wire and must not be reported as
+// present. Non-conflicting tags from the same two embeds still promote.
+func TestFlattenEmbedded_SameDepthConflictCancels(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Left struct {
+	Name string ~json:"name"~
+	Only string ~json:"left_only"~
+}
+
+type Right struct {
+	Name string ~json:"name"~
+	Only string ~json:"right_only"~
+}
+
+type Outer struct {
+	Left
+	Right
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["name"] {
+		t.Error("a tag contributed twice at the same depth is dropped by encoding/json; it must not count as present")
+	}
+	if !outer.tags["left_only"] || !outer.tags["right_only"] {
+		t.Errorf("non-conflicting tags from both embeds must still promote, got %v", outer.tags)
+	}
+}
+
+// TestFlattenEmbedded_CyclesTerminate covers mutual and self embedding. The
+// assertion that matters is that this returns at all; the tag expectations
+// pin the fields it still finds on the way round.
+func TestFlattenEmbedded_CyclesTerminate(t *testing.T) {
+	source := src(`package fixture
+
+type A struct {
+	*B
+	AField string ~json:"a_field"~
+}
+
+type B struct {
+	*A
+	BField string ~json:"b_field"~
+}
+
+type Selfish struct {
+	*Selfish
+	SelfField string ~json:"self_field"~
+}
+`)
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "fixture.go", source, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	structs := collectStructsAndMarkers(fset, f)
+	decls := collectTypeDecls(f)
+	// flattenEmbedded runs on its own goroutine so a walk that fails to
+	// terminate fails the test instead of hanging the whole package.
+	done := make(chan struct{})
+	go func() {
+		flattenEmbedded(structs, decls)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("flattenEmbedded did not terminate on an embedding cycle")
+	}
+	if a := structs["A"]; a == nil || !a.tags["a_field"] || !a.tags["b_field"] {
+		t.Errorf("expected A to carry a_field and b_field, got %v", structs["A"])
+	}
+	if s := structs["Selfish"]; s == nil || !s.tags["self_field"] || len(s.tags) != 1 {
+		t.Errorf("expected Selfish to carry exactly self_field, got %v", structs["Selfish"])
+	}
+}
+
+// TestFlattenEmbedded_NonStructAndAliasEmbeds covers the two resolvable
+// non-struct shapes: an embedded interface or map promotes no JSON fields
+// (generated.ClientWithResponses embeds ClientInterface today), while a defined
+// type standing for a struct is followed to it.
+func TestFlattenEmbedded_NonStructAndAliasEmbeds(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Doer interface{ Do() }
+
+type Payload map[string]string
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Alias Base
+
+type Outer struct {
+	Doer
+	Payload
+	Alias
+	Name string ~json:"name"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if len(outer.unresolved) != 0 {
+		t.Errorf("interface/map/alias embeds all resolve; got unresolved %v", outer.unresolved)
+	}
+	if !outer.tags["id"] {
+		t.Errorf("expected the alias embed to promote id, got %v", outer.tags)
+	}
+	if !outer.tags["name"] || len(outer.tags) != 2 {
+		t.Errorf("expected exactly name+id, got %v", outer.tags)
+	}
+}
+
+// TestCollectStructs_TaggedAnonymousFieldNotPromoted pins the encoding/json
+// carve-out: an anonymous field that carries its own json tag is an ordinary
+// field under that tag, not a promotion source.
+func TestCollectStructs_TaggedAnonymousFieldNotPromoted(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Outer struct {
+	Base ~json:"base"~
+	Name string ~json:"name"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["id"] {
+		t.Error("a tagged anonymous field must not promote its fields")
+	}
+	if !outer.tags["base"] {
+		t.Errorf("expected the tagged anonymous field to register under its own tag, got %v", outer.tags)
+	}
+	if got := outer.tagToGoField["base"]; got != "Base" {
+		t.Errorf("expected the embedded type name as the Go field name, got %q", got)
+	}
+}
+
+// TestRun_OmitMarkerNotInheritedThroughEmbed pins the deliberate non-inheritance
+// of intentionally-omitted markers. A marker inside an embedded struct belongs
+// to that struct's own pair; the embedding wrapper must declare its own, and
+// until it does the tag is reported. The failure mode of this choice is a loud
+// missing-tag report, never a silent pass.
+func TestRun_OmitMarkerNotInheritedThroughEmbed(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id     int64  ~json:"id"~
+	Secret string ~json:"secret"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	// intentionally-omitted: secret - Base's own decision, not Note's
+	ID int64 ~json:"id"~
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: an embedded struct's intentionally-omitted marker must not suppress the embedding wrapper's check")
+	}
+
+	// The embedding wrapper carrying its own marker resolves it.
+	withOwn := strings.Replace(wrapperSrc, "type Note struct {\n\tBase\n}",
+		"type Note struct {\n\t// intentionally-omitted: secret - Note's own decision\n\tBase\n}", 1)
+	if !strings.Contains(withOwn, "Note's own decision") {
+		t.Fatal("fixture setup: the marker was not added to the embedding wrapper")
+	}
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": withOwn})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: the embedding wrapper's own marker must suppress the tag, got %v", err)
+	}
+}
+
+// TestFlattenEmbedded_DepthCapIsReportedNotSilent pins the behaviour at the
+// depth budget: a chain longer than maxEmbedDepth is truncated (the walk must
+// terminate), but the truncation is REPORTED on the root, because a quietly
+// truncated chain hides fields exactly the way #599 did.
+func TestFlattenEmbedded_DepthCapIsReportedNotSilent(t *testing.T) {
+	deepest := maxEmbedDepth + 2
+	var b strings.Builder
+	b.WriteString("package fixture\n")
+	for i := 0; i <= deepest; i++ {
+		b.WriteString("\ntype T" + strconv.Itoa(i) + " struct {\n")
+		if i < deepest {
+			b.WriteString("\tT" + strconv.Itoa(i+1) + "\n")
+		}
+		b.WriteString("\tF" + strconv.Itoa(i) + " string ~json:\"f" + strconv.Itoa(i) + "\"~\n}\n")
+	}
+	structs := flattenFixture(t, src(b.String()))
+	root := structs["T0"]
+	if root == nil {
+		t.Fatal("T0 not collected")
+	}
+	if len(root.unresolved) == 0 {
+		t.Error("a chain truncated at the depth cap must be reported, not dropped silently")
+	}
+	if !root.tags["f"+strconv.Itoa(maxEmbedDepth)] {
+		t.Errorf("expected everything within the cap to promote, got %v", root.tags)
+	}
+	if root.tags["f"+strconv.Itoa(deepest)] {
+		t.Error("fixture is not actually exceeding the cap; the test would prove nothing")
 	}
 }

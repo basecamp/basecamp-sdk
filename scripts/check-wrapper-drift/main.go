@@ -98,6 +98,61 @@
 // tag on the parent, while a partial nested copy (where the nested wrapper
 // itself drifts) would surface only if that nested wrapper has its own pair
 // in the map.
+//
+// # Embedded (anonymous) fields
+//
+// An anonymous field has no tag and no name, so the field walk cannot read a
+// JSON tag off it — but its own tagged fields ARE on the wire, promoted into
+// the embedding struct. Both sides of every pair are therefore flattened
+// before comparison (see flattenEmbedded): each struct's tag set is its own
+// tagged fields plus the tagged fields promoted through its embedded types,
+// resolved recursively. Without this, a wrapper that embeds a struct reads as
+// having none of the promoted fields and every one of them is reported as
+// missing (issue #599).
+//
+// The flattening follows encoding/json's promotion rules, since the wire shape
+// is what this check is about:
+//
+//   - Embedded pointers (`*Base`) promote exactly like value embeds.
+//   - Promotion is transitive: a struct embedding a struct that embeds a struct
+//     contributes all three levels, breadth-first by depth.
+//   - Shallower wins. A JSON tag declared directly on the embedding struct
+//     shadows the same tag promoted from an embedded type; a depth-1 promotion
+//     shadows the same tag at depth 2.
+//   - Two embedded types contributing the SAME tag at the SAME depth cancel
+//     each other out — encoding/json emits neither — so the tag counts as
+//     absent, and deeper occurrences stay shadowed (matching
+//     encoding/json's dominantField).
+//   - An anonymous field that carries its own json:"…" tag is NOT promoted:
+//     encoding/json treats it as an ordinary named field under that tag, and so
+//     does this check — the tag is recorded, with the embedded type's name as
+//     its Go field name for the population check. (`json:"-"` is recorded as
+//     the literal tag "-", matching how the check already handles a named
+//     field spelled that way; see TestExtractJSONTag_DashSentinel.)
+//   - Cycles (A embeds B embeds A, or a self-embedding pointer) terminate: each
+//     type name is visited once per flattening.
+//
+// An embedded type the checker cannot resolve — a qualified one from another
+// package (`time.Time`), or a name not declared in the parsed sources — is
+// reported as drift for any pair that reaches it, rather than skipped. Skipping
+// silently is what produced #599 in the first place; the check parses only
+// go/pkg/basecamp/*.go and client.gen.go, so it cannot see another package's
+// fields and must not pretend they are absent. The report is deferred to the
+// pair walk, so an unresolvable embed on a struct outside every pair (today:
+// FlexTime embedding time.Time) costs nothing.
+//
+// An embedded name that resolves to a declared NON-struct type (an interface, a
+// map, a slice — today: generated.ClientWithResponses embedding ClientInterface)
+// promotes no JSON-tagged fields and contributes nothing. A defined type whose
+// underlying type is another name (`type Alias Base`) is followed to that name.
+//
+// `intentionally-omitted` markers are NOT inherited through an embed: a marker
+// declares that one wrapper deliberately drops a tag of ITS generated
+// counterpart, and each marker is validated against that counterpart, so
+// inheriting one would suppress a check in an unrelated pair and would report
+// marker/generated mismatches for tags the embedded struct's own pair owns. An
+// embedding wrapper that means to drop a tag carries its own marker; the
+// failure mode of getting this wrong is a loud missing-tag report, not silence.
 package main
 
 import (
@@ -279,11 +334,66 @@ var markerRe = regexp.MustCompile(`intentionally-omitted:\s*([a-zA-Z0-9_]+)\s*-\
 // "tagline" -> "Tagline"). The population check (see run) uses it to translate
 // the set of assigned Go fields collected from a *FromGenerated body into the
 // JSON-tag space the rest of the check operates in.
+//
+// tags and tagToGoField hold the FLATTENED view: the struct's own tagged fields
+// after collectStructsAndMarkers, plus the fields promoted through embedded
+// types after flattenEmbedded has run over the whole universe. ownFields and
+// embeds are the unflattened inputs flattenEmbedded walks; it never reads tags,
+// so flattening is order-independent across structs.
 type structFields struct {
 	tags         map[string]bool
 	omitted      map[string]bool
 	tagToGoField map[string]string
 	declaration  token.Pos
+
+	// ownFields lists this struct's own tagged fields in declaration order.
+	ownFields []taggedField
+	// embeds lists this struct's anonymous, untagged fields — the ones whose
+	// tagged fields are promoted onto this struct by encoding/json.
+	embeds []embedRef
+	// tagPopNames maps a PROMOTED tag to the Go field names whose assignment
+	// counts as populating it: the promoted field's own name plus every
+	// embedded field name on the path to it, since assigning the embedded
+	// struct wholesale (`w.Base = Base{...}`) populates everything under it.
+	// Own (non-promoted) tags are absent here; see populationTargets.
+	tagPopNames map[string][]string
+	// unresolved lists embedded types the checker could not resolve, as
+	// human-readable paths ("Task.Meta -> time.Time"). Reported as drift when
+	// a pair reaches this struct; see run.
+	unresolved []string
+}
+
+// populationTargets returns the Go field names whose assignment counts as
+// populating tag on this struct. For a field declared directly on the struct
+// that is the field itself; for a promoted field it is the field plus the
+// embedded fields on the path to it.
+func (sf *structFields) populationTargets(tag string) []string {
+	if names := sf.tagPopNames[tag]; len(names) > 0 {
+		return names
+	}
+	if f := sf.tagToGoField[tag]; f != "" {
+		return []string{f}
+	}
+	return nil
+}
+
+// taggedField is one JSON-tagged field declared directly on a struct.
+type taggedField struct {
+	tag     string
+	goField string
+}
+
+// embedRef is one anonymous, untagged field — an embedded type whose tagged
+// fields are promoted onto the embedding struct.
+type embedRef struct {
+	// name is the embedded type's own name: "Base" for `Base` and `*Base`,
+	// "Time" for `time.Time`.
+	name string
+	// qualifier is the package qualifier for a cross-package embed ("time" for
+	// `time.Time`), empty for a same-package embed.
+	qualifier string
+	// display is the source spelling, used in messages ("*Base", "time.Time").
+	display string
 }
 
 func main() {
@@ -344,6 +454,7 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		return fmt.Errorf("parse generated: %w", err)
 	}
 	genStructs := collectStructsAndMarkers(fset, genFile)
+	flattenEmbedded(genStructs, collectTypeDecls(genFile))
 
 	// Parse all wrapper files.
 	entries, err := os.ReadDir(wrapperDir)
@@ -351,6 +462,7 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		return fmt.Errorf("read wrapper dir: %w", err)
 	}
 	wrapperStructs := map[string]*structFields{}
+	wrapperTypeDecls := map[string]ast.Expr{}      // every top-level type decl in the wrapper package, for embed resolution
 	fromGenPairs := map[string]string{}            // wrapper name -> generated name (derived from *FromGenerated signatures)
 	assignedFields := map[string]map[string]bool{} // wrapper name -> set of Go fields written at the wrapper's construction site (tier 1 + tier 3)
 	// Tier-3 names sourced from the production tier3Wrappers set. Tests can
@@ -369,6 +481,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		}
 		for k, v := range collectStructsAndMarkers(fset, f) {
 			wrapperStructs[k] = v
+		}
+		for k, v := range collectTypeDecls(f) {
+			wrapperTypeDecls[k] = v
 		}
 		// collectFromGeneratedPairs already drops excluded functions by their
 		// function name (see excludedFromGenerated check inside it), so no
@@ -405,6 +520,10 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		}
 	}
 
+	// Every wrapper file is parsed, so embedded types can now be resolved
+	// across the package: an embed may name a struct declared in another file.
+	flattenEmbedded(wrapperStructs, wrapperTypeDecls)
+
 	// Build the final pair list: union of fromGen + directDecode.
 	pairs := map[string]string{}
 	for k, v := range fromGenPairs {
@@ -435,6 +554,18 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		if wrap == nil {
 			drift = append(drift, fmt.Sprintf("PAIR ERROR: wrapper %s referenced in %sFromGenerated or directDecodePairs but the wrapper struct was not found in go/pkg/basecamp/", wrapName, lowercaseFirst(wrapName)))
 			continue
+		}
+
+		// An embedded type the checker could not resolve hides an unknown
+		// number of promoted fields from both the tag and population checks.
+		// Report it instead of comparing against a knowingly-partial tag set —
+		// silently dropping embedded fields is the bug this reporting exists
+		// to prevent (#599).
+		for _, u := range wrap.unresolved {
+			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: unresolvable embedded type in the wrapper: %s. Promoted fields from it are invisible to this check; teach the resolver about it or replace the embed with named fields.", wrapName, genName, u))
+		}
+		for _, u := range gen.unresolved {
+			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: unresolvable embedded type in the generated struct: %s. Promoted fields from it are invisible to this check; teach the resolver about it.", wrapName, genName, u))
 		}
 
 		// The population check runs for tier 1 (assignedFields sourced from
@@ -472,7 +603,11 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 			if !isTier2 {
 				totalFieldsPopChecked++
 				goField := wrap.tagToGoField[tag]
-				if goField != "" && (assigned == nil || !assigned[goField]) {
+				// A promoted field accepts more than one spelling at the
+				// construction site: the field itself (`w.Name = ...`, legal
+				// through promotion) or any embedded struct on the path to it
+				// (`w.Base = Base{...}`), which populates everything under it.
+				if goField != "" && !assignedAny(assigned, wrap.populationTargets(tag)) {
 					unpopulated = append(unpopulated, fmt.Sprintf("%s (field %s)", tag, goField))
 				}
 			}
@@ -529,6 +664,11 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 // that fall within the struct's source range (between the opening { and
 // closing }), so markers don't need to be attached to a specific field —
 // they can sit on their own line inside the struct body.
+//
+// The returned tag sets cover the struct's OWN tagged fields. Anonymous
+// (embedded) fields are recorded in embeds for flattenEmbedded to resolve once
+// every file has been parsed — an embedded type may be declared in a different
+// file of the same package, so it cannot be resolved here.
 func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*structFields {
 	out := map[string]*structFields{}
 	for _, decl := range f.Decls {
@@ -549,23 +689,44 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 				tags:         map[string]bool{},
 				omitted:      map[string]bool{},
 				tagToGoField: map[string]string{},
+				tagPopNames:  map[string][]string{},
 				declaration:  ts.Pos(),
 			}
 			for _, field := range st.Fields.List {
-				if field.Tag == nil {
+				tag := ""
+				if field.Tag != nil {
+					tag = extractJSONTag(field.Tag.Value)
+				}
+				if tag == "" {
+					// An anonymous field with no json tag is an embedded type:
+					// its own tagged fields are promoted onto this struct by
+					// encoding/json. Record it for flattenEmbedded. (A NAMED
+					// field with no json tag is invisible on the wire and to
+					// this check, as before.)
+					if len(field.Names) == 0 {
+						sf.embeds = append(sf.embeds, embedRefFromExpr(field.Type))
+					}
 					continue
 				}
-				tagVal := field.Tag.Value
-				if tag := extractJSONTag(tagVal); tag != "" {
-					sf.tags[tag] = true
-					// Record the Go field identifier for this tag. Tagged
-					// fields in these structs always have exactly one name;
-					// if a field ever had multiple names sharing a tag, the
-					// last wins (still correct for membership lookups).
-					for _, fn := range field.Names {
-						sf.tagToGoField[tag] = fn.Name
-					}
+				sf.tags[tag] = true
+				// Record the Go field identifier for this tag. Tagged
+				// fields in these structs always have exactly one name;
+				// if a field ever had multiple names sharing a tag, the
+				// last wins (still correct for membership lookups).
+				goField := ""
+				for _, fn := range field.Names {
+					goField = fn.Name
 				}
+				if goField == "" {
+					// A TAGGED anonymous field is not promoted — encoding/json
+					// treats it as an ordinary field under its tag, whose Go
+					// field name is the embedded type's name.
+					goField = embedRefFromExpr(field.Type).name
+				}
+				if goField != "" {
+					sf.tagToGoField[tag] = goField
+				}
+				sf.ownFields = append(sf.ownFields, taggedField{tag: tag, goField: goField})
 			}
 			// Scan every comment inside the struct body for opt-out markers.
 			// (Field-attached comments are duplicates of these for our purposes;
@@ -586,6 +747,243 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 		}
 	}
 	return out
+}
+
+// collectTypeDecls returns every top-level `type X <expr>` declaration in the
+// file, mapping the type name to its right-hand-side type expression. Struct
+// types are included, so the map doubles as the "is this name declared in the
+// parsed sources at all?" oracle flattenEmbedded needs: an embedded name absent
+// from it is unresolvable (declared elsewhere, or in another package), while an
+// embedded name present but non-struct (an interface, a map, a slice) simply
+// promotes no JSON-tagged fields.
+func collectTypeDecls(f *ast.File) map[string]ast.Expr {
+	out := map[string]ast.Expr{}
+	for _, decl := range f.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.TYPE {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			if ts, ok := spec.(*ast.TypeSpec); ok {
+				out[ts.Name.Name] = ts.Type
+			}
+		}
+	}
+	return out
+}
+
+// embedRefFromExpr decomposes an anonymous field's type expression into an
+// embedRef. `Base` -> {name: "Base"}; `*Base` -> {name: "Base", display:
+// "*Base"}; `time.Time` -> {name: "Time", qualifier: "time"}. Anything else
+// (a generic instantiation, an inline struct type) yields an empty name, which
+// flattenEmbedded reports as unresolvable rather than skipping.
+func embedRefFromExpr(expr ast.Expr) embedRef {
+	ref := embedRef{display: exprDisplay(expr)}
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	switch e := expr.(type) {
+	case *ast.Ident:
+		ref.name = e.Name
+	case *ast.SelectorExpr:
+		if pkg, ok := e.X.(*ast.Ident); ok {
+			ref.qualifier = pkg.Name
+			ref.name = e.Sel.Name
+		}
+	}
+	return ref
+}
+
+// exprDisplay renders a type expression for error messages. It handles the
+// shapes an embedded field can take and falls back to a placeholder for
+// anything exotic, so messages never come out blank.
+func exprDisplay(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name
+	case *ast.StarExpr:
+		return "*" + exprDisplay(e.X)
+	case *ast.SelectorExpr:
+		if pkg := exprDisplay(e.X); pkg != "" {
+			return pkg + "." + e.Sel.Name
+		}
+		return e.Sel.Name
+	case *ast.IndexExpr: // generic instantiation: Base[T]
+		return exprDisplay(e.X) + "[…]"
+	case *ast.IndexListExpr: // generic instantiation: Base[T, U]
+		return exprDisplay(e.X) + "[…]"
+	}
+	return "<unsupported type expression>"
+}
+
+// maxEmbedDepth bounds the promotion walk. The visited-set already terminates
+// cycles; this is a second, independent stop so a pathological chain can never
+// spin. Real embedding chains in this repo are one level deep.
+const maxEmbedDepth = 16
+
+// flattenEmbedded resolves embedded (anonymous) fields for every struct in a
+// universe, merging each embedded type's promoted JSON tags into the embedding
+// struct's tag set. structs is the struct universe (all structs parsed from one
+// package's files, or from client.gen.go); decls is every top-level type
+// declaration from the same sources.
+//
+// The walk is breadth-first by promotion depth so encoding/json's "shallowest
+// declaration wins" rule falls out naturally, and two same-depth contributors
+// of one tag cancel (encoding/json emits neither). See the package doc for the
+// full rule list. Unresolvable embeds are recorded on the embedding struct's
+// unresolved list — never skipped — and reported by run when a pair reaches
+// them.
+func flattenEmbedded(structs map[string]*structFields, decls map[string]ast.Expr) {
+	for name, sf := range structs {
+		flattenOne(name, sf, structs, decls)
+	}
+}
+
+// flattenOne performs the breadth-first promotion walk for a single struct.
+func flattenOne(rootName string, root *structFields, structs map[string]*structFields, decls map[string]ast.Expr) {
+	// A struct reached at depth d contributes its own tagged fields at depth d;
+	// path records the embedded field names traversed to reach it, both for
+	// population targets and for unresolvable-embed messages.
+	type reached struct {
+		name string
+		sf   *structFields
+		path []string
+	}
+
+	// Tags declared directly on the root are claimed at depth 0 and shadow
+	// anything promoted from below.
+	claimed := map[string]bool{}
+	for _, f := range root.ownFields {
+		claimed[f.tag] = true
+	}
+
+	visited := map[string]bool{rootName: true}
+	level := []reached{{name: rootName, sf: root}}
+
+	for depth := 1; depth <= maxEmbedDepth && len(level) > 0; depth++ {
+		var next []reached
+		for _, parent := range level {
+			for _, e := range parent.sf.embeds {
+				child, childName, err := resolveEmbed(e, structs, decls)
+				if err != "" {
+					root.unresolved = append(root.unresolved,
+						fmt.Sprintf("%s -> %s (%s)", strings.Join(append([]string{rootName}, parent.path...), "."), e.display, err))
+					continue
+				}
+				if child == nil || visited[childName] {
+					// Either the embedded type promotes no JSON-tagged fields
+					// (an interface, a map, a slice), or it has already been
+					// visited at this or a shallower depth — encoding/json
+					// likewise visits each type once, which also terminates
+					// embedding cycles.
+					continue
+				}
+				visited[childName] = true
+				path := make([]string, 0, len(parent.path)+1)
+				path = append(path, parent.path...)
+				path = append(path, e.name)
+				next = append(next, reached{name: childName, sf: child, path: path})
+			}
+		}
+
+		// Gather this depth's contributions before claiming any of them, so
+		// same-depth conflicts can be detected.
+		type candidate struct {
+			field taggedField
+			path  []string
+		}
+		byTag := map[string][]candidate{}
+		var order []string
+		for _, r := range next {
+			for _, f := range r.sf.ownFields {
+				if _, seen := byTag[f.tag]; !seen {
+					order = append(order, f.tag)
+				}
+				byTag[f.tag] = append(byTag[f.tag], candidate{field: f, path: r.path})
+			}
+		}
+		for _, tag := range order {
+			if claimed[tag] {
+				continue // a shallower declaration wins (or blocked the tag).
+			}
+			// Claim the tag either way: a same-depth conflict means
+			// encoding/json emits nothing for it, and it also stops any
+			// deeper occurrence from being promoted.
+			claimed[tag] = true
+			cands := byTag[tag]
+			if len(cands) != 1 {
+				continue
+			}
+			c := cands[0]
+			root.tags[tag] = true
+			if c.field.goField != "" {
+				root.tagToGoField[tag] = c.field.goField
+			}
+			// Assigning any embedded struct on the path populates everything
+			// promoted through it, as does assigning the promoted field itself.
+			targets := make([]string, 0, len(c.path)+1)
+			targets = append(targets, c.path...)
+			if c.field.goField != "" {
+				targets = append(targets, c.field.goField)
+			}
+			root.tagPopNames[tag] = targets
+		}
+
+		level = next
+	}
+
+	// Exhausting the depth budget with embeds still unfollowed would hide
+	// fields exactly the way #599 did. Report it rather than stopping quietly.
+	for _, r := range level {
+		if len(r.sf.embeds) > 0 {
+			root.unresolved = append(root.unresolved,
+				fmt.Sprintf("%s -> %s (embedding chain deeper than %d levels; promotion beyond that was not followed)",
+					strings.Join(append([]string{rootName}, r.path...), "."), r.name, maxEmbedDepth))
+			break
+		}
+	}
+}
+
+// resolveEmbed resolves one embedded type reference against the parsed
+// universe. It returns the embedded struct and the name it resolved to, or a
+// non-empty reason string when the type cannot be resolved at all. A nil struct
+// with an empty reason means "resolved, but promotes no JSON-tagged fields"
+// (an interface, map, slice, func or channel type).
+func resolveEmbed(e embedRef, structs map[string]*structFields, decls map[string]ast.Expr) (*structFields, string, string) {
+	switch {
+	case e.name == "":
+		return nil, "", "unsupported embedded type expression"
+	case e.qualifier != "":
+		return nil, "", "declared in another package, which this check does not parse"
+	}
+	// Follow `type Alias Base` hops. maxEmbedDepth also bounds this chain, so a
+	// self-referential declaration cannot spin.
+	name := e.name
+	seen := map[string]bool{}
+	for hop := 0; hop <= maxEmbedDepth; hop++ {
+		if sf, ok := structs[name]; ok {
+			return sf, name, ""
+		}
+		rhs, ok := decls[name]
+		if !ok {
+			return nil, "", "not declared in the parsed sources"
+		}
+		if seen[name] {
+			return nil, "", "self-referential type declaration"
+		}
+		seen[name] = true
+		switch t := rhs.(type) {
+		case *ast.Ident:
+			name = t.Name // `type Alias Base` — follow it.
+		case *ast.SelectorExpr:
+			return nil, "", "defined in terms of another package's type, which this check does not parse"
+		default:
+			// An interface, map, slice, func, chan or generic type: a valid
+			// embed that promotes no JSON-tagged fields.
+			return nil, "", ""
+		}
+	}
+	return nil, "", "type declaration chain is too deep to resolve"
 }
 
 // collectFromGeneratedPairs walks the AST for function declarations of the form
@@ -1022,6 +1420,18 @@ func extractJSONTag(tagLiteral string) string {
 		inner = inner[colon+3+end:]
 	}
 	return ""
+}
+
+// assignedAny reports whether the construction site assigned any of the given
+// Go field names. The population check in run only consults it for tags whose
+// Go field name is known, so an empty target list means unassigned.
+func assignedAny(assigned map[string]bool, names []string) bool {
+	for _, n := range names {
+		if assigned[n] {
+			return true
+		}
+	}
+	return false
 }
 
 func lowercaseFirst(s string) string {
