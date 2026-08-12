@@ -78,11 +78,34 @@
 #          slice of make's grammar — recorded here rather than guessed at, so the
 #          next reader knows it is a hole and not an oversight.
 #
+#      A target may build in MORE THAN ONE project directory, and belongs to a
+#      group for each. Recording only its first invocation left the second in no
+#      group at all, so a target correctly ordered against the Kotlin chain could
+#      still overlap the mapper targets with its second command.
+#
 #   4. TEXTUAL, AND IT ERRS TOWARD REPORTING. Nothing is executed, so a
 #      `./gradlew` inside a shell heredoc is taken at face value. That direction
 #      is deliberate: a false positive costs one unnecessary order-only edge and
 #      says so out loud; a false negative costs the guarantee silently. An
 #      invocation it cannot place is a hard error for the same reason.
+#
+# WHY THIS KEEPS FINDING THINGS, AND THE END-STATE IT IS NOT. Four review rounds
+# produced eight defects in this gate, every one of them a SILENT PASS: an
+# undiscovered target, then a spelling, then two spellings, then a variable-name
+# charset, a symlink alias, and a target with two directories. That tail is a
+# property of the instrument — static analysis of a shell-embedded DSL — and not
+# of any one selector, which is why the last two rounds were answered at the
+# funnel (expand from make's database, canonicalize in one place, model a target
+# as a SET of directories) rather than with a matcher arm apiece.
+#
+# The structural end-state is different and is deliberately NOT built here: make
+# every Gradle call go through one sanctioned entry point, then this gate reduces
+# to "no recipe mentions gradlew except through it" plus the ordering check, and
+# the parse surface collapses to one argument. That is a Makefile refactor, it
+# would not cover the one Gradle call that happens outside make entirely
+# (scripts/check-kotlin-generated-drift.sh), and it is not what the PR that added
+# this file set out to do. Named here so the next round of findings is read as
+# evidence about the instrument rather than as a queue of selectors.
 #
 # Env overrides (used by scripts/test-check-gradle-serialization.rb):
 #   GRADLE_SERIALIZATION_MAKEFILE  makefile to read (default: Makefile)
@@ -164,7 +187,7 @@ def read_make_database(makefile)
       # `NAME = value`, `NAME := value`, `NAME ?= value`. Multi-line `define`
       # blocks are skipped: nothing in this repo puts a Gradle call in one, and
       # half-reading one would be worse than not reading it.
-      if (var = /\A(\w+) *[:?+]?= ?(.*)\z/.match(line))
+      if (var = /\A([^\s:#=]+) *[:?+]?= ?(.*)\z/.match(line))
         variables[var[1]] = var[2]
       end
       next
@@ -220,7 +243,12 @@ end
 # once, from make's own database, is the layer the question actually lives at.
 def expand_variables(text, variables, passes: 5)
   passes.times do
-    expanded = text.gsub(/\$[({](\w+)[)}]/) { variables.fetch(Regexp.last_match(1), Regexp.last_match(0)) }
+    # `[^\s(){}:#]+` rather than `\w+`: GNU make allows punctuation in variable
+    # names (`GRADLE-WRAPPER`), and a name this did not recognize stayed
+    # unexpanded — the same silent miss the expansion was added to remove.
+    # `$(shell …)` and `$(call …)` hold spaces, so they never match and are left
+    # to the fail-loud `$`-guard.
+    expanded = text.gsub(/\$[({]([^\s(){}:#]+)[)}]/) { variables.fetch(Regexp.last_match(1), Regexp.last_match(0)) }
     return expanded if expanded == text
 
     text = expanded
@@ -305,12 +333,23 @@ end
 # each trivially "serialized", and a new target spelled the other way would have
 # walked through the gate. `kotlin/`, `kotlin/.` and `spec/../kotlin` are the same
 # hazard. Normalize to a repo-relative cleanpath before anything is compared.
+# expand_path normalizes `.` and `..` but not symlinks, and the claim this gate
+# makes is about a PHYSICAL directory: two paths that are the same inode share
+# one <project>/.gradle whatever they are called. realpath only works on paths
+# that exist, so a directory that does not (a fixture, a target for a tree not
+# checked out) falls back to the lexical form rather than failing.
+def physical(path)
+  File.realpath(path)
+rescue SystemCallError
+  path
+end
+
 def canonical_dir(raw, repo_root)
   # `cd "kotlin"` is `cd kotlin`. Dequoting lives here, in the one place a
   # directory becomes a grouping key, rather than as another arm of the matcher.
   unquoted = raw.sub(/\A(["'])(.*)\1\z/) { Regexp.last_match(2) }
-  root = File.expand_path(repo_root)
-  absolute = File.expand_path(unquoted, root)
+  root = physical(File.expand_path(repo_root))
+  absolute = physical(File.expand_path(unquoted, root))
   return "." if absolute == root
 
   absolute.start_with?("#{root}/") ? absolute.delete_prefix("#{root}/") : absolute
@@ -322,21 +361,28 @@ def gradle_targets(recipes, makefile, variables = {}, repo_root = REPO_ROOT)
 
   recipes.each do |target, raw_lines|
     lines = raw_lines.map { |line| expand_variables(line, variables) }
-    direct = lines.find { |line| line.include?("./gradlew") }
+    # EVERY line, not the first match: one recipe may build in two projects, and
+    # recording only its first invocation left the second in no group at all —
+    # so a target ordered after the Kotlin chain could still overlap the mapper
+    # targets with its second command. A target belongs to as many groups as it
+    # has directories.
+    direct = lines.select { |line| line.include?("./gradlew") }
 
-    if direct
-      matched = direct.match(%r{cd\s+(\S+)\s*&&\s*\./gradlew})
-      if matched && matched[1].include?("$")
-        # A make variable is not resolvable from the database text, and guessing
-        # would put this target in a group of its own — the same silent pass the
-        # spelling bug caused.
-        unrecognized << [target, direct]
-      elsif matched
-        found[target] = canonical_dir(matched[1], repo_root)
-      elsif direct.match?(%r{\A\s*\./gradlew})
-        found[target] = "."
-      else
-        unrecognized << [target, direct]
+    unless direct.empty?
+      direct.each do |line|
+        matched = line.match(%r{cd\s+(\S+)\s*&&\s*\./gradlew})
+        if matched && matched[1].include?("$")
+          # Not resolvable from the database text, and guessing would put this
+          # target in a group of its own — the same silent pass the spelling bug
+          # caused.
+          unrecognized << [target, line]
+        elsif matched
+          (found[target] ||= Set.new) << canonical_dir(matched[1], repo_root)
+        elsif line.match?(%r{\A\s*\./gradlew})
+          (found[target] ||= Set.new) << "."
+        else
+          unrecognized << [target, line]
+        end
       end
       next
     end
@@ -349,7 +395,7 @@ def gradle_targets(recipes, makefile, variables = {}, repo_root = REPO_ROOT)
     else
       # Canonicalized through the same funnel as a direct recipe: a delegated
       # `cd "$ROOT_DIR/./kotlin"` has to group with a direct `cd kotlin`.
-      found[target] = canonical_dir(dir, repo_root)
+      (found[target] ||= Set.new) << canonical_dir(dir, repo_root)
     end
   end
 
@@ -390,6 +436,11 @@ die "found no Gradle-backed targets in #{MAKEFILE} — the recipe shape this " \
 in_goal = reachable_from(graph, GOAL)
 covered = gradle.select { |target, _| in_goal.include?(target) }
 
+# dir => targets that build in it. A target with two directories appears twice,
+# and must be ordered against the others in BOTH.
+by_directory = Hash.new { |h, k| h[k] = [] }
+covered.each { |target, dirs| dirs.each { |dir| by_directory[dir] << target } }
+
 # Precompute each covered target's ancestry once; the pairwise test below is
 # "does one of the pair reach the other".
 closure = covered.keys.to_h { |target| [target, reachable_from(graph, target)] }
@@ -397,8 +448,8 @@ closure = covered.keys.to_h { |target| [target, reachable_from(graph, target)] }
 violations = []
 chains = []
 
-covered.group_by { |_, dir| dir }.sort.each do |dir, entries|
-  targets = entries.map(&:first).sort
+by_directory.sort.each do |dir, entries|
+  targets = entries.uniq.sort
   next if targets.size < 2
 
   targets.combination(2).each do |a, b|

@@ -381,6 +381,84 @@ failures << check(
   expect_fragment: "cannot tell which project directory",
 )
 
+# --- Cases 17-19: round four, all three at the funnel or the model -----------
+#
+# 17 is a MODEL fix rather than a matcher one: a recipe that builds in two
+# projects was recorded under its first directory only, so its second command sat
+# in no group and could overlap anything. A target now belongs to as many groups
+# as it has directories. The probe is chained into the Kotlin chain and still
+# collides via spec/smithy-bare-arrays, which is the shape Codex described.
+#
+# 18 closes a legal make spelling the expansion added in round three did not
+# recognize (`GRADLE-WRAPPER`): punctuation in variable names.
+#
+# 19 is the physical-directory claim taken literally — two names for one inode
+# share one <project>/.gradle. It needs a symlink, so it runs against a fixture
+# root rather than putting one in the repo.
+
+two_directories = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-two-dirs ",
+) + <<~MAKE
+
+  .PHONY: probe-two-dirs
+  probe-two-dirs: | conformance-kotlin
+  \tcd kotlin && ./gradlew help
+  \tcd spec/smithy-bare-arrays && ./gradlew help
+MAKE
+
+failures << check(
+  "17: a target building in two projects is checked in both",
+  two_directories,
+  expect_pass: false,
+  expect_fragment: "probe-two-dirs",
+)
+
+punctuated_variable = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-punctuated-var ",
+) + <<~MAKE
+
+  GRADLE-WRAPPER = ./gradlew
+  .PHONY: probe-punctuated-var
+  probe-punctuated-var:
+  \tcd kotlin && $(GRADLE-WRAPPER) help
+MAKE
+
+failures << check(
+  "18: a make variable name with punctuation still expands",
+  punctuated_variable,
+  expect_pass: false,
+  expect_fragment: "probe-punctuated-var",
+)
+
+Dir.mktmpdir("gradle-serialization-symlink") do |root|
+  FileUtils.mkdir_p(File.join(root, "kotlin"))
+  FileUtils.touch(File.join(root, "kotlin", "gradlew"))
+  File.symlink("kotlin", File.join(root, "kotlin-alias"))
+
+  symlinked = must_substitute(
+    MAKEFILE,
+    "check-targets: ",
+    "check-targets: probe-symlink-alias ",
+  ) + <<~MAKE
+
+    .PHONY: probe-symlink-alias
+    probe-symlink-alias:
+    \tcd kotlin-alias && ./gradlew help
+  MAKE
+
+  failures << check(
+    "19: a symlink alias is the same physical project directory",
+    symlinked,
+    expect_pass: false,
+    expect_fragment: "probe-symlink-alias",
+    root: root,
+  )
+end
+
 failures.compact!
 
 if failures.empty?
