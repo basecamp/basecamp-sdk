@@ -18,6 +18,41 @@ def _my_assignments():
     return Client(access_token="test-token").for_account("12345").my_assignments
 
 
+class TestGetMyAssignments:
+    @respx.mock
+    def test_decodes_assignees_with_full_person_minimal_projection(self):
+        # bc3's people/_person_minimal partial renders id, name and avatar_url
+        # unconditionally, so an assignee always carries all three keys (#659).
+        respx.get(f"{BASE}/my/assignments.json").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "priorities": [
+                        {
+                            "id": 1,
+                            "content": "Priority task",
+                            "assignees": [
+                                {
+                                    "id": 1049715914,
+                                    "name": "Victor Cooper",
+                                    "avatar_url": "https://example.com/avatar",
+                                }
+                            ],
+                        }
+                    ],
+                    "non_priorities": [],
+                },
+            )
+        )
+
+        result = _my_assignments().get_my_assignments()
+
+        assignee = result["priorities"][0]["assignees"][0]
+        assert assignee["id"] == 1049715914
+        assert assignee["name"] == "Victor Cooper"
+        assert assignee["avatar_url"] == "https://example.com/avatar"
+
+
 class TestPrioritizeAssignment:
     @respx.mock
     def test_posts_the_recording_id(self):
