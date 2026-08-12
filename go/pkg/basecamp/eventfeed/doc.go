@@ -4,13 +4,14 @@
 //
 // # Experimental
 //
-// This package is experimental and incomplete. The connector runs the
-// protocol from the first mint through the catch-up walk, the entry
-// boundary, the drain, and streaming delivery; still to land are the
-// recovery matrix a poll's 410, 400-position, or 409 re-enters through, the
-// repair-poll walk, and the Layer-1 adapters over the generated
-// CreateStreamTicket and PollEvents operations that back the mint and poll
-// seams. The exported surface may still change as those land.
+// This package is experimental and incomplete. The connector runs the whole
+// protocol — the first mint through the catch-up walk, the entry boundary,
+// the drain, streaming delivery, the repair poll, and the recovery matrix a
+// poll's 410, 400-position, or 409 re-enters through; still to land are the
+// Layer-1 adapters over the generated CreateStreamTicket and PollEvents
+// operations that back the mint and poll seams, which is what a host needs to
+// use it against the live API. The exported surface may still change as they
+// land.
 //
 // # Seams-first architecture
 //

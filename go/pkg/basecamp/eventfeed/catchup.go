@@ -13,11 +13,10 @@ import (
 // whole walk runs on the consumer's goroutine, so a page's deliveries and its
 // save are strictly ordered by construction rather than by a protocol.
 //
-// Two recovery paths are deliberately NOT here — they are the recovery
-// slice's, and each is reached through a named seam below: the repair-poll
-// walk (transition 24) and the re-entry matrix for the poll errors whose
-// disposition is a new cursor (410 `gone`, 400-position, 409 `filter_changed`
-// — transitions 17/18/19).
+// The dispositions that hand the walk a NEW cursor — a 410's gated resume, a
+// 400-position's and a 409's reset cursor (transitions 17/18/19) — and the
+// repair poll a fired `repair-poll` timer drives (transition 24) live in
+// recovery.go; both re-enter this file's walk.
 
 // Timer kinds this slice arms (SPEC.md §23 "Clock, Timers, and Virtual
 // Time"; the other four arm in the lifecycle slice).
@@ -42,32 +41,45 @@ func (l *loop) runCatchUp(h catchUpHandoff) cycleOutcome {
 	// governs the wait.
 	l.pollFailures = 0
 
-	out, held, done := l.walk(h.at, h.entry, h.presentClass)
-	if done {
+	if out, done := l.walkThenDrain(h.at, h.entry, h.presentClass); done {
 		return out
+	}
+	return l.stream(h.at)
+}
+
+// walkThenDrain runs one walk to its frozen head, drains the live buffer, and
+// saves a held present-class entry position: transitions 16/22/23, shared by
+// the post-confirmation catch-up and the repair poll (transition 24), which
+// differ only in how they enter and what they return to.
+func (l *loop) walkThenDrain(at *attempt, cursor Cursor, presentClass bool) (cycleOutcome, bool) {
+	out, held, done := l.walk(at, cursor, presentClass)
+	if done {
+		return out, true
 	}
 
 	// Transition 22 → Draining: the walk reached its frozen head. Draining is
 	// a bounded in-memory replay — no polls, no wire waits, no failure edge of
 	// its own.
 	l.setState(stateDraining)
-	if out, done := l.drain(h.at); done {
-		return out
+	if out, done := l.drain(at); done {
+		return out, true
 	}
 	// Transition 23's present-class amendment: the held entry position saves
-	// only now — after every retained pre-cut event has been accepted. The
+	// only now — after every retained pre-cut event has been accepted. A
+	// non-empty held position is exactly the walk's report that its FINAL
+	// entry was present-class, which a mid-walk re-entry can change. The
 	// invariant's other conjunct (every pre-cut loss condition explicitly
 	// accepted) is structural: an overflow with no handler, or one whose
 	// handler returned Terminate, took the Terminal(buffer_overflow) edge at
 	// drop time and never reached this line.
-	if h.presentClass && held != "" {
+	if held != "" {
 		l.position = held
 		l.saveCheckpoint(held)
 	}
 	if l.cfg.observer.CaughtUp != nil {
 		l.cfg.observer.CaughtUp()
 	}
-	return l.stream(h.at)
+	return cycleOutcome{}, false
 }
 
 // walk is the catch-up page loop (transition 16): validate any continuation
@@ -76,8 +88,9 @@ func (l *loop) runCatchUp(h catchUpHandoff) cycleOutcome {
 // until the walk reaches its frozen head (an absent `next`).
 //
 // It returns the held present-class position (empty for position-resume
-// entries), and done=true with the cycle's outcome when the walk ended the
-// cycle instead of reaching the head.
+// entries, and empty once a re-entry has superseded a held one), and done=true
+// with the cycle's outcome when the walk ended the cycle instead of reaching
+// the head.
 //
 // Two details of the present-class case, both consequences of the invariant
 // rather than extra policy: the ownership cut is taken once, right after the
@@ -106,11 +119,18 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			return cycleOutcome{kind: outcomeClosed}, "", true
 		}
 		if err != nil {
-			next, out, done := l.recoverPoll(at, cursor, err)
+			step, out, done := l.recoverPoll(at, cursor, err)
 			if done {
 				return out, "", true
 			}
-			cursor = next
+			cursor = step.cursor
+			if step.reentry {
+				// A re-entry IS an entry (transitions 17/18/19): the previous
+				// entry's held position is dropped — nothing durable moved —
+				// its class no longer governs, and a present-class re-entry
+				// takes its own ownership cut on the new entry page.
+				presentClass, held, cutTaken = step.presentClass, "", false
+			}
 			continue
 		}
 		// A successful page resets both consecutive-failure counters: the
@@ -119,6 +139,14 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		// proves the ticket, not the bearer).
 		l.pollFailures = 0
 		l.authFailures = 0
+		// The page's rows advance the poll-lane reset cursor — served, not
+		// delivered: dedupe suppression and a consumer break are both
+		// irrelevant to what the poll lane has served.
+		for _, ev := range page.Events {
+			if ev.ID > l.lastPollServedID {
+				l.lastPollServedID = ev.ID
+			}
+		}
 
 		for _, ev := range page.Events {
 			if !l.deliver(ev) {
@@ -258,11 +286,16 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 			l.disposeAttempt(at, repair)
 			return cycleOutcome{kind: outcomeClosed}
 		case <-repair.C():
+			// Transition 24 → CatchingUp: one repair walk from the connector's
+			// current position, returning here through Draining. The next
+			// cadence is armed before Streaming is re-announced, for the same
+			// reason it is on first entry.
 			out, done := l.repairWalk(at)
 			if done {
 				return out
 			}
 			repair = l.cfg.clock.NewTimer(repairJitter(l.cfg.repairInterval, l.cfg.rand), timerRepairPoll)
+			l.setState(stateStreaming)
 		case <-staleTimer.C():
 			age, ok := at.lc.stale.evaluate(staleGen)
 			if !ok {
@@ -373,19 +406,29 @@ func (l *loop) pumpExited(at *attempt, pending Timer) cycleOutcome {
 	return cycleOutcome{kind: outcomeFailed}
 }
 
+// walkStep is the walk's next move after a failed poll: re-poll at cursor,
+// with reentry marking transitions 17/18/19's NEW entry — the entry boundary
+// restarts, under presentClass. A transient's re-poll of the same cursor is
+// not a re-entry: nothing about the entry changed.
+type walkStep struct {
+	cursor       Cursor
+	presentClass bool
+	reentry      bool
+}
+
 // recoverPoll disposes a failed poll seam call onto its SPEC.md §23 outcome.
-// It returns the cursor to re-poll at when the walk continues, or done=true
-// with the outcome that ended the cycle. Seam errors are post-retry outcomes:
+// It returns the walk's next step when the walk continues, or done=true with
+// the outcome that ended the cycle. Seam errors are post-retry outcomes:
 // the generated operation already spent its own §7 budget inside the call, so
 // nothing here is a second per-request retry layer.
-func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (Cursor, cycleOutcome, bool) {
+func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cycleOutcome, bool) {
 	var pe *PollError
 	if !errors.As(err, &pe) {
 		// The seam contract maps every generated outcome onto exactly one
 		// kind; an unclassified failure is surfaced rather than retried, as
 		// on the mint lane.
 		l.disposeAttempt(at, nil)
-		return Cursor{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 			Reason: ReasonPollFailed, Msg: "unclassified poll failure", Err: err,
 		}}, true
 	}
@@ -395,7 +438,7 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (Cursor, cycle
 		// same cursor is re-polled.
 		l.pollFailures++
 		out, done := l.waitPollRetry(at, pollRetryDelay(pe.RetryAfter, l.pollFailures, l.cfg.rand))
-		return cursor, out, done
+		return walkStep{cursor: cursor}, out, done
 	case PollUnauthorized:
 		// Recovery rides the reconnect cycle — the fresh mint/token pass —
 		// incrementing the shared connection-level counter.
@@ -403,18 +446,18 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (Cursor, cycle
 		l.disposeAttempt(at, nil)
 		l.observeDisconnected("", err)
 		if l.authFailures >= authFailureThreshold {
-			return Cursor{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 				Reason: ReasonAuthorizationFailed,
 				Msg:    fmt.Sprintf("%d consecutive connection-level authorization failures", l.authFailures),
 				Err:    err,
 			}}, true
 		}
-		return Cursor{}, cycleOutcome{kind: outcomeFailed, retryAfter: pe.RetryAfter}, true
+		return walkStep{}, cycleOutcome{kind: outcomeFailed, retryAfter: pe.RetryAfter}, true
 	case PollFilterInvalid:
 		// Transition 20: a configuration error a position reset won't help;
 		// the server's message naming the offending list is preserved.
 		l.disposeAttempt(at, nil)
-		return Cursor{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 			Reason: ReasonFilterInvalid, Msg: pe.Msg, Err: err,
 		}}, true
 	case PollRedirectRefused:
@@ -422,20 +465,31 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (Cursor, cycle
 		// continuation edge, NEVER poll_failed. The Location is already
 		// redacted to its origin by the adapter.
 		l.disposeAttempt(at, nil)
-		return Cursor{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 			Reason: ReasonInvalidContinuation,
 			Msg:    "the poll refused a redirect to " + pe.LocationOrigin,
 			Err:    err,
 		}}, true
 	case PollUnrecoverable:
 		l.disposeAttempt(at, nil)
-		return Cursor{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 			Reason: ReasonPollFailed, Msg: pe.Msg, Err: err,
 		}}, true
+	case PollGone, PollPositionInvalid, PollFilterChanged:
+		// The re-entry matrix, whose disposition is a NEW cursor (recovery.go).
+		return l.reenterWalk(at, pe)
 	default:
-		// PollGone, PollPositionInvalid, PollFilterChanged: the recovery
-		// slice's re-entry matrix, reached through its seam.
-		return l.reenterWalk(at, cursor, pe)
+		// An unknown kind is an adapter bug — the seam contract maps every
+		// generated outcome onto exactly one kind. It is surfaced rather than
+		// guessed into a re-entry, as on the mint lane: re-entering on an
+		// unclassified failure would move the cursor off a condition nothing
+		// here understands.
+		l.disposeAttempt(at, nil)
+		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			Reason: ReasonPollFailed,
+			Msg:    fmt.Sprintf("unknown poll error kind %d", int(pe.Kind)),
+			Err:    err,
+		}}, true
 	}
 }
 
@@ -474,22 +528,4 @@ func (l *loop) waitPollRetry(at *attempt, d time.Duration) (cycleOutcome, bool) 
 			}
 		}
 	}
-}
-
-// stubRepairWalk stands in for transition 24 until the recovery slice lands:
-// the fired `repair-poll` timer performs no walk, and the caller re-arms the
-// next jittered cycle. The cadence — this slice's share — is already live.
-func (l *loop) stubRepairWalk(*attempt) (cycleOutcome, bool) {
-	return cycleOutcome{}, false
-}
-
-// stubReenterWalk stands in for transitions 17/18/19 until the recovery slice
-// lands: the poll errors whose disposition is a NEW cursor (410 gone with its
-// FeedGap signal and resume URL, 400-position, 409 filter-changed) have no
-// re-entry here, so the attempt takes the continuable socket-failure edge to
-// Backoff rather than a fabricated terminal or a silent stop.
-func (l *loop) stubReenterWalk(at *attempt, _ Cursor, err *PollError) (Cursor, cycleOutcome, bool) {
-	l.disposeAttempt(at, nil)
-	l.observeDisconnected("", err)
-	return Cursor{}, cycleOutcome{kind: outcomeFailed, retryAfter: err.RetryAfter}, true
 }

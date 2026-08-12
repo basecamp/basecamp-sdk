@@ -24,13 +24,14 @@ import (
 // What a reconnect preserves and what it rebuilds is a §23 distinction, not
 // an implementation detail. Preserved on the loop, across every attempt: the
 // in-memory position (authoritative for resume within the run — the store is
-// never re-read after its one load), the delivered-id LRU, the live buffer of
-// admitted-but-undelivered events, and the shared authorization counter,
-// which only a successful poll page resets. Rebuilt per attempt: a freshly
-// minted ticket (the connector never stores a mint URL across attempts), the
-// socket, the pump, the staleness holder, every timer, and the
-// consecutive-poll-failure index. The failed-cycle count grows per failed
-// cycle and resets on confirmation.
+// never re-read after its one load), the highest id the poll lane has served
+// (the reset cursor a 400-position or 409 re-enters at), the delivered-id
+// LRU, the live buffer of admitted-but-undelivered events, and the shared
+// authorization counter, which only a successful poll page resets. Rebuilt
+// per attempt: a freshly minted ticket (the connector never stores a mint URL
+// across attempts), the socket, the pump, the staleness holder, every timer,
+// and the consecutive-poll-failure index. The failed-cycle count grows per
+// failed cycle and resets on confirmation.
 
 // connState enumerates SPEC.md §23's 11 states. String renders the tier-2
 // fixture spelling (snake_case).
@@ -98,6 +99,11 @@ const (
 	disconnectReasonUnauthorized  = "unauthorized"
 	disconnectReasonProtocolFatal = "invalid_event_stream_command"
 )
+
+// sincePresent is the `since` value that enters at the server's present head
+// (the bare entry is equivalent). Every cursor spelled with it is
+// present-class (SPEC.md §23 "Entry Boundary").
+const sincePresent = "now"
 
 // errStaleConnection reports a staleness teardown.
 var errStaleConnection = errors.New("event feed connection stale: no inbound frames within the staleness window")
@@ -429,6 +435,12 @@ type loop struct {
 	// advanced only by accepted poll pages. The store is write-through
 	// durability; this field is never re-read from it mid-run.
 	position string
+	// lastPollServedID is the highest event id the POLL lane has served on
+	// this run — the reset cursor transitions 18/19 re-enter at, tracked
+	// independently of delivery, dedupe, and the live lane (a live-delivered
+	// id is never a reset cursor). Empty pages advance nothing; with no
+	// poll-served id the re-entry is present-class.
+	lastPollServedID int64
 	// stopped latches a consumer break (a false yield): nothing is ever
 	// yielded after it.
 	stopped bool
@@ -441,13 +453,6 @@ type loop struct {
 	// catchUp is the post-confirmation continuation: the catch-up walk, the
 	// entry boundary, the drain, and streaming (catchup.go).
 	catchUp func(catchUpHandoff) cycleOutcome
-	// repairWalk is the recovery slice's seam for transition 24 — the walk a
-	// fired `repair-poll` timer drives. Defaults to stubRepairWalk.
-	repairWalk func(*attempt) (cycleOutcome, bool)
-	// reenterWalk is the recovery slice's seam for transitions 17/18/19 —
-	// the poll errors whose disposition is a new cursor (410, 400-position,
-	// 409). Defaults to stubReenterWalk.
-	reenterWalk func(*attempt, Cursor, *PollError) (Cursor, cycleOutcome, bool)
 }
 
 func newLoop(runCtx context.Context, cfg *config, hooks testHooks) *loop {
@@ -463,8 +468,6 @@ func newLoop(runCtx context.Context, cfg *config, hooks testHooks) *loop {
 	l.identifier = subscribeIdentifier(cfg.filters)
 	l.subscribeFrame = subscribeCommand(l.identifier)
 	l.catchUp = l.runCatchUp
-	l.repairWalk = l.stubRepairWalk
-	l.reenterWalk = l.stubReenterWalk
 	return l
 }
 
@@ -886,7 +889,7 @@ func (l *loop) entryCursor() (Cursor, bool) {
 	}
 	switch l.cfg.start.kind {
 	case startPresent:
-		return Cursor{Since: "now"}, true
+		return Cursor{Since: sincePresent}, true
 	case startBeginning:
 		return Cursor{Since: "0"}, false
 	case startAfter:

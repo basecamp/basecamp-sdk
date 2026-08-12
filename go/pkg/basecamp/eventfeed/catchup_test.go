@@ -594,6 +594,12 @@ func TestPollFailureClassification(t *testing.T) {
 			"",
 		},
 		{
+			"an unknown kind is poll_failed, never a guessed re-entry",
+			&eventfeed.PollError{Err: errors.New("adapter bug: unset kind")},
+			eventfeed.ReasonPollFailed,
+			"unknown poll error kind 0",
+		},
+		{
 			"redirect refused is invalid_continuation",
 			&eventfeed.PollError{Kind: eventfeed.PollRedirectRefused, LocationOrigin: "https://attacker.example.com"},
 			eventfeed.ReasonInvalidContinuation,
@@ -795,12 +801,14 @@ func TestStreamingFailureEdges(t *testing.T) {
 }
 
 // TestRepairPollTimerArmedOnStreaming: entry to Streaming arms the jittered
-// `repair-poll` timer (60s ± 20%), and each cycle re-arms it. The walk the
-// firing drives is the recovery slice's; what this slice owns is the cadence.
+// `repair-poll` timer (60s ± 20%), and every cycle re-arms it once the walk
+// that firing drove has returned through Draining.
 func TestRepairPollTimerArmedOnStreaming(t *testing.T) {
 	h := newHarness(t)
 	h.minter.ScriptTicket(ticket(1))
-	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	for _, position := range []string{"pos-1", "pos-2", "pos-3"} {
+		h.polls.ScriptPage(eventfeed.PollPage{Position: position})
+	}
 	h.start()
 
 	conn := h.driveToSubscribed()
@@ -812,7 +820,7 @@ func TestRepairPollTimerArmedOnStreaming(t *testing.T) {
 		if d < 48*time.Second || d > 72*time.Second {
 			t.Fatalf("repair-poll delay (cycle %d) = %s, want within 60s ± 20%%", cycle, d)
 		}
-		h.awaitTimer(timerRepairPoll)
+		h.awaitStreaming()
 	}
 	assertTimers(t, h.clock, map[string]int{timerStaleness: 1, timerRepairPoll: 1})
 }
