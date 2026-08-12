@@ -57,14 +57,22 @@ if [ "$(jq 'length' <<< "$FILES_JSON")" -ge 300 ]; then
   # itself contains ` b/`, first match and last match alike, and hand back a
   # wrong-but-nonempty name the abort guard cannot see. Asymmetric headers
   # are renames or copies, which git always names on their own `rename to` /
-  # `copy to` lines; `+++ b/` refines content-bearing blocks. A block that
-  # still has no filename aborts the whole run (git quotes headers holding
-  # unusual characters, defeating both parses) — this fallback exists to
-  # never under-report.
+  # `copy to` lines; `+++ b/` refines content-bearing blocks.
+  #
+  # The coverage claim is total, and closed by construction rather than by
+  # enumerating path shapes: git path output is exactly two grammars. An
+  # UNQUOTED path is parsed exactly by the rules above; a QUOTED path — git
+  # wraps the whole name in double quotes when it holds specials — is
+  # refused loudly, never decoded. Every extraction funnels through one
+  # fail-closed boundary at flush(): a filename that is empty (unsplittable
+  # header, no refinement line matched) or begins with a double quote (a
+  # quoted path reached fn through any rule) aborts the whole run with exit
+  # 1. Any future "what about X in a path" lands on one side or the other:
+  # unquoted parses, quoted refuses. There is no third case.
   FILES_JSON="$(awk '
     function flush() {
       if (inblock) {
-        if (fn == "") { bad = 1; print "ERROR: diff block with no derivable filename; refusing to under-report" > "/dev/stderr"; exit 1 }
+        if (fn == "" || fn ~ /^"/) { bad = 1; print "ERROR: diff block with no derivable unquoted filename; refusing to under-report" > "/dev/stderr"; exit 1 }
         printf "%s\t%s\n", st, fn
       }
       inblock = 1; st = "modified"; fn = ""
