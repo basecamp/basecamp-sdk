@@ -1,0 +1,82 @@
+typescript/src/generated/openapi-stripped.json
+  s_f77573f40278b6::t_ea37977e41323a 5,24907-24908,24917-24918
+spec/api-gaps/README.md
+  s_b429eb5f926267::t_c185a730217fe8 369-370,372-373
+  s_b429eb5f926267::t_21a4502f9b972d 328
+  s_b429eb5f926267::t_32430981aabb81 106,113-121,125-231
+  s_b429eb5f926267::t_416aacf5ba0814 122-124
+  s_b429eb5f926267::t_295d82882a5071 280-281
+python/src/basecamp/_version.py
+  s_f77573f40278b6::t_013db3ce570e59 2
+ruby/lib/basecamp/generated/types.rb
+  s_f77573f40278b6::t_f21d89572457d1 4
+typescript/src/generated/schema.d.ts
+  s_f77573f40278b6::t_0877754dcb3773 3732,3736
+spec/doc-constants.json
+  s_b429eb5f926267::t_5041555cee0004 58-63
+go/pkg/basecamp/api-provenance.json
+  s_f77573f40278b6::t_11f738fe3610f1 4-5
+go/pkg/generated/client.gen.go
+  s_f77573f40278b6::t_8a88206211758a 362-369
+SPEC.md
+  s_f77573f40278b6::t_bf1640ca20918b 1376,3288
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_f77573f40278b6::t_1737261b5343c4 45
+typescript/src/generated/metadata.ts
+  s_f77573f40278b6::t_247359ccfb9a80 40
+spec/api-gaps/notifications-sort-pings-first.md
+  s_b429eb5f926267::t_6579bc61bc197c 102
+go/pkg/basecamp/version.go
+  s_f77573f40278b6::t_fe6b9413a1a217 7
+typescript/src/client.ts
+  s_f77573f40278b6::t_d1e370ea99f292 270
+COORDINATION.md
+  s_f77573f40278b6::t_d70a5498c77526 12
+spec/bc3-routes.json
+  s_b429eb5f926267::t_473581948b006d 8-9
+spec/api-provenance.json
+  s_b429eb5f926267::t_ef0b7409cb366d 4-5
+ruby/lib/basecamp/version.rb
+  s_f77573f40278b6::t_4aa2389c72ee64 5
+ruby/lib/basecamp/generated/metadata.json
+  s_f77573f40278b6::t_e68cf3ba59672c 4
+spec/basecamp.smithy
+  s_655f73c03e416d::t_ff40a4e7839bbb 54
+  s_b429eb5f926267::t_f04063d60b248f 5056,5060
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_f77573f40278b6::t_a83847190c67c1 30
+openapi.json
+  s_f77573f40278b6::t_28bb601d833e94 5,27747-27748,27757-27758
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ab97dec6b8d7f08ec6f6d6aa5e2213b850c5cf88",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b429eb5f926267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50a1085e-2c16-4b99-b4e1-e3cc5665f1c4",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_f77573f40278b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "272cab6f-5556-43ec-9cbc-d697e9a030b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
