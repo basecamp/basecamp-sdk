@@ -9650,7 +9650,10 @@ structure Tool {
   bookmark_url: String
   /// Absent for tool types that are not subscribable.
   subscription_url: String
-  /// Absent while the tool is disabled (removed from the dock, not deleted).
+  /// Emitted only for a positioned recording. For a docked tool that makes an
+  /// absent position the disabled signal — disabling removes the tool from the
+  /// dock without deleting it. Positioning is independent of dockedness, so
+  /// this does not generalize: a nested vault is not docked and is positioned.
   position: Integer
   /// Absent for a docked tool. Present only for a nested recording reachable
   /// through this route: the dock-tool lookup scopes by recordable type, so a
@@ -9666,8 +9669,8 @@ structure Tool {
   name: String
 
   /// Not emitted by this projection. The dock array on a project
-  /// (`DockItem$enabled`) carries the enabled flag; on a tool response, an
-  /// absent `position` is the disabled signal.
+  /// (`DockItem$enabled`) is the authoritative enabled flag; on a docked tool's
+  /// own response, an absent `position` is the equivalent signal.
   enabled: Boolean
 }
 

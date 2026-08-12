@@ -277,6 +277,7 @@ class ToolsServiceTest {
                 "url": "https://3.basecampapi.com/12345/buckets/2085958505/vaults/1069479562.json",
                 "app_url": "https://3.basecamp.com/12345/buckets/2085958505/vaults/1069479562",
                 "bookmark_url": "https://3.basecampapi.com/12345/my/bookmarks/BAh7Bkki--11223344.json",
+                "position": 2,
                 "parent": {
                     "id": 1069479343,
                     "title": "Docs & Files",

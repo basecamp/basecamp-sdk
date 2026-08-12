@@ -26,8 +26,10 @@ type Tool struct {
 	AppURL          string `json:"app_url"`
 	BookmarkURL     string `json:"bookmark_url,omitempty"`
 	SubscriptionURL string `json:"subscription_url,omitempty"`
-	// Position is nil while the tool is disabled (removed from the dock, not
-	// deleted). Absence of Position, not Enabled, is the disabled signal.
+	// Position is set only for a positioned recording. For a docked tool that
+	// makes a nil Position the disabled signal — disabling removes the tool
+	// from the dock without deleting it — but positioning is independent of
+	// dockedness, so a nested vault is not docked and is still positioned.
 	Position *int `json:"position"`
 	// Parent is nil for a docked tool. It is populated only for a nested
 	// recording reachable through this route: the dock-tool lookup scopes by
@@ -44,7 +46,8 @@ type Tool struct {
 	Name *string `json:"name,omitempty"`
 
 	// Enabled is always nil: no layer of the tool projection emits an
-	// `enabled` key. Use Position (see above) or the project's dock array.
+	// `enabled` key. The project's dock array is authoritative; for a docked
+	// tool, Position (see above) is the equivalent signal.
 	Enabled *bool `json:"enabled,omitempty"`
 }
 

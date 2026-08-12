@@ -108,8 +108,7 @@ Two member-level traps, both consequences of #651 rather than of the retype:
 file-attachment branch omits all five; and `width`/`height` decode through
 `FlexibleIntSerializer`, because bc3 may float-spell them (`1920.0`).
 
-||||||| parent of 597d9e61b (Relax Tool.name/enabled and model the seven keys bc3 emits (#650))
-### `Tool.name` and `Tool.enabled` are not on the wire at all, and seven keys that are got modeled (#650)
+### `Tool.name` and `Tool.enabled` are not on the wire at all; the seven keys that are now get modeled (#650)
 
 A dock tool's projection is the **bare** `recordings/recording` partial —
 `app/views/api/docks/tools/show.json.jbuilder` renders it and adds nothing.
@@ -139,8 +138,10 @@ guesses — they are the partial's own `if`s:
   `Recordable#subscribable?`; `Vault`, `Message::Board`, `Schedule`, `Inbox`
   and `Questionnaire` do not, and get no key.
 - **`position`** — only when `recording.positioned?`. A tool disabled in the
-  dock is removed from it, not deleted, so `position` is **absent**. This is
-  what replaces `enabled: false`, which never existed.
+  dock is removed from it, not deleted, so `position` is **absent**. That is
+  what replaces `enabled: false`, which never existed. Positioning is
+  independent of dockedness, though, so the inference runs only in that
+  direction: a nested vault is not docked and is still positioned.
 - **`parent`** — only when `!recording.docked?`. A docked tool has none, but
   the dock-tool lookup scopes by recordable *type* rather than dock membership,
   so a vault nested inside another vault resolves through

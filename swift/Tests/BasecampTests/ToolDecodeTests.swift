@@ -140,6 +140,10 @@ final class ToolDecodeTests: XCTestCase {
     /// includes `Vault`) rather than by dock membership, so a vault nested
     /// inside another vault resolves through `GET /dock/tools/:id` and does
     /// carry a parent.
+    ///
+    /// It also carries a `position`: `Vault#auto_position?` is true and
+    /// positioning is independent of dockedness, so an absent `position` means
+    /// "disabled" only for a tool that is actually in the dock.
     func testDecodesANestedVaultCarryingAParent() throws {
         let nested = """
         {
@@ -154,6 +158,7 @@ final class ToolDecodeTests: XCTestCase {
           "url": "https://3.basecampapi.com/195539477/buckets/2085958505/vaults/1069479562.json",
           "app_url": "https://3.basecamp.com/195539477/buckets/2085958505/vaults/1069479562",
           "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7Bkki--11223344.json",
+          "position": 2,
           "parent": {
             "id": 1069479343,
             "title": "Docs & Files",
