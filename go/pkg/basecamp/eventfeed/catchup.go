@@ -274,7 +274,11 @@ type pollResult struct {
 func (l *loop) pollPage(at *attempt, cursor Cursor) (page PollPage, superseded bool, err error) {
 	done := make(chan pollResult, 1)
 	go func() {
-		p, perr := l.cfg.polls.Poll(at.ctx, cursor, l.cfg.filters)
+		// Cloned on the way out for the same reason WithFilters clones on the
+		// way in: the seam is host code, and handing it the connector's own
+		// backing arrays would let an adapter that sorts or dedupes in place
+		// repoint the subscription's lineage from under a live feed.
+		p, perr := l.cfg.polls.Poll(at.ctx, cursor, l.cfg.filters.clone())
 		done <- pollResult{page: p, err: perr}
 	}()
 	for {

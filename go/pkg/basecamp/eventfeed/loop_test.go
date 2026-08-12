@@ -1013,6 +1013,118 @@ func TestInvalidFramesPreConfirm(t *testing.T) {
 	})
 }
 
+// TestNullFrameTearsDownToBackoff: a top-level `null` frame is the
+// invalid-frame class's parse shape, not an unknown-type frame. Classified as
+// unknown it would be liveness-only, so a peer sending nothing but `null`
+// could hold the socket open forever — the pump re-arms staleness before the
+// frame is parsed — while delivering no protocol traffic. The disposition is
+// the class's: socket failure, Backoff, never terminal.
+func TestNullFrameTearsDownToBackoff(t *testing.T) {
+	var mu sync.Mutex
+	var disconnects []error
+	obs := eventfeed.Observer{Disconnected: func(_ string, err error) {
+		mu.Lock()
+		disconnects = append(disconnects, err)
+		mu.Unlock()
+	}}
+	h := newHarness(t, eventfeed.WithObserver(obs))
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	h.start()
+
+	conn := h.liveConn()
+	conn.Serve([]byte(`null`))
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("a null frame must tear the socket down")
+	}
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("an invalid frame is never terminal; got %v", terminal)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(disconnects) != 1 || disconnects[0] == nil || !eventfeed.ExportIsInvalidFrameError(disconnects[0]) {
+		t.Fatalf("Disconnected must carry the invalid-frame indication; got %v", disconnects)
+	}
+}
+
+// TestFrameDerivedObserverTextIsBounded: both frame-derived strings
+// Disconnected can carry — a raw disconnect frame's reason, and the
+// invalid-frame rendering of a decoder error that quotes frame bytes — are
+// bounded by §9's MAX_ERROR_MESSAGE_LENGTH, which §23's Security Invariants
+// apply to any rendering of frame contents. Unbounded, either is a 1 MiB
+// attacker-chosen string in the consumer's logs.
+func TestFrameDerivedObserverTextIsBounded(t *testing.T) {
+	oversized := strings.Repeat("a", 4096)
+
+	t.Run("disconnect reason", func(t *testing.T) {
+		var mu sync.Mutex
+		var reasons []string
+		obs := eventfeed.Observer{Disconnected: func(reason string, _ error) {
+			mu.Lock()
+			reasons = append(reasons, reason)
+			mu.Unlock()
+		}}
+		h := newHarness(t, eventfeed.WithObserver(obs))
+		h.minter.ScriptTicket(ticket(1))
+		h.minter.ScriptTicket(ticket(2))
+		h.start()
+
+		conn := h.liveConn()
+		conn.Serve(frameDisconnect(oversized, true))
+		h.awaitTimer(timerBackoff)
+		if _, terminal, _ := h.snapshot(); terminal != nil {
+			t.Fatalf("an unrecognized reason is a socket drop, never terminal; got %v", terminal)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if len(reasons) != 1 {
+			t.Fatalf("Disconnected calls = %d, want 1", len(reasons))
+		}
+		if got := len(reasons[0]); got > 500 {
+			t.Fatalf("observed reason length = %d bytes, want at most 500", got)
+		}
+	})
+
+	t.Run("event decode error", func(t *testing.T) {
+		var mu sync.Mutex
+		var disconnects []error
+		obs := eventfeed.Observer{Disconnected: func(_ string, err error) {
+			mu.Lock()
+			disconnects = append(disconnects, err)
+			mu.Unlock()
+		}}
+		h := newHarness(t, eventfeed.WithObserver(obs))
+		h.minter.ScriptTicket(ticket(1))
+		h.minter.ScriptTicket(ticket(2))
+		h.start()
+
+		conn := h.driveToSubscribed()
+		// time.Time's decoder embeds the offending value in its parse error.
+		bad, err := json.Marshal(map[string]any{
+			"identifier": noFilterIdentifier,
+			"message": map[string]any{
+				"id": 1, "kind": "message", "event_type": "message.created",
+				"action": "created", "created_at": oversized,
+				"bucket_id": 2, "creator_id": 3, "recording_id": 4,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		conn.Serve(bad)
+		h.awaitTimer(timerBackoff)
+		mu.Lock()
+		defer mu.Unlock()
+		if len(disconnects) != 1 || disconnects[0] == nil {
+			t.Fatalf("Disconnected must report the decode failure; got %v", disconnects)
+		}
+		if got := len(disconnects[0].Error()); got > 500 {
+			t.Fatalf("rendered error length = %d bytes, want at most 500", got)
+		}
+	})
+}
+
 // TestDuplicateWelcomeResendsSubscribe: subscribe is sent on each welcome,
 // byte-identical (the server absorbs identical retransmits).
 func TestDuplicateWelcomeResendsSubscribe(t *testing.T) {

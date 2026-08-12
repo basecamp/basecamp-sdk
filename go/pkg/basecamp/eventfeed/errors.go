@@ -93,6 +93,24 @@ func (e *TerminalError) Unwrap() error {
 	return e.Err
 }
 
+// maxErrorMessageBytes bounds every error rendering that can carry
+// frame-derived text (SPEC.md §9 "Error Message Truncation",
+// MAX_ERROR_MESSAGE_LENGTH = 500; §23's Security Invariants apply it to frame
+// contents). Go's unit is bytes, matching the main client's
+// MaxErrorMessageBytes.
+const maxErrorMessageBytes = 500
+
+// truncateErrorText bounds s to maxErrorMessageBytes with §9's truncation
+// semantics: over the limit, the last 3 units become "...", so the result is
+// at most the limit. Byte-level truncation can split a codepoint; §9 accepts
+// that explicitly for Go.
+func truncateErrorText(s string) string {
+	if len(s) <= maxErrorMessageBytes {
+		return s
+	}
+	return s[:maxErrorMessageBytes-3] + "..."
+}
+
 // usageError builds the usage-coded error construction-time validation
 // surfaces (SPEC.md §23 "Consumer Surface"): zero wire attempts, never an
 // iteration element.

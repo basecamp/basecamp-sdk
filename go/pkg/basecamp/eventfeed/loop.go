@@ -1020,8 +1020,14 @@ func (l *loop) disposeAttempt(at *attempt, deadline Timer) {
 	}
 }
 
+// observeDisconnected reports one socket teardown. The reason is frame-derived
+// (a raw disconnect frame's reason string, bounded only by the 1 MiB frame
+// limit) and observers log it, so it is bounded by the same §9 cap the
+// invalid-frame rendering uses — §23's Security Invariants apply it to frame
+// contents generally, not just to errors. Dispatch reads f.reason itself, so
+// the cap can never widen an unrecognized reason into a recognized one.
 func (l *loop) observeDisconnected(reason string, err error) {
 	if l.cfg.observer.Disconnected != nil {
-		l.cfg.observer.Disconnected(reason, err)
+		l.cfg.observer.Disconnected(truncateErrorText(reason), err)
 	}
 }

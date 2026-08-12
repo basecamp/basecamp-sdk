@@ -2,6 +2,7 @@ package eventfeed
 
 import (
 	"fmt"
+	"slices"
 	"unicode"
 )
 
@@ -23,15 +24,36 @@ type Filters struct {
 	Creators []int64
 }
 
+// clone returns a connector-owned copy of the filter set. Filters is three
+// slices, so the connector must not retain the caller's backing arrays: a
+// mutation after construction would otherwise change the subscription, the
+// poll parameters and the checkpoint lineage AFTER validation passed —
+// including into a filter set Validate rejects — and could split them from
+// one another, since the subscription identifier is frozen once per
+// connection while polls and checkpoint keys are derived per use.
+func (f Filters) clone() Filters {
+	return Filters{
+		Types:    slices.Clone(f.Types),
+		Buckets:  slices.Clone(f.Buckets),
+		Creators: slices.Clone(f.Creators),
+	}
+}
+
 // Validate applies SPEC.md §23's client-side, fail-closed filter validation:
-// type strings must be non-empty with no commas, whitespace, or quotes; ids
-// must be positive; each id list is capped at 100. A violation is a
-// usage-coded *TerminalError surfaced at construction, with zero wire
+// type strings must be non-empty, valid UTF-8, with no commas, whitespace, or
+// quotes; ids must be positive; each id list is capped at 100. A violation is
+// a usage-coded *TerminalError surfaced at construction, with zero wire
 // attempts.
 func (f Filters) Validate() error {
 	for _, typ := range f.Types {
 		if typ == "" {
 			return usageError("filter types must be non-empty strings")
+		}
+		// Types feed the srv1 digest — a checkpoint-identity component — and
+		// the subscription identifier, both of which encode rune-wise (see
+		// checkIdentityText).
+		if err := checkIdentityText(fmt.Sprintf("filter type %q", typ), typ); err != nil {
+			return err
 		}
 		for _, r := range typ {
 			if r == ',' || r == '"' || r == '\'' || unicode.IsSpace(r) {

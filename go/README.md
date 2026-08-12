@@ -671,6 +671,15 @@ for ev, err := range feed.Events(ctx) {
 }
 ```
 
+Construction validates and does no I/O. The base origin must be `https://` — cleartext
+`http://` is accepted only for localhost/loopback, the same carve-out the client's base
+URL and the connector's cable URL make — because that origin is the trust anchor every
+continuation and resume URL is validated against before an authenticated poll follows
+it. The checkpoint identity's text inputs (origin, account id, consumer namespace,
+filter types) must be valid UTF-8, since the identity encoding is one-to-one only over
+valid UTF-8. Either violation is a `ReasonUsage` construction error with zero wire
+attempts.
+
 `Events` is single-shot: consuming it twice yields one `ReasonUsage` error element.
 `Close` stops the feed without draining, and cancelling the context, calling `Close`, or
 breaking out of the loop all end iteration with **no** error element — a clean stop, and

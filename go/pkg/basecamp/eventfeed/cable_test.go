@@ -195,6 +195,57 @@ func TestParseFrame_InvalidFrames(t *testing.T) {
 	}
 }
 
+func TestParseFrame_NullIsInvalid(t *testing.T) {
+	// `null` is the one non-object JSON that unmarshals into the envelope
+	// struct WITHOUT error, so it must be rejected explicitly: classified as
+	// frameUnknown it would be liveness-only, and a peer sending nothing but
+	// `null` frames could hold the socket open indefinitely (the pump resets
+	// staleness before the frame is parsed) while delivering no protocol
+	// traffic at all.
+	for _, raw := range []string{`null`, "  null\n", `NULL_NOT_JSON`} {
+		f, err := parseFrame([]byte(raw))
+		if err == nil {
+			t.Fatalf("parseFrame(%q) = %v, want an invalid-frame error", raw, f.kind)
+		}
+		var ife *invalidFrameError
+		if !errors.As(err, &ife) {
+			t.Fatalf("parseFrame(%q) error = %T (%v), want *invalidFrameError", raw, err, err)
+		}
+		if ife.shape != invalidFrameParse {
+			t.Errorf("parseFrame(%q) shape = %q, want %q", raw, ife.shape, invalidFrameParse)
+		}
+	}
+}
+
+func TestInvalidFrameErrorRenderingIsBounded(t *testing.T) {
+	// SPEC §23 "Security Invariants": bound/truncate any error rendering of
+	// frame contents (§9's MAX_ERROR_MESSAGE_LENGTH). time.Time's decoder
+	// embeds the offending value in its parse error, so an attacker-chosen
+	// created_at would otherwise reach Observer.Disconnected at frame scale.
+	oversized := strings.Repeat("a", 4096)
+	raw := []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"` +
+		oversized + `","bucket_id":2,"creator_id":3,"recording_id":900}`)
+	_, err := decodeMessageEvent(raw)
+	if err == nil {
+		t.Fatal("decodeMessageEvent succeeded, want an invalid-frame error")
+	}
+	if got := len(err.Error()); got > maxErrorMessageBytes {
+		t.Fatalf("rendered error length = %d bytes, want at most %d", got, maxErrorMessageBytes)
+	}
+	if strings.Contains(err.Error(), oversized) {
+		t.Fatal("the rendered error embeds the frame-supplied value verbatim")
+	}
+	// The same bound covers the parse shape, whose decoder errors can quote
+	// frame bytes too.
+	_, perr := parseFrame([]byte(`{"type":"` + oversized + `"`))
+	if perr == nil {
+		t.Fatal("parseFrame succeeded, want an invalid-frame error")
+	}
+	if got := len(perr.Error()); got > maxErrorMessageBytes {
+		t.Fatalf("rendered parse error length = %d bytes, want at most %d", got, maxErrorMessageBytes)
+	}
+}
+
 func TestDecodeMessageEvent_VisibleToClientsIsOptional(t *testing.T) {
 	// visible_to_clients is presence-bearing, never decode-required: absence
 	// must decode with a nil pointer, not trip the invalid-frame class.

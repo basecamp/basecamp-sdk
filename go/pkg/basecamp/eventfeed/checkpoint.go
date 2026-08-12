@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"unicode/utf8"
 )
 
 // CheckpointKey is the durable checkpoint identity — all four fields, always
@@ -47,6 +48,24 @@ func (k CheckpointKey) FlatKey() string {
 	writeJSONString(&b, k.FilterKey)
 	b.WriteByte(']')
 	return b.String()
+}
+
+// checkIdentityText rejects an identity component that is not valid UTF-8.
+// FlatKey (and the srv1 digest, and the subscription identifier) encode
+// rune-wise through writeJSONString, which decodes every invalid byte to the
+// SAME U+FFFD replacement rune — so the encoding is one-to-one over valid
+// UTF-8 and many-to-one outside it. Two distinct consumer namespaces
+// (single-byte 0xff and 0xfe, say) would render one identical key, and the
+// two independent consumers behind them would load and overwrite a single
+// checkpoint lineage, each skipping the other's events. The components come
+// from construction inputs, so this fails closed at construction — a
+// usage-coded error with zero wire attempts — rather than silently mangling
+// an identity at save time.
+func checkIdentityText(field, s string) error {
+	if !utf8.ValidString(s) {
+		return usageError(field + " must be valid UTF-8")
+	}
+	return nil
 }
 
 // CanonicalOrigin canonicalizes a configured base URL to its

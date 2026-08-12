@@ -2,6 +2,7 @@ package eventfeed
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -113,7 +114,8 @@ const (
 // full teardown through the current state's socket-failure edge, never
 // terminal (a garbled frame is transport-level corruption, unlike the
 // server's own invalid_event_stream_command verdict), never a silent skip.
-// The rendering never embeds frame contents.
+// The rendering embeds no frame contents of the connector's own making, and
+// bounds what a decoder underneath it may quote (Error).
 type invalidFrameError struct {
 	// shape names the violation shape (invalidFrameParse /
 	// invalidFrameEventDecode).
@@ -122,14 +124,19 @@ type invalidFrameError struct {
 	err error
 }
 
-// Error implements the error interface. encoding/json errors carry offsets
-// and type names, never input bytes, so no frame content is rendered.
+// Error implements the error interface. The connector never renders frame
+// contents itself, but a decoder underneath it can: encoding/json's own
+// errors carry offsets and type names only, while a type's UnmarshalJSON can
+// quote the offending input — time.Time's does, so an attacker-chosen
+// created_at would otherwise reach Observer.Disconnected at frame scale. The
+// rendering is therefore bounded by §9's MAX_ERROR_MESSAGE_LENGTH, as §23's
+// Security Invariants require of any error rendering of frame contents.
 func (e *invalidFrameError) Error() string {
 	msg := "event feed invalid inbound frame (" + e.shape + ")"
 	if e.err != nil {
 		msg += ": " + e.err.Error()
 	}
-	return msg
+	return truncateErrorText(msg)
 }
 
 // Unwrap exposes the underlying cause for errors.Is / errors.As traversal.
@@ -151,6 +158,20 @@ func parseFrame(data []byte) (frame, error) {
 		Message    json.RawMessage `json:"message"`
 		Reason     string          `json:"reason"`
 		Reconnect  *bool           `json:"reconnect"`
+	}
+	if !isJSONObject(data) {
+		// Non-object JSON is the parse shape by the same reasoning as
+		// unparseable bytes — the frame stream has stopped meaning anything —
+		// but only `null` needs saying: arrays, strings and numbers already
+		// fail the unmarshal below, while `null` unmarshals into the envelope
+		// struct WITHOUT error and would classify as frameUnknown. A peer
+		// sending nothing but `null` frames would then hold the socket open
+		// indefinitely (the pump re-arms staleness before parsing) while
+		// delivering no protocol traffic at all.
+		return frame{}, &invalidFrameError{
+			shape: invalidFrameParse,
+			err:   errors.New("frame is not a JSON object"),
+		}
 	}
 	if err := json.Unmarshal(data, &env); err != nil {
 		return frame{}, &invalidFrameError{shape: invalidFrameParse, err: err}
@@ -175,6 +196,24 @@ func parseFrame(data []byte) (frame, error) {
 		return frame{kind: frameMessage, identifier: env.Identifier, message: env.Message}, nil
 	}
 	return frame{kind: frameUnknown}, nil
+}
+
+// isJSONObject reports whether data's first non-whitespace byte opens a JSON
+// object. Paired with the unmarshal that follows — which rejects trailing
+// content — it is exactly "data is a JSON object": RFC 8259 whitespace is the
+// four bytes below, and a value's type is decided by its first byte.
+func isJSONObject(data []byte) bool {
+	for _, b := range data {
+		switch b {
+		case ' ', '\t', '\n', '\r':
+			continue
+		case '{':
+			return true
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 // decodeMessageEvent decodes a correlated message frame's payload as an

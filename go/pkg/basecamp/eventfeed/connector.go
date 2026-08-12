@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"math/rand/v2"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -126,8 +127,11 @@ type config struct {
 type Option func(*config)
 
 // WithFilters narrows the feed to the given filters. Positions are
-// filter-bound: changing filters starts a new checkpoint lineage.
-func WithFilters(f Filters) Option { return func(c *config) { c.filters = f } }
+// filter-bound: changing filters starts a new checkpoint lineage. The three
+// slices are snapshotted into connector-owned storage, so a caller may reuse
+// or mutate its own arrays afterwards without reaching the subscription, the
+// polls, or the checkpoint key (Filters.clone).
+func WithFilters(f Filters) Option { return func(c *config) { c.filters = f.clone() } }
 
 // WithStart selects the entry mode (default StartResume).
 func WithStart(s Start) Option { return func(c *config) { c.start = s } }
@@ -276,9 +280,21 @@ func validateConfig(cfg *config) error {
 	if err != nil {
 		return usageError(err.Error())
 	}
+	if err := checkOriginScheme(canonical); err != nil {
+		return err
+	}
+	if err := checkIdentityText("the API base origin", canonical); err != nil {
+		return err
+	}
 	cfg.origin = canonical
 	if cfg.accountID == "" {
 		return usageError("accountID must be non-empty")
+	}
+	if err := checkIdentityText("accountID", cfg.accountID); err != nil {
+		return err
+	}
+	if err := checkIdentityText("the consumer namespace", cfg.consumerNamespace); err != nil {
+		return err
 	}
 	if cfg.minter == nil {
 		return usageError("a TicketMinter is required")
@@ -320,6 +336,35 @@ func validateConfig(cfg *config) error {
 		return usageError("a checkpoint store requires a consumer namespace")
 	}
 	return nil
+}
+
+// checkOriginScheme applies §23's Security Invariants to the configured base
+// origin: https:// everywhere, http:// only for the §9 localhost/loopback
+// carve-out — the same line checkCableURL draws for the cable URL (wss://
+// with the same carve-out, via the same isLoopbackHost test) and the main Go
+// client draws for its base URL. The origin is not merely where requests go:
+// it is the trust anchor §8's same-origin algorithm validates every `next`
+// continuation and 410 resume URL against, so a cleartext origin would make a
+// cleartext continuation same-origin-valid and hand it to the authenticated
+// poll seam. Its input is the canonical form, already lowercased with the
+// default port stripped.
+func checkOriginScheme(canonical string) error {
+	u, err := url.Parse(canonical)
+	if err != nil {
+		return usageError(fmt.Sprintf("unparseable origin %q", canonical))
+	}
+	switch u.Scheme {
+	case "https":
+		return nil
+	case "http":
+		if isLoopbackHost(u.Hostname()) {
+			return nil
+		}
+		return usageError("the API base origin must use https (http is allowed only for localhost), got " + canonical)
+	default:
+		// The scheme is structural, never secret — safe to name.
+		return usageError("the API base origin scheme " + `"` + u.Scheme + `"` + " is not http(s)")
+	}
 }
 
 // Events returns the feed as a serial, deduplicated event sequence. It is
