@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-// FlexTime is a time.Time that can unmarshal from either a Unix timestamp (integer)
-// or an RFC 3339 string. This supports both BC3 OAuth 2.1 (integer) and Launchpad (string).
+// FlexTime is a time.Time that can unmarshal from either an RFC 3339 string —
+// the spelling both issuers send today — or a Unix timestamp (integer), bc3's
+// rendering before bc3 #12646 converged it, kept accepted as compatibility.
 //
 // The zero value means "no expiry known": an absent field, an explicit null,
 // and the integer 0 all decode to it, and it marshals back as null. Check
