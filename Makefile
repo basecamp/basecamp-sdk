@@ -1326,7 +1326,14 @@ test-lint-npm-lockfile-writes:
 # make does, and it fails on a SIXTH Gradle-backed target added to check-targets
 # without one — not just on the three edges that exist today. It follows a
 # recipe ONE level into a shell script under scripts/, which is how it sees
-# kt-check-generated-drift; the script's header states what that does not cover.
+# kt-check-generated-drift.
+#
+# Read its output as scoped: a pass means "no collision in the shapes this gate
+# can parse", not "no collision exists". The script header lists what it can and
+# cannot see, and names the two instruments to switch to — one sanctioned Gradle
+# entry point, or a gradlew shim recording (dir, start, end) under `make -j` —
+# if a further parsing variation ever turns up. The answer then is not a sixth
+# matcher.
 check-gradle-serialization:
 	@echo "==> Checking Gradle target serialization..."
 	@ruby ./scripts/check-gradle-serialization.rb

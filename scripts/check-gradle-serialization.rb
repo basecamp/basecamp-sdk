@@ -112,14 +112,60 @@
 # way, and direct and delegated are unioned rather than treated as alternatives.
 # If you add a step, add it to both, or the next round finds it.
 #
-# The structural end-state is different and is deliberately NOT built here: make
-# every Gradle call go through one sanctioned entry point, then this gate reduces
-# to "no recipe mentions gradlew except through it" plus the ordering check, and
-# the parse surface collapses to one argument. That is a Makefile refactor, it
-# would not cover the one Gradle call that happens outside make entirely
-# (scripts/check-kotlin-generated-drift.sh), and it is not what the PR that added
-# this file set out to do. Named here so the next round of findings is read as
-# evidence about the instrument rather than as a queue of selectors.
+# SCORE THE CONTROL, NOT THE INCREMENT. Every one of those twelve fixes cleared
+# "small and obviously correct" on its own, and that is precisely how a control
+# nobody sized gets built. The honest tally: the rules this gate applies have
+# grown at every round; the CALL SITES it covers have grown exactly once, when
+# delegation brought in kt-check-generated-drift. Everything since has been the
+# same five targets, parsed harder.
+#
+# So: NO MORE SELECTORS. A further parsing variation is not a task, it is the
+# signal to switch instruments, and the two candidates are written down here so
+# nobody has to derive them under review pressure.
+#
+#   A. BOUND WHERE GRADLE CAN BE REACHED AT ALL. Route every Makefile Gradle
+#      invocation through one sanctioned variable or wrapper target. The gate
+#      then inspects a single place instead of recognizing every spelling of a
+#      recipe, and reduces to "no recipe mentions gradlew except through it" plus
+#      the ordering check — a syntactic invariant that holds for call sites not
+#      written yet, which is the thing a matcher can never promise. This is the
+#      structural fix. Recipe text has unbounded shapes; a regex will not
+#      enumerate them. Cost: a Makefile refactor, and it still would not cover
+#      the one Gradle call that happens outside make entirely
+#      (scripts/check-kotlin-generated-drift.sh) — that one needs its own rule.
+#
+#   B. ASSERT THE SCHEDULE INSTEAD OF PARSING THE TEXT. Put a shim on gradlew
+#      that records (project_dir, start, end) per invocation during a real
+#      `make -j16 check-targets`, then assert no two intervals for the same
+#      project directory overlap. That observes the mechanism itself, is immune
+#      to recipe syntax, and covers delegated scripts and non-make callers for
+#      free. Note this is NOT the run-to-failure approach already rejected
+#      above: two concurrent builds both exit 0, so watching for a failure
+#      measures luck — but RECORDING THE SCHEDULE measures the thing the gate
+#      actually claims. Cost: it needs a real parallel build, which may be too
+#      slow for CI, and it only sees the call sites that run.
+#
+# A and B are complementary, not alternatives: A holds a shape across call sites
+# that do not exist yet, B observes behaviour at the ones that execute. Neither
+# is built here, because this PR's subject is the missing order-only edges, not a
+# Gradle-discovery framework.
+#
+# WHAT THIS GATE CAN AND CANNOT SEE, so a green run is not over-read:
+#
+#   CAN   a `cd <dir> && ./gradlew` in a recipe, after make-variable expansion,
+#         continuation folding and quote stripping; the same one level deep in a
+#         shell script a recipe invokes; several invocations per line, per
+#         recipe and per script; the same directory under any spelling or
+#         symlink.
+#   CANNOT a Gradle call reached by a shape it does not parse: a `define`/`endef`
+#         variable, a Ruby or Python helper that shells out, a second level of
+#         script delegation, a directory only a running shell knows (that last
+#         one is a hard error, not a silent pass — the others are silent).
+#
+# A PASS THEREFORE MEANS "no collision in the shapes I can parse", NOT "no
+# collision exists". The pass message says so out loud, because a guard that
+# overstates its reach is worse than one that states a narrow reach accurately:
+# the first stops people looking.
 #
 # Env overrides (used by scripts/test-check-gradle-serialization.rb):
 #   GRADLE_SERIALIZATION_MAKEFILE  makefile to read (default: Makefile)
@@ -519,7 +565,13 @@ if violations.empty?
   chains.each do |dir, ranked|
     puts "#{dir}: #{ranked.join(' -> ')}"
   end
-  puts "Gradle targets reachable from #{GOAL} are serialized per project directory"
+  puts "OK: no two Gradle invocations THIS GATE CAN SEE share a project directory"
+  puts "    concurrently, in the graph reachable from #{GOAL}."
+  puts "    Scope: parsed recipe text (variables expanded, continuations folded) plus"
+  puts "    one level into shell scripts a recipe runs. A pass means \"no collision in"
+  puts "    the shapes I can parse\", NOT \"no collision exists\" — a define'd variable,"
+  puts "    a Ruby/Python helper or a second level of delegation is invisible here."
+  puts "    See the header of scripts/check-gradle-serialization.rb."
   exit 0
 end
 
@@ -531,4 +583,9 @@ end
 warn ""
 warn "Add an order-only prerequisite (`target: | other-target`) chaining them."
 warn "See the anchor comment on smithy-mapper-test in the Makefile (#674)."
+warn ""
+warn "And note the converse of this report: these are the collisions in the shapes"
+warn "this gate can parse. It cannot see a Gradle call reached through a define'd"
+warn "variable, a Ruby/Python helper, or a second level of script delegation, so"
+warn "fixing what is listed here does not by itself prove there are no others."
 exit 1
