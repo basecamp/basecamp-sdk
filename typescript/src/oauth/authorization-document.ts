@@ -129,7 +129,10 @@ export interface AuthorizationInfo {
  * list that a caller cannot distinguish from a real one.
  */
 export interface RawAuthorizationDocument {
-  /** ISO-8601 string (Launchpad) or integer epoch seconds (BC5). */
+  /**
+   * ISO-8601 string from either issuer; integer epoch seconds is BC5's
+   * pre-#12646 spelling, kept accepted as compatibility.
+   */
   expires_at?: string | number | null;
   /** Both issuers always emit this, so it stays required — see the note below. */
   identity: {
