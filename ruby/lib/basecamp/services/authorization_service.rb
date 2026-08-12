@@ -11,9 +11,10 @@ module Basecamp
     # Launchpad's: it carries +identity.id+ and nothing else of the identity, no
     # +product+ or +app_href+ on accounts, an RFC 8707 +resource+ indicator
     # instead, and a top-level +scope+ for BC3-issued tokens. Only +identity.id+,
-    # +accounts[].id+, +accounts[].name+ and +accounts[].href+ are common to both.
-    # +expires_at+ is an ISO-8601 string from either issuer (integer epoch
-    # seconds from bc3 before bc3 #12646 — passed through verbatim either way).
+    # +accounts[].id+, +accounts[].name+, +accounts[].href+ and +expires_at+ are
+    # common to both; +expires_at+ is an ISO-8601 string from either issuer
+    # (integer epoch seconds from bc3 before bc3 #12646 — passed through
+    # verbatim either way).
     #
     # @example Get authorization info
     #   auth = client.authorization.get
