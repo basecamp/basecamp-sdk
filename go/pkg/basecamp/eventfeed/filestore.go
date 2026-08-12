@@ -283,10 +283,10 @@ func (s *FileCheckpointStore) writeAtomic(data []byte) error {
 	}
 	// os.CreateTemp already creates at 0600, but that is subject to the
 	// process umask; the mode is part of the contract, so set it outright.
-	if err := os.Chmod(tmpPath, 0o600); err != nil {
+	if err := os.Chmod(tmpPath, 0o600); err != nil { // #nosec G703 -- store path is caller-configured
 		return fmt.Errorf("eventfeed: setting mode on the staged checkpoint store for %s: %w", s.path, err)
 	}
-	if err := os.Rename(tmpPath, s.path); err != nil {
+	if err := os.Rename(tmpPath, s.path); err != nil { // #nosec G703 -- store path is caller-configured
 		return fmt.Errorf("eventfeed: replacing checkpoint store %s: %w", s.path, err)
 	}
 	return nil
