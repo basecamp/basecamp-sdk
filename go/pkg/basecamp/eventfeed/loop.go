@@ -380,8 +380,8 @@ func newLiveBuffer(capacity int, onChange func(int)) *liveBuffer {
 	return &liveBuffer{capacity: capacity, onChange: onChange}
 }
 
-// full reports whether the next admission would drop an event to make room.
-func (b *liveBuffer) full() bool { return len(b.events) >= b.capacity }
+// empty reports whether the buffer holds nothing awaiting replay.
+func (b *liveBuffer) empty() bool { return len(b.events) == 0 }
 
 // add admits ev, returning the ids of any events dropped to make room —
 // oldest first.
@@ -916,10 +916,18 @@ func (l *loop) dispatchDisconnect(at *attempt, deadline Timer, f frame) cycleOut
 	}
 }
 
-// admitLive admits a pre-confirmation live event to the buffer — the live
-// buffer is the only carrier of an in-flight-at-entry straggler — and
-// dispatches the BufferOverflow semantic signal at drop time, the first
-// consumer-context opportunity (SPEC.md §23 "Semantic Signals").
+// admitLive admits a live event to the buffer — the live buffer is the only
+// carrier of an in-flight-at-entry straggler — and dispatches the
+// BufferOverflow semantic signal at drop time, the first consumer-context
+// opportunity (SPEC.md §23 "Semantic Signals").
+//
+// It is the single place a drop is dispatched from, on whichever path observed
+// it: the pre-confirmation and Streaming dispatches, the bounded admission
+// passes, the drain's scan, and the servicing of frames arriving while a poll
+// seam call is in flight. Every one of them runs on the consumer's goroutine,
+// which is what makes drop time an opportunity to dispatch on rather than
+// something to park until a later cut — a cut a stalled or failing call may
+// never reach.
 func (l *loop) admitLive(at *attempt, deadline Timer, ev Event) (cycleOutcome, bool) {
 	dropped := l.buffer.add(ev)
 	if len(dropped) == 0 {

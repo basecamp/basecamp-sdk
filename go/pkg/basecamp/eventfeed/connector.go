@@ -217,13 +217,12 @@ type testHooks struct {
 	// pumpHandedOff fires once an item reaches the hand-off queue, reporting
 	// whether it is the pump's terminating error.
 	pumpHandedOff func(isErr bool)
-	// frameDeferred fires when the in-flight-poll servicing takes one receive
-	// out of band, reporting whether the deferral is an overflowing
-	// admission. It is the rendezvous for "the seam call is now the only
-	// thing this walk is waiting on", which is what makes the two deferral
-	// classes' opposite ordering against the next Save assertable without
+	// frameDeferred fires when the in-flight-poll servicing parks one receive —
+	// always a socket outcome — for the walk's next dispatch point. It is the
+	// rendezvous for "the seam call is now the only thing this walk is waiting
+	// on", which is what makes transition 21's deferral assertable without
 	// racing the seam call's own completion.
-	frameDeferred func(overflow bool)
+	frameDeferred func()
 }
 
 // New validates configuration and returns a Connector. New does no I/O —

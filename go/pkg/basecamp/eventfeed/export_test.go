@@ -63,12 +63,12 @@ func (c *Connector) OnPumpReleased(f func()) { c.hooks.pumpReleased = f }
 func (c *Connector) OnPumpHandedOff(f func(isErr bool)) { c.hooks.pumpHandedOff = f }
 
 // OnFrameDeferred registers a hook fired when the in-flight-poll servicing
-// takes one receive out of band, reporting whether the deferral is an
-// overflowing admission. It is the rendezvous for "the walk is now waiting on
-// nothing but the seam call": without it, a test that serves the deferring
-// frame and then lets the poll return races the state machine's own select
-// between the queued frame and the completed call.
-func (c *Connector) OnFrameDeferred(f func(overflow bool)) { c.hooks.frameDeferred = f }
+// parks one receive — always a socket outcome — for the walk's next dispatch
+// point. It is the rendezvous for "the walk is now waiting on nothing but the
+// seam call": without it, a test that serves the deferring frame and then lets
+// the poll return races the state machine's own select between the queued frame
+// and the completed call.
+func (c *Connector) OnFrameDeferred(f func()) { c.hooks.frameDeferred = f }
 
 // ExportPumpDepth is the frame pump's bounded hand-off queue depth: the
 // number of frames a test must serve to make the pump block.

@@ -70,8 +70,8 @@ func (l *loop) walkThenDrain(at *attempt, cursor Cursor, presentClass bool) (cyc
 	// entry was present-class, which a mid-walk re-entry can change. The
 	// invariant's other conjunct (every pre-cut loss condition explicitly
 	// accepted) is structural: an overflow with no handler, or one whose
-	// handler returned Terminate, took the Terminal(buffer_overflow) edge at
-	// drop time and never reached this line.
+	// handler returned Terminate, took the Terminal(buffer_overflow) edge in
+	// the goroutine that observed the drop and never reached this line.
 	if held != "" {
 		l.acceptPosition(held)
 		l.saveCheckpoint(held)
@@ -80,12 +80,12 @@ func (l *loop) walkThenDrain(at *attempt, cursor Cursor, presentClass bool) (cyc
 		l.cfg.observer.CaughtUp()
 	}
 	// The walk's last dispatch point, and by construction a SOCKET outcome
-	// only: the overflow class is dispatched at the page that deferred it,
-	// and the drain's scan already took the protocol-fatal carve-out. What is
-	// left defers here, after the drain and the held save have completed —
-	// the same "finish what the page started, then observe the socket"
-	// ordering the page boundary applies, and §23's one deliberate
-	// deferred-consumption case.
+	// only: nothing else is ever deferred — an overflowing admission is
+	// dispatched where it is observed, and the drain's scan already took the
+	// protocol-fatal carve-out. What is left defers here, after the drain and
+	// the held save have completed — the same "finish what the page started,
+	// then observe the socket" ordering the page boundary applies, and §23's
+	// one deliberate deferred-consumption case.
 	return l.dispatchDeferred(at)
 }
 
@@ -127,12 +127,19 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 				return cycleOutcome{kind: outcomeTerminal, term: terr}, "", true
 			}
 		}
-		page, superseded, err := l.pollPage(at, cursor)
+		p := l.pollPage(at, cursor)
+		if p.ended {
+			// Servicing the socket during the call ended the cycle: an
+			// overflowing admission whose disposition was not Accept, dispatched
+			// where it was observed rather than parked for a cut this call may
+			// never reach. The attempt is already disposed.
+			return p.out, "", true
+		}
 		if l.runCtx.Err() != nil {
 			l.disposeAttempt(at, nil)
 			return cycleOutcome{kind: outcomeClosed}, "", true
 		}
-		if superseded {
+		if p.superseded {
 			// The socket's own outcome, deferred while the seam call was in
 			// flight, outlived the staleness window with the call still
 			// outstanding. It IS the disposition — transition 21 — and its
@@ -147,8 +154,8 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			l.observeDisconnected("", errStaleConnection)
 			return cycleOutcome{kind: outcomeFailed}, "", true
 		}
-		if err != nil {
-			step, out, done := l.recoverPoll(at, cursor, err)
+		if p.err != nil {
+			step, out, done := l.recoverPoll(at, cursor, p.err)
 			if done {
 				return out, "", true
 			}
@@ -171,6 +178,7 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		// The page's rows advance the poll-lane reset cursor — served, not
 		// delivered: dedupe suppression and a consumer break are both
 		// irrelevant to what the poll lane has served.
+		page := p.page
 		for _, ev := range page.Events {
 			if ev.ID > l.lastPollServedID {
 				l.lastPollServedID = ev.ID
@@ -185,11 +193,6 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		}
 		if l.cfg.observer.PageDelivered != nil {
 			l.cfg.observer.PageDelivered(len(page.Events), page.Position)
-		}
-		// The overflow the in-flight servicing deferred is dispatched HERE,
-		// ahead of anything durable this page moves.
-		if out, done := l.dispatchDeferredOverflow(at); done {
-			return out, "", true
 		}
 
 		if presentClass {
@@ -228,16 +231,14 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 // was in flight and left for the walk's ordinary dispatch point. closed
 // records the pump's channel closing, which carries no item.
 //
-// overflow separates the two deferral CLASSES, which have opposite ordering
-// obligations against the next Save: an admission that would drop is a
-// pre-cut loss condition, so §23's conjunctive save-ordering invariant puts
-// its disposition BEFORE the page's position moves; a socket outcome is
-// transition 21, which the page boundary deliberately observes AFTER the
-// in-flight page has been accepted, delivered and saved.
+// Every deferral is a SOCKET outcome (or the pump's exit), which is transition
+// 21: the page boundary deliberately observes it AFTER the in-flight page has
+// been accepted, delivered and saved. Nothing else defers — in particular an
+// admission that drops is a pre-cut loss condition whose disposition runs at
+// drop time, in the goroutine that received the frame.
 type deferredFrame struct {
-	item     pumpItem
-	closed   bool
-	overflow bool
+	item   pumpItem
+	closed bool
 }
 
 // pollResult is one poll seam call's outcome, carried back from the call's
@@ -245,6 +246,25 @@ type deferredFrame struct {
 type pollResult struct {
 	page PollPage
 	err  error
+}
+
+// pollAttempt is one poll-page attempt as the walk sees it: the page the seam
+// call served, or the reason the walk has no page to work with.
+type pollAttempt struct {
+	// page and err are the seam call's own outcome, when it completed.
+	page PollPage
+	err  error
+	// ended reports that servicing the socket while the call was in flight
+	// ENDED THE CYCLE — an admission that dropped and whose disposition was
+	// Terminate, or which had no handler at all. out carries the outcome, the
+	// attempt is already disposed, and page/err are meaningless.
+	ended bool
+	out   cycleOutcome
+	// superseded reports the call was abandoned: a deferred socket outcome
+	// outlived the staleness window with the call still outstanding, or the
+	// consumer went away. The caller dispatches the deferral, whose teardown
+	// cancels the abandoned call.
+	superseded bool
 }
 
 // pollPage issues one poll seam call and keeps ADMITTING live events while it
@@ -255,14 +275,21 @@ type pollResult struct {
 // "observed" is admission into the state-machine-owned buffer at or before
 // the cut), and a state machine blocked inside the call cannot admit it.
 //
-// ONLY admissions are serviced here. The first receive that is not one — a
-// socket failure, a disconnect frame, an invalid frame, or an admission that
-// would overflow the buffer (whose drop-time signal dispatch belongs to
-// admitLive) — is DEFERRED, and the call is still awaited to completion. That
-// is what keeps transition 21's page boundary the place a dying socket is
-// observed: the in-flight page is accepted, delivered and saved before the
-// walk stops, and frame order is preserved because the servicing stops at the
-// deferred receive.
+// ONLY admissions are serviced here, and an admission that DROPS is serviced
+// too: the drop's BufferOverflow signal is dispatched at drop time, on this
+// goroutine — the consumer's — because that is §23's first consumer-context
+// opportunity after the condition arises. "Before the next save" is the rule's
+// outer bound, not an appointment to keep: an in-flight call can stall
+// indefinitely or fail outright, so a signal parked until it returns is a
+// signal that may never be dispatched at all. An Accept keeps awaiting the
+// call; anything else ends the cycle right here (ended=true).
+//
+// The first receive that is not an admission — a socket failure, a disconnect
+// frame, an invalid frame — is DEFERRED, and the call is still awaited to
+// completion. That is what keeps transition 21's page boundary the place a
+// dying socket is observed: the in-flight page is accepted, delivered and saved
+// before the walk stops, and frame order is preserved because the servicing
+// stops at the deferred receive.
 //
 // It reports superseded=true when it gave up on the call: a deferred SOCKET
 // outcome is still awaited, but only for as long as the staleness window,
@@ -271,7 +298,7 @@ type pollResult struct {
 // already spoken (and the staleness expiry that would tear that socket down
 // is unobservable while the call is outstanding). The caller dispatches the
 // deferred outcome, whose teardown cancels the abandoned call.
-func (l *loop) pollPage(at *attempt, cursor Cursor) (page PollPage, superseded bool, err error) {
+func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 	done := make(chan pollResult, 1)
 	go func() {
 		// Cloned on the way out for the same reason WithFilters clones on the
@@ -284,27 +311,24 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) (page PollPage, superseded b
 	for {
 		select {
 		case r := <-done:
-			return r.page, false, r.err
+			return pollAttempt{page: r.page, err: r.err}
 		case item, ok := <-at.lc.frames:
 			if !ok {
 				l.deferred = &deferredFrame{closed: true}
-			} else if handled, over := l.admitDuringPoll(item); handled {
-				continue
-			} else if over {
-				// The buffer, not the socket: the call is unaffected and is
-				// awaited to completion, and the drop's disposition runs
-				// before this page's position moves anything durable.
-				l.deferred = &deferredFrame{item: item, overflow: true}
-				if l.hooks.frameDeferred != nil {
-					l.hooks.frameDeferred(true)
-				}
-				r := <-done
-				return r.page, false, r.err
 			} else {
+				handled, out, ended := l.admitDuringPoll(at, item)
+				if ended {
+					// The drop's own disposition. Disposing the attempt is what
+					// returns the abandoned call, so nothing waits on it.
+					return pollAttempt{ended: true, out: out}
+				}
+				if handled {
+					continue
+				}
 				l.deferred = &deferredFrame{item: item}
 			}
 			if l.hooks.frameDeferred != nil {
-				l.hooks.frameDeferred(false)
+				l.hooks.frameDeferred()
 			}
 			return l.awaitSupersededPoll(at, done)
 		}
@@ -317,63 +341,70 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) (page PollPage, superseded b
 // place a dying socket is observed — but the wait is BOUNDED by the same
 // staleness window every other socket-open wait is: on the lapse the call is
 // abandoned to the deferred outcome's teardown.
-func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult) (page PollPage, superseded bool, err error) {
+func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult) pollAttempt {
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
 		case r := <-done:
-			return r.page, false, r.err
+			return pollAttempt{page: r.page, err: r.err}
 		case <-l.runCtx.Done():
-			return PollPage{}, true, nil
+			return pollAttempt{superseded: true}
 		case <-at.lc.stale.rearmed():
 		case <-staleTimer.C():
 			if _, ok := at.lc.stale.evaluate(staleGen); ok {
-				return PollPage{}, true, nil
+				return pollAttempt{superseded: true}
 			}
 		}
 	}
 }
 
-// admitDuringPoll handles one pump item received while a poll seam call is in
-// flight, reporting whether it was fully handled and, when it was not,
-// whether the reason is an admission that would OVERFLOW the live buffer. A
+// admitDuringPoll handles one pump item received out of band — while a poll
+// seam call is in flight, or during the drain's scan — reporting whether it was
+// fully handled and, when handling it ended the cycle, that outcome. A
 // correlated event frame is admitted to the live buffer; a ping, welcome,
 // unknown type, or a frame carrying a foreign identifier is liveness only and
 // skipped, exactly as the ordinary dispatch would (the pump already reset
-// staleness). Everything else is left for the caller to defer.
-func (l *loop) admitDuringPoll(item pumpItem) (handled bool, overflow bool) {
+// staleness). Everything else is left for the caller.
+//
+// An admission that DROPS is handled here rather than handed back, because
+// this goroutine is the consumer's and drop time is §23's first
+// consumer-context opportunity: admitLive raises the signal and takes its
+// disposition, which is Accept (handled, the walk continues) or the
+// Terminal(buffer_overflow) that ends the cycle with nothing durable moved.
+func (l *loop) admitDuringPoll(at *attempt, item pumpItem) (handled bool, out cycleOutcome, ended bool) {
 	if item.err != nil {
-		return false, false
+		return false, cycleOutcome{}, false
 	}
 	f, err := parseFrame(item.data)
 	if err != nil {
-		return false, false
+		return false, cycleOutcome{}, false
 	}
+	var ev Event
+	admit := false
 	switch f.kind {
 	case frameMessage:
 		if f.identifier != l.identifier {
 			break
 		}
-		ev, derr := decodeMessageEvent(f.message)
+		e, derr := decodeMessageEvent(f.message)
 		if derr != nil {
-			return false, false
+			return false, cycleOutcome{}, false
 		}
-		if l.buffer.full() {
-			// An admission that drops is a drop-time signal dispatch with a
-			// disposition that can end the cycle: it belongs to admitLive, at
-			// the ordinary dispatch point.
-			return false, true
-		}
-		l.buffer.add(ev)
+		ev, admit = e, true
 	case frameDisconnect:
-		return false, false
+		return false, cycleOutcome{}, false
 	case frameWelcome, framePing, frameConfirm, frameReject, frameUnknown:
 		// Liveness only in a post-confirmation state.
 	}
 	if l.hooks.frameHandled != nil {
 		l.hooks.frameHandled(f.kind)
 	}
-	return true, false
+	if admit {
+		if out, done := l.admitLive(at, nil, ev); done {
+			return true, out, true
+		}
+	}
+	return true, cycleOutcome{}, false
 }
 
 // dispatchDeferred dispatches the frame the in-flight-poll servicing deferred,
@@ -395,30 +426,6 @@ func (l *loop) dispatchDeferred(at *attempt) (cycleOutcome, bool) {
 		return l.pumpExited(at, nil), true
 	}
 	return l.handleLiveFrame(at, nil, d.item, false)
-}
-
-// dispatchDeferredOverflow dispatches the deferral that is an admission the
-// live buffer cannot take, and ONLY that one. It runs at every page, before
-// the page's position is saved or held, because §23's conjunctive
-// save-ordering invariant requires every pre-cut loss condition to have been
-// explicitly accepted before the next Save: a Terminate disposition — or no
-// handler — has to land in Terminal(`buffer_overflow`) with the durable
-// checkpoint still where it was, or a restart skips the dropped event.
-//
-// Timing is what makes the dispatch point load-bearing rather than cosmetic:
-// the buffer is still full here, so the admission drops exactly what it would
-// have dropped in flight. Deferred to the walk's ordinary dispatch point, it
-// would land after the drain had emptied the buffer and the signal would
-// never fire at all.
-//
-// Socket outcomes keep their existing deferral to the page boundary below:
-// the in-flight page is still accepted, delivered and saved before the walk
-// observes a socket that died under it.
-func (l *loop) dispatchDeferredOverflow(at *attempt) (cycleOutcome, bool) {
-	if l.deferred == nil || !l.deferred.overflow {
-		return cycleOutcome{}, false
-	}
-	return l.dispatchDeferred(at)
 }
 
 // ownershipCut performs SPEC.md §23's bounded admission pass: after the
@@ -499,7 +506,14 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 		if out, done := l.drainScan(at, &budget); done {
 			return out, true
 		}
-		if len(batch) == 0 {
+		// The scan admits as it goes, so an iteration that took the buffer
+		// empty can end with it repopulated — and returning then STRANDS what
+		// the scan just admitted: Streaming never drains the buffer, so the
+		// event would wait for a later repair walk, behind the `caught_up`
+		// announcement and behind the held save this drain is what gates. The
+		// scan's own budget is what still bounds the loop: once it is spent the
+		// scan admits nothing, so the buffer empties and the drain ends.
+		if len(batch) == 0 && l.buffer.empty() {
 			return cycleOutcome{}, false
 		}
 		for _, ev := range batch {
@@ -555,13 +569,11 @@ func (l *loop) drainScan(at *attempt, budget *int) (cycleOutcome, bool) {
 				return cycleOutcome{}, false
 			}
 			*budget--
-			handled, overflow := l.admitDuringPoll(item)
+			handled, out, ended := l.admitDuringPoll(at, item)
 			switch {
+			case ended:
+				return out, true
 			case handled:
-			case overflow:
-				if out, done := l.handleLiveFrame(at, nil, item, false); done {
-					return out, true
-				}
 			default:
 				if f, ok := protocolFatalFrame(item); ok {
 					return l.terminateProtocolFatal(at, f), true
@@ -793,13 +805,18 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 		}}, true
 	case PollRedirectRefused:
 		// A 3xx whose Location failed the seam's per-hop validation: the
-		// continuation edge, NEVER poll_failed. The Location is already
-		// redacted to its origin by the adapter.
+		// continuation edge, NEVER poll_failed. This edge exposes the rejected
+		// Location redacted to its ORIGIN — a hostile continuation's path and
+		// query are exactly what must not be echoed — so the seam error is not
+		// retained as the cause: PollError.Error renders its underlying Err and
+		// Unwrap hands it out, and the generated error's text routinely carries
+		// the request URL in full. The classification survives on a sanitized
+		// cause carrying the same redaction the terminal promises.
 		l.disposeAttempt(at, nil)
 		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 			Reason: ReasonInvalidContinuation,
 			Msg:    "the poll refused a redirect to " + pe.LocationOrigin,
-			Err:    err,
+			Err:    &PollError{Kind: PollRedirectRefused, LocationOrigin: pe.LocationOrigin},
 		}}, true
 	case PollUnrecoverable:
 		l.disposeAttempt(at, nil)
