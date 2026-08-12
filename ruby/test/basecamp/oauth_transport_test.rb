@@ -964,8 +964,10 @@ class OAuthTransportTest < Minitest::Test
       # Timeout.timeout(connect_remaining) bound closes this socket — the
       # watchdog's finish raises IOError until the session is started, and no
       # per-read timeout can fire. A drip that ran out on the proxy's side
-      # instead leaves the queue empty.
-      assert cut.pop(timeout: 5), \
+      # instead leaves the queue empty. The pop timeout is a WAIT bound, not a
+      # timing assertion — as generous as the hang guard, so a loaded runner
+      # cannot fail it spuriously (#708's whole class).
+      assert cut.pop(timeout: 15), \
         "the proxy never saw the client cut the CONNECT drip — the whole-phase connect bound did not fire"
       # Hang guard ONLY — generous on purpose: it protects the suite from a
       # wedged connect phase and asserts nothing about timing tightness.
