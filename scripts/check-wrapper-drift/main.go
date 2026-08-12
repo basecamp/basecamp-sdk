@@ -433,6 +433,13 @@ type structFields struct {
 	// promotion sources, but an unexported one is only on the wire if its type
 	// is a struct — which needs the universe, so flattenEmbedded settles it.
 	taggedEmbeds []taggedEmbed
+	// decodeUnsafe lists embeds that break DECODING only: an embedded pointer
+	// to an unexported type, which encoding/json refuses to allocate ("cannot
+	// set embedded pointer to unexported struct"). Marshalling and in-Go
+	// construction are unaffected, so this is reported for tier-2 pairs — the
+	// ones whose whole premise is that the decoder populates the tags — and not
+	// for wrappers built by a *FromGenerated or a composite literal.
+	decodeUnsafe []string
 	// unresolved lists embedded types the checker could not resolve, as
 	// human-readable paths ("Task.Meta -> time.Time"). Reported as drift when
 	// a pair reaches this struct; see run.
@@ -720,6 +727,14 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 			continue
 		}
 
+		// Tiering first: it decides which reports apply. Tier 2 is the only
+		// path that skips the population check — its wrappers have no
+		// in-package literal; the JSON decoder writes straight onto struct
+		// tags, so tag presence IS population.
+		_, isDirectDecode := directDecode[wrapName]
+		isTier2 := isDirectDecode && !tier3[wrapName]
+		assigned := assignedFields[wrapName]
+
 		// An embedded type the checker could not resolve hides an unknown
 		// number of promoted fields from both the tag and population checks.
 		// Report it instead of comparing against a knowingly-partial tag set —
@@ -728,19 +743,14 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		for _, u := range wrap.unresolved {
 			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: unresolvable embedded type in the wrapper: %s. Promoted fields from it are invisible to this check; teach the resolver about it or replace the embed with named fields.", wrapName, genName, u))
 		}
+		if isTier2 {
+			for _, u := range wrap.decodeUnsafe {
+				drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: %s. This pair is direct-decode, where tag presence IS population, so those fields are silently absent.", wrapName, genName, u))
+			}
+		}
 		for _, u := range gen.unresolved {
 			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: unresolvable embedded type in the generated struct: %s. Promoted fields from it are invisible to this check; teach the resolver about it.", wrapName, genName, u))
 		}
-
-		// The population check runs for tier 1 (assignedFields sourced from
-		// the *FromGenerated body) and tier 3 (assignedFields sourced from the
-		// inline composite literal walker). Tier 2 is the only path that skips
-		// the population check — its wrappers have no in-package literal; the
-		// JSON decoder writes straight onto struct tags, so tag presence IS
-		// population.
-		_, isDirectDecode := directDecode[wrapName]
-		isTier2 := isDirectDecode && !tier3[wrapName]
-		assigned := assignedFields[wrapName]
 
 		// Walk every JSON tag declared on the generated struct.
 		tags := make([]string, 0, len(gen.tags))
@@ -964,7 +974,7 @@ func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) 
 		if !ok || fd.Recv == nil || len(fd.Recv.List) != 1 {
 			continue
 		}
-		if !isJSONMethodName(fd.Name.Name) {
+		if !isJSONMethod(fd.Name.Name, fd.Type) {
 			continue
 		}
 		recv := fd.Recv.List[0].Type
@@ -999,8 +1009,9 @@ func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) 
 				out[name] = true
 				continue
 			}
+			ft, _ := m.Type.(*ast.FuncType)
 			for _, n := range m.Names {
-				if isJSONMethodName(n.Name) {
+				if isJSONMethod(n.Name, ft) {
 					out[name] = true
 				}
 			}
@@ -1058,13 +1069,6 @@ func vouch(e embedRef, childName string, methodsTravel bool, resolveErr string, 
 	if jsonMethods[e.name] || (methodsTravel && childName != "" && jsonMethods[childName]) {
 		return "the embedded type's method set carries MarshalJSON/UnmarshalJSON, which the embedding struct promotes; encoding/json then calls it instead of walking any of these fields, so no promoted tag here is trustworthy"
 	}
-	if e.pointer && e.name != "" && !ast.IsExported(e.name) {
-		// encoding/json refuses to allocate an embedded pointer to an
-		// unexported type ("cannot set embedded pointer to unexported
-		// struct"), so a direct-decode wrapper never gets these fields
-		// populated even though their tags are present.
-		return "an embedded pointer to an unexported type cannot be allocated by encoding/json, so its promoted fields are never decoded"
-	}
 	if resolveErr != "" {
 		// An unresolvable type may also be a marshaller — time.Time is one —
 		// so this cannot be treated as merely "fields we cannot see".
@@ -1073,10 +1077,60 @@ func vouch(e embedRef, childName string, methodsTravel bool, resolveErr string, 
 	return ""
 }
 
-// isJSONMethodName reports whether a method name is one whose promotion
-// redirects encoding/json away from a struct's fields.
-func isJSONMethodName(name string) bool {
-	return name == "MarshalJSON" || name == "UnmarshalJSON"
+// isJSONMethod reports whether a method is one whose promotion redirects
+// encoding/json away from a struct's fields — which takes the right NAME and
+// the right SIGNATURE, since only a method that satisfies json.Marshaler or
+// json.Unmarshaler is ever called. A `MarshalJSON(int) []byte` implements
+// neither, and refusing to judge a struct that embeds its type would
+// manufacture drift on a wrapper the encoder walks normally.
+//
+// Signatures are compared by rendered type expression, which is exact for the
+// shapes these two interfaces require:
+//
+//	MarshalJSON() ([]byte, error)
+//	UnmarshalJSON([]byte) error
+func isJSONMethod(name string, ft *ast.FuncType) bool {
+	if ft == nil {
+		return false
+	}
+	switch name {
+	case "MarshalJSON":
+		return signatureIs(ft, nil, []string{"[]byte", "error"})
+	case "UnmarshalJSON":
+		return signatureIs(ft, []string{"[]byte"}, []string{"error"})
+	}
+	return false
+}
+
+// signatureIs compares a function type's parameter and result types against
+// rendered type expressions, treating each declared name in a grouped
+// parameter as its own entry.
+func signatureIs(ft *ast.FuncType, params, results []string) bool {
+	return fieldListIs(ft.Params, params) && fieldListIs(ft.Results, results)
+}
+
+func fieldListIs(fl *ast.FieldList, want []string) bool {
+	var got []string
+	if fl != nil {
+		for _, f := range fl.List {
+			n := 1
+			if len(f.Names) > 0 {
+				n = len(f.Names)
+			}
+			for i := 0; i < n; i++ {
+				got = append(got, exprDisplay(f.Type))
+			}
+		}
+	}
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // collectTypeDecls returns every top-level `type X <expr>` declaration in the
@@ -1152,6 +1206,10 @@ func exprDisplay(expr ast.Expr) string {
 		return exprDisplay(e.X) + "[…]"
 	case *ast.IndexListExpr: // generic instantiation: Base[T, U]
 		return exprDisplay(e.X) + "[…]"
+	case *ast.ArrayType:
+		if e.Len == nil {
+			return "[]" + exprDisplay(e.Elt)
+		}
 	}
 	return "<unsupported type expression>"
 }
@@ -1357,6 +1415,11 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 						fmt.Sprintf("%s -> %s (%s)", strings.Join(append([]string{rootName}, parent.path...), "."), e.display, reason))
 					discardPromotions()
 					return
+				}
+				if e.pointer && e.name != "" && !ast.IsExported(e.name) {
+					root.decodeUnsafe = append(root.decodeUnsafe,
+						fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates its promoted fields)",
+							strings.Join(append([]string{rootName}, parent.path...), "."), e.display))
 				}
 				if child == nil || visited[childName] {
 					// Either the embedded type promotes no JSON-tagged fields

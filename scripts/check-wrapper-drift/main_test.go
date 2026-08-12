@@ -2852,12 +2852,14 @@ type UntaggedParent struct {
 	}
 }
 
-// TestFlattenEmbedded_UnexportedPointerEmbedIsRejected covers the decode side:
-// encoding/json cannot allocate an embedded pointer to an unexported type
-// ("cannot set embedded pointer to unexported struct"), so a direct-decode
-// wrapper's tags are present but never populated — the exact assumption tier 2
-// rests on. The value form has no such problem and must keep working.
-func TestFlattenEmbedded_UnexportedPointerEmbedIsRejected(t *testing.T) {
+// TestFlattenEmbedded_UnexportedPointerEmbedIsDecodeUnsafe covers a failure
+// that is real for ONE direction only: encoding/json cannot allocate an
+// embedded pointer to an unexported type ("cannot set embedded pointer to
+// unexported struct"), so a decoder never populates its promoted fields —
+// while marshalling and in-Go construction are unaffected. It is therefore
+// recorded separately from the refusals, and run() reports it for tier-2 pairs
+// alone, whose whole premise is that the decoder does the populating.
+func TestFlattenEmbedded_UnexportedPointerEmbedIsDecodeUnsafe(t *testing.T) {
 	structs := flattenFixture(t, src(`package fixture
 
 type hidden struct {
@@ -2872,11 +2874,101 @@ type ByValue struct {
 	hidden
 }
 `))
-	if p := structs["ByPointer"]; p == nil || len(p.unresolved) == 0 {
-		t.Errorf("an unexported pointer embed cannot be decoded and must be reported, got %+v", structs["ByPointer"])
+	p := structs["ByPointer"]
+	if p == nil {
+		t.Fatal("ByPointer not collected")
 	}
-	if v := structs["ByValue"]; v == nil || len(v.unresolved) != 0 || !v.tags["id"] {
-		t.Errorf("the value form promotes normally, got %+v", structs["ByValue"])
+	if len(p.decodeUnsafe) == 0 {
+		t.Error("an unexported pointer embed must be recorded as decode-unsafe")
+	}
+	if len(p.unresolved) != 0 {
+		t.Errorf("it is not a refusal: marshalling and construction work, got %v", p.unresolved)
+	}
+	if !p.tags["id"] {
+		t.Error("the fields still promote — the problem is decoding, not the shape")
+	}
+	if v := structs["ByValue"]; v == nil || len(v.decodeUnsafe) != 0 || !v.tags["id"] {
+		t.Errorf("the value form has no decode problem at all, got %+v", structs["ByValue"])
+	}
+}
+
+// TestRun_UnexportedPointerEmbedReportedForDirectDecodeOnly is the pairing that
+// makes the scoping meaningful: the SAME wrapper shape is reported when the
+// pair is direct-decode and accepted when it is built by a *FromGenerated.
+func TestRun_UnexportedPointerEmbedReportedForDirectDecodeOnly(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id int64 ~json:"id"~
+}
+`)
+	tier2Src := src(`package basecamp
+
+type hidden struct {
+	ID int64 ~json:"id"~
+}
+
+type Note struct {
+	*hidden
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": tier2Src})
+	if err := run(wrapperDir, generatedFile, map[string]string{"Note": "Note"}, nil, false); err == nil {
+		t.Error("run: a direct-decode pair relies on the decoder, which cannot allocate this embed")
+	}
+
+	tier1Src := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type hidden struct {
+	ID int64 ~json:"id"~
+}
+
+type Note struct {
+	*hidden
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.hidden = &hidden{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": tier1Src})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: a constructed wrapper initializes the embed itself and is unaffected, got %v", err)
+	}
+}
+
+// TestIsJSONMethod_SignatureMatters guards the guard: only a method that
+// actually satisfies json.Marshaler / json.Unmarshaler redirects the encoder,
+// so a same-named method with a different signature must not make the walk
+// refuse a struct encoding/json walks normally.
+func TestIsJSONMethod_SignatureMatters(t *testing.T) {
+	cases := []struct {
+		decl string
+		want bool
+	}{
+		{"func (s Stamp) MarshalJSON() ([]byte, error) { return nil, nil }", true},
+		{"func (s *Stamp) UnmarshalJSON(b []byte) error { return nil }", true},
+		{"func (s Stamp) MarshalJSON(n int) []byte { return nil }", false},
+		{"func (s Stamp) MarshalJSON() []byte { return nil }", false},
+		{"func (s *Stamp) UnmarshalJSON(b string) error { return nil }", false},
+		{"func (s *Stamp) UnmarshalJSON(b []byte) (int, error) { return 0, nil }", false},
+		{"func (s Stamp) MarshalText() ([]byte, error) { return nil, nil }", false},
+	}
+	for _, c := range cases {
+		source := "package fixture" + "\n\n" + c.decl + "\n"
+		f, err := parser.ParseFile(token.NewFileSet(), "f.go", source, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("parse %q: %v", c.decl, err)
+		}
+		got, _ := collectJSONMethodTypes(f)
+		if got["Stamp"] != c.want {
+			t.Errorf("%s: recognized = %v, want %v", c.decl, got["Stamp"], c.want)
+		}
 	}
 }
 
