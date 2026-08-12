@@ -1,0 +1,30 @@
+scripts/validate-api-gaps.rb
+  s_b429eb5f926267::t_f5a913835b3134 61
+  s_b429eb5f926267::t_938446e9ec3792 55-60,62-65
+spec/api-gaps/bc5-authorization-document-shape.md
+  s_b429eb5f926267::t_e26fafb525a3bf 8
+spec/api-gaps/notifications-sort-pings-first.md
+  s_b429eb5f926267::t_d14adf5c43de59 8
+spec/api-gaps/project-archive-unarchive.md
+  s_b429eb5f926267::t_b64898e0f81d2c 12
+spec/api-gaps/subtasks-canonical-rename.md
+  s_b429eb5f926267::t_56830b2e68f9ab 8
+spec/api-gaps/upload-new-version.md
+  s_b429eb5f926267::t_bc0fd5398e6acf 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "916a7430ab51449981de98c93c7c94b329789b65",
+  "prompts": {},
+  "sessions": {
+    "s_b429eb5f926267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50a1085e-2c16-4b99-b4e1-e3cc5665f1c4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
