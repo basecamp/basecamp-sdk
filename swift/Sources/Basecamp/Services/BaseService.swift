@@ -520,11 +520,15 @@ open class BaseService: @unchecked Sendable {
     /// pagination same-origin refusal, which is a deliberate guard rather than a
     /// bad body.
     ///
-    /// The composites use it to add their own hint to this failure and only this
-    /// one. The conformance runner asks the same question of the same phrase to
-    /// keep applying its fixture-body policy, but cannot call this — it links the
-    /// SDK as a product, so internal symbols are out of reach.
-    static func malformedBodyMessage(_ error: BasecampError) -> String? {
+    /// The composites ask this to add their own hint to that failure and only
+    /// that one. The conformance runner asks it to decide whether a fixture body
+    /// needs repairing (its #555 policy), and reaches it through
+    /// `@_spi(Conformance) import Basecamp`: it links the SDK as a product, and
+    /// the alternative — a second copy of ``malformedBodyPhrase`` in the runner —
+    /// is a constant nothing checks, which is what this SPI exists to avoid. SPI
+    /// rather than `public` because the answer is only meaningful to a caller
+    /// that already knows how this SDK renders the failure.
+    @_spi(Conformance) public static func malformedBodyMessage(_ error: BasecampError) -> String? {
         guard case .api(let message, let httpStatus, _, _) = error, httpStatus == nil,
             message.contains(malformedBodyPhrase)
         else {

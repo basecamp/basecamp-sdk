@@ -1,4 +1,4 @@
-import Basecamp
+@_spi(Conformance) import Basecamp
 import Foundation
 
 /// Default account ID for conformance tests. Not private: the path invariant
@@ -268,7 +268,13 @@ struct Runner {
                 // fixture pinning `errorCode: api_error` be satisfied by a
                 // decoder rejection, which is exactly what `caughtError` is
                 // withheld to prevent.
-                if let decodeFailure = malformedBodyMessage(error) {
+                //
+                // The SDK is asked which shape this is rather than told: a
+                // statusless `.api` is also what the pagination same-origin
+                // guard throws, and `security.json` asserts on that refusal.
+                // `malformedBodyMessage` is `@_spi(Conformance)` precisely so
+                // this seam cannot hold a second, drifting copy of the phrase.
+                if let decodeFailure = BaseService.malformedBodyMessage(error) {
                     guard expectsFailure else {
                         return .fail("Mock body lacks required Swift model fields: \(decodeFailure)")
                     }
@@ -375,28 +381,6 @@ private func runHTTPSProbe(_ baseURL: String) -> HTTPSProbeOutcome {
 }
 
 // MARK: - Decoding-error rendering
-
-/// The message of a SPEC §6 malformed-2xx-body error, or nil for any other
-/// `BasecampError`.
-///
-/// The SDK maps a decode failure to a statusless `api_error` (#604) and cannot
-/// carry the `DecodingError` structurally — `BasecampError.api` has no `cause`
-/// slot, and adding one would break every `switch` over the case — so the
-/// message is the discriminator.
-///
-/// Statuslessness alone is NOT enough, and the security fixtures prove it: the
-/// pagination same-origin guard throws a statusless `.api` too, and it is a
-/// deliberate refusal those cases assert on rather than a fixture body to
-/// repair. Matching the phrase the decode mapping emits keeps the two apart.
-/// The coupling is noted at `BaseService.malformedBody` in the SDK.
-private func malformedBodyMessage(_ error: BasecampError) -> String? {
-    guard case .api(let message, let httpStatus, _, _) = error, httpStatus == nil,
-        message.contains("returned a body that does not decode")
-    else {
-        return nil
-    }
-    return message
-}
 
 /// Renders a DecodingError with the missing key and coding path, which is the
 /// actionable part when a fixture body under-specifies a model.
