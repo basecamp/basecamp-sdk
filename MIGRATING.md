@@ -157,11 +157,15 @@ guesses — they are the partial's own `if`s:
 | Ruby | `Types::Tool.required_fields` included `:enabled`, `:name` | returns `[:created_at, :creator, :id, :inherits_status, :title, :type, :updated_at, :visible_to_clients]`; readers for every new key |
 | Kotlin | `val name: String`, `val enabled: Boolean` | `String?`/`Boolean?` (defaulted null); new **non-null** `visibleToClients`, `inheritsStatus`, `type`, `creator` |
 
-**Wrong behaviour you get if you ignore it:** in Swift, nothing — the fix
-removes a throw that fired on every call, so the only work is unwrapping two
-optionals you could never read anyway. Everywhere else the trap is `enabled`:
-Go read `false` and Ruby/Python/TypeScript read nil for every tool, enabled or
-not, because the key was never sent. **Use the absence of `position`** — or the
+**Wrong behaviour you get if you ignore it:** in Swift, none — but that is not
+the same as no work. Reading a `Tool` gets strictly better (the fix removes a
+throw that fired on every call, leaving two optionals you could never read
+anyway), while *constructing* one is a compile error until you pass the four
+new non-defaulted arguments the memberwise `init` gained: `creator`, `type`,
+`visibleToClients`, `inheritsStatus`. Test doubles and fixtures are where that
+lands. Everywhere else the trap is `enabled`: Go read `false` and
+Ruby/Python/TypeScript read nil for every tool, enabled or not, because the key
+was never sent. **For a docked tool, use the absence of `position`** — or the
 project's `dock` array, which really does carry `enabled` — to tell a disabled
 tool from an enabled one.
 
