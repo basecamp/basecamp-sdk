@@ -567,8 +567,14 @@ describe("BasecampClient", () => {
     });
 
     it("propagates a caller-supplied signal through the combined signal", async () => {
+      const controller = new AbortController();
       server.use(
         http.get(`${BASE_URL}/projects.json`, async () => {
+          // Abort from INSIDE the handler: the request is provably in flight,
+          // so no timer races machine load (#655). The delayed response stays
+          // as the fallback — if the abort failed to propagate, the request
+          // would resolve normally and the rejection assertion below fails.
+          controller.abort();
           await new Promise(resolve => setTimeout(resolve, 1000));
           return HttpResponse.json([]);
         })
@@ -582,24 +588,14 @@ describe("BasecampClient", () => {
         requestTimeoutMs: 30000,
       });
 
-      const controller = new AbortController();
-      const abortTimer = setTimeout(() => controller.abort(), 50);
-
-      try {
-        const startedAt = Date.now();
-        // A caller abort surfaces as AbortError, distinct from the timeout's
-        // TimeoutError — so this also proves it was the caller's signal, not
-        // the (30s) timeout, that won.
-        await expect(
-          client.GET("/projects.json", { signal: controller.signal })
-        ).rejects.toMatchObject({ name: "AbortError" });
-
-        // Aborting promptly proves the caller's signal reached the request; the
-        // 30s timeout signal could not have fired.
-        expect(Date.now() - startedAt).toBeLessThan(900);
-      } finally {
-        clearTimeout(abortTimer);
-      }
+      // A caller abort surfaces as AbortError, distinct from the timeout's
+      // TimeoutError — so this also proves it was the caller's signal, not
+      // the (30s) timeout, that won. That identity check is the whole
+      // assertion: a wall-clock ceiling adds no discriminating power here,
+      // only load sensitivity (#655).
+      await expect(
+        client.GET("/projects.json", { signal: controller.signal })
+      ).rejects.toMatchObject({ name: "AbortError" });
     });
   });
 
