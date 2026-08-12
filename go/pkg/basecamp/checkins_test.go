@@ -913,7 +913,12 @@ func TestCheckinsService_QuestionScheduleRejectsOutOfRangeInts(t *testing.T) {
 	if strconv.IntSize == 32 {
 		t.Skip("out-of-int32-range ints are not representable on a 32-bit platform")
 	}
-	big := int(int64(math.MaxInt32) + 2) // 2^31+1; wraps to a small value if converted blindly
+	// Materialized as an int64 variable first: written as one constant
+	// expression, int(...) of 2^31+1 overflows int at COMPILE time on a
+	// 32-bit platform — before the skip above can run. Narrowing a runtime
+	// value compiles everywhere; the skip keeps 32-bit builds honest.
+	big64 := int64(math.MaxInt32) + 2 // 2^31+1; wraps to a small value if narrowed blindly
+	big := int(big64)
 
 	fixture := loadCheckinsFixture(t, "question.json")
 	var requestCount int

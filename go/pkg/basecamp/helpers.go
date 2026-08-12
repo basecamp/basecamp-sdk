@@ -19,28 +19,21 @@ import (
 // serialized bodies must stay retryable — see the naturally-idempotent PUT/
 // DELETE conformance case).
 //
-// This is an intentional architectural exception to the normal pattern of using
-// generated typed request bodies. It exists because the generated structs for
-// several Update endpoints contain value-type fields (types.Date, time.Time,
-// nested structs) whose Go zero values serialize as non-empty JSON:
+// This is the marshaling seam of the SPEC §18 rule 1 carve-out, and its
+// client list is deliberately short. Exactly two methods remain on
+// hand-marshaled maps (#653):
 //
-//   - types.Date{}  → "due_on": null
-//   - time.Time{}   → "starts_at": "0001-01-01T00:00:00Z"
-//   - struct{}      → "schedule_attributes": {}
+//   - CardsService.UpdateVerbatim  ("due_on": "" clear)
+//   - CardStepsService.Update      ("due_on": "" clear)
 //
-// These leak into partial updates and can clear existing data server-side.
-// Building a map[string]any and only inserting provided keys avoids this.
-//
-// Methods using this pattern (do not "simplify" back to generated bodies):
-//   - TodosService.Update           (types.Date: due_on, starts_on)
-//   - SchedulesService.UpdateEntry  (time.Time: starts_at, ends_at)
-//   - CardsService.Update           (types.Date: due_on)
-//   - CardStepsService.Update       (types.Date: due_on)
-//   - ProjectsService.Update        (nested: schedule_attributes)
-//   - CheckinsService.UpdateQuestion (nested: schedule)
-//   - CheckinsService.CreateQuestion (nested: schedule — Hour/Minute int32 omitempty)
-//   - CheckinsService.UpdateAnswer   (ISO8601Date: group_on)
-//   - PeopleService.UpdateMyProfile   (person wrapper + *string clearable fields)
+// Both send the explicit due-date clear spelled "due_on": "", which a
+// *types.Date member cannot produce — its three spellings are absent (nil
+// pointer), null (zero Date), and a real date. Null instead would violate
+// the §18 body-compaction rule and diverge from the "" clear all six SDKs
+// send identically (BC3 blank-casts "" to nil, basecamp/bc3#12521).
+// TestDatePointerCannotSpellEmptyDueOnClear proves that exhaustion. Every
+// other former caller builds its generated request type; a new caller needs
+// a wire encoding the generated type provably cannot express.
 func marshalBody(m map[string]any) (io.Reader, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
