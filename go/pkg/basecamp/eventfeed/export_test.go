@@ -50,6 +50,13 @@ func (c *Connector) OnFrameHandled(f func(string)) {
 // bounded queue full — the moment the staleness evaluation suspends.
 func (c *Connector) OnPumpBlocked(f func()) { c.hooks.pumpBlocked = f }
 
+// OnPumpReleased registers a hook fired once a blocked hand-off completes and
+// its release has re-armed the staleness window unsuspended. It is the
+// rendezvous for "the suspension has lifted" — the counterpart to
+// OnPumpBlocked, and the only observation point that proves the release's
+// re-arm has landed rather than still being in flight behind the dequeue.
+func (c *Connector) OnPumpReleased(f func()) { c.hooks.pumpReleased = f }
+
 // OnPumpHandedOff registers a hook fired once an item reaches the hand-off
 // queue, reporting whether it is the pump's terminating error. It is the
 // rendezvous for "the socket's death is queued for the state machine".

@@ -424,6 +424,8 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 			}
 			repair = l.cfg.clock.NewTimer(repairJitter(l.cfg.repairInterval, l.cfg.rand), timerRepairPoll)
 			l.setState(stateStreaming)
+		case <-at.lc.stale.rearmed():
+			continue
 		case <-staleTimer.C():
 			age, ok := at.lc.stale.evaluate(staleGen)
 			if !ok {
@@ -635,6 +637,8 @@ func (l *loop) waitPollRetry(at *attempt, d time.Duration) (cycleOutcome, bool) 
 			return cycleOutcome{kind: outcomeClosed}, true
 		case <-t.C():
 			return cycleOutcome{}, false
+		case <-at.lc.stale.rearmed():
+			continue
 		case <-staleTimer.C():
 			age, ok := at.lc.stale.evaluate(staleGen)
 			if !ok {

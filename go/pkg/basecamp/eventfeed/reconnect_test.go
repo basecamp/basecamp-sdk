@@ -225,11 +225,24 @@ func TestBackoffEnvelopeGrowsAndResetsOnConfirmation(t *testing.T) {
 func TestStalenessSuspendedWhileThePumpIsBlocked(t *testing.T) {
 	h := newHarness(t)
 	blocked := make(chan struct{}, 1)
+	// Blocks and releases are counted, not merely signalled: a release is what
+	// re-arms the window unsuspended, and the second half of the test is only
+	// meaningful once every block the pump took has been released.
+	var mu sync.Mutex
+	var blocks, releases int
 	h.conn.OnPumpBlocked(func() {
+		mu.Lock()
+		blocks++
+		mu.Unlock()
 		select {
 		case blocked <- struct{}{}:
 		default:
 		}
+	})
+	h.conn.OnPumpReleased(func() {
+		mu.Lock()
+		releases++
+		mu.Unlock()
 	})
 	h.pauseAfter = 1
 	h.minter.ScriptTicket(ticket(1))
@@ -278,6 +291,18 @@ func TestStalenessSuspendedWhileThePumpIsBlocked(t *testing.T) {
 	if _, terminal, _ := h.snapshot(); terminal != nil {
 		t.Fatalf("a suspended staleness firing is never terminal; got %v", terminal)
 	}
+	// The last ping being HANDLED only proves the state machine dequeued it —
+	// the dequeue is what unblocks the pump, so the pump's release still races
+	// this point, and the release is what re-arms the window unsuspended. An
+	// advance taken before it lands fires a window the release then supersedes
+	// on generation grounds, leaving nothing to tear the socket down. All the
+	// pings are handled here, so no further hand-off can block: once every
+	// block has been released, the armed window is settled.
+	h.waitUntil("every blocked hand-off was released", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return blocks > 0 && releases == blocks
+	})
 	// Disregarded AND re-armed — the exact per-state set is unchanged.
 	assertTimers(t, h.clock, map[string]int{timerStaleness: 1, timerRepairPoll: 1})
 

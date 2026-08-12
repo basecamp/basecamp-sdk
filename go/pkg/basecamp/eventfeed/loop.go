@@ -192,7 +192,12 @@ func (lc *liveConn) handOff(ctx context.Context, item pumpItem) bool {
 	default:
 	}
 	lc.stale.suspend()
-	defer lc.stale.resume()
+	defer func() {
+		lc.stale.resume()
+		if lc.hooks.pumpReleased != nil {
+			lc.hooks.pumpReleased()
+		}
+	}()
 	if lc.hooks.pumpBlocked != nil {
 		lc.hooks.pumpBlocked()
 	}
@@ -259,6 +264,10 @@ type staleHolder struct {
 	// to observe frames.
 	blocked   int
 	suspended bool
+	// rearm wakes the state machine when the window is swapped from the pump
+	// goroutine: a select pass holds ONE timer, so a swap is invisible to a
+	// parked select until something else wakes it.
+	rearm chan struct{}
 }
 
 func newStaleHolder(clock Clock, d time.Duration) *staleHolder {
@@ -267,8 +276,12 @@ func newStaleHolder(clock Clock, d time.Duration) *staleHolder {
 		d:     d,
 		timer: clock.NewTimer(d, timerStaleness),
 		last:  clock.Now(),
+		rearm: make(chan struct{}, 1),
 	}
 }
+
+// rearmed is the wake channel for window swaps.
+func (h *staleHolder) rearmed() <-chan struct{} { return h.rearm }
 
 // current returns the armed timer and its generation for one select pass.
 func (h *staleHolder) current() (Timer, int) {
@@ -293,6 +306,10 @@ func (h *staleHolder) arm() {
 	h.timer.Stop()
 	h.timer = h.clock.NewTimer(h.d, timerStaleness)
 	h.gen++
+	select {
+	case h.rearm <- struct{}{}:
+	default:
+	}
 	// The new window starts suspended only if the pump is blocked right now:
 	// it is already unable to observe a reset.
 	h.suspended = h.blocked > 0
@@ -718,6 +735,8 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 			l.disposeAttempt(at, nil)
 			l.observeDisconnected("", lapsed)
 			return cycleOutcome{kind: outcomeFailed}
+		case <-at.lc.stale.rearmed():
+			continue
 		case <-staleTimer.C():
 			age, ok := at.lc.stale.evaluate(staleGen)
 			if !ok {

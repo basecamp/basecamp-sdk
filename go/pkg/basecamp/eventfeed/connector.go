@@ -197,6 +197,12 @@ type testHooks struct {
 	// pumpBlocked fires when a frame pump hand-off finds the queue full — the
 	// rendezvous for the staleness suspension rule's precondition.
 	pumpBlocked func()
+	// pumpReleased fires once a blocked hand-off completes AND its release
+	// has re-armed the staleness window unsuspended. It is the rendezvous for
+	// "the suspension has lifted": the state machine dequeuing the frame is
+	// observable well before the pump's release runs, and only the release
+	// settles which window a subsequent expiry is evaluated against.
+	pumpReleased func()
 	// pumpHandedOff fires once an item reaches the hand-off queue, reporting
 	// whether it is the pump's terminating error.
 	pumpHandedOff func(isErr bool)
