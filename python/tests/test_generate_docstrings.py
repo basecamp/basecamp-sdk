@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-from generate_services import build_params, method_docstring  # noqa: E402
+from generate_services import build_params, extract_body_params, method_docstring  # noqa: E402
 
 # Triple quotes (would close the docstring), a backslash + `u` (would be an
 # invalid unicode escape), an embedded newline, a literal NUL (JSON `\\u0000`
@@ -72,6 +72,27 @@ def test_hostile_description_stays_valid_and_composes_deprecation():
     assert "Deprecated parameters (prefer the replacement):" in runtime
     for arg in ("project_id:", "note:", "type:", "max_items:"):
         assert arg in runtime
+
+
+def test_ref_body_property_reads_target_schema_description():
+    schemas = {
+        "Body": {
+            "properties": {
+                "calendar": {"$ref": "#/components/schemas/Attrs"},
+                "labeled": {"$ref": "#/components/schemas/Attrs", "description": "Sibling wins."},
+                "bare": {"$ref": "#/components/schemas/Undescribed"},
+            },
+        },
+        "Attrs": {"type": "object", "description": "The writable payload."},
+        "Undescribed": {"type": "object"},
+    }
+    by_name = {p["name"]: p for p in extract_body_params({"$ref": "#/components/schemas/Body"}, schemas)}
+    # A bare $ref property has no description of its own — the referenced
+    # schema's description documents it; a sibling description still wins; an
+    # undescribed target leaves None for the humanized fallback.
+    assert by_name["calendar"]["description"] == "The writable payload."
+    assert by_name["labeled"]["description"] == "Sibling wins."
+    assert by_name["bare"]["description"] is None
 
 
 def test_raw_description_would_break_without_escaping():

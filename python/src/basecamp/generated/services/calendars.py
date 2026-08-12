@@ -33,7 +33,8 @@ class CalendarsService(BaseService):
 
         Args:
             calendar_id: The calendar id.
-            calendar: The calendar.
+            calendar: The writable calendar payload — the wire body is the nested {calendar:
+                {color}} envelope.
         """
         return self._request(
             OperationInfo(service="calendars", operation="update_calendar", is_mutation=True, resource_id=calendar_id),
@@ -67,7 +68,8 @@ class AsyncCalendarsService(AsyncBaseService):
 
         Args:
             calendar_id: The calendar id.
-            calendar: The calendar.
+            calendar: The writable calendar payload — the wire body is the nested {calendar:
+                {color}} envelope.
         """
         return await self._request(
             OperationInfo(service="calendars", operation="update_calendar", is_mutation=True, resource_id=calendar_id),

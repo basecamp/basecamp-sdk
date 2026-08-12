@@ -19,9 +19,9 @@ class CheckinsService(BaseService):
         Args:
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(service="checkins", operation="reminders", is_mutation=False),
@@ -84,9 +84,9 @@ class CheckinsService(BaseService):
             questionnaire_id: The questionnaire id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(
@@ -158,9 +158,9 @@ class CheckinsService(BaseService):
             question_id: The question id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
@@ -191,8 +191,9 @@ class CheckinsService(BaseService):
 
         Args:
             question_id: The question id.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
         """
         return self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
@@ -211,9 +212,9 @@ class CheckinsService(BaseService):
             person_id: The person id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
@@ -281,9 +282,9 @@ class AsyncCheckinsService(AsyncBaseService):
         Args:
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="reminders", is_mutation=False),
@@ -346,9 +347,9 @@ class AsyncCheckinsService(AsyncBaseService):
             questionnaire_id: The questionnaire id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(
@@ -422,9 +423,9 @@ class AsyncCheckinsService(AsyncBaseService):
             question_id: The question id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
@@ -455,8 +456,9 @@ class AsyncCheckinsService(AsyncBaseService):
 
         Args:
             question_id: The question id.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
         """
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
@@ -475,9 +477,9 @@ class AsyncCheckinsService(AsyncBaseService):
             person_id: The person id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),

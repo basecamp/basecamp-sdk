@@ -30,9 +30,9 @@ class TimesheetsService(BaseService):
             person_id: The person id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(service="timesheets", operation="for_project", is_mutation=False, project_id=project_id),
@@ -65,9 +65,9 @@ class TimesheetsService(BaseService):
             person_id: The person id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(service="timesheets", operation="for_recording", is_mutation=False, resource_id=recording_id),
@@ -189,9 +189,9 @@ class AsyncTimesheetsService(AsyncBaseService):
             person_id: The person id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(service="timesheets", operation="for_project", is_mutation=False, project_id=project_id),
@@ -224,9 +224,9 @@ class AsyncTimesheetsService(AsyncBaseService):
             person_id: The person id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(service="timesheets", operation="for_recording", is_mutation=False, resource_id=recording_id),

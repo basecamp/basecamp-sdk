@@ -398,12 +398,20 @@ def extract_body_params(
     required_fields = set(schema.get("required", []))
     params = []
     for name, prop in schema["properties"].items():
+        # A bare `$ref` property carries no description of its own — read it
+        # off the referenced schema (single-level: the spec has no ref-to-ref
+        # chains). A sibling description on the property itself still wins.
+        description = prop.get("description")
+        if description is None and "$ref" in prop:
+            target = resolve_schema_ref(prop, schemas)
+            if target:
+                description = target.get("description")
         params.append({
             "name": name,
             "python_name": safe_python_name(to_snake_case(name)),
             "type": schema_to_python_type(prop),
             "required": name in required_fields,
-            "description": prop.get("description"),
+            "description": description,
         })
     return params
 
@@ -633,7 +641,8 @@ def build_params(op: dict) -> list[dict]:
     if op["has_pagination"]:
         max_items_doc = (
             "Client-side cap on the number of items collected across pages; "
-            "None means no item cap. Collection is always bounded by config.max_pages."
+            "None or a non-positive value means no item cap. "
+            "Collection is always bounded by config.max_pages."
         )
         # SPEC section 8: a positive `page` pins a single page, so the
         # follow loop stops after one request. Only worth saying on the

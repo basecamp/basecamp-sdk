@@ -68,9 +68,9 @@ class DocumentsService(BaseService):
             vault_id: The vault id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(service="documents", operation="list", is_mutation=False, resource_id=vault_id),
@@ -175,9 +175,9 @@ class AsyncDocumentsService(AsyncBaseService):
             vault_id: The vault id.
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the number of items collected across pages; None means no
-                item cap. Collection is always bounded by config.max_pages. A positive page argument
-                fetches exactly that one page.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(service="documents", operation="list", is_mutation=False, resource_id=vault_id),

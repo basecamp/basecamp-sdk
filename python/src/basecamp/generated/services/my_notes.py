@@ -32,7 +32,8 @@ class MyNotesService(BaseService):
         body.
 
         Args:
-            note: The note.
+            note: The writable note payload — the wire body is the nested {note: {content}}
+                envelope, the ProjectConstructionAttributes treatment.
         """
         return self._request(
             OperationInfo(service="mynotes", operation="update_my_note", is_mutation=True),
@@ -65,7 +66,8 @@ class AsyncMyNotesService(AsyncBaseService):
         body.
 
         Args:
-            note: The note.
+            note: The writable note payload — the wire body is the nested {note: {content}}
+                envelope, the ProjectConstructionAttributes treatment.
         """
         return await self._request(
             OperationInfo(service="mynotes", operation="update_my_note", is_mutation=True),
