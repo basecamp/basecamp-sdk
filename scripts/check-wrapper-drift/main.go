@@ -123,6 +123,17 @@
 //     each other out — encoding/json emits neither — so the tag counts as
 //     absent, and deeper occurrences stay shadowed (matching
 //     encoding/json's dominantField).
+//   - The same applies to one type reached by two paths at the same depth (the
+//     diamond: Outer embeds Left and Right, both embedding Common). Such a
+//     type is walked once but its arrival count is remembered, and its fields
+//     are entered twice so the rule above annihilates them — mirroring the
+//     nextCount/count pair in encoding/json's typeFields, which duplicates the
+//     field for exactly this reason. Deduplicating without counting would
+//     claim a tag that is not on the wire.
+//   - Unexported fields are ignored, whatever their tag says, because
+//     encoding/json ignores unexported non-anonymous fields; one cannot
+//     satisfy a generated tag. An embedded unexported STRUCT TYPE is the
+//     opposite case — its exported fields promote normally.
 //   - An anonymous field that carries its own json:"…" tag is NOT promoted:
 //     encoding/json treats it as an ordinary named field under that tag, and so
 //     does this check — the tag is recorded, with the embedded type's name as
@@ -145,6 +156,31 @@
 // map, a slice — today: generated.ClientWithResponses embedding ClientInterface)
 // promotes no JSON-tagged fields and contributes nothing. A defined type whose
 // underlying type is another name (`type Alias Base`) is followed to that name.
+//
+// # Population of promoted fields
+//
+// A promoted field can be assigned by several spellings, and the population
+// check accepts each (see populationTargets): the promoted field itself
+// (`w.CreatedAt`), any partially or fully qualified path to it
+// (`w.Audit.CreatedAt`, `w.Base.Audit.CreatedAt`), or an assignment of any
+// embed on the path. That last one is only total coverage when the assigned
+// value is OPAQUE — a call or a variable the walker cannot see inside. When it
+// is a visible struct literal the walker enumerates its keys instead, so
+// `w.Base = Base{ID: g.Id}` populates `id` and nothing else: the fields the
+// literal omits stay zero-valued on the wire, and crediting them would let the
+// next generated field through in silence.
+//
+// What this deliberately does NOT check is whether a pointer embed on the path
+// was initialized before a promoted write. `w.CreatedAt = …` across a nil
+// `*Audit` panics — but that is a loud, immediate crash on the first execution
+// of the path, not the silent zero-valued wire data this guard exists to
+// catch, and the guard is a reachability check by design (it counts a
+// conditional assignment as populated, and does not model statement order).
+// Demanding initialization means recognizing every spelling that provides it,
+// and a walk that misses one manufactures drift — which is the failure #599
+// itself was: it trains people to work around the guard rather than read it.
+// Nil-capability analysis is #621's subject; this walk is the input it needs,
+// not the place to do it.
 //
 // `intentionally-omitted` markers are NOT inherited through an embed: a marker
 // declares that one wrapper deliberately drops a tag of ITS generated
@@ -351,30 +387,57 @@ type structFields struct {
 	// embeds lists this struct's anonymous, untagged fields — the ones whose
 	// tagged fields are promoted onto this struct by encoding/json.
 	embeds []embedRef
-	// tagPopNames maps a PROMOTED tag to the Go field names whose assignment
-	// counts as populating it: the promoted field's own name plus every
-	// embedded field name on the path to it, since assigning the embedded
-	// struct wholesale (`w.Base = Base{...}`) populates everything under it.
-	// Own (non-promoted) tags are absent here; see populationTargets.
-	tagPopNames map[string][]string
+	// tagPath maps a PROMOTED tag to the embedded field names traversed to
+	// reach it (`{"Base", "Audit"}` for a field promoted through Base's
+	// embedded Audit). Own tags are absent. populationTargets expands it into
+	// the assignment spellings that count as populating the field.
+	tagPath map[string][]string
 	// unresolved lists embedded types the checker could not resolve, as
 	// human-readable paths ("Task.Meta -> time.Time"). Reported as drift when
 	// a pair reaches this struct; see run.
 	unresolved []string
 }
 
-// populationTargets returns the Go field names whose assignment counts as
-// populating tag on this struct. For a field declared directly on the struct
-// that is the field itself; for a promoted field it is the field plus the
-// embedded fields on the path to it.
+// populationTargets returns the assignment spellings that count as populating
+// tag on this struct, in the dotted-path vocabulary collectAssignedFields
+// records (see recordAssignedValue).
+//
+// A field declared directly on the struct has exactly one spelling: itself.
+//
+// A PROMOTED field has several, because every embedded field name on its path
+// is itself promoted, so each suffix of that path is legal Go:
+//
+//	w.CreatedAt            — the promoted field
+//	w.Audit.CreatedAt      — through the inner embed, itself promoted
+//	w.Base.Audit.CreatedAt — fully qualified
+//
+// and so is assigning any ancestor OPAQUELY — `w.Base = baseFromGenerated(g)`,
+// which the walker records as the total marker `Base.*` because it cannot see
+// inside the value. Each such ancestor is spelled by any suffix of the path
+// that reaches it. An ancestor assigned from a composite literal produces no
+// total marker: the walker enumerates that literal's keys instead, so a
+// partial literal populates only the fields it names.
 func (sf *structFields) populationTargets(tag string) []string {
-	if names := sf.tagPopNames[tag]; len(names) > 0 {
-		return names
+	goField := sf.tagToGoField[tag]
+	if goField == "" {
+		return nil
 	}
-	if f := sf.tagToGoField[tag]; f != "" {
-		return []string{f}
+	path := sf.tagPath[tag]
+	if len(path) == 0 {
+		return []string{goField}
 	}
-	return nil
+	out := make([]string, 0, len(path)+1+len(path)*(len(path)+1)/2)
+	for i := 0; i <= len(path); i++ {
+		out = append(out, strings.Join(append(append([]string{}, path[i:]...), goField), "."))
+	}
+	// Ancestors: every contiguous sub-path path[i:j] names the embed at
+	// depth j, so an opaque assignment to it covers everything below.
+	for j := 1; j <= len(path); j++ {
+		for i := 0; i < j; i++ {
+			out = append(out, strings.Join(path[i:j], ".")+".*")
+		}
+	}
+	return out
 }
 
 // taggedField is one JSON-tagged field declared directly on a struct.
@@ -689,7 +752,7 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 				tags:         map[string]bool{},
 				omitted:      map[string]bool{},
 				tagToGoField: map[string]string{},
-				tagPopNames:  map[string][]string{},
+				tagPath:      map[string][]string{},
 				declaration:  ts.Pos(),
 			}
 			for _, field := range st.Fields.List {
@@ -708,7 +771,6 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 					}
 					continue
 				}
-				sf.tags[tag] = true
 				// Record the Go field identifier for this tag. Tagged
 				// fields in these structs always have exactly one name;
 				// if a field ever had multiple names sharing a tag, the
@@ -717,6 +779,16 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 				for _, fn := range field.Names {
 					goField = fn.Name
 				}
+				if goField != "" && !ast.IsExported(goField) {
+					// encoding/json ignores unexported non-anonymous fields
+					// whatever their tag says, so this one is not on the wire
+					// and must not satisfy a generated tag. (Embedded
+					// unexported STRUCT TYPES are a different case: their
+					// exported fields do promote, and resolveEmbed handles
+					// them.)
+					continue
+				}
+				sf.tags[tag] = true
 				if goField == "" {
 					// A TAGGED anonymous field is not promoted — encoding/json
 					// treats it as an ordinary field under its tag, whose Go
@@ -862,6 +934,13 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 
 	for depth := 1; depth <= maxEmbedDepth && len(level) > 0; depth++ {
 		var next []reached
+		// reaches counts how many distinct paths arrive at each type AT THIS
+		// DEPTH. encoding/json queues such a type once but remembers the count
+		// and then duplicates its fields so the annihilation rule sees the
+		// conflict (see the nextCount/count pair in encoding/json's
+		// typeFields). Deduplicating without counting would promote a tag that
+		// two equal-depth paths actually annihilate.
+		reaches := map[string]int{}
 		for _, parent := range level {
 			for _, e := range parent.sf.embeds {
 				child, childName, err := resolveEmbed(e, structs, decls)
@@ -872,18 +951,27 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 				}
 				if child == nil || visited[childName] {
 					// Either the embedded type promotes no JSON-tagged fields
-					// (an interface, a map, a slice), or it has already been
-					// visited at this or a shallower depth — encoding/json
-					// likewise visits each type once, which also terminates
-					// embedding cycles.
+					// (an interface, a map, a slice), or it was already reached
+					// at a SHALLOWER depth — encoding/json likewise visits each
+					// type once, which also terminates embedding cycles.
 					continue
 				}
-				visited[childName] = true
+				reaches[childName]++
+				if reaches[childName] > 1 {
+					// Same type, same depth, second path: counted above, queued
+					// once.
+					continue
+				}
 				path := make([]string, 0, len(parent.path)+1)
 				path = append(path, parent.path...)
 				path = append(path, e.name)
 				next = append(next, reached{name: childName, sf: child, path: path})
 			}
+		}
+		// Marking visited only once the whole level is gathered is what keeps
+		// the second same-depth path visible to the count above.
+		for _, r := range next {
+			visited[r.name] = true
 		}
 
 		// Gather this depth's contributions before claiming any of them, so
@@ -900,6 +988,12 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 					order = append(order, f.tag)
 				}
 				byTag[f.tag] = append(byTag[f.tag], candidate{field: f, path: r.path})
+				if reaches[r.name] > 1 {
+					// Reached by more than one path at this depth: every field
+					// it contributes is ambiguous with itself, which the
+					// same-depth rule below turns into an annihilation.
+					byTag[f.tag] = append(byTag[f.tag], candidate{field: f, path: r.path})
+				}
 			}
 		}
 		for _, tag := range order {
@@ -919,14 +1013,7 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 			if c.field.goField != "" {
 				root.tagToGoField[tag] = c.field.goField
 			}
-			// Assigning any embedded struct on the path populates everything
-			// promoted through it, as does assigning the promoted field itself.
-			targets := make([]string, 0, len(c.path)+1)
-			targets = append(targets, c.path...)
-			if c.field.goField != "" {
-				targets = append(targets, c.field.goField)
-			}
-			root.tagPopNames[tag] = targets
+			root.tagPath[tag] = c.path
 		}
 
 		level = next
@@ -1097,18 +1184,24 @@ func collectAssignedFields(f *ast.File) map[string]map[string]bool {
 						continue
 					}
 					if key, ok := kv.Key.(*ast.Ident); ok {
-						assigned[key.Name] = true
+						recordAssignedValue(assigned, key.Name, kv.Value)
 					}
 				}
 			case *ast.AssignStmt:
-				for _, lhs := range node.Lhs {
-					if base, name := selectorBaseAndField(lhs); name != "" && wrapperVars[base] {
-						assigned[name] = true
+				for i, lhs := range node.Lhs {
+					base, path := selectorRootAndPath(lhs)
+					if path == "" || !wrapperVars[base] {
+						continue
 					}
+					var value ast.Expr
+					if len(node.Lhs) == len(node.Rhs) {
+						value = node.Rhs[i]
+					}
+					recordAssignedValue(assigned, path, value)
 				}
 			case *ast.IncDecStmt:
-				if base, name := selectorBaseAndField(node.X); name != "" && wrapperVars[base] {
-					assigned[name] = true
+				if base, path := selectorRootAndPath(node.X); path != "" && wrapperVars[base] {
+					recordAssignedValue(assigned, path, nil)
 				}
 			}
 			return true
@@ -1201,21 +1294,79 @@ func litTypeName(expr ast.Expr) string {
 	return ""
 }
 
-// selectorBaseAndField decomposes an `x.Field` selector rooted in a bare
-// identifier into its base identifier and field name (`c.Creator` -> "c",
-// "Creator"). Returns "", "" for anything else (index expressions, deeper
-// chains like `a.b.c`, non-selector expressions). The base lets callers scope
-// the write to a known wrapper variable.
-func selectorBaseAndField(expr ast.Expr) (base, field string) {
-	sel, ok := expr.(*ast.SelectorExpr)
-	if !ok {
+// recordAssignedValue records every population fact implied by assigning value
+// to path (a dotted field path relative to the wrapper instance, e.g. "Base" or
+// "Base.Audit"). It is the single vocabulary the population check reads through
+// populationTargets.
+//
+// The path itself is always recorded. What the assignment covers BELOW that
+// path depends on whether the walker can see inside the value:
+//
+//   - A struct composite literal (`Base{ID: g.Id}`, `&Base{...}`) is
+//     enumerated: each key becomes `path.Key`, recursively. A partial literal
+//     therefore covers only the fields it names — assigning an embedded struct
+//     with two of its five fields set leaves the other three unpopulated, which
+//     is the true wire outcome and must not read as full coverage.
+//   - Anything else — a function call, a variable, a slice or map literal — is
+//     opaque, and gets the total marker `path.*`: the walker cannot enumerate
+//     it, and crediting the whole subtree matches the one-level-nesting
+//     doctrine the check already applies to nested wrappers (`c.Creator =
+//     &creator` counts, and Person's own fields are verified through Person's
+//     own pair).
+//
+// A nil value means the write had no readable right-hand side (`x.F++`), which
+// is treated as opaque.
+func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) {
+	if path == "" {
+		return
+	}
+	assigned[path] = true
+	if lit := structLiteral(value); lit != nil {
+		for _, elt := range lit.Elts {
+			kv, ok := elt.(*ast.KeyValueExpr)
+			if !ok {
+				continue
+			}
+			if key, ok := kv.Key.(*ast.Ident); ok {
+				recordAssignedValue(assigned, path+"."+key.Name, kv.Value)
+			}
+		}
+		return
+	}
+	assigned[path+".*"] = true
+}
+
+// structLiteral returns the composite literal behind expr when it is a
+// bare-identifier-typed struct literal (`Base{...}` or `&Base{...}`), and nil
+// otherwise — including for slice, map and qualified-type literals, whose
+// contents say nothing about a wrapper's fields.
+func structLiteral(expr ast.Expr) *ast.CompositeLit {
+	if u, ok := expr.(*ast.UnaryExpr); ok && u.Op == token.AND {
+		expr = u.X
+	}
+	cl, ok := expr.(*ast.CompositeLit)
+	if !ok || litTypeName(cl.Type) == "" {
+		return nil
+	}
+	return cl
+}
+
+// selectorRootAndPath decomposes an identifier-rooted selector chain into its
+// root identifier and the dotted path below it: `t.Base.ID` -> ("t",
+// "Base.ID"), `c.Creator` -> ("c", "Creator"). Returns "", "" for anything not
+// rooted in a bare identifier, or for a bare identifier with no field selected.
+// Keeping the full path (rather than only the final field) is what lets the
+// population check recognize a fully-qualified write to a promoted field.
+func selectorRootAndPath(expr ast.Expr) (root, path string) {
+	full := exprToPath(expr)
+	if full == "" {
 		return "", ""
 	}
-	ident, ok := sel.X.(*ast.Ident)
-	if !ok {
+	dot := strings.IndexByte(full, '.')
+	if dot == -1 {
 		return "", ""
 	}
-	return ident.Name, sel.Sel.Name
+	return full[:dot], full[dot+1:]
 }
 
 // exprToPath converts an identifier-rooted selector chain into a dotted path
@@ -1235,24 +1386,6 @@ func exprToPath(expr ast.Expr) string {
 		return base + "." + e.Sel.Name
 	}
 	return ""
-}
-
-// pathPrefixAndField decomposes any identifier-rooted selector expression into
-// its prefix-path string and final field name. `q.Schedule.WeekInstance` ->
-// ("q.Schedule", "WeekInstance"); `resp.ID` -> ("resp", "ID"). Returns "", ""
-// for non-selector or non-identifier-rooted expressions. The prefix lets
-// callers look up a previously-recorded composite-literal binding to determine
-// which wrapper this write targets.
-func pathPrefixAndField(expr ast.Expr) (prefix, field string) {
-	sel, ok := expr.(*ast.SelectorExpr)
-	if !ok {
-		return "", ""
-	}
-	prefix = exprToPath(sel.X)
-	if prefix == "" {
-		return "", ""
-	}
-	return prefix, sel.Sel.Name
 }
 
 // collectCompositeLiteralFields walks every function body in f and, for each
@@ -1286,7 +1419,7 @@ func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[strin
 	if len(tier3) == 0 {
 		return out
 	}
-	addField := func(wrapper, field string) {
+	addValue := func(wrapper, path string, value ast.Expr) {
 		if !tier3[wrapper] {
 			return
 		}
@@ -1295,7 +1428,7 @@ func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[strin
 			set = map[string]bool{}
 			out[wrapper] = set
 		}
-		set[field] = true
+		recordAssignedValue(set, path, value)
 	}
 	for _, decl := range f.Decls {
 		fd, ok := decl.(*ast.FuncDecl)
@@ -1313,7 +1446,7 @@ func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[strin
 							continue
 						}
 						if key, ok := kv.Key.(*ast.Ident); ok {
-							addField(t, key.Name)
+							addValue(t, key.Name, kv.Value)
 						}
 					}
 				}
@@ -1330,24 +1463,50 @@ func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[strin
 					}
 				}
 				// Attribute selector-target writes to any bound path.
-				for _, lhs := range node.Lhs {
-					if prefix, field := pathPrefixAndField(lhs); field != "" {
-						if wrapper, ok := bindings[prefix]; ok {
-							addField(wrapper, field)
-						}
+				for i, lhs := range node.Lhs {
+					wrapper, rest := boundWrapperAndPath(bindings, lhs)
+					if rest == "" {
+						continue
 					}
+					var value ast.Expr
+					if len(node.Lhs) == len(node.Rhs) {
+						value = node.Rhs[i]
+					}
+					addValue(wrapper, rest, value)
 				}
 			case *ast.IncDecStmt:
-				if prefix, field := pathPrefixAndField(node.X); field != "" {
-					if wrapper, ok := bindings[prefix]; ok {
-						addField(wrapper, field)
-					}
+				if wrapper, rest := boundWrapperAndPath(bindings, node.X); rest != "" {
+					addValue(wrapper, rest, nil)
 				}
 			}
 			return true
 		})
 	}
 	return out
+}
+
+// boundWrapperAndPath matches a write target against the composite-literal
+// bindings recorded in one function body, returning the tier-3 wrapper it
+// belongs to and the dotted path of the write RELATIVE to that binding:
+// with `resp := Wrapper{...}` bound at "resp", `resp.Base.ID = …` yields
+// ("Wrapper", "Base.ID"). The longest matching binding wins, so a nested
+// binding is preferred over an enclosing one. Returns "", "" for a write
+// against an unbound path.
+func boundWrapperAndPath(bindings map[string]string, lhs ast.Expr) (wrapper, path string) {
+	full := exprToPath(lhs)
+	if full == "" {
+		return "", ""
+	}
+	best := ""
+	for prefix := range bindings {
+		if strings.HasPrefix(full, prefix+".") && len(prefix) > len(best) {
+			best = prefix
+		}
+	}
+	if best == "" {
+		return "", ""
+	}
+	return bindings[best], full[len(best)+1:]
 }
 
 // extractGeneratedTypeName recognizes `generated.X` (SelectorExpr) and returns

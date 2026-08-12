@@ -1043,19 +1043,20 @@ func TestExprToPath(t *testing.T) {
 	}
 }
 
-// TestPathPrefixAndField verifies the decomposition the walker uses to
-// attribute selector writes (`q.Schedule.WeekInstance`) to a previously
-// recorded binding (`q.Schedule`).
-func TestPathPrefixAndField(t *testing.T) {
+// TestSelectorRootAndPath verifies the decomposition the population walker uses
+// to attribute a write to the wrapper instance and the dotted field path below
+// it. Retaining the whole path is what makes a fully-qualified write to a
+// promoted field (`n.Base.ID`) recognizable.
+func TestSelectorRootAndPath(t *testing.T) {
 	cases := []struct {
-		src        string
-		wantPrefix string
-		wantField  string
+		src      string
+		wantRoot string
+		wantPath string
 	}{
 		{"x.Y", "x", "Y"},
-		{"x.Y.Z", "x.Y", "Z"},
-		{"a.b.c.d", "a.b.c", "d"},
-		{"x", "", ""},      // bare ident — no selector
+		{"x.Y.Z", "x", "Y.Z"},
+		{"a.b.c.d", "a", "b.c.d"},
+		{"x", "", ""},      // bare ident — nothing selected
 		{"f().Y", "", ""},  // call-rooted — no path
 		{"a[0].Y", "", ""}, // index-rooted — no path
 	}
@@ -1064,10 +1065,38 @@ func TestPathPrefixAndField(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse %q: %v", c.src, err)
 		}
-		prefix, field := pathPrefixAndField(expr)
-		if prefix != c.wantPrefix || field != c.wantField {
-			t.Errorf("pathPrefixAndField(%q) = (%q, %q), want (%q, %q)",
-				c.src, prefix, field, c.wantPrefix, c.wantField)
+		root, path := selectorRootAndPath(expr)
+		if root != c.wantRoot || path != c.wantPath {
+			t.Errorf("selectorRootAndPath(%q) = (%q, %q), want (%q, %q)",
+				c.src, root, path, c.wantRoot, c.wantPath)
+		}
+	}
+}
+
+// TestBoundWrapperAndPath verifies that a write is attributed to the innermost
+// binding that encloses it, and that an unbound path is ignored.
+func TestBoundWrapperAndPath(t *testing.T) {
+	bindings := map[string]string{"q": "Outer", "q.Schedule": "QuestionSchedule"}
+	cases := []struct {
+		src         string
+		wantWrapper string
+		wantPath    string
+	}{
+		{"q.Schedule.WeekInstance", "QuestionSchedule", "WeekInstance"},
+		{"q.Schedule.Base.ID", "QuestionSchedule", "Base.ID"},
+		{"q.Title", "Outer", "Title"},
+		{"other.Title", "", ""},
+		{"q", "", ""},
+	}
+	for _, c := range cases {
+		expr, err := parser.ParseExpr(c.src)
+		if err != nil {
+			t.Fatalf("parse %q: %v", c.src, err)
+		}
+		wrapper, path := boundWrapperAndPath(bindings, expr)
+		if wrapper != c.wantWrapper || path != c.wantPath {
+			t.Errorf("boundWrapperAndPath(%q) = (%q, %q), want (%q, %q)",
+				c.src, wrapper, path, c.wantWrapper, c.wantPath)
 		}
 	}
 }
@@ -1130,6 +1159,10 @@ type Task struct {
 // through a two-level embedding chain (Task embeds Meta by value, Meta embeds
 // *Audit by pointer). Meta and Audit live in a SECOND wrapper file, so the
 // resolution has to happen after every file is parsed, not per file.
+//
+// The pointer embed is initialized before the writes that go through it: a
+// promoted write across a nil pointer panics, so a fixture that omitted the
+// initialization would be pinning a construction that cannot run.
 const embeddingWrapperSrc = `package basecamp
 
 import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -1142,6 +1175,7 @@ type Task struct {
 
 func taskFromGenerated(g generated.Task) Task {
 	t := Task{Status: g.Status}
+	t.Audit = &Audit{}
 	t.Title = g.Title
 	t.ID = g.Id
 	t.Content = g.Content
@@ -1435,11 +1469,39 @@ type Outer struct {
 	if got := outer.populationTargets("name"); len(got) != 1 || got[0] != "Name" {
 		t.Errorf("expected population target [Name] for the shadowing own field, got %v", got)
 	}
-	if got := outer.populationTargets("kind"); len(got) != 2 || got[0] != "Mid" || got[1] != "Kind" {
-		t.Errorf("expected population targets [Mid Kind] for the depth-1 promotion, got %v", got)
+	// A depth-1 promotion is populated by the promoted field, by its qualified
+	// spelling, or by an opaque assignment of the embed — and by nothing else.
+	assertTargets(t, outer, "kind", []string{"Kind", "Mid.Kind", "Mid.*"})
+	// A depth-2 promotion adds the intermediate spellings, since `Deep` is
+	// itself promoted onto Outer. The promoted field here is also named Deep,
+	// which is why "Deep.Deep" and a bare "Deep" both appear.
+	assertTargets(t, outer, "deep_only", []string{
+		"Deep", "Deep.Deep", "Mid.Deep.Deep", "Mid.*", "Deep.*", "Mid.Deep.*",
+	})
+}
+
+// assertTargets compares populationTargets against an expected set, order
+// independent. Both directions matter: a missing spelling reports false drift
+// on a valid construction, and an extra one credits a construction that does
+// not actually populate the field.
+func assertTargets(t *testing.T, sf *structFields, tag string, want []string) {
+	t.Helper()
+	got := sf.populationTargets(tag)
+	gotSet := map[string]bool{}
+	for _, g := range got {
+		gotSet[g] = true
 	}
-	if got := outer.populationTargets("deep_only"); len(got) != 3 || got[0] != "Mid" || got[1] != "Deep" || got[2] != "Deep" {
-		t.Errorf("expected population targets [Mid Deep Deep] for the depth-2 promotion, got %v", got)
+	wantSet := map[string]bool{}
+	for _, w := range want {
+		wantSet[w] = true
+		if !gotSet[w] {
+			t.Errorf("populationTargets(%q): missing spelling %q, got %v", tag, w, got)
+		}
+	}
+	for _, g := range got {
+		if !wantSet[g] {
+			t.Errorf("populationTargets(%q): unexpected spelling %q, got %v", tag, g, got)
+		}
 	}
 }
 
@@ -1671,5 +1733,338 @@ func TestFlattenEmbedded_DepthCapIsReportedNotSilent(t *testing.T) {
 	}
 	if root.tags["f"+strconv.Itoa(deepest)] {
 		t.Error("fixture is not actually exceeding the cap; the test would prove nothing")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Review follow-ups (PR #721): cases where the first cut of the promotion walk
+// claimed a tag encoding/json would not put on the wire, or credited a
+// construction that does not populate what it appears to.
+// ---------------------------------------------------------------------------
+
+// TestFlattenEmbedded_DiamondAnnihilates is the diamond case: Outer embeds Left
+// and Right, both of which embed Common. encoding/json reaches Common twice at
+// the same depth and annihilates its tags (typeFields duplicates the field so
+// dominantField sees the conflict), so the tag is NOT on the wire and must not
+// count as present. Deduplicating the second path without counting it — the
+// walk's first cut — silently claimed the tag instead.
+func TestFlattenEmbedded_DiamondAnnihilates(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Common struct {
+	Shared string ~json:"shared"~
+}
+
+type Left struct {
+	Common
+	Only string ~json:"left_only"~
+}
+
+type Right struct {
+	Common
+	Only string ~json:"right_only"~
+}
+
+type Outer struct {
+	Left
+	Right
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["shared"] {
+		t.Error("a tag reached twice at the same depth is annihilated by encoding/json; it must not count as present")
+	}
+	if !outer.tags["left_only"] || !outer.tags["right_only"] {
+		t.Errorf("the unambiguous depth-1 tags must still promote, got %v", outer.tags)
+	}
+}
+
+// TestFlattenEmbedded_DiamondResolvedByShadowing is the diamond's counterpart:
+// the same shape, but Outer declares the contested tag itself. The depth-0
+// declaration is unambiguous, so the tag IS on the wire and must count. Without
+// this pair, the annihilation rule could be "fixed" by dropping the tag
+// wholesale.
+func TestFlattenEmbedded_DiamondResolvedByShadowing(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Common struct {
+	Shared string ~json:"shared"~
+}
+
+type Left struct {
+	Common
+}
+
+type Right struct {
+	Common
+}
+
+type Outer struct {
+	Left
+	Right
+	Shared string ~json:"shared"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if !outer.tags["shared"] {
+		t.Error("the struct's own declaration is unambiguous and wins; the tag is on the wire")
+	}
+	assertTargets(t, outer, "shared", []string{"Shared"})
+}
+
+// TestFlattenEmbedded_UnexportedPromotedFieldIgnored covers the export rule:
+// encoding/json ignores unexported non-anonymous fields whatever their tag
+// says, so promoting one would let a wrapper satisfy a generated tag with a
+// field that never reaches the wire. An embedded UNEXPORTED STRUCT TYPE is the
+// opposite case — its exported fields do promote — and both are asserted here
+// so a fix for one cannot silently break the other.
+func TestFlattenEmbedded_UnexportedPromotedFieldIgnored(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Base struct {
+	Visible string ~json:"visible"~
+	hidden  string ~json:"hidden"~
+}
+
+type unexportedBase struct {
+	Promoted string ~json:"promoted"~
+}
+
+type Outer struct {
+	Base
+	unexportedBase
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["hidden"] {
+		t.Error("an unexported field is not on the wire and must not satisfy a generated tag")
+	}
+	if !outer.tags["visible"] {
+		t.Errorf("expected the exported promoted field, got %v", outer.tags)
+	}
+	if !outer.tags["promoted"] {
+		t.Errorf("an embedded unexported STRUCT TYPE still promotes its exported fields, got %v", outer.tags)
+	}
+}
+
+// TestRun_UnexportedFieldDoesNotSatisfyGeneratedTag is the end-to-end half of
+// the rule: the wrapper "declares" the tag, but on an unexported field, so the
+// generated tag is unsatisfied and must be reported.
+func TestRun_UnexportedFieldDoesNotSatisfyGeneratedTag(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id     int64  ~json:"id"~
+	Secret string ~json:"secret"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Note struct {
+	ID     int64  ~json:"id"~
+	secret string ~json:"secret"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	n.secret = g.Secret
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: an unexported field carrying the tag must not satisfy it, got nil")
+	}
+}
+
+// TestRun_PartialEmbeddedLiteralIsNotFullCoverage is the population half of the
+// same principle. `n.Base = Base{ID: g.Id}` leaves Content zero-valued on the
+// wire; crediting every field under an assigned embed would let a newly added
+// generated field pass silently, which is the failure this whole check exists
+// to prevent. The paired positive — the same literal, completed — must pass,
+// so the rule cannot be satisfied by refusing wholesale assignment outright.
+func TestRun_PartialEmbeddedLiteralIsNotFullCoverage(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	ID      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.Base = Base{ID: g.Id}
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: a partial literal on an embedded field must not credit the fields it omits, got nil")
+	}
+
+	completed := strings.Replace(wrapperSrc, "Base{ID: g.Id}", "Base{ID: g.Id, Content: g.Content}", 1)
+	if !strings.Contains(completed, "Content: g.Content") {
+		t.Fatal("fixture setup: the literal was not completed")
+	}
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": completed})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: a complete literal on an embedded field populates everything it names, got %v", err)
+	}
+}
+
+// TestRun_OpaqueEmbeddedAssignmentIsFullCoverage pins the other side of the
+// literal rule: when the walker cannot see inside the assigned value it credits
+// the whole subtree, matching the one-level-nesting doctrine the check already
+// applies to nested wrappers. Narrowing that would report drift on every
+// wrapper that delegates to a helper.
+func TestRun_OpaqueEmbeddedAssignmentIsFullCoverage(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	ID      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+
+func baseFrom(g generated.Note) Base {
+	return Base{ID: g.Id, Content: g.Content}
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.Base = baseFrom(g)
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: an opaque assignment to an embedded field credits its subtree, got %v", err)
+	}
+}
+
+// TestRun_QualifiedPromotedAssignment covers the fully-qualified write
+// `n.Base.ID = g.Id`, which is valid Go and does populate the promoted field.
+// The one-level selector walk could not see it and reported false drift — the
+// over-reporting failure #599 is about, hit by the first person to embed.
+func TestRun_QualifiedPromotedAssignment(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Inner struct {
+	Content string ~json:"content"~
+}
+
+type Base struct {
+	Inner
+	ID int64 ~json:"id"~
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.Base.ID = g.Id
+	n.Base.Inner.Content = g.Content
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: a fully-qualified write to a promoted field must count as population, got %v", err)
+	}
+
+	// Paired negative: drop one of the two qualified writes and the check must
+	// bite again, so recognizing the spelling did not blunt it.
+	dropped := strings.Replace(wrapperSrc, "\tn.Base.Inner.Content = g.Content\n", "", 1)
+	if strings.Contains(dropped, "Inner.Content = g.Content") {
+		t.Fatal("fixture setup: the write was not dropped")
+	}
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": dropped})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: expected population drift once the qualified write is removed, got nil")
+	}
+}
+
+// TestCollectAssignedFields_QualifiedAndLiteralCoverage pins the assignment
+// vocabulary directly: full selector paths are retained, struct literals are
+// enumerated key by key, and only opaque values get the `.*` total marker.
+func TestCollectAssignedFields_QualifiedAndLiteralCoverage(t *testing.T) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "fixture.go", src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+func wrapFromGenerated(g generated.Wrap) Wrap {
+	w := Wrap{Base: Base{ID: g.Id}}
+	w.Meta.Note = g.Note
+	w.Other = helper(g)
+	w.Items = []string{g.Item}
+	return w
+}
+`), parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	assigned := collectAssignedFields(f)["Wrap"]
+	for _, want := range []string{"Base", "Base.ID", "Meta.Note", "Other", "Other.*", "Items", "Items.*"} {
+		if !assigned[want] {
+			t.Errorf("expected %q to be recorded, got %v", want, assigned)
+		}
+	}
+	// The literal is visible, so it must NOT be credited as total coverage.
+	if assigned["Base.*"] {
+		t.Error("a visible struct literal must be enumerated, not credited wholesale")
+	}
+	// A slice literal says nothing about a wrapper's fields, so it stays opaque
+	// rather than being enumerated as if its elements were field keys.
+	if assigned["Items.0"] {
+		t.Error("a slice literal must not be enumerated as struct keys")
 	}
 }
