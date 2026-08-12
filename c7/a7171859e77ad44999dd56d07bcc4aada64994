@@ -1,0 +1,20 @@
+scripts/report-bc3-drift.sh
+  s_b429eb5f926267::t_2622c58c6925f6 44-45
+  s_b429eb5f926267::t_d31fabb9364f20 96-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c7a7171859e77ad44999dd56d07bcc4aada64994",
+  "prompts": {},
+  "sessions": {
+    "s_b429eb5f926267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50a1085e-2c16-4b99-b4e1-e3cc5665f1c4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
