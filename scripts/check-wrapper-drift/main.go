@@ -1452,14 +1452,16 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 	// consults tags — so a tagged embed is vouched for on exactly the same
 	// terms as an untagged one.
 	for _, te := range root.taggedEmbeds {
-		if te.ref.pointer && te.ref.name != "" && !ast.IsExported(te.ref.name) {
+		child, childName, methodsTravel, err := resolveEmbedFull(te.ref, structs, decls)
+		if child != nil && te.ref.pointer && !ast.IsExported(te.ref.name) {
 			// Same allocation problem as an untagged one: the tag changes which
 			// KEY the field appears under, not whether the decoder can create
-			// it.
+			// it. Only for a STRUCT, though — encoding/json ignores an
+			// anonymous unexported non-struct field outright, so there is
+			// nothing it failed to allocate.
 			root.decodeUnsafe = append(root.decodeUnsafe,
 				fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates it)", rootName, te.ref.display))
 		}
-		_, childName, methodsTravel, err := resolveEmbedFull(te.ref, structs, decls)
 		if reason := vouch(te.ref, childName, methodsTravel, err, jsonMethods); reason != "" {
 			root.unresolved = append(root.unresolved, fmt.Sprintf("%s -> %s (%s)", rootName, te.ref.display, reason))
 			discardPromotions()
@@ -1509,7 +1511,10 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 					discardPromotions()
 					return
 				}
-				if e.pointer && e.name != "" && !ast.IsExported(e.name) {
+				if child != nil && e.pointer && !ast.IsExported(e.name) {
+					// A struct only: an anonymous pointer to an unexported
+					// NON-struct is ignored by encoding/json rather than
+					// allocated, so there is no field it failed to populate.
 					root.decodeUnsafe = append(root.decodeUnsafe,
 						fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates its promoted fields)",
 							strings.Join(append([]string{rootName}, parent.path...), "."), e.display))
@@ -1974,7 +1979,7 @@ func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) 
 		// rather than guessing: the author writes keys, and the report is the
 		// safe direction.
 		for _, elt := range lit.Elts {
-			if id, ok := unparen(elt).(*ast.Ident); ok && id.Name == "nil" {
+			if zeroValued(elt) {
 				return
 			}
 		}
@@ -1993,6 +1998,11 @@ func zeroValued(expr ast.Expr) bool {
 	switch e := expr.(type) {
 	case *ast.Ident:
 		return e.Name == "nil"
+	case *ast.CompositeLit:
+		// An empty struct literal — `Audit{}` as a positional element —
+		// contributes nothing, so a literal containing one cannot claim to
+		// have populated what is under it.
+		return len(e.Elts) == 0 && litTypeName(e.Type) != ""
 	case *ast.CallExpr:
 		// new(T) — the builtin, not a method named new.
 		if id, ok := unparen(e.Fun).(*ast.Ident); ok && id.Name == "new" {

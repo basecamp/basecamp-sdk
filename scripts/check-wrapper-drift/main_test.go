@@ -2275,6 +2275,13 @@ func TestRecordAssignedValue_ValueShapes(t *testing.T) {
 		// fields are then absent from the wire. The walker cannot tell which
 		// element is which field, so a nil element withdraws the claim.
 		{"positional literal with a nil element", "Base{nil, g.Name}", nil, false, []string{"Base.*"}},
+		// Any statically zero element has the same effect: whatever it lands
+		// on contributes nothing, so the literal cannot claim the subtree.
+		{"positional literal with an empty nested literal", "Base{Audit{}, g.Name}", nil, false, []string{"Base.*"}},
+		{"positional literal with new(T)", "Base{new(Audit), g.Name}", nil, false, []string{"Base.*"}},
+		{"positional literal with a typed nil", "Base{(*Audit)(nil), g.Name}", nil, false, []string{"Base.*"}},
+		// A populated nested literal is not zero, so the claim stands.
+		{"positional literal with a populated nested literal", "Base{Audit{At: g.At}, g.Name}", nil, true, nil},
 		{"empty literal", "Base{}", nil, false, []string{"Base.*"}},
 		{"opaque call", "baseFrom(g)", nil, true, nil},
 		// Statically zero-producing values carry nothing in, so they cannot
@@ -3225,5 +3232,48 @@ type Harmless struct {
 	}
 	if !h.tags["id"] {
 		t.Errorf("and its fields promote, got %v", h.tags)
+	}
+}
+
+// TestFlattenEmbedded_UnexportedNonStructPointerIsNotDecodeUnsafe narrows the
+// allocation rule to what encoding/json actually does. An anonymous field of an
+// unexported NON-struct type is ignored outright — never traversed, never
+// allocated — so there is no field the decoder failed to populate, and
+// reporting one would fail a direct-decode wrapper that is fine. The struct
+// form is the real case and must keep failing.
+func TestFlattenEmbedded_UnexportedNonStructPointerIsNotDecodeUnsafe(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type hiddenStr string
+
+type hiddenStruct struct {
+	ID int64 ~json:"id"~
+}
+
+type NonStruct struct {
+	*hiddenStr
+	Name string ~json:"name"~
+}
+
+type TaggedNonStruct struct {
+	*hiddenStr ~json:"h"~
+	Name       string ~json:"name"~
+}
+
+type Struct struct {
+	*hiddenStruct
+}
+`))
+	for _, name := range []string{"NonStruct", "TaggedNonStruct"} {
+		sf := structs[name]
+		if sf == nil {
+			t.Fatalf("%s not collected", name)
+		}
+		if len(sf.decodeUnsafe) != 0 {
+			t.Errorf("%s: encoding/json ignores this field rather than failing to allocate it, got %v", name, sf.decodeUnsafe)
+		}
+	}
+	if sf := structs["Struct"]; sf == nil || len(sf.decodeUnsafe) == 0 {
+		t.Errorf("the struct form is the real allocation failure and must still be reported, got %+v", structs["Struct"])
 	}
 }
