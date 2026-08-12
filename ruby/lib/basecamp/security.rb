@@ -39,13 +39,19 @@ module Basecamp
 
       ua.scheme.downcase == ub.scheme.downcase &&
         normalize_host(ua) == normalize_host(ub)
-    rescue URI::InvalidURIError
+    rescue URI::Error
+      # URI::Error, not just InvalidURIError: URI.parse("mailto:") raises
+      # URI::InvalidComponentError (URI::MailTo demands an opaque part), and a
+      # scheme-only URL must be refused, not a crash.
       false
     end
 
     def self.resolve_url(base, target)
       URI.join(base, target).to_s
-    rescue URI::InvalidURIError
+    rescue URI::Error
+      # URI::Error, not just InvalidURIError: URI.join raises
+      # URI::InvalidComponentError on a scheme-only target ("mailto:"),
+      # reachable from a poisoned Link header or Location redirect.
       target
     end
 
