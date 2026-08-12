@@ -1,0 +1,101 @@
+conformance/runner/go/main.go
+  s_be95a2377e6b9a::t_392869f5a9b6d6 486-645
+  s_be95a2377e6b9a::t_82d7de34aadac8 670-676
+  s_be95a2377e6b9a::t_4723db4e8e8b6d 244-248
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_be95a2377e6b9a::t_1ee6133d33ed58 306-309
+  s_be95a2377e6b9a::t_b524b7300b3534 111-206
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_be95a2377e6b9a::t_3214a11de74ba2 34-39
+  s_be95a2377e6b9a::t_2390235906b207 33,118-207
+  s_be95a2377e6b9a::t_5e752a6b868352 887-891
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_be95a2377e6b9a::t_5c926df563cf94 12
+  s_be95a2377e6b9a::t_04a6dc840a1578 53-57
+  s_be95a2377e6b9a::t_ac476d10c6c6be 113
+conformance/runner/typescript/runner.test.ts
+  s_be95a2377e6b9a::t_0e93da0668bf77 436-440
+  s_be95a2377e6b9a::t_20ea873b7ee17d 316-403
+  s_be95a2377e6b9a::t_c9dbdb7f23f433 218-222
+  s_7dde79158ac36d::t_fd96559939148b 315
+conformance/runner/ruby/runner.rb
+  s_be95a2377e6b9a::t_8557192e0ce3d5 633-636
+  s_be95a2377e6b9a::t_020678164efd31 571-632,637-673
+  s_be95a2377e6b9a::t_29fbcc7fba55f8 223-226
+SPEC.md
+  s_be95a2377e6b9a::t_78deca11ec9273 2112
+python/tests/services/test_search.py
+  s_be95a2377e6b9a::t_72bb365e419124 227-264
+  s_be95a2377e6b9a::t_0fe25296585d3c 1-2,6-8,18-30,34-37,53-56,60-125
+  s_be95a2377e6b9a::t_edc6755e4a72fc 226,319-348
+  s_23e48791aed839::t_0584f71fee9ea5 126-127
+ruby/test/basecamp/services/search_service_test.rb
+  s_be95a2377e6b9a::t_83d23bd18776f5 177-260
+MIGRATING.md
+  s_be95a2377e6b9a::t_9b5085de5122ce 88
+  s_be95a2377e6b9a::t_f453d385948cf6 16-56
+kotlin/sdk/src/jvmTest/kotlin/com/basecamp/sdk/SearchResultDecodeTest.kt
+  s_be95a2377e6b9a::t_091c3d4236aa46 1-2,4-49,51-61,63-192
+  s_be95a2377e6b9a::t_0fa03bdf8ba81e 3
+  s_be95a2377e6b9a::t_6ea43355f4c5e3 62
+  s_be95a2377e6b9a::t_32d28c2d3a09f2 50
+scripts/check-search-fixture-copy.py
+  s_be95a2377e6b9a::t_6615a445a731d3 1-89
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_be95a2377e6b9a::t_9b08c5328bb10d 380-385
+conformance/runner/python/runner.py
+  s_be95a2377e6b9a::t_c0bb8e09bd2efa 472-475
+  s_be95a2377e6b9a::t_5ad88c970cb564 341-441
+  s_be95a2377e6b9a::t_6e114bf3e2d403 340
+Makefile
+  s_be95a2377e6b9a::t_3034763876ccbd 1440
+  s_be95a2377e6b9a::t_14a21db18081b9 621
+typescript/tests/services/search.test.ts
+  s_be95a2377e6b9a::t_71b38c84351d06 17
+  s_be95a2377e6b9a::t_e14b3d45b44282 254-274,278-388
+  s_be95a2377e6b9a::t_4c26e6719e92f2 275-277
+  s_be95a2377e6b9a::t_7d782c1ba3812a 12-16,21-26
+  s_23e48791aed839::t_bf068fe44c3244 27
+swift/Tests/BasecampTests/SearchResultDecodeTests.swift
+  s_be95a2377e6b9a::t_28efbeb436ee60 115-256
+conformance/tests/search.json
+  s_be95a2377e6b9a::t_4a8865c49e88a4 1-925
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/SearchResult.kt
+  s_be95a2377e6b9a::t_3bdde6378fb7fd 1-66
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/SearchResultAttachment.kt
+  s_be95a2377e6b9a::t_4cb723cf5d988a 1-31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/search.kt
+  s_be95a2377e6b9a::t_744d83c1ffc402 21,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f6ffc43148a10a13b10269f5018aee200439daa2",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_7dde79158ac36d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81e0d11c-e7d0-4c80-88be-a3d5b177e1b0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_be95a2377e6b9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d94a31f-3d7d-442e-8ff1-6740138a75b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
