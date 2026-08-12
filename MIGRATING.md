@@ -60,6 +60,27 @@ six-key aggregate (`title`, `url`, `filename`, `content_type`, `byte_size`,
 optional-field superset of both wire variants, with only the four keys both
 always emit required.
 
+### `MyAssignmentAssignee` / `OutOfOfficePerson`: `name` and `avatar_url` became required (#659)
+
+Both shapes model bc3's `people/_person_minimal.json.jbuilder`, which renders
+`id`, `name` and `avatar_url` unconditionally — the same partial
+`UpcomingSchedulePerson` already models with all three required. Only `id` was
+required here; now all three are.
+
+| SDK | was | now |
+|---|---|---|
+| Go `pkg/generated` | `Name`, `AvatarUrl *string` | `string` — pointer use (`*a.Name`, nil-checks) is a compile error |
+| Go `pkg/basecamp` | own decode structs | unchanged |
+| Swift | `var name: String?`, `var avatarUrl: String?` | `let name: String`, `let avatarUrl: String` — optional-chaining and the old memberwise `init(id:avatarUrl:name:)` with defaulted nils are compile errors; decode of a payload missing either key now throws |
+| TypeScript | `name?: string`, `avatar_url?: string` | `name: string`, `avatar_url: string` — removes the need for `!`/guards; only breaks code *constructing* the type |
+| Python | `NotRequired[str]` | `str` (required in the `TypedDict`) — type-checker-visible only |
+| Ruby | `required_fields` returned `[:id]` | returns `[:avatar_url, :id, :name]` |
+| Kotlin | untyped (`JsonElement`) | unchanged |
+
+The Swift decode-throw is the only runtime face, and it needs a response bc3
+cannot produce (the partial has no conditional keys) — class B by this
+document's rule.
+
 # v0.14.0
 
 Breaking in Go and in the shape every SDK decodes from

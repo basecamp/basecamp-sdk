@@ -124,8 +124,11 @@ class PeopleServiceTest < Minitest::Test
   end
 
   def test_get_out_of_office_disabled_omits_dates
+    # person_minimal always renders all three keys, even when out of office is
+    # disabled (#659).
     stub_get("/12345/people/1/out_of_office.json", response_body: {
-      "person" => { "id" => 1049715913, "name" => "Victor Cooper" },
+      "person" => { "id" => 1049715913, "name" => "Victor Cooper",
+                    "avatar_url" => "https://example.com/avatar" },
       "enabled" => false,
       "ongoing" => false
     })

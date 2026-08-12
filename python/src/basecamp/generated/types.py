@@ -1127,9 +1127,9 @@ class MyAssignment(TypedDict):
 
 
 class MyAssignmentAssignee(TypedDict):
-    avatar_url: NotRequired[str]
+    avatar_url: str
     id: int
-    name: NotRequired[str]
+    name: str
 
 
 class MyAssignmentBucket(TypedDict):
@@ -1208,9 +1208,9 @@ class OutOfOfficePayload(TypedDict):
 
 
 class OutOfOfficePerson(TypedDict):
-    avatar_url: NotRequired[str]
+    avatar_url: str
     id: int
-    name: NotRequired[str]
+    name: str
 
 
 class PauseQuestionResponseContent(TypedDict):

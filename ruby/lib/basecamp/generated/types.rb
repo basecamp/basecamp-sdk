@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-12T15:28:10Z
+# Generated: 2026-08-12T15:52:56Z
 
 require "json"
 require "time"
@@ -2672,23 +2672,23 @@ module Basecamp
     # MyAssignmentAssignee
     class MyAssignmentAssignee
       include TypeHelpers
-      attr_accessor :id, :avatar_url, :name
+      attr_accessor :avatar_url, :id, :name
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[id].freeze
+        %i[avatar_url id name].freeze
       end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
         @avatar_url = data["avatar_url"]
+        @id = parse_integer(data["id"])
         @name = data["name"]
       end
 
       def to_h
         {
-          "id" => @id,
           "avatar_url" => @avatar_url,
+          "id" => @id,
           "name" => @name,
         }.compact
       end
@@ -2955,23 +2955,23 @@ module Basecamp
     # OutOfOfficePerson
     class OutOfOfficePerson
       include TypeHelpers
-      attr_accessor :id, :avatar_url, :name
+      attr_accessor :avatar_url, :id, :name
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[id].freeze
+        %i[avatar_url id name].freeze
       end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
         @avatar_url = data["avatar_url"]
+        @id = parse_integer(data["id"])
         @name = data["name"]
       end
 
       def to_h
         {
-          "id" => @id,
           "avatar_url" => @avatar_url,
+          "id" => @id,
           "name" => @name,
         }.compact
       end

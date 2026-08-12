@@ -28913,6 +28913,7 @@
       },
       "MyAssignmentAssignee": {
         "type": "object",
+        "description": "A person as bc3's `people/_person_minimal.json.jbuilder` renders them —\nthe same three-key partial behind UpcomingSchedulePerson and\nOutOfOfficePerson. All three keys are emitted unconditionally, so all\nthree are required.",
         "properties": {
           "id": {
             "type": "integer",
@@ -28928,7 +28929,9 @@
           }
         },
         "required": [
-          "id"
+          "avatar_url",
+          "id",
+          "name"
         ]
       },
       "MyAssignmentBucket": {
@@ -29221,6 +29224,7 @@
       },
       "OutOfOfficePerson": {
         "type": "object",
+        "description": "A person as bc3's `people/_person_minimal.json.jbuilder` renders them —\nthe same three-key partial behind UpcomingSchedulePerson and\nMyAssignmentAssignee. All three keys are emitted unconditionally, so all\nthree are required.",
         "properties": {
           "id": {
             "type": "integer",
@@ -29236,7 +29240,9 @@
           }
         },
         "required": [
-          "id"
+          "avatar_url",
+          "id",
+          "name"
         ]
       },
       "PauseQuestionResponseContent": {

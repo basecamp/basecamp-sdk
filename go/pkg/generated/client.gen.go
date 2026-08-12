@@ -2114,11 +2114,14 @@ type MyAssignment struct {
 	Type                *string     `json:"type,omitempty"`
 }
 
-// MyAssignmentAssignee defines model for MyAssignmentAssignee.
+// MyAssignmentAssignee A person as bc3's `people/_person_minimal.json.jbuilder` renders them —
+// the same three-key partial behind UpcomingSchedulePerson and
+// OutOfOfficePerson. All three keys are emitted unconditionally, so all
+// three are required.
 type MyAssignmentAssignee struct {
-	AvatarUrl *string `json:"avatar_url,omitempty"`
-	Id        int64   `json:"id"`
-	Name      *string `json:"name,omitempty"`
+	AvatarUrl string `json:"avatar_url"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
 }
 
 // MyAssignmentBucket defines model for MyAssignmentBucket.
@@ -2218,12 +2221,17 @@ type Notification struct {
 type OutOfOffice struct {
 	// BackOnDate First working day after the out-of-office window ends.
 	// Omitted when out of office is not enabled.
-	BackOnDate *string            `json:"back_on_date,omitempty"`
-	Enabled    *bool              `json:"enabled,omitempty"`
-	EndDate    *string            `json:"end_date,omitempty"`
-	Ongoing    *bool              `json:"ongoing,omitempty"`
-	Person     *OutOfOfficePerson `json:"person,omitempty"`
-	StartDate  *string            `json:"start_date,omitempty"`
+	BackOnDate *string `json:"back_on_date,omitempty"`
+	Enabled    *bool   `json:"enabled,omitempty"`
+	EndDate    *string `json:"end_date,omitempty"`
+	Ongoing    *bool   `json:"ongoing,omitempty"`
+
+	// Person A person as bc3's `people/_person_minimal.json.jbuilder` renders them —
+	// the same three-key partial behind UpcomingSchedulePerson and
+	// MyAssignmentAssignee. All three keys are emitted unconditionally, so all
+	// three are required.
+	Person    *OutOfOfficePerson `json:"person,omitempty"`
+	StartDate *string            `json:"start_date,omitempty"`
 }
 
 // OutOfOfficePayload defines model for OutOfOfficePayload.
@@ -2235,11 +2243,14 @@ type OutOfOfficePayload struct {
 	StartDate string `json:"start_date"`
 }
 
-// OutOfOfficePerson defines model for OutOfOfficePerson.
+// OutOfOfficePerson A person as bc3's `people/_person_minimal.json.jbuilder` renders them —
+// the same three-key partial behind UpcomingSchedulePerson and
+// MyAssignmentAssignee. All three keys are emitted unconditionally, so all
+// three are required.
 type OutOfOfficePerson struct {
-	AvatarUrl *string `json:"avatar_url,omitempty"`
-	Id        int64   `json:"id"`
-	Name      *string `json:"name,omitempty"`
+	AvatarUrl string `json:"avatar_url"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
 }
 
 // PauseQuestionResponseContent defines model for PauseQuestionResponseContent.

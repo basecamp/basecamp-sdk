@@ -10962,10 +10962,16 @@ structure MyAssignmentParent {
   app_url: String
 }
 
+/// A person as bc3's `people/_person_minimal.json.jbuilder` renders them —
+/// the same three-key partial behind UpcomingSchedulePerson and
+/// OutOfOfficePerson. All three keys are emitted unconditionally, so all
+/// three are required.
 structure MyAssignmentAssignee {
   @required
   id: PersonId
+  @required
   name: PersonName
+  @required
   avatar_url: AvatarUrl
 }
 
@@ -11661,10 +11667,16 @@ structure OutOfOffice {
   back_on_date: ISO8601Date
 }
 
+/// A person as bc3's `people/_person_minimal.json.jbuilder` renders them —
+/// the same three-key partial behind UpcomingSchedulePerson and
+/// MyAssignmentAssignee. All three keys are emitted unconditionally, so all
+/// three are required.
 structure OutOfOfficePerson {
   @required
   id: PersonId
+  @required
   name: PersonName
+  @required
   avatar_url: AvatarUrl
 }
 

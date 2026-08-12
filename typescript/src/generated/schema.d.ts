@@ -5049,13 +5049,19 @@ export interface components {
             parent?: components["schemas"]["MyAssignmentParent"];
             children?: components["schemas"]["MyAssignment"][];
         };
+        /**
+         * @description A person as bc3's `people/_person_minimal.json.jbuilder` renders them —
+         *     the same three-key partial behind UpcomingSchedulePerson and
+         *     OutOfOfficePerson. All three keys are emitted unconditionally, so all
+         *     three are required.
+         */
         MyAssignmentAssignee: {
             /** Format: int64 */
             id: number;
             /** Format: password */
-            name?: string;
+            name: string;
             /** Format: password */
-            avatar_url?: string;
+            avatar_url: string;
         };
         MyAssignmentBucket: {
             /** Format: int64 */
@@ -5169,13 +5175,19 @@ export interface components {
             /** @description End date in ISO 8601 format (YYYY-MM-DD) */
             end_date: string;
         };
+        /**
+         * @description A person as bc3's `people/_person_minimal.json.jbuilder` renders them —
+         *     the same three-key partial behind UpcomingSchedulePerson and
+         *     MyAssignmentAssignee. All three keys are emitted unconditionally, so all
+         *     three are required.
+         */
         OutOfOfficePerson: {
             /** Format: int64 */
             id: number;
             /** Format: password */
-            name?: string;
+            name: string;
             /** Format: password */
-            avatar_url?: string;
+            avatar_url: string;
         };
         PauseQuestionResponseContent: {
             paused?: boolean;
