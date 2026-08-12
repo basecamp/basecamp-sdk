@@ -602,6 +602,52 @@ describe("BaseService", () => {
       expect(result.meta.truncated).toBe(true);
       expect(pageRequests).toBe(2);
     });
+
+    it("keeps the validated page cap when a caller assigns maxPages after construction", async () => {
+      let pageRequests = 0;
+
+      server.use(
+        http.get(`${BASE_URL}/test-list`, ({ request }) => {
+          pageRequests++;
+          const url = new URL(request.url);
+          const page = Number(url.searchParams.get("page") ?? "1");
+
+          // Every page advertises another one
+          return HttpResponse.json([{ id: page }], {
+            headers: {
+              Link: `<${BASE_URL}/test-list?page=${page + 1}>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+      const cappedService = new TestService(client.raw, undefined, async (url: string) => {
+        return fetch(url, { headers: { Accept: "application/json" } });
+      }, 5);
+
+      // TypeScript's `readonly` is compile-time only, so before the cap moved
+      // into a #private field this cast REPLACED the validated value — the
+      // pagination loops read the assigned 2 and stopped three pages early.
+      // The assignment now hits a getter-only prototype property: it throws in
+      // strict mode, and either way cannot shadow the #field the loops read.
+      // (A lowered replacement, not Infinity — that would hang rather than
+      // fail against the pre-#private code.)
+      try {
+        (cappedService as unknown as { maxPages: number }).maxPages = 2;
+      } catch {
+        // TypeError under strict mode: exactly the enforcement being pinned.
+      }
+
+      const result = await cappedService.testPaginatedGet<{ id: number }>("/test-list", listInfo);
+
+      expect(result.length).toBe(5);
+      expect(result.meta.truncated).toBe(true);
+      expect(pageRequests).toBe(5);
+    });
   });
 
   describe("requestPaginatedWrapped", () => {

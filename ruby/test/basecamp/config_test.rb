@@ -59,4 +59,25 @@ class ConfigTest < Minitest::Test
     assert dir.end_with?("basecamp")
     assert dir.include?(".config") || ENV.fetch("XDG_CONFIG_HOME", nil)
   end
+
+  # The writer validates, not just validate!: Http reads the config live at
+  # every page boundary, so an attr_accessor let `config.max_pages = -1`
+  # replace the validated cap after construction — the value took effect on
+  # the very next page fetch, with validate! never consulted again.
+  def test_max_pages_writer_rejects_invalid_values
+    config = Basecamp::Config.new
+
+    assert_raises(ArgumentError) { config.max_pages = 0 }
+    assert_raises(ArgumentError) { config.max_pages = -1 }
+    assert_raises(ArgumentError) { config.max_pages = Float::INFINITY }
+    assert_raises(ArgumentError) { config.max_pages = true }
+    assert_equal 10_000, config.max_pages
+  end
+
+  def test_max_pages_writer_accepts_a_positive_integer
+    config = Basecamp::Config.new
+    config.max_pages = 5
+
+    assert_equal 5, config.max_pages
+  end
 end

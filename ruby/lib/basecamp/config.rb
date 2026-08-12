@@ -35,7 +35,21 @@ module Basecamp
     attr_accessor :max_jitter
 
     # @return [Integer] maximum pages to fetch in paginated requests
-    attr_accessor :max_pages
+    attr_reader :max_pages
+
+    # A validating writer, not attr_accessor: Http reads the config live at
+    # every page boundary, so `config.max_pages = -1` after construction
+    # replaced the validated cap with a value validate! would have refused —
+    # the same second door TypeScript's compile-time-only `readonly` left
+    # open. The config deliberately stays mutable (from_file → load_from_env
+    # re-validation is builder-style by design); only the cap's invariant
+    # must hold at assignment.
+    #
+    # @param value [Integer] maximum pages to fetch in paginated requests
+    def max_pages=(value)
+      validate_max_pages!(value)
+      @max_pages = value
+    end
 
     # Default values
     DEFAULT_BASE_URL = "https://3.basecampapi.com"
@@ -199,7 +213,13 @@ module Basecamp
     def validate!
       raise ArgumentError, "timeout must be positive" unless @timeout.is_a?(Numeric) && @timeout > 0
       raise ArgumentError, "max_retries must be non-negative" unless @max_retries.is_a?(Integer) && @max_retries >= 0
-      raise ArgumentError, "max_pages must be positive" unless @max_pages.is_a?(Integer) && @max_pages > 0
+      validate_max_pages!(@max_pages)
+    end
+
+    # Shared by validate! and the max_pages= writer. Integer-only, so a
+    # boolean or Float::INFINITY is refused along with zero and negatives.
+    def validate_max_pages!(value)
+      raise ArgumentError, "max_pages must be positive" unless value.is_a?(Integer) && value > 0
     end
 
     def normalize_url(url)
