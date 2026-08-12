@@ -56,18 +56,33 @@
 #      classify the gate as a Gradle build in kotlin/ and fail on the real
 #      Makefile.
 #
-#   3. THE KEY IS A PHYSICAL DIRECTORY, NOT A SPELLING. `cd ./kotlin` and
-#      `cd kotlin` are canonicalized to one group; an unresolvable spelling — a
-#      make variable, a shell variable this gate will not guess at — is a hard
-#      error, not a group of one. Grouping on raw text was a real bypass, caught
-#      in review: two spellings became two trivially-serialized groups.
+#   3. IT READS THE COMMAND, NOT THE TEXT — and that is a correction, not a
+#      boast. Three review rounds each produced one spelling that walked past a
+#      literal-text scan: `cd ./kotlin` (own group of one), `cd "kotlin"`
+#      (quotes as pathname characters), `$(GRADLE_WRAPPER)` (the wrapper itself
+#      behind a make variable, so the word "gradlew" never appeared). Each was a
+#      SILENT PASS in a control whose whole job is to catch the target nobody
+#      has written yet, and a fourth spelling would have been a fourth matcher
+#      arm. So the question moved to the layer make already answers: recipes are
+#      expanded against make's own variable database, quotes are stripped in the
+#      one place a directory becomes a grouping key, and paths are canonicalized
+#      to a repo-relative cleanpath. One funnel, not one arm per spelling.
 #
-#   4. TEXTUAL, AND IT ERRS TOWARD REPORTING. The delegation scan reads source,
-#      it does not execute anything, so a `./gradlew` inside a shell heredoc
-#      would be taken at face value. That direction is deliberate: a false
-#      positive costs one unnecessary order-only edge and says so out loud; a
-#      false negative costs the guarantee silently. An invocation it cannot
-#      place is a hard error for the same reason.
+#      WHAT THAT STILL DOES NOT REACH, precisely:
+#        - a value only a RUNNING shell knows (`cd $$RUNTIME_DIR`, `$(shell …)`).
+#          Hard error, not a silent pass — the fail-loud side.
+#        - a `define`/`endef` multi-line variable holding the Gradle call. That
+#          one WOULD be missed silently: the reference stays unexpanded, so no
+#          `gradlew` token appears and the target is never classified. Nothing in
+#          this repo does it, and closing it means teaching this gate a second
+#          slice of make's grammar — recorded here rather than guessed at, so the
+#          next reader knows it is a hole and not an oversight.
+#
+#   4. TEXTUAL, AND IT ERRS TOWARD REPORTING. Nothing is executed, so a
+#      `./gradlew` inside a shell heredoc is taken at face value. That direction
+#      is deliberate: a false positive costs one unnecessary order-only edge and
+#      says so out loud; a false negative costs the guarantee silently. An
+#      invocation it cannot place is a hard error for the same reason.
 #
 # Env overrides (used by scripts/test-check-gradle-serialization.rb):
 #   GRADLE_SERIALIZATION_MAKEFILE  makefile to read (default: Makefile)
@@ -119,7 +134,9 @@ def read_make_database(makefile)
 
   graph = {}
   recipes = Hash.new { |h, k| h[k] = [] }
+  variables = {}
 
+  in_variables = false
   in_files = false
   current = nil
   not_a_target = false
@@ -127,12 +144,32 @@ def read_make_database(makefile)
   dump.each_line do |raw|
     line = raw.chomp
 
+    # The "# Variables" section holds make's own values for every variable it
+    # knows. Reading it is what lets the recipe scan below see the COMMAND make
+    # would run rather than the text someone typed.
+    if line.start_with?("# Variables")
+      in_variables = true
+      next
+    end
+
     # The "# Files" section holds the target database. Everything before it is
     # variables and implicit rules; everything after is hash-table statistics.
     if line.start_with?("# Files")
+      in_variables = false
       in_files = true
       next
     end
+
+    if in_variables
+      # `NAME = value`, `NAME := value`, `NAME ?= value`. Multi-line `define`
+      # blocks are skipped: nothing in this repo puts a Gradle call in one, and
+      # half-reading one would be worse than not reading it.
+      if (var = /\A(\w+) *[:?+]?= ?(.*)\z/.match(line))
+        variables[var[1]] = var[2]
+      end
+      next
+    end
+
     next unless in_files
     break if line.start_with?("# files hash-table stats", "# VPATH Search Paths")
 
@@ -167,7 +204,28 @@ def read_make_database(makefile)
     (graph[target] ||= Set.new).merge(prereqs)
   end
 
-  [graph, recipes]
+  [graph, recipes, variables]
+end
+
+# Substitute make's own variable values into a recipe line, so what gets matched
+# is the command make would run. Bounded passes because a value may itself hold
+# a reference; an unknown name is left alone, which lands it in the fail-loud
+# `$`-guard rather than being quietly dropped.
+#
+# This exists because the alternative is a matcher that keeps growing: a review
+# round found `cd kotlin && $(GRADLE_WRAPPER) help` invisible to a literal-text
+# scan, and the round before found `cd ./kotlin` in its own group. Both are the
+# same defect — reading the text instead of the command — and widening the
+# pattern for each spelling is how a control nobody sized gets built. Expanding
+# once, from make's own database, is the layer the question actually lives at.
+def expand_variables(text, variables, passes: 5)
+  passes.times do
+    expanded = text.gsub(/\$[({](\w+)[)}]/) { variables.fetch(Regexp.last_match(1), Regexp.last_match(0)) }
+    return expanded if expanded == text
+
+    text = expanded
+  end
+  text
 end
 
 # Every target whose recipe shells out to a Gradle wrapper, mapped to the
@@ -248,18 +306,22 @@ end
 # walked through the gate. `kotlin/`, `kotlin/.` and `spec/../kotlin` are the same
 # hazard. Normalize to a repo-relative cleanpath before anything is compared.
 def canonical_dir(raw, repo_root)
+  # `cd "kotlin"` is `cd kotlin`. Dequoting lives here, in the one place a
+  # directory becomes a grouping key, rather than as another arm of the matcher.
+  unquoted = raw.sub(/\A(["'])(.*)\1\z/) { Regexp.last_match(2) }
   root = File.expand_path(repo_root)
-  absolute = File.expand_path(raw, root)
+  absolute = File.expand_path(unquoted, root)
   return "." if absolute == root
 
   absolute.start_with?("#{root}/") ? absolute.delete_prefix("#{root}/") : absolute
 end
 
-def gradle_targets(recipes, makefile, repo_root = REPO_ROOT)
+def gradle_targets(recipes, makefile, variables = {}, repo_root = REPO_ROOT)
   found = {}
   unrecognized = []
 
-  recipes.each do |target, lines|
+  recipes.each do |target, raw_lines|
+    lines = raw_lines.map { |line| expand_variables(line, variables) }
     direct = lines.find { |line| line.include?("./gradlew") }
 
     if direct
@@ -318,10 +380,10 @@ def reachable_from(graph, root)
   seen
 end
 
-graph, recipes = read_make_database(MAKEFILE)
+graph, recipes, variables = read_make_database(MAKEFILE)
 die "goal #{GOAL} is not defined in #{MAKEFILE}" unless graph.key?(GOAL)
 
-gradle = gradle_targets(recipes, MAKEFILE)
+gradle = gradle_targets(recipes, MAKEFILE, variables)
 die "found no Gradle-backed targets in #{MAKEFILE} — the recipe shape this " \
     "gate matches (`cd <dir> && ./gradlew`) must have changed" if gradle.empty?
 

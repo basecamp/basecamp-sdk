@@ -310,8 +310,73 @@ variable_dir = must_substitute(
 MAKE
 
 failures << check(
-  "13: a make variable as the project directory is unresolvable, not a group of one",
+  "13: a make variable in the directory position is EXPANDED, so it collides",
   variable_dir,
+  expect_pass: false,
+  expect_fragment: "probe-variable-dir",
+)
+
+# --- Cases 14-16: the gate reads the COMMAND, not the text -------------------
+#
+# Round three of review found two more spellings that walked past a literal-text
+# scan: `cd "kotlin"` (quoted) and `$(GRADLE_WRAPPER)` (the wrapper itself behind
+# a make variable). Rather than a matcher arm each, the checker now expands
+# make's own variables and dequotes in the one place a directory becomes a
+# grouping key — so these are cases for a changed instrument, not for two new
+# selectors. Case 16 is the boundary that remains: a directory only a RUNNING
+# shell could resolve is still a hard error, which is the fail-loud side.
+
+quoted_dir = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-quoted-dir ",
+) + <<~MAKE
+
+  .PHONY: probe-quoted-dir
+  probe-quoted-dir:
+  \tcd "kotlin" && ./gradlew help
+MAKE
+
+failures << check(
+  "14: a quoted project directory is the same directory",
+  quoted_dir,
+  expect_pass: false,
+  expect_fragment: "probe-quoted-dir",
+)
+
+wrapper_variable = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-wrapper-variable ",
+) + <<~MAKE
+
+  GRADLE_WRAPPER = ./gradlew
+  .PHONY: probe-wrapper-variable
+  probe-wrapper-variable:
+  \tcd kotlin && $(GRADLE_WRAPPER) help
+MAKE
+
+failures << check(
+  "15: the wrapper itself behind a make variable is still discovered",
+  wrapper_variable,
+  expect_pass: false,
+  expect_fragment: "probe-wrapper-variable",
+)
+
+shell_variable_dir = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-shell-var-dir ",
+) + <<~MAKE
+
+  .PHONY: probe-shell-var-dir
+  probe-shell-var-dir:
+  \tcd $$RUNTIME_DIR && ./gradlew help
+MAKE
+
+failures << check(
+  "16: a directory only a running shell could resolve stays a hard error",
+  shell_variable_dir,
   expect_pass: false,
   expect_fragment: "cannot tell which project directory",
 )
