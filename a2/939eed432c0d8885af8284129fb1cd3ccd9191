@@ -1,0 +1,22 @@
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_23e48791aed839::t_2f690076336cbe 523-531
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_23e48791aed839::t_828466669ff715 271-276
+  s_23e48791aed839::t_399bd3b5814f2b 1,277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a2939eed432c0d8885af8284129fb1cd3ccd9191",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
