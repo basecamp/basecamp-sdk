@@ -185,7 +185,6 @@ dock-tool projections have modeled them `@required` all along — but a
 hand-written test stub that predates this change will hit it, which is the
 realistic way to meet it.
 
-||||||| parent of 3d818e5cb (Isolate the response decoder from auth, transport and request encoding)
 ### Kotlin and Swift: a malformed 2xx body raises an SDK error, not the decoder's (#604)
 
 **Class B — compiles, then raises a different error type on the wrong payload.**

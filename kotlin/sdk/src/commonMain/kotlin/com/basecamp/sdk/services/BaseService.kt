@@ -521,21 +521,22 @@ abstract class BaseService(
      * body. The decoder's own exception is kept as `cause`, so a caller that
      * wants its account of what was wrong still has it.
      *
-     * **Two mapped types, and the second is not redundant.**
-     * [SerializationException] is what kotlinx raises for a structural refusal.
-     * [NumberFormatException] is what it raises for a *numeric* one: a
-     * `JsonPrimitive.long` conversion — [com.basecamp.sdk.serialization.FlexibleLongSerializer]
-     * reaches one for every `Person` id off the wire — throws it rather than a
-     * [SerializationException] on an unquoted fractional or out-of-range number.
-     * It is the narrowest possible widening: number parsing is the only thing
-     * that raises it, so nothing in a decode closure can raise one for a reason
-     * that is not a malformed body. Its parent [IllegalArgumentException] is
-     * deliberately NOT mapped — that would swallow every `require()` in reach.
+     * **One mapped type, deliberately.** [SerializationException] is the type
+     * kotlinx uses to say "this body is not what the model expects", and the
+     * `cause` it becomes here is a contract other code reads: the §18
+     * composites re-hint off `cause is SerializationException`, and the
+     * conformance runner tells a decoder rejection from a real `api_error` the
+     * same way. A second mapped type would be a second cause type they would
+     * each have to learn, so anything that is a decode failure is made to speak
+     * this one *where it is raised* instead — see
+     * [com.basecamp.sdk.serialization.FlexibleLongSerializer], whose numeric
+     * conversion would otherwise leak a [NumberFormatException].
      *
-     * A third class stays unmapped on purpose: the `!!` and `.jsonArray`
-     * accessors the generator emits for `GetPersonProgress` raise
-     * [NullPointerException] and [IllegalArgumentException] on a wrong-shaped
-     * wrapper body. Those are generated-code defects to fix where they are
+     * Two classes stay unmapped on purpose. [IllegalArgumentException], the
+     * parent of both, would swallow every `require()` in reach. And the `!!`
+     * and `.jsonArray` accessors the generator emits for `GetPersonProgress`
+     * raise [NullPointerException] and [IllegalArgumentException] on a
+     * wrong-shaped wrapper body: generated-code defects to fix where they are
      * written, not exception types to catch here (#728).
      *
      * **Wrap the decode expression, never the block.** Each primitive above runs
@@ -554,12 +555,10 @@ abstract class BaseService(
             decode()
         } catch (e: SerializationException) {
             throw malformedBody(operation, e)
-        } catch (e: NumberFormatException) {
-            throw malformedBody(operation, e)
         }
 
     /** The one place a decode failure is rendered. */
-    private fun malformedBody(operation: String, cause: Exception): BasecampException.Api =
+    private fun malformedBody(operation: String, cause: SerializationException): BasecampException.Api =
         BasecampException.Api(
             message = BasecampException.truncateMessage(
                 "$operation returned a body that does not decode: ${cause.message}"

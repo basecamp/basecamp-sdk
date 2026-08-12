@@ -38,6 +38,27 @@ class FlexibleLongSerializerTest {
         assertEquals(0L, result.id)
     }
 
+    /**
+     * An UNQUOTED bad number, which takes the other branch: `JsonPrimitive.long`
+     * is `content.toLong()`, so it raises [NumberFormatException] where the
+     * quoted branch above raises [SerializationException] by hand. A
+     * `KSerializer` that reports a decode failure in a type kotlinx does not use
+     * for decode failures escapes everything downstream that recognizes one —
+     * the SDK's SPEC §6 mapping (#604), the §18 composites' re-hint, and the
+     * conformance runner's fixture-body policy, all of which read that type.
+     */
+    @Test
+    fun rejectsUnquotedFractionalAndOverflowNumbersAsSerializationFailures() {
+        for (bad in listOf("1.5", "9223372036854775808", "1e100")) {
+            val error = assertFailsWith<SerializationException>(
+                "an unquoted $bad must be refused as a serialization failure",
+            ) {
+                json.decodeFromString<Wrapper>("{\"id\": $bad}")
+            }
+            assertContains(error.message!!, bad)
+        }
+    }
+
     @Test
     fun rejectsNumericOverflowString() {
         assertFailsWith<SerializationException> {

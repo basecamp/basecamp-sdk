@@ -46,7 +46,19 @@ object FlexibleLongSerializer : KSerializer<Long> {
                         0L // non-numeric sentinel
                     }
             }
-            return element.long
+            // `JsonPrimitive.long` is `content.toLong()`, which raises
+            // NumberFormatException — not SerializationException — on an
+            // unquoted fractional or out-of-range literal. Deserialization
+            // failures are supposed to speak kotlinx's own type: the SDK maps
+            // that one to the SPEC §6 malformed-body error (#604), and the §18
+            // composites and the conformance runner both read the mapped
+            // error's `cause` to tell a decoder rejection from a real API
+            // failure. Leaking the numeric type escapes all three.
+            return try {
+                element.long
+            } catch (e: NumberFormatException) {
+                throw SerializationException("FlexibleLong: ${element.content} is not a Long", e)
+            }
         }
         return 0L
     }

@@ -136,14 +136,20 @@ class DecodeIsolationTest {
     }
 
     /**
-     * A *numeric* refusal, which kotlinx reports as a [NumberFormatException]
-     * rather than a [SerializationException].
+     * A *numeric* refusal.
      *
      * `Person.id` decodes through `FlexibleLongSerializer`, which reaches
-     * `JsonPrimitive.long` for an unquoted number — and that is `content.toLong()`,
-     * so a fractional or out-of-range literal throws the numeric type, not the
-     * serialization one. Nearly every response carries a Person, so this is an
-     * ordinary operation's ordinary failure, not an exotic one.
+     * `JsonPrimitive.long` for an unquoted number — and that is
+     * `content.toLong()`, so a fractional or out-of-range literal raises
+     * [NumberFormatException] rather than [SerializationException]. Nearly every
+     * response carries a Person, so this is an ordinary operation's ordinary
+     * failure, not an exotic one, and before #604 it escaped the SDK entirely.
+     *
+     * The serializer translates it rather than the helper catching it, so that
+     * exactly one exception type crosses the mapping boundary: the composites
+     * and the conformance runner both read `cause` to tell a decoder rejection
+     * from a real API failure, and a second cause type is a second thing each
+     * of them would have to learn. The numeric original is still underneath.
      */
     @Test
     fun aNumericRefusalIsAStatuslessApiError() = runTest {
@@ -164,9 +170,18 @@ class DecodeIsolationTest {
 
             assertNull(error.httpStatus)
             assertFalse(error.retryable)
+            val cause = error.cause
+            assertIs<SerializationException>(
+                cause,
+                "every decode failure must reach `cause` as one type, got $cause",
+            )
             assertIs<NumberFormatException>(
-                error.cause,
-                "the numeric conversion failure must survive as the cause, got ${error.cause}",
+                cause.cause,
+                "the numeric original must survive beneath it, got ${cause.cause}",
+            )
+            assertTrue(
+                cause.message!!.contains(badId),
+                "the refused value must be named: ${cause.message}",
             )
             client.close()
         }
