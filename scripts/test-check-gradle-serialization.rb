@@ -634,6 +634,27 @@ failures << check(
   expect_pass: true,
 )
 
+# --- Case 26: errors are scoped to the goal, like collisions are -------------
+#
+# An unplaceable directory in a target NOT reachable from check-targets used to
+# fail the whole gate, because the scan reported before the reachable set was
+# computed. Same false-verdict class as case 25: the gate saying no about
+# something it had already declared out of scope. The probe below is deliberately
+# NOT added to check-targets.
+
+out_of_scope_unplaceable = MAKEFILE + <<~MAKE
+
+  .PHONY: probe-out-of-scope
+  probe-out-of-scope:
+  \tcd $$RUNTIME_PROJECT && ./gradlew help
+MAKE
+
+failures << check(
+  "26: an unplaceable target outside the goal does not fail the gate",
+  out_of_scope_unplaceable,
+  expect_pass: true,
+)
+
 failures.compact!
 
 if failures.empty?

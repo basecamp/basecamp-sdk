@@ -174,10 +174,29 @@
 #         shell script a recipe invokes; several invocations per line, per
 #         recipe and per script; the same directory under any spelling or
 #         symlink.
-#   CANNOT a Gradle call reached by a shape it does not parse: a `define`/`endef`
-#         variable, a Ruby or Python helper that shells out, a second level of
-#         script delegation, a directory only a running shell knows (that last
-#         one is a hard error, not a silent pass — the others are silent).
+#   CANNOT a Gradle call reached by a shape it does not parse. The full list, so
+#         a green run is never mistaken for a proof:
+#           - a `define`/`endef` variable holding the call
+#           - a Ruby or Python helper that shells out
+#           - a second level of script delegation
+#           - a target-specific variable INHERITED BY A PREREQUISITE. make makes
+#             `foo: VAR = x` effective for foo's prerequisites too; only the
+#             variables attached to the recipe's own target are merged here.
+#           - a delegated line that cd's more than once before its Gradle call
+#             (`cd a && prepare; cd b && ./gradlew`): the match starts at the
+#             FIRST cd, so the call is attributed to a rather than b.
+#           - a directory only a running shell knows — a hard error, not a
+#             silent pass; the rest of this list is silent.
+#
+#         The last two were reported and DECLINED, on purpose, and the reasoning
+#         belongs here rather than in a review thread nobody will re-read: each
+#         is one more matcher refinement for a shape no recipe in this repo uses,
+#         arriving after the count above had already made the case that the next
+#         parsing variation should change the instrument instead. Taking them
+#         would have grown the rules an eighth time without moving the covered
+#         call sites at all. If either shape ever appears in a real recipe, that
+#         is a call site, and the answer is instrument A or B below — not a
+#         seventh regex.
 #
 # A PASS THEREFORE MEANS "no collision in the shapes I can parse", NOT "no
 # collision exists". The pass message says so out loud, because a guard that
@@ -559,6 +578,16 @@ def gradle_targets(recipes, makefile, variables = {}, target_variables = {}, rep
     end
   end
 
+  [found, unrecognized]
+end
+
+# Reporting an unplaceable recipe is deferred to the caller, which knows what is
+# in scope. Raising it from inside the scan meant a standalone target nobody
+# asked about — not reachable from GOAL, never scheduled by `make check` — could
+# fail the whole gate on a directory only its own shell knows. That is the same
+# false-verdict class as the target-specific variables: the gate saying no about
+# something it had already declared out of scope.
+def report_unrecognized(unrecognized, makefile)
   unless unrecognized.empty?
     warn "ERROR: cannot tell which project directory these Gradle recipes run in:"
     unrecognized.each { |target, line| warn "  #{target}: #{line}" }
@@ -570,8 +599,6 @@ def gradle_targets(recipes, makefile, variables = {}, target_variables = {}, rep
          "leave it guessing, since a guess here passes silently. (#{makefile})"
     exit 1
   end
-
-  found
 end
 
 def reachable_from(graph, root)
@@ -589,11 +616,15 @@ end
 graph, recipes, variables, target_variables = read_make_database(MAKEFILE)
 die "goal #{GOAL} is not defined in #{MAKEFILE}" unless graph.key?(GOAL)
 
-gradle = gradle_targets(recipes, MAKEFILE, variables, target_variables)
+gradle, unrecognized = gradle_targets(recipes, MAKEFILE, variables, target_variables)
 die "found no Gradle-backed targets in #{MAKEFILE} — the recipe shape this " \
     "gate matches (`cd <dir> && ./gradlew`) must have changed" if gradle.empty?
 
 in_goal = reachable_from(graph, GOAL)
+
+# Scope first, complain second — boundary 1 applies to errors as well as to
+# collisions.
+report_unrecognized(unrecognized.select { |target, _| in_goal.include?(target) }, MAKEFILE)
 covered = gradle.select { |target, _| in_goal.include?(target) }
 
 # dir => targets that build in it. A target with two directories appears twice,
