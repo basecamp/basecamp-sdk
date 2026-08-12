@@ -253,7 +253,9 @@ module TestHelpers
   # makes the test agree with itself and with nothing else: it would pass just as
   # well if the SDK could not read a BC5 document at all. The differences are the
   # point — identity id only, no product or app_href, an RFC 8707 resource
-  # indicator, a top-level scope, and expires_at as integer epoch seconds.
+  # indicator, and a top-level scope. (expires_at was integer epoch seconds
+  # before bc3 #12646 converged it on ISO 8601; Ruby passes it through verbatim
+  # either way.)
   def sample_bc5_authorization
     {
       "identity" => { "id" => 1 },
@@ -266,8 +268,7 @@ module TestHelpers
         }
       ],
       "scope" => "read write",
-      # 2036-01-29T09:55:56Z as epoch seconds.
-      "expires_at" => 2_085_213_356
+      "expires_at" => "2036-01-29T09:55:56Z"
     }
   end
 end

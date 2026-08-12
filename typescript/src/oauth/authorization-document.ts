@@ -23,7 +23,7 @@
  * | `accounts[].product` / `app_href` | present | absent |
  * | `accounts[].resource` | absent | present (RFC 8707 indicator) |
  * | `scope` | absent | present, BC3-issued tokens only |
- * | `expires_at` | ISO-8601 string | integer epoch **seconds** |
+ * | `expires_at` | ISO-8601 string | ISO-8601 string (integer epoch **seconds** before bc3 #12646; still accepted) |
  *
  * Every field either issuer omits is typed optional here. The union is modelled
  * rather than either shape alone, because a consumer reaches a BC5 issuer just by
@@ -154,17 +154,21 @@ export interface RawAuthorizationDocument {
 }
 
 /**
- * Parses `expires_at` from either issuer's spelling.
+ * Parses `expires_at` from any spelling either issuer has ever used.
  *
- * Launchpad sends an ISO-8601 string; bc3 sends `@token.expires_at.to_i`, an
- * integer epoch **seconds**. The distinction is the whole point of branching on
- * `typeof`: `new Date(2085213356)` treats the number as *milliseconds* and yields
- * a date in 1970 — a wrong answer rather than an exception, which then reads as
- * an expired credential rather than a schema mismatch.
+ * Both issuers send an ISO-8601 string today; bc3 sent `@token.expires_at.to_i`
+ * — integer epoch **seconds** — before bc3 #12646 converged it, and the integer
+ * spelling stays accepted (recorded documents, older deploys). The `typeof`
+ * branch matters because `new Date(2085213356)` treats the number as
+ * *milliseconds* and yields a date in 1970 — a wrong answer rather than an
+ * exception, which then reads as an expired credential rather than a schema
+ * mismatch.
  *
- * bc3 renders `.to_i`, so a nil expiry arrives as `0`, never `null`. A `0`, a
- * `null` and an absent field are all "no expiry known" and produce an Invalid
- * Date, which is what a `Date`-typed field can say about the absence.
+ * A `0`, a `null` and an absent field are all "no expiry known" and produce an
+ * Invalid Date, which is what a `Date`-typed field can say about absence. No
+ * production issuer emits any of the three — bc3 tokens validate presence and
+ * are always set at mint — so the `0` handling is defensive, guarding the
+ * RFC 7591 collision where `0` means "never expires".
  */
 export function parseExpiresAt(value: string | number | null | undefined): Date {
   if (typeof value === "number") {

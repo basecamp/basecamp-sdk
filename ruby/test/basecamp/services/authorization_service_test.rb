@@ -89,7 +89,7 @@ class AuthorizationServiceTest < Minitest::Test
 
     assert_equal "urn:bc:account:12345", auth["accounts"].first["resource"]
     assert_equal "read write", auth["scope"]
-    assert_equal 2_085_213_356, auth["expires_at"]
+    assert_equal "2036-01-29T09:55:56Z", auth["expires_at"]
     # Launchpad-only fields are absent, not empty — a consumer reading
     # identity.email_address here gets nil, which is what the service's own
     # @example used to show.

@@ -131,7 +131,9 @@ func TestAuthorizationService_GetInfo(t *testing.T) {
 // bc5AuthorizationDocument is what a BC5 (bc3) issuer serves from
 // app/views/api/authorizations/show.json.jbuilder: identity id only, no product
 // or app_href on accounts, an RFC 8707 resource indicator instead, a top-level
-// scope, and expires_at as integer epoch seconds.
+// scope, and expires_at as an ISO 8601 string (integer epoch seconds before
+// bc3 #12646 converged it; TestAuthorizationInfo_UnmarshalWithIntExpiresAt
+// keeps the integer spelling covered).
 //
 // Go reaches this document exactly the way TypeScript does — by passing an
 // Endpoint override, which is the documented way to point at a BC5 issuer.
@@ -142,9 +144,8 @@ func bc5AuthorizationDocument() map[string]any {
 			{"id": 1, "name": "Acme Corp", "href": "https://bc5.example.com/1", "resource": "urn:bc:account:1"},
 			{"id": 2, "name": "Second Account", "href": "https://bc5.example.com/2", "resource": "urn:bc:account:2"},
 		},
-		"scope": "read write",
-		// 2036-01-29T09:55:56Z as epoch seconds.
-		"expires_at": 2085213356,
+		"scope":      "read write",
+		"expires_at": "2036-01-29T09:55:56Z",
 	}
 }
 
@@ -540,7 +541,10 @@ func TestAuthorizationInfo_UnmarshalWithStringExpiresAt(t *testing.T) {
 }
 
 func TestAuthorizationInfo_UnmarshalWithIntExpiresAt(t *testing.T) {
-	// BC3 OAuth 2.1 returns expires_at as Unix timestamp integer
+	// bc3 rendered expires_at as integer epoch seconds before bc3 #12646
+	// converged it on ISO 8601. The integer spelling stays accepted — recorded
+	// documents and older deploys still carry it — and this test is what keeps
+	// that compatibility covered now that the BC5 fixture speaks ISO 8601.
 	jsonData := `{
 		"expires_at": 2085213356,
 		"identity": {

@@ -40,7 +40,9 @@ const sampleAuthResponse = () => ({
  * A BC5 (bc3) issuer's own authorization document, per
  * `app/views/api/authorizations/show.json.jbuilder`: identity id only, no
  * `product` or `app_href` on accounts, an RFC 8707 `resource` indicator instead,
- * a top-level `scope`, and `expires_at` as integer epoch *seconds*.
+ * a top-level `scope`, and `expires_at` as an ISO-8601 string (integer epoch
+ * *seconds* before bc3 #12646 converged it; the compat case below keeps the
+ * integer spelling covered).
  */
 const sampleBc5AuthResponse = () => ({
   identity: { id: 100 },
@@ -59,8 +61,7 @@ const sampleBc5AuthResponse = () => ({
     },
   ],
   scope: "read write",
-  // 2036-01-29T09:55:56Z as epoch seconds. Read as milliseconds: 1970-01-25.
-  expires_at: 2085213356,
+  expires_at: "2036-01-29T09:55:56Z",
 });
 
 const BC5_URL = "https://bc5.example.com/authorization.json";
@@ -164,11 +165,26 @@ describe("AuthorizationService", () => {
       server.use(http.get(BC5_URL, () => HttpResponse.json(sampleBc5AuthResponse())));
     });
 
-    it("reads expires_at as epoch seconds, not milliseconds", async () => {
+    it("parses the ISO-8601 expires_at bc3 sends since #12646", async () => {
       const info = await client.authorization.getInfo({ endpoint: BC5_URL });
 
-      // Read as milliseconds, 2085213356 lands in January 1970 — a wrong date
-      // rather than an exception, which then reads as an expired credential.
+      expect(info.expiresAt.getUTCFullYear()).toBe(2036);
+      expect(info.expiresAt.toISOString()).toBe("2036-01-29T09:55:56.000Z");
+    });
+
+    it("still accepts the pre-#12646 integer epoch spelling, as seconds not milliseconds", async () => {
+      // bc3 rendered `expires_at.to_i` before bc3 #12646; recorded documents
+      // and older deploys still carry the integer. Read as milliseconds,
+      // 2085213356 lands in January 1970 — a wrong date rather than an
+      // exception, which then reads as an expired credential.
+      server.use(
+        http.get(BC5_URL, () =>
+          HttpResponse.json({ ...sampleBc5AuthResponse(), expires_at: 2085213356 }),
+        ),
+      );
+
+      const info = await client.authorization.getInfo({ endpoint: BC5_URL });
+
       expect(info.expiresAt.getUTCFullYear()).toBe(2036);
       expect(info.expiresAt.toISOString()).toBe("2036-01-29T09:55:56.000Z");
     });
