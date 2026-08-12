@@ -1309,13 +1309,19 @@ class ConformanceRunner:
 
         has_base_url = "baseUrl" in overrides
         has_max_pages = "maxPages" in overrides
-        if not has_base_url and not has_max_pages:
+        # maxRetries has to be in this list or a case overriding ONLY the retry
+        # cap silently gets the shared default client and passes while testing
+        # nothing.
+        has_max_retries = "maxRetries" in overrides
+        if not has_base_url and not has_max_pages and not has_max_retries:
             return self._mapper
 
         try:
             config_opts: dict[str, Any] = {"base_url": overrides["baseUrl"] if has_base_url else "https://3.basecampapi.com"}
             if has_max_pages:
                 config_opts["max_pages"] = overrides["maxPages"]
+            if has_max_retries:
+                config_opts["max_retries"] = overrides["maxRetries"]
             config = Config(**config_opts)
             client = Client(config=config, access_token="conformance-test-token")
             account = client.for_account("999")

@@ -30,9 +30,12 @@ type HTTPOptions struct {
 	// Timeout is the request timeout (default: 30s).
 	Timeout time.Duration
 
-	// MaxRetries is the total attempt count for GET requests (default: 3,
-	// minimum 1 — NewClient panics on lower values). POST/PUT/DELETE requests
-	// make one attempt plus one retry after a successful token refresh.
+	// MaxRetries is the total attempt count for retryable requests (default: 3;
+	// 0 means no retry, exactly one attempt — NewClient panics only on a
+	// negative value). It governs the raw GET and download loops here and the
+	// generated client's retry loop behind every typed operation.
+	// POST/PUT/DELETE on the raw path make one attempt plus one retry after a
+	// successful token refresh.
 	MaxRetries int
 
 	// BaseDelay is the initial backoff delay (default: 1s).
@@ -67,8 +70,14 @@ func WithTimeout(d time.Duration) ClientOption {
 	}
 }
 
-// WithMaxRetries sets the total attempt count for GET requests.
-// Must be at least 1 (NewClient panics otherwise).
+// WithMaxRetries sets the total attempt count for retryable requests: the raw
+// Get/GetAll and download paths, and the generated client's own retry loop
+// behind every typed operation.
+//
+// The count includes the initial request, so 3 means one attempt plus two
+// retries. Zero is legal and means "no retries — exactly one attempt"; every
+// loop floors the cap at one, so a request is always made. Only a negative
+// value is a configuration error, and NewClient panics on it.
 func WithMaxRetries(n int) ClientOption {
 	return func(c *Client) {
 		c.httpOpts.MaxRetries = n

@@ -185,8 +185,15 @@
         "page": {
           "type": "integer",
           "description": "Pin the list operation to a single page. A positive value must select exactly that page: one request, no Link rel=next follow (SPEC section 8). Runners pass it through the operation's own page option, so a fixture using it needs the dispatch case to forward it."
+        },
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Override the client-wide retry cap as a TOTAL attempt count (SPEC section 2). 0 means no retries — exactly one attempt — and is the value this key exists for. TypeScript and Swift expose no numeric cap by design (SPEC section 2 validation step 4), so their runners map a cap of 0 OR 1 to enableRetry: false and anything above to enableRetry: true — both values mean one attempt under total-attempt semantics, and one attempt is what enableRetry: false spells there. A cap above 1 pins an exact attempt count only in the four numeric SDKs; in TS and Swift it re-asserts the default per-operation ceiling. Negative values are rejected here rather than left to six divergent constructors."
         }
-      }
+      },
+      "$comment": "additionalProperties is false because a stray key here fails NOWHERE otherwise: every runner reads the overrides it knows by name, so an invented or misspelled key validates, is silently ignored by all six, and leaves a fixture that passes while testing nothing it claims to. This gate is the only place that can see it.",
+      "additionalProperties": false
     },
     "liveAssertions": {
       "type": "array",

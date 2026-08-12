@@ -132,5 +132,81 @@
       {"type": "statusCode", "expected": 500}
     ],
     "tags": ["retry", "non-retryable", "500"]
+  },
+  {
+    "name": "max_retries 0 sends exactly one request on a governed operation",
+    "description": "`max_retries = 0` is a legal spelling of \"no retries — exactly one attempt\", not a request to send nothing (SPEC §2 validation step 4). Until #718 the spec said `⊥` here and hand-written Go agreed by panicking at construction, while the other four numeric SDKs already accepted and floored the value — a contradiction with SPEC §14's own attempt-budget table, which had blessed \"a zero cap\" as yielding exactly one attempt all along.\n\n`GetProject` is governed: it carries a `retry.max` of 3 in behavior-model.json, and 503 is in its declared `retry_on` set, so every retrying SDK would otherwise make three attempts here. In Go this case is red twice over against un-fixed code — first because client construction panicked, and then, once it did not, because the typed operation ran on the generated client's DefaultRetryConfig and made three requests: `initGeneratedClient` never passed the caller's cap at all.\n\nA single 503 is queued deliberately: an SDK that retried would send a second request, fall off the end of the queue and get the mock's end-of-queue 500, so `requestCount: 1` cannot pass vacuously — it fails on the count either way.\n\n**Strength is not uniform across the six runners, and this fixture does not pretend otherwise.** Go, Python, Ruby and Swift consult the budget BEFORE the first request (pre-check loops), so a zero cap is a real regression guard there. Kotlin and TypeScript consult it after, so a budget of 0 and of 1 are observably identical in those two — the same asymmetry #713 hit. TypeScript additionally has no numeric cap at all: the override maps to `enableRetry: false`, which is its spelling of the same contract (SPEC §2 validation step 4), as it does in Swift.",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {
+      "projectId": 12345
+    },
+    "configOverrides": {
+      "maxRetries": 0
+    },
+    "mockResponses": [
+      {
+        "status": 503,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Service Unavailable"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorCode",
+        "expected": "api_error"
+      }
+    ],
+    "tags": [
+      "retry",
+      "max-retries",
+      "issue-718"
+    ]
+  },
+  {
+    "name": "max_retries 0 sends exactly one request on ungoverned download traffic",
+    "description": "The companion to the governed case, on the one conformance-reachable path with NO operation entry in behavior-model.json. Every modelled operation in behavior-model.json carries a retry block, so \"ungoverned\" cannot mean an operation that lacks one — it means traffic with no operation ID at all, and `DownloadURL` is the reachable example (SPEC §14 hop-1 retry). With no per-operation ceiling to clamp it, the client cap is the entire budget, which is what makes this the case where a missing floor is unmasked rather than hidden behind a `min(cap, op_max)`.\n\n503 is in the hop-1 retry set, so a retrying SDK sends a second request here. In hand-written Go the download loop is a separate pre-check loop from the GET one and needed its own floor: against un-fixed code a zero cap skipped it entirely and returned a usage error having sent nothing.\n\nA single 503 is queued deliberately: an SDK that retried would send a second request, fall off the end of the queue and get the mock's end-of-queue 500, so `requestCount: 1` cannot pass vacuously — it fails on the count either way.\n\n**Strength is not uniform across the six runners, and this fixture does not pretend otherwise.** Go, Python, Ruby and Swift consult the budget BEFORE the first request (pre-check loops), so a zero cap is a real regression guard there. Kotlin and TypeScript consult it after, so a budget of 0 and of 1 are observably identical in those two — the same asymmetry #713 hit. TypeScript additionally has no numeric cap at all: the override maps to `enableRetry: false`, which is its spelling of the same contract (SPEC §2 validation step 4), as it does in Swift.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "configOverrides": {
+      "maxRetries": 0
+    },
+    "mockResponses": [
+      {
+        "status": 503,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Service Unavailable"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorCode",
+        "expected": "api_error"
+      }
+    ],
+    "tags": [
+      "retry",
+      "max-retries",
+      "download",
+      "issue-718"
+    ]
   }
 ]

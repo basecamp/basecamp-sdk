@@ -13,6 +13,60 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Go: typed operations now honour `WithMaxRetries`, and `0` is a legal cap (#718)
+
+Two changes to the same knob, one of them a bug fix you may feel in production.
+
+**`initGeneratedClient` never passed the client's retry settings to the
+generated client.** It was constructed with only `WithHTTPClient` and
+`WithRequestEditorFn`, so its retry loop ran on
+`generated.DefaultRetryConfig{MaxRetries: 3}` regardless of what
+`WithMaxRetries(n)` said. Only the raw `Get`/`GetAll` and download paths, which
+run the hand-written loop, honoured the setting — so `WithMaxRetries`' doc
+comment promised "GET requests" and delivered a subset of them.
+
+**Scope: retry-eligible typed operations only.** `doWithRetry` forces
+`maxAttempts` to 1 for a non-idempotent operation *before* consulting the retry
+config, and then clamps to the operation's `x-basecamp-retry` ceiling. So
+`CreateTodo` and every other non-idempotent POST always made exactly one
+attempt and are untouched by this, and the eleven `max: 2` operations were
+capped at two rather than three. What was wrong is that eligible operations used
+`min(3, op_max)` — the *generated* default — where they should have used
+`min(your_cap, op_max)`.
+
+```go
+// Before: three attempts on a 503, despite the cap. After: one.
+c := basecamp.NewClient(cfg, tp, basecamp.WithMaxRetries(1))
+_, err := c.ForAccount("999").Projects().Get(ctx, 12345)
+```
+
+**Wrong behaviour you get if you ignore it:** none to fix — this makes the SDK
+obey a setting it was already documented to obey. But if you lowered the cap to
+fail fast and tuned timeouts around the attempts you were actually getting, your
+effective worst-case latency just dropped on those operations, and a caller
+relying on the accidental extra attempts to ride out flapping upstreams will now
+see the first failure surface sooner. Raise the cap deliberately if you want the
+old count.
+
+`BaseDelay` carries over too, **clamped at `MaxBackoffDelay` (30s)** — the
+generated loop uses it verbatim for its first sleep and applies `MaxDelay` only
+after multiplying, so an unclamped `WithBaseDelay(10*time.Minute)` would have
+stalled a typed operation for ten minutes, against SPEC §7's rule that no single
+computed backoff exceeds the ceiling. A `BaseDelay` of 0 now reaches typed
+operations as 0 rather than being replaced by the generated 1s default.
+`MaxDelay` and `Multiplier` keep the generated defaults, `HTTPOptions` having no
+counterpart for either.
+
+**`WithMaxRetries(0)` no longer panics.** `NewClient` accepted only `n >= 1`
+and panicked `"basecamp: max retries must be at least 1"`. Zero is now legal and
+means "no retries — exactly one attempt", which is what the other SDKs with a
+numeric cap already did and what SPEC §14's attempt-budget table already
+described; the GET and download loops floor the cap at one attempt so a request
+is always made. Only a negative cap now panics, with a new message:
+`"basecamp: max retries must not be negative"`. Code matching on the old string
+(a `recover` that inspects the message, as the conformance runner did) needs
+updating; code that simply never passed `0` is unaffected.
+
 ### Kotlin: `search.search` returns `ListResult<SearchResult>`, not `ListResult<JsonElement>` (#717)
 
 ```kotlin

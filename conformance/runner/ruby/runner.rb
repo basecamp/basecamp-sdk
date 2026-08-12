@@ -1449,11 +1449,15 @@ class ConformanceRunner
 
     has_base_url = overrides.key?("baseUrl")
     has_max_pages = overrides.key?("maxPages")
-    return @mapper unless has_base_url || has_max_pages
+    # maxRetries has to be in this list or a case overriding ONLY the retry cap
+    # silently gets the shared default client and passes while testing nothing.
+    has_max_retries = overrides.key?("maxRetries")
+    return @mapper unless has_base_url || has_max_pages || has_max_retries
 
     begin
       config_opts = { base_url: has_base_url ? overrides["baseUrl"] : "https://3.basecampapi.com" }
       config_opts[:max_pages] = overrides["maxPages"] if has_max_pages
+      config_opts[:max_retries] = overrides["maxRetries"] if has_max_retries
       config = Basecamp::Config.new(**config_opts)
       token_provider = Basecamp::StaticTokenProvider.new("conformance-test-token")
       client = Basecamp::Client.new(config: config, token_provider: token_provider)

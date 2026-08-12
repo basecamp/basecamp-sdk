@@ -56,6 +56,11 @@ type ConfigOverrides struct {
 	MaxItems int    `json:"maxItems"`
 	// Page pins the list operation to a single page (SPEC §8).
 	Page int `json:"page"`
+	// MaxRetries overrides the client-wide retry cap as a TOTAL attempt count
+	// (SPEC §2). A POINTER because 0 is the value this override exists for —
+	// "no retries, exactly one attempt" — and an int would make it
+	// indistinguishable from absent, silently restoring the runner default.
+	MaxRetries *int `json:"maxRetries"`
 }
 
 // MockResponse defines a single mock HTTP response.
@@ -403,7 +408,7 @@ func runTest(tc TestCase) TestResult {
 				msg := fmt.Sprintf("%v", r)
 				if strings.HasPrefix(msg, "basecamp: base URL must use HTTPS") ||
 					strings.HasPrefix(msg, "basecamp: timeout must be positive") ||
-					strings.HasPrefix(msg, "basecamp: max retries must be at least 1") ||
+					strings.HasPrefix(msg, "basecamp: max retries must not be negative") ||
 					strings.HasPrefix(msg, "basecamp: max pages must be positive") {
 					opResult.err = basecamp.ErrUsage(msg)
 				} else {
@@ -414,8 +419,12 @@ func runTest(tc TestCase) TestResult {
 
 		cfg := &basecamp.Config{BaseURL: baseURL}
 		tp := &basecamp.StaticTokenProvider{Token: "conformance-test-token"}
+		maxRetries := 3
+		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxRetries != nil {
+			maxRetries = *tc.ConfigOverrides.MaxRetries
+		}
 		opts := []basecamp.ClientOption{
-			basecamp.WithMaxRetries(3),
+			basecamp.WithMaxRetries(maxRetries),
 			basecamp.WithTimeout(10 * time.Second),
 		}
 		if tc.ConfigOverrides != nil && tc.ConfigOverrides.MaxPages > 0 {

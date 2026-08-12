@@ -189,7 +189,7 @@ func WithAuthStrategy(strategy AuthStrategy) ClientOption {
 //
 // Configuration options:
 //   - WithTimeout(d)      - Request timeout (default: 30s)
-//   - WithMaxRetries(n)   - Total attempt count for GET (default: 3, minimum 1)
+//   - WithMaxRetries(n)   - Total attempt count (default: 3; 0 means no retry)
 //   - WithCache(c)        - Enable ETag-based caching
 //   - WithTransport(t)    - Custom http.RoundTripper
 //   - WithLogger(l)       - slog.Logger for debug output
@@ -251,11 +251,15 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	if c.httpOpts.Timeout <= 0 {
 		panic("basecamp: timeout must be positive")
 	}
-	if c.httpOpts.MaxRetries < 1 {
+	if c.httpOpts.MaxRetries < 0 {
 		// MaxRetries names the total attempt count used by the retry loops in
-		// doRequestURL and fetchAPIDownload. Zero attempts is always a
-		// misconfiguration; reject it here so both loops can assume >= 1.
-		panic("basecamp: max retries must be at least 1")
+		// doRequestURL and fetchAPIDownload. Zero is legal and means "no
+		// retries — exactly one attempt" (SPEC §2 validation step 4): it is the
+		// spelling callers reach for to turn retry off, and every other SDK
+		// with a numeric cap already accepted it. Both loops floor the cap at
+		// one attempt, so what they can assume is >= 0, not >= 1. A negative
+		// cap is the genuine misconfiguration and is what this rejects.
+		panic("basecamp: max retries must not be negative")
 	}
 	if c.httpOpts.MaxPages <= 0 {
 		panic("basecamp: max pages must be positive")
@@ -386,8 +390,44 @@ func (c *Client) initGeneratedClient() {
 			req.Header.Set("Accept", "application/json")
 			return nil
 		}
+		// The generated client runs its own retry loop, and until #718 it was
+		// never told this client's settings — so a RETRY-ELIGIBLE typed
+		// operation ran on DefaultRetryConfig{MaxRetries: 3} no matter what
+		// WithMaxRetries said, and a caller who lowered the cap to fail fast
+		// still got the generated default. Only the raw Get/GetAll and download
+		// paths, which run doRequestURL's own loop, honored it.
+		//
+		// "Retry-eligible" is the whole qualification: doWithRetry forces
+		// maxAttempts to 1 for a non-idempotent operation before consulting the
+		// config at all, and then clamps to the per-operation ceiling. So this
+		// changes nothing for CreateTodo, and nothing for an op declaring
+		// max: 2 beyond lowering it further. Pass what the caller configured.
+		//
+		// BaseDelay carries over, CLAMPED to the same ceiling doRequestURL
+		// applies: the generated loop uses BaseDelay verbatim for its first
+		// sleep and only applies MaxDelay after multiplying for the next one, so
+		// an unclamped WithBaseDelay(10*time.Minute) would stall a typed
+		// operation for ten minutes. SPEC §7's backoff ceiling is explicit that
+		// no single computed sleep exceeds it, "with no carve-out for the first
+		// one". The clamp is not conditional on being non-zero: a caller who
+		// sets 0 wants no backoff, and skipping the assignment would leave typed
+		// operations on the generated 1s default while raw GETs waited only for
+		// jitter — the exact split this change exists to remove.
+		//
+		// MaxDelay and Multiplier keep the generated defaults, HTTPOptions
+		// having no counterpart for either (MaxDelay's default is already
+		// MaxBackoffDelay). MaxJitter has no counterpart in the other direction
+		// and stays with doRequestURL.
+		retryCfg := generated.DefaultRetryConfig()
+		retryCfg.MaxRetries = c.httpOpts.MaxRetries
+		retryCfg.BaseDelay = min(c.httpOpts.BaseDelay, MaxBackoffDelay)
+		if retryCfg.BaseDelay < 0 {
+			retryCfg.BaseDelay = 0
+		}
+
 		gen, err := generated.NewClientWithResponses(serverURL,
 			generated.WithHTTPClient(c.httpClient),
+			generated.WithRetryConfig(retryCfg),
 			generated.WithRequestEditorFn(authEditor))
 		if err != nil {
 			panic(fmt.Sprintf("basecamp: failed to create generated client: %v", err))
@@ -634,7 +674,16 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 	var attempt int
 	var lastErr error
 
-	for attempt = 1; attempt <= c.httpOpts.MaxRetries; attempt++ {
+	// MaxRetries is the total attempt count, floored at one: a cap of 0 means
+	// "no retries", not "no request" (SPEC §2 validation step 4). The floor
+	// belongs here rather than only at construction because this loop is
+	// pre-check — `attempt <= 0` would send nothing at all — and because a
+	// directly-struct-built Client never passes through NewClient's validation.
+	// Mirrors generated Go's effectiveMaxAttempts, Ruby's [cap, 1].max and
+	// Kotlin's computeMaxAttempts.
+	maxAttempts := max(c.httpOpts.MaxRetries, 1)
+
+	for attempt = 1; attempt <= maxAttempts; attempt++ {
 		resp, err := c.singleRequest(ctx, method, url, body, attempt)
 		if err == nil {
 			return resp, nil
@@ -663,11 +712,11 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 		// MaxRetries is the total attempt count. After the final attempt there is
 		// no retry, so don't sleep the backoff delay or fire OnRetry for an
 		// attempt that will never happen — return the last error immediately.
-		if attempt >= c.httpOpts.MaxRetries {
+		if attempt >= maxAttempts {
 			break
 		}
 
-		c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", c.httpOpts.MaxRetries, "delay", delay, "error", lastErr)
+		c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", maxAttempts, "delay", delay, "error", lastErr)
 
 		// Notify hooks about the retry
 		info := RequestInfo{Method: method, URL: url, Attempt: attempt}
@@ -682,10 +731,10 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 	}
 
 	noun := "attempts"
-	if c.httpOpts.MaxRetries == 1 {
+	if maxAttempts == 1 {
 		noun = "attempt"
 	}
-	return nil, fmt.Errorf("request failed after %d %s: %w", c.httpOpts.MaxRetries, noun, lastErr)
+	return nil, fmt.Errorf("request failed after %d %s: %w", maxAttempts, noun, lastErr)
 }
 
 func (c *Client) singleRequest(ctx context.Context, method, url string, body any, attempt int) (*Response, error) {

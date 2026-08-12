@@ -308,6 +308,8 @@ data class ConfigOverrides(
     val maxItems: Int? = null,
     /** Pins the list operation to a single page (SPEC §8). */
     val page: Long? = null,
+    /** Overrides the client-wide retry cap as a TOTAL attempt count (SPEC §2). */
+    val maxRetries: Int? = null,
 )
 
 @kotlinx.serialization.Serializable
@@ -463,6 +465,13 @@ private fun runTest(tc: TestCase): TestResult {
             baseUrl = overrideBaseUrl ?: "http://localhost:3000"
             this.engine = engine
             tc.configOverrides?.maxPages?.let { maxPages = it }
+            // Kotlin's transport floors the cap at one attempt on every path
+            // (computeMaxAttempts), so a 0 here is "no retries, exactly one
+            // attempt" rather than "no request" — the contract SPEC §2
+            // validation step 4 states. enableRetry stays true: the cap is what
+            // the fixture is pinning, and routing 0 through the on/off knob
+            // instead would test a different mechanism than the one named.
+            tc.configOverrides?.maxRetries?.let { maxRetries = it }
         }
 
         val account = client.forAccount(TEST_ACCOUNT_ID)
