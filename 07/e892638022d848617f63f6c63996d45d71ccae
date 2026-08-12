@@ -1,0 +1,21 @@
+scripts/check-wrapper-drift/main.go
+  s_23e48791aed839::t_ae3362285c6f7b 582-584,592,594,617-618,621-623,661-663,934,957-958,977-985,989,993-994,1000,1003-1014,1030-1031,1039,1046-1054,1116,1139,1203-1217,1253,1263,1375-1385,1388,1390,1395,1399,1401,1403,1406,1409,1411-1416,1418,1420,1432,1435,1709-1720
+scripts/check-wrapper-drift/main_test.go
+  s_23e48791aed839::t_e822deaed882e0 4,1133-1135,1576-1577,1582,2274-2277,2563-2725
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "07e892638022d848617f63f6c63996d45d71ccae",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
