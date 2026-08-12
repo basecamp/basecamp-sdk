@@ -1,0 +1,63 @@
+swift/Tests/BasecampTests/DecodeIsolationTests.swift
+  s_23e48791aed839::t_9f35524182546f 1-257
+MIGRATING.md
+  s_23e48791aed839::t_4b634854d5547b 16-48
+SPEC.md
+  s_23e48791aed839::t_4879831a5795b6 579-580
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_23e48791aed839::t_a31a2cc9ba7cdd 336
+  s_23e48791aed839::t_ef352bc830d254 393
+  s_23e48791aed839::t_6ea411acbc18f2 371-373
+  s_23e48791aed839::t_71b711e7e3a3d9 295
+  s_23e48791aed839::t_3ae8ca634e7331 204
+  s_23e48791aed839::t_c564ead690b9ad 177-179
+  s_23e48791aed839::t_6f5791c714afa8 269-270
+  s_23e48791aed839::t_cd51bca062b0f5 429
+  s_23e48791aed839::t_1e6e34f70f0ab7 449-461,463-508
+  s_23e48791aed839::t_00621f1912451f 70-72
+swift/Sources/Basecamp/TodolistsServiceExtensions.swift
+  s_23e48791aed839::t_ccdf23b1ce6a01 123-129,133-136,138,143
+swift/Sources/Basecamp/DocumentsServiceExtensions.swift
+  s_23e48791aed839::t_e8e3830cd1eb0a 126-132,135-138,140
+  s_23e48791aed839::t_f9208044a601f4 145
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/SchedulesService.kt
+  s_23e48791aed839::t_786cf98f004867 275-281,290-291,294,297
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/DocumentsService.kt
+  s_23e48791aed839::t_662a59d11e33e9 93-100,109-110,112-113
+  s_23e48791aed839::t_4bcd5f8f36dcb4 118
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodolistsService.kt
+  s_23e48791aed839::t_c71fe6735837d6 97-104,113-114,117,122
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_23e48791aed839::t_59ccd67b2819fa 12
+  s_23e48791aed839::t_43c4fca61276cd 293
+  s_23e48791aed839::t_b24f43622730ae 242
+  s_23e48791aed839::t_323736b72a009b 501
+  s_23e48791aed839::t_64f230c4265838 355
+  s_23e48791aed839::t_9b74f5787e1e4c 195
+  s_23e48791aed839::t_cd3fff2468f3ac 405
+  s_23e48791aed839::t_a7ba6968912006 515-547
+  s_23e48791aed839::t_dc217c31443caf 478
+  s_23e48791aed839::t_9615dddd52335b 514
+swift/Sources/Basecamp/SchedulesServiceExtensions.swift
+  s_23e48791aed839::t_4c8c9637ee403a 303
+  s_23e48791aed839::t_7b8c981302c15b 283-290,293-296,298
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DecodeIsolationTest.kt
+  s_23e48791aed839::t_4ebf5eda276deb 1-244
+  s_23e48791aed839::t_611e6bae5bb8f6 245-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3d818e5cb140d15e40d4bb6004a575b715a7d392",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
