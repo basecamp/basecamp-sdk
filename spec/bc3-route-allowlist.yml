@@ -190,16 +190,23 @@ bc3_routes_not_modeled:
       The identity endpoint, not an account-scoped Basecamp route, so it is
       absent from openapi.json by design. The SDK does implement it, as the
       client-level authorization service (SPEC §5, `authorization.getInfo()`).
-      Reasoning corrected at the repin that registered BC3 #12555: this used to say the route is
-      served only from https://launchpad.37signals.com/authorization.json, which
-      was true when written and is no longer. BC3 #9471 (`eac8b2b476`) draws
+      Reasoning refreshed twice as bc3 caught up. At the repin that registered
+      BC3 #12555: this used to say the route is served only from
+      https://launchpad.37signals.com/authorization.json, which was true when
+      written and is no longer — BC3 #9471 (`eac8b2b476`) draws
       `resource :authorization, only: :show` and renders it from
-      app/views/api/authorizations/show.json.jbuilder, so bc3 now serves its own
-      copy — and the SDK reaches it, because `Http#get_authorization_document`
-      binds to the discovered BC5 issuer. The disposition is unchanged (OAuth is
-      outside the OpenAPI spec by design; this lives in the hand-written lane),
-      but the two documents' shapes differ, which is registered as
-      spec/api-gaps/bc5-authorization-document-shape.md.
+      app/views/api/authorizations/show.json.jbuilder, so bc3 serves its own
+      copy, and the SDK reaches it because `Http#get_authorization_document`
+      binds to the discovered BC5 issuer. At the repin to BC3 #12646
+      (`71b43f3d9fa`): bc3 now also DOCUMENTS its copy — authentication.md
+      gains a "Get authorization from Basecamp" section, so this route's table
+      row is backed by bc3's own docs rather than only Launchpad's URL — and
+      the shape divergence largely converged (`expires_at` is ISO 8601 now).
+      The disposition is unchanged through both refreshes: OAuth is outside
+      the OpenAPI spec by design, this lives in the hand-written lane, and the
+      full shape history is
+      spec/api-gaps/bc5-authorization-document-shape.md, closed
+      covered-outside-spec.
 
   - method: POST
     path: /integrations/:id/buckets/:id/chats/:id/lines

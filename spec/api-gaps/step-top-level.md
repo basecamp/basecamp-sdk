@@ -82,3 +82,14 @@ Done — no further absorption work:
   ever removes it from the doc, nothing changes here.
 - Canary fixture: optional; the existing CardStep coverage already exercises
   the wire shape.
+
+## As of BC3 #12544 (`4547876f10b`): the documented paths are now permanent aliases
+
+BC3 renamed Step to Subtask, moving the canonical route declarations to
+`/subtasks` while re-declaring every `/steps` form this entry describes as a
+permanent alias, pinned by `test/integration/route_aliases_test.rb`. The wire
+payload is unchanged (`json.steps`, type `"Kanban::Step"`, byte-identical
+partial), so everything absorbed here keeps working exactly as modelled. The
+canonical `/subtasks` routes are undocumented; that divergence is tracked
+forward in [[subtasks-canonical-rename]], not here — this entry stays the
+record of how the `/steps` spellings were absorbed.

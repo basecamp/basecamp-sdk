@@ -75,6 +75,7 @@ making the absorption journey publicly auditable.
 | [project-archive-unarchive](project-archive-unarchive.md) | absorbed-in-sdk | master | medium |
 | [notifications-sort-pings-first](notifications-sort-pings-first.md) | partial-coverage | master | low |
 | [bc5-authorization-document-shape](bc5-authorization-document-shape.md) | covered-outside-spec | master | medium |
+| [subtasks-canonical-rename](subtasks-canonical-rename.md) | partial-coverage | master | low |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
