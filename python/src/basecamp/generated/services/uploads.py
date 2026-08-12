@@ -12,6 +12,11 @@ from basecamp.hooks import OperationInfo
 
 class UploadsService(BaseService):
     def get(self, *, upload_id: int) -> dict[str, Any]:
+        """Get a single upload by id.
+
+        Args:
+            upload_id: The upload id.
+        """
         return self._request(
             OperationInfo(service="uploads", operation="get", is_mutation=False, resource_id=upload_id),
             "GET",
@@ -20,6 +25,13 @@ class UploadsService(BaseService):
         )
 
     def update(self, *, upload_id: int, description: str | None = None, base_name: str | None = None) -> dict[str, Any]:
+        """Update an existing upload.
+
+        Args:
+            upload_id: The upload id.
+            description: The description.
+            base_name: The base name.
+        """
         return self._request(
             OperationInfo(service="uploads", operation="update", is_mutation=True, resource_id=upload_id),
             "PUT",
@@ -29,6 +41,14 @@ class UploadsService(BaseService):
         )
 
     def list_versions(self, *, upload_id: int, max_items: int | None = None) -> ListResult:
+        """List versions of an upload.
+
+        Args:
+            upload_id: The upload id.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
+        """
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list_versions", is_mutation=False, resource_id=upload_id),
             f"/uploads/{upload_id}/versions.json",
@@ -46,6 +66,23 @@ class UploadsService(BaseService):
         notify: str | None = None,
         subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
+        """Replace an upload's file with a new version.
+
+        The recording keeps its id, its URL and its comments; the previous file becomes a
+        past version. Use this instead of CreateUpload when publishing a new release of the
+        same file, so its published link keeps working.
+
+        Args:
+            upload_id: The upload id.
+            attachable_sgid: The attachable sgid.
+            base_name: Omit to keep the uploaded file's own name. Sending "" also keeps it.
+            description: Presence-aware: omit to carry the previous version's description forward,
+                send "" to clear it, send a value to set it.
+            notify: Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+                Omit both this and subscriptions to notify nobody. A subscriptions array sent
+                without notify is read as "custom".
+            subscriptions: People to notify about the replacement and subscribe to the upload.
+        """
         return self._request(
             OperationInfo(service="uploads", operation="create_version", is_mutation=True, resource_id=upload_id),
             "POST",
@@ -61,6 +98,16 @@ class UploadsService(BaseService):
         )
 
     def list(self, *, vault_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List uploads in a vault.
+
+        Args:
+            vault_id: The vault id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
@@ -79,6 +126,16 @@ class UploadsService(BaseService):
         subscriptions: list[int] | None = None,
         visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
+        """Create a new upload in a vault.
+
+        Args:
+            vault_id: The vault id.
+            attachable_sgid: The attachable sgid.
+            description: The description.
+            base_name: The base name.
+            subscriptions: The subscriptions.
+            visible_to_clients: The visible to clients.
+        """
         return self._request(
             OperationInfo(service="uploads", operation="create", is_mutation=True, resource_id=vault_id),
             "POST",
@@ -96,6 +153,11 @@ class UploadsService(BaseService):
 
 class AsyncUploadsService(AsyncBaseService):
     async def get(self, *, upload_id: int) -> dict[str, Any]:
+        """Get a single upload by id.
+
+        Args:
+            upload_id: The upload id.
+        """
         return await self._request(
             OperationInfo(service="uploads", operation="get", is_mutation=False, resource_id=upload_id),
             "GET",
@@ -106,6 +168,13 @@ class AsyncUploadsService(AsyncBaseService):
     async def update(
         self, *, upload_id: int, description: str | None = None, base_name: str | None = None
     ) -> dict[str, Any]:
+        """Update an existing upload.
+
+        Args:
+            upload_id: The upload id.
+            description: The description.
+            base_name: The base name.
+        """
         return await self._request(
             OperationInfo(service="uploads", operation="update", is_mutation=True, resource_id=upload_id),
             "PUT",
@@ -115,6 +184,14 @@ class AsyncUploadsService(AsyncBaseService):
         )
 
     async def list_versions(self, *, upload_id: int, max_items: int | None = None) -> ListResult:
+        """List versions of an upload.
+
+        Args:
+            upload_id: The upload id.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
+        """
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list_versions", is_mutation=False, resource_id=upload_id),
             f"/uploads/{upload_id}/versions.json",
@@ -132,6 +209,23 @@ class AsyncUploadsService(AsyncBaseService):
         notify: str | None = None,
         subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
+        """Replace an upload's file with a new version.
+
+        The recording keeps its id, its URL and its comments; the previous file becomes a
+        past version. Use this instead of CreateUpload when publishing a new release of the
+        same file, so its published link keeps working.
+
+        Args:
+            upload_id: The upload id.
+            attachable_sgid: The attachable sgid.
+            base_name: Omit to keep the uploaded file's own name. Sending "" also keeps it.
+            description: Presence-aware: omit to carry the previous version's description forward,
+                send "" to clear it, send a value to set it.
+            notify: Who to notify: "default", "everyone", or "custom" (the people in subscriptions).
+                Omit both this and subscriptions to notify nobody. A subscriptions array sent
+                without notify is read as "custom".
+            subscriptions: People to notify about the replacement and subscribe to the upload.
+        """
         return await self._request(
             OperationInfo(service="uploads", operation="create_version", is_mutation=True, resource_id=upload_id),
             "POST",
@@ -147,6 +241,16 @@ class AsyncUploadsService(AsyncBaseService):
         )
 
     async def list(self, *, vault_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List uploads in a vault.
+
+        Args:
+            vault_id: The vault id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
@@ -165,6 +269,16 @@ class AsyncUploadsService(AsyncBaseService):
         subscriptions: list[int] | None = None,
         visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
+        """Create a new upload in a vault.
+
+        Args:
+            vault_id: The vault id.
+            attachable_sgid: The attachable sgid.
+            description: The description.
+            base_name: The base name.
+            subscriptions: The subscriptions.
+            visible_to_clients: The visible to clients.
+        """
         return await self._request(
             OperationInfo(service="uploads", operation="create", is_mutation=True, resource_id=vault_id),
             "POST",

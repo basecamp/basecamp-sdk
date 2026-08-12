@@ -12,6 +12,12 @@ from basecamp.hooks import OperationInfo
 
 class LineupService(BaseService):
     def create(self, *, name: str, date: str) -> None:
+        """Create a new lineup marker.
+
+        Args:
+            name: The name.
+            date: The date.
+        """
         self._request_void(
             OperationInfo(service="lineup", operation="create", is_mutation=True),
             "POST",
@@ -21,6 +27,13 @@ class LineupService(BaseService):
         )
 
     def update(self, *, marker_id: int, name: str | None = None, date: str | None = None) -> None:
+        """Update an existing lineup marker.
+
+        Args:
+            marker_id: The marker id.
+            name: The name.
+            date: The date.
+        """
         self._request_void(
             OperationInfo(service="lineup", operation="update", is_mutation=True, resource_id=marker_id),
             "PUT",
@@ -30,6 +43,11 @@ class LineupService(BaseService):
         )
 
     def delete(self, *, marker_id: int) -> None:
+        """Delete a lineup marker.
+
+        Args:
+            marker_id: The marker id.
+        """
         self._request_void(
             OperationInfo(service="lineup", operation="delete", is_mutation=True, resource_id=marker_id),
             "DELETE",
@@ -40,6 +58,12 @@ class LineupService(BaseService):
 
 class AsyncLineupService(AsyncBaseService):
     async def create(self, *, name: str, date: str) -> None:
+        """Create a new lineup marker.
+
+        Args:
+            name: The name.
+            date: The date.
+        """
         await self._request_void(
             OperationInfo(service="lineup", operation="create", is_mutation=True),
             "POST",
@@ -49,6 +73,13 @@ class AsyncLineupService(AsyncBaseService):
         )
 
     async def update(self, *, marker_id: int, name: str | None = None, date: str | None = None) -> None:
+        """Update an existing lineup marker.
+
+        Args:
+            marker_id: The marker id.
+            name: The name.
+            date: The date.
+        """
         await self._request_void(
             OperationInfo(service="lineup", operation="update", is_mutation=True, resource_id=marker_id),
             "PUT",
@@ -58,6 +89,11 @@ class AsyncLineupService(AsyncBaseService):
         )
 
     async def delete(self, *, marker_id: int) -> None:
+        """Delete a lineup marker.
+
+        Args:
+            marker_id: The marker id.
+        """
         await self._request_void(
             OperationInfo(service="lineup", operation="delete", is_mutation=True, resource_id=marker_id),
             "DELETE",

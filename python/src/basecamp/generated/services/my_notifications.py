@@ -12,6 +12,20 @@ from basecamp.hooks import OperationInfo
 
 class MyNotificationsService(BaseService):
     def get_my_notifications(self, *, page: int | None = None, limit_bubble_ups: bool | None = None) -> dict[str, Any]:
+        """Get the current user's notification inbox (the "Hey!" menu).
+        Notifications are grouped into unreads, reads, bubble-ups, and
+        scheduled bubble-ups (`memories` remains as an always-empty
+        placeholder on BC5). Reads are paginated (50 per page). Unreads are
+        capped at 100. Bubble-ups are capped per `limit_bubble_ups`.
+
+        Args:
+            page: Page number for paginating through read items. Defaults to 1. This operation is
+                not auto-paginated in any SDK, so a page is returned as asked for and later pages
+                are not followed.
+            limit_bubble_ups: Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
+                `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated bubble-ups
+                endpoint (GetBubbleUps) to page through all current and scheduled bubble-ups.
+        """
         return self._request(
             OperationInfo(service="mynotifications", operation="get_my_notifications", is_mutation=False),
             "GET",
@@ -21,6 +35,18 @@ class MyNotificationsService(BaseService):
         )
 
     def get_bubble_ups(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
+        Current bubble-ups are returned first, ordered by most recently bubbled up;
+        scheduled bubble-ups follow, ordered by scheduled bubble-up time. Each item
+        uses the same notification object shape as GetMyNotifications.
+
+        Args:
+            page: Page number. Defaults to 1. A positive value selects exactly that page, not a
+                starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
             "/my/readings/bubble_ups.json",
@@ -30,6 +56,11 @@ class MyNotificationsService(BaseService):
         )
 
     def mark_as_read(self, *, readables: list[str]) -> None:
+        """Mark specified items as read.
+
+        Args:
+            readables: Array of readable_sgid values identifying the items to mark as read
+        """
         self._request_void(
             OperationInfo(service="mynotifications", operation="mark_as_read", is_mutation=True),
             "PUT",
@@ -43,6 +74,20 @@ class AsyncMyNotificationsService(AsyncBaseService):
     async def get_my_notifications(
         self, *, page: int | None = None, limit_bubble_ups: bool | None = None
     ) -> dict[str, Any]:
+        """Get the current user's notification inbox (the "Hey!" menu).
+        Notifications are grouped into unreads, reads, bubble-ups, and
+        scheduled bubble-ups (`memories` remains as an always-empty
+        placeholder on BC5). Reads are paginated (50 per page). Unreads are
+        capped at 100. Bubble-ups are capped per `limit_bubble_ups`.
+
+        Args:
+            page: Page number for paginating through read items. Defaults to 1. This operation is
+                not auto-paginated in any SDK, so a page is returned as asked for and later pages
+                are not followed.
+            limit_bubble_ups: Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
+                `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated bubble-ups
+                endpoint (GetBubbleUps) to page through all current and scheduled bubble-ups.
+        """
         return await self._request(
             OperationInfo(service="mynotifications", operation="get_my_notifications", is_mutation=False),
             "GET",
@@ -52,6 +97,18 @@ class AsyncMyNotificationsService(AsyncBaseService):
         )
 
     async def get_bubble_ups(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
+        Current bubble-ups are returned first, ordered by most recently bubbled up;
+        scheduled bubble-ups follow, ordered by scheduled bubble-up time. Each item
+        uses the same notification object shape as GetMyNotifications.
+
+        Args:
+            page: Page number. Defaults to 1. A positive value selects exactly that page, not a
+                starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
             "/my/readings/bubble_ups.json",
@@ -61,6 +118,11 @@ class AsyncMyNotificationsService(AsyncBaseService):
         )
 
     async def mark_as_read(self, *, readables: list[str]) -> None:
+        """Mark specified items as read.
+
+        Args:
+            readables: Array of readable_sgid values identifying the items to mark as read
+        """
         await self._request_void(
             OperationInfo(service="mynotifications", operation="mark_as_read", is_mutation=True),
             "PUT",

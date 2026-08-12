@@ -12,6 +12,14 @@ from basecamp.hooks import OperationInfo
 
 class WebhooksService(BaseService):
     def list(self, *, bucket_id: int, max_items: int | None = None) -> ListResult:
+        """List all webhooks for a project.
+
+        Args:
+            bucket_id: The bucket id.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
+        """
         return self._request_paginated(
             OperationInfo(service="webhooks", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/webhooks.json",
@@ -22,6 +30,14 @@ class WebhooksService(BaseService):
     def create(
         self, *, bucket_id: int, payload_url: str, types: list[str], active: bool | None = None
     ) -> dict[str, Any]:
+        """Create a new webhook for a project.
+
+        Args:
+            bucket_id: The bucket id.
+            payload_url: The payload url.
+            types: The types.
+            active: The active.
+        """
         return self._request(
             OperationInfo(service="webhooks", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
@@ -31,6 +47,11 @@ class WebhooksService(BaseService):
         )
 
     def get(self, *, webhook_id: int) -> dict[str, Any]:
+        """Get a single webhook by id.
+
+        Args:
+            webhook_id: The webhook id.
+        """
         return self._request(
             OperationInfo(service="webhooks", operation="get", is_mutation=False, resource_id=webhook_id),
             "GET",
@@ -46,6 +67,14 @@ class WebhooksService(BaseService):
         types: list[str] | None = None,
         active: bool | None = None,
     ) -> dict[str, Any]:
+        """Update an existing webhook.
+
+        Args:
+            webhook_id: The webhook id.
+            payload_url: The payload url.
+            types: The types.
+            active: The active.
+        """
         return self._request(
             OperationInfo(service="webhooks", operation="update", is_mutation=True, resource_id=webhook_id),
             "PUT",
@@ -55,6 +84,11 @@ class WebhooksService(BaseService):
         )
 
     def delete(self, *, webhook_id: int) -> None:
+        """Delete a webhook.
+
+        Args:
+            webhook_id: The webhook id.
+        """
         self._request_void(
             OperationInfo(service="webhooks", operation="delete", is_mutation=True, resource_id=webhook_id),
             "DELETE",
@@ -65,6 +99,14 @@ class WebhooksService(BaseService):
 
 class AsyncWebhooksService(AsyncBaseService):
     async def list(self, *, bucket_id: int, max_items: int | None = None) -> ListResult:
+        """List all webhooks for a project.
+
+        Args:
+            bucket_id: The bucket id.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
+        """
         return await self._request_paginated(
             OperationInfo(service="webhooks", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/webhooks.json",
@@ -75,6 +117,14 @@ class AsyncWebhooksService(AsyncBaseService):
     async def create(
         self, *, bucket_id: int, payload_url: str, types: list[str], active: bool | None = None
     ) -> dict[str, Any]:
+        """Create a new webhook for a project.
+
+        Args:
+            bucket_id: The bucket id.
+            payload_url: The payload url.
+            types: The types.
+            active: The active.
+        """
         return await self._request(
             OperationInfo(service="webhooks", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
@@ -84,6 +134,11 @@ class AsyncWebhooksService(AsyncBaseService):
         )
 
     async def get(self, *, webhook_id: int) -> dict[str, Any]:
+        """Get a single webhook by id.
+
+        Args:
+            webhook_id: The webhook id.
+        """
         return await self._request(
             OperationInfo(service="webhooks", operation="get", is_mutation=False, resource_id=webhook_id),
             "GET",
@@ -99,6 +154,14 @@ class AsyncWebhooksService(AsyncBaseService):
         types: list[str] | None = None,
         active: bool | None = None,
     ) -> dict[str, Any]:
+        """Update an existing webhook.
+
+        Args:
+            webhook_id: The webhook id.
+            payload_url: The payload url.
+            types: The types.
+            active: The active.
+        """
         return await self._request(
             OperationInfo(service="webhooks", operation="update", is_mutation=True, resource_id=webhook_id),
             "PUT",
@@ -108,6 +171,11 @@ class AsyncWebhooksService(AsyncBaseService):
         )
 
     async def delete(self, *, webhook_id: int) -> None:
+        """Delete a webhook.
+
+        Args:
+            webhook_id: The webhook id.
+        """
         await self._request_void(
             OperationInfo(service="webhooks", operation="delete", is_mutation=True, resource_id=webhook_id),
             "DELETE",

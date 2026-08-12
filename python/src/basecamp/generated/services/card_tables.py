@@ -12,6 +12,11 @@ from basecamp.hooks import OperationInfo
 
 class CardTablesService(BaseService):
     def get(self, *, card_table_id: int) -> dict[str, Any]:
+        """Get a card table by ID.
+
+        Args:
+            card_table_id: The card table id.
+        """
         return self._request(
             OperationInfo(service="cardtables", operation="get", is_mutation=False, resource_id=card_table_id),
             "GET",
@@ -22,6 +27,11 @@ class CardTablesService(BaseService):
 
 class AsyncCardTablesService(AsyncBaseService):
     async def get(self, *, card_table_id: int) -> dict[str, Any]:
+        """Get a card table by ID.
+
+        Args:
+            card_table_id: The card table id.
+        """
         return await self._request(
             OperationInfo(service="cardtables", operation="get", is_mutation=False, resource_id=card_table_id),
             "GET",

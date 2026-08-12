@@ -12,6 +12,13 @@ from basecamp.hooks import OperationInfo
 
 class AttachmentsService(BaseService):
     def create(self, *, content: bytes, content_type: str, name: str) -> dict[str, Any]:
+        """Create an attachment (upload a file for embedding).
+
+        Args:
+            content: Raw bytes of the file to upload.
+            content_type: MIME content type of the upload (e.g. "image/png").
+            name: The name.
+        """
         return self._request_raw(
             OperationInfo(service="attachments", operation="create", is_mutation=True),
             "/attachments.json",
@@ -24,6 +31,13 @@ class AttachmentsService(BaseService):
 
 class AsyncAttachmentsService(AsyncBaseService):
     async def create(self, *, content: bytes, content_type: str, name: str) -> dict[str, Any]:
+        """Create an attachment (upload a file for embedding).
+
+        Args:
+            content: Raw bytes of the file to upload.
+            content_type: MIME content type of the upload (e.g. "image/png").
+            name: The name.
+        """
         return await self._request_raw(
             OperationInfo(service="attachments", operation="create", is_mutation=True),
             "/attachments.json",

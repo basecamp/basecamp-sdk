@@ -12,6 +12,14 @@ from basecamp.hooks import OperationInfo
 
 class WormholesService(BaseService):
     def update(self, *, bucket_id: int, wormhole_id: int, destination_recording_id: int) -> dict[str, Any]:
+        """Update a wormhole's destination column.
+
+        Args:
+            bucket_id: The bucket id.
+            wormhole_id: The wormhole id.
+            destination_recording_id: Id of the new destination column (on another accessible card
+                table).
+        """
         return self._request(
             OperationInfo(
                 service="wormholes", operation="update", is_mutation=True, project_id=bucket_id, resource_id=wormhole_id
@@ -23,6 +31,12 @@ class WormholesService(BaseService):
         )
 
     def delete(self, *, bucket_id: int, wormhole_id: int) -> None:
+        """Delete a wormhole.
+
+        Args:
+            bucket_id: The bucket id.
+            wormhole_id: The wormhole id.
+        """
         self._request_void(
             OperationInfo(
                 service="wormholes", operation="delete", is_mutation=True, project_id=bucket_id, resource_id=wormhole_id
@@ -33,6 +47,18 @@ class WormholesService(BaseService):
         )
 
     def create(self, *, bucket_id: int, card_table_id: int, destination_recording_id: int) -> dict[str, Any]:
+        """Create a wormhole linking this card table to a column on another card table.
+
+        A wormhole is the only mechanism for moving a card to a different project: its
+        id is a valid `column_id` for MoveCard, teleporting the card across projects.
+        `destinationRecordingId` is the id of a column on another accessible card table.
+
+        Args:
+            bucket_id: The bucket id.
+            card_table_id: The card table id.
+            destination_recording_id: Id of the destination column (on another accessible card
+                table) to link to.
+        """
         return self._request(
             OperationInfo(
                 service="wormholes",
@@ -50,6 +76,14 @@ class WormholesService(BaseService):
 
 class AsyncWormholesService(AsyncBaseService):
     async def update(self, *, bucket_id: int, wormhole_id: int, destination_recording_id: int) -> dict[str, Any]:
+        """Update a wormhole's destination column.
+
+        Args:
+            bucket_id: The bucket id.
+            wormhole_id: The wormhole id.
+            destination_recording_id: Id of the new destination column (on another accessible card
+                table).
+        """
         return await self._request(
             OperationInfo(
                 service="wormholes", operation="update", is_mutation=True, project_id=bucket_id, resource_id=wormhole_id
@@ -61,6 +95,12 @@ class AsyncWormholesService(AsyncBaseService):
         )
 
     async def delete(self, *, bucket_id: int, wormhole_id: int) -> None:
+        """Delete a wormhole.
+
+        Args:
+            bucket_id: The bucket id.
+            wormhole_id: The wormhole id.
+        """
         await self._request_void(
             OperationInfo(
                 service="wormholes", operation="delete", is_mutation=True, project_id=bucket_id, resource_id=wormhole_id
@@ -71,6 +111,18 @@ class AsyncWormholesService(AsyncBaseService):
         )
 
     async def create(self, *, bucket_id: int, card_table_id: int, destination_recording_id: int) -> dict[str, Any]:
+        """Create a wormhole linking this card table to a column on another card table.
+
+        A wormhole is the only mechanism for moving a card to a different project: its
+        id is a valid `column_id` for MoveCard, teleporting the card across projects.
+        `destinationRecordingId` is the id of a column on another accessible card table.
+
+        Args:
+            bucket_id: The bucket id.
+            card_table_id: The card table id.
+            destination_recording_id: Id of the destination column (on another accessible card
+                table) to link to.
+        """
         return await self._request(
             OperationInfo(
                 service="wormholes",

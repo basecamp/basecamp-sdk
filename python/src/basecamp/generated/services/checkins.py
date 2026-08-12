@@ -12,6 +12,17 @@ from basecamp.hooks import OperationInfo
 
 class CheckinsService(BaseService):
     def reminders(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get pending check-in reminders for the current user.
+
+        Returns questions that are pending a response from the authenticated user.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="checkins", operation="reminders", is_mutation=False),
             "/my/question_reminders.json",
@@ -21,6 +32,11 @@ class CheckinsService(BaseService):
         )
 
     def get_answer(self, *, answer_id: int) -> dict[str, Any]:
+        """Get a single answer by id.
+
+        Args:
+            answer_id: The answer id.
+        """
         return self._request(
             OperationInfo(service="checkins", operation="get_answer", is_mutation=False, resource_id=answer_id),
             "GET",
@@ -29,6 +45,13 @@ class CheckinsService(BaseService):
         )
 
     def update_answer(self, *, answer_id: int, content: str, group_on: str | None = None) -> None:
+        """Update an existing answer.
+
+        Args:
+            answer_id: The answer id.
+            content: The content.
+            group_on: The group on.
+        """
         self._request_void(
             OperationInfo(service="checkins", operation="update_answer", is_mutation=True, resource_id=answer_id),
             "PUT",
@@ -38,6 +61,11 @@ class CheckinsService(BaseService):
         )
 
     def get_questionnaire(self, *, questionnaire_id: int) -> dict[str, Any]:
+        """Get a questionnaire (automatic check-ins container) by id.
+
+        Args:
+            questionnaire_id: The questionnaire id.
+        """
         return self._request(
             OperationInfo(
                 service="checkins", operation="get_questionnaire", is_mutation=False, resource_id=questionnaire_id
@@ -50,6 +78,16 @@ class CheckinsService(BaseService):
     def list_questions(
         self, *, questionnaire_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List all questions in a questionnaire.
+
+        Args:
+            questionnaire_id: The questionnaire id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
@@ -63,6 +101,14 @@ class CheckinsService(BaseService):
     def create_question(
         self, *, questionnaire_id: int, title: str, schedule: dict, visible_to_clients: bool | None = None
     ) -> dict[str, Any]:
+        """Create a new question in a questionnaire.
+
+        Args:
+            questionnaire_id: The questionnaire id.
+            title: The title.
+            schedule: The schedule.
+            visible_to_clients: The visible to clients.
+        """
         return self._request(
             OperationInfo(
                 service="checkins", operation="create_question", is_mutation=True, resource_id=questionnaire_id
@@ -74,6 +120,11 @@ class CheckinsService(BaseService):
         )
 
     def get_question(self, *, question_id: int) -> dict[str, Any]:
+        """Get a single question by id.
+
+        Args:
+            question_id: The question id.
+        """
         return self._request(
             OperationInfo(service="checkins", operation="get_question", is_mutation=False, resource_id=question_id),
             "GET",
@@ -84,6 +135,14 @@ class CheckinsService(BaseService):
     def update_question(
         self, *, question_id: int, title: str | None = None, schedule: dict | None = None, paused: bool | None = None
     ) -> dict[str, Any]:
+        """Update an existing question.
+
+        Args:
+            question_id: The question id.
+            title: The title.
+            schedule: The schedule.
+            paused: The paused.
+        """
         return self._request(
             OperationInfo(service="checkins", operation="update_question", is_mutation=True, resource_id=question_id),
             "PUT",
@@ -93,6 +152,16 @@ class CheckinsService(BaseService):
         )
 
     def list_answers(self, *, question_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List all answers for a question.
+
+        Args:
+            question_id: The question id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
@@ -102,6 +171,13 @@ class CheckinsService(BaseService):
         )
 
     def create_answer(self, *, question_id: int, content: str, group_on: str | None = None) -> dict[str, Any]:
+        """Create a new answer for a question.
+
+        Args:
+            question_id: The question id.
+            content: The content.
+            group_on: The group on.
+        """
         return self._request(
             OperationInfo(service="checkins", operation="create_answer", is_mutation=True, resource_id=question_id),
             "POST",
@@ -111,6 +187,14 @@ class CheckinsService(BaseService):
         )
 
     def answerers(self, *, question_id: int, max_items: int | None = None) -> ListResult:
+        """List all people who have answered a question (answerers).
+
+        Args:
+            question_id: The question id.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
+        """
         return self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers/by.json",
@@ -121,6 +205,17 @@ class CheckinsService(BaseService):
     def by_person(
         self, *, question_id: int, person_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """Get all answers from a specific person for a question.
+
+        Args:
+            question_id: The question id.
+            person_id: The person id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
@@ -132,6 +227,13 @@ class CheckinsService(BaseService):
     def update_notification_settings(
         self, *, question_id: int, notify_on_answer: bool | None = None, digest_include_unanswered: bool | None = None
     ) -> dict[str, Any]:
+        """Update notification settings for a check-in question.
+
+        Args:
+            question_id: The question id.
+            notify_on_answer: Notify when someone answers
+            digest_include_unanswered: Include unanswered in digest
+        """
         return self._request(
             OperationInfo(
                 service="checkins", operation="update_notification_settings", is_mutation=True, resource_id=question_id
@@ -145,6 +247,11 @@ class CheckinsService(BaseService):
         )
 
     def pause(self, *, question_id: int) -> dict[str, Any]:
+        """Pause a check-in question (stops sending reminders).
+
+        Args:
+            question_id: The question id.
+        """
         return self._request(
             OperationInfo(service="checkins", operation="pause", is_mutation=True, resource_id=question_id),
             "POST",
@@ -153,6 +260,11 @@ class CheckinsService(BaseService):
         )
 
     def resume(self, *, question_id: int) -> dict[str, Any]:
+        """Resume a paused check-in question (resumes sending reminders).
+
+        Args:
+            question_id: The question id.
+        """
         return self._request(
             OperationInfo(service="checkins", operation="resume", is_mutation=True, resource_id=question_id),
             "DELETE",
@@ -163,6 +275,17 @@ class CheckinsService(BaseService):
 
 class AsyncCheckinsService(AsyncBaseService):
     async def reminders(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get pending check-in reminders for the current user.
+
+        Returns questions that are pending a response from the authenticated user.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="reminders", is_mutation=False),
             "/my/question_reminders.json",
@@ -172,6 +295,11 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def get_answer(self, *, answer_id: int) -> dict[str, Any]:
+        """Get a single answer by id.
+
+        Args:
+            answer_id: The answer id.
+        """
         return await self._request(
             OperationInfo(service="checkins", operation="get_answer", is_mutation=False, resource_id=answer_id),
             "GET",
@@ -180,6 +308,13 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def update_answer(self, *, answer_id: int, content: str, group_on: str | None = None) -> None:
+        """Update an existing answer.
+
+        Args:
+            answer_id: The answer id.
+            content: The content.
+            group_on: The group on.
+        """
         await self._request_void(
             OperationInfo(service="checkins", operation="update_answer", is_mutation=True, resource_id=answer_id),
             "PUT",
@@ -189,6 +324,11 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def get_questionnaire(self, *, questionnaire_id: int) -> dict[str, Any]:
+        """Get a questionnaire (automatic check-ins container) by id.
+
+        Args:
+            questionnaire_id: The questionnaire id.
+        """
         return await self._request(
             OperationInfo(
                 service="checkins", operation="get_questionnaire", is_mutation=False, resource_id=questionnaire_id
@@ -201,6 +341,16 @@ class AsyncCheckinsService(AsyncBaseService):
     async def list_questions(
         self, *, questionnaire_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List all questions in a questionnaire.
+
+        Args:
+            questionnaire_id: The questionnaire id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
@@ -214,6 +364,14 @@ class AsyncCheckinsService(AsyncBaseService):
     async def create_question(
         self, *, questionnaire_id: int, title: str, schedule: dict, visible_to_clients: bool | None = None
     ) -> dict[str, Any]:
+        """Create a new question in a questionnaire.
+
+        Args:
+            questionnaire_id: The questionnaire id.
+            title: The title.
+            schedule: The schedule.
+            visible_to_clients: The visible to clients.
+        """
         return await self._request(
             OperationInfo(
                 service="checkins", operation="create_question", is_mutation=True, resource_id=questionnaire_id
@@ -225,6 +383,11 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def get_question(self, *, question_id: int) -> dict[str, Any]:
+        """Get a single question by id.
+
+        Args:
+            question_id: The question id.
+        """
         return await self._request(
             OperationInfo(service="checkins", operation="get_question", is_mutation=False, resource_id=question_id),
             "GET",
@@ -235,6 +398,14 @@ class AsyncCheckinsService(AsyncBaseService):
     async def update_question(
         self, *, question_id: int, title: str | None = None, schedule: dict | None = None, paused: bool | None = None
     ) -> dict[str, Any]:
+        """Update an existing question.
+
+        Args:
+            question_id: The question id.
+            title: The title.
+            schedule: The schedule.
+            paused: The paused.
+        """
         return await self._request(
             OperationInfo(service="checkins", operation="update_question", is_mutation=True, resource_id=question_id),
             "PUT",
@@ -246,6 +417,16 @@ class AsyncCheckinsService(AsyncBaseService):
     async def list_answers(
         self, *, question_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List all answers for a question.
+
+        Args:
+            question_id: The question id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
@@ -255,6 +436,13 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def create_answer(self, *, question_id: int, content: str, group_on: str | None = None) -> dict[str, Any]:
+        """Create a new answer for a question.
+
+        Args:
+            question_id: The question id.
+            content: The content.
+            group_on: The group on.
+        """
         return await self._request(
             OperationInfo(service="checkins", operation="create_answer", is_mutation=True, resource_id=question_id),
             "POST",
@@ -264,6 +452,14 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def answerers(self, *, question_id: int, max_items: int | None = None) -> ListResult:
+        """List all people who have answered a question (answerers).
+
+        Args:
+            question_id: The question id.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
+        """
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers/by.json",
@@ -274,6 +470,17 @@ class AsyncCheckinsService(AsyncBaseService):
     async def by_person(
         self, *, question_id: int, person_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """Get all answers from a specific person for a question.
+
+        Args:
+            question_id: The question id.
+            person_id: The person id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
@@ -285,6 +492,13 @@ class AsyncCheckinsService(AsyncBaseService):
     async def update_notification_settings(
         self, *, question_id: int, notify_on_answer: bool | None = None, digest_include_unanswered: bool | None = None
     ) -> dict[str, Any]:
+        """Update notification settings for a check-in question.
+
+        Args:
+            question_id: The question id.
+            notify_on_answer: Notify when someone answers
+            digest_include_unanswered: Include unanswered in digest
+        """
         return await self._request(
             OperationInfo(
                 service="checkins", operation="update_notification_settings", is_mutation=True, resource_id=question_id
@@ -298,6 +512,11 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def pause(self, *, question_id: int) -> dict[str, Any]:
+        """Pause a check-in question (stops sending reminders).
+
+        Args:
+            question_id: The question id.
+        """
         return await self._request(
             OperationInfo(service="checkins", operation="pause", is_mutation=True, resource_id=question_id),
             "POST",
@@ -306,6 +525,11 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def resume(self, *, question_id: int) -> dict[str, Any]:
+        """Resume a paused check-in question (resumes sending reminders).
+
+        Args:
+            question_id: The question id.
+        """
         return await self._request(
             OperationInfo(service="checkins", operation="resume", is_mutation=True, resource_id=question_id),
             "DELETE",

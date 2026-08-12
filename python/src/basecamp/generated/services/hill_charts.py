@@ -12,6 +12,11 @@ from basecamp.hooks import OperationInfo
 
 class HillChartsService(BaseService):
     def get(self, *, todoset_id: int) -> dict[str, Any]:
+        """Get the hill chart for a todoset.
+
+        Args:
+            todoset_id: The todoset id.
+        """
         return self._request(
             OperationInfo(service="hillcharts", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
@@ -22,6 +27,13 @@ class HillChartsService(BaseService):
     def update_settings(
         self, *, todoset_id: int, tracked: list[int] | None = None, untracked: list[int] | None = None
     ) -> dict[str, Any]:
+        """Track or untrack todolists on a hill chart.
+
+        Args:
+            todoset_id: The todoset id.
+            tracked: The tracked.
+            untracked: The untracked.
+        """
         return self._request(
             OperationInfo(service="hillcharts", operation="update_settings", is_mutation=True, resource_id=todoset_id),
             "PUT",
@@ -33,6 +45,11 @@ class HillChartsService(BaseService):
 
 class AsyncHillChartsService(AsyncBaseService):
     async def get(self, *, todoset_id: int) -> dict[str, Any]:
+        """Get the hill chart for a todoset.
+
+        Args:
+            todoset_id: The todoset id.
+        """
         return await self._request(
             OperationInfo(service="hillcharts", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
@@ -43,6 +60,13 @@ class AsyncHillChartsService(AsyncBaseService):
     async def update_settings(
         self, *, todoset_id: int, tracked: list[int] | None = None, untracked: list[int] | None = None
     ) -> dict[str, Any]:
+        """Track or untrack todolists on a hill chart.
+
+        Args:
+            todoset_id: The todoset id.
+            tracked: The tracked.
+            untracked: The untracked.
+        """
         return await self._request(
             OperationInfo(service="hillcharts", operation="update_settings", is_mutation=True, resource_id=todoset_id),
             "PUT",

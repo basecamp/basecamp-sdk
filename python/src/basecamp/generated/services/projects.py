@@ -12,6 +12,16 @@ from basecamp.hooks import OperationInfo
 
 class ProjectsService(BaseService):
     def list(self, *, status: str | None = None, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List projects (active by default; optionally archived/trashed).
+
+        Args:
+            status: active|archived|trashed
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="projects", operation="list", is_mutation=False),
             "/projects.json",
@@ -21,6 +31,12 @@ class ProjectsService(BaseService):
         )
 
     def create(self, *, name: str, description: str | None = None) -> dict[str, Any]:
+        """Create a new project.
+
+        Args:
+            name: The name.
+            description: The description.
+        """
         return self._request(
             OperationInfo(service="projects", operation="create", is_mutation=True),
             "POST",
@@ -30,6 +46,11 @@ class ProjectsService(BaseService):
         )
 
     def get(self, *, project_id: int) -> dict[str, Any]:
+        """Get a single project by id.
+
+        Args:
+            project_id: The project id.
+        """
         return self._request(
             OperationInfo(service="projects", operation="get", is_mutation=False, project_id=project_id),
             "GET",
@@ -46,6 +67,15 @@ class ProjectsService(BaseService):
         admissions: str | None = None,
         schedule_attributes: dict | None = None,
     ) -> dict[str, Any]:
+        """Update an existing project.
+
+        Args:
+            project_id: The project id.
+            name: The name.
+            description: The description.
+            admissions: invite|employee|team
+            schedule_attributes: The schedule attributes.
+        """
         return self._request(
             OperationInfo(service="projects", operation="update", is_mutation=True, project_id=project_id),
             "PUT",
@@ -57,6 +87,11 @@ class ProjectsService(BaseService):
         )
 
     def trash(self, *, project_id: int) -> None:
+        """Trash a project (returns 204 No Content).
+
+        Args:
+            project_id: The project id.
+        """
         self._request_void(
             OperationInfo(service="projects", operation="trash", is_mutation=True, project_id=project_id),
             "DELETE",
@@ -65,6 +100,13 @@ class ProjectsService(BaseService):
         )
 
     def unarchive(self, *, project_id: int) -> None:
+        """Restore a project to active status from trash as well as from the archive (returns 204 No Content).
+        This is the inverse of both ArchiveProject and TrashProject. Restoring counts against
+        the account's project limit, so it answers 507 when that limit is already reached.
+
+        Args:
+            project_id: The project id.
+        """
         self._request_void(
             OperationInfo(service="projects", operation="unarchive", is_mutation=True, project_id=project_id),
             "PUT",
@@ -73,6 +115,13 @@ class ProjectsService(BaseService):
         )
 
     def archive(self, *, project_id: int) -> None:
+        """Archive a project, removing it from the active project list (returns 204 No Content).
+        Accounts on the admin pro pack may restrict archiving to admins and the project's
+        creator, which answers 403.
+
+        Args:
+            project_id: The project id.
+        """
         self._request_void(
             OperationInfo(service="projects", operation="archive", is_mutation=True, project_id=project_id),
             "PUT",
@@ -85,6 +134,16 @@ class AsyncProjectsService(AsyncBaseService):
     async def list(
         self, *, status: str | None = None, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List projects (active by default; optionally archived/trashed).
+
+        Args:
+            status: active|archived|trashed
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="projects", operation="list", is_mutation=False),
             "/projects.json",
@@ -94,6 +153,12 @@ class AsyncProjectsService(AsyncBaseService):
         )
 
     async def create(self, *, name: str, description: str | None = None) -> dict[str, Any]:
+        """Create a new project.
+
+        Args:
+            name: The name.
+            description: The description.
+        """
         return await self._request(
             OperationInfo(service="projects", operation="create", is_mutation=True),
             "POST",
@@ -103,6 +168,11 @@ class AsyncProjectsService(AsyncBaseService):
         )
 
     async def get(self, *, project_id: int) -> dict[str, Any]:
+        """Get a single project by id.
+
+        Args:
+            project_id: The project id.
+        """
         return await self._request(
             OperationInfo(service="projects", operation="get", is_mutation=False, project_id=project_id),
             "GET",
@@ -119,6 +189,15 @@ class AsyncProjectsService(AsyncBaseService):
         admissions: str | None = None,
         schedule_attributes: dict | None = None,
     ) -> dict[str, Any]:
+        """Update an existing project.
+
+        Args:
+            project_id: The project id.
+            name: The name.
+            description: The description.
+            admissions: invite|employee|team
+            schedule_attributes: The schedule attributes.
+        """
         return await self._request(
             OperationInfo(service="projects", operation="update", is_mutation=True, project_id=project_id),
             "PUT",
@@ -130,6 +209,11 @@ class AsyncProjectsService(AsyncBaseService):
         )
 
     async def trash(self, *, project_id: int) -> None:
+        """Trash a project (returns 204 No Content).
+
+        Args:
+            project_id: The project id.
+        """
         await self._request_void(
             OperationInfo(service="projects", operation="trash", is_mutation=True, project_id=project_id),
             "DELETE",
@@ -138,6 +222,13 @@ class AsyncProjectsService(AsyncBaseService):
         )
 
     async def unarchive(self, *, project_id: int) -> None:
+        """Restore a project to active status from trash as well as from the archive (returns 204 No Content).
+        This is the inverse of both ArchiveProject and TrashProject. Restoring counts against
+        the account's project limit, so it answers 507 when that limit is already reached.
+
+        Args:
+            project_id: The project id.
+        """
         await self._request_void(
             OperationInfo(service="projects", operation="unarchive", is_mutation=True, project_id=project_id),
             "PUT",
@@ -146,6 +237,13 @@ class AsyncProjectsService(AsyncBaseService):
         )
 
     async def archive(self, *, project_id: int) -> None:
+        """Archive a project, removing it from the active project list (returns 204 No Content).
+        Accounts on the admin pro pack may restrict archiving to admins and the project's
+        creator, which answers 403.
+
+        Args:
+            project_id: The project id.
+        """
         await self._request_void(
             OperationInfo(service="projects", operation="archive", is_mutation=True, project_id=project_id),
             "PUT",

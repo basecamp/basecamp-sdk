@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import textwrap
 from pathlib import Path
 
 # Make the shared generator helper importable whether this file is run as a
@@ -397,11 +398,20 @@ def extract_body_params(
     required_fields = set(schema.get("required", []))
     params = []
     for name, prop in schema["properties"].items():
+        # A bare `$ref` property carries no description of its own — read it
+        # off the referenced schema (single-level: the spec has no ref-to-ref
+        # chains). A sibling description on the property itself still wins.
+        description = prop.get("description")
+        if description is None and "$ref" in prop:
+            target = resolve_schema_ref(prop, schemas)
+            if target:
+                description = target.get("description")
         params.append({
             "name": name,
             "python_name": safe_python_name(to_snake_case(name)),
             "type": schema_to_python_type(prop),
             "required": name in required_fields,
+            "description": description,
         })
     return params
 
@@ -429,6 +439,7 @@ def parse_operation(
                 "name": p["name"],
                 "python_name": to_snake_case(p["name"]),
                 "type": schema_to_python_type(p.get("schema")),
+                "description": p.get("description"),
             })
 
     # Query params
@@ -448,6 +459,7 @@ def parse_operation(
                 "required": p.get("required", False),
                 "deprecated": bool(p.get("deprecated") or schema.get("deprecated")),
                 "deprecation_reason": p.get("x-deprecated-reason") or schema.get("x-deprecated-reason"),
+                "description": p.get("description"),
             })
 
     # Body params
@@ -485,6 +497,7 @@ def parse_operation(
 
     return {
         "operation_id": operation_id,
+        "description": operation.get("description") or "",
         "method_name": method_name,
         "http_method": http_method,
         "path": convert_path(path),
@@ -540,68 +553,188 @@ def python_type_hint(param_type: str) -> str:
     }.get(param_type, "str")
 
 
-def deprecation_docstring(op: dict) -> list[str]:
-    """Emit a method docstring flagging deprecated query params.
+def escape_docstring_text(text: str) -> str:
+    """Escape multi-line text for interpolation into a triple-quoted docstring.
 
-    Documentation-only (see #406): a TypedDict/kwarg has no per-parameter
-    deprecation directive, and an RST ``.. deprecated::`` inside a ``:param:``
-    is malformed, so this is a real prose docstring listing each deprecated
-    parameter and its replacement. Emitted only when the operation has at least
-    one deprecated param, keyed on that flag rather than a specific method name.
+    Unlike ``escape_py_string`` (which flattens to a single line for plain
+    string literals), this keeps real newlines: it escapes backslashes (so no
+    accidental escape sequences form), neutralizes any embedded triple-quote
+    that would close the docstring early, and normalizes the control characters
+    that would confuse the emitted source. Any remaining C0 control or DEL is
+    dropped — a literal NUL in particular makes the whole module uncompilable
+    ("source code string cannot contain null bytes"). The closing delimiter is
+    always emitted on its own line, so a trailing double-quote in the text is
+    safe.
     """
-    deprecated = [q for q in op["query_params"] if q.get("deprecated")]
-    if not deprecated:
-        return []
-    lines = ['        """Deprecated parameters (prefer the replacement):', ""]
-    for q in deprecated:
-        reason = escape_py_string(q.get("deprecation_reason") or "deprecated")
-        lines.append(f"        - {q['name']}: {reason}")
-    lines.append('        """')
-    return lines
+    text = (
+        text.replace("\\", "\\\\")
+        .replace('"""', '\\"\\"\\"')
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\t", "    ")
+    )
+    return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
 
 
-def build_params(op: dict) -> list[str]:
-    """Build keyword-only parameter list for a method."""
-    params: list[str] = []
+def _split_paragraphs(text: str) -> list[str]:
+    return [p.strip("\n") for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
+
+
+def _fallback_param_doc(python_name: str) -> str:
+    """Derived Args line for a parameter the spec leaves undescribed.
+
+    Path params carry no descriptions in the OpenAPI spec at all, so this
+    humanized fallback ("project_id" -> "The project id.") is what documents
+    them — matching the Ruby and TypeScript generators' fallback convention.
+    The trailing underscore a Python-keyword collision appends (``from_``) is
+    stripped before humanizing, so it reads "The from." not "The from .".
+    """
+    return f"The {python_name.rstrip('_').replace('_', ' ')}."
+
+
+def build_params(op: dict) -> list[dict]:
+    """Build the keyword-only parameter list for a method.
+
+    Returns one dict per parameter, in signature order: ``sig`` is the
+    signature fragment, ``python_name``/``description`` feed the docstring's
+    Args section — a single ordered list so the two can never disagree.
+    """
+    params: list[dict] = []
+
+    def add(sig: str, python_name: str, description: str | None) -> None:
+        params.append({"sig": sig, "python_name": python_name, "description": description})
 
     # Path params — use the schema type, not a blanket int | str
     for p in op["path_params"]:
-        params.append(f"{p['python_name']}: {p['type']}")
+        add(f"{p['python_name']}: {p['type']}", p["python_name"], p.get("description"))
 
     # Binary upload params
     if op["has_binary_body"]:
-        params.append("content: bytes")
-        params.append("content_type: str")
+        add("content: bytes", "content", "Raw bytes of the file to upload.")
+        add("content_type: str", "content_type", 'MIME content type of the upload (e.g. "image/png").')
     elif op.get("has_multipart_body"):
-        params.append("content: bytes")
-        params.append("filename: str")
-        params.append("content_type: str")
+        add("content: bytes", "content", "Raw bytes of the file to upload.")
+        add("filename: str", "filename", "Filename for the uploaded file.")
+        add("content_type: str", "content_type", 'MIME content type of the upload (e.g. "image/png").')
     elif op["has_body"]:
         required = [b for b in op["body_params"] if b["required"]]
         optional = [b for b in op["body_params"] if not b["required"]]
         for b in required:
             hint = python_type_hint(b["type"])
-            params.append(f"{b['python_name']}: {hint}")
+            add(f"{b['python_name']}: {hint}", b["python_name"], b.get("description"))
         for b in optional:
             hint = python_type_hint(b["type"])
-            params.append(f"{b['python_name']}: {hint} | None = None")
+            add(f"{b['python_name']}: {hint} | None = None", b["python_name"], b.get("description"))
 
     # Query params
     required_qp = [q for q in op["query_params"] if q["required"]]
     optional_qp = [q for q in op["query_params"] if not q["required"]]
     for q in required_qp:
         hint = python_type_hint(q["type"])
-        params.append(f"{q['python_name']}: {hint}")
+        add(f"{q['python_name']}: {hint}", q["python_name"], q.get("description"))
     for q in optional_qp:
         hint = python_type_hint(q["type"])
-        params.append(f"{q['python_name']}: {hint} | None = None")
+        add(f"{q['python_name']}: {hint} | None = None", q["python_name"], q.get("description"))
 
     # Paginated operations take a client-side cap on collected items,
     # matching the maxItems pagination option in the other SDKs.
     if op["has_pagination"]:
-        params.append("max_items: int | None = None")
+        max_items_doc = (
+            "Client-side cap on the number of items collected across pages; "
+            "None or a non-positive value means no item cap. "
+            "Collection is always bounded by config.max_pages."
+        )
+        # SPEC section 8: a positive `page` pins a single page, so the
+        # follow loop stops after one request. Only worth saying on the
+        # operations that actually take a `page` param.
+        if any(q["python_name"] == "page" for q in op["query_params"]):
+            max_items_doc += " A positive page argument fetches exactly that one page."
+        add("max_items: int | None = None", "max_items", max_items_doc)
 
     return params
+
+
+def _wrap_args_entry(python_name: str, description: str) -> list[str]:
+    """Wrap one Args entry to Google style: entry at 12 spaces, continuations at 16.
+
+    Long tokens and hyphenated words stay whole (descriptions carry URLs,
+    ``x-header-…`` names, and ``Module::Class`` references that must not be
+    split mid-token); an over-long token overflows its line instead.
+    """
+    text = " ".join(escape_docstring_text(description).split())
+    wrapped = textwrap.wrap(
+        f"{python_name}: {text}",
+        width=88,
+        subsequent_indent="    ",
+        break_long_words=False,
+        break_on_hyphens=False,
+    ) or [f"{python_name}:"]
+    return [f"            {line}" for line in wrapped]
+
+
+def _deprecation_section(op: dict) -> list[str]:
+    """Docstring section flagging deprecated query params.
+
+    Documentation-only (see #406): a TypedDict/kwarg has no per-parameter
+    deprecation directive, and an RST ``.. deprecated::`` inside a ``:param:``
+    is malformed, so this is real prose listing each deprecated parameter and
+    its replacement. Emitted only when the operation has at least one
+    deprecated param, keyed on that flag rather than a specific method name.
+    """
+    deprecated = [q for q in op["query_params"] if q.get("deprecated")]
+    if not deprecated:
+        return []
+    lines = ["        Deprecated parameters (prefer the replacement):", ""]
+    for q in deprecated:
+        reason = escape_py_string(q.get("deprecation_reason") or "deprecated")
+        lines.append(f"        - {q['name']}: {reason}")
+    return lines
+
+
+def method_docstring(op: dict, params: list[dict]) -> list[str]:
+    """Emit the method docstring: summary, extended description, deprecation
+    note, and a Google-style Args section.
+
+    The summary is the operation description's whole first paragraph (never
+    the Ruby generators' first-line truncation — first lines here are usually
+    unterminated summary phrases), with a period appended when the paragraph
+    lacks terminal punctuation. Remaining paragraphs follow verbatim, except
+    the "**Pagination**" boilerplate on paginated operations: it instructs
+    manual Link-header following, which these methods do automatically —
+    ``max_items`` in Args documents the collected-pages behavior instead.
+    """
+    description = escape_docstring_text(op["description"]).strip() or f"{op['operation_id']} operation."
+    paragraphs = _split_paragraphs(description)
+    if op["has_pagination"]:
+        paragraphs = [p for p in paragraphs if not p.lstrip().startswith("**Pagination**")]
+
+    summary = paragraphs[0] if paragraphs else f"{op['operation_id']} operation."
+    if summary[-1] not in ".!?":
+        summary += "."
+
+    body: list[str] = []
+    for paragraph in [summary] + paragraphs[1:]:
+        if body:
+            body.append("")
+        body.extend(f"        {line.rstrip()}".rstrip() for line in paragraph.split("\n"))
+
+    deprecation = _deprecation_section(op)
+    if deprecation:
+        body.append("")
+        body.extend(deprecation)
+
+    if params:
+        body.append("")
+        body.append("        Args:")
+        for p in params:
+            body.extend(_wrap_args_entry(p["python_name"], p["description"] or _fallback_param_doc(p["python_name"])))
+
+    if len(body) == 1:
+        return [f'        """{body[0].strip()}"""']
+    lines = [f'        """{body[0].strip()}']
+    lines.extend(body[1:])
+    lines.append('        """')
+    return lines
 
 
 def build_info_kwargs(op: dict, service_name: str) -> str:
@@ -798,9 +931,10 @@ def generate_service_file(service: dict) -> str:
         lines.append("")
         params = build_params(op)
         ret = return_type(op)
-        sig_params = ", ".join(["self"] + ([f"*, {', '.join(params)}"] if params else []))
+        sig_fragments = [p["sig"] for p in params]
+        sig_params = ", ".join(["self"] + ([f"*, {', '.join(sig_fragments)}"] if params else []))
         lines.append(f"    def {op['method_name']}({sig_params}) -> {ret}:")
-        lines.extend(deprecation_docstring(op))
+        lines.extend(method_docstring(op, params))
         body = generate_method_body(op, name, is_async=False)
         lines.extend(body)
 
@@ -812,9 +946,10 @@ def generate_service_file(service: dict) -> str:
         lines.append("")
         params = build_params(op)
         ret = return_type(op)
-        sig_params = ", ".join(["self"] + ([f"*, {', '.join(params)}"] if params else []))
+        sig_fragments = [p["sig"] for p in params]
+        sig_params = ", ".join(["self"] + ([f"*, {', '.join(sig_fragments)}"] if params else []))
         lines.append(f"    async def {op['method_name']}({sig_params}) -> {ret}:")
-        lines.extend(deprecation_docstring(op))
+        lines.extend(method_docstring(op, params))
         body = generate_method_body(op, name, is_async=True)
         lines.extend(body)
 

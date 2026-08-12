@@ -12,6 +12,13 @@ from basecamp.hooks import OperationInfo
 
 class PeopleService(BaseService):
     def list_pingable(self, *, max_items: int | None = None) -> ListResult:
+        """List all account users who can be pinged.
+
+        Args:
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
+        """
         return self._request_paginated(
             OperationInfo(service="people", operation="list_pingable", is_mutation=False),
             "/circles/people.json",
@@ -20,6 +27,7 @@ class PeopleService(BaseService):
         )
 
     def get_my_preferences(self) -> dict[str, Any]:
+        """Get the current user's preferences."""
         return self._request(
             OperationInfo(service="people", operation="get_my_preferences", is_mutation=False),
             "GET",
@@ -28,6 +36,14 @@ class PeopleService(BaseService):
         )
 
     def update_my_preferences(self, *, person: dict) -> dict[str, Any]:
+        """Update the current user's preferences.
+        Rejections arrive as a field-keyed 422
+        ({"errors": {"time_zone_name": ["is not included in the list"]}}), not the
+        flat {error} body.
+
+        Args:
+            person: The person.
+        """
         return self._request(
             OperationInfo(service="people", operation="update_my_preferences", is_mutation=True),
             "PUT",
@@ -37,6 +53,7 @@ class PeopleService(BaseService):
         )
 
     def my_profile(self) -> dict[str, Any]:
+        """Get the current authenticated user's profile."""
         return self._request(
             OperationInfo(service="people", operation="my_profile", is_mutation=False),
             "GET",
@@ -56,6 +73,18 @@ class PeopleService(BaseService):
         first_week_day: dict | None = None,
         time_format: str | None = None,
     ) -> None:
+        """Update the current authenticated user's profile (returns 204 No Content).
+
+        Args:
+            name: The name.
+            email_address: The email address.
+            title: The title.
+            bio: The bio.
+            location: The location.
+            time_zone_name: The time zone name.
+            first_week_day: The first week day.
+            time_format: The time format.
+        """
         self._request_void(
             OperationInfo(service="people", operation="update_my_profile", is_mutation=True),
             "PUT",
@@ -74,6 +103,15 @@ class PeopleService(BaseService):
         )
 
     def list(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List all people visible to the current user.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="people", operation="list", is_mutation=False),
             "/people.json",
@@ -83,6 +121,11 @@ class PeopleService(BaseService):
         )
 
     def get(self, *, person_id: int) -> dict[str, Any]:
+        """Get a person by ID.
+
+        Args:
+            person_id: The person id.
+        """
         return self._request(
             OperationInfo(service="people", operation="get", is_mutation=False, resource_id=person_id),
             "GET",
@@ -91,6 +134,11 @@ class PeopleService(BaseService):
         )
 
     def get_out_of_office(self, *, person_id: int) -> dict[str, Any]:
+        """Get the out of office status for a person.
+
+        Args:
+            person_id: The person id.
+        """
         return self._request(
             OperationInfo(service="people", operation="get_out_of_office", is_mutation=False, resource_id=person_id),
             "GET",
@@ -99,6 +147,13 @@ class PeopleService(BaseService):
         )
 
     def enable_out_of_office(self, *, person_id: int, out_of_office: dict) -> dict[str, Any]:
+        """Enable or replace out of office for a person.
+        Admins on Pro Pack accounts can manage others; otherwise self only.
+
+        Args:
+            person_id: The person id.
+            out_of_office: The out of office.
+        """
         return self._request(
             OperationInfo(service="people", operation="enable_out_of_office", is_mutation=True, resource_id=person_id),
             "POST",
@@ -108,6 +163,12 @@ class PeopleService(BaseService):
         )
 
     def disable_out_of_office(self, *, person_id: int) -> None:
+        """Disable out of office for a person.
+        Admins on Pro Pack accounts can manage others; otherwise self only.
+
+        Args:
+            person_id: The person id.
+        """
         self._request_void(
             OperationInfo(service="people", operation="disable_out_of_office", is_mutation=True, resource_id=person_id),
             "DELETE",
@@ -116,6 +177,16 @@ class PeopleService(BaseService):
         )
 
     def list_for_project(self, *, project_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List all active people on a project.
+
+        Args:
+            project_id: The project id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
@@ -132,6 +203,14 @@ class PeopleService(BaseService):
         revoke: list[int] | None = None,
         create: list[dict] | None = None,
     ) -> dict[str, Any]:
+        """Update project access (grant/revoke/create people).
+
+        Args:
+            project_id: The project id.
+            grant: The grant.
+            revoke: The revoke.
+            create: The create.
+        """
         return self._request(
             OperationInfo(service="people", operation="update_project_access", is_mutation=True, project_id=project_id),
             "PUT",
@@ -141,6 +220,7 @@ class PeopleService(BaseService):
         )
 
     def list_assignable(self) -> ListResult:
+        """List people who can be assigned todos."""
         return self._request_list(
             OperationInfo(service="people", operation="list_assignable", is_mutation=False),
             "/reports/todos/assigned.json",
@@ -150,6 +230,13 @@ class PeopleService(BaseService):
 
 class AsyncPeopleService(AsyncBaseService):
     async def list_pingable(self, *, max_items: int | None = None) -> ListResult:
+        """List all account users who can be pinged.
+
+        Args:
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages.
+        """
         return await self._request_paginated(
             OperationInfo(service="people", operation="list_pingable", is_mutation=False),
             "/circles/people.json",
@@ -158,6 +245,7 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def get_my_preferences(self) -> dict[str, Any]:
+        """Get the current user's preferences."""
         return await self._request(
             OperationInfo(service="people", operation="get_my_preferences", is_mutation=False),
             "GET",
@@ -166,6 +254,14 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def update_my_preferences(self, *, person: dict) -> dict[str, Any]:
+        """Update the current user's preferences.
+        Rejections arrive as a field-keyed 422
+        ({"errors": {"time_zone_name": ["is not included in the list"]}}), not the
+        flat {error} body.
+
+        Args:
+            person: The person.
+        """
         return await self._request(
             OperationInfo(service="people", operation="update_my_preferences", is_mutation=True),
             "PUT",
@@ -175,6 +271,7 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def my_profile(self) -> dict[str, Any]:
+        """Get the current authenticated user's profile."""
         return await self._request(
             OperationInfo(service="people", operation="my_profile", is_mutation=False),
             "GET",
@@ -194,6 +291,18 @@ class AsyncPeopleService(AsyncBaseService):
         first_week_day: dict | None = None,
         time_format: str | None = None,
     ) -> None:
+        """Update the current authenticated user's profile (returns 204 No Content).
+
+        Args:
+            name: The name.
+            email_address: The email address.
+            title: The title.
+            bio: The bio.
+            location: The location.
+            time_zone_name: The time zone name.
+            first_week_day: The first week day.
+            time_format: The time format.
+        """
         await self._request_void(
             OperationInfo(service="people", operation="update_my_profile", is_mutation=True),
             "PUT",
@@ -212,6 +321,15 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def list(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List all people visible to the current user.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="people", operation="list", is_mutation=False),
             "/people.json",
@@ -221,6 +339,11 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def get(self, *, person_id: int) -> dict[str, Any]:
+        """Get a person by ID.
+
+        Args:
+            person_id: The person id.
+        """
         return await self._request(
             OperationInfo(service="people", operation="get", is_mutation=False, resource_id=person_id),
             "GET",
@@ -229,6 +352,11 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def get_out_of_office(self, *, person_id: int) -> dict[str, Any]:
+        """Get the out of office status for a person.
+
+        Args:
+            person_id: The person id.
+        """
         return await self._request(
             OperationInfo(service="people", operation="get_out_of_office", is_mutation=False, resource_id=person_id),
             "GET",
@@ -237,6 +365,13 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def enable_out_of_office(self, *, person_id: int, out_of_office: dict) -> dict[str, Any]:
+        """Enable or replace out of office for a person.
+        Admins on Pro Pack accounts can manage others; otherwise self only.
+
+        Args:
+            person_id: The person id.
+            out_of_office: The out of office.
+        """
         return await self._request(
             OperationInfo(service="people", operation="enable_out_of_office", is_mutation=True, resource_id=person_id),
             "POST",
@@ -246,6 +381,12 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def disable_out_of_office(self, *, person_id: int) -> None:
+        """Disable out of office for a person.
+        Admins on Pro Pack accounts can manage others; otherwise self only.
+
+        Args:
+            person_id: The person id.
+        """
         await self._request_void(
             OperationInfo(service="people", operation="disable_out_of_office", is_mutation=True, resource_id=person_id),
             "DELETE",
@@ -256,6 +397,16 @@ class AsyncPeopleService(AsyncBaseService):
     async def list_for_project(
         self, *, project_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List all active people on a project.
+
+        Args:
+            project_id: The project id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
@@ -272,6 +423,14 @@ class AsyncPeopleService(AsyncBaseService):
         revoke: list[int] | None = None,
         create: list[dict] | None = None,
     ) -> dict[str, Any]:
+        """Update project access (grant/revoke/create people).
+
+        Args:
+            project_id: The project id.
+            grant: The grant.
+            revoke: The revoke.
+            create: The create.
+        """
         return await self._request(
             OperationInfo(service="people", operation="update_project_access", is_mutation=True, project_id=project_id),
             "PUT",
@@ -281,6 +440,7 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def list_assignable(self) -> ListResult:
+        """List people who can be assigned todos."""
         return await self._request_list(
             OperationInfo(service="people", operation="list_assignable", is_mutation=False),
             "/reports/todos/assigned.json",

@@ -20,6 +20,18 @@ class ClientCorrespondencesService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List all client correspondences in a project.
+
+        Args:
+            bucket_id: The bucket id.
+            sort: created_at|updated_at
+            direction: asc|desc
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return self._request_paginated(
             OperationInfo(service="clientcorrespondences", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/client/correspondences.json",
@@ -29,6 +41,11 @@ class ClientCorrespondencesService(BaseService):
         )
 
     def get(self, *, correspondence_id: int) -> dict[str, Any]:
+        """Get a single client correspondence by id.
+
+        Args:
+            correspondence_id: The correspondence id.
+        """
         return self._request(
             OperationInfo(
                 service="clientcorrespondences", operation="get", is_mutation=False, resource_id=correspondence_id
@@ -49,6 +66,18 @@ class AsyncClientCorrespondencesService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List all client correspondences in a project.
+
+        Args:
+            bucket_id: The bucket id.
+            sort: created_at|updated_at
+            direction: asc|desc
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the number of items collected across pages; None or a
+                non-positive value means no item cap. Collection is always bounded by
+                config.max_pages. A positive page argument fetches exactly that one page.
+        """
         return await self._request_paginated(
             OperationInfo(service="clientcorrespondences", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/client/correspondences.json",
@@ -58,6 +87,11 @@ class AsyncClientCorrespondencesService(AsyncBaseService):
         )
 
     async def get(self, *, correspondence_id: int) -> dict[str, Any]:
+        """Get a single client correspondence by id.
+
+        Args:
+            correspondence_id: The correspondence id.
+        """
         return await self._request(
             OperationInfo(
                 service="clientcorrespondences", operation="get", is_mutation=False, resource_id=correspondence_id

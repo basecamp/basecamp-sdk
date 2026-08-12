@@ -12,6 +12,7 @@ from basecamp.hooks import OperationInfo
 
 class AccountService(BaseService):
     def get_account(self) -> dict[str, Any]:
+        """Get the account for the current access token."""
         return self._request(
             OperationInfo(service="account", operation="get_account", is_mutation=False),
             "GET",
@@ -20,6 +21,15 @@ class AccountService(BaseService):
         )
 
     def update_account_logo(self, *, content: bytes, filename: str, content_type: str) -> None:
+        """Upload or replace the account logo.
+        Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Maximum 5 MB.
+        Owners and admins only.
+
+        Args:
+            content: Raw bytes of the file to upload.
+            filename: Filename for the uploaded file.
+            content_type: MIME content type of the upload (e.g. "image/png").
+        """
         self._request_multipart_void(
             OperationInfo(service="account", operation="update_account_logo", is_mutation=True),
             "PUT",
@@ -32,6 +42,7 @@ class AccountService(BaseService):
         )
 
     def remove_account_logo(self) -> None:
+        """Remove the account logo. Only administrators and account owners can use this endpoint."""
         self._request_void(
             OperationInfo(service="account", operation="remove_account_logo", is_mutation=True),
             "DELETE",
@@ -40,6 +51,11 @@ class AccountService(BaseService):
         )
 
     def update_account_name(self, *, name: str) -> dict[str, Any]:
+        """Rename the current account. Only account owners can use this endpoint.
+
+        Args:
+            name: The name.
+        """
         return self._request(
             OperationInfo(service="account", operation="update_account_name", is_mutation=True),
             "PUT",
@@ -51,6 +67,7 @@ class AccountService(BaseService):
 
 class AsyncAccountService(AsyncBaseService):
     async def get_account(self) -> dict[str, Any]:
+        """Get the account for the current access token."""
         return await self._request(
             OperationInfo(service="account", operation="get_account", is_mutation=False),
             "GET",
@@ -59,6 +76,15 @@ class AsyncAccountService(AsyncBaseService):
         )
 
     async def update_account_logo(self, *, content: bytes, filename: str, content_type: str) -> None:
+        """Upload or replace the account logo.
+        Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Maximum 5 MB.
+        Owners and admins only.
+
+        Args:
+            content: Raw bytes of the file to upload.
+            filename: Filename for the uploaded file.
+            content_type: MIME content type of the upload (e.g. "image/png").
+        """
         await self._request_multipart_void(
             OperationInfo(service="account", operation="update_account_logo", is_mutation=True),
             "PUT",
@@ -71,6 +97,7 @@ class AsyncAccountService(AsyncBaseService):
         )
 
     async def remove_account_logo(self) -> None:
+        """Remove the account logo. Only administrators and account owners can use this endpoint."""
         await self._request_void(
             OperationInfo(service="account", operation="remove_account_logo", is_mutation=True),
             "DELETE",
@@ -79,6 +106,11 @@ class AsyncAccountService(AsyncBaseService):
         )
 
     async def update_account_name(self, *, name: str) -> dict[str, Any]:
+        """Rename the current account. Only account owners can use this endpoint.
+
+        Args:
+            name: The name.
+        """
         return await self._request(
             OperationInfo(service="account", operation="update_account_name", is_mutation=True),
             "PUT",

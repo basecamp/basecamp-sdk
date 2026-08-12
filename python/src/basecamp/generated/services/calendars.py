@@ -12,6 +12,13 @@ from basecamp.hooks import OperationInfo
 
 class CalendarsService(BaseService):
     def get_calendar(self, *, calendar_id: int) -> dict[str, Any]:
+        """Get a calendar by its bucket id. A Calendar is a top-level BC5 bucketable
+        (distinct from a project) exposing display metadata and a link to its
+        underlying schedule resource. Shipped scope is show + update only.
+
+        Args:
+            calendar_id: The calendar id.
+        """
         return self._request(
             OperationInfo(service="calendars", operation="get_calendar", is_mutation=False, resource_id=calendar_id),
             "GET",
@@ -20,6 +27,15 @@ class CalendarsService(BaseService):
         )
 
     def update_calendar(self, *, calendar_id: int, calendar: dict) -> dict[str, Any]:
+        """Update a calendar's display color. An unknown color returns 422 with a JSON
+        errors payload keyed by field ({"errors": {"color": ["is not a valid
+        color"]}}) — the controller rejects invalid enum values up front.
+
+        Args:
+            calendar_id: The calendar id.
+            calendar: The writable calendar payload — the wire body is the nested {calendar:
+                {color}} envelope.
+        """
         return self._request(
             OperationInfo(service="calendars", operation="update_calendar", is_mutation=True, resource_id=calendar_id),
             "PUT",
@@ -31,6 +47,13 @@ class CalendarsService(BaseService):
 
 class AsyncCalendarsService(AsyncBaseService):
     async def get_calendar(self, *, calendar_id: int) -> dict[str, Any]:
+        """Get a calendar by its bucket id. A Calendar is a top-level BC5 bucketable
+        (distinct from a project) exposing display metadata and a link to its
+        underlying schedule resource. Shipped scope is show + update only.
+
+        Args:
+            calendar_id: The calendar id.
+        """
         return await self._request(
             OperationInfo(service="calendars", operation="get_calendar", is_mutation=False, resource_id=calendar_id),
             "GET",
@@ -39,6 +62,15 @@ class AsyncCalendarsService(AsyncBaseService):
         )
 
     async def update_calendar(self, *, calendar_id: int, calendar: dict) -> dict[str, Any]:
+        """Update a calendar's display color. An unknown color returns 422 with a JSON
+        errors payload keyed by field ({"errors": {"color": ["is not a valid
+        color"]}}) — the controller rejects invalid enum values up front.
+
+        Args:
+            calendar_id: The calendar id.
+            calendar: The writable calendar payload — the wire body is the nested {calendar:
+                {color}} envelope.
+        """
         return await self._request(
             OperationInfo(service="calendars", operation="update_calendar", is_mutation=True, resource_id=calendar_id),
             "PUT",

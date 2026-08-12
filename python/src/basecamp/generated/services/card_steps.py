@@ -12,6 +12,13 @@ from basecamp.hooks import OperationInfo
 
 class CardStepsService(BaseService):
     def reposition(self, *, card_id: int, source_id: int, position: int) -> None:
+        """Reposition a step within a card.
+
+        Args:
+            card_id: The card id.
+            source_id: The source id.
+            position: 0-indexed position
+        """
         self._request_void(
             OperationInfo(service="cardsteps", operation="reposition", is_mutation=True, resource_id=card_id),
             "POST",
@@ -23,6 +30,14 @@ class CardStepsService(BaseService):
     def create(
         self, *, card_id: int, title: str, due_on: str | None = None, assignee_ids: list[int] | None = None
     ) -> dict[str, Any]:
+        """Create a step on a card.
+
+        Args:
+            card_id: The card id.
+            title: The title.
+            due_on: The due on.
+            assignee_ids: The assignee ids.
+        """
         return self._request(
             OperationInfo(service="cardsteps", operation="create", is_mutation=True, resource_id=card_id),
             "POST",
@@ -32,6 +47,11 @@ class CardStepsService(BaseService):
         )
 
     def get(self, *, step_id: int) -> dict[str, Any]:
+        """Get a step by ID.
+
+        Args:
+            step_id: The step id.
+        """
         return self._request(
             OperationInfo(service="cardsteps", operation="get", is_mutation=False, resource_id=step_id),
             "GET",
@@ -47,6 +67,14 @@ class CardStepsService(BaseService):
         due_on: str | None = None,
         assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
+        """Update an existing step.
+
+        Args:
+            step_id: The step id.
+            title: The title.
+            due_on: The due on.
+            assignee_ids: The assignee ids.
+        """
         return self._request(
             OperationInfo(service="cardsteps", operation="update", is_mutation=True, resource_id=step_id),
             "PUT",
@@ -56,6 +84,12 @@ class CardStepsService(BaseService):
         )
 
     def set_completion(self, *, step_id: int, completion: str) -> dict[str, Any]:
+        """Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete).
+
+        Args:
+            step_id: The step id.
+            completion: Set to "on" to complete the step, "" (empty) to uncomplete
+        """
         return self._request(
             OperationInfo(service="cardsteps", operation="set_completion", is_mutation=True, resource_id=step_id),
             "PUT",
@@ -67,6 +101,13 @@ class CardStepsService(BaseService):
 
 class AsyncCardStepsService(AsyncBaseService):
     async def reposition(self, *, card_id: int, source_id: int, position: int) -> None:
+        """Reposition a step within a card.
+
+        Args:
+            card_id: The card id.
+            source_id: The source id.
+            position: 0-indexed position
+        """
         await self._request_void(
             OperationInfo(service="cardsteps", operation="reposition", is_mutation=True, resource_id=card_id),
             "POST",
@@ -78,6 +119,14 @@ class AsyncCardStepsService(AsyncBaseService):
     async def create(
         self, *, card_id: int, title: str, due_on: str | None = None, assignee_ids: list[int] | None = None
     ) -> dict[str, Any]:
+        """Create a step on a card.
+
+        Args:
+            card_id: The card id.
+            title: The title.
+            due_on: The due on.
+            assignee_ids: The assignee ids.
+        """
         return await self._request(
             OperationInfo(service="cardsteps", operation="create", is_mutation=True, resource_id=card_id),
             "POST",
@@ -87,6 +136,11 @@ class AsyncCardStepsService(AsyncBaseService):
         )
 
     async def get(self, *, step_id: int) -> dict[str, Any]:
+        """Get a step by ID.
+
+        Args:
+            step_id: The step id.
+        """
         return await self._request(
             OperationInfo(service="cardsteps", operation="get", is_mutation=False, resource_id=step_id),
             "GET",
@@ -102,6 +156,14 @@ class AsyncCardStepsService(AsyncBaseService):
         due_on: str | None = None,
         assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
+        """Update an existing step.
+
+        Args:
+            step_id: The step id.
+            title: The title.
+            due_on: The due on.
+            assignee_ids: The assignee ids.
+        """
         return await self._request(
             OperationInfo(service="cardsteps", operation="update", is_mutation=True, resource_id=step_id),
             "PUT",
@@ -111,6 +173,12 @@ class AsyncCardStepsService(AsyncBaseService):
         )
 
     async def set_completion(self, *, step_id: int, completion: str) -> dict[str, Any]:
+        """Set card step completion status (PUT with completion: "on" to complete, "" to uncomplete).
+
+        Args:
+            step_id: The step id.
+            completion: Set to "on" to complete the step, "" (empty) to uncomplete
+        """
         return await self._request(
             OperationInfo(service="cardsteps", operation="set_completion", is_mutation=True, resource_id=step_id),
             "PUT",
