@@ -1624,6 +1624,25 @@ type Outer struct {
 	if !outer.tags["name"] || len(outer.tags) != 2 {
 		t.Errorf("expected exactly name+id, got %v", outer.tags)
 	}
+	// The interface and map embeds are not absent from the wire —
+	// encoding/json emits them under their Go field names ("Doer",
+	// "Payload"). They carry no json TAG, which is this check's whole
+	// vocabulary, so they are invisible here in exactly the way an untagged
+	// NAMED field is. Asserting the parallel pins that the treatment is
+	// uniform rather than an embed-specific hole.
+	if outer.tags["Doer"] || outer.tags["Payload"] {
+		t.Errorf("untagged fields are outside this check's tag vocabulary, got %v", outer.tags)
+	}
+	plain := flattenFixture(t, src(`package fixture
+
+type Outer struct {
+	Plain string
+	Name  string ~json:"name"~
+}
+`))["Outer"]
+	if plain.tags["Plain"] || len(plain.tags) != 1 {
+		t.Errorf("an untagged NAMED field is equally invisible; got %v", plain.tags)
+	}
 }
 
 // TestCollectStructs_TaggedAnonymousFieldNotPromoted pins the encoding/json

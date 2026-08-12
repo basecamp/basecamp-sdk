@@ -1065,8 +1065,17 @@ func resolveEmbed(e embedRef, structs map[string]*structFields, decls map[string
 		case *ast.SelectorExpr:
 			return nil, "", "defined in terms of another package's type, which this check does not parse"
 		default:
-			// An interface, map, slice, func, chan or generic type: a valid
-			// embed that promotes no JSON-tagged fields.
+			// An interface, map, slice, func, chan or generic type. It is a
+			// valid embed and it is NOT absent from the wire — encoding/json
+			// treats it as an ordinary field keyed by the Go field name
+			// (`struct{ Payload }` emits "Payload") — but it promotes no
+			// JSON-TAGGED fields, and tags are this check's entire vocabulary.
+			// An untagged field is invisible here whether it is embedded or
+			// named (`Plain string` emits "Plain" and is likewise not
+			// tracked), so the treatment is uniform and neither side of a pair
+			// can drift past it: generated structs are oapi-codegen output,
+			// where every field carries a tag, so no generated wire key is
+			// ever spelled this way for a wrapper to miss.
 			return nil, "", ""
 		}
 	}
