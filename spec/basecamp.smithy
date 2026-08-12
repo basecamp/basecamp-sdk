@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-08-05"
+  version: "2026-08-11"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -5053,9 +5053,11 @@ structure Chatbot {
   updated_at: ISO8601Timestamp
   @required
   service_name: String
+  /// Only present when the requester is an account administrator; possession of this URL is enough to command the bot.
   command_url: String
   url: String
   app_url: String
+  /// Only present when the requester is an account administrator; possession of this URL is enough to post lines as the bot.
   lines_url: String
 }
 

@@ -103,15 +103,134 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `b5d8c9df8d` (2026-08-05). <!-- @bc3-pin -->
+> The provenance pin is `71b43f3d9fa` (2026-08-11). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `7fe1c63ab3..b5d8c9df8d` range is **one commit**, and it is the companion
-> to the absorption this repin carries: BC3 **#12565** (`b5d8c9df8d`) settles the
+> The `b5d8c9df8d..71b43f3d9fa` range is **213 commits** (29 merges, 184
+> non-merge), and this repin absorbs no operations: openapi.json's operation
+> set is untouched, and the only Smithy diff is member documentation (item 3).
+> Two UI programs dominate the bulk — the unified sidebar (BC3 #12279, 79
+> non-merge commits including its #12397 sub-branch) and the server-rendered
+> calendar (BC3 #12405, 40) — and neither changes a documented payload. Under
+> `--full-history`, exactly **six** non-merge commits touch `doc/api` or
+> `app/views/api`; a default `git log` over those paths shows only four,
+> because two are tree-same twins (item 4) — a path-filtered log is not a
+> complete triage instrument for this range. Six more commits change
+> API-reachable behavior from the controller layer with no doc or view diff
+> (items 6–9). `gems/*/app/views/api` is untouched.
+>
+> 1. BC3 **#12646** (`71b43f3d9fa`) — **already closed; this repin ratifies
+>    it.** `/authorization.json`'s `expires_at` becomes ISO 8601 — it was the
+>    only integer-epoch timestamp in bc3's public JSON API — and
+>    `doc/api/sections/authentication.md` gains a "Get authorization from
+>    Basecamp" section documenting the endpoint bc3 has served since #9471.
+>    [`bc5-authorization-document-shape.md`](bc5-authorization-document-shape.md)
+>    recorded both halves and closed `covered-outside-spec` before this repin
+>    landed (the hand-written-lane consequences were absorbed by SDK #703 and
+>    the fixture work in #709). What the repin adds is the pin containing the
+>    commit, and a reasoning refresh on `spec/bc3-route-allowlist.yml`'s
+>    `GET /authorization` entry, which was silent on the endpoint now being
+>    documented.
+> 2. BC3 **#12544** (`4547876f10b`) — **registered** as
+>    [`subtasks-canonical-rename.md`](subtasks-canonical-rename.md),
+>    `partial-coverage`. Step is renamed Subtask: the canonical route
+>    declarations are `/subtasks` now and undocumented, every documented
+>    `/steps` form is re-declared as a permanent alias pinned by bc3's
+>    `route_aliases_test.rb`, and the wire is byte-identical (`json.steps`,
+>    type `"Kanban::Step"`, 100%-renamed partial). All five modelled
+>    operations keep working — four via the aliases, and
+>    `RepositionCardStep`'s positions path never contained "steps", so it is
+>    still canonical. Cross-referenced with
+>    [`step-top-level.md`](step-top-level.md), which stays the record of how
+>    the `/steps` spellings were absorbed.
+> 3. `2b1225848c6` (direct to master) — `command_url` becomes **admin-only**
+>    in chat-integration JSON, joining the already-gated `lines_url`, and
+>    `chatbots.md` now documents both as admin-only plus the fact that
+>    command payloads are unauthenticated. **Absorbed as documentation
+>    only**: both Smithy `Chatbot` members were already un-required and now
+>    carry a member doc noting admin-only visibility. No shape change, no
+>    route delta.
+> 4. BC3 #12279's `83eb14da06c` + `f127e52c1f5` — **tree-same twins of the
+>    registered #12396 work; zero wire delta.** The sidebar branch carried
+>    its own copies of the pings-sort-preference commits (as did its #12397
+>    sub-branch: `817fdb9c50c`, `e0b54c027c1`, `54c96fc0de0`), including a
+>    rename-migration route #12396 had abandoned. #12396 merged first,
+>    before the previous pin, so these merged tree-same — which is also why
+>    default log path filtering hides them. `sort_pings_first` was already
+>    on the wire at the previous pin and stays registered-not-absorbed in
+>    [`notifications-sort-pings-first.md`](notifications-sort-pings-first.md),
+>    which gains an as-of note resolving the twin spellings to one contract.
+> 5. BC3 **#12614** (`984d570baf8`) — the chat lines API's per-kind partial
+>    dispatch gains JSON partials for the two announcement kinds a ping
+>    records on rename or image change; a page of lines holding one
+>    previously 500'd on `MissingTemplate`. No documented shape changes;
+>    as-of note on
+>    [`recordable-subtypes-doc.md`](recordable-subtypes-doc.md).
+> 6. `a1be6ef581f` / `898939aae37` / `266e2257d63` (direct to master) —
+>    Admin Pro Pack enforcement reaches modelled operations:
+>    `UpdateTimesheetEntry` gains a reachable **403** it never had (under the
+>    communication-editing limit), `DestroyTimesheetEntry`'s existing 403
+>    re-keys from the archive-and-trash check to the same comment-style
+>    rules, and `DestroyGaugeNeedle` gains one under the archive-and-trash
+>    limit (as do unmodelled subtask and hill-chart-version destroys).
+>    SPEC §6 already maps 403 generically, so
+>    no per-operation Smithy errors — the same treatment as every other
+>    permission gate. One **operator trap**: the shared guard's third branch
+>    (recording carries descendants created by others) answers
+>    `redirect_back_or_to` with no `respond_to`, so a JSON `DELETE` on such
+>    a needle gets a **302** to an HTML URL rather than the 403 the other
+>    two branches return.
+> 7. BC3 **#12624** (`c059aaedd91`) — a cookie-authenticated request that
+>    also carries an unverifiable bearer token no longer 500s populating the
+>    OAuth cache; the clean **401** the authorizer already produced stands.
+>    Recorded; 500-class behavior was never contract.
+> 8. `74ac283a0e8` (direct to master) — template-copy requests missing their
+>    template or destination now raise `RecordNotFound` (**404**) instead of
+>    dying on a nil several layers down (**500**). Recorded; same reasoning.
+> 9. BC3 **#12561** (`7785168089b`) — removes the iOS unreads endpoint,
+>    which rendered under `app/views/internal`, not `app/views/api`; never
+>    SDK surface. Recorded.
+>
+> **The wire-neutral remainder, accounted.** The 65 non-merge commits outside
+> the two programs: the ten in items 1–3 and 5–9; two that touch controllers
+> without touching API contract — `77f6cd669b3` guards the admin-only HTML
+> person-merge confirmation flow, and `bd52b4f3b58` moves
+> `GET /my/readings.json`'s native-app unreads cap into the query
+> (`user_agent.native? && json_request?` only, so SDK callers never enter the
+> branch; where it applies, a response may now return fewer than the cap —
+> an undocumented sizing behavior, not a payload change); **six** gems-only
+> commits (Trek and saas admin); **four** infra; and **43**
+> web/model/test-only. Inside the programs, the sidebar's only API-surface
+> contact is item 4's twins, and the calendar program's two
+> `config/routes.rb` commits draw HTML agenda/display frames with no
+> `app/views/api` template, so they are not API-renderable under bc3's own
+> API-ness test.
+>
+> **The route table does not move at all.** `make bc3-routes` at the new pin
+> writes 373 routes across 64 sections with only its `revision` line
+> changing. #12646's new documentation normalizes onto the existing
+> `GET /authorization` row — authentication.md was already that row's
+> section and both evidence classes were already present — and the
+> chatbots.md edit reorders example fields without adding a bullet or
+> marker. That nil delta is the mechanical confirmation that items 2 and
+> 4–9 are undocumented or documentation-free, and it is why item 2 is a
+> registry entry rather than a Smithy change.
+>
+> The `bc3-four` compatibility pin does not move: advancing `master`
+> re-verifies nothing about the `four` branch's API surface, and no
+> re-verification of that branch happened here.
+>
+> Earlier pins, kept as the triage record. Each names the pin it was written
+> against, in the past tense, because that is what it is — a range triaged
+> once, at the repin that set its end. Only the sentence above is a claim
+> about today.
+>
+> The pin was `b5d8c9df8d` (2026-08-05). The `7fe1c63ab3..b5d8c9df8d` range was **one commit**, and it was the companion
+> to the absorption that repin carried: BC3 **#12565** (`b5d8c9df8d`) settled the
 > input contract of the replacement endpoint #12555 shipped. It documents
 > `notify` and `subscriptions` — `Subscribers#notify_param` defaults to
 > `"custom"`, so an audience arrives either through `notify` naming a mode or
@@ -160,8 +279,8 @@ making the absorption journey publicly auditable.
 >    `current`, and a **507 storage-limit** response. It closes the write side
 >    [`upload-new-version.md`](upload-new-version.md) already describes, so its
 >    registration is a status flip to `addressed-in-bc3-pr-12555`, not a new
->    brief. Absorption belongs to the `upload-versions-api` branch; this repin
->    only makes the pin honest about the contract existing. Its routes therefore
+>    brief. Absorption belongs to the `upload-versions-api` branch; that repin
+>    only made the pin honest about the contract existing. Its routes therefore
 >    arrive in `spec/bc3-routes.json` with no operation behind them and carry
 >    `registry:` dispositions in `spec/bc3-route-allowlist.yml`.
 > 3. BC3 **#12396** (`98eb24b22f`, `pings-sort-preference`) — **registered.** A
@@ -208,7 +327,7 @@ making the absorption journey publicly auditable.
 >    exist before and after the range, one line changed in each, so no modelled
 >    path moved.
 > 6. BC3 **#12566** (`7fe1c63ab3`) — **registered, no SDK action, and it ratifies
->    a decision this repin's absorption already made.** Two added lines of prose in
+>    a decision that repin's absorption had already made.** Two added lines of prose in
 >    `doc/api/sections/projects.md` stating that a project's `status` is read-only
 >    on Update a project: passing one has no effect and still answers **200**, and
 >    the note points callers at Archive, Unarchive and Trash instead. No route, no
@@ -249,21 +368,16 @@ making the absorption journey publicly auditable.
 > #12550's own 507 test. The remaining commits are merges, iOS auto-scroll
 > refactoring, web-only view changes, host maintenance and schema dumps.
 >
-> **The route table moves for two of the three `doc/api` commits.**
-> `make bc3-routes` at the new pin lands 373 routes across 64 sections and adds
+> **The route table moved for two of the three `doc/api` commits.**
+> `make bc3-routes` at that pin landed 373 routes across 64 sections and added
 > exactly four rows: the two project-status PUTs, which the absorption models, and
-> #12555's flat and bucket-scoped upload-version POSTs, which carry a `registry:`
-> disposition. #12566 adds none, because it documents an endpoint the table
+> #12555's flat and bucket-scoped upload-version POSTs, which carried a `registry:`
+> disposition. #12566 added none, because it documents an endpoint the table
 > already carries — a `doc/api` diff is necessary but not sufficient for a route
 > delta, and the distinction is the whole reason this paragraph reads the
 > regenerated diff instead of asserting a row count. Nothing else moved, which is
 > the mechanical confirmation that items 3–5 are undocumented and item 4's OAuth
 > routes are not drawn under `doc/api`.
->
-> Earlier pins, kept as the triage record. Each names the pin it was written
-> against, in the past tense, because that is what it is — a range triaged
-> once, at the repin that set its end. Only the sentence above is a claim
-> about today.
 >
 > The pin was `4e34dc83eb` (2026-08-03). The `4dd2926f8a..4e34dc83eb` range (2 commits) contained exactly **one**
 > API-contract change, and it was the one that repin existed to absorb: BC3

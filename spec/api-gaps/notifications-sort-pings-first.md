@@ -99,7 +99,7 @@ not the column.
   (`09ff95f35d`), renamed (`0e015cacd6`), then re-landed as `sort_pings_first`
   outright (`8c5af3956f`) with the default flipped after the rename
   (`2480131f78`). Only the final name is on the wire.
-- As of the `b5d8c9df8d..71b43f3d9fa` repin: the bullet above is the route that
+- As of the 2026-08-11 repin: the bullet above is the route that
   reached master, but it is not the only spelling of these commits in history —
   the same work was carried in parallel on `unify-pings-notifications` (BC3
   #12279: `83eb14da06c` twin of `5561c42106`, `f127e52c1f5` near-twin of
