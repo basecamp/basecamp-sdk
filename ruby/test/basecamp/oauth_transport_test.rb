@@ -801,9 +801,11 @@ class OAuthTransportTest < Minitest::Test
     # find_proxy resolves the target hostname (IPSocket.getaddress) to
     # evaluate its loopback rule — a stalled resolver must be cut by the
     # advertised bound, not hold the request open before any deadline exists.
+    resolver_finished = false
     real = IPSocket.method(:getaddress)
     IPSocket.define_singleton_method(:getaddress) do |host|
       sleep(5)
+      resolver_finished = true
       real.call(host)
     end
 
@@ -812,12 +814,23 @@ class OAuthTransportTest < Minitest::Test
     proxy_env.each { |k| ENV.delete(k) }
     ENV["https_proxy"] = "http://127.0.0.1:9"
     begin
-      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      assert_raises(Faraday::TimeoutError) do
-        Basecamp::Oauth::Fetcher.stream_http(:get, "https://dns-stall.test/token", timeout: 0.5)
+      took = elapsed do
+        assert_raises(Faraday::TimeoutError) do
+          Basecamp::Oauth::Fetcher.stream_http(:get, "https://dns-stall.test/token", timeout: 0.5)
+        end
       end
-      took = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-      assert_operator took, :<, 2.0, "proxy-resolution DNS must be cut by the deadline, took #{took.round(2)}s"
+      # Assert the MECHANISM, not wall clock (#708): the find_proxy bound's
+      # asynchronous raise interrupts the resolver stub MID-SLEEP, so its
+      # completion flag never flips. Without the bound the call sits out the
+      # full 5s stall, the flag flips, and the ECONNREFUSED that follows still
+      # maps to Faraday::TimeoutError (past-deadline classification) — this
+      # assertion, not the error class, is what discriminates.
+      assert_not resolver_finished, \
+        "stream_http returned only after the stalled resolver ran to completion — the find_proxy bound did not cut it"
+      # Hang guard ONLY — generous on purpose: it protects the suite from a
+      # wedged resolution phase and asserts nothing about timing tightness.
+      assert_operator took, :<, 15, \
+        "hang guard, not a timing bound: the stalled resolver should be cut in ~0.5s; #{took.round(2)}s means nothing cut it"
     ensure
       proxy_env.each { |k| ENV.delete(k) }
       saved.each { |k, v| ENV[k] = v }
@@ -892,6 +905,16 @@ class OAuthTransportTest < Minitest::Test
     # the per-read timeout resets on every dripped byte. A proxy dripping the
     # CONNECT response below read_timeout must be cut by the whole-phase
     # deadline bound, not left to per-read timeouts that never fire.
+    #
+    # The drip is ENDLESS: the terminating blank line never arrives, and every
+    # 0.2s gap sits well under the 0.5s per-read timeout — so no per-read
+    # timeout can ever fire and the call can NEVER return on its own. The only
+    # way out is the whole-phase connect bound's asynchronous cut closing the
+    # socket MID-DRIP, which the proxy observes as a write error and reports
+    # on the queue. (The drip does stop after ~20s — far past every assertion
+    # horizon — solely so a broken bound fails the hang guard below instead of
+    # wedging the suite.)
+    cut = Queue.new
     proxy = TCPServer.new("127.0.0.1", 0)
     @servers << proxy
     @server_threads << Thread.new do
@@ -899,14 +922,22 @@ class OAuthTransportTest < Minitest::Test
         conn = proxy.accept
         @conns << conn
         while (line = conn.gets) && line != "\r\n"; end
-        # Drip the CONNECT response one byte at a time, each gap well below
-        # the 0.5s per-read timeout, for ~7.6s — far past the 0.5s deadline.
-        "HTTP/1.1 200 Connection Established\r\n\r\n".each_char do |ch|
-          conn.write(ch)
-          sleep(0.2)
+        begin
+          conn.write("HTTP/1.1 200 Connection Established\r\n")
+          100.times do
+            conn.write("a")
+            sleep(0.2)
+          end
+          conn.close
+        rescue IOError, SystemCallError
+          # The rescue must wrap the WHOLE drip loop, not a single write: the
+          # first write after the client closes can still land in the socket
+          # buffer, and only a later write raises. Reaching here means the
+          # client cut the socket mid-drip.
+          cut << true
         end
       rescue IOError, SystemCallError
-        break
+        break # listener closed in teardown
       end
     end
 
@@ -920,12 +951,26 @@ class OAuthTransportTest < Minitest::Test
     ENV["https_proxy"] = "http://127.0.0.1:#{proxy.addr[1]}"
     begin
       took = elapsed do
+        # Discriminating on its own now that the drip is endless: without the
+        # whole-phase connect bound the call cannot return before the drip's
+        # ~20s cap (per-read timeouts never fire between 0.2s gaps, and the
+        # watchdog cannot reach a pre-started? session).
         assert_raises(Faraday::TimeoutError) do
           Basecamp::Oauth::Fetcher.stream_http(:get, "https://proxy-drip.test/token", timeout: 0.5)
         end
       end
-      assert_operator took, :<, 2.0, \
-        "CONNECT parsing must be cut at the ~0.5s deadline; per-read timeouts alone let the drip run ~8s"
+      # Assert the MECHANISM, not wall clock (#708): the proxy observed the
+      # CLIENT cutting the socket mid-drip. Only the whole-phase
+      # Timeout.timeout(connect_remaining) bound closes this socket — the
+      # watchdog's finish raises IOError until the session is started, and no
+      # per-read timeout can fire. A drip that ran out on the proxy's side
+      # instead leaves the queue empty.
+      assert cut.pop(timeout: 5), \
+        "the proxy never saw the client cut the CONNECT drip — the whole-phase connect bound did not fire"
+      # Hang guard ONLY — generous on purpose: it protects the suite from a
+      # wedged connect phase and asserts nothing about timing tightness.
+      assert_operator took, :<, 15, \
+        "hang guard, not a timing bound: the endless drip should be cut in ~0.5s; #{took.round(2)}s means nothing cut it"
     ensure
       proxy_env.each { |k| ENV.delete(k) }
       saved.each { |k, v| ENV[k] = v }
