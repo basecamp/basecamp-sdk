@@ -1,0 +1,44 @@
+AGENTS.md
+  s_655f73c03e416d::t_55895db1f0ac76 131
+go/pkg/basecamp/cards.go
+  s_655f73c03e416d::t_937138c15816e9 553-558
+  s_655f73c03e416d::t_1bc69179a00e3b 1194-1197
+go/pkg/basecamp/todos.go
+  s_655f73c03e416d::t_f6ed34dfb683b4 312-318,320,330-334,337-339,341,344-346,348,351-352
+  s_655f73c03e416d::t_77b5889e1827d9 736,738,741,743,745,748,751,754-755,758-760,762,765-767,769
+  s_655f73c03e416d::t_94d377d7dbb713 779,799
+go/pkg/basecamp/todolists_test.go
+  s_655f73c03e416d::t_9919da1ef10a5c 831-832,834-835
+SPEC.md
+  s_655f73c03e416d::t_2ffd234b3b2072 1999
+go/pkg/basecamp/wire_bodies_test.go
+  s_655f73c03e416d::t_02b0c431f34102 1-449
+go/pkg/basecamp/checkins.go
+  s_655f73c03e416d::t_98695e1aba4994 966-967,971-973,976
+go/pkg/basecamp/documents.go
+  s_655f73c03e416d::t_f1ab74d74062d2 8-9,114,120-126,232,234,236-238,240,245,252-254,274-275
+go/pkg/basecamp/people.go
+  s_655f73c03e416d::t_2f9b66475b6bb5 279-286,289-290,293
+go/pkg/basecamp/schedules.go
+  s_655f73c03e416d::t_60af9c8b693b04 316,318,321-329,332-333,423-427,429,432-437,440-441,444,447,450,1016,1018,1025-1030,1051-1052
+go/pkg/basecamp/todolist_groups.go
+  s_655f73c03e416d::t_200904a4acbf5a 282,284,287,289,291,303
+go/pkg/basecamp/todolists.go
+  s_655f73c03e416d::t_7139f649379a3f 239,241,243-245,530,532,535,537,539,550,573-576,581,596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0c94e8d275b7337731d4c6539c7a767adb9e195e",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
