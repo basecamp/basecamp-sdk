@@ -1,0 +1,19 @@
+scripts/validate-api-gaps.rb
+  s_b429eb5f926267::t_46c99429111301 58-61,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6bd1b1edff14ad8ec28f567b90891e583c7824e9",
+  "prompts": {},
+  "sessions": {
+    "s_b429eb5f926267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50a1085e-2c16-4b99-b4e1-e3cc5665f1c4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
