@@ -1,0 +1,19 @@
+SPEC.md
+  s_be95a2377e6b9a::t_dd0a966504778f 140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cccca0c1bc07acac1a844a811eb3d0a77c083214",
+  "prompts": {},
+  "sessions": {
+    "s_be95a2377e6b9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d94a31f-3d7d-442e-8ff1-6740138a75b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
