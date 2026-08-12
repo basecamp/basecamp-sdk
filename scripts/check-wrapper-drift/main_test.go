@@ -2460,3 +2460,94 @@ type Outer struct {
 		t.Error("assigning the embed with an empty literal must not populate the leaf")
 	}
 }
+
+// TestFlattenEmbedded_IgnoredFieldNotPromotedFromDescendant is the depth-N half
+// of the ignored-field rule: a tagged anonymous field of an unexported
+// non-struct type is invisible to encoding/json wherever it is declared, so
+// embedding the struct that declares it must not promote its tag either.
+// Filtering only the root would have promoted a key that is on no wire.
+func TestFlattenEmbedded_IgnoredFieldNotPromotedFromDescendant(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type hidden string
+
+type Mid struct {
+	hidden ~json:"ghost"~
+	Real   string ~json:"real"~
+}
+
+type Outer struct {
+	Mid
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["ghost"] {
+		t.Error("a field encoding/json ignores cannot be promoted onto an embedding struct")
+	}
+	if !outer.tags["real"] {
+		t.Errorf("the visible field must still promote, got %v", outer.tags)
+	}
+}
+
+// TestFlattenEmbedded_MethodBearingInterfaceEmbedIsRejected covers the other
+// way a custom marshaller reaches the embedding type: an embedded INTERFACE
+// carrying MarshalJSON in its method set promotes it exactly as a struct's
+// method would, and the interface has no fields for the walk to notice. Also
+// covers an interface that gets the method by embedding another interface,
+// since a method set is transitive.
+func TestFlattenEmbedded_MethodBearingInterfaceEmbedIsRejected(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Marshaler interface {
+	MarshalJSON() ([]byte, error)
+}
+
+type Fancy interface {
+	Marshaler
+	Extra()
+}
+
+type Plain interface {
+	Do()
+}
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type Direct struct {
+	Marshaler
+	Base
+}
+
+type Transitive struct {
+	Fancy
+	Base
+}
+
+type Harmless struct {
+	Plain
+	Base
+}
+`))
+	for _, name := range []string{"Direct", "Transitive"} {
+		sf := structs[name]
+		if sf == nil {
+			t.Fatalf("%s not collected", name)
+		}
+		if len(sf.unresolved) == 0 {
+			t.Errorf("%s: embedding an interface whose method set carries MarshalJSON must be reported", name)
+		}
+		if sf.tags["id"] {
+			t.Errorf("%s: no tag may be certified once a custom marshaller is promoted", name)
+		}
+	}
+	// An ordinary interface embed promotes no method that redirects the
+	// encoder, so it stays the harmless no-op it always was.
+	if h := structs["Harmless"]; h == nil || len(h.unresolved) != 0 || !h.tags["id"] {
+		t.Errorf("a plain interface embed must not be rejected, got %+v", structs["Harmless"])
+	}
+}

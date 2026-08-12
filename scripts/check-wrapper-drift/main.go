@@ -387,6 +387,12 @@ type structFields struct {
 	// embeds lists this struct's anonymous, untagged fields — the ones whose
 	// tagged fields are promoted onto this struct by encoding/json.
 	embeds []embedRef
+	// ignoredOwn marks ownFields slots encoding/json never sees — a tagged
+	// anonymous field of an unexported non-struct type. Computed once per
+	// struct by flattenEmbedded, and skipped at EVERY promotion depth: a field
+	// the encoder ignores cannot be promoted onto an embedding struct, nor
+	// annihilate or shadow a field the encoder does see.
+	ignoredOwn map[int]bool
 	// tagPath maps a PROMOTED tag to the embedded field names traversed to
 	// reach it (`{"Base", "Audit"}` for a field promoted through Base's
 	// embedded Audit). Own tags are absent.
@@ -917,12 +923,13 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 // of promoted tags describes the wire shape any more.
 func collectJSONMethodTypes(f *ast.File) map[string]bool {
 	out := map[string]bool{}
+	// Methods declared with a receiver.
 	for _, decl := range f.Decls {
 		fd, ok := decl.(*ast.FuncDecl)
 		if !ok || fd.Recv == nil || len(fd.Recv.List) != 1 {
 			continue
 		}
-		if fd.Name.Name != "MarshalJSON" && fd.Name.Name != "UnmarshalJSON" {
+		if !isJSONMethodName(fd.Name.Name) {
 			continue
 		}
 		recv := fd.Recv.List[0].Type
@@ -933,7 +940,56 @@ func collectJSONMethodTypes(f *ast.File) map[string]bool {
 			out[id.Name] = true
 		}
 	}
+	// Interfaces carrying the method in their method set. Embedding one
+	// promotes it just as embedding a struct with the method does, and the
+	// interface itself has no field to give the walk a second chance.
+	ifaceEmbeds := map[string][]string{}
+	for name, rhs := range collectTypeDecls(f) {
+		it, ok := rhs.(*ast.InterfaceType)
+		if !ok {
+			continue
+		}
+		for _, m := range it.Methods.List {
+			if len(m.Names) == 0 {
+				// An embedded interface: it contributes its whole method set.
+				if id, ok := m.Type.(*ast.Ident); ok {
+					ifaceEmbeds[name] = append(ifaceEmbeds[name], id.Name)
+				}
+				continue
+			}
+			for _, n := range m.Names {
+				if isJSONMethodName(n.Name) {
+					out[name] = true
+				}
+			}
+		}
+	}
+	// Propagate through interface embedding until stable. The universe is
+	// small and the loop is bounded by its size, so a cycle cannot spin.
+	for range ifaceEmbeds {
+		changed := false
+		for name, embedded := range ifaceEmbeds {
+			if out[name] {
+				continue
+			}
+			for _, e := range embedded {
+				if out[e] {
+					out[name] = true
+					changed = true
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
 	return out
+}
+
+// isJSONMethodName reports whether a method name is one whose promotion
+// redirects encoding/json away from a struct's fields.
+func isJSONMethodName(name string) bool {
+	return name == "MarshalJSON" || name == "UnmarshalJSON"
 }
 
 // collectTypeDecls returns every top-level `type X <expr>` declaration in the
@@ -1021,6 +1077,22 @@ const maxEmbedDepth = 16
 // unresolved list — never skipped — and reported by run when a pair reaches
 // them.
 func flattenEmbedded(structs map[string]*structFields, decls map[string]ast.Expr, jsonMethods map[string]bool) {
+	// Settle which fields the encoder ignores before any promotion runs, for
+	// every struct rather than just the roots: the walk reads a descendant's
+	// ownFields directly, so filtering only at depth 0 would promote a tag out
+	// of a field encoding/json never emits.
+	for _, sf := range structs {
+		sf.ignoredOwn = map[int]bool{}
+		for _, te := range sf.taggedEmbeds {
+			if te.ref.name == "" || ast.IsExported(te.ref.name) {
+				continue
+			}
+			if child, _, err := resolveEmbed(te.ref, structs, decls); err == "" && child != nil {
+				continue
+			}
+			sf.ignoredOwn[te.ownIndex] = true
+		}
+	}
 	for name, sf := range structs {
 		flattenOne(name, sf, structs, decls, jsonMethods)
 	}
@@ -1042,22 +1114,6 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 	// twice, which encoding/json annihilates exactly like a same-depth
 	// promotion conflict. The tag is then on no field's wire output, so it
 	// stays claimed (blocking deeper promotion) but is not present.
-	// A tagged anonymous field of an UNEXPORTED type is only on the wire when
-	// that type is a struct; encoding/json drops the others whatever the tag
-	// says. This needs the universe, so it is settled here rather than at
-	// collection — and it has to happen BEFORE dominance, because a field
-	// encoding/json never sees cannot annihilate or shadow one it does.
-	ignoredOwn := map[int]bool{}
-	for _, te := range root.taggedEmbeds {
-		if te.ref.name == "" || ast.IsExported(te.ref.name) {
-			continue
-		}
-		if child, _, err := resolveEmbed(te.ref, structs, decls); err == "" && child != nil {
-			continue
-		}
-		ignoredOwn[te.ownIndex] = true
-	}
-
 	// Rebuild the own-tag view from the surviving fields — deleting the ignored
 	// field's tag outright would take a REAL field's tag with it when the two
 	// collide, which is the phantom drift this ordering exists to avoid. A tag
@@ -1068,7 +1124,7 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 	root.tags = map[string]bool{}
 	root.tagToGoField = map[string]string{}
 	for i, f := range root.ownFields {
-		if ignoredOwn[i] {
+		if root.ignoredOwn[i] {
 			continue
 		}
 		ownCount[f.tag]++
@@ -1087,6 +1143,24 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 			delete(root.tags, tag)
 			delete(root.tagToGoField, tag)
 		}
+	}
+
+	// The own-only view, kept so a discovery that invalidates promotion (a
+	// promoted custom marshaller) can drop every promoted tag and leave the
+	// struct judged on its own declarations alone.
+	ownTags := make(map[string]bool, len(root.tags))
+	for t := range root.tags {
+		ownTags[t] = true
+	}
+	ownTagToGoField := make(map[string]string, len(root.tagToGoField))
+	for t, f := range root.tagToGoField {
+		ownTagToGoField[t] = f
+	}
+	discardPromotions := func() {
+		root.tags = ownTags
+		root.tagToGoField = ownTagToGoField
+		root.tagPath = map[string][]string{}
+		root.tagTargets = map[string][]string{}
 	}
 
 	// Go-name resolution, tracked alongside the tag walk: nameDepth records the
@@ -1130,15 +1204,23 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 						fmt.Sprintf("%s -> %s (%s)", strings.Join(append([]string{rootName}, parent.path...), "."), e.display, err))
 					continue
 				}
-				if jsonMethods[childName] {
+				// Checked on the embed's own name as well as the resolved
+				// struct: an embedded INTERFACE carries the method in its
+				// method set and resolves to no struct at all, so keying only
+				// on the resolution would miss it entirely.
+				if jsonMethods[e.name] || (childName != "" && jsonMethods[childName]) {
 					// Promoting a custom marshaller changes how the WHOLE
-					// embedding struct is encoded, so its tag set no longer
-					// describes the wire at all. Refuse to judge rather than
-					// certify keys the method may never emit.
+					// embedding struct is encoded, so NO promoted tag on this
+					// struct describes the wire any more — not just this
+					// embed's. Method promotion is transitive, so this holds
+					// wherever in the tree the method appears. Report, discard
+					// every promotion made so far, and stop: refusing to judge
+					// beats certifying keys the method may never emit.
 					root.unresolved = append(root.unresolved,
-						fmt.Sprintf("%s -> %s (embedded type declares MarshalJSON/UnmarshalJSON, which the embedding struct promotes; encoding/json then calls it instead of walking these fields)",
+						fmt.Sprintf("%s -> %s (embedded type declares MarshalJSON/UnmarshalJSON, which the embedding struct promotes; encoding/json then calls it instead of walking these fields, so no promoted tag here is trustworthy)",
 							strings.Join(append([]string{rootName}, parent.path...), "."), e.display))
-					continue
+					discardPromotions()
+					return
 				}
 				if child == nil || visited[childName] {
 					// Either the embedded type promotes no JSON-tagged fields
@@ -1181,7 +1263,10 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 		byTag := map[string][]candidate{}
 		var order []string
 		for _, r := range next {
-			for _, f := range r.sf.ownFields {
+			for i, f := range r.sf.ownFields {
+				if r.sf.ignoredOwn[i] {
+					continue
+				}
 				if _, seen := byTag[f.tag]; !seen {
 					order = append(order, f.tag)
 				}
