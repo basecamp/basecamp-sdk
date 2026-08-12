@@ -618,18 +618,22 @@ module Basecamp
     def fetch_signed_download(url)
       # The Location target is server-supplied, and this unauthenticated hop
       # has no same_origin? gate to refuse it (a signed URL is legitimately
-      # cross-origin), so illegible targets must be refused here: URI.parse
-      # raises URI::InvalidComponentError on a scheme-only "mailto:" — the
-      # value Security.resolve_url returns verbatim — and Net::HTTP can only
-      # dial http(s). Both are ApiError, matching the legible refusals Go and
-      # TypeScript surface when their dial rejects the scheme.
+      # cross-origin), so illegible targets must be refused here — as
+      # ApiError, matching the legible refusals Go and TypeScript surface
+      # when their dial rejects the scheme. One predicate states the whole
+      # invariant — a dialable absolute HTTP(S) URL — because piecemeal
+      # guards kept leaking: "it parses" admitted "ftp://", and "scheme is
+      # http(s)" admitted hostless "http:foo", which Net::HTTP::Get rejects
+      # with a raw ArgumentError before the dial (nothing is ever sent).
+      # URI.parse types the scheme (URI::HTTPS < URI::HTTP), and a nil or
+      # empty host ("http:foo", "http:///x") is undialable.
       uri = begin
         URI.parse(url)
       rescue URI::Error
-        raise ApiError.new("redirect to invalid download URL: #{Security.truncate(url)}")
+        nil
       end
-      unless %w[http https].include?(uri.scheme&.downcase)
-        raise ApiError.new("redirect to non-HTTP(S) download URL: #{Security.truncate(url)}")
+      unless uri.is_a?(URI::HTTP) && uri.host && !uri.host.empty?
+        raise ApiError.new("redirect to undialable download URL: #{Security.truncate(url)}")
       end
 
       http_client = Net::HTTP.new(uri.host, uri.port)

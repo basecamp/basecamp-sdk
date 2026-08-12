@@ -174,7 +174,7 @@ class DownloadTest < Minitest::Test
     error = assert_raises(Basecamp::ApiError) do
       @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
     end
-    assert_match(/invalid download URL/, error.message)
+    assert_match(/undialable download URL/, error.message)
   end
 
   def test_download_url_redirect_to_non_http_scheme_is_refused
@@ -185,7 +185,22 @@ class DownloadTest < Minitest::Test
     error = assert_raises(Basecamp::ApiError) do
       @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
     end
-    assert_match(/non-HTTP\(S\) download URL/, error.message)
+    assert_match(/undialable download URL/, error.message)
+  end
+
+  # "http:foo" parses with scheme "http" but a nil host, so a scheme-only
+  # check let it reach Net::HTTP::Get.new, which raises a raw ArgumentError
+  # ("no host component for URI") outside the dial rescue — an unclassified
+  # crash, though never a request: the error fires before anything is sent.
+  def test_download_url_redirect_to_hostless_location_is_refused
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "http:foo" })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+    assert_match(/undialable download URL/, error.message)
   end
 
   # -- Error tests --
