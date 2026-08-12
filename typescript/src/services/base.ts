@@ -145,8 +145,21 @@ export abstract class BaseService {
    */
   protected readonly fetchPage: (url: string) => Promise<Response>;
 
-  /** Maximum pages to follow before stopping (safety cap). */
-  protected readonly maxPages: number;
+  /**
+   * Maximum pages to follow before stopping (safety cap).
+   *
+   * A native #private field, not `protected readonly`: TypeScript's
+   * `readonly` is compile-time only, so `(svc as any).maxPages = Infinity`
+   * would have replaced the validated cap after construction. The pagination
+   * loops read the #field directly — an own-property shadow cannot reach
+   * them — and the getter below preserves the supported subclass read.
+   */
+  readonly #maxPages: number;
+
+  /** Read-only view of the cap; the loops bypass it and read #maxPages. */
+  protected get maxPages(): number {
+    return this.#maxPages;
+  }
 
   /** Base URL for building multipart upload URLs. */
   protected readonly baseUrl: string;
@@ -183,7 +196,7 @@ export abstract class BaseService {
     this.client = client;
     this.hooks = hooks;
     this.fetchPage = fetchPage ?? ((url) => fetch(url, { headers: { Accept: "application/json" } }));
-    this.maxPages = maxPages ?? DEFAULT_MAX_PAGES;
+    this.#maxPages = maxPages ?? DEFAULT_MAX_PAGES;
     this.authenticatedFetch = authenticatedFetch ?? ((url, init) => fetch(url, init));
     this.baseUrl = baseUrl ?? "";
   }
@@ -550,7 +563,7 @@ export abstract class BaseService {
     let response = initialResponse;
     const initialUrl = initialResponse.url;
 
-    for (let page = 1; page < this.maxPages; page++) {
+    for (let page = 1; page < this.#maxPages; page++) {
       const rawNextUrl = parseNextLink(response.headers.get("Link"));
       if (!rawNextUrl) break;
 
@@ -603,7 +616,7 @@ export abstract class BaseService {
     let response = initialResponse;
     const initialUrl = initialResponse.url;
 
-    for (let page = 1; page < this.maxPages; page++) {
+    for (let page = 1; page < this.#maxPages; page++) {
       const rawNextUrl = parseNextLink(response.headers.get("Link"));
       if (!rawNextUrl) break;
 
