@@ -3628,17 +3628,38 @@ type ToggleGaugeRequestContent struct {
 
 // Tool defines model for Tool.
 type Tool struct {
-	AppUrl    *string          `json:"app_url,omitempty"`
-	Bucket    *RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt time.Time        `json:"created_at"`
-	Enabled   bool             `json:"enabled"`
-	Id        int64            `json:"id"`
-	Name      string           `json:"name"`
-	Position  *int32           `json:"position,omitempty"`
-	Status    *string          `json:"status,omitempty"`
-	Title     string           `json:"title"`
-	UpdatedAt time.Time        `json:"updated_at"`
-	Url       *string          `json:"url,omitempty"`
+	AppUrl      *string          `json:"app_url,omitempty"`
+	BookmarkUrl *string          `json:"bookmark_url,omitempty"`
+	Bucket      *RecordingBucket `json:"bucket,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	Creator     Person           `json:"creator"`
+
+	// Enabled Not emitted by this projection. The dock array on a project
+	// (`DockItem$enabled`) carries the enabled flag; on a tool response, an
+	// absent `position` is the disabled signal.
+	Enabled        *bool `json:"enabled,omitempty"`
+	Id             int64 `json:"id"`
+	InheritsStatus bool  `json:"inherits_status"`
+
+	// Name Not emitted by this projection. The dock array on a project
+	// (`DockItem$name`) carries the tool's slug; this key is absent from every
+	// GetTool/CreateTool/UpdateTool response.
+	Name   *string          `json:"name,omitempty"`
+	Parent *RecordingParent `json:"parent,omitempty"`
+
+	// Position Absent while the tool is disabled (removed from the dock, not deleted).
+	Position *int32  `json:"position,omitempty"`
+	Status   *string `json:"status,omitempty"`
+
+	// SubscriptionUrl Absent for tool types that are not subscribable.
+	SubscriptionUrl *string `json:"subscription_url,omitempty"`
+	Title           string  `json:"title"`
+
+	// Type The tool's recordable type, e.g. `Chat::Transcript`, `Todoset`, `Vault`.
+	Type             string    `json:"type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              *string   `json:"url,omitempty"`
+	VisibleToClients bool      `json:"visible_to_clients"`
 }
 
 // UnauthorizedErrorResponseContent defines model for UnauthorizedErrorResponseContent.

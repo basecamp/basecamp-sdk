@@ -34971,6 +34971,9 @@
           "status": {
             "type": "string"
           },
+          "visible_to_clients": {
+            "type": "boolean"
+          },
           "created_at": {
             "type": "string",
             "x-go-type": "time.Time",
@@ -34988,15 +34991,12 @@
           "title": {
             "type": "string"
           },
-          "name": {
-            "type": "string"
-          },
-          "enabled": {
+          "inherits_status": {
             "type": "boolean"
           },
-          "position": {
-            "type": "integer",
-            "format": "int32"
+          "type": {
+            "type": "string",
+            "description": "The tool's recordable type, e.g. `Chat::Transcript`, `Todoset`, `Vault`."
           },
           "url": {
             "type": "string"
@@ -35004,17 +35004,45 @@
           "app_url": {
             "type": "string"
           },
+          "bookmark_url": {
+            "type": "string"
+          },
+          "subscription_url": {
+            "type": "string",
+            "description": "Absent for tool types that are not subscribable."
+          },
+          "position": {
+            "type": "integer",
+            "description": "Absent while the tool is disabled (removed from the dock, not deleted).",
+            "format": "int32"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
           "bucket": {
             "$ref": "#/components/schemas/RecordingBucket"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "name": {
+            "type": "string",
+            "description": "Not emitted by this projection. The dock array on a project\n(`DockItem$name`) carries the tool's slug; this key is absent from every\nGetTool/CreateTool/UpdateTool response."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Not emitted by this projection. The dock array on a project\n(`DockItem$enabled`) carries the enabled flag; on a tool response, an\nabsent `position` is the disabled signal."
           }
         },
         "required": [
           "created_at",
-          "enabled",
+          "creator",
           "id",
-          "name",
+          "inherits_status",
           "title",
-          "updated_at"
+          "type",
+          "updated_at",
+          "visible_to_clients"
         ]
       },
       "UnauthorizedErrorResponseContent": {
