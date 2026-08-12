@@ -307,7 +307,7 @@ doc-constants-check:
 # Go SDK targets (delegates to go/Makefile)
 #------------------------------------------------------------------------------
 
-.PHONY: go-test go-lint go-check go-clean go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage
+.PHONY: go-test go-lint go-check go-clean go-clean-generated go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage
 
 go-test:
 	@$(MAKE) -C go test
@@ -320,6 +320,11 @@ go-check:
 
 go-clean:
 	@$(MAKE) -C go clean
+
+# Remove the TRACKED generated Go client so `make -C go generate` rebuilds it.
+# Deliberately not part of `clean`: clean must never delete tracked files (#668).
+go-clean-generated:
+	@$(MAKE) -C go clean-generated
 
 # Check for drift between generated client and service layer
 go-check-drift:
@@ -1373,6 +1378,7 @@ help:
 	@echo "  test-check-grouped-client-coverage  Self-test that gate with adversarial inventories"
 	@echo "  go-check-generated-drift Check generated client.gen.go is current (regenerate + diff)"
 	@echo "  go-clean         Remove Go build artifacts"
+	@echo "  go-clean-generated  Remove the tracked generated Go client (explicit opt-in)"
 	@echo ""
 	@echo "TypeScript SDK:"
 	@echo "  ts-generate           Generate types and metadata from OpenAPI"
