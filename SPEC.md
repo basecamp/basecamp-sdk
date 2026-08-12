@@ -578,6 +578,8 @@ That error is `api_error` with **no `http_status`** and **`retryable: false`**. 
 
 Message is truncated to `MAX_ERROR_MESSAGE_LENGTH` like any other (§9) — the malformed value is embedded in it, so the cap is load-bearing rather than cosmetic.
 
+The composites are where this shape is *required*, not where it is *bounded*. Kotlin and Swift decode into typed models, so their decoder refuses a malformed body on every operation, and each request primitive maps that failure to this same shape rather than leaking `SerializationException`/`DecodingError` (#604). The mapping is scoped to the decode expression alone: an auth-phase throw, a transport failure and a *request-body* encoding failure are not malformed responses and keep their own classification — in Kotlin the request body is serialized inside the same `try` and raises the identical exception type, so the distinction is positional, not type-based.
+
 ### Error Body Parsing Algorithm
 
 1. Attempt to parse `body` as JSON.

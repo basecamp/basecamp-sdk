@@ -94,11 +94,14 @@ class TodolistsService(client: AccountClient) :
      *
      * kotlinx.serialization is the typed guard the dynamic SDKs write by hand,
      * and it rejects a structurally wrong-typed or missing required field
-     * before this composite ever sees it — but it reports that as a raw
-     * [SerializationException], which is not the shape SPEC §6 defines for a
-     * malformed 2xx body: callers catching [BasecampException] would miss it
-     * entirely and it carries no hint. Wrap it, so a malformed response looks
-     * the same in every SDK.
+     * before this composite ever sees it. `BaseService` now renders that as the
+     * SPEC §6 malformed-2xx-body shape for every operation (#604) — a
+     * statusless, non-retryable [BasecampException.Api] carrying the
+     * [SerializationException] as its `cause`. What the base layer cannot know
+     * is this composite's own account of the failure: which record failed to
+     * decode, and the escape hatch for writing it deliberately. That is what is
+     * restated here, keyed off the `cause` so any other [BasecampException.Api]
+     * passes through untouched.
      *
      * (Bare JSON scalars are refused as well as structural mismatches. They
      * were not until #598 removed the client-wide `isLenient`, which rendered a
@@ -107,15 +110,16 @@ class TodolistsService(client: AccountClient) :
     private suspend fun fetchTodolist(id: Long): Todolist =
         try {
             get(id)
-        } catch (e: SerializationException) {
+        } catch (e: BasecampException.Api) {
+            val decodeFailure = e.cause as? SerializationException ?: throw e
             throw BasecampException.Api(
                 message = "GetTodolistOrGroup returned a body that does not decode as a " +
-                    "todolist: ${e.message}",
+                    "todolist: ${decodeFailure.message}",
                 hint = "The merge-safe update/edit resend this record's fields verbatim, so a " +
                     "malformed response cannot be written back safely. Use replace to write the " +
                     "record deliberately.",
                 retryable = false,
-                cause = e,
+                cause = decodeFailure,
             )
         }
 

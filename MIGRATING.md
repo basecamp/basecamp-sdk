@@ -185,6 +185,40 @@ dock-tool projections have modeled them `@required` all along — but a
 hand-written test stub that predates this change will hit it, which is the
 realistic way to meet it.
 
+||||||| parent of 3d818e5cb (Isolate the response decoder from auth, transport and request encoding)
+### Kotlin and Swift: a malformed 2xx body raises an SDK error, not the decoder's (#604)
+
+**Class B — compiles, then raises a different error type on the wrong payload.**
+
+Both SDKs ran encode → URL build → auth → transport → status check → decode
+inside one `try`/`do` per request primitive, with a terminal catch that mapped
+nothing. A response that did not decode therefore arrived as the decoder's own
+exception — indistinguishable from the auth strategy throwing or the socket
+dropping, and invisible to a caller catching the SDK's error type. Only the
+decode expression is wrapped now, for **every operation**, not just the §18
+composites that already did this by hand.
+
+| SDK | was | now |
+|---|---|---|
+| Kotlin | `kotlinx.serialization.SerializationException` (incl. `MissingFieldException`) | `BasecampException.Api` with `httpStatus == null`, `retryable == false`, and the `SerializationException` as `cause` |
+| Swift | `DecodingError` — and, on the wrapped-list path, a raw `NSError` from `JSONSerialization` for a body that is not JSON at all | `BasecampError.api(message:httpStatus:hint:requestId:)` with `httpStatus == nil` (so `isRetryable == false`); the underlying error's description is interpolated into `message` |
+| Go, TypeScript, Ruby, Python | unchanged | unchanged |
+
+**Wrong behaviour you get if you ignore it:** a `catch (e: SerializationException)`
+or `catch let error as DecodingError` around an SDK call stops matching. The
+statusless `api_error` shape is the one SPEC §6 already defined for a malformed
+2xx body, so code that switches on the SDK's own error type needs no change —
+and now sees a failure it previously missed entirely.
+
+What did **not** move: an auth-strategy throw, a transport failure and a
+*request-body* encoding failure all still surface exactly as before. In Kotlin
+that distinction is load-bearing — the request body is serialized inside the
+same `try`, and throws the same `SerializationException` type the decoder does.
+
+`BasecampError.api` gained no `cause` slot: adding an associated value would
+break every `switch` over the case. Swift carries the underlying error in the
+message, as its composites already did.
+
 ### `SearchResult` lost five required members and gained the special-branch keys (#651)
 
 BC3's search projection special-cases four result branches — chat lines,

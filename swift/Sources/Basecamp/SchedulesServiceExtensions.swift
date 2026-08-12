@@ -280,23 +280,27 @@ extension SchedulesService {
     private func fetchEntry(entryId: Int) async throws -> ScheduleEntry {
         // Swift's decoder is the typed guard the dynamic SDKs have to write by
         // hand, and it rejects an absent, null or wrong-typed required field
-        // before this composite ever sees it. But it reports that as a raw
-        // `DecodingError`, which is not the shape SPEC §6 defines for a
-        // malformed 2xx body: callers checking for `BasecampError` would miss
-        // it entirely, and it carries no hint. Wrap it, so a malformed response
-        // looks the same in every SDK.
+        // before this composite ever sees it. `BaseService.decoding(_:_:)` now
+        // renders that as the SPEC §6 malformed-2xx-body shape for every
+        // operation (#604) — statusless, non-retryable `api_error` — so what is
+        // left to add here is the part the base layer cannot know: the
+        // composite's escape hatch. A statusless `.api` is exactly that failure
+        // and nothing else, because a plain GET produces one only when the
+        // transport succeeded and the body did not decode; every other `.api`
+        // carries the status it came from.
         do {
             return try await getEntry(entryId: entryId)
-        } catch let error as DecodingError {
+        } catch let error as BasecampError {
+            guard case .api(let message, let httpStatus, _, let requestId) = error,
+                  httpStatus == nil
+            else { throw error }
             throw BasecampError.api(
-                message: BasecampError.truncate(
-                    "GetScheduleEntry returned a body that does not decode as a schedule entry: "
-                        + "\(error)"),
+                message: message,
                 httpStatus: nil,
                 hint: "The merge-safe updateEntry/editEntry resend this record's fields verbatim, "
                     + "so a malformed response cannot be written back safely. Use "
                     + "replaceEntry(entryId:req:) to write the record deliberately.",
-                requestId: nil
+                requestId: requestId
             )
         }
     }
