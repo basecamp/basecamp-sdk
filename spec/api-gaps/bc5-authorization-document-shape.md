@@ -1,6 +1,6 @@
 ---
 gap: bc5-authorization-document-shape
-status: addressed-in-bc3-pr-12646
+status: covered-outside-spec
 detected: 2026-08-05
 sdk_demand: medium
 bc3_pr: 12646
@@ -253,8 +253,9 @@ the bc3 half:
   PR. The self-referential controller-test assertions were replaced with
   shape assertions (`String` + `Time.iso8601` parse-back), proven failing
   against the old view. **No SDK change needed**: Go's `FlexTime` and TS's
-  `parseExpiresAt` accept both spellings, and Ruby/Python pass the value
-  through untyped.
+  `parseExpiresAt` accept both spellings; Ruby passes the value through
+  untyped; Python never reaches bc3's document at all (hardcoded to the
+  Launchpad URL — see above), so nothing changes for it.
 - **bc3 documents its own document.** `doc/api/sections/authentication.md`
   gained a "Get authorization from Basecamp" section — both token types, the
   RFC 8707 `resource` indicator, the `scope` presence rule (every
@@ -262,10 +263,13 @@ the bc3 half:
   scopes), the identity-id-only shape, the DPoP-bound request form, ISO 8601
   `expires_at`. Mirrored to the public repo via bc-api #435.
 
-This status is **terminal**: no absorption PR will follow, because this surface
-is deliberately outside the OpenAPI spec (the same reason `absorbed-in-sdk`
-fails validation here — no `smithy_refs` can exist). At repin time, treat this
-entry as registered-and-done rather than pending absorption.
+The status is `covered-outside-spec` — the registry's terminal state for
+surfaces the architecture deliberately keeps outside the OpenAPI spec, added
+for this entry as its first instance. No absorption PR will follow and none is
+pending: `absorbed-in-sdk` can never apply (no `smithy_refs` can exist), and
+the coverage claim points instead at the sanctioned hand-written surface named
+in `bc3_refs.related_existing_api`, which the validator now requires for this
+status.
 
 Left open upstream, deliberately, as flagged on #12646:
 

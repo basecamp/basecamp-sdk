@@ -17,7 +17,10 @@ making the absorption journey publicly auditable.
    updates to `addressed-in-bc3-pr-N`.
 3. **Absorb**: SDK opens a follow-up PR adding the Smithy operations and
    regenerated SDK code. Frontmatter updates to `absorbed-in-sdk` with
-   Smithy structure refs.
+   Smithy structure refs. Surfaces the architecture deliberately keeps
+   outside the OpenAPI spec (OAuth, SPEC §16) can never take this step —
+   they close as `covered-outside-spec` instead, pointing at the covering
+   hand-written surface via `bc3_refs.related_existing_api`.
 4. **Archive**: entries more than a year past `absorbed-in-sdk` may be moved
    to `archive/` for tidiness; they remain readable as historical record.
 
@@ -31,6 +34,7 @@ making the absorption journey publicly auditable.
 | `confirmed-not-api-resource` | BC3 confirmed UI-only / not part of the API surface; entry retained as classification record. |
 | `addressed-in-bc3-pr-N` | BC3 has shipped a JSON API contract; SDK absorption pending. |
 | `absorbed-in-sdk` | SDK has absorbed the contract via Smithy + regenerated code. |
+| `covered-outside-spec` | Terminal. Contract shipped upstream and covered by the SDK's sanctioned hand-written surface (`bc3_refs.related_existing_api`); deliberately outside the OpenAPI spec, so `absorbed-in-sdk` can never apply. |
 
 ## Entries (current)
 
@@ -70,7 +74,7 @@ making the absorption journey publicly auditable.
 | [event-feed](event-feed.md) | no-json-contract | n/a | high |
 | [project-archive-unarchive](project-archive-unarchive.md) | absorbed-in-sdk | master | medium |
 | [notifications-sort-pings-first](notifications-sort-pings-first.md) | partial-coverage | master | low |
-| [bc5-authorization-document-shape](bc5-authorization-document-shape.md) | addressed-in-bc3-pr-12646 | master | medium |
+| [bc5-authorization-document-shape](bc5-authorization-document-shape.md) | covered-outside-spec | master | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
