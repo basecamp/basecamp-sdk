@@ -31,12 +31,13 @@ func (ft *FlexTime) UnmarshalJSON(data []byte) error {
 	var unix int64
 	if err := json.Unmarshal(data, &unix); err == nil {
 		if unix == 0 {
-			// bc3 renders `expires_at.to_i`, so a wire 0 would be its spelling
-			// of an unstated expiry, and RFC 7591 gives 0 the meaning "never
-			// expires" (bc3's own client_secret_expires_at). Either way,
-			// "expired at the 1970 epoch" — a *valid* time.Unix(0, 0) instant —
-			// is the one wrong reading. Treat it as "no expiry known",
-			// matching TypeScript's parseExpiresAt.
+			// bc3 rendered `expires_at.to_i` before bc3 #12646, so a wire 0
+			// would have been its spelling of an unstated expiry, and RFC 7591
+			// gives 0 the meaning "never expires" (bc3's own
+			// client_secret_expires_at). Either way, "expired at the 1970
+			// epoch" — a *valid* time.Unix(0, 0) instant — is the one wrong
+			// reading. Treat it as "no expiry known", matching TypeScript's
+			// parseExpiresAt.
 			ft.Time = time.Time{}
 			return nil
 		}

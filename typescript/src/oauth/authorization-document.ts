@@ -175,7 +175,8 @@ export interface RawAuthorizationDocument {
  */
 export function parseExpiresAt(value: string | number | null | undefined): Date {
   if (typeof value === "number") {
-    // Epoch seconds, not milliseconds. `0` is bc3's rendering of a nil expiry.
+    // Epoch seconds, not milliseconds. `0` is the defensive no-expiry sentinel
+    // (RFC 7591 gives 0 the meaning "never expires"); no issuer emits it.
     return value === 0 ? new Date(NaN) : new Date(value * 1000);
   }
   if (typeof value === "string" && value !== "") {
