@@ -1,0 +1,34 @@
+Makefile
+  s_655f73c03e416d::t_25e52bbecc00b4 770
+  s_655f73c03e416d::t_7ec72a0d5de41b 784
+  s_655f73c03e416d::t_4b2492105dcd37 685
+  s_655f73c03e416d::t_cd1ee8706fc7b1 757-759,762
+  s_655f73c03e416d::t_1cd9620a436bcc 772-773,776
+  s_655f73c03e416d::t_784c544c325a2e 656-661,664
+scripts/assert-lockfiles-unchanged
+  s_655f73c03e416d::t_aad0bd405d1505 130-133
+  s_655f73c03e416d::t_f5137dd917150d 107-110
+.github/workflows/test.yml
+  s_655f73c03e416d::t_62bf4dfdf607c0 534-537
+  s_655f73c03e416d::t_1303827a53c5e2 633-634,636
+conformance/runner/python/uv.lock
+  s_655f73c03e416d::t_706e4e6c691a26 1-197
+conformance/runner/ruby/Gemfile.lock
+  s_655f73c03e416d::t_672430f7984f27 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "34d8d05e5a45284426194b07452fab623f9a3235",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
