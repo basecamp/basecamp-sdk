@@ -1,0 +1,27 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt
+  s_655f73c03e416d::t_1b5bb1d7e248c7 343
+  s_655f73c03e416d::t_c0aa34aa55a351 335-342,344
+  s_655f73c03e416d::t_6693ae6efec1e0 119
+  s_655f73c03e416d::t_7fba5a616ceb21 334
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/RetryTest.kt
+  s_655f73c03e416d::t_2d99bd5b823cc5 444-504
+SPEC.md
+  s_655f73c03e416d::t_680ca7cc1e9be0 138
+  s_655f73c03e416d::t_220e55b2aff9b6 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "56a4d9ac0f6b9fcbe9380045af79a6fa9fa5dc7e",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
