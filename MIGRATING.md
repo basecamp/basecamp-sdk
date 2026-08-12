@@ -152,7 +152,7 @@ guesses — they are the partial's own `if`s:
 | Go `pkg/generated` | `Name string`, `Enabled bool` | `*string`, `*bool` — value use is a compile error; plus `Creator Person`, `Type`, `VisibleToClients`, `InheritsStatus` (value) and `BookmarkUrl`, `SubscriptionUrl`, `Parent` (pointers) |
 | Go `pkg/basecamp` | `Name string`, `Enabled bool` on the wrapper | `*string`, `*bool`, **always nil** — value use is a compile error. Deliberately not value-typed with `omitempty`: `""`/`false` would read like a real answer. Wrapper gains the same seven |
 | Swift | `let name: String`, `let enabled: Bool` | `var name: String?`, `var enabled: Bool?` — **decoding a real response now succeeds instead of throwing**. New non-optional `creator`, `type`, `visibleToClients`, `inheritsStatus`; the memberwise `init` argument list changed |
-| TypeScript | `name: string`, `enabled: boolean` | `name?: string`, `enabled?: boolean` — reading either without a guard is a compile error under `strictNullChecks`. `type`, `visible_to_clients`, `inherits_status`, `creator` are now required |
+| TypeScript | `name: string`, `enabled: boolean` | `name?: string`, `enabled?: boolean` — the read itself still compiles, at type `string \| undefined`; only *using* one where a concrete `string`/`boolean` is required needs a guard or a default. `type`, `visible_to_clients`, `inherits_status`, `creator` are now required |
 | Python | `name`/`enabled` required in the `TypedDict` | `NotRequired[...]`; `type`, `visible_to_clients`, `inherits_status`, `creator` required — type-checker-visible only, nothing changes at runtime |
 | Ruby | `Types::Tool.required_fields` included `:enabled`, `:name` | returns `[:created_at, :creator, :id, :inherits_status, :title, :type, :updated_at, :visible_to_clients]`; readers for every new key |
 | Kotlin | `val name: String`, `val enabled: Boolean` | `String?`/`Boolean?` (defaulted null); new **non-null** `visibleToClients`, `inheritsStatus`, `type`, `creator` |
@@ -163,11 +163,20 @@ throw that fired on every call, leaving two optionals you could never read
 anyway), while *constructing* one is a compile error until you pass the four
 new non-defaulted arguments the memberwise `init` gained: `creator`, `type`,
 `visibleToClients`, `inheritsStatus`. Test doubles and fixtures are where that
-lands. Everywhere else the trap is `enabled`: Go read `false` and
-Ruby/Python/TypeScript read nil for every tool, enabled or not, because the key
-was never sent. **For a docked tool, use the absence of `position`** — or the
-project's `dock` array, which really does carry `enabled` — to tell a disabled
-tool from an enabled one.
+lands. Everywhere else the trap is `enabled`, and it does not
+look the same in each SDK, because the key was never sent at all:
+
+- **Go** reads `false` for every tool, enabled or not — the wrapper's `Enabled`
+  is now `*bool` precisely so this reads as nil instead.
+- **Ruby** reads `nil` (`Types::Tool#enabled`, and `result["enabled"]` on the
+  raw hash).
+- **Python** services return the raw response dict, so `result["enabled"]`
+  **raises `KeyError`** — it is `result.get("enabled")` that returns `None`.
+- **TypeScript** reads `undefined`.
+
+**For a docked tool, use the absence of `position`** — or the project's `dock`
+array, which really does carry `enabled` — to tell a disabled tool from an
+enabled one.
 
 Kotlin's four new non-null members are class B by this document's rule: a
 response omitting one fails to deserialize. It needs a payload bc3 cannot
