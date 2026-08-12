@@ -1,0 +1,46 @@
+typescript/tests/services/people.test.ts
+  s_655f73c03e416d::t_3a122de13d646e 175-181
+MIGRATING.md
+  s_655f73c03e416d::t_5c11d9fef349db 63-83
+spec/basecamp.smithy
+  s_655f73c03e416d::t_60dd8d4d7174e6 11670-11673,11677,11679
+  s_655f73c03e416d::t_a8e38655975883 10965-10968,10972,10974
+ruby/test/basecamp/services/people_service_test.rb
+  s_655f73c03e416d::t_068646dc246d42 127-128,130-131
+go/pkg/generated/client.gen.go
+  s_655f73c03e416d::t_a0f678f57a5fd2 2117-2120,2122-2124,2224-2234,2246-2249,2251-2253
+openapi.json
+  s_655f73c03e416d::t_c9cc0e55c8fca6 31756,31772-31774,32067,32083-32085
+python/src/basecamp/generated/types.py
+  s_655f73c03e416d::t_a08edae5f90885 1130,1132,1211,1213
+ruby/lib/basecamp/generated/metadata.json
+  s_655f73c03e416d::t_9765ba92070788 4
+ruby/lib/basecamp/generated/types.rb
+  s_655f73c03e416d::t_19a21eedaac572 4,2675,2679,2684,2691,2958,2962,2967,2974
+swift/Sources/Basecamp/Generated/Models/MyAssignmentAssignee.swift
+  s_655f73c03e416d::t_f2913446375448 5,7,9,11
+swift/Sources/Basecamp/Generated/Models/OutOfOfficePerson.swift
+  s_655f73c03e416d::t_61e51945145e5d 5,7,9,11
+typescript/src/generated/metadata.ts
+  s_655f73c03e416d::t_822a29235a9945 40
+typescript/src/generated/openapi-stripped.json
+  s_655f73c03e416d::t_44d49d0a0db5ed 28916,28932-28934,29227,29243-29245
+typescript/src/generated/schema.d.ts
+  s_655f73c03e416d::t_ff751b099b48bf 5052-5057,5062,5064,5178-5183,5188,5190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9e9812c14c331a01a6ff057a853199c8a8f653d6",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
