@@ -103,6 +103,15 @@ def validate_frontmatter(meta, file, required_fields, known_fields, additional_s
       unless section.is_a?(String) && !section.empty?
         add_error(errors, file, "status=confirmed-not-api-resource requires bc3_refs.bc3_plan_section")
       end
+    when "covered-outside-spec"
+      # Terminal state for surfaces the architecture deliberately keeps outside
+      # the OpenAPI spec (OAuth): absorbed-in-sdk's smithy_refs can never exist,
+      # so the coverage claim must point at the sanctioned hand-written surface
+      # instead — otherwise it could not rot-check at all.
+      covering = meta.dig("bc3_refs", "related_existing_api")
+      if !covering.is_a?(Array) || covering.empty?
+        add_error(errors, file, "status=covered-outside-spec requires non-empty bc3_refs.related_existing_api naming the covering hand-written surface")
+      end
     when /\Aaddressed-in-bc3-pr-\d+\z/
       pr = meta["bc3_pr"]
       if pr.nil? || pr.to_s.empty?

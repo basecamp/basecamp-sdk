@@ -18,7 +18,8 @@
           "partial-coverage",
           "ambiguous",
           "confirmed-not-api-resource",
-          "absorbed-in-sdk"
+          "absorbed-in-sdk",
+          "covered-outside-spec"
         ] },
         { "type": "string", "pattern": "^addressed-in-bc3-pr-[0-9]+$" }
       ]
