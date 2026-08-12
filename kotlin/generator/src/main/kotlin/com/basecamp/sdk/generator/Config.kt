@@ -377,6 +377,12 @@ val TYPE_ALIASES = mapOf(
     // envelopes are not entities) — list them explicitly, as DraftParent is.
     "UpcomingScheduleEntry" to "UpcomingScheduleEntry",
     "UpcomingAssignable" to "UpcomingAssignable",
+    // Search's polymorphic hit projection. `findUnderlyingEntitySchema` already
+    // matches the array-of-$ref response shape, so listing it here is the whole
+    // trigger for retyping `Search` from `ListResult<JsonElement>` (see
+    // MIGRATING.md). Every other SDK has carried a typed SearchResult since
+    // #716; Kotlin was the tier where the modelled branches enforced nothing.
+    "SearchResult" to "SearchResult",
 )
 
 /**

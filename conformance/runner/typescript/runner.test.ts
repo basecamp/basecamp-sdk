@@ -215,6 +215,11 @@ function mapScheduleEntryWireFields(body: Record<string, unknown>): UpdateSchedu
 const UPCOMING_WINDOW_START = "2026-06-01";
 const UPCOMING_WINDOW_END = "2026-06-30";
 
+// The query every Search case is dispatched with, fixed for the same reason. It
+// is required, and the mock returns its queued body regardless of what is asked
+// for.
+const SEARCH_QUERY = "Leto";
+
 /**
  * Flattens the upcoming-schedule envelope into top-level scalars.
  *
@@ -308,6 +313,95 @@ function summarizeUploadVersions(
 }
 
 /**
+ * Flattens a search result list into top-level scalars, one group per branch of
+ * BC3's polymorphic search projection.
+ *
+ * Flat and scalar for the reason summarizeProjects gives. Boolean for a second
+ * reason: the response is an ARRAY and no assertion type expresses absence
+ * inside one — there is headerAbsent and requestBodyAbsent, but no
+ * responseBodyAbsent — and the file-attachment branch is recognized precisely
+ * BY the absence of the five envelope keys. Encoding that as a boolean is the
+ * established idiom (last_has_upload).
+ *
+ * Each hit is selected by predicate rather than by index, so a fixture can
+ * present one branch alone and still assert the others report honestly.
+ */
+function summarizeSearch(
+  results: Awaited<ReturnType<BasecampClient["search"]["search"]>>,
+): Record<string, unknown> {
+  const nonNull = (v: unknown): boolean => v !== undefined && v !== null;
+  const generic = results.find((r) => nonNull(r.type));
+  const attachment = results.find((r) => !nonNull(r.type));
+  const uploadLine = results.find((r) => r.type === "Chat::Lines::Upload");
+  const needle = results.find((r) => r.type === "Gauge::Needle");
+  const kanban = results.find((r) => r.type === "Kanban::Column");
+
+  const uploadAttachment = uploadLine?.attachments?.[0];
+  const needleAttachment = needle?.attachments?.[0];
+
+  return {
+    result_count: results.length,
+    bubble_up_url_count: results.filter((r) => nonNull(r.bubble_up_url)).length,
+
+    // The generic recording envelope — the control group.
+    generic_type: generic?.type ?? "",
+    generic_has_id: nonNull(generic?.id),
+    generic_has_title: nonNull(generic?.title),
+    generic_has_type: nonNull(generic?.type),
+    generic_has_url: nonNull(generic?.url),
+    generic_has_app_url: nonNull(generic?.app_url),
+
+    // The file-attachment branch: searches/_attachment.json.jbuilder writes its
+    // own projection, so the absence of a type IS the discriminator.
+    attachment_has_id: nonNull(attachment?.id),
+    attachment_has_title: nonNull(attachment?.title),
+    attachment_has_type: nonNull(attachment?.type),
+    attachment_has_url: nonNull(attachment?.url),
+    attachment_has_app_url: nonNull(attachment?.app_url),
+    attachment_has_content: nonNull(attachment?.content),
+    attachment_has_description: nonNull(attachment?.description),
+    attachment_filename: attachment?.filename ?? "",
+    attachment_content_type: attachment?.content_type ?? "",
+    attachment_byte_size: attachment?.byte_size ?? 0,
+    attachment_previewable: attachment?.previewable ?? false,
+    attachment_width: attachment?.width ?? 0,
+    attachment_height: attachment?.height ?? 0,
+
+    // The chat upload line: a bespoke six-key attachments aggregate carrying
+    // title/url and NONE of the rich-text id/sgid/preview keys.
+    upload_line_type: uploadLine?.type ?? "",
+    upload_boosts_count: uploadLine?.boosts_count ?? 0,
+    upload_attachment_filename: uploadAttachment?.filename ?? "",
+    upload_attachment_has_title: nonNull(uploadAttachment?.title),
+    upload_attachment_has_id: nonNull(uploadAttachment?.id),
+    upload_attachment_has_sgid: nonNull(uploadAttachment?.sgid),
+
+    // The gauge needle: the same attachments key carrying the OTHER variant —
+    // the rich-text one, with id and sgid populated.
+    needle_type: needle?.type ?? "",
+    needle_color: needle?.color ?? "",
+    needle_position: needle?.position ?? 0,
+    needle_comments_count: needle?.comments_count ?? 0,
+    needle_comment_count: needle?.comment_count ?? 0,
+    needle_boosts_count: needle?.boosts_count ?? 0,
+    needle_attachment_has_id: nonNull(needleAttachment?.id),
+    needle_attachment_has_sgid: nonNull(needleAttachment?.sgid),
+    needle_attachment_width: needleAttachment?.width ?? 0,
+
+    // The kanban list: list-partial keys over the envelope, on_hold nested, and
+    // a color emitted unconditionally with a null value.
+    kanban_type: kanban?.type ?? "",
+    kanban_position: kanban?.position ?? 0,
+    kanban_cards_count: kanban?.cards_count ?? 0,
+    kanban_comment_count: kanban?.comment_count ?? 0,
+    kanban_subscriber_count: kanban?.subscribers?.length ?? 0,
+    kanban_has_color: nonNull(kanban?.color),
+    kanban_has_on_hold: nonNull(kanban?.on_hold),
+    kanban_on_hold_cards_count: kanban?.on_hold?.cards_count ?? 0,
+  };
+}
+
+/**
  * Executes the appropriate SDK method for the given operation name.
  * Returns { error?, httpStatus? } so assertions can inspect outcomes.
  *
@@ -337,6 +431,11 @@ async function executeOperation(
           },
           result: summarizeProjects(projects),
         };
+      }
+
+      case "Search": {
+        const results = await client.search.search(SEARCH_QUERY);
+        return { result: summarizeSearch(results) };
       }
 
       case "GetProject": {

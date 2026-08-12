@@ -9,8 +9,21 @@ import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
+// Sourced from the shared, coverage-guarded fixture (spec/fixtures/manifest.yaml):
+// eight hits covering the generic recording envelope and all four branches
+// `api_search_result_template_path` special-cases. Imported rather than restated
+// so this cannot drift from the copy the other five SDKs and the conformance
+// runners assert against.
+import searchResultsFixture from "../../../spec/fixtures/search/results.json";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
+
+type SearchHit = Record<string, unknown>;
+const SEARCH_RESULTS = searchResultsFixture as unknown as SearchHit[];
+const attachmentHit = SEARCH_RESULTS.find((h) => h.type === undefined)!;
+const uploadLineHit = SEARCH_RESULTS.find((h) => h.type === "Chat::Lines::Upload")!;
+const kanbanHit = SEARCH_RESULTS.find((h) => h.type === "Kanban::Column")!;
+const needleHit = SEARCH_RESULTS.find((h) => h.type === "Gauge::Needle")!;
 
 describe("SearchService", () => {
   let client: BasecampClient;
@@ -237,6 +250,141 @@ describe("SearchService", () => {
 
       const results = await client.search.search("nonexistent");
       expect(results).toHaveLength(0);
+    });
+
+    /**
+     * The four branches BC3's `api_search_result_template_path` special-cases.
+     * Each drives the real service against a hit taken verbatim from the shared
+     * fixture, so a branch that changes shape upstream cannot pass here while
+     * failing the conformance runners.
+     */
+    describe("special-cased result branches", () => {
+      const respondWith = (hits: SearchHit[]) => {
+        server.use(
+          http.get(`${BASE_URL}/search.json`, () => HttpResponse.json(hits)),
+        );
+      };
+
+      it("decodes a file-attachment hit, which omits the five envelope keys", async () => {
+        respondWith([attachmentHit]);
+
+        const [hit] = await client.search.search("leto hero");
+
+        // searches/_attachment.json.jbuilder writes its own projection instead
+        // of decorating the recording envelope, so the ABSENCE of these five is
+        // the branch discriminator. (In consumer code they are optional in the
+        // generated types, so an unguarded read is a strictNullChecks error —
+        // this file is not type-checked, `tsconfig.json` excludes `tests`.)
+        expect(hit.id).toBeUndefined();
+        expect(hit.title).toBeUndefined();
+        expect(hit.type).toBeUndefined();
+        expect(hit.url).toBeUndefined();
+        expect(hit.app_url).toBeUndefined();
+
+        expect(hit.filename).toBe("leto-hero.jpg");
+        expect(hit.content_type).toBe("image/jpeg");
+        expect(hit.byte_size).toBe(512000);
+        expect(hit.previewable).toBe(true);
+        // Float-spelled on the wire (1920.0); JSON has one number type, so this
+        // is 1920 in JavaScript. The narrowing is load-bearing in the
+        // statically-typed tiers, and the conformance fixture pins it there.
+        expect(hit.width).toBe(1920);
+        expect(hit.height).toBe(1080);
+        expect(hit.download_url).toContain("/download/");
+        expect(hit.app_download_url).toContain("/download/");
+        // Present-and-null on every branch, this one included: the show
+        // template nil-overwrites both after rendering the recording partial.
+        expect(hit.content).toBeNull();
+        expect(hit.description).toBeNull();
+        expect(hit.parent?.type).toBe("Message");
+      });
+
+      it("decodes a chat upload line's bespoke attachments aggregate", async () => {
+        respondWith([uploadLineHit]);
+
+        const [hit] = await client.search.search("benchmarks");
+
+        expect(hit.type).toBe("Chat::Lines::Upload");
+        // Chat lines pass `boostable`, so the envelope emits the boost pair.
+        expect(hit.boosts_count).toBe(1);
+        expect(hit.boosts_url).toContain("/boosts.json");
+
+        // NOT a RichTextAttachment: the line builds a six-key aggregate inline,
+        // with no id, no sgid and no preview keys. SearchResultAttachment is
+        // the optional-field superset of this variant and the rich-text one.
+        const attachment = hit.attachments![0]!;
+        expect(Object.keys(attachment).sort()).toEqual([
+          "byte_size",
+          "content_type",
+          "download_url",
+          "filename",
+          "title",
+          "url",
+        ]);
+        expect(attachment.title).toBe("leto-benchmarks.pdf");
+        expect(attachment.content_type).toBe("application/pdf");
+        expect(attachment.id).toBeUndefined();
+        expect(attachment.sgid).toBeUndefined();
+      });
+
+      it("decodes a kanban list, whose color is present-and-null", async () => {
+        respondWith([kanbanHit]);
+
+        const [hit] = await client.search.search("in progress");
+
+        expect(hit.type).toBe("Kanban::Column");
+        expect(hit.cards_count).toBe(4);
+        expect(hit.comment_count).toBe(1);
+        expect(hit.cards_url).toContain("/cards.json");
+        // Emitted unconditionally with a null value when unset — present-and-
+        // null is the normal case here, not a malformed body.
+        expect(hit.color).toBeNull();
+        // Envelope keys the list branch reaches: subscribable and positioned.
+        expect(hit.subscription_url).toContain("/subscription.json");
+        expect(hit.position).toBe(2);
+        expect(hit.subscribers?.map((p) => p.name)).toEqual(["Victor Cooper"]);
+        // on_hold is a whole nested list, not a flag.
+        expect(hit.on_hold?.cards_count).toBe(0);
+        expect(hit.on_hold?.cards_url).toContain("/cards.json");
+      });
+
+      it("decodes a gauge needle, which carries both count pairs", async () => {
+        respondWith([needleHit]);
+
+        const [hit] = await client.search.search("progress update");
+
+        expect(hit.type).toBe("Gauge::Needle");
+        // Commentable AND boostable, plus the branch partial's own singular
+        // comment_count — a distinct key from the envelope's comments_count.
+        expect(hit.comments_count).toBe(2);
+        expect(hit.comment_count).toBe(2);
+        expect(hit.boosts_count).toBe(3);
+        expect(hit.color).toBe("green");
+        expect(hit.position).toBe(72);
+        // description is nil-overwritten; its companion array is not.
+        expect(hit.description).toBeNull();
+        expect(hit.description_attachments).toHaveLength(1);
+
+        // The OTHER attachments variant: the rich-text one, id and sgid set.
+        const attachment = hit.attachments![0]!;
+        expect(attachment.id).toBe(1069479631);
+        expect(attachment.sgid).toContain("--srchndl1");
+        expect(attachment.width).toBe(1024);
+        expect(attachment.previewable).toBe(true);
+      });
+
+      it("decodes every branch in one response", async () => {
+        respondWith(SEARCH_RESULTS);
+
+        const results = await client.search.search("Leto");
+
+        expect(results).toHaveLength(8);
+        // bubble_up_url rides the polymorphic projection: todolists/_todolist
+        // is the only partial passing bubbleupable: true.
+        expect(
+          results.filter((r) => r.bubble_up_url !== undefined).map((r) => r.type),
+        ).toEqual(["Todolist"]);
+      });
     });
   });
 

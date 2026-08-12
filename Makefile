@@ -618,6 +618,7 @@ conformance-fixtures-check:
 	python3 conformance/check_kill_case_controls.py
 	@echo "==> Self-testing the control-sibling gate's rejections..."
 	@python3 conformance/test_check_kill_case_controls.py
+	@python3 scripts/check-search-fixture-copy.py
 
 # Unit-test the runners' own assertion helpers.
 #
@@ -1436,7 +1437,7 @@ help:
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"
 	@echo "  event-feed-fixtures-check Validate event-feed tier-2 scenario fixtures against their schema"
 	@echo "  event-feed-digest-fixtures-check Validate event-feed srv1 digest vectors against their schema"
-	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json"
+	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json (and pin the search bodies to spec/fixtures)"
 	@echo "  check-runner-test-reachability  Assert every runner test file is reachable from discovery"
 	@echo "  check-replay-decoder-parity  Assert all five replay/dispatch tables cover the live fixture"
 	@echo ""

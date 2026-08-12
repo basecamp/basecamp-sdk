@@ -1,0 +1,925 @@
+[
+  {
+    "name": "search decodes the generic envelope and all four special branches",
+    "description": "The search projection is polymorphic: `api/searches/show.json.jbuilder` renders each hit through `api_search_result_template_path`, and four branches are special-cased — file attachments, chat lines, kanban (card table) lists and gauge needles. #651 modelled all four; nothing offline exercised them in any language. Search was live-only: the five wire-replay runners reach it, but every one is canary-gated and credentialed, and Swift has no replay runner at all.\n\nThe body is copied verbatim from `spec/fixtures/search/results.json`, the same eight hits `go/pkg/basecamp/search_test.go` reads and `make check-fixture-coverage` validates against the generated schema. `make check-search-fixture-copy` pins the copy to that file.\n\nThe dispatch fixes the query at `Leto` rather than reading it from the case: no mock runner consumes queryParams, and no assertion type can pin a query string (every runner records the path with the query stripped).\n\nAssertions ride a per-runner summarizer of the DECODED results rather than the raw body, for the reason `summarizeProjects` gives — a responseBody path resolves as a top-level key only, so neither a dotted path nor an array index is portable — and for one more: the response is an ARRAY and no assertion type can express absence inside it (there is `headerAbsent` and `requestBodyAbsent`, but no `responseBodyAbsent`). Encoding absence as a boolean is the established idiom (`last_has_upload`, uploads_write.json).\n\nEach `*_has_*` key is a NON-NULL predicate, not a key-presence one: the six SDKs disagree about presence (Go's wrapper collapses an absent scalar to its zero value, Ruby and Python read the wire hash directly) but agree about null. The keys asserted false here are genuinely absent from the wire, so both readings coincide.\n\nThe `generic_*` counterparts assert TRUE against the same summarizer, so a runner that reported absence unconditionally — the way this fixture fails vacuously — cannot pass.",
+    "operation": "Search",
+    "method": "GET",
+    "path": "/search.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 1069479351,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:21:46.169Z",
+            "updated_at": "2022-10-28T15:21:46.169Z",
+            "title": "We won Leto!",
+            "inherits_status": true,
+            "type": "Message",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/messages/1069479351.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5MzUxP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--aabbccdd.json",
+            "content": null,
+            "description": null,
+            "plain_text_content": "Hello everyone! We got the <mark class=\"circled-text\"><span></span>Leto</mark> Laptop project! Time to get started.",
+            "subject": "We won Leto!",
+            "parent": {
+              "id": 1069479338,
+              "title": "Message Board",
+              "type": "Message::Board",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/message_boards/1069479338.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/message_boards/1069479338"
+            },
+            "bucket": {
+              "id": 2085958499,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+              "name": "Victor Cooper",
+              "email_address": "victor@honchodesign.com",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "content_attachments": [
+              {
+                "id": 1069481030,
+                "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030",
+                "filename": "diagram-30.png",
+                "content_type": "image/png",
+                "byte_size": 204800,
+                "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/download/diagram-30.png",
+                "width": 1024.0,
+                "height": 768,
+                "previewable": true,
+                "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/previews/diagram-30.png",
+                "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/thumbnails/diagram-30.png"
+              }
+            ],
+            "attachments": [
+              {
+                "id": 1069481030,
+                "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030",
+                "filename": "diagram-30.png",
+                "content_type": "image/png",
+                "byte_size": 204800,
+                "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/download/diagram-30.png",
+                "width": 1024.0,
+                "height": 768,
+                "previewable": true,
+                "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/previews/diagram-30.png",
+                "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/thumbnails/diagram-30.png"
+              }
+            ]
+          },
+          {
+            "id": 1069479400,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-29T10:30:00.000Z",
+            "updated_at": "2022-10-29T10:30:00.000Z",
+            "title": "Design specs for Leto display",
+            "inherits_status": true,
+            "type": "Todo",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/todos/1069479400.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/todos/1069479400",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDAwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--eeffgghh.json",
+            "content": null,
+            "description": null,
+            "plain_text_description": "Create detailed specifications for the <mark class=\"circled-text\"><span></span>Leto</mark> laptop keyboard layout, including key spacing and travel distance.",
+            "parent": {
+              "id": 1069479390,
+              "title": "Hardware Design",
+              "type": "Todolist",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/todolists/1069479390.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/todolists/1069479390"
+            },
+            "bucket": {
+              "id": 2085958499,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Central Markets Manager",
+              "bio": "To open a store is easy, to keep it open is an art",
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.911Z",
+              "updated_at": "2022-11-22T08:23:21.911Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "description_attachments": [
+              {
+                "id": 1069481031,
+                "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA31--pr0j0031",
+                "filename": "diagram-31.png",
+                "content_type": "image/png",
+                "byte_size": 204800,
+                "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA31--pr0j0031/download/diagram-31.png",
+                "width": 1024.0,
+                "height": 768,
+                "previewable": true,
+                "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA31--pr0j0031/previews/diagram-31.png",
+                "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA31--pr0j0031/thumbnails/diagram-31.png"
+              }
+            ]
+          },
+          {
+            "id": 1069479450,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-30T14:00:00.000Z",
+            "updated_at": "2022-10-30T14:00:00.000Z",
+            "title": "Leto keyboard layout review",
+            "inherits_status": true,
+            "type": "Comment",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/comments/1069479450.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/comments/1069479450",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NDUwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--iijjkkll.json",
+            "content": null,
+            "description": null,
+            "plain_text_content": "The <mark class=\"circled-text\"><span></span>Leto</mark> keyboard layout looks great. Let&#39;s finalize it this week.",
+            "parent": {
+              "id": 1069479400,
+              "title": "Design specs for Leto display",
+              "type": "Todo",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/todos/1069479400.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/todos/1069479400"
+            },
+            "bucket": {
+              "id": 2085958499,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+              "name": "Victor Cooper",
+              "email_address": "victor@honchodesign.com",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "content_attachments": [
+              {
+                "id": 1069481032,
+                "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA32--pr0j0032",
+                "filename": "diagram-32.png",
+                "content_type": "image/png",
+                "byte_size": 204800,
+                "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA32--pr0j0032/download/diagram-32.png",
+                "width": 1024.0,
+                "height": 768,
+                "previewable": true,
+                "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA32--pr0j0032/previews/diagram-32.png",
+                "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA32--pr0j0032/thumbnails/diagram-32.png"
+              }
+            ]
+          },
+          {
+            "id": 1069479519,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-29T10:30:00.000Z",
+            "updated_at": "2022-10-29T10:30:00.000Z",
+            "title": "Hardware",
+            "inherits_status": true,
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NTE5P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--ebab26d1c66e726e17dd785d0e46bfc4e5cba3f5.json",
+            "bubble_up_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479519/bubble_up.json",
+            "content": null,
+            "description": null,
+            "plain_text_description": "Everything that has to ship before the <mark class=\"circled-text\"><span></span>Leto</mark> launch.",
+            "parent": {
+              "id": 1069479338,
+              "title": "To-dos",
+              "type": "Todoset",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todosets/1069479338.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todosets/1069479338"
+            },
+            "bucket": {
+              "id": 2085958500,
+              "name": "The Leto Locator",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Central Markets Manager",
+              "bio": "To open a store is easy, to keep it open is an art",
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.911Z",
+              "updated_at": "2022-11-22T08:23:21.911Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            }
+          },
+          {
+            "parent": {
+              "id": 1069479338,
+              "title": "Message Board",
+              "type": "Message",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/messages/1069479351.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351"
+            },
+            "bucket": {
+              "id": 2085958499,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+              "name": "Victor Cooper",
+              "email_address": "victor@honchodesign.com",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "filename": "leto-hero.jpg",
+            "content_type": "image/jpeg",
+            "byte_size": 512000,
+            "previewable": true,
+            "width": 1920.0,
+            "height": 1080,
+            "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA35--srch0035/previews/leto-hero.jpg",
+            "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA35--srch0035/thumbnails/leto-hero.jpg",
+            "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA35--srch0035/download/leto-hero.jpg",
+            "app_download_url": "https://3.basecamp.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA35--srch0035/download/leto-hero.jpg",
+            "content": null,
+            "description": null
+          },
+          {
+            "id": 1069479610,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:30:00.000Z",
+            "updated_at": "2022-10-28T15:30:00.000Z",
+            "title": "leto-benchmarks.pdf",
+            "inherits_status": true,
+            "type": "Chat::Lines::Upload",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/lines/1069479610.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345#__recording_1069479610",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NjEwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--mmnnoopp.json",
+            "boosts_count": 1,
+            "boosts_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479610/boosts.json",
+            "parent": {
+              "id": 1069479345,
+              "title": "Campfire",
+              "type": "Chat::Transcript",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345"
+            },
+            "bucket": {
+              "id": 2085958499,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+              "name": "Victor Cooper",
+              "email_address": "victor@honchodesign.com",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "attachments": [
+              {
+                "title": "leto-benchmarks.pdf",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/uploads/1069479611.json",
+                "filename": "leto-benchmarks.pdf",
+                "content_type": "application/pdf",
+                "byte_size": 1048576,
+                "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/uploads/1069479611/download/leto-benchmarks.pdf"
+              }
+            ],
+            "content": null,
+            "description": null
+          },
+          {
+            "id": 1069479620,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2024-01-15T09:31:00.000-06:00",
+            "updated_at": "2024-01-20T14:45:00.000-06:00",
+            "title": "Leto in progress",
+            "inherits_status": true,
+            "type": "Kanban::Column",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/columns/1069479620.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/columns/1069479620",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NjIwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--qqrrsstt.json",
+            "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479620/subscription.json",
+            "position": 2,
+            "parent": {
+              "id": 1069479345,
+              "title": "Development Board",
+              "type": "Kanban::Board",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/1069479345.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/1069479345"
+            },
+            "bucket": {
+              "id": 2085958499,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+              "name": "Victor Cooper",
+              "email_address": "victor@honchodesign.com",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "subscribers": [
+              {
+                "id": 1049715914,
+                "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+                "name": "Victor Cooper",
+                "email_address": "victor@honchodesign.com",
+                "personable_type": "User",
+                "title": "Chief Strategist",
+                "bio": null,
+                "location": null,
+                "created_at": "2022-11-22T08:23:21.732Z",
+                "updated_at": "2022-11-22T08:23:21.732Z",
+                "admin": true,
+                "owner": true,
+                "client": false,
+                "employee": true,
+                "time_zone": "America/Chicago",
+                "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+                "can_manage_projects": true,
+                "can_manage_people": true
+              }
+            ],
+            "color": null,
+            "cards_count": 4,
+            "comment_count": 1,
+            "cards_url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/lists/1069479620/cards.json",
+            "on_hold": {
+              "id": 1069479621,
+              "status": "active",
+              "inherits_status": true,
+              "title": "On hold",
+              "created_at": "2024-01-15T09:31:00.000-06:00",
+              "updated_at": "2024-01-20T14:45:00.000-06:00",
+              "cards_count": 0,
+              "cards_url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/lists/1069479621/cards.json"
+            },
+            "content": null,
+            "description": null,
+            "plain_text_content": "Cards for the <mark class=\"circled-text\"><span></span>Leto</mark> build currently in flight.",
+            "plain_text_description": "Cards for the <mark class=\"circled-text\"><span></span>Leto</mark> build currently in flight."
+          },
+          {
+            "id": 1069479630,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-11-28T14:12:00.000Z",
+            "updated_at": "2022-11-28T14:12:00.000Z",
+            "title": "Progress update",
+            "inherits_status": true,
+            "type": "Gauge::Needle",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/gauge_needles/1069479630.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/gauge_needles/1069479630",
+            "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NjMwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--uuvvwwxx.json",
+            "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479630/subscription.json",
+            "comments_count": 2,
+            "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479630/comments.json",
+            "boosts_count": 3,
+            "boosts_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479630/boosts.json",
+            "parent": {
+              "id": 1069479800,
+              "title": "Gauge",
+              "type": "Gauge",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/gauges/1069479800.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/gauges/1069479800"
+            },
+            "bucket": {
+              "id": 2085958499,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+              "name": "Victor Cooper",
+              "email_address": "victor@honchodesign.com",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "description_attachments": [
+              {
+                "id": 1069479631,
+                "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MAY6BkVU--srchndl1",
+                "filename": "leto-burndown.png",
+                "content_type": "image/png",
+                "byte_size": 40960,
+                "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MAY6BkVU--srchndl1/download/leto-burndown.png",
+                "width": 1024.0,
+                "height": 768,
+                "previewable": true,
+                "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MAY6BkVU--srchndl1/previews/leto-burndown.png",
+                "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MAY6BkVU--srchndl1/thumbnails/leto-burndown.png"
+              }
+            ],
+            "color": "green",
+            "position": 72,
+            "comment_count": 2,
+            "content": null,
+            "description": null,
+            "plain_text_content": "<mark class=\"circled-text\"><span></span>Leto</mark> hardware is on track for the launch window.",
+            "plain_text_description": "<mark class=\"circled-text\"><span></span>Leto</mark> hardware is on track for the launch window.",
+            "attachments": [
+              {
+                "id": 1069479631,
+                "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MAY6BkVU--srchndl1",
+                "filename": "leto-burndown.png",
+                "content_type": "image/png",
+                "byte_size": 40960,
+                "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MAY6BkVU--srchndl1/download/leto-burndown.png",
+                "width": 1024.0,
+                "height": 768,
+                "previewable": true,
+                "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MAY6BkVU--srchndl1/previews/leto-burndown.png",
+                "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MAY6BkVU--srchndl1/thumbnails/leto-burndown.png"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/search.json"
+      },
+      {
+        "type": "responseBody",
+        "path": "result_count",
+        "expected": 8
+      },
+      {
+        "type": "responseBody",
+        "path": "generic_type",
+        "expected": "Message"
+      },
+      {
+        "type": "responseBody",
+        "path": "generic_has_id",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "generic_has_title",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "generic_has_type",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "generic_has_url",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "generic_has_app_url",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_id",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_title",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_type",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_url",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_app_url",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_filename",
+        "expected": "leto-hero.jpg"
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_content_type",
+        "expected": "image/jpeg"
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_byte_size",
+        "expected": 512000
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_previewable",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_width",
+        "expected": 1920
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_height",
+        "expected": 1080
+      },
+      {
+        "type": "responseBody",
+        "path": "upload_line_type",
+        "expected": "Chat::Lines::Upload"
+      },
+      {
+        "type": "responseBody",
+        "path": "upload_boosts_count",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "upload_attachment_filename",
+        "expected": "leto-benchmarks.pdf"
+      },
+      {
+        "type": "responseBody",
+        "path": "upload_attachment_has_title",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "upload_attachment_has_id",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "upload_attachment_has_sgid",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_type",
+        "expected": "Gauge::Needle"
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_color",
+        "expected": "green"
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_position",
+        "expected": 72
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_comments_count",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_comment_count",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_boosts_count",
+        "expected": 3
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_attachment_has_id",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_attachment_has_sgid",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "needle_attachment_width",
+        "expected": 1024
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_type",
+        "expected": "Kanban::Column"
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_position",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_cards_count",
+        "expected": 4
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_comment_count",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_subscriber_count",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_has_color",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_has_on_hold",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_on_hold_cards_count",
+        "expected": 0
+      },
+      {
+        "type": "responseBody",
+        "path": "bubble_up_url_count",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "search",
+      "decode",
+      "issue-651",
+      "issue-717"
+    ]
+  },
+  {
+    "name": "search decodes a file-attachment hit that is the only result",
+    "description": "The file-attachment branch in isolation. `searches/_attachment.json.jbuilder` is the one branch that writes its own projection instead of decorating the recording envelope, so it emits NONE of `id`/`title`/`type`/`url`/`app_url` — the five members #651 had to make optional across all six SDKs.\n\nSeparate from the all-branches case because there the absence could be an artifact of sibling hits: a summarizer that picked the wrong element would still find envelope keys somewhere in the array. Here the attachment hit is the only element, so `attachment_has_type: false` can only come from the hit itself. It also pins `content`/`description` as present-and-null on the branch that carries no envelope at all — the pair stays required-and-nullable because the show template nil-overwrites both after rendering, attachment hits included.\n\nThe hit is copied verbatim from `spec/fixtures/search/results.json`.",
+    "operation": "Search",
+    "method": "GET",
+    "path": "/search.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "parent": {
+              "id": 1069479338,
+              "title": "Message Board",
+              "type": "Message",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/messages/1069479351.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351"
+            },
+            "bucket": {
+              "id": 2085958499,
+              "name": "The Leto Laptop",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+              "name": "Victor Cooper",
+              "email_address": "victor@honchodesign.com",
+              "personable_type": "User",
+              "title": "Chief Strategist",
+              "bio": null,
+              "location": null,
+              "created_at": "2022-11-22T08:23:21.732Z",
+              "updated_at": "2022-11-22T08:23:21.732Z",
+              "admin": true,
+              "owner": true,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            },
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "filename": "leto-hero.jpg",
+            "content_type": "image/jpeg",
+            "byte_size": 512000,
+            "previewable": true,
+            "width": 1920.0,
+            "height": 1080,
+            "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA35--srch0035/previews/leto-hero.jpg",
+            "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA35--srch0035/thumbnails/leto-hero.jpg",
+            "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA35--srch0035/download/leto-hero.jpg",
+            "app_download_url": "https://3.basecamp.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA35--srch0035/download/leto-hero.jpg",
+            "content": null,
+            "description": null
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "result_count",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_id",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_title",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_type",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_url",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_app_url",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_content",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_has_description",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_filename",
+        "expected": "leto-hero.jpg"
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_width",
+        "expected": 1920
+      },
+      {
+        "type": "responseBody",
+        "path": "attachment_height",
+        "expected": 1080
+      },
+      {
+        "type": "responseBody",
+        "path": "generic_has_id",
+        "expected": false
+      }
+    ],
+    "tags": [
+      "search",
+      "decode",
+      "issue-651",
+      "issue-717"
+    ]
+  }
+]

@@ -220,6 +220,10 @@ class OperationMapper
           @account.projects.list
         end
       )
+    when "Search"
+      # Consumed and summarized HERE for the same reason ListProjects is: the
+      # summary is what lets a fixture assert on the decoded hits.
+      summarize_search(@account.search.search(q: SEARCH_QUERY))
     when "GetProject"
       @account.projects.get(project_id: path_params["projectId"])
     when "CreateProject"
@@ -563,6 +567,109 @@ class OperationMapper
   # stripped.
   UPCOMING_WINDOW_START = "2026-06-01"
   UPCOMING_WINDOW_END = "2026-06-30"
+
+  # The query every Search case is dispatched with, fixed for the same reason.
+  # It is required, and the mock returns its queued body regardless of what is
+  # asked for.
+  SEARCH_QUERY = "Leto"
+
+  # Flatten a search result list into top-level scalars, one group per branch of
+  # BC3's polymorphic search projection.
+  #
+  # Flat and scalar for the reason summarize_projects gives. Boolean for a
+  # second reason: the response is an ARRAY and no assertion type expresses
+  # absence inside one — there is headerAbsent and requestBodyAbsent, but no
+  # responseBodyAbsent — and the file-attachment branch is recognized precisely
+  # BY the absence of the five envelope keys. Encoding that as a boolean is the
+  # established idiom (last_has_upload).
+  #
+  # Each hit is selected by predicate rather than by index, so a fixture can
+  # present one branch alone and still assert the others report honestly.
+  #
+  # Ruby is lenient — `search` hands back the parsed hashes verbatim — so this
+  # reads the wire keys directly; the strict tiers (Swift, Kotlin) build the
+  # same summary out of decoded models, which is where the contract is enforced.
+  def summarize_search(enum)
+    results = enum.to_a
+    generic = results.find { |r| !r["type"].nil? }
+    attachment = results.find { |r| r["type"].nil? }
+    upload_line = results.find { |r| r["type"] == "Chat::Lines::Upload" }
+    needle = results.find { |r| r["type"] == "Gauge::Needle" }
+    kanban = results.find { |r| r["type"] == "Kanban::Column" }
+
+    upload_attachment = (upload_line&.fetch("attachments", nil) || [])[0] || {}
+    needle_attachment = (needle&.fetch("attachments", nil) || [])[0] || {}
+    generic ||= {}
+    attachment ||= {}
+    upload_line ||= {}
+    needle ||= {}
+    kanban ||= {}
+
+    {
+      "result_count" => results.length,
+      "bubble_up_url_count" => results.count { |r| !r["bubble_up_url"].nil? },
+
+      # The generic recording envelope — the control group.
+      "generic_type" => generic["type"] || "",
+      "generic_has_id" => !generic["id"].nil?,
+      "generic_has_title" => !generic["title"].nil?,
+      "generic_has_type" => !generic["type"].nil?,
+      "generic_has_url" => !generic["url"].nil?,
+      "generic_has_app_url" => !generic["app_url"].nil?,
+
+      # The file-attachment branch: searches/_attachment.json.jbuilder writes
+      # its own projection, so the absence of a type IS the discriminator.
+      "attachment_has_id" => !attachment["id"].nil?,
+      "attachment_has_title" => !attachment["title"].nil?,
+      "attachment_has_type" => !attachment["type"].nil?,
+      "attachment_has_url" => !attachment["url"].nil?,
+      "attachment_has_app_url" => !attachment["app_url"].nil?,
+      "attachment_has_content" => !attachment["content"].nil?,
+      "attachment_has_description" => !attachment["description"].nil?,
+      "attachment_filename" => attachment["filename"] || "",
+      "attachment_content_type" => attachment["content_type"] || "",
+      "attachment_byte_size" => attachment["byte_size"] || 0,
+      "attachment_previewable" => attachment["previewable"] || false,
+      # Narrowed HERE, not by the SDK: Ruby has no typed search model, so a
+      # float-spelled 1920.0 reaches the caller as a Float. The narrowing is
+      # load-bearing in the statically-typed tiers (Go, Kotlin, Swift), where
+      # the model declares an integer and a plain int decode would throw.
+      "attachment_width" => attachment["width"]&.to_i || 0,
+      "attachment_height" => attachment["height"]&.to_i || 0,
+
+      # The chat upload line: a bespoke six-key attachments aggregate carrying
+      # title/url and NONE of the rich-text id/sgid/preview keys.
+      "upload_line_type" => upload_line["type"] || "",
+      "upload_boosts_count" => upload_line["boosts_count"] || 0,
+      "upload_attachment_filename" => upload_attachment["filename"] || "",
+      "upload_attachment_has_title" => !upload_attachment["title"].nil?,
+      "upload_attachment_has_id" => !upload_attachment["id"].nil?,
+      "upload_attachment_has_sgid" => !upload_attachment["sgid"].nil?,
+
+      # The gauge needle: the same attachments key carrying the OTHER variant —
+      # the rich-text one, with id and sgid populated.
+      "needle_type" => needle["type"] || "",
+      "needle_color" => needle["color"] || "",
+      "needle_position" => needle["position"] || 0,
+      "needle_comments_count" => needle["comments_count"] || 0,
+      "needle_comment_count" => needle["comment_count"] || 0,
+      "needle_boosts_count" => needle["boosts_count"] || 0,
+      "needle_attachment_has_id" => !needle_attachment["id"].nil?,
+      "needle_attachment_has_sgid" => !needle_attachment["sgid"].nil?,
+      "needle_attachment_width" => needle_attachment["width"]&.to_i || 0,
+
+      # The kanban list: list-partial keys over the envelope, on_hold nested,
+      # and a color emitted unconditionally with a null value.
+      "kanban_type" => kanban["type"] || "",
+      "kanban_position" => kanban["position"] || 0,
+      "kanban_cards_count" => kanban["cards_count"] || 0,
+      "kanban_comment_count" => kanban["comment_count"] || 0,
+      "kanban_subscriber_count" => (kanban["subscribers"] || []).length,
+      "kanban_has_color" => !kanban["color"].nil?,
+      "kanban_has_on_hold" => !kanban["on_hold"].nil?,
+      "kanban_on_hold_cards_count" => kanban.dig("on_hold", "cards_count") || 0
+    }
+  end
 
   # Flatten the upcoming-schedule envelope into top-level scalars. Go and
   # TypeScript resolve a responseBody path as a top-level key only, so the
