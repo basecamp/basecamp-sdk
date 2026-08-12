@@ -270,6 +270,52 @@ RB
   )
 end
 
+# --- Cases 12-13: the directory is a place, not a spelling -------------------
+#
+# Caught in review by two reviewers independently. The gate grouped on the raw
+# `cd` text, so a new target spelled `cd ./kotlin` landed in its own group of
+# one, was trivially "serialized", and walked through the invariant the gate
+# advertises. Case 12 is that bypass. Case 13 covers the other way a spelling
+# can be unresolvable — a make variable — which must be a hard error rather than
+# a group of one, since that is the same silent pass wearing a different hat.
+
+spelling_bypass = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-dot-slash ",
+) + <<~MAKE
+
+  .PHONY: probe-dot-slash
+  probe-dot-slash:
+  \tcd ./kotlin && ./gradlew :basecamp-sdk:jvmJar
+MAKE
+
+failures << check(
+  "12: the same directory spelled ./kotlin still collides",
+  spelling_bypass,
+  expect_pass: false,
+  expect_fragment: "probe-dot-slash",
+)
+
+variable_dir = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-variable-dir ",
+) + <<~MAKE
+
+  KOTLIN_DIR = kotlin
+  .PHONY: probe-variable-dir
+  probe-variable-dir:
+  \tcd $(KOTLIN_DIR) && ./gradlew :basecamp-sdk:jvmJar
+MAKE
+
+failures << check(
+  "13: a make variable as the project directory is unresolvable, not a group of one",
+  variable_dir,
+  expect_pass: false,
+  expect_fragment: "cannot tell which project directory",
+)
+
 failures.compact!
 
 if failures.empty?

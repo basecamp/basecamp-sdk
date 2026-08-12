@@ -31,7 +31,7 @@
 # ordered by that relation. That is the mechanism, and it goes red the moment an
 # edge is deleted.
 #
-# COVERAGE, HONESTLY. Three boundaries, and none of them is "every Gradle
+# COVERAGE, HONESTLY. Four boundaries, and none of them is "every Gradle
 # target":
 #
 #   1. ONE GOAL. Only targets reachable from check-targets (by default), because
@@ -56,7 +56,13 @@
 #      classify the gate as a Gradle build in kotlin/ and fail on the real
 #      Makefile.
 #
-#   3. TEXTUAL, AND IT ERRS TOWARD REPORTING. The delegation scan reads source,
+#   3. THE KEY IS A PHYSICAL DIRECTORY, NOT A SPELLING. `cd ./kotlin` and
+#      `cd kotlin` are canonicalized to one group; an unresolvable spelling — a
+#      make variable, a shell variable this gate will not guess at — is a hard
+#      error, not a group of one. Grouping on raw text was a real bypass, caught
+#      in review: two spellings became two trivially-serialized groups.
+#
+#   4. TEXTUAL, AND IT ERRS TOWARD REPORTING. The delegation scan reads source,
 #      it does not execute anything, so a `./gradlew` inside a shell heredoc
 #      would be taken at face value. That direction is deliberate: a false
 #      positive costs one unnecessary order-only edge and says so out loud; a
@@ -235,6 +241,20 @@ def delegated_gradle_dir(lines, repo_root)
   nil
 end
 
+# The grouping key is a PHYSICAL directory, so it has to survive being spelled
+# differently. `cd ./kotlin` and `cd kotlin` are the same Gradle project and must
+# land in the same group; grouping on the raw text put them in two groups of one,
+# each trivially "serialized", and a new target spelled the other way would have
+# walked through the gate. `kotlin/`, `kotlin/.` and `spec/../kotlin` are the same
+# hazard. Normalize to a repo-relative cleanpath before anything is compared.
+def canonical_dir(raw, repo_root)
+  root = File.expand_path(repo_root)
+  absolute = File.expand_path(raw, root)
+  return "." if absolute == root
+
+  absolute.start_with?("#{root}/") ? absolute.delete_prefix("#{root}/") : absolute
+end
+
 def gradle_targets(recipes, makefile, repo_root = REPO_ROOT)
   found = {}
   unrecognized = []
@@ -244,8 +264,13 @@ def gradle_targets(recipes, makefile, repo_root = REPO_ROOT)
 
     if direct
       matched = direct.match(%r{cd\s+(\S+)\s*&&\s*\./gradlew})
-      if matched
-        found[target] = matched[1]
+      if matched && matched[1].include?("$")
+        # A make variable is not resolvable from the database text, and guessing
+        # would put this target in a group of its own — the same silent pass the
+        # spelling bug caused.
+        unrecognized << [target, direct]
+      elsif matched
+        found[target] = canonical_dir(matched[1], repo_root)
       elsif direct.match?(%r{\A\s*\./gradlew})
         found[target] = "."
       else
@@ -260,7 +285,9 @@ def gradle_targets(recipes, makefile, repo_root = REPO_ROOT)
     if dir == :unplaceable
       unrecognized << [target, "delegates to #{via}, which invokes Gradle in a directory this gate cannot resolve"]
     else
-      found[target] = dir
+      # Canonicalized through the same funnel as a direct recipe: a delegated
+      # `cd "$ROOT_DIR/./kotlin"` has to group with a direct `cd kotlin`.
+      found[target] = canonical_dir(dir, repo_root)
     end
   end
 
