@@ -104,8 +104,10 @@ case "${1:-}" in
     echo >&2
     printf '%s\n' \
       "Nothing \`make check\` runs may write a lockfile — a dirty tree blocks the" \
-      "release flow, and what gets written depends on which npm ran it (#612)." \
-      "Use \`npm ci\`, which installs from the lockfile without writing it back." >&2
+      "release flow, and what gets written depends on which tool version ran it" \
+      "(#612). Install from the lockfile without writing it back: \`npm ci\` for" \
+      "npm, \`BUNDLE_FROZEN=true bundle install\` for bundler, \`uv sync --locked\`" \
+      "for uv; \`go\` rewrites go.sum only when go.mod drifts — tidy and commit." >&2
     exit 1
     ;;
   --verify-clean)
@@ -125,7 +127,10 @@ case "${1:-}" in
     echo >&2
     printf '%s\n' \
       "Nothing in CI may write a lockfile. A dirty tree blocks the release flow," \
-      "and what gets written depends on which npm ran it (#612). Use \`npm ci\`." >&2
+      "and what gets written depends on which tool version ran it (#612). Install" \
+      "from the lockfile without writing it back: \`npm ci\` for npm," \
+      "\`BUNDLE_FROZEN=true bundle install\` for bundler, \`uv sync --locked\` for" \
+      "uv; \`go\` rewrites go.sum only when go.mod drifts — tidy and commit." >&2
     exit 1
     ;;
   *)

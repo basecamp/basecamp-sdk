@@ -238,12 +238,11 @@ endif
 		{ echo "ERROR: python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@test "$$(jq -r '.packages["../../../typescript"].version' conformance/runner/typescript/package-lock.json)" = "$(VERSION)" || \
 		{ echo "ERROR: conformance/runner/typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@# The conformance Ruby/Python runner lockfiles are gitignored and absent on a
-	@# fresh clone — check them only where they exist (a machine that has run
-	@# conformance), which is exactly where a stale one breaks `make check` (#671).
-	@test ! -f conformance/runner/ruby/Gemfile.lock || grep -qF 'basecamp-sdk ($(VERSION))' conformance/runner/ruby/Gemfile.lock || \
+	@# The conformance Ruby/Python runner lockfiles are tracked (#670), so they
+	@# are always present; a stale one breaks the frozen conformance installs (#671).
+	@grep -qF 'basecamp-sdk ($(VERSION))' conformance/runner/ruby/Gemfile.lock || \
 		{ echo "ERROR: conformance/runner/ruby/Gemfile.lock records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@test ! -f conformance/runner/python/uv.lock || (cd conformance/runner/python && uv lock --check) || \
+	@(cd conformance/runner/python && uv lock --check) || \
 		{ echo "ERROR: conformance/runner/python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@git diff --quiet && git diff --cached --quiet || \
 		{ echo "ERROR: Working tree has uncommitted changes. Commit first."; exit 1; }
@@ -653,9 +652,15 @@ conformance-runner-tests-go:
 
 # Bare `pytest` discovers test_*.py and *_test.py under the runner directory.
 # Collecting nothing is exit 5, so an empty suite fails rather than green-passes.
+#
+# The runner lockfiles (Gemfile.lock, uv.lock) are TRACKED (#670), so every
+# install here runs frozen: `uv sync --locked` fails if uv.lock is missing or
+# out of date, and BUNDLE_FROZEN=true installs from Gemfile.lock without
+# writing it back — a version bump or dependency change must regenerate the
+# lockfile in the same commit instead of rewriting it silently at run time.
 conformance-runner-tests-python:
 	@echo "==> Running Python conformance runner unit tests..."
-	cd conformance/runner/python && uv sync --quiet && uv run python -m pytest -q
+	cd conformance/runner/python && uv sync --locked --quiet && uv run python -m pytest -q
 
 # Ruby has no runner-level test task, so discovery is hand-rolled here.
 #
@@ -676,7 +681,7 @@ conformance-runner-tests-python:
 # loudly, not report success over zero files.
 conformance-runner-tests-ruby:
 	@echo "==> Running Ruby conformance runner unit tests..."
-	@cd conformance/runner/ruby && bundle install --quiet && \
+	@cd conformance/runner/ruby && BUNDLE_FROZEN=true bundle install --quiet && \
 	files=$$(find . \( -name vendor -o -name .bundle \) -prune -o \
 		-type f -name '*_test.rb' -print | sort); \
 	if [ -z "$$files" ]; then \
@@ -748,10 +753,12 @@ conformance-typescript-live: ts-build
 	@echo "==> Running TypeScript live canary..."
 	cd conformance/runner/typescript && npm ci && BASECAMP_LIVE=1 npm test
 
-# Run Ruby conformance tests
+# Run Ruby conformance tests. Frozen install: the runner Gemfile.lock is
+# tracked (#670), so the install must never rewrite it — see
+# conformance-runner-tests-python for the full rationale.
 conformance-ruby:
 	@echo "==> Running Ruby conformance tests..."
-	cd conformance/runner/ruby && bundle install --quiet && ruby runner.rb
+	cd conformance/runner/ruby && BUNDLE_FROZEN=true bundle install --quiet && ruby runner.rb
 
 # Run Ruby wire-replay against snapshots written by the TS live runner.
 # Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
@@ -759,12 +766,13 @@ conformance-ruby-replay:
 	@echo "==> Running Ruby wire-replay runner..."
 	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
-	cd conformance/runner/ruby && bundle install --quiet && ruby replay-runner.rb
+	cd conformance/runner/ruby && BUNDLE_FROZEN=true bundle install --quiet && ruby replay-runner.rb
 
-# Run Python conformance tests
+# Run Python conformance tests. Frozen install: the runner uv.lock is tracked
+# (#670) — see conformance-runner-tests-python for the full rationale.
 conformance-python:
 	@echo "==> Running Python conformance tests..."
-	cd conformance/runner/python && uv sync && uv run python runner.py
+	cd conformance/runner/python && uv sync --locked && uv run python runner.py
 
 # Run Python wire-replay against snapshots written by the TS live runner.
 # Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
@@ -772,7 +780,7 @@ conformance-python-replay:
 	@echo "==> Running Python wire-replay runner..."
 	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
-	cd conformance/runner/python && uv sync && uv run python replay_runner.py
+	cd conformance/runner/python && uv sync --locked && uv run python replay_runner.py
 
 # Run all conformance tests
 conformance: oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check conformance-runner-tests conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-swift
