@@ -300,6 +300,19 @@ def read_make_database(makefile)
       next
     end
 
+    # Target-specific variables, GNU make 4.x spelling: printed as a TOP-LEVEL
+    # `target: NAME = value` line, which the rule regex below would otherwise
+    # read as a target with the prerequisites "NAME", "=" and "value" — bogus
+    # edges that could mask a real collision. 3.81 prints the same thing as a
+    # comment inside the target's block (handled above), and prints nothing
+    # here. Both spellings are parsed because the two disagree and CI runs the
+    # one this was not developed on: 4.4.1 is where the comment-only version
+    # failed, and it failed loudly rather than silently, which is the one mercy.
+    if (tvar = /\A([^:=#]+):\s*([A-Za-z_][^\s=]*) *[:+?]?= *(.*)\z/.match(line))
+      target_variables[tvar[1].strip][tvar[2]] = tvar[3]
+      next
+    end
+
     # `target: normal-prereqs | order-only-prereqs`
     match = /\A([^:=#]+):(?!=)(.*)\z/.match(line)
     next if match.nil?
