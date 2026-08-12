@@ -5,7 +5,7 @@ detected: 2026-08-11
 sdk_demand: low
 bc3_pr: 12544
 bc3_refs:
-  introduced_in: step-to-subtask (BC3 #12544, merged 49eca3df973)
+  introduced_in: "step-to-subtask (BC3 #12544, merged 49eca3df973)"
   routes:
     - "GET /:account_id/card_tables/subtasks/:id.json (canonical; undocumented)"
     - "POST /:account_id/card_tables/cards/:card_id/subtasks.json (canonical; undocumented)"

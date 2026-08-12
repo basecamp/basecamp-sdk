@@ -5,7 +5,7 @@ detected: 2026-08-05
 sdk_demand: low
 bc3_pr: 12396
 bc3_refs:
-  introduced_in: pings-sort-preference (BC3 #12396, merged 98eb24b22f)
+  introduced_in: "pings-sort-preference (BC3 #12396, merged 98eb24b22f)"
   routes:
     - GET /:account_id/my/notifications.json
     - PUT /:account_id/my/notifications.json
