@@ -108,7 +108,7 @@ Two member-level traps, both consequences of #651 rather than of the retype:
 file-attachment branch omits all five; and `width`/`height` decode through
 `FlexibleIntSerializer`, because bc3 may float-spell them (`1920.0`).
 
-### `Tool.name` and `Tool.enabled` are not on the wire at all; the seven keys that are now get modeled (#650)
+### `Tool.name` and `Tool.enabled` are not on the wire at all; the seven keys that are emitted are now modeled (#650)
 
 A dock tool's projection is the **bare** `recordings/recording` partial —
 `app/views/api/docks/tools/show.json.jbuilder` renders it and adds nothing.

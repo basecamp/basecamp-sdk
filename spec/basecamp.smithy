@@ -9625,9 +9625,12 @@ long ToolId
 
 // The dock-tool projection is the bare recordings/recording partial:
 // api/docks/tools/show.json.jbuilder renders it and adds nothing. Every member
-// below is a key that partial emits; the sibling dock-tool projections
-// (Todoset, MessageBoard, Schedule, Questionnaire, Vault) render the same
-// partial through a recordable-specific wrapper and model the same envelope.
+// below through `creator` is a key that partial emits; the sibling dock-tool
+// projections (Todoset, MessageBoard, Schedule, Questionnaire, Vault) render
+// the same partial through a recordable-specific wrapper and model the same
+// envelope. The two trailing members, `name` and `enabled`, are the exception:
+// the partial emits neither, and they survive only because #650 relaxed them
+// rather than removing them. Their doc comments say so.
 structure Tool {
   @required
   id: ToolId
