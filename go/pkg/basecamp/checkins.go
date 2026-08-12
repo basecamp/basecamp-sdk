@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -433,7 +434,11 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID in
 	}
 	// Schedule is a required non-pointer member: an all-zero schedule marshals
 	// as the same `"schedule": {}` the map implementation sent.
-	if gs := questionScheduleToGenerated(req.Schedule); gs != nil {
+	gs, err := questionScheduleToGenerated(req.Schedule)
+	if err != nil {
+		return nil, err
+	}
+	if gs != nil {
 		body.Schedule = *gs
 	}
 	resp, err := s.client.parent.gen.CreateQuestionWithResponse(ctx, s.client.accountID, questionnaireID, body)
@@ -481,7 +486,9 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 	if req.Schedule != nil {
 		// nil for an all-zero schedule, so the member is omitted exactly as
 		// the map implementation omitted an empty schedule map.
-		body.Schedule = questionScheduleToGenerated(req.Schedule)
+		if body.Schedule, err = questionScheduleToGenerated(req.Schedule); err != nil {
+			return nil, err
+		}
 	}
 	if req.Paused != nil {
 		body.Paused = req.Paused
@@ -1259,6 +1266,19 @@ func questionNotificationSettingsFromGenerated(gs generated.UpdateQuestionNotifi
 	}
 }
 
+// questionScheduleInt32 narrows a schedule integer to the generated struct's
+// int32, refusing values that do not fit rather than silently wrapping them
+// (gosec G115). The map implementation sent the caller's int verbatim and let
+// the server reject nonsense; the typed body cannot carry an out-of-range
+// value at all, so it now fails fast as a usage error instead of becoming
+// different garbage on the wire.
+func questionScheduleInt32(v int, field string) (int32, error) {
+	if v < math.MinInt32 || v > math.MaxInt32 {
+		return 0, ErrUsage(fmt.Sprintf("question schedule %s value %d does not fit a 32-bit integer", field, v))
+	}
+	return int32(v), nil
+}
+
 // questionScheduleToGenerated converts a QuestionSchedule to the generated
 // request struct for CreateQuestion and UpdateQuestion. Returns nil when no
 // field is set, so UpdateQuestion can omit the member entirely. The generated
@@ -1266,7 +1286,7 @@ func questionNotificationSettingsFromGenerated(gs generated.UpdateQuestionNotifi
 // explicit empty day list still reaches the wire as `[]`: `omitempty` tests
 // pointer nil-ness, not pointee emptiness, and a non-nil pointer to an empty
 // slice survives it.
-func questionScheduleToGenerated(s *QuestionSchedule) *generated.QuestionSchedule {
+func questionScheduleToGenerated(s *QuestionSchedule) (*generated.QuestionSchedule, error) {
 	gs := generated.QuestionSchedule{}
 	set := false
 	if s.Frequency != "" {
@@ -1278,23 +1298,35 @@ func questionScheduleToGenerated(s *QuestionSchedule) *generated.QuestionSchedul
 	if s.Days != nil {
 		days := make([]int32, len(s.Days))
 		for i, d := range s.Days {
-			days[i] = int32(d)
+			v, err := questionScheduleInt32(d, "days")
+			if err != nil {
+				return nil, err
+			}
+			days[i] = v
 		}
 		gs.Days = &days
 		set = true
 	}
-	setInt := func(dst **int32, src *int) {
-		if src != nil {
-			v := int32(*src)
-			*dst = &v
+	for _, f := range []struct {
+		dst  **int32
+		src  *int
+		name string
+	}{
+		{&gs.Hour, s.Hour, "hour"},
+		{&gs.Minute, s.Minute, "minute"},
+		{&gs.WeekInstance, s.WeekInstance, "week_instance"},
+		{&gs.WeekInterval, s.WeekInterval, "week_interval"},
+		{&gs.MonthInterval, s.MonthInterval, "month_interval"},
+	} {
+		if f.src != nil {
+			v, err := questionScheduleInt32(*f.src, f.name)
+			if err != nil {
+				return nil, err
+			}
+			*f.dst = &v
 			set = true
 		}
 	}
-	setInt(&gs.Hour, s.Hour)
-	setInt(&gs.Minute, s.Minute)
-	setInt(&gs.WeekInstance, s.WeekInstance)
-	setInt(&gs.WeekInterval, s.WeekInterval)
-	setInt(&gs.MonthInterval, s.MonthInterval)
 	if s.StartDate != "" {
 		gs.StartDate = &s.StartDate
 		set = true
@@ -1304,7 +1336,7 @@ func questionScheduleToGenerated(s *QuestionSchedule) *generated.QuestionSchedul
 		set = true
 	}
 	if !set {
-		return nil
+		return nil, nil
 	}
-	return &gs
+	return &gs, nil
 }

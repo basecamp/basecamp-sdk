@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -895,6 +897,59 @@ func TestCheckinsService_QuestionBodyBytes(t *testing.T) {
 			}
 			if gotBody != tc.want {
 				t.Errorf("request body = %s, want %s", gotBody, tc.want)
+			}
+		})
+	}
+}
+
+// TestCheckinsService_QuestionScheduleRejectsOutOfRangeInts: the generated
+// QuestionSchedule types its integers as int32, so a schedule int that does
+// not fit must fail fast as a usage error with nothing sent on the wire —
+// never wrap silently (gosec G115: 4294967297 would otherwise reach the
+// server as 1). The map implementation sent the caller's int verbatim and
+// let the server reject it; rejecting client-side is a deliberate behavior
+// change, trading a round-trip to a server 4xx for an immediate usage error.
+func TestCheckinsService_QuestionScheduleRejectsOutOfRangeInts(t *testing.T) {
+	if strconv.IntSize == 32 {
+		t.Skip("out-of-int32-range ints are not representable on a 32-bit platform")
+	}
+	big := int(int64(math.MaxInt32) + 2) // 2^31+1; wraps to a small value if converted blindly
+
+	fixture := loadCheckinsFixture(t, "question.json")
+	var requestCount int
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		w.Write(fixture)
+	})
+
+	for name, call := range map[string]func() error{
+		"create days": func() error {
+			_, err := svc.CreateQuestion(context.Background(), 777, &CreateQuestionRequest{
+				Title:    "Standup?",
+				Schedule: &QuestionSchedule{Frequency: "every_day", Days: []int{big}},
+			})
+			return err
+		},
+		"update hour": func() error {
+			_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
+				Schedule: &QuestionSchedule{Hour: &big},
+			})
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := call()
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			apiErr, ok := err.(*Error)
+			if !ok || apiErr.Code != CodeUsage {
+				t.Fatalf("expected usage error, got %v", err)
+			}
+			if requestCount != 0 {
+				t.Fatalf("expected 0 requests (nothing on the wire), got %d", requestCount)
 			}
 		})
 	}

@@ -21,16 +21,15 @@ import (
 // exact defect the pointer types were introduced to make impossible.
 
 func TestQuestionScheduleToGenerated_DaysPresenceIsNilNotLength(t *testing.T) {
-	if gs := questionScheduleToGenerated(&QuestionSchedule{Days: []int{}}); gs == nil || gs.Days == nil {
+	if gs, err := questionScheduleToGenerated(&QuestionSchedule{Days: []int{}}); err != nil || gs == nil || gs.Days == nil {
 		t.Error("explicit empty Days must reach the wire; got omitted")
-	}
-	if gs := questionScheduleToGenerated(&QuestionSchedule{Days: []int{}}); gs != nil && gs.Days != nil && len(*gs.Days) != 0 {
+	} else if len(*gs.Days) != 0 {
 		t.Errorf("explicit empty Days must marshal as []; got %v", *gs.Days)
 	}
-	if gs := questionScheduleToGenerated(&QuestionSchedule{StartDate: "2025-01-01"}); gs != nil && gs.Days != nil {
+	if gs, err := questionScheduleToGenerated(&QuestionSchedule{StartDate: "2025-01-01"}); err == nil && gs != nil && gs.Days != nil {
 		t.Errorf("nil Days must be omitted; got %v", *gs.Days)
 	}
-	if gs := questionScheduleToGenerated(&QuestionSchedule{Days: []int{1, 3}}); gs == nil || gs.Days == nil {
+	if gs, err := questionScheduleToGenerated(&QuestionSchedule{Days: []int{1, 3}}); err != nil || gs == nil || gs.Days == nil {
 		t.Error("non-empty Days must reach the wire; got omitted")
 	}
 }
