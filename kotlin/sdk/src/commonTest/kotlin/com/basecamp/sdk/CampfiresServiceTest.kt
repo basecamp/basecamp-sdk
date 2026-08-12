@@ -153,6 +153,39 @@ class CampfiresServiceTest {
     }
 
     @Test
+    fun getChatbotAsNonAdminOmitsBothAdminOnlyUrls() = runTest {
+        // command_url and lines_url are admin-only in responses: a non-admin
+        // requester gets neither key at all (absent, not null).
+        val client = mockClient { request ->
+            assertEquals(HttpMethod.Get, request.method)
+            assertTrue(request.url.encodedPath.contains("/buckets/100/chats/200/integrations/300"))
+
+            respond(
+                content = """{
+                    "id": 300,
+                    "created_at": "2022-11-22T08:25:04.466Z",
+                    "updated_at": "2022-11-22T08:25:04.466Z",
+                    "service_name": "Capistrano",
+                    "url": "https://3.basecampapi.com/12345/buckets/100/chats/200/integrations/300.json",
+                    "app_url": "https://3.basecamp.com/12345/buckets/100/chats/200/integrations/300"
+                }""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        val chatbot = account.campfires.getChatbot(bucketId = 100, campfireId = 200, chatbotId = 300)
+
+        assertEquals(300L, chatbot.id)
+        assertEquals("Capistrano", chatbot.serviceName)
+        assertEquals(null, chatbot.commandUrl)
+        assertEquals(null, chatbot.linesUrl)
+
+        client.close()
+    }
+
+    @Test
     fun deleteLine() = runTest {
         var capturedMethod: HttpMethod? = null
 

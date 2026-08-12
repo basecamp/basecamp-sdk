@@ -658,6 +658,30 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertTrue(transport.lastRequest!.request.url!.absoluteString.hasSuffix("/chats/42/lines/300"))
     }
 
+    func testCampfiresServiceGetChatbotNonAdminOmitsBothAdminOnlyURLs() async throws {
+        // command_url and lines_url are admin-only in responses: a non-admin
+        // requester gets neither key at all (absent, not null).
+        let json: [String: Any] = [
+            "id": 300,
+            "created_at": "2022-11-22T08:25:04.466Z",
+            "updated_at": "2022-11-22T08:25:04.466Z",
+            "service_name": "Capistrano",
+            "url": "https://3.basecampapi.com/12345/buckets/100/chats/200/integrations/300.json",
+            "app_url": "https://3.basecamp.com/12345/buckets/100/chats/200/integrations/300",
+        ]
+        let data = try JSONSerialization.data(withJSONObject: json)
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let chatbot = try await account.campfires.getChatbot(bucketId: 100, campfireId: 200, chatbotId: 300)
+
+        XCTAssertEqual(chatbot.id, 300)
+        XCTAssertEqual(chatbot.serviceName, "Capistrano")
+        XCTAssertNil(chatbot.commandUrl)
+        XCTAssertNil(chatbot.linesUrl)
+        XCTAssertTrue(transport.lastRequest!.request.url!.absoluteString.hasSuffix("/buckets/100/chats/200/integrations/300"))
+    }
+
     func testCampfiresServiceUpdateLineSendsPUT() async throws {
         let transport = MockTransport(statusCode: 204, data: Data())
         let account = makeTestAccountClient(transport: transport)

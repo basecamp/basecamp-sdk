@@ -288,6 +288,22 @@ targets:
     pointer: ""
     schema: GaugeNeedle
 
+  # Chatbot's command_url and lines_url are ADMIN-ONLY in responses (bc3
+  # app/views/api/chats/integrations/_integration.jbuilder gates both behind
+  # Current.person.admin?, documented in chatbots.md by bc3 2b1225848c6). The
+  # changed behavior is ABSENCE, so it takes two representatives: the admin
+  # fixture carries both URLs, the non-admin variant omits both keys entirely
+  # (absent, not null) — proving the optional members stay decodable when the
+  # server withholds them.
+  - id: chatbot-get
+    fixture: campfires/chatbot_get.json
+    pointer: ""
+    schema: Chatbot
+  - id: chatbot-get-nonadmin
+    fixture: campfires/chatbot_get_nonadmin.json
+    pointer: ""
+    schema: Chatbot
+
 covered_schemas:
   MyNote: [my-note-get]
   Comment: [comment-get]
@@ -319,6 +335,7 @@ covered_schemas:
   RichTextAttachment: [richtext-comment-0, richtext-upload-0]
   Gauge: [gauge-get]
   GaugeNeedle: [gauge-needle-get]
+  Chatbot: [chatbot-get, chatbot-get-nonadmin]
 
 excluded_schemas:
   TimelineAttachment:
