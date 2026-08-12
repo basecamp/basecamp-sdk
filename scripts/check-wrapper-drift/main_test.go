@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
@@ -1129,7 +1130,9 @@ func flattenFixture(t *testing.T, source string) map[string]*structFields {
 		t.Fatalf("parse: %v", err)
 	}
 	structs := collectStructsAndMarkers(fset, f)
-	flattenEmbedded(structs, collectTypeDecls(f), collectJSONMethodTypes(f))
+	jsonMethods, ifaceEmbeds := collectJSONMethodTypes(f)
+	closeJSONMethodTypes(jsonMethods, ifaceEmbeds)
+	flattenEmbedded(structs, collectTypeDecls(f), jsonMethods)
 	return structs
 }
 
@@ -1570,11 +1573,13 @@ type Selfish struct {
 	}
 	structs := collectStructsAndMarkers(fset, f)
 	decls := collectTypeDecls(f)
+	jsonMethods, ifaceEmbeds := collectJSONMethodTypes(f)
+	closeJSONMethodTypes(jsonMethods, ifaceEmbeds)
 	// flattenEmbedded runs on its own goroutine so a walk that fails to
 	// terminate fails the test instead of hanging the whole package.
 	done := make(chan struct{})
 	go func() {
-		flattenEmbedded(structs, decls, collectJSONMethodTypes(f))
+		flattenEmbedded(structs, decls, jsonMethods)
 		close(done)
 	}()
 	select {
@@ -2266,6 +2271,10 @@ func TestRecordAssignedValue_ValueShapes(t *testing.T) {
 		{"pointer keyed literal", "&Base{ID: g.Id}", []string{"Base.ID"}, false, []string{"Base.*"}},
 		// A positional literal must list every field, so it covers all of them.
 		{"positional literal", "Base{g.Id, g.Name}", nil, true, nil},
+		// A positional element CAN be a nil embedded pointer, whose promoted
+		// fields are then absent from the wire. The walker cannot tell which
+		// element is which field, so a nil element withdraws the claim.
+		{"positional literal with a nil element", "Base{nil, g.Name}", nil, false, []string{"Base.*"}},
 		{"empty literal", "Base{}", nil, false, []string{"Base.*"}},
 		{"opaque call", "baseFrom(g)", nil, true, nil},
 		// nil populates nothing: a nil embedded pointer emits none of its fields.
@@ -2549,5 +2558,168 @@ type Harmless struct {
 	// encoder, so it stays the harmless no-op it always was.
 	if h := structs["Harmless"]; h == nil || len(h.unresolved) != 0 || !h.tags["id"] {
 		t.Errorf("a plain interface embed must not be rejected, got %+v", structs["Harmless"])
+	}
+}
+
+// TestFlattenEmbedded_DiamondDoesNotPropagateDeeper pins a subtlety two
+// reviewers read the other way, so it is worth stating precisely. In
+// `Outer -> Left/Right -> Common -> Deep`, Common is reached twice and its own
+// tags annihilate — but Deep is reached once, from the single queued Common,
+// and its tags SURVIVE. That is not an accident of this walk; it is what the
+// marshaller does:
+//
+//	json.Marshal(Outer{})  =>  {"deep_field":""}
+//
+// encoding/json's typeFields does `nextCount[ft]++` per arrival at a level, not
+// `+= count[f.typ]`, so multiplicity does not cascade to a duplicated type's
+// own embeds. Mirroring the mechanism gives this for free; "keep everything
+// below a duplicate ambiguous" would drop a key that is really on the wire.
+func TestFlattenEmbedded_DiamondDoesNotPropagateDeeper(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Deep struct {
+	DeepField string ~json:"deep_field"~
+}
+
+type Common struct {
+	Deep
+	Shared string ~json:"shared"~
+}
+
+type Left struct{ Common }
+type Right struct{ Common }
+
+type Outer struct {
+	Left
+	Right
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["shared"] {
+		t.Error("the duplicated type's OWN tags annihilate")
+	}
+	if !outer.tags["deep_field"] {
+		t.Error("a tag below the duplicated type is still emitted by encoding/json and must be certified")
+	}
+}
+
+// TestFlattenEmbedded_DefinedTypeDoesNotInheritMethods separates the two
+// declaration forms. `type Safe Stamp` takes Stamp's fields with an EMPTY
+// method set, so embedding Safe promotes no marshaller and the fields are
+// judged normally; `type Same = Stamp` is the same type and does carry the
+// method, so embedding it must be rejected. Getting this wrong in the strict
+// direction manufactures drift on a wrapper that is fine.
+func TestFlattenEmbedded_DefinedTypeDoesNotInheritMethods(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Stamp struct {
+	At string ~json:"at"~
+}
+
+func (s Stamp) MarshalJSON() ([]byte, error) { return nil, nil }
+
+type Safe Stamp
+type Same = Stamp
+
+type UsesDefined struct {
+	Safe
+}
+
+type UsesAlias struct {
+	Same
+}
+`))
+	defined := structs["UsesDefined"]
+	if defined == nil {
+		t.Fatal("UsesDefined not collected")
+	}
+	if len(defined.unresolved) != 0 {
+		t.Errorf("a defined type has an empty method set; embedding it promotes no marshaller, got %v", defined.unresolved)
+	}
+	if !defined.tags["at"] {
+		t.Errorf("its fields promote normally, got %v", defined.tags)
+	}
+	alias := structs["UsesAlias"]
+	if alias == nil {
+		t.Fatal("UsesAlias not collected")
+	}
+	if len(alias.unresolved) == 0 {
+		t.Error("an alias IS the type, methods included; embedding it must be rejected")
+	}
+}
+
+// TestFlattenEmbedded_TaggedMethodBearingEmbedIsRejected covers the gap a json
+// tag opens in the method guard: the tag stops FIELD promotion, and nothing
+// else. The struct still implements json.Marshaler through the promoted
+// method, so the encoder never walks these fields.
+func TestFlattenEmbedded_TaggedMethodBearingEmbedIsRejected(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Stamp struct {
+	At string ~json:"at"~
+}
+
+func (s *Stamp) UnmarshalJSON(b []byte) error { return nil }
+
+type Outer struct {
+	Stamp ~json:"stamp"~
+	Name  string ~json:"name"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if len(outer.unresolved) == 0 {
+		t.Error("a tagged embed still promotes the type's methods and must be reported")
+	}
+}
+
+// TestCollectJSONMethodTypes_ClosureIsPackageWide pins that the interface
+// method-set closure runs over the merged package. The declaring interface and
+// the one embedding it habitually live in different files, and closing per file
+// would mark the first and never the second.
+func TestCollectJSONMethodTypes_ClosureIsPackageWide(t *testing.T) {
+	parse := func(source string) *ast.File {
+		t.Helper()
+		f, err := parser.ParseFile(token.NewFileSet(), "f.go", source, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		return f
+	}
+	a := parse(`package fixture
+
+type Marshaler interface {
+	MarshalJSON() ([]byte, error)
+}
+`)
+	b := parse(`package fixture
+
+type Fancy interface {
+	Marshaler
+	Extra()
+}
+`)
+	merged := map[string]bool{}
+	graph := map[string][]string{}
+	for _, f := range []*ast.File{b, a} { // reversed: the embedder is parsed first
+		direct, edges := collectJSONMethodTypes(f)
+		for k := range direct {
+			merged[k] = true
+		}
+		for k, v := range edges {
+			graph[k] = append(graph[k], v...)
+		}
+	}
+	if merged["Fancy"] {
+		t.Fatal("fixture setup: Fancy must only become a marshaler through the closure")
+	}
+	closeJSONMethodTypes(merged, graph)
+	if !merged["Fancy"] {
+		t.Error("an interface embedding a marshaler from ANOTHER file carries the method too")
 	}
 }

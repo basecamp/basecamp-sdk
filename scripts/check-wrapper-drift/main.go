@@ -579,7 +579,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		return fmt.Errorf("parse generated: %w", err)
 	}
 	genStructs := collectStructsAndMarkers(fset, genFile)
-	flattenEmbedded(genStructs, collectTypeDecls(genFile), collectJSONMethodTypes(genFile))
+	genJSONMethods, genIfaceEmbeds := collectJSONMethodTypes(genFile)
+	closeJSONMethodTypes(genJSONMethods, genIfaceEmbeds)
+	flattenEmbedded(genStructs, collectTypeDecls(genFile), genJSONMethods)
 
 	// Parse all wrapper files.
 	entries, err := os.ReadDir(wrapperDir)
@@ -587,8 +589,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		return fmt.Errorf("read wrapper dir: %w", err)
 	}
 	wrapperStructs := map[string]*structFields{}
-	wrapperTypeDecls := map[string]ast.Expr{}      // every top-level type decl in the wrapper package, for embed resolution
+	wrapperTypeDecls := map[string]typeDecl{}      // every top-level type decl in the wrapper package, for embed resolution
 	wrapperJSONMethods := map[string]bool{}        // types declaring MarshalJSON/UnmarshalJSON, whose promotion invalidates flattening
+	wrapperIfaceEmbeds := map[string][]string{}    // interface -> embedded interfaces, closed once every file is in
 	fromGenPairs := map[string]string{}            // wrapper name -> generated name (derived from *FromGenerated signatures)
 	assignedFields := map[string]map[string]bool{} // wrapper name -> set of Go fields written at the wrapper's construction site (tier 1 + tier 3)
 	// Tier-3 names sourced from the production tier3Wrappers set. Tests can
@@ -611,8 +614,12 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		for k, v := range collectTypeDecls(f) {
 			wrapperTypeDecls[k] = v
 		}
-		for k := range collectJSONMethodTypes(f) {
+		fileJSONMethods, fileIfaceEmbeds := collectJSONMethodTypes(f)
+		for k := range fileJSONMethods {
 			wrapperJSONMethods[k] = true
+		}
+		for k, v := range fileIfaceEmbeds {
+			wrapperIfaceEmbeds[k] = append(wrapperIfaceEmbeds[k], v...)
 		}
 		// collectFromGeneratedPairs already drops excluded functions by their
 		// function name (see excludedFromGenerated check inside it), so no
@@ -651,6 +658,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 
 	// Every wrapper file is parsed, so embedded types can now be resolved
 	// across the package: an embed may name a struct declared in another file.
+	// Closed across the whole package: an interface may embed one declared in
+	// another file, and the promotion is just as real.
+	closeJSONMethodTypes(wrapperJSONMethods, wrapperIfaceEmbeds)
 	flattenEmbedded(wrapperStructs, wrapperTypeDecls, wrapperJSONMethods)
 
 	// Build the final pair list: union of fromGen + directDecode.
@@ -921,7 +931,7 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 // implement json.Marshaler / json.Unmarshaler too — so encoding/json calls that
 // method for the whole struct instead of walking its fields, and no comparison
 // of promoted tags describes the wire shape any more.
-func collectJSONMethodTypes(f *ast.File) map[string]bool {
+func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) {
 	out := map[string]bool{}
 	// Methods declared with a receiver.
 	for _, decl := range f.Decls {
@@ -944,8 +954,8 @@ func collectJSONMethodTypes(f *ast.File) map[string]bool {
 	// promotes it just as embedding a struct with the method does, and the
 	// interface itself has no field to give the walk a second chance.
 	ifaceEmbeds := map[string][]string{}
-	for name, rhs := range collectTypeDecls(f) {
-		it, ok := rhs.(*ast.InterfaceType)
+	for name, decl := range collectTypeDecls(f) {
+		it, ok := decl.expr.(*ast.InterfaceType)
 		if !ok {
 			continue
 		}
@@ -964,26 +974,44 @@ func collectJSONMethodTypes(f *ast.File) map[string]bool {
 			}
 		}
 	}
-	// Propagate through interface embedding until stable. The universe is
-	// small and the loop is bounded by its size, so a cycle cannot spin.
+	return out, ifaceEmbeds
+}
+
+// closeJSONMethodTypes propagates the method sets through interface embedding
+// until stable. It runs over the MERGED package, not one file: the interface
+// declaring MarshalJSON and the interface embedding it routinely live in
+// different files, and a per-file closure would mark the first and never the
+// second. The loop is bounded by the graph size, so a cycle cannot spin.
+func closeJSONMethodTypes(direct map[string]bool, ifaceEmbeds map[string][]string) {
 	for range ifaceEmbeds {
 		changed := false
 		for name, embedded := range ifaceEmbeds {
-			if out[name] {
+			if direct[name] {
 				continue
 			}
 			for _, e := range embedded {
-				if out[e] {
-					out[name] = true
+				if direct[e] {
+					direct[name] = true
 					changed = true
 				}
 			}
 		}
 		if !changed {
-			break
+			return
 		}
 	}
-	return out
+}
+
+// promotesJSONMethod reports whether embedding e makes the embedding struct
+// implement json.Marshaler / json.Unmarshaler. The embed's own name always
+// counts (it is the type written at the embed site, and an interface resolves
+// to no struct at all); a name reached through type-declaration hops counts
+// only when the method set travelled with it — see resolveEmbedFull.
+func promotesJSONMethod(e embedRef, childName string, methodsTravel bool, jsonMethods map[string]bool) bool {
+	if jsonMethods[e.name] {
+		return true
+	}
+	return methodsTravel && childName != "" && jsonMethods[childName]
 }
 
 // isJSONMethodName reports whether a method name is one whose promotion
@@ -999,8 +1027,8 @@ func isJSONMethodName(name string) bool {
 // from it is unresolvable (declared elsewhere, or in another package), while an
 // embedded name present but non-struct (an interface, a map, a slice) simply
 // promotes no JSON-tagged fields.
-func collectTypeDecls(f *ast.File) map[string]ast.Expr {
-	out := map[string]ast.Expr{}
+func collectTypeDecls(f *ast.File) map[string]typeDecl {
+	out := map[string]typeDecl{}
 	for _, decl := range f.Decls {
 		gd, ok := decl.(*ast.GenDecl)
 		if !ok || gd.Tok != token.TYPE {
@@ -1008,11 +1036,20 @@ func collectTypeDecls(f *ast.File) map[string]ast.Expr {
 		}
 		for _, spec := range gd.Specs {
 			if ts, ok := spec.(*ast.TypeSpec); ok {
-				out[ts.Name.Name] = ts.Type
+				out[ts.Name.Name] = typeDecl{expr: ts.Type, alias: ts.Assign.IsValid()}
 			}
 		}
 	}
 	return out
+}
+
+// typeDecl is one `type X …` declaration. alias distinguishes `type X = Y`,
+// which is the same type as Y and therefore has its methods, from `type X Y`,
+// which takes Y's underlying structure but starts with an EMPTY method set.
+// That distinction decides whether embedding X promotes Y's MarshalJSON.
+type typeDecl struct {
+	expr  ast.Expr
+	alias bool
 }
 
 // embedRefFromExpr decomposes an anonymous field's type expression into an
@@ -1076,7 +1113,7 @@ const maxEmbedDepth = 16
 // full rule list. Unresolvable embeds are recorded on the embedding struct's
 // unresolved list — never skipped — and reported by run when a pair reaches
 // them.
-func flattenEmbedded(structs map[string]*structFields, decls map[string]ast.Expr, jsonMethods map[string]bool) {
+func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl, jsonMethods map[string]bool) {
 	// Settle which fields the encoder ignores before any promotion runs, for
 	// every struct rather than just the roots: the walk reads a descendant's
 	// ownFields directly, so filtering only at depth 0 would promote a tag out
@@ -1099,7 +1136,7 @@ func flattenEmbedded(structs map[string]*structFields, decls map[string]ast.Expr
 }
 
 // flattenOne performs the breadth-first promotion walk for a single struct.
-func flattenOne(rootName string, root *structFields, structs map[string]*structFields, decls map[string]ast.Expr, jsonMethods map[string]bool) {
+func flattenOne(rootName string, root *structFields, structs map[string]*structFields, decls map[string]typeDecl, jsonMethods map[string]bool) {
 	// A struct reached at depth d contributes its own tagged fields at depth d;
 	// path records the embedded field names traversed to reach it, both for
 	// population targets and for unresolvable-embed messages.
@@ -1163,6 +1200,21 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 		root.tagTargets = map[string][]string{}
 	}
 
+	// A json tag stops an anonymous field from promoting its FIELDS. It does
+	// nothing to method promotion, so a tagged embed of a marshaller redirects
+	// the encoder exactly as an untagged one does.
+	for _, te := range root.taggedEmbeds {
+		_, childName, methodsTravel, err := resolveEmbedFull(te.ref, structs, decls)
+		if err != "" || !promotesJSONMethod(te.ref, childName, methodsTravel, jsonMethods) {
+			continue
+		}
+		root.unresolved = append(root.unresolved,
+			fmt.Sprintf("%s -> %s (tagged embedded type declares MarshalJSON/UnmarshalJSON; the tag stops its FIELDS being promoted but not its methods, so encoding/json calls it for the whole struct)",
+				rootName, te.ref.display))
+		discardPromotions()
+		return
+	}
+
 	// Go-name resolution, tracked alongside the tag walk: nameDepth records the
 	// shallowest depth at which each field NAME appears and nameConflict the
 	// names two same-depth structs both declare, which makes the selector
@@ -1198,7 +1250,7 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 		reaches := map[string]int{}
 		for _, parent := range level {
 			for _, e := range parent.sf.embeds {
-				child, childName, err := resolveEmbed(e, structs, decls)
+				child, childName, methodsTravel, err := resolveEmbedFull(e, structs, decls)
 				if err != "" {
 					root.unresolved = append(root.unresolved,
 						fmt.Sprintf("%s -> %s (%s)", strings.Join(append([]string{rootName}, parent.path...), "."), e.display, err))
@@ -1208,7 +1260,7 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 				// struct: an embedded INTERFACE carries the method in its
 				// method set and resolves to no struct at all, so keying only
 				// on the resolution would miss it entirely.
-				if jsonMethods[e.name] || (childName != "" && jsonMethods[childName]) {
+				if promotesJSONMethod(e, childName, methodsTravel, jsonMethods) {
 					// Promoting a custom marshaller changes how the WHOLE
 					// embedding struct is encoded, so NO promoted tag on this
 					// struct describes the wire any more — not just this
@@ -1320,35 +1372,52 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 // non-empty reason string when the type cannot be resolved at all. A nil struct
 // with an empty reason means "resolved, but promotes no JSON-tagged fields"
 // (an interface, map, slice, func or channel type).
-func resolveEmbed(e embedRef, structs map[string]*structFields, decls map[string]ast.Expr) (*structFields, string, string) {
+func resolveEmbed(e embedRef, structs map[string]*structFields, decls map[string]typeDecl) (sf *structFields, name string, reason string) {
+	sf, name, _, reason = resolveEmbedFull(e, structs, decls)
+	return sf, name, reason
+}
+
+// resolveEmbedFull is resolveEmbed plus methodsTravel: whether the resolved
+// type's METHOD SET reaches the embedding struct. Every hop must be an alias
+// for that to hold — `type Safe Stamp` has Stamp's fields but none of its
+// methods, so embedding Safe does not make the outer type a json.Marshaler
+// even when Stamp is one.
+func resolveEmbedFull(e embedRef, structs map[string]*structFields, decls map[string]typeDecl) (*structFields, string, bool, string) {
 	switch {
 	case e.name == "":
-		return nil, "", "unsupported embedded type expression"
+		return nil, "", false, "unsupported embedded type expression"
 	case e.qualifier != "":
-		return nil, "", "declared in another package, which this check does not parse"
+		return nil, "", false, "declared in another package, which this check does not parse"
 	}
 	// Follow `type Alias Base` hops. maxEmbedDepth also bounds this chain, so a
 	// self-referential declaration cannot spin.
 	name := e.name
+	methodsTravel := true
 	seen := map[string]bool{}
 	for hop := 0; hop <= maxEmbedDepth; hop++ {
 		if sf, ok := structs[name]; ok {
-			return sf, name, ""
+			return sf, name, methodsTravel, ""
 		}
-		rhs, ok := decls[name]
+		decl, ok := decls[name]
 		if !ok {
-			return nil, "", "not declared in the parsed sources"
+			return nil, "", methodsTravel, "not declared in the parsed sources"
 		}
 		if seen[name] {
-			return nil, "", "self-referential type declaration"
+			return nil, "", methodsTravel, "self-referential type declaration"
 		}
 		seen[name] = true
-		switch t := rhs.(type) {
+		switch t := decl.expr.(type) {
 		case *ast.Ident:
-			name = t.Name // `type Alias Base` — follow it.
+			// `type Alias = Base` keeps Base's method set; `type Alias Base`
+			// starts empty.
+			if !decl.alias {
+				methodsTravel = false
+			}
+			name = t.Name
 		case *ast.SelectorExpr:
-			return nil, "", "defined in terms of another package's type, which this check does not parse"
+			return nil, "", methodsTravel, "defined in terms of another package's type, which this check does not parse"
 		default:
+			// (fallthrough comment below applies to the default branch)
 			// An interface, map, slice, func, chan or generic type. It is a
 			// valid embed and it is NOT absent from the wire — encoding/json
 			// treats it as an ordinary field keyed by the Go field name
@@ -1360,10 +1429,10 @@ func resolveEmbed(e embedRef, structs map[string]*structFields, decls map[string
 			// can drift past it: generated structs are oapi-codegen output,
 			// where every field carries a tag, so no generated wire key is
 			// ever spelled this way for a wrapper to miss.
-			return nil, "", ""
+			return nil, "", methodsTravel, ""
 		}
 	}
-	return nil, "", "type declaration chain is too deep to resolve"
+	return nil, "", methodsTravel, "type declaration chain is too deep to resolve"
 }
 
 // collectFromGeneratedPairs walks the AST for function declarations of the form
@@ -1637,8 +1706,18 @@ func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) 
 			// empty literal covers nothing.
 			return
 		}
-		// A positional literal must list every field of the struct, so it
-		// covers the whole subtree.
+		// A positional literal must list every DIRECT field of the struct, so
+		// it covers the subtree — unless one of those fields is an embedded
+		// pointer given nil, which puts none of ITS promoted fields on the
+		// wire. The walker cannot tell which element is which field without
+		// the full declaration order, so a nil element withdraws the claim
+		// rather than guessing: the author writes keys, and the report is the
+		// safe direction.
+		for _, elt := range lit.Elts {
+			if id, ok := unparen(elt).(*ast.Ident); ok && id.Name == "nil" {
+				return
+			}
+		}
 	}
 	assigned[path+".*"] = true
 }
