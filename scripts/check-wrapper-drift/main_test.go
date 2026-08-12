@@ -3181,3 +3181,49 @@ type W struct {
 		t.Error("a TAGGED unexported pointer embed is just as undecodable as an untagged one")
 	}
 }
+
+// TestFlattenEmbedded_ParenthesizedDeclarationsFollowed covers legal but
+// unusual `type Alias = (Base)` syntax. The parentheses are not part of the
+// type, and dropping the declaration on the floor because of them is the
+// silent-skip pattern this whole check exists to remove — here it would lose a
+// name edge and certify a wrapper whose promoted marshaller sat behind it.
+func TestFlattenEmbedded_ParenthesizedDeclarationsFollowed(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Stamp struct {
+	At string ~json:"at"~
+}
+
+func (s Stamp) MarshalJSON() ([]byte, error) { return nil, nil }
+
+type Alias = (Stamp)
+
+type Plain struct {
+	ID int64 ~json:"id"~
+}
+
+type PlainAlias = (Plain)
+
+type Outer struct {
+	Alias
+}
+
+type Harmless struct {
+	PlainAlias
+}
+`))
+	if o := structs["Outer"]; o == nil || len(o.unresolved) == 0 {
+		t.Errorf("a parenthesized alias to a marshaller is still an edge to it, got %+v", structs["Outer"])
+	}
+	// And the paired positive: parentheses alone must not cause a refusal.
+	h := structs["Harmless"]
+	if h == nil {
+		t.Fatal("Harmless not collected")
+	}
+	if len(h.unresolved) != 0 {
+		t.Errorf("a parenthesized alias to an ordinary struct is vouched, got %v", h.unresolved)
+	}
+	if !h.tags["id"] {
+		t.Errorf("and its fields promote, got %v", h.tags)
+	}
+}

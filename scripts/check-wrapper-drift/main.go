@@ -1231,7 +1231,11 @@ func collectTypeDecls(f *ast.File) map[string]typeDecl {
 		}
 		for _, spec := range gd.Specs {
 			if ts, ok := spec.(*ast.TypeSpec); ok {
-				out[ts.Name.Name] = typeDecl{expr: ts.Type, alias: ts.Assign.IsValid()}
+				// `type Alias = (Base)` is legal, and the parentheses are not
+				// part of the type. Unwrapping here means every consumer —
+				// the name-edge closure, embed resolution, the interface scan
+				// — sees the same shape without each having to remember.
+				out[ts.Name.Name] = typeDecl{expr: unparen(ts.Type), alias: ts.Assign.IsValid()}
 			}
 		}
 	}
