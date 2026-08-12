@@ -1,0 +1,20 @@
+conformance/runner/typescript/runner.test.ts
+  s_e0ea331ca7cb0c::t_8743d846419990 1600-1613,1622-1623
+  s_e0ea331ca7cb0c::t_985c0b889e02c5 1648-1651
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "23e4b947ef7726bd0283dbee6bba64e01919ec1a",
+  "prompts": {},
+  "sessions": {
+    "s_e0ea331ca7cb0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ba37ea7-c286-4fb7-9d5f-a36ec299a392",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
