@@ -1,0 +1,25 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/FlexibleLongSerializer.kt
+  s_23e48791aed839::t_b369fbc9e80b51 49-61
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_23e48791aed839::t_7fd39d4cbbd317 524-533,535-539,561
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DecodeIsolationTest.kt
+  s_23e48791aed839::t_05d3dd88b51a31 139,142-152,173-177,179-184
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FlexibleLongSerializerTest.kt
+  s_23e48791aed839::t_9d91c9c889179d 41-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8fabd2b37fc0e52cc3f18f25f518274f0b249b96",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
