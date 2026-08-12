@@ -208,14 +208,14 @@ Kotlin's need theirs to be **present**, and both stay quiet when it is nil. A
 fixture built for one direction proves nothing about the other, and either way
 it passes your tests and fails in production.
 
-| SDK | breaking changes | no signal at all | fails at runtime |
-|---|---:|---:|---:|
-| [Go](#go) | 33 | **12** | **4** |
-| [Swift](#swift) | 22 | **10** | 0 |
-| [TypeScript](#typescript) | 19 | 9 | 0 |
-| [Python](#python) | 16 | 8 | 0 |
-| [Ruby](#ruby) | 20 | 10 | 1 |
-| [Kotlin](#kotlin) | 17 | 6 | 1 |
+| SDK | no signal at all | fails at runtime |
+|---|---:|---:|
+| [Go](#go) | **12** | **4** |
+| [Swift](#swift) | **10** | 0 |
+| [TypeScript](#typescript) | 9 | 0 |
+| [Python](#python) | 8 | 0 |
+| [Ruby](#ruby) | 10 | 1 |
+| [Kotlin](#kotlin) | 6 | 1 |
 
 61 breaks the compiler will not catch, across the six: 55 with no signal at all
 and 6 that fail at runtime. These are counts at `9a819e44d` — the last commit of
@@ -232,10 +232,9 @@ there is no member that changed from optional to required; there are two new
 members that happen to be required from the start. It reshapes the #628 break
 rather than adding one, and that is where this guide documents it.
 
-#681 **does** add one, and it is the only row in the table above measured past
-the baseline this document states: it takes TypeScript from 18 breaking changes
-to 19. It adds nothing to either "no signal" column — it is five
-required-to-optional field relaxations, which `tsc` catches under
+#681 **does** break TypeScript, and it is the one change here measured past
+the baseline this document states. It adds nothing to either column — it is
+five required-to-optional field relaxations, which `tsc` catches under
 `strictNullChecks` — so the 61/55/6 totals below are unmoved. See
 [Five `Identity` and `AuthorizedAccount` fields became optional](#five-identity-and-authorizedaccount-fields-became-optional-681).
 
@@ -559,6 +558,9 @@ than an impression:
   once, against its parent change, not separately.
 - Entries that raise only on a malformed or unusual **server** response are
   class B, not class A.
+
+That rule-first stance is the contract for every number here: a count appears
+in this document only with a stated derivation rule.
 
 Neither class is a property of your **test suite**. Several class-A breaks
 *will* fail loudly in a suite that pins request paths — a URL correction stops
