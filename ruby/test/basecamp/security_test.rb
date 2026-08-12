@@ -143,6 +143,17 @@ class SecuritySameOriginTest < Minitest::Test
       "https://api.example.com/other"
     )
   end
+
+  # URI.parse("mailto:") raises URI::InvalidComponentError — a URI::Error the
+  # old `rescue URI::InvalidURIError` did not cover — because URI::MailTo
+  # demands an opaque part. A scheme-only URL must be refused, not a crash:
+  # the Link header and Location redirects both feed this guard.
+  def test_scheme_only_url_is_not_same_origin
+    assert_not Basecamp::Security.same_origin?(
+      "mailto:",
+      "https://api.example.com/page1"
+    )
+  end
 end
 
 class SecurityResolveUrlTest < Minitest::Test
@@ -168,6 +179,19 @@ class SecurityResolveUrlTest < Minitest::Test
       "page2"
     )
     assert_equal "https://api.example.com/v1/page2", result
+  end
+
+  # URI.join raises URI::InvalidComponentError — a URI::Error the old
+  # `rescue URI::InvalidURIError` did not cover — on a scheme-only target.
+  # Reachable today: `<mailto:>; rel="next"` in a Link header, or a
+  # `Location: mailto:` redirect, crashed pagination instead of being
+  # refused. Falling back to the target hands same_origin? a URL it rejects.
+  def test_scheme_only_target_falls_back_to_target
+    result = Basecamp::Security.resolve_url(
+      "https://api.example.com/page1",
+      "mailto:"
+    )
+    assert_equal "mailto:", result
   end
 end
 
