@@ -1129,7 +1129,7 @@ func flattenFixture(t *testing.T, source string) map[string]*structFields {
 		t.Fatalf("parse: %v", err)
 	}
 	structs := collectStructsAndMarkers(fset, f)
-	flattenEmbedded(structs, collectTypeDecls(f))
+	flattenEmbedded(structs, collectTypeDecls(f), collectJSONMethodTypes(f))
 	return structs
 }
 
@@ -1574,7 +1574,7 @@ type Selfish struct {
 	// terminate fails the test instead of hanging the whole package.
 	done := make(chan struct{})
 	go func() {
-		flattenEmbedded(structs, decls)
+		flattenEmbedded(structs, decls, collectJSONMethodTypes(f))
 		close(done)
 	}()
 	select {
@@ -2212,5 +2212,251 @@ type Outer struct {
 	}
 	if !outer.tags["name"] {
 		t.Errorf("expected the plain field to survive, got %v", outer.tags)
+	}
+}
+
+// TestFlattenEmbedded_GroupedDeclarationAnnihilates covers the grouped
+// declaration `A, B string ~json:"x"~`, which is two fields to encoding/json
+// sharing one tag at one depth — so they annihilate and the tag is not on the
+// wire, whether the struct is the wrapper itself or something it embeds.
+func TestFlattenEmbedded_GroupedDeclarationAnnihilates(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Base struct {
+	A, B string ~json:"x"~
+	C    string ~json:"c"~
+}
+
+type Outer struct {
+	Base
+}
+
+type Direct struct {
+	A, B string ~json:"x"~
+	C    string ~json:"c"~
+}
+`))
+	for _, name := range []string{"Outer", "Direct"} {
+		sf := structs[name]
+		if sf == nil {
+			t.Fatalf("%s not collected", name)
+		}
+		if sf.tags["x"] {
+			t.Errorf("%s: a grouped declaration is two fields sharing a tag; they annihilate", name)
+		}
+		if !sf.tags["c"] {
+			t.Errorf("%s: the ungrouped tag must survive, got %v", name, sf.tags)
+		}
+	}
+}
+
+// TestRecordAssignedValue_ValueShapes pins how each right-hand side shape is
+// classified, since the difference between "enumerated" and "total coverage"
+// is what stops a partial assignment from certifying fields it never sets.
+func TestRecordAssignedValue_ValueShapes(t *testing.T) {
+	cases := []struct {
+		name       string
+		expr       string
+		wantKeys   []string
+		wantTotal  bool
+		wantAbsent []string
+	}{
+		{"keyed literal", "Base{ID: g.Id}", []string{"Base.ID"}, false, []string{"Base.*"}},
+		{"parenthesized keyed literal", "(Base{ID: g.Id})", []string{"Base.ID"}, false, []string{"Base.*"}},
+		{"pointer keyed literal", "&Base{ID: g.Id}", []string{"Base.ID"}, false, []string{"Base.*"}},
+		// A positional literal must list every field, so it covers all of them.
+		{"positional literal", "Base{g.Id, g.Name}", nil, true, nil},
+		{"empty literal", "Base{}", nil, false, []string{"Base.*"}},
+		{"opaque call", "baseFrom(g)", nil, true, nil},
+		// nil populates nothing: a nil embedded pointer emits none of its fields.
+		{"nil", "nil", nil, false, []string{"Base.*"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			expr, err := parser.ParseExpr(c.expr)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			assigned := map[string]bool{}
+			recordAssignedValue(assigned, "Base", expr)
+			if !assigned["Base"] {
+				t.Error("the assigned path itself must always be recorded")
+			}
+			for _, k := range c.wantKeys {
+				if !assigned[k] {
+					t.Errorf("expected %q, got %v", k, assigned)
+				}
+			}
+			if assigned["Base.*"] != c.wantTotal {
+				t.Errorf("total coverage = %v, want %v (got %v)", assigned["Base.*"], c.wantTotal, assigned)
+			}
+			for _, a := range c.wantAbsent {
+				if assigned[a] {
+					t.Errorf("did not expect %q, got %v", a, assigned)
+				}
+			}
+		})
+	}
+}
+
+// TestRun_NilEmbedAssignmentPopulatesNothing is the end-to-end half: a
+// converter that nils out a pointer embed emits none of its promoted fields, so
+// the guard must not pass it. Paired with the same converter assigning a real
+// value, which must pass.
+func TestRun_NilEmbedAssignmentPopulatesNothing(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	ID      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+
+type Note struct {
+	*Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.Base = nil
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: a nil embed emits none of its promoted fields and must not count as population")
+	}
+
+	real := strings.Replace(wrapperSrc, "n.Base = nil", "n.Base = &Base{ID: g.Id, Content: g.Content}", 1)
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": real})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: a real pointer literal populates its fields, got %v", err)
+	}
+}
+
+// TestFlattenEmbedded_MethodBearingEmbedIsRejected covers the failure that
+// invalidates flattening wholesale rather than one tag: embedding a type with
+// MarshalJSON promotes the method, so the EMBEDDING type implements
+// json.Marshaler and encoding/json calls it instead of walking any of these
+// fields. The tag set then describes nothing, so the walk refuses to judge and
+// reports instead — the same fail-loud path as an unresolvable embed. The
+// package already has a method-bearing type (FlexTime).
+func TestFlattenEmbedded_MethodBearingEmbedIsRejected(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Stamp struct {
+	At string ~json:"at"~
+}
+
+func (s Stamp) MarshalJSON() ([]byte, error) { return nil, nil }
+
+type Plain struct {
+	Name string ~json:"name"~
+}
+
+type Outer struct {
+	Stamp
+	Plain
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if len(outer.unresolved) == 0 {
+		t.Error("embedding a type whose method is promoted must be reported, not silently flattened")
+	}
+	if outer.tags["at"] {
+		t.Error("the method-bearing embed's tags must not be certified")
+	}
+}
+
+// TestFlattenEmbedded_IgnoredEmbedDoesNotAnnihilate is the ordering case: a
+// field encoding/json never sees cannot annihilate one it does. An anonymous
+// unexported non-struct is dropped before dominance is resolved, so a real
+// field sharing its tag stays on the wire — counting the hidden one first would
+// report phantom drift on a wrapper that is correct.
+func TestFlattenEmbedded_IgnoredEmbedDoesNotAnnihilate(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type hidden string
+
+type Outer struct {
+	hidden ~json:"secret"~
+	Real   string ~json:"secret"~
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if !outer.tags["secret"] {
+		t.Error("the real field survives: the ignored embed never reaches dominance")
+	}
+	if got := outer.tagToGoField["secret"]; got != "Real" {
+		t.Errorf("expected the tag to resolve to the real field, got %q", got)
+	}
+}
+
+// TestPopulationTargets_SameNamedEmbedIsNotTheLeaf checks a review claim that
+// assigning an embed could be credited to a same-named promoted leaf. It
+// cannot: `w.Deep = Deep{}` is recorded as the bare path "Deep", which is not
+// a target of the leaf (the shadowing rule excludes the bare spelling, since
+// `w.Deep` resolves to the embed), and a keyed literal grants no total marker.
+// The ancestor spelling `Deep.*` requires an OPAQUE assignment of that embed,
+// which genuinely does populate everything under it.
+func TestPopulationTargets_SameNamedEmbedIsNotTheLeaf(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Deep struct {
+	Deep string ~json:"deep_only"~
+}
+
+type Mid struct {
+	Deep
+}
+
+type Outer struct {
+	Mid
+}
+`))
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	targets := map[string]bool{}
+	for _, tgt := range outer.populationTargets("deep_only") {
+		targets[tgt] = true
+	}
+	if targets["Deep"] {
+		t.Error("the bare embed spelling must not be a target of the leaf it shadows")
+	}
+	if !targets["Deep.Deep"] || !targets["Mid.Deep.Deep"] {
+		t.Errorf("the qualified spellings must be targets, got %v", outer.populationTargets("deep_only"))
+	}
+	// And the assignment side agrees: a keyed literal on the embed records the
+	// path and its keys, never the bare-leaf spelling.
+	expr, err := parser.ParseExpr("Deep{}")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	assigned := map[string]bool{}
+	recordAssignedValue(assigned, "Deep", expr)
+	populated := false
+	for _, tgt := range outer.populationTargets("deep_only") {
+		if assigned[tgt] {
+			populated = true
+		}
+	}
+	if populated {
+		t.Error("assigning the embed with an empty literal must not populate the leaf")
 	}
 }
