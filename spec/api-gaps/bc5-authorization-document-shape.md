@@ -1,9 +1,9 @@
 ---
 gap: bc5-authorization-document-shape
-status: partial-coverage
+status: addressed-in-bc3-pr-12646
 detected: 2026-08-05
 sdk_demand: medium
-bc3_pr: 9471
+bc3_pr: 12646
 bc3_refs:
   introduced_in: BC3 #9471, the modern OAuth 2.1 stack (merged eac8b2b476)
   routes:
@@ -165,10 +165,11 @@ the kind of `FlexTime` special-casing Go already needed.
 
 ## What shipped (#681)
 
-The SDK half of this brief is closed. `status` stays `partial-coverage` because
-the other half is bc3's and has not moved: bc3 still does not document its own
-authorization document, so `doc/api/sections/authentication.md` describes only
-Launchpad's payload and the two shapes are still undeclared. Nothing here is
+The SDK half of this brief closed here. `status` stayed `partial-coverage` at
+the time because the other half was bc3's and had not moved: bc3 did not yet
+document its own authorization document, so `doc/api/sections/authentication.md`
+described only Launchpad's payload and the two shapes were undeclared. That
+half has since closed too — see "Closed (bc3 #12646)" below. Nothing here is
 generated — OAuth is outside the OpenAPI spec by design — so there are no
 `smithy_refs` to point at and `absorbed-in-sdk` would fail
 `scripts/validate-api-gaps.rb` for exactly that reason.
@@ -240,3 +241,41 @@ is still open and is a feature, not a fix.
 Both fixtures asked for by the absorption plan exist: the pre-existing
 Launchpad-shaped ones and new BC5-shaped ones in all three SDKs that have a
 typed or tested surface, each asserting the epoch-seconds `expires_at`.
+
+## Closed (bc3 #12646)
+
+bc3 **#12646** (merged `71b43f3d9fa`, deployed to production 2026-08-11) closed
+the bc3 half:
+
+- **`expires_at` converged on ISO 8601.** The view renders the raw `Time`
+  instead of `.to_i` — the epoch integer was the only one in bc3's entire
+  public JSON API, incidental to RFC 7662's mandatory `exp` written in the same
+  PR. The self-referential controller-test assertions were replaced with
+  shape assertions (`String` + `Time.iso8601` parse-back), proven failing
+  against the old view. **No SDK change needed**: Go's `FlexTime` and TS's
+  `parseExpiresAt` accept both spellings, and Ruby/Python pass the value
+  through untyped.
+- **bc3 documents its own document.** `doc/api/sections/authentication.md`
+  gained a "Get authorization from Basecamp" section — both token types, the
+  RFC 8707 `resource` indicator, the `scope` presence rule (every
+  Basecamp-issued token carries one, PATs included; legacy tokens predate
+  scopes), the identity-id-only shape, the DPoP-bound request form, ISO 8601
+  `expires_at`. Mirrored to the public repo via bc-api #435.
+
+This status is **terminal**: no absorption PR will follow, because this surface
+is deliberately outside the OpenAPI spec (the same reason `absorbed-in-sdk`
+fails validation here — no `smithy_refs` can exist). At repin time, treat this
+entry as registered-and-done rather than pending absorption.
+
+Left open upstream, deliberately, as flagged on #12646:
+
+- Whether bc3's document should carry Launchpad's `accounts[].product` /
+  `app_href` — a product decision (resource indicators vs product selection).
+- `href` renders `BC3.uri` (the web origin) while Launchpad's contract — and
+  the doc example — use the account's API base. Raised on the PR with a
+  recommended fix (`BC3.protocol` + `BC3.api_host`); the owner resolved the
+  thread, so the call on if/when to converge it is made upstream, not here.
+
+The wider question both instances belong to, named on the PR: which fields of
+bc3's authorization document are contract-bound to mirror Launchpad's — one
+decision, not per-field rounds.
