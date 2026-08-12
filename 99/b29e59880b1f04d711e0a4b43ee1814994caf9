@@ -1,0 +1,23 @@
+Makefile
+  s_655f73c03e416d::t_639332b9cacd49 310
+  s_655f73c03e416d::t_78b5e79cf588bf 324-328
+  s_655f73c03e416d::t_fc31df6a7e56f4 1381
+go/Makefile
+  s_655f73c03e416d::t_8d8aadd990cc31 103-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "99b29e59880b1f04d711e0a4b43ee1814994caf9",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
