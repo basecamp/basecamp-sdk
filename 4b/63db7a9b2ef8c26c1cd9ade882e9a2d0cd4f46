@@ -1,0 +1,29 @@
+spec/bc3-route-allowlist.yml
+  s_b429eb5f926267::t_85e51be0b0bca2 193-196,198-209
+spec/api-gaps/step-top-level.md
+  s_b429eb5f926267::t_20b531eb78b52e 85-95
+spec/api-gaps/subtasks-canonical-rename.md
+  s_b429eb5f926267::t_31f2e136fb96c5 1-101
+spec/api-gaps/notifications-sort-pings-first.md
+  s_b429eb5f926267::t_dd7fd5c3b442f8 102-111
+spec/api-gaps/recordable-subtypes-doc.md
+  s_b429eb5f926267::t_4a3b21aab5e1a1 126-137
+spec/api-gaps/README.md
+  s_b429eb5f926267::t_7f78ee323a2943 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4b63db7a9b2ef8c26c1cd9ade882e9a2d0cd4f46",
+  "prompts": {},
+  "sessions": {
+    "s_b429eb5f926267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50a1085e-2c16-4b99-b4e1-e3cc5665f1c4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
