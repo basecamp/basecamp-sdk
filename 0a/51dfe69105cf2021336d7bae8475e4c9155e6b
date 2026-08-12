@@ -1,0 +1,24 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_23e48791aed839::t_064270571a1f99 501-520,522-526,533,544
+  s_23e48791aed839::t_6b9a7c22db18ab 21-33
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_23e48791aed839::t_24651a9bc2bae8 262-280
+  s_23e48791aed839::t_84afc8cd6fdf5c 288-293
+  s_23e48791aed839::t_049d71f7597071 379-392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0a51dfe69105cf2021336d7bae8475e4c9155e6b",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
