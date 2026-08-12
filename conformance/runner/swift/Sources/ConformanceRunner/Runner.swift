@@ -259,9 +259,25 @@ struct Runner {
                 dispatch = try await dispatchOperation(tc, account)
                 httpStatus = transport.lastConsumedIndex.flatMap { tc.responses[$0].status }
             } catch let error as BasecampError {
-                caughtError = error
-                dispatchFailed = true
-                httpStatus = error.httpStatusCode
+                // Since #604 the SDK maps a body the model refuses into the
+                // SPEC §6 malformed-2xx-body shape — a statusless `.api` —
+                // rather than letting the `DecodingError` out raw. That arrives
+                // here, not in the `DecodingError` branch below, so the #555
+                // policy is re-applied at this seam: routing it onward would
+                // both lose the loud "fix the fixture body" failure and let a
+                // fixture pinning `errorCode: api_error` be satisfied by a
+                // decoder rejection, which is exactly what `caughtError` is
+                // withheld to prevent.
+                if let decodeFailure = malformedBodyMessage(error) {
+                    guard expectsFailure else {
+                        return .fail("Mock body lacks required Swift model fields: \(decodeFailure)")
+                    }
+                    dispatchFailed = true
+                } else {
+                    caughtError = error
+                    dispatchFailed = true
+                    httpStatus = error.httpStatusCode
+                }
             } catch let error as RunnerError {
                 // A fixture the dispatch table cannot honor as written: an
                 // unknown operation, or a parameter that would have been
@@ -269,6 +285,12 @@ struct Runner {
                 // fixture bugs to fix, not runner limitations to skip.
                 return .fail(error.description)
             } catch let error as DecodingError {
+                // Reached only by a decode the SDK's primitives do not own —
+                // the wrapper-field decode a generated wrapped-list method runs
+                // after the primitive returns. Everything the primitives decode
+                // arrives above as a statusless `.api` (#604), and both paths
+                // apply the same policy.
+                //
                 // A mock body that fails the model's required-field validation
                 // is a fixture bug, not a runner limitation: fail loudly so it
                 // gets fixed (canonical bodies live in spec/fixtures/) instead
@@ -353,6 +375,20 @@ private func runHTTPSProbe(_ baseURL: String) -> HTTPSProbeOutcome {
 }
 
 // MARK: - Decoding-error rendering
+
+/// The message of a SPEC §6 malformed-2xx-body error, or nil for any other
+/// `BasecampError`.
+///
+/// The SDK maps a decode failure to a statusless `api_error` (#604) and cannot
+/// carry the `DecodingError` structurally — `BasecampError.api` has no `cause`
+/// slot — so the shape is what identifies it: every other `.api` the runner can
+/// provoke comes from an HTTP response and carries that response's status.
+private func malformedBodyMessage(_ error: BasecampError) -> String? {
+    guard case .api(let message, let httpStatus, _, _) = error, httpStatus == nil else {
+        return nil
+    }
+    return message
+}
 
 /// Renders a DecodingError with the missing key and coding path, which is the
 /// actionable part when a fixture body under-specifies a model.
