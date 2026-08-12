@@ -359,10 +359,14 @@ type CardTable struct {
 
 // Chatbot defines model for Chatbot.
 type Chatbot struct {
-	AppUrl      *string   `json:"app_url,omitempty"`
-	CommandUrl  *string   `json:"command_url,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	Id          int64     `json:"id"`
+	AppUrl *string `json:"app_url,omitempty"`
+
+	// CommandUrl Only present when the requester is an account administrator; possession of this URL is enough to command the bot.
+	CommandUrl *string   `json:"command_url,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	Id         int64     `json:"id"`
+
+	// LinesUrl Only present when the requester is an account administrator; possession of this URL is enough to post lines as the bot.
 	LinesUrl    *string   `json:"lines_url,omitempty"`
 	ServiceName string    `json:"service_name"`
 	UpdatedAt   time.Time `json:"updated_at"`

@@ -192,6 +192,19 @@ class CampfiresServiceTest < Minitest::Test
     assert_equal "TestBot", chatbot["service_name"]
   end
 
+  def test_get_chatbot_as_non_admin_omits_both_admin_only_urls
+    # command_url and lines_url are admin-only in responses: a non-admin
+    # requester gets neither key at all (absent, not null).
+    stub_get("/12345/buckets/100/chats/200/integrations/300",
+             response_body: { "id" => 300, "service_name" => "TestBot" })
+
+    chatbot = @account.campfires.get_chatbot(bucket_id: 100, campfire_id: 200, chatbot_id: 300)
+
+    assert_equal 300, chatbot["id"]
+    assert_not chatbot.key?("command_url")
+    assert_not chatbot.key?("lines_url")
+  end
+
   def test_create_chatbot
     new_chatbot = sample_chatbot(id: 999, service_name: "NewBot")
     stub_post("/12345/buckets/100/chats/200/integrations.json", response_body: new_chatbot)

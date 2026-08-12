@@ -87,6 +87,36 @@ class TestSyncCampfireLines:
         assert route.called
 
 
+class TestSyncChatbots:
+    @respx.mock
+    def test_get_chatbot_as_non_admin_omits_both_admin_only_urls(self):
+        # command_url and lines_url are admin-only in responses: a non-admin
+        # requester gets neither key at all (absent, not null).
+        route = respx.get("https://3.basecampapi.com/12345/buckets/100/chats/200/integrations/300").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": 300,
+                    "created_at": "2022-11-22T08:25:04.466Z",
+                    "updated_at": "2022-11-22T08:25:04.466Z",
+                    "service_name": "Capistrano",
+                    "url": "https://3.basecampapi.com/12345/buckets/100/chats/200/integrations/300.json",
+                    "app_url": "https://3.basecamp.com/12345/buckets/100/chats/200/integrations/300",
+                },
+            )
+        )
+
+        c = Client(access_token="test-token")
+        chatbot = c.for_account("12345").campfires.get_chatbot(bucket_id=100, campfire_id=200, chatbot_id=300)
+        c.close()
+
+        assert route.called
+        assert chatbot["id"] == 300
+        assert chatbot["service_name"] == "Capistrano"
+        assert "command_url" not in chatbot
+        assert "lines_url" not in chatbot
+
+
 class TestAsyncCampfireLines:
     @pytest.mark.asyncio
     @respx.mock

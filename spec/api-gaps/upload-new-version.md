@@ -10,7 +10,7 @@ smithy_refs:
   - UploadVersion
   - UploadVersionFile
 bc3_refs:
-  introduced_in: BC3 #12555, inside the range the SDK triaged when it registered this
+  introduced_in: "BC3 #12555, inside the range the SDK triaged when it registered this"
   routes:
     - POST /:account_id/uploads/:id/versions.json
     - POST /:account_id/buckets/:bucket_id/uploads/:id/versions.json

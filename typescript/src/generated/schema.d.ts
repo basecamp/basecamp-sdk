@@ -3729,9 +3729,11 @@ export interface components {
             created_at: string;
             updated_at: string;
             service_name: string;
+            /** @description Only present when the requester is an account administrator; possession of this URL is enough to command the bot. */
             command_url?: string;
             url?: string;
             app_url?: string;
+            /** @description Only present when the requester is an account administrator; possession of this URL is enough to post lines as the bot. */
             lines_url?: string;
         };
         ClientApproval: {

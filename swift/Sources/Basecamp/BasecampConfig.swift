@@ -27,7 +27,7 @@ public struct BasecampConfig: Sendable {
     public static let version = "0.14.0"
 
     /// Basecamp API version this SDK targets.
-    public static let apiVersion = "2026-08-05"
+    public static let apiVersion = "2026-08-11"
 
     /// Default User-Agent header value.
     public static let defaultUserAgent = "basecamp-sdk-swift/\(version) (api:\(apiVersion))"

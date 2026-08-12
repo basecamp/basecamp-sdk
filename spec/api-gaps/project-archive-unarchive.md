@@ -9,7 +9,7 @@ smithy_refs:
   - UnarchiveProject
   - ProjectLimitError
 bc3_refs:
-  introduced_in: archive-project-api (BC3 #12550, merged 6f4781bbd4)
+  introduced_in: "archive-project-api (BC3 #12550, merged 6f4781bbd4)"
   routes:
     - PUT /:account_id/projects/:project_id/status/archived.json
     - PUT /:account_id/projects/:project_id/status/active.json

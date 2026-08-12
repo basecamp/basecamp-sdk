@@ -52,6 +52,20 @@ def parse_frontmatter(path)
 
   yaml_text = rest[0...end_idx]
   body = rest[(end_idx + 5)..]
+
+  # An unquoted plain scalar ends at " #": YAML reads the rest of the line as
+  # a comment, so `introduced_in: branch (BC3 #12544, ...)` silently loads as
+  # "branch (BC3" — and a value that IS the comment, `bc3_pr: #12544`, loads
+  # as nil outright. Every frontmatter line here is data, never commented, so
+  # any comment-swallowed text — " #" inside an unquoted value, or a value
+  # starting with "#" — is a truncation bug, not a comment.
+  yaml_text.each_line do |line|
+    value = line.chomp[/\A\s*(?:- |[A-Za-z_]+:\s*)(.*)\z/, 1]
+    next unless value && !value.start_with?('"', "'")
+    return [nil, body, "unquoted frontmatter value truncated at ' #' (YAML comment): #{line.strip}"] if value.include?(" #")
+    return [nil, body, "unquoted frontmatter value swallowed whole as a YAML comment (loads as nil): #{line.strip}"] if value.start_with?("#")
+  end
+
   begin
     [YAML.safe_load(yaml_text, permitted_classes: [Date, Time]), body, nil]
   rescue Psych::SyntaxError => e

@@ -123,3 +123,15 @@ Journal::Entry — there is no contract to model.
 - Canary: extend the `Search` and `Activity` fixture coverage to include
   recordings of these new types if test data permits. Create operations not
   covered by canary (read-only canary scope).
+
+## As of bc3 `984d570baf8`: two chat-line announcement kinds render instead of 500ing
+
+Related rendering fact, recorded here because this is the brief about
+recordable subtypes surfacing in JSON: the chat lines API dispatches to a
+per-kind partial, and the JSON view directory never had partials for the two
+announcement kinds a ping records when it is renamed or its image changes —
+any page of lines holding one raised `MissingTemplate` and the whole request
+500'd. bc3 `984d570baf8` adds `_renaming.json.jbuilder` and
+`_reimaging.json.jbuilder` mirroring their ERB counterparts, so those pages
+now render. No documented shape changed and no SDK action is needed; the SDK's
+chat-line coverage simply stops tripping over such pages.

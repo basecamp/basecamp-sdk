@@ -801,6 +801,34 @@ func TestChatbot_UnmarshalGet(t *testing.T) {
 	}
 }
 
+func TestChatbot_UnmarshalNonAdmin(t *testing.T) {
+	// command_url and lines_url are admin-only in responses: a non-admin
+	// requester gets neither key at all (absent, not null). The shared
+	// fixture mirrors bc3's non-admin rendering.
+	data := loadCampfiresFixture(t, "chatbot_get_nonadmin.json")
+
+	var chatbot Chatbot
+	if err := json.Unmarshal(data, &chatbot); err != nil {
+		t.Fatalf("failed to unmarshal chatbot_get_nonadmin.json: %v", err)
+	}
+
+	if chatbot.ID != 1049715958 {
+		t.Errorf("expected ID 1049715958, got %d", chatbot.ID)
+	}
+	if chatbot.ServiceName != "Capistrano" {
+		t.Errorf("expected ServiceName 'Capistrano', got %q", chatbot.ServiceName)
+	}
+	if chatbot.CommandURL != "" {
+		t.Errorf("expected absent command_url to decode as empty, got %q", chatbot.CommandURL)
+	}
+	if chatbot.LinesURL != "" {
+		t.Errorf("expected absent lines_url to decode as empty, got %q", chatbot.LinesURL)
+	}
+	if chatbot.URL == "" || chatbot.AppURL == "" {
+		t.Error("expected url and app_url to survive the non-admin projection")
+	}
+}
+
 func TestCreateChatbotRequest_Marshal(t *testing.T) {
 	req := CreateChatbotRequest{
 		ServiceName: "mybot",

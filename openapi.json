@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-08-05",
+    "version": "2026-08-11",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -27744,7 +27744,8 @@
             "type": "string"
           },
           "command_url": {
-            "type": "string"
+            "type": "string",
+            "description": "Only present when the requester is an account administrator; possession of this URL is enough to command the bot."
           },
           "url": {
             "type": "string"
@@ -27753,7 +27754,8 @@
             "type": "string"
           },
           "lines_url": {
-            "type": "string"
+            "type": "string",
+            "description": "Only present when the requester is an account administrator; possession of this URL is enough to post lines as the bot."
           }
         },
         "required": [

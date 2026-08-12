@@ -366,6 +366,31 @@ describe("CampfiresService", () => {
     });
   });
 
+  describe("getChatbot", () => {
+    it("should decode a non-admin chatbot with both admin-only URLs absent", async () => {
+      // command_url and lines_url are admin-only in responses: a non-admin
+      // requester gets neither key at all (absent, not null).
+      server.use(
+        http.get(`${BASE_URL}/buckets/100/chats/200/integrations/300`, () => {
+          return HttpResponse.json({
+            id: 300,
+            created_at: "2022-11-22T08:25:04.466Z",
+            updated_at: "2022-11-22T08:25:04.466Z",
+            service_name: "Capistrano",
+            url: `${BASE_URL}/buckets/100/chats/200/integrations/300.json`,
+            app_url: "https://3.basecamp.com/12345/buckets/100/chats/200/integrations/300",
+          });
+        })
+      );
+
+      const chatbot = await client.campfires.getChatbot(100, 200, 300);
+      expect(chatbot.id).toBe(300);
+      expect(chatbot.service_name).toBe("Capistrano");
+      expect(chatbot.command_url).toBeUndefined();
+      expect(chatbot.lines_url).toBeUndefined();
+    });
+  });
+
   describe("createUpload error handling", () => {
     it("should surface 422 as BasecampError", async () => {
       server.use(

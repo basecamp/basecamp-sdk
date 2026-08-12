@@ -5,7 +5,7 @@ detected: 2026-08-05
 sdk_demand: medium
 bc3_pr: 12646
 bc3_refs:
-  introduced_in: BC3 #9471, the modern OAuth 2.1 stack (merged eac8b2b476)
+  introduced_in: "BC3 #9471, the modern OAuth 2.1 stack (merged eac8b2b476)"
   routes:
     - GET /authorization.json
     - GET /.well-known/oauth-authorization-server
