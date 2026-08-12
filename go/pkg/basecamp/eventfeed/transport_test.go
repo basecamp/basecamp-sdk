@@ -37,6 +37,14 @@ func TestCheckCableURL_RefusesAsPolicy(t *testing.T) {
 		{"control character", "wss://h\x00st/cable"},
 		{"empty host", "wss:///cable"},
 		{"empty", ""},
+		// A port-only or userinfo-only authority parses with a NONEMPTY
+		// url.Host (":443", "user@") and an EMPTY hostname. The dial can only
+		// fail, and it fails as an ordinary transient — so the connector would
+		// re-mint and retry a permanently unusable URL forever instead of
+		// surfacing invalid_cable_url. Authority is not hostname.
+		{"port-only authority", "wss://:443/feed?ticket=t-1"},
+		{"port-only authority on ws", "ws://:28080/cable"},
+		{"userinfo-only authority", "wss://user:pass@/cable"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -61,6 +69,7 @@ func TestCheckCableURL_RefusalNeverCarriesQueryString(t *testing.T) {
 		"ws://3.basecampapi.com/cable?ticket=SECRET-TICKET",
 		"wss://bad host/cable?ticket=SECRET-TICKET", // url.Parse error paths embed the raw URL
 		"https://example.com/cable?ticket=SECRET-TICKET",
+		"wss://:443/cable?ticket=SECRET-TICKET",
 	} {
 		err := checkCableURL(u)
 		if err == nil {

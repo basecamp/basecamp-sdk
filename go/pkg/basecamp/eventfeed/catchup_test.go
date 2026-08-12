@@ -478,6 +478,10 @@ func TestContinuationValidation(t *testing.T) {
 		{"foreign port", "https://3.basecampapi.com:8443/999/events.json"},
 		{"non-http scheme", "file:///etc/passwd"},
 		{"relative", "/999/events.json?after=101"},
+		// Authority is not hostname: ":443" is a nonempty url.Host with an
+		// empty hostname. CanonicalOrigin already reads Hostname(), so this
+		// takes the terminal path; the case is here so it stays that way.
+		{"port-only authority", "https://:443/999/events.json"},
 	}
 	for _, tc := range rejected {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1058,12 +1062,12 @@ func TestSocketOutcomeDuringAStalledPollIsBounded(t *testing.T) {
 func TestProtocolFatalDuringDrainingIsImmediate(t *testing.T) {
 	// A store with nothing in it makes the entry present-class, which is what
 	// gives the drain a HELD position to (wrongly) save.
-	newDrainingHarness := func(t *testing.T, caughtUp *int) (*harness, *feedtest.Store) {
+	newDrainingHarness := func(t *testing.T, caughtUp *int, opts ...eventfeed.Option) (*harness, *feedtest.Store) {
 		t.Helper()
 		store := feedtest.NewStore()
-		h := storedHarness(t, store, eventfeed.WithObserver(eventfeed.Observer{
+		h := storedHarness(t, store, append([]eventfeed.Option{eventfeed.WithObserver(eventfeed.Observer{
 			CaughtUp: func() { *caughtUp++ },
-		}))
+		})}, opts...)...)
 		h.minter.ScriptTicket(ticket(1))
 		h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
 		return h, store
@@ -1106,6 +1110,36 @@ func TestProtocolFatalDuringDrainingIsImmediate(t *testing.T) {
 		// event; the fatal frame is queued while it is parked.
 		h.waitUntil("the drain parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
 		h.serveSettled(conn, frameDisconnect("invalid_event_stream_command", false))
+		h.resume()
+		h.join()
+
+		assertProtocolFatalDrain(t, h, store, caughtUp)
+		assertIDs(t, h.deliveredIDs(), 41)
+	})
+
+	// The carve-out is about the FRAME, not about how many ordinary frames sit
+	// in front of it. The scan's reach is the pump's hand-off queue depth —
+	// the only bound that guarantees every frame the pump had queued when the
+	// drain began is examined — and deliberately NOT the caller-configurable
+	// live-buffer capacity, which measures a different thing entirely (how
+	// much the state machine will hold) and can be set as low as 1. Bounding
+	// the scan by it lets a single queued ping spend the whole budget, and the
+	// fatal frame behind it goes unseen until Streaming — after the held save
+	// and the caught_up announcement the carve-out exists to prevent.
+	t.Run("behind an ordinary frame under a one-event live buffer", func(t *testing.T) {
+		var caughtUp int
+		h, store := newDrainingHarness(t, &caughtUp, eventfeed.WithLiveBufferCapacity(1))
+		h.pauseAfter = 1
+		h.start()
+		conn := h.driveToSubscribed()
+		h.serveSettled(conn, frameMessage(noFilterIdentifier, 41))
+		conn.Serve(frameConfirm(noFilterIdentifier))
+
+		h.waitUntil("the drain parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
+		// A ping is queued AHEAD of the fatal frame: both are in the pump's
+		// queue before the drain's next scan, so both were "observed during
+		// Draining" by every reading of the carve-out.
+		h.serveSettled(conn, framePing(), frameDisconnect("invalid_event_stream_command", false))
 		h.resume()
 		h.join()
 

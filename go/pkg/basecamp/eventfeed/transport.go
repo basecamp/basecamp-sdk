@@ -37,7 +37,15 @@ func checkCableURL(wsURL string) *DialError {
 		// reason.
 		return &DialError{Kind: DialPolicy, Reason: "cable URL scheme " + `"` + scheme + `"` + " is not ws(s)"}
 	}
-	if u.Host == "" {
+	// Hostname(), not Host: the authority can be nonempty while naming no host
+	// at all — "wss://:443/feed" parses with Host ":443" and "wss://user@/feed"
+	// with Host "user@". Neither is dialable, and neither failure is
+	// transient, so accepting them here would send the connector round the
+	// reconnect cycle re-minting and re-dialing a permanently unusable URL
+	// instead of surfacing Terminal(invalid_cable_url). The ws:// branch above
+	// already reads Hostname(), as does CanonicalOrigin behind the
+	// continuation check.
+	if u.Hostname() == "" {
 		return &DialError{Kind: DialPolicy, Reason: "cable URL has no host"}
 	}
 	return nil

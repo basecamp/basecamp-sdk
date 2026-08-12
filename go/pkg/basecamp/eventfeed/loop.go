@@ -264,6 +264,13 @@ type staleHolder struct {
 	// to observe frames.
 	blocked   int
 	suspended bool
+	// expired latches an AUTHORITATIVE firing that the state machine has not
+	// observed yet — a window that closed while the consumer was inside a
+	// delivery or a callback, with the pump reading throughout. Once latched
+	// nothing re-arms over it: the fired timer stays put so the next select
+	// the state machine runs still picks the firing up, and evaluate reports
+	// it whatever else has happened since.
+	expired bool
 	// rearm wakes the state machine when the window is swapped from the pump
 	// goroutine: a select pass holds ONE timer, so a swap is invisible to a
 	// parked select until something else wakes it.
@@ -271,11 +278,19 @@ type staleHolder struct {
 }
 
 func newStaleHolder(clock Clock, d time.Duration) *staleHolder {
+	// The window's origin is read BEFORE the timer is armed, here and in arm.
+	// Arming publishes the timer — a virtual clock's advance, or a real
+	// clock's scheduler, can run between the two — and a `last` taken after
+	// that lands INSIDE the window, understating the silence the expiry
+	// reports (0s for a full expiry, once the advance is the one that fires
+	// it). Taken before, it can only sit at or fractionally ahead of the
+	// window's start, so the reported age is never short.
+	last := clock.Now()
 	return &staleHolder{
 		clock: clock,
 		d:     d,
 		timer: clock.NewTimer(d, timerStaleness),
-		last:  clock.Now(),
+		last:  last,
 		rearm: make(chan struct{}, 1),
 	}
 }
@@ -290,20 +305,52 @@ func (h *staleHolder) current() (Timer, int) {
 	return h.timer, h.gen
 }
 
-// reset re-arms the timer — pump-side, per inbound frame.
+// reset re-arms the timer — pump-side, per inbound frame. The frame's receipt
+// instant becomes the new window's origin only if the window was actually
+// re-armed; a frame that arrived after the deadline had already fired does
+// not move it (see arm).
 func (h *staleHolder) reset() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.stopped {
 		return
 	}
-	h.arm()
-	h.last = h.clock.Now()
+	// Read before arming, for newStaleHolder's reason.
+	now := h.clock.Now()
+	if h.arm() {
+		h.last = now
+	}
 }
 
-// arm replaces the armed timer with a fresh window. Callers hold h.mu.
-func (h *staleHolder) arm() {
-	h.timer.Stop()
+// arm replaces the armed timer with a fresh window, reporting whether it did.
+// Callers hold h.mu.
+//
+// Stop's result is the ORDERING DISCRIMINATOR, not a formality: it reports
+// whether the timer was still pending, so a false return means the deadline
+// had already fired before this call. The generation guard's own premise is
+// that a superseding frame is one "the pump received first" — but a bare
+// gen++ supersedes unconditionally, including for a frame that arrived AFTER
+// the window closed. SPEC.md §23 pins that ordering the other way: the reset
+// happens pump-side at frame receipt precisely "so frame-vs-deadline ordering
+// is well-defined at the transport boundary regardless of queue depth or
+// consumer latency: a fired staleness deadline observed on return from a slow
+// delivery is authoritative". Re-arming over such a firing erases it — and
+// the state machine, which may be inside a slow delivery or an Observer
+// callback and holding no timer at all, would never see the expired window,
+// nor the timer that carried it once it was swapped out.
+//
+// So an already-fired window is LATCHED rather than superseded, and nothing
+// re-arms afterwards. The one exemption is a window that overlapped a blocked
+// hand-off: a full queue is a fast peer, not a dead one, so that firing is
+// not evidence and re-arms as before.
+func (h *staleHolder) arm() bool {
+	if h.expired {
+		return false
+	}
+	if !h.timer.Stop() && !h.suspended {
+		h.expired = true
+		return false
+	}
 	h.timer = h.clock.NewTimer(h.d, timerStaleness)
 	h.gen++
 	select {
@@ -313,6 +360,7 @@ func (h *staleHolder) arm() {
 	// The new window starts suspended only if the pump is blocked right now:
 	// it is already unable to observe a reset.
 	h.suspended = h.blocked > 0
+	return true
 }
 
 // suspend marks the armed window as overlapping a blocked hand-off. A full
@@ -335,6 +383,11 @@ func (h *staleHolder) resume() {
 	defer h.mu.Unlock()
 	h.blocked--
 	if h.blocked == 0 && !h.stopped {
+		// suspended is true here by construction (suspend set it, and only arm
+		// clears it — which cannot have run with blocked > 0), so this never
+		// latches: a firing over a blocked window is not evidence. It is still
+		// a no-op if an expiry was latched BEFORE the block, which is right —
+		// that window closed while the pump was reading.
 		h.arm()
 	}
 }
@@ -344,10 +397,22 @@ func (h *staleHolder) resume() {
 // received first already superseded it (a stale generation), and when its
 // window overlapped a pump-blocked interval — in which case the window is
 // re-armed here, so the state's exact timer set is unchanged.
+//
+// A LATCHED expiry outranks both tests: it was already decided authoritative
+// at the moment the deadline beat the frame that followed it (arm), and by
+// then the window is over — a hand-off that blocks afterwards says nothing
+// about it, and no re-arm can have moved the generation, since the latch
+// stops them.
 func (h *staleHolder) evaluate(gen int) (time.Duration, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.stopped || gen != h.gen {
+	if h.stopped {
+		return 0, false
+	}
+	if h.expired {
+		return h.clock.Now().Sub(h.last), true
+	}
+	if gen != h.gen {
 		return 0, false
 	}
 	if h.suspended {

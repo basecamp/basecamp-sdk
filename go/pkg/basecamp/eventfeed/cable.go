@@ -114,34 +114,40 @@ const (
 // full teardown through the current state's socket-failure edge, never
 // terminal (a garbled frame is transport-level corruption, unlike the
 // server's own invalid_event_stream_command verdict), never a silent skip.
-// The rendering embeds no frame contents of the connector's own making, and
-// bounds what a decoder underneath it may quote (Error).
+//
+// The type is deliberately FLAT — the rule for every error in this package
+// that can carry frame-derived, URL-derived, or ticket-adjacent text, of
+// which redactDialErr is the precedent. The connector never renders frame
+// contents itself, but a decoder underneath it can: encoding/json's own
+// errors carry offsets and type names only, while a type's UnmarshalJSON can
+// quote the offending input — time.Time's does, so an attacker-chosen
+// created_at reaches Observer.Disconnected at frame scale. The message is
+// therefore composed and bounded ONCE, at construction, by §9's
+// MAX_ERROR_MESSAGE_LENGTH; retaining the decoder's error as a cause would
+// hand the unbounded original straight back through errors.Unwrap and undo
+// the bound the rendering applied. Typed-kind matching is unaffected:
+// errors.As matches on this type, which is what carries the classification.
 type invalidFrameError struct {
 	// shape names the violation shape (invalidFrameParse /
 	// invalidFrameEventDecode).
 	shape string
-	// err is the underlying decode error.
-	err error
+	// msg is the fully composed, bounded rendering, fixed at construction.
+	msg string
 }
 
-// Error implements the error interface. The connector never renders frame
-// contents itself, but a decoder underneath it can: encoding/json's own
-// errors carry offsets and type names only, while a type's UnmarshalJSON can
-// quote the offending input — time.Time's does, so an attacker-chosen
-// created_at would otherwise reach Observer.Disconnected at frame scale. The
-// rendering is therefore bounded by §9's MAX_ERROR_MESSAGE_LENGTH, as §23's
-// Security Invariants require of any error rendering of frame contents.
-func (e *invalidFrameError) Error() string {
-	msg := "event feed invalid inbound frame (" + e.shape + ")"
-	if e.err != nil {
-		msg += ": " + e.err.Error()
+// newInvalidFrameError composes the bounded rendering, dropping the cause.
+func newInvalidFrameError(shape string, cause error) *invalidFrameError {
+	msg := "event feed invalid inbound frame (" + shape + ")"
+	if cause != nil {
+		msg += ": " + cause.Error()
 	}
-	return truncateErrorText(msg)
+	return &invalidFrameError{shape: shape, msg: truncateErrorText(msg)}
 }
 
-// Unwrap exposes the underlying cause for errors.Is / errors.As traversal.
-func (e *invalidFrameError) Unwrap() error {
-	return e.err
+// Error implements the error interface. It renders the message composed at
+// construction; there is deliberately no Unwrap (see the type's doc).
+func (e *invalidFrameError) Error() string {
+	return e.msg
 }
 
 // parseFrame parses and classifies one raw inbound text frame. Dispatch is on
@@ -168,13 +174,10 @@ func parseFrame(data []byte) (frame, error) {
 		// sending nothing but `null` frames would then hold the socket open
 		// indefinitely (the pump re-arms staleness before parsing) while
 		// delivering no protocol traffic at all.
-		return frame{}, &invalidFrameError{
-			shape: invalidFrameParse,
-			err:   errors.New("frame is not a JSON object"),
-		}
+		return frame{}, newInvalidFrameError(invalidFrameParse, errors.New("frame is not a JSON object"))
 	}
 	if err := json.Unmarshal(data, &env); err != nil {
-		return frame{}, &invalidFrameError{shape: invalidFrameParse, err: err}
+		return frame{}, newInvalidFrameError(invalidFrameParse, err)
 	}
 	if env.Type != nil {
 		switch *env.Type {
@@ -234,7 +237,7 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		VisibleToClients *bool      `json:"visible_to_clients"`
 	}
 	if err := json.Unmarshal(raw, &p); err != nil {
-		return Event{}, &invalidFrameError{shape: invalidFrameEventDecode, err: err}
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode, err)
 	}
 	for _, req := range []struct {
 		key     string
@@ -250,10 +253,8 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		{"recording_id", p.RecordingID != nil},
 	} {
 		if !req.present {
-			return Event{}, &invalidFrameError{
-				shape: invalidFrameEventDecode,
-				err:   fmt.Errorf("event payload missing required key %q", req.key),
-			}
+			return Event{}, newInvalidFrameError(invalidFrameEventDecode,
+				fmt.Errorf("event payload missing required key %q", req.key))
 		}
 	}
 	return Event{

@@ -1122,6 +1122,24 @@ func TestFrameDerivedObserverTextIsBounded(t *testing.T) {
 		if got := len(disconnects[0].Error()); got > 500 {
 			t.Fatalf("rendered error length = %d bytes, want at most 500", got)
 		}
+		// Bounding only the outermost rendering is not a fix: the observer
+		// holds the error, and errors.Unwrap walks straight back to the raw
+		// time.Time parse error carrying the full frame-derived value. An
+		// error carrying frame-derived text is FLAT (redactDialErr's
+		// precedent) — the whole chain is checked, not just its head.
+		for err := disconnects[0]; err != nil; err = errors.Unwrap(err) {
+			if strings.Contains(err.Error(), oversized) {
+				t.Fatalf("the error chain re-exposes the frame-supplied value at %T", err)
+			}
+			if got := len(err.Error()); got > 500 {
+				t.Fatalf("chained error %T renders %d bytes, want at most 500", err, got)
+			}
+		}
+		// The invalid-frame classification the tier-2 driver matches on must
+		// survive the flattening.
+		if !eventfeed.ExportIsInvalidFrameError(disconnects[0]) {
+			t.Fatalf("Disconnected error %T lost its invalid-frame classification", disconnects[0])
+		}
 	})
 }
 
@@ -1210,6 +1228,58 @@ func TestStaleness(t *testing.T) {
 		h.awaitTimer(timerBackoff)
 		if !conn.Closed() {
 			t.Fatal("the reset window's expiry must still tear down")
+		}
+	})
+
+	// SPEC.md §23 "Cable Protocol Details": the reset happens pump-side, at
+	// frame receipt, "so frame-vs-deadline ordering is well-defined at the
+	// transport boundary regardless of queue depth or consumer latency: a
+	// fired staleness deadline observed on return from a slow delivery is
+	// AUTHORITATIVE". A frame received after the deadline fired is not one the
+	// pump "received first", so it cannot supersede the firing — and the state
+	// machine, parked inside the delivery, has not had a chance to observe it
+	// yet. The pump is reading throughout here (the queue never fills), so the
+	// suspension rule does not apply and the window testifies.
+	t.Run("a frame arriving after the deadline does not supersede it", func(t *testing.T) {
+		var mu sync.Mutex
+		var stale []time.Duration
+		obs := eventfeed.Observer{StaleConnection: func(since time.Duration) {
+			mu.Lock()
+			stale = append(stale, since)
+			mu.Unlock()
+		}}
+		h := newHarness(t, eventfeed.WithObserver(obs))
+		h.pauseAfter = 1
+		h.minter.ScriptTicket(ticket(1))
+		h.minter.ScriptTicket(ticket(2))
+		h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+		h.start()
+
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.awaitStreaming()
+
+		// The consumer parks inside the delivery of the first live event, so
+		// the deadline fires with the state machine unable to observe it.
+		conn.Serve(frameMessage(noFilterIdentifier, 1))
+		h.waitUntil("the consumer parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
+		h.clock.Advance(staleAfter)
+		// The late frame lands after the firing, before control returns.
+		h.serveSettled(conn, framePing())
+		h.resume()
+
+		h.awaitTimer(timerBackoff)
+		if !conn.Closed() {
+			t.Fatal("a frame received after the deadline fired must not erase the expiry")
+		}
+		assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+		if _, terminal, _ := h.snapshot(); terminal != nil {
+			t.Fatalf("staleness is never terminal; got %v", terminal)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if len(stale) != 1 || stale[0] < staleAfter {
+			t.Fatalf("StaleConnection = %v, want one callback with >= %s of silence", stale, staleAfter)
 		}
 	})
 }

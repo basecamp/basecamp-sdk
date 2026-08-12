@@ -276,10 +276,15 @@ type CloseError struct {
 	Reason string
 }
 
-// Error implements the error interface.
+// Error implements the error interface. Reason is peer-supplied, so the
+// rendering is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like every other
+// rendering of peer-derived text in this package, and the type is flat — it
+// retains no cause a chain walk could recover the unbounded original from.
+// RFC 6455 already caps a close reason at 123 bytes and the default transport
+// enforces it, so the truncation binds only on a transport that does not.
 func (e *CloseError) Error() string {
 	if e.Reason != "" {
-		return fmt.Sprintf("cable connection closed by peer: code %d: %s", e.Code, e.Reason)
+		return truncateErrorText(fmt.Sprintf("cable connection closed by peer: code %d: %s", e.Code, e.Reason))
 	}
 	return fmt.Sprintf("cable connection closed by peer: code %d", e.Code)
 }

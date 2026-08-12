@@ -246,6 +246,56 @@ func TestInvalidFrameErrorRenderingIsBounded(t *testing.T) {
 	}
 }
 
+// TestFrameDerivedErrorsAreFlat is the RULE, stated once for the package: an
+// error that carries frame-derived, URL-derived, or ticket-adjacent text is
+// FLAT — it retains no raw cause an errors.Unwrap / errors.As walk can use to
+// recover what the rendering bounded or redacted. redactDialErr is the
+// precedent ("the rebuilt error is deliberately flat (no Unwrap): re-exposing
+// the original chain would re-expose the unredacted URL"), and truncating only
+// the outermost rendering is not a fix — the chain hands the original back.
+//
+// Typed-kind matching is unaffected: errors.As on the connector's own error
+// types still matches, because it is the type that carries the classification
+// and only the RAW CAUSE that is dropped.
+func TestFrameDerivedErrorsAreFlat(t *testing.T) {
+	oversized := strings.Repeat("a", 4096)
+	raw := []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"` +
+		oversized + `","bucket_id":2,"creator_id":3,"recording_id":900}`)
+
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"event decode shape", mustErr(t, func() error { _, err := decodeMessageEvent(raw); return err })},
+		{"parse shape", mustErr(t, func() error { _, err := parseFrame([]byte(`{"type":"` + oversized + `"`)); return err })},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for err := tc.err; err != nil; err = errors.Unwrap(err) {
+				if strings.Contains(err.Error(), oversized) {
+					t.Fatalf("%T in the chain re-exposes the frame-supplied value", err)
+				}
+				if got := len(err.Error()); got > maxErrorMessageBytes {
+					t.Fatalf("%T in the chain renders %d bytes, want at most %d", err, got, maxErrorMessageBytes)
+				}
+			}
+			// The classification survives the flattening.
+			var ife *invalidFrameError
+			if !errors.As(tc.err, &ife) {
+				t.Fatalf("errors.As lost the invalid-frame classification of %T", tc.err)
+			}
+		})
+	}
+}
+
+func mustErr(t *testing.T, f func() error) error {
+	t.Helper()
+	err := f()
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	return err
+}
+
 func TestDecodeMessageEvent_VisibleToClientsIsOptional(t *testing.T) {
 	// visible_to_clients is presence-bearing, never decode-required: absence
 	// must decode with a nil pointer, not trip the invalid-frame class.

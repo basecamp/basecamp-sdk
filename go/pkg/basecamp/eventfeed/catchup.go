@@ -496,11 +496,37 @@ func (l *loop) admissionPass(at *attempt) (cycleOutcome, bool) {
 // the pre-cut snapshot the save-ordering invariant is stated over, plus any
 // straggler admitted after it, which is a superset and never a shortfall.
 func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
-	// The scan runs under ONE budget for the whole drain — liveBufferCapacity
-	// dequeues, the ownership cut's bound, for the ownership cut's reason: a
-	// drain that re-scanned without limit would never complete under
-	// sustained arrival, and the held position would never save.
-	budget := l.cfg.liveBufferCapacity
+	// The scan runs under ONE budget for the whole drain — pumpDepth
+	// dequeues, the depth of the queue being scanned.
+	//
+	// It is deliberately NOT the ownership cut's liveBufferCapacity bound.
+	// That bound answers a different question ("how large an admission pass
+	// may the cut take before the entry position must be allowed to save"),
+	// it is caller-configurable down to 1, and it measures the state
+	// machine's buffer rather than the pump's queue. Spending it on ordinary
+	// frames is exactly what let a fatal frame hide: one queued ping under
+	// WithLiveBufferCapacity(1) consumed the whole scan, and the
+	// invalid_event_stream_command behind it went unseen until Streaming —
+	// after the held save and the caught_up announcement the carve-out exists
+	// to prevent.
+	//
+	// pumpDepth is the bound the carve-out's guarantee falls out of: the
+	// hand-off queue is FIFO and holds at most pumpDepth items, so pumpDepth
+	// dequeues necessarily reach every frame the pump had queued when the
+	// drain began. A fatal frame therefore cannot hide behind ordinary frames,
+	// however many precede it. It still terminates — at most pumpDepth
+	// dequeues for the whole drain, after which the scan admits nothing, the
+	// buffer empties and the drain ends — which is what an unbounded
+	// scan-until-empty could not promise against a sustained sender, and the
+	// reason the held position would otherwise never save.
+	//
+	// What the bound does NOT promise is a fatal frame that both ARRIVES
+	// after the drain began and sits behind pumpDepth other frames that also
+	// arrived after it. That one is consumed at the Streaming boundary under
+	// §23's ordinary deferred-consumption rule: it was not observable when
+	// the drain started, so no ordering between it and the drain's completion
+	// was ever established.
+	budget := pumpDepth
 	for {
 		batch := l.buffer.take()
 		if out, done := l.drainScan(at, &budget); done {
@@ -512,7 +538,9 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 		// event would wait for a later repair walk, behind the `caught_up`
 		// announcement and behind the held save this drain is what gates. The
 		// scan's own budget is what still bounds the loop: once it is spent the
-		// scan admits nothing, so the buffer empties and the drain ends.
+		// scan admits nothing, so the buffer empties and the drain ends. Total
+		// replay work is bounded by the buffer's occupancy at entry plus
+		// pumpDepth.
 		if len(batch) == 0 && l.buffer.empty() {
 			return cycleOutcome{}, false
 		}
@@ -547,6 +575,10 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 // are admitted, so the next take replays them in arrival order, and an
 // admission that would drop takes its drop-time dispatch here — before the
 // held save, like every other pre-cut loss condition.
+//
+// budget is the drain's shared dequeue allowance, sized at the scanned
+// queue's own depth (see drain); an ordinary frame consuming it must never be
+// able to end the scan short of a fatal frame the pump had already queued.
 func (l *loop) drainScan(at *attempt, budget *int) (cycleOutcome, bool) {
 	if d := l.deferred; d != nil {
 		// A fatal frame already in the slot is dispatched now rather than
