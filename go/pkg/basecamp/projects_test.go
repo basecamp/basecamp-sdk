@@ -329,11 +329,12 @@ func TestProjectsService_UpdateEmptyScheduleAttributes(t *testing.T) {
 }
 
 // TestProjectsService_UpdateRetriesOn503WithFullBody is a PUBLIC-service retry
-// proof: the typed ProjectsService.Update serializes its body via marshalBody
-// (a *bytes.Reader, which net/http snapshots into GetBody), so the generated
-// client's doWithRetry replays the FULL body on a transient 503. Guards against
-// SDK-owned serialized bodies losing retries (the naturally-idempotent PUT
-// conformance case).
+// proof: the typed ProjectsService.Update passes the generated request struct
+// to the generated UpdateProject builder, which json.Marshals it into a
+// *bytes.Reader that net/http snapshots into GetBody, so the generated
+// client's doWithRetry replays the FULL body on a transient 503. Guards
+// against SDK-owned serialized bodies losing retries (the naturally-idempotent
+// PUT conformance case).
 func TestProjectsService_UpdateRetriesOn503WithFullBody(t *testing.T) {
 	var bodies []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
