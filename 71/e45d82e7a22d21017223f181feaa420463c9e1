@@ -1,0 +1,34 @@
+go/pkg/basecamp/optional_timestamps_test.go
+  s_0e78c6630b4ac4::t_44071ae9b717ba 248-250,256,258,274,290
+  s_0e78c6630b4ac4::t_824f78f51be0a7 478-523
+  s_0e78c6630b4ac4::t_9dd54f709e50d1 433-437,440
+  s_0e78c6630b4ac4::t_41257964bcaa91 461
+  s_0e78c6630b4ac4::t_faeec8b314cfba 524,537-630
+  s_0e78c6630b4ac4::t_aa7ec0a9e050c2 406-413
+  s_0e78c6630b4ac4::t_bd68bb03f575ff 319-324,341,343
+  s_0e78c6630b4ac4::t_fb378820e9111b 306-307
+  s_0e78c6630b4ac4::t_3bed8e4c54a36a 18
+  s_0e78c6630b4ac4::t_de79a7d40cda2a 525
+  s_0e78c6630b4ac4::t_eb6a0a8b6430ef 631
+  s_0e78c6630b4ac4::t_6dac3748c462f5 253-255
+MIGRATING.md
+  s_0e78c6630b4ac4::t_351ee702b5e49c 147-193
+spec/api-gaps/bc5-authorization-document-shape.md
+  s_0e78c6630b4ac4::t_7977c71667f5f7 203-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "71e45d82e7a22d21017223f181feaa420463c9e1",
+  "prompts": {},
+  "sessions": {
+    "s_0e78c6630b4ac4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23a29ef5-f8f1-48fc-80f2-0ef9d7827559",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

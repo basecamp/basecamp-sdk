@@ -1,0 +1,23 @@
+go/pkg/basecamp/timeline_test.go
+  s_0e78c6630b4ac4::t_69d78b36c3d8e4 287-289,302-312
+  s_0e78c6630b4ac4::t_3b5de93a6eee67 196-198
+go/pkg/basecamp/timeline.go
+  s_0e78c6630b4ac4::t_ab01a1d3560164 530-531
+  s_0e78c6630b4ac4::t_5e298d3e5c3832 53-58,60-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "80e392b934c2394e2b2408f4824eccc9b2de67f4",
+  "prompts": {},
+  "sessions": {
+    "s_0e78c6630b4ac4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23a29ef5-f8f1-48fc-80f2-0ef9d7827559",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
