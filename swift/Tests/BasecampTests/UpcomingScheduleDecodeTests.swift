@@ -136,10 +136,15 @@ final class UpcomingScheduleDecodeTests: XCTestCase {
         do {
             _ = try await upcoming(body: body)
             XCTFail("expected a decode failure for an envelope missing `assignables`")
-        } catch let DecodingError.keyNotFound(key, _) {
-            XCTAssertEqual(key.stringValue, "assignables")
+        } catch let error as BasecampError {
+            // Since #604 the decoder's refusal wears the SPEC §6
+            // malformed-2xx-body shape; the `DecodingError`'s own description
+            // rides in the message, which is where `.api` can carry it.
+            let message = assertStatuslessDecodeFailure(error)
+            XCTAssertTrue(message.contains("keyNotFound"), message)
+            XCTAssertTrue(message.contains("assignables"), message)
         } catch {
-            XCTFail("expected DecodingError.keyNotFound, got \(error)")
+            XCTFail("expected BasecampError, got a raw \(type(of: error)): \(error)")
         }
     }
 

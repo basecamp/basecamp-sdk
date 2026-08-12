@@ -483,14 +483,18 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
         do {
             let todolist = try await account.todolists.get(id: 2)
             XCTFail("expected a decoding error, got \(todolist)")
-        } catch let error as DecodingError {
-            guard case .typeMismatch(_, let context) = error else {
-                return XCTFail("expected DecodingError.typeMismatch, got \(error)")
-            }
+        } catch let error as BasecampError {
+            // Since #604 the decoder's refusal wears the SPEC §6
+            // malformed-2xx-body shape. `BasecampError.api` has no `cause` slot
+            // — adding one would break every `switch` over the case — so the
+            // `DecodingError`'s own description, coding path included, is
+            // carried in the message and asserted there.
+            let message = assertStatuslessDecodeFailure(error)
+            XCTAssertTrue(message.contains("typeMismatch"), message)
             // camelCase because BaseService.decoder applies .convertFromSnakeCase.
-            XCTAssertEqual(
-                context.codingPath.last?.stringValue, "descriptionAttachments",
-                "the error must name the field that actually failed")
+            XCTAssertTrue(
+                message.contains("descriptionAttachments"),
+                "the error must name the field that actually failed: \(message)")
         }
     }
 
@@ -510,11 +514,10 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
         do {
             let todolist = try await account.todolists.get(id: 2)
             XCTFail("expected a decoding error, got \(todolist)")
-        } catch let error as DecodingError {
-            guard case .typeMismatch(_, let context) = error else {
-                return XCTFail("expected DecodingError.typeMismatch, got \(error)")
-            }
-            XCTAssertEqual(context.codingPath.last?.stringValue, "groupsUrl")
+        } catch let error as BasecampError {
+            let message = assertStatuslessDecodeFailure(error)
+            XCTAssertTrue(message.contains("typeMismatch"), message)
+            XCTAssertTrue(message.contains("groupsUrl"), message)
         }
     }
 
@@ -529,13 +532,12 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
         do {
             let todolist = try await account.todolists.get(id: 2)
             XCTFail("expected a decoding error, got \(todolist)")
-        } catch let error as DecodingError {
-            guard case .keyNotFound(let key, _) = error else {
-                return XCTFail("expected DecodingError.keyNotFound, got \(error)")
-            }
-            XCTAssertEqual(
-                key.stringValue, "appUrl",
-                "the empty body must report the first missing required key")
+        } catch let error as BasecampError {
+            let message = assertStatuslessDecodeFailure(error)
+            XCTAssertTrue(message.contains("keyNotFound"), message)
+            XCTAssertTrue(
+                message.contains("appUrl"),
+                "the empty body must report the first missing required key: \(message)")
         }
     }
 
@@ -553,11 +555,10 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
         do {
             let todolist = try await account.todolists.get(id: 2)
             XCTFail("expected a decoding error, got \(todolist)")
-        } catch let error as DecodingError {
-            guard case .valueNotFound(_, let context) = error else {
-                return XCTFail("expected DecodingError.valueNotFound, got \(error)")
-            }
-            XCTAssertEqual(context.codingPath.last?.stringValue, "description")
+        } catch let error as BasecampError {
+            let message = assertStatuslessDecodeFailure(error)
+            XCTAssertTrue(message.contains("valueNotFound"), message)
+            XCTAssertTrue(message.contains("description"), message)
         }
     }
 
@@ -641,5 +642,27 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
         XCTAssertEqual(
             body["description"] as? String, "<p>Phase one hardware work</p>",
             "the group's description must be resent verbatim — the PUT is a full replace")
+    }
+}
+
+extension XCTestCase {
+    /// Asserts the SPEC §6 malformed-2xx-body shape and hands back the message
+    /// so the caller can assert what the decoder said about *which* field.
+    /// A statusless `.api` is the only shape a plain GET produces without a
+    /// status: every other `.api` carries the one it came from.
+    func assertStatuslessDecodeFailure(
+        _ error: BasecampError, file: StaticString = #filePath, line: UInt = #line
+    ) -> String {
+        guard case .api(let message, let httpStatus, _, _) = error else {
+            XCTFail("expected .api for a malformed body, got \(error)", file: file, line: line)
+            return ""
+        }
+        XCTAssertNil(
+            httpStatus, "the transport succeeded, so no status describes this", file: file,
+            line: line)
+        XCTAssertFalse(
+            error.isRetryable, "re-requesting cannot repair a malformed body", file: file,
+            line: line)
+        return message
     }
 }

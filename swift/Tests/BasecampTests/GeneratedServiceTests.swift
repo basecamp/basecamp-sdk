@@ -259,11 +259,15 @@ final class GeneratedServiceTests: XCTestCase {
         do {
             _ = try await account.projects.get(projectId: 1)
             XCTFail("Expected decode error")
-        } catch is DecodingError {
-            // Expected — malformed JSON causes DecodingError
+        } catch let error as BasecampError {
+            // Since #604 a body that does not decode is the SPEC §6
+            // malformed-2xx-body shape rather than a raw `DecodingError`. This
+            // used to accept any error at all, which asserted nothing.
+            let message = assertStatuslessDecodeFailure(error)
+            XCTAssertTrue(
+                message.contains("GetProject returned a body that does not decode"), message)
         } catch {
-            // The error bubbles through the service layer
-            // It may be wrapped; just verify it propagates
+            XCTFail("expected BasecampError, got a raw \(type(of: error)): \(error)")
         }
     }
 
