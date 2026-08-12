@@ -18,6 +18,19 @@ import java.util.concurrent.atomic.AtomicInteger
 /** Default account ID for conformance tests. */
 private const val TEST_ACCOUNT_ID = "999"
 
+/**
+ * The #555 stop-on-mismatch message for a decoder rejection, split the way the
+ * fixture author has to act on it: an absent required field is a different
+ * repair from a wrong-typed one. Shared by the three arms that can now see such
+ * a rejection so the wording cannot drift between them.
+ */
+private fun decodeFailureMessage(e: SerializationException): String =
+    if (e is MissingFieldException) {
+        "Mock body lacks required Kotlin model fields: ${e.message}"
+    } else {
+        "Mock body does not decode into the Kotlin model: ${e.message}"
+    }
+
 /** Tests where the Kotlin runner's operation dispatcher has no implementation yet. */
 private val KOTLIN_SKIPS: Map<String, String> = emptyMap()
 
@@ -485,17 +498,39 @@ private fun runTest(tc: TestCase): TestResult {
                 httpStatusCode = tc.mockResponses[lastIdx].status
             }
         } catch (e: BasecampException) {
-            caughtException = e
-            dispatchFailed = true
-            httpStatusCode = e.httpStatus
+            // Since #604 the SDK maps a body the model refuses into the SPEC §6
+            // malformed-2xx-body shape — a statusless Api over the decoder's own
+            // exception — rather than letting it out raw. That arrives here, not
+            // in the two arms below, so the policy is re-applied at this seam:
+            // routing it onward would both lose the loud "fix the fixture body"
+            // failure and let a fixture pinning `errorCode: api_error` be
+            // satisfied by a decoder rejection, which is exactly what
+            // `caughtException` is withheld to prevent.
+            val decodeFailure = (e as? BasecampException.Api)?.cause as? SerializationException
+            if (decodeFailure != null) {
+                if (!expectsFailure) {
+                    client.close()
+                    return TestResult(passed = false, message = decodeFailureMessage(decodeFailure))
+                }
+                dispatchFailed = true
+            } else {
+                caughtException = e
+                dispatchFailed = true
+                httpStatusCode = e.httpStatus
+            }
         } catch (e: MissingFieldException) {
+            // Reached only by a decode the SDK's primitives do not own — the
+            // wrapper-field decode a generated wrapped-list method runs after
+            // the primitive returns. Everything the primitives decode arrives
+            // above, and both paths apply the same policy.
+            //
             // A mock body that fails the model's required-field validation is a
             // fixture bug, not a runner limitation: fail loudly so it gets fixed
             // (canonical bodies live in spec/fixtures/) instead of silently
             // degrading coverage. Was SKIP until every rider was repaired.
             if (!expectsFailure) {
                 client.close()
-                return TestResult(passed = false, message = "Mock body lacks required Kotlin model fields: ${e.message}")
+                return TestResult(passed = false, message = decodeFailureMessage(e))
             }
             dispatchFailed = true
         } catch (e: SerializationException) {
@@ -506,7 +541,7 @@ private fun runTest(tc: TestCase): TestResult {
             // Python and Ruby need a hand-written one.
             if (!expectsFailure) {
                 client.close()
-                return TestResult(passed = false, message = "Mock body does not decode into the Kotlin model: ${e.message}")
+                return TestResult(passed = false, message = decodeFailureMessage(e))
             }
             dispatchFailed = true
         } catch (e: Exception) {

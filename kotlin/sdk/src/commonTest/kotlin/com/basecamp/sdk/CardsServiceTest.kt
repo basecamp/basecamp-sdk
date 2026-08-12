@@ -16,6 +16,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -201,6 +202,12 @@ class CardsServiceTest {
      * caller as an ordinary String, indistinguishable from a real date. The
      * shared decoder refuses it now, which is what makes the fix reach Cards and
      * not only the Todolists composite that still does a genuine read-back.
+     *
+     * The refusal wears the SPEC §6 malformed-2xx-body shape since #604 — a
+     * statusless, non-retryable [BasecampException.Api] over the decoder's own
+     * exception — rather than the raw [SerializationException]. Cards has no
+     * composite mapping of its own (there is no read-back left to guard), so
+     * this is the base primitive's isolation reaching an ordinary operation.
      */
     @Test
     fun updateRefusesABareScalarDueOnFromTheWire() = runTest {
@@ -218,11 +225,18 @@ class CardsServiceTest {
                 }
             }
 
-            assertFailsWith<SerializationException>(
+            val error = assertFailsWith<BasecampException.Api>(
                 "a bare-scalar due_on ($malformed) must be refused, not rendered as text",
             ) {
                 client.forAccount("12345").cards.update(42, title = "Renamed")
             }
+
+            assertNull(error.httpStatus, "the PUT succeeded, so no status describes this")
+            assertFalse(error.retryable, "re-requesting cannot repair a malformed body")
+            assertIs<SerializationException>(
+                error.cause,
+                "the decoder's refusal must survive as the cause, got ${error.cause}",
+            )
 
             assertEquals(listOf("PUT"), methods, "the refusal is in the decode, so the PUT still happens once")
             client.close()

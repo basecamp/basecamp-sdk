@@ -1,4 +1,4 @@
-import Basecamp
+@_spi(Conformance) import Basecamp
 import Foundation
 
 /// Default account ID for conformance tests. Not private: the path invariant
@@ -259,9 +259,31 @@ struct Runner {
                 dispatch = try await dispatchOperation(tc, account)
                 httpStatus = transport.lastConsumedIndex.flatMap { tc.responses[$0].status }
             } catch let error as BasecampError {
-                caughtError = error
-                dispatchFailed = true
-                httpStatus = error.httpStatusCode
+                // Since #604 the SDK maps a body the model refuses into the
+                // SPEC §6 malformed-2xx-body shape — a statusless `.api` —
+                // rather than letting the `DecodingError` out raw. That arrives
+                // here, not in the `DecodingError` branch below, so the #555
+                // policy is re-applied at this seam: routing it onward would
+                // both lose the loud "fix the fixture body" failure and let a
+                // fixture pinning `errorCode: api_error` be satisfied by a
+                // decoder rejection, which is exactly what `caughtError` is
+                // withheld to prevent.
+                //
+                // The SDK is asked which shape this is rather than told: a
+                // statusless `.api` is also what the pagination same-origin
+                // guard throws, and `security.json` asserts on that refusal.
+                // `malformedBodyMessage` is `@_spi(Conformance)` precisely so
+                // this seam cannot hold a second, drifting copy of the phrase.
+                if let decodeFailure = BaseService.malformedBodyMessage(error) {
+                    guard expectsFailure else {
+                        return .fail("Mock body lacks required Swift model fields: \(decodeFailure)")
+                    }
+                    dispatchFailed = true
+                } else {
+                    caughtError = error
+                    dispatchFailed = true
+                    httpStatus = error.httpStatusCode
+                }
             } catch let error as RunnerError {
                 // A fixture the dispatch table cannot honor as written: an
                 // unknown operation, or a parameter that would have been
@@ -269,6 +291,12 @@ struct Runner {
                 // fixture bugs to fix, not runner limitations to skip.
                 return .fail(error.description)
             } catch let error as DecodingError {
+                // Reached only by a decode the SDK's primitives do not own —
+                // the wrapper-field decode a generated wrapped-list method runs
+                // after the primitive returns. Everything the primitives decode
+                // arrives above as a statusless `.api` (#604), and both paths
+                // apply the same policy.
+                //
                 // A mock body that fails the model's required-field validation
                 // is a fixture bug, not a runner limitation: fail loudly so it
                 // gets fixed (canonical bodies live in spec/fixtures/) instead

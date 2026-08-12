@@ -280,18 +280,20 @@ extension SchedulesService {
     private func fetchEntry(entryId: Int) async throws -> ScheduleEntry {
         // Swift's decoder is the typed guard the dynamic SDKs have to write by
         // hand, and it rejects an absent, null or wrong-typed required field
-        // before this composite ever sees it. But it reports that as a raw
-        // `DecodingError`, which is not the shape SPEC §6 defines for a
-        // malformed 2xx body: callers checking for `BasecampError` would miss
-        // it entirely, and it carries no hint. Wrap it, so a malformed response
-        // looks the same in every SDK.
+        // before this composite ever sees it. `BaseService.decoding(_:_:)` now
+        // renders that as the SPEC §6 malformed-2xx-body shape for every
+        // operation (#604) — statusless, non-retryable `api_error` — so what is
+        // left to add here is the part the base layer cannot know: the
+        // composite's escape hatch. `BaseService.malformedBodyMessage` is what
+        // recognizes that one failure — statuslessness alone would also match
+        // the pagination same-origin guard — so every other error passes
+        // through untouched.
         do {
             return try await getEntry(entryId: entryId)
-        } catch let error as DecodingError {
+        } catch let error as BasecampError {
+            guard let message = BaseService.malformedBodyMessage(error) else { throw error }
             throw BasecampError.api(
-                message: BasecampError.truncate(
-                    "GetScheduleEntry returned a body that does not decode as a schedule entry: "
-                        + "\(error)"),
+                message: message,
                 httpStatus: nil,
                 hint: "The merge-safe updateEntry/editEntry resend this record's fields verbatim, "
                     + "so a malformed response cannot be written back safely. Use "

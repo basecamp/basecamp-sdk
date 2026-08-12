@@ -9,6 +9,8 @@ import kotlinx.serialization.MissingFieldException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -177,14 +179,26 @@ class UpcomingScheduleDecodeTest {
      * All three arrays are `@required`: BC3's index template writes every key
      * unconditionally. This is the assertion that could not exist while the
      * operation returned `JsonElement`.
+     *
+     * The decoder's [MissingFieldException] is what does the rejecting, and
+     * since #604 the SDK reports it as the SPEC §6 malformed-2xx-body shape —
+     * statusless, non-retryable, decoder exception kept as `cause` — rather than
+     * letting it out raw.
      */
     @OptIn(ExperimentalSerializationApi::class)
     @Test
     fun envelopeMissingAnArrayIsRejected() = runTest {
         val client = mockClient("""{"schedule_entries": [], "recurring_schedule_entry_occurrences": []}""")
 
-        assertFailsWith<MissingFieldException> {
+        val error = assertFailsWith<BasecampException.Api> {
             client.forAccount("999").reports.upcoming("2026-01-01", "2026-01-31")
         }
+
+        assertNull(error.httpStatus, "the transport succeeded, so no status describes this")
+        assertFalse(error.retryable, "re-requesting cannot repair a malformed body")
+        assertIs<MissingFieldException>(
+            error.cause,
+            "the absent required array must still be named by the cause, got ${error.cause}",
+        )
     }
 }

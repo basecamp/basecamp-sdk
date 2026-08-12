@@ -9,6 +9,7 @@ import io.ktor.http.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import com.basecamp.sdk.serialization.normalizePersonIds
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -183,15 +184,18 @@ abstract class BaseService(
                 throw error
             }
 
-            // 204 No Content
-            if (response.status.value == 204) {
-                hooks.safeOnOperationEnd(info, OperationResult(duration))
-                @Suppress("UNCHECKED_CAST")
-                return Unit as T
-            }
-
+            // 204 No Content needs no special case. Every void operation the
+            // generator emits parses with `{ Unit }`, which ignores the body and
+            // so answers an empty one correctly — all 48 of them. The shortcut
+            // this replaces returned `Unit as T` for ANY operation, so a
+            // value-returning one that unexpectedly got a 204 reported no
+            // failure at all: the unchecked cast hands back Unit wearing the
+            // model's type, and the ClassCastException surfaces later, at
+            // whatever site first uses the value — or never, if the caller
+            // discards it. Letting the empty body reach the decoder makes it
+            // what it is, where it happens: a malformed response.
             val bodyText = normalizePersonIds(response.bodyAsText(), json)
-            val result = parse(bodyText)
+            val result = decodeOrApiError(info.operation) { parse(bodyText) }
             hooks.safeOnOperationEnd(info, OperationResult(duration))
             return result
         } catch (e: BasecampException) {
@@ -238,7 +242,7 @@ abstract class BaseService(
             }
 
             val bodyText = normalizePersonIds(response.bodyAsText(), json)
-            val firstPageItems = parseItems(bodyText)
+            val firstPageItems = decodeOrApiError(info.operation) { parseItems(bodyText) }
             val totalCount = parseTotalCount(response.headers.toMap())
 
             // A pinned page is the whole answer: return it without following
@@ -289,7 +293,7 @@ abstract class BaseService(
                 }
 
                 val pageBody = normalizePersonIds(currentResponse.bodyAsText(), json)
-                val pageItems = parseItems(pageBody)
+                val pageItems = decodeOrApiError(info.operation) { parseItems(pageBody) }
                 allItems.addAll(pageItems)
 
                 // Check maxItems cap
@@ -351,7 +355,7 @@ abstract class BaseService(
             }
 
             val firstPageBody = normalizePersonIds(response.bodyAsText(), json)
-            val firstPageItems = parseItems(firstPageBody)
+            val firstPageItems = decodeOrApiError(info.operation) { parseItems(firstPageBody) }
             val totalCount = parseTotalCount(response.headers.toMap())
 
             // A pinned page is the whole answer: return it without following
@@ -401,7 +405,7 @@ abstract class BaseService(
                 }
 
                 val pageBody = normalizePersonIds(currentResponse.bodyAsText(), json)
-                val pageItems = parseItems(pageBody)
+                val pageItems = decodeOrApiError(info.operation) { parseItems(pageBody) }
                 allItems.addAll(pageItems)
 
                 if (maxItems != null && maxItems > 0 && allItems.size >= maxItems) {
@@ -474,7 +478,7 @@ abstract class BaseService(
             }
 
             val bodyText = currentResponse.bodyAsText()
-            val firstPageItems = parseItems(bodyText)
+            val firstPageItems = decodeOrApiError(info.operation) { parseItems(bodyText) }
             for (item in firstPageItems) emit(item)
 
             val initialUrl = currentResponse.request.url.toString()
@@ -497,7 +501,7 @@ abstract class BaseService(
                 }
 
                 val pageBody = normalizePersonIds(currentResponse.bodyAsText(), json)
-                val pageItems = parseItems(pageBody)
+                val pageItems = decodeOrApiError(info.operation) { parseItems(pageBody) }
                 for (item in pageItems) emit(item)
             }
 
@@ -509,6 +513,62 @@ abstract class BaseService(
             throw e
         }
     }
+
+    /**
+     * Runs the response decoder — and nothing else — mapping a decode failure
+     * into the SPEC §6 statusless `api_error` shape.
+     *
+     * Statusless because the request succeeded, so no HTTP status describes the
+     * failure; non-retryable because re-requesting cannot repair a malformed
+     * body. The decoder's own exception is kept as `cause`, so a caller that
+     * wants its account of what was wrong still has it.
+     *
+     * **One mapped type, deliberately.** [SerializationException] is the type
+     * kotlinx uses to say "this body is not what the model expects", and the
+     * `cause` it becomes here is a contract other code reads: the §18
+     * composites re-hint off `cause is SerializationException`, and the
+     * conformance runner tells a decoder rejection from a real `api_error` the
+     * same way. A second mapped type would be a second cause type they would
+     * each have to learn, so anything that is a decode failure is made to speak
+     * this one *where it is raised* instead — see
+     * [com.basecamp.sdk.serialization.FlexibleLongSerializer], whose numeric
+     * conversion would otherwise leak a [NumberFormatException].
+     *
+     * Two classes stay unmapped on purpose. [IllegalArgumentException], the
+     * parent of both, would swallow every `require()` in reach. And the `!!`
+     * and `.jsonArray` accessors the generator emits for `GetPersonProgress`
+     * raise [NullPointerException] and [IllegalArgumentException] on a
+     * wrong-shaped wrapper body: generated-code defects to fix where they are
+     * written, not exception types to catch here (#728).
+     *
+     * **Wrap the decode expression, never the block.** Each primitive above runs
+     * encode → URL build → auth → transport → status check → decode inside one
+     * `try` whose `catch` maps nothing, which is why a malformed 2xx body used
+     * to surface as a raw [SerializationException], indistinguishable from the
+     * auth strategy throwing or the socket dropping. Only the decode call is
+     * wrapped: the generated `fn` lambda serializes the *request* body
+     * (`json.encodeToString(...)`) inside the same `try` and throws the very
+     * same [SerializationException] type, so wrapping the block instead of the
+     * expression would relabel a request-encoding fault as a malformed
+     * response — the same conflation in a new shape.
+     */
+    private fun <T> decodeOrApiError(operation: String, decode: () -> T): T =
+        try {
+            decode()
+        } catch (e: SerializationException) {
+            throw malformedBody(operation, e)
+        }
+
+    /** The one place a decode failure is rendered. */
+    private fun malformedBody(operation: String, cause: SerializationException): BasecampException.Api =
+        BasecampException.Api(
+            message = BasecampException.truncateMessage(
+                "$operation returned a body that does not decode: ${cause.message}"
+            ),
+            httpStatus = null,
+            retryable = false,
+            cause = cause,
+        )
 
     /**
      * Converts an HTTP error response to a [BasecampException] via the shared

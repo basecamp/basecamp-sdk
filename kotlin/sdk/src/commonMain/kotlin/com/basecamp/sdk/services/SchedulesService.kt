@@ -272,10 +272,13 @@ class SchedulesService(client: AccountClient) :
      * non-nullable on [ScheduleEntry], so an absent, null or structurally
      * wrong-typed one is refused before this composite ever sees it. It reports
      * that as a raw [SerializationException] (a [kotlinx.serialization.MissingFieldException]
-     * for the absent case), which is not the shape SPEC §6 defines for a
-     * malformed 2xx body: callers catching [BasecampException] would miss it
-     * entirely and it carries no hint. Wrap it, so a malformed response looks
-     * the same in every SDK.
+     * for the absent case), which `BaseService` now renders as the SPEC §6
+     * malformed-2xx-body shape for every operation (#604) — a statusless,
+     * non-retryable [BasecampException.Api] carrying that exception as its
+     * `cause`. What the base layer cannot know is this composite's own account
+     * of the failure: which record failed to decode, and the escape hatch for
+     * writing it deliberately. That is what is restated here, keyed off the
+     * `cause` so any other [BasecampException.Api] passes through untouched.
      *
      * (Bare JSON scalars are refused as well as structural mismatches. They
      * were not until #598 removed the client-wide `isLenient`, which rendered a
@@ -284,13 +287,14 @@ class SchedulesService(client: AccountClient) :
     private suspend fun fetchEntry(entryId: Long): ScheduleEntry =
         try {
             getEntry(entryId)
-        } catch (e: SerializationException) {
+        } catch (e: BasecampException.Api) {
+            val decodeFailure = e.cause as? SerializationException ?: throw e
             throw BasecampException.Api(
                 message = "GetScheduleEntry returned a body that does not decode as a schedule " +
-                    "entry: ${e.message}",
+                    "entry: ${decodeFailure.message}",
                 hint = MALFORMED_HINT,
                 retryable = false,
-                cause = e,
+                cause = decodeFailure,
             )
         }
 

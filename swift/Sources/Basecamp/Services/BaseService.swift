@@ -67,7 +67,9 @@ open class BaseService: @unchecked Sendable {
             }
 
             let normalizedData = Self.normalizePersonIds(in: data)
-            let decoded = try Self.decoder.decode(T.self, from: normalizedData)
+            let decoded = try Self.decoding(info.operation) {
+                try Self.decoder.decode(T.self, from: normalizedData)
+            }
             safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs)) }
             return decoded
         } catch {
@@ -172,7 +174,9 @@ open class BaseService: @unchecked Sendable {
                 )
             }
 
-            let firstPageItems = try Self.decoder.decode([T].self, from: Self.normalizePersonIds(in: data))
+            let firstPageItems = try Self.decoding(info.operation) {
+                try Self.decoder.decode([T].self, from: Self.normalizePersonIds(in: data))
+            }
             let totalCount = parseTotalCount(response)
             let maxItems = paginationOpts?.maxItems
 
@@ -197,6 +201,7 @@ open class BaseService: @unchecked Sendable {
 
             // Follow pagination
             let (allItems, truncated) = try await followPagination(
+                info.operation,
                 initialURL: urlString,
                 initialResponse: response,
                 firstPageItems: firstPageItems,
@@ -261,7 +266,8 @@ open class BaseService: @unchecked Sendable {
             }
 
             let firstPageData = data
-            let firstPageItems: [T] = try Self.decodeWrappedItems(data: data, key: itemsKey)
+            let firstPageItems: [T] = try Self.decodeWrappedItems(
+                info.operation, data: data, key: itemsKey)
             let totalCount = parseTotalCount(response)
             let maxItems = paginationOpts?.maxItems
 
@@ -286,6 +292,7 @@ open class BaseService: @unchecked Sendable {
 
             // Follow pagination
             let (allItems, truncated) = try await followWrappedPagination(
+                info.operation,
                 initialURL: urlString,
                 initialResponse: response,
                 firstPageItems: firstPageItems,
@@ -326,6 +333,7 @@ open class BaseService: @unchecked Sendable {
     // MARK: - Pagination
 
     private func followPagination<T: Decodable>(
+        _ operation: String,
         initialURL: String,
         initialResponse: HTTPURLResponse,
         firstPageItems: [T],
@@ -360,7 +368,9 @@ open class BaseService: @unchecked Sendable {
                 )
             }
 
-            let pageItems = try Self.decoder.decode([T].self, from: Self.normalizePersonIds(in: data))
+            let pageItems = try Self.decoding(operation) {
+                try Self.decoder.decode([T].self, from: Self.normalizePersonIds(in: data))
+            }
             allItems.append(contentsOf: pageItems)
 
             // Check maxItems cap: truncated only when items were dropped or the
@@ -380,6 +390,7 @@ open class BaseService: @unchecked Sendable {
     }
 
     private func followWrappedPagination<T: Decodable>(
+        _ operation: String,
         initialURL: String,
         initialResponse: HTTPURLResponse,
         firstPageItems: [T],
@@ -415,7 +426,7 @@ open class BaseService: @unchecked Sendable {
                 )
             }
 
-            let pageItems: [T] = try Self.decodeWrappedItems(data: data, key: itemsKey)
+            let pageItems: [T] = try Self.decodeWrappedItems(operation, data: data, key: itemsKey)
             allItems.append(contentsOf: pageItems)
 
             // Check maxItems cap: truncated only when items were dropped or the
@@ -435,13 +446,95 @@ open class BaseService: @unchecked Sendable {
     }
 
     /// Decodes items from a wrapped JSON response by extracting the array at the given key.
-    private static func decodeWrappedItems<T: Decodable>(data: Data, key: String) throws -> [T] {
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-        guard let itemsArray = json[key] else {
-            return []
+    ///
+    /// All three steps are the decode of this response and nothing else, so the
+    /// whole body is the decode expression `decoding(_:_:)` isolates.
+    private static func decodeWrappedItems<T: Decodable>(
+        _ operation: String, data: Data, key: String
+    ) throws -> [T] {
+        try decoding(operation) {
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+            guard let itemsArray = json[key] else {
+                return []
+            }
+            let itemsData = try JSONSerialization.data(withJSONObject: itemsArray)
+            return try decoder.decode([T].self, from: Self.normalizePersonIds(in: itemsData))
         }
-        let itemsData = try JSONSerialization.data(withJSONObject: itemsArray)
-        return try decoder.decode([T].self, from: Self.normalizePersonIds(in: itemsData))
+    }
+
+    // MARK: - Decode Isolation
+
+    /// Runs the response decoder — and nothing else — mapping a decode failure
+    /// into the SPEC §6 statusless `api_error` shape.
+    ///
+    /// Statusless because the request succeeded, so no HTTP status describes the
+    /// failure; non-retryable because re-requesting cannot repair a malformed
+    /// body (`isRetryable` reads `false` off the nil status). The underlying
+    /// error's own account of what was wrong is interpolated into the message,
+    /// which is where `BasecampError.api` can carry it: unlike `.network`, that
+    /// case has no `cause` slot, and adding one would break every `switch` over
+    /// it. This matches what the §18 composites already did by hand.
+    ///
+    /// **Wrap the decode expression, never the block.** Each primitive above
+    /// runs encode → URL build → auth → transport → status check → decode inside
+    /// one `do` whose `catch` maps nothing, which is why a malformed 2xx body
+    /// used to surface as a raw `DecodingError`, indistinguishable from the auth
+    /// strategy throwing or the socket dropping. Only the decode call is
+    /// wrapped: `try Self.encoder.encode(body)` runs inside the same `do`, and
+    /// wrapping the block would put the *request* body's encoding inside the
+    /// decoder's error mapping — the same conflation in a new shape.
+    static func decoding<T>(_ operation: String, _ decode: () throws -> T) throws -> T {
+        do {
+            return try decode()
+        } catch let error as DecodingError {
+            throw malformedBody(operation, error)
+        } catch let error as CocoaError {
+            // A body that is not JSON at all reaches `JSONSerialization` on the
+            // wrapped-list path (the typed decoder never sees it), and that
+            // reports a `CocoaError`, not a `DecodingError`. Same failure, same
+            // shape. Nothing else in this closure can raise one — it is only
+            // ever a decode.
+            throw malformedBody(operation, error)
+        }
+    }
+
+    /// The phrase that identifies a malformed-body error, since `.api` carries
+    /// no `cause` to identify one structurally and statuslessness alone will not
+    /// do it: the pagination same-origin guard above throws a statusless `.api`
+    /// too. Written once, read back by ``malformedBodyMessage(_:)``.
+    private static let malformedBodyPhrase = "returned a body that does not decode"
+
+    /// The one place a decode failure is rendered.
+    private static func malformedBody(_ operation: String, _ error: any Error) -> BasecampError {
+        .api(
+            message: BasecampError.truncate(
+                "\(operation) \(malformedBodyPhrase): \(error)"),
+            httpStatus: nil,
+            hint: nil,
+            requestId: nil
+        )
+    }
+
+    /// The message of a malformed-body error, or nil for any other
+    /// ``BasecampError`` — including the *other* statusless `.api`, the
+    /// pagination same-origin refusal, which is a deliberate guard rather than a
+    /// bad body.
+    ///
+    /// The composites ask this to add their own hint to that failure and only
+    /// that one. The conformance runner asks it to decide whether a fixture body
+    /// needs repairing (its #555 policy), and reaches it through
+    /// `@_spi(Conformance) import Basecamp`: it links the SDK as a product, and
+    /// the alternative — a second copy of ``malformedBodyPhrase`` in the runner —
+    /// is a constant nothing checks, which is what this SPI exists to avoid. SPI
+    /// rather than `public` because the answer is only meaningful to a caller
+    /// that already knows how this SDK renders the failure.
+    @_spi(Conformance) public static func malformedBodyMessage(_ error: BasecampError) -> String? {
+        guard case .api(let message, let httpStatus, _, _) = error, httpStatus == nil,
+            message.contains(malformedBodyPhrase)
+        else {
+            return nil
+        }
+        return message
     }
 
     // MARK: - Shared Coders
