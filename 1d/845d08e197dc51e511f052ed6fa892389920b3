@@ -1,0 +1,35 @@
+ruby/test/basecamp/services/campfires_service_test.rb
+  s_b429eb5f926267::t_0d592e893118d0 195-207
+spec/fixtures/campfires/chatbot_get_nonadmin.json
+  s_b429eb5f926267::t_7fc59eba88c890 1-8
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/CampfiresServiceTest.kt
+  s_b429eb5f926267::t_a4c22ea539eceb 156-187
+  s_b429eb5f926267::t_f0fee3d1a78504 155
+go/pkg/basecamp/campfires_test.go
+  s_b429eb5f926267::t_425234997981da 804-831
+spec/fixtures/manifest.yaml
+  s_b429eb5f926267::t_e2028ac1d26219 291-306
+  s_b429eb5f926267::t_a2e6d3b81d3003 338
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_b429eb5f926267::t_6acbb7fd893bab 661-684
+python/tests/services/test_campfires_service.py
+  s_b429eb5f926267::t_a804ce18162534 90-119
+typescript/tests/services/campfires.test.ts
+  s_b429eb5f926267::t_32dcb940c980c7 369-393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1d845d08e197dc51e511f052ed6fa892389920b3",
+  "prompts": {},
+  "sessions": {
+    "s_b429eb5f926267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50a1085e-2c16-4b99-b4e1-e3cc5665f1c4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
