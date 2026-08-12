@@ -150,6 +150,14 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		if page.Next == "" {
 			return cycleOutcome{}, held, false
 		}
+		// Transition 21 from inside the walk: the page boundary is where a
+		// socket that died — or went stale — during the previous seam call is
+		// observed. Following `next` on a dead socket would walk the whole
+		// frozen head before noticing, delaying the reconnect cycle by the
+		// length of the walk.
+		if out, done := l.socketCheck(at); done {
+			return out, "", true
+		}
 		cursor = Cursor{PageURL: page.Next}
 	}
 }
@@ -167,6 +175,39 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 // drain-until-empty barrier — that races a concurrent sender and, under
 // sustained arrival, never completes, so the entry position would never save.
 func (l *loop) ownershipCut(at *attempt) (cycleOutcome, bool) {
+	return l.admissionPass(at)
+}
+
+// socketCheck consumes what the socket has to say without waiting on it: a
+// staleness firing observed here is evaluated under the same rule as in any
+// select (a firing whose window overlapped a blocked hand-off is disregarded
+// and re-armed), and the bounded admission pass then dispatches whatever the
+// pump queued — a socket failure, a disconnect frame, or live events for the
+// buffer.
+func (l *loop) socketCheck(at *attempt) (cycleOutcome, bool) {
+	staleTimer, staleGen := at.lc.stale.current()
+	select {
+	case <-staleTimer.C():
+		if age, ok := at.lc.stale.evaluate(staleGen); ok {
+			l.disposeAttempt(at, nil)
+			if l.cfg.observer.StaleConnection != nil {
+				l.cfg.observer.StaleConnection(age)
+			}
+			l.observeDisconnected("", errStaleConnection)
+			return cycleOutcome{kind: outcomeFailed}, true
+		}
+	default:
+	}
+	return l.admissionPass(at)
+}
+
+// admissionPass is the bounded non-blocking pass over the frame pump's queue
+// the ownership cut is defined as: receive without blocking until the queue is
+// momentarily empty or liveBufferCapacity frames of ANY kind have been
+// dequeued. Live events are admitted to the buffer, and every other frame
+// takes its ordinary dispatch — so a socket failure or a disconnect frame the
+// pump already queued ends the cycle here.
+func (l *loop) admissionPass(at *attempt) (cycleOutcome, bool) {
 	for dequeued := 0; dequeued < l.cfg.liveBufferCapacity; dequeued++ {
 		select {
 		case item, ok := <-at.lc.frames:
@@ -223,9 +264,11 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 			}
 			repair = l.cfg.clock.NewTimer(repairJitter(l.cfg.repairInterval, l.cfg.rand), timerRepairPoll)
 		case <-staleTimer.C():
-			age, ok := at.lc.stale.authoritative(staleGen)
+			age, ok := at.lc.stale.evaluate(staleGen)
 			if !ok {
-				continue // superseded by a frame the pump received first
+				// Superseded by a frame the pump received first, or suspended
+				// by a blocked hand-off and re-armed.
+				continue
 			}
 			// Transition 25's staleness trigger.
 			l.disposeAttempt(at, repair)
@@ -411,7 +454,7 @@ func (l *loop) waitPollRetry(at *attempt, d time.Duration) (cycleOutcome, bool) 
 		case <-t.C():
 			return cycleOutcome{}, false
 		case <-staleTimer.C():
-			age, ok := at.lc.stale.authoritative(staleGen)
+			age, ok := at.lc.stale.evaluate(staleGen)
 			if !ok {
 				continue
 			}

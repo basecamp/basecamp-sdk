@@ -12,12 +12,25 @@ import (
 // The connector run loop (SPEC.md §23 "State Machine"). The whole protocol
 // executes on the consumer's goroutine — ranging Events IS the state machine
 // (design decision 3) — with exactly one auxiliary reader pump per live
-// socket and no mutex-guarded connector state. This slice implements Idle
-// through the confirm/reject/deadline paths (§23 transitions 1–15, the
-// universal Closed edge, and the out-of-inventory usage / mint_failed /
-// invalid_cable_url / buffer_overflow edges); a confirmed subscription hands
-// off at the typed catchUpHandoff boundary below to the catch-up walk, the
-// entry boundary, and streaming, which live in catchup.go.
+// socket and no mutex-guarded connector state. This file carries Idle through
+// the confirm/reject/deadline paths (§23 transitions 1–15, the universal
+// Closed edge, and the out-of-inventory usage / mint_failed /
+// invalid_cable_url / buffer_overflow edges), the reconnect cycle every
+// continuable failure returns to, and the frame pump with the staleness
+// policy it feeds; a confirmed subscription hands off at the typed
+// catchUpHandoff boundary below to the catch-up walk, the entry boundary, and
+// streaming, which live in catchup.go.
+//
+// What a reconnect preserves and what it rebuilds is a §23 distinction, not
+// an implementation detail. Preserved on the loop, across every attempt: the
+// in-memory position (authoritative for resume within the run — the store is
+// never re-read after its one load), the delivered-id LRU, the live buffer of
+// admitted-but-undelivered events, and the shared authorization counter,
+// which only a successful poll page resets. Rebuilt per attempt: a freshly
+// minted ticket (the connector never stores a mint URL across attempts), the
+// socket, the pump, the staleness holder, every timer, and the
+// consecutive-poll-failure index. The failed-cycle count grows per failed
+// cycle and resets on confirmation.
 
 // connState enumerates SPEC.md §23's 11 states. String renders the tier-2
 // fixture spelling (snake_case).
@@ -116,15 +129,17 @@ type liveConn struct {
 	conn   CableConn
 	frames chan pumpItem
 	stale  *staleHolder
+	hooks  testHooks
 }
 
 // newLiveConn arms staleness (socket open) and then starts the pump, in that
 // order, so the timer exists before the first frame can reset it.
-func newLiveConn(ctx context.Context, conn CableConn, clock Clock, staleAfter time.Duration) *liveConn {
+func newLiveConn(ctx context.Context, conn CableConn, clock Clock, staleAfter time.Duration, hooks testHooks) *liveConn {
 	lc := &liveConn{
 		conn:   conn,
 		frames: make(chan pumpItem, pumpDepth),
 		stale:  newStaleHolder(clock, staleAfter),
+		hooks:  hooks,
 	}
 	go lc.pump(ctx)
 	return lc
@@ -142,18 +157,49 @@ func (lc *liveConn) pump(ctx context.Context) {
 	for {
 		data, err := lc.conn.ReadFrame(ctx)
 		if err != nil {
-			select {
-			case lc.frames <- pumpItem{err: err}:
-			case <-ctx.Done():
-			}
+			lc.handOff(ctx, pumpItem{err: err})
 			return
 		}
 		lc.stale.reset()
-		select {
-		case lc.frames <- pumpItem{data: data}:
-		case <-ctx.Done():
+		if !lc.handOff(ctx, pumpItem{data: data}) {
 			return
 		}
+	}
+}
+
+// handOff passes one item to the state machine over the bounded queue. The
+// queue never drops: at capacity the pump BLOCKS, propagating back-pressure
+// through the socket to TCP (SPEC.md §23 "Cable Protocol Details" — the
+// state-machine-owned live buffer is the only place a frame can be dropped).
+// A blocked hand-off suspends the staleness EVALUATION for as long as it
+// lasts: a full queue proves the peer is sending faster than the connector
+// consumes — the opposite of a dead peer — and a pump that is not reading
+// cannot observe the resets that would prove liveness, so the absence of one
+// is not evidence. It reports whether the item was handed off.
+func (lc *liveConn) handOff(ctx context.Context, item pumpItem) bool {
+	select {
+	case lc.frames <- item:
+		lc.handedOff(item)
+		return true
+	default:
+	}
+	lc.stale.suspend()
+	defer lc.stale.resume()
+	if lc.hooks.pumpBlocked != nil {
+		lc.hooks.pumpBlocked()
+	}
+	select {
+	case lc.frames <- item:
+		lc.handedOff(item)
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func (lc *liveConn) handedOff(item pumpItem) {
+	if lc.hooks.pumpHandedOff != nil {
+		lc.hooks.pumpHandedOff(item.err != nil)
 	}
 }
 
@@ -172,10 +218,14 @@ func (lc *liveConn) dispose(cancel context.CancelFunc) {
 // re-armed by the pump on every inbound frame of any kind. Because the pump
 // swaps timers concurrently with the state machine's select, firings carry a
 // generation: a firing whose generation is no longer current was superseded
-// by a frame the pump received first, and is disregarded. (The full-queue
-// evaluation-suspension rule — a firing whose window the pump spent blocked
-// on the hand-off queue is disregarded and re-armed — lands with the
-// staleness slice alongside the rest of the staleness policy.)
+// by a frame the pump received first, and is disregarded.
+//
+// Suspension while the pump is blocked on a full hand-off queue is realized
+// AT EVALUATION, not at arming (SPEC.md §23 "Cable Protocol Details"): the
+// timer stays armed throughout — `staleness` remains in every socket-open
+// state's exact timer set — and a firing whose window overlapped a
+// pump-blocked interval is disregarded and re-armed rather than dispatched. A
+// firing whose window the pump spent reading is authoritative.
 type staleHolder struct {
 	mu      sync.Mutex
 	clock   Clock
@@ -184,6 +234,12 @@ type staleHolder struct {
 	gen     int
 	last    time.Time // last frame receipt (or arm); Now readings, deltas only
 	stopped bool
+	// blocked counts hand-offs currently blocked on the full queue, and
+	// suspended latches whether the ARMED window has overlapped one: a firing
+	// is evidence of a dead peer only if the pump spent the whole window able
+	// to observe frames.
+	blocked   int
+	suspended bool
 }
 
 func newStaleHolder(clock Clock, d time.Duration) *staleHolder {
@@ -209,18 +265,57 @@ func (h *staleHolder) reset() {
 	if h.stopped {
 		return
 	}
-	h.timer.Stop()
-	h.timer = h.clock.NewTimer(h.d, timerStaleness)
-	h.gen++
+	h.arm()
 	h.last = h.clock.Now()
 }
 
-// authoritative reports whether a firing observed at generation gen still
-// stands, returning the age of the silence when it does.
-func (h *staleHolder) authoritative(gen int) (time.Duration, bool) {
+// arm replaces the armed timer with a fresh window. Callers hold h.mu.
+func (h *staleHolder) arm() {
+	h.timer.Stop()
+	h.timer = h.clock.NewTimer(h.d, timerStaleness)
+	h.gen++
+	// The new window starts suspended only if the pump is blocked right now:
+	// it is already unable to observe a reset.
+	h.suspended = h.blocked > 0
+}
+
+// suspend marks the armed window as overlapping a blocked hand-off. A full
+// queue means the peer is sending faster than the connector consumes — the
+// opposite of a dead peer — and a pump that is not reading cannot observe the
+// resets that would prove liveness.
+func (h *staleHolder) suspend() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.blocked++
+	h.suspended = true
+}
+
+// resume releases one blocked hand-off. When the last one clears, the window
+// is re-armed fresh: the hand-off completing is itself proof the peer was
+// sending, and the only window that can testify to a dead peer is one the pump
+// spent reading from end to end.
+func (h *staleHolder) resume() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.blocked--
+	if h.blocked == 0 && !h.stopped {
+		h.arm()
+	}
+}
+
+// evaluate decides one observed firing, returning the age of the silence when
+// the firing is authoritative. It is disregarded when a frame the pump
+// received first already superseded it (a stale generation), and when its
+// window overlapped a pump-blocked interval — in which case the window is
+// re-armed here, so the state's exact timer set is unchanged.
+func (h *staleHolder) evaluate(gen int) (time.Duration, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.stopped || gen != h.gen {
+		return 0, false
+	}
+	if h.suspended {
+		h.arm()
 		return 0, false
 	}
 	return h.clock.Now().Sub(h.last), true
@@ -520,7 +615,7 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	if l.cfg.observer.Connected != nil {
 		l.cfg.observer.Connected()
 	}
-	at.lc = newLiveConn(at.ctx, conn, l.cfg.clock, l.cfg.staleAfter)
+	at.lc = newLiveConn(at.ctx, conn, l.cfg.clock, l.cfg.staleAfter, l.hooks)
 	return l.awaitConfirmation(at, hs)
 }
 
@@ -584,9 +679,11 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 			l.observeDisconnected("", lapsed)
 			return cycleOutcome{kind: outcomeFailed}
 		case <-staleTimer.C():
-			age, ok := at.lc.stale.authoritative(staleGen)
+			age, ok := at.lc.stale.evaluate(staleGen)
 			if !ok {
-				continue // superseded by a frame the pump received first
+				// Superseded by a frame the pump received first, or suspended
+				// by a blocked hand-off and re-armed.
+				continue
 			}
 			// Staleness expiry — rows 9/15's staleness trigger.
 			l.disposeAttempt(at, deadline)

@@ -45,6 +45,19 @@ func (c *Connector) OnFrameHandled(f func(string)) {
 	c.hooks.frameHandled = func(k frameKind) { f(k.String()) }
 }
 
+// OnPumpBlocked registers a hook fired when a frame pump hand-off finds the
+// bounded queue full — the moment the staleness evaluation suspends.
+func (c *Connector) OnPumpBlocked(f func()) { c.hooks.pumpBlocked = f }
+
+// OnPumpHandedOff registers a hook fired once an item reaches the hand-off
+// queue, reporting whether it is the pump's terminating error. It is the
+// rendezvous for "the socket's death is queued for the state machine".
+func (c *Connector) OnPumpHandedOff(f func(isErr bool)) { c.hooks.pumpHandedOff = f }
+
+// ExportPumpDepth is the frame pump's bounded hand-off queue depth: the
+// number of frames a test must serve to make the pump block.
+const ExportPumpDepth = pumpDepth
+
 // SetStaleAfter overrides the staleness window — the tier-2 driver's
 // stalenessMs scenario config. Deliberately not a public option: SPEC §23
 // pins 7500ms.

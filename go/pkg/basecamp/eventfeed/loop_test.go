@@ -44,6 +44,14 @@ type harness struct {
 	// breakAfter, when positive, makes the collector break out of the range
 	// after that many delivered events — the consumer-break teardown path.
 	breakAfter int
+	// pauseAfter, when positive, parks the collector INSIDE the loop body once
+	// that many events have been delivered, until resume is called. The loop
+	// body is the consumer's processing, so parking there parks the state
+	// machine mid-delivery — the serial back-pressure the deferred-consumption
+	// and staleness-suspension rules are stated over.
+	pauseAfter int
+	pause      chan struct{}
+	pauseOnce  sync.Once
 
 	mu       sync.Mutex
 	events   []eventfeed.Event
@@ -68,6 +76,7 @@ func newHarness(t *testing.T, opts ...eventfeed.Option) *harness {
 		minter:   feedtest.NewMinter(),
 		polls:    feedtest.NewPolls(),
 		done:     make(chan struct{}),
+		pause:    make(chan struct{}),
 		boundary: make(chan eventfeed.CatchUpBoundary, 8),
 		handled:  make(chan string, 256),
 		states:   make(chan string, 256),
@@ -115,6 +124,8 @@ func (h *harness) start() {
 	h.cancel = cancel
 	h.t.Cleanup(cancel)
 	h.t.Cleanup(func() { h.conn.Close() })
+	// A parked collector must never outlive the test, however it ended.
+	h.t.Cleanup(h.resume)
 	go func() {
 		defer close(h.done)
 		for ev, err := range h.conn.Events(ctx) {
@@ -132,12 +143,21 @@ func (h *harness) start() {
 				h.log = append(h.log, fmt.Sprintf("event %d", ev.ID))
 			}
 			stop := h.breakAfter > 0 && len(h.events) >= h.breakAfter
+			park := err == nil && h.pauseAfter > 0 && len(h.events) == h.pauseAfter
 			h.mu.Unlock()
+			if park {
+				<-h.pause
+			}
 			if stop {
 				break
 			}
 		}
 	}()
+}
+
+// resume releases a collector parked by pauseAfter.
+func (h *harness) resume() {
+	h.pauseOnce.Do(func() { close(h.pause) })
 }
 
 // join waits for the iteration to end.

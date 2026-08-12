@@ -184,6 +184,12 @@ type testHooks struct {
 	stateChanged   func(connState)
 	frameHandled   func(frameKind)
 	catchUpEntered func(catchUpHandoff)
+	// pumpBlocked fires when a frame pump hand-off finds the queue full — the
+	// rendezvous for the staleness suspension rule's precondition.
+	pumpBlocked func()
+	// pumpHandedOff fires once an item reaches the hand-off queue, reporting
+	// whether it is the pump's terminating error.
+	pumpHandedOff func(isErr bool)
 }
 
 // New validates configuration and returns a Connector. New does no I/O —
