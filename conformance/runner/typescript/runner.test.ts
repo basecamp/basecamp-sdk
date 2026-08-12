@@ -1597,21 +1597,20 @@ function checkAssertions(
 // =============================================================================
 
 /**
- * Fixture files allowed to carry integer literals above Number.MAX_SAFE_INTEGER.
- * integer-precision.json exists to probe exactly that, and the TS runner skips
- * its big-id case under waiver 1B.6 (see TS_SDK_SKIPS).
- */
-const UNSAFE_INTEGER_FIXTURE_ALLOWLIST = new Set(["integer-precision.json"]);
-
-/**
- * Fails loudly when a fixture outside the allowlist carries an integer above
- * 2^53. JSON.parse has already rounded such a literal by the time this runs
- * (deliberately — waiver 1B.6), and installMockHandlers serializes the rounded
- * value back onto the wire, so a summary-shaped assertion on a big id would
- * compare rounded-vs-rounded and spuriously pass for TS while every other
- * runner compares true values. A parsed integer that is integral but not safe
- * can only have come from such a literal, so walking the parsed tree flags
- * exactly the dangerous class — digit runs inside strings never trip it.
+ * Fails loudly when a test case the TS runner would actually run carries an
+ * integer above 2^53. JSON.parse has already rounded such a literal by the
+ * time this runs (deliberately — waiver 1B.6), and installMockHandlers
+ * serializes the rounded value back onto the wire, so a summary-shaped
+ * assertion on a big id would compare rounded-vs-rounded and spuriously pass
+ * for TS while every other runner compares true values. A parsed integer that
+ * is integral but not safe can only have come from such a literal, so walking
+ * the parsed tree flags exactly the dangerous class — digit runs inside
+ * strings never trip it.
+ *
+ * The exemption is keyed to TS_SDK_SKIPS per case, not to a fixture file: a
+ * case is exempt only while the TS runner skips it (the roster is kept
+ * per-line in sync with SPEC §19), so a runnable case added next to
+ * integer-precision.json's skipped one is still scanned.
  */
 function assertNoUnsafeIntegers(node: unknown, filename: string, at: string): void {
   if (typeof node === "number") {
@@ -1620,7 +1619,8 @@ function assertNoUnsafeIntegers(node: unknown, filename: string, at: string): vo
         `${filename}: integer above Number.MAX_SAFE_INTEGER at ${at}. ` +
           "JSON.parse has already rounded it (waiver 1B.6), so any assertion " +
           "on it would be rounded-vs-rounded and vacuously green for TS. " +
-          "Move the case to integer-precision.json or assert on a string form.",
+          "Add the case to TS_SDK_SKIPS with its waiver, or assert on a " +
+          "string form.",
       );
     }
   } else if (Array.isArray(node)) {
@@ -1645,8 +1645,10 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
       // deliberately, per waiver 1B.6; the load-time guard below is what
       // keeps that rounding from silently falsifying a future fixture.
       const all = JSON.parse(content) as TestCase[];
-      if (!UNSAFE_INTEGER_FIXTURE_ALLOWLIST.has(filename)) {
-        assertNoUnsafeIntegers(all, filename, filename);
+      for (const tc of all) {
+        if (!(tc.name in TS_SDK_SKIPS)) {
+          assertNoUnsafeIntegers(tc, filename, `"${tc.name}"`);
+        }
       }
       // Live tests are owned by live-runner.test.ts. Drop them here so they
       // never reach installMockHandlers / MSW.
