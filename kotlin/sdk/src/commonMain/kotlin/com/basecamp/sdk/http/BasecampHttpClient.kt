@@ -116,10 +116,7 @@ internal class BasecampHttpClient(
         // attempt count, never a replacement for it (SPEC.md §2): a caller who
         // lowered maxRetries is honored, and a raised cap is still clamped to
         // the operation's declared max.
-        val maxAttempts = minOf(
-            config.maxRetries.coerceAtLeast(1),
-            opRetry?.maxRetries ?: config.maxRetries,
-        )
+        val maxAttempts = computeMaxAttempts(config.maxRetries, opRetry?.maxRetries)
         val baseDelayMs = opRetry?.baseDelayMs ?: config.baseRetryDelay.inWholeMilliseconds
 
         val startTime = currentTimeMillis()
@@ -333,6 +330,17 @@ internal class BasecampHttpClient(
         val IDEMPOTENT_METHODS = setOf(HttpMethod.Get, HttpMethod.Put, HttpMethod.Delete, HttpMethod.Head)
 
         private const val MAX_JITTER_MS = 100L
+
+        /**
+         * The attempt budget: the caller's cap floored at one attempt, then
+         * clamped by the operation's declared ceiling — `min(max(1, cap),
+         * op_max)`, with an absent `op_max` meaning no ceiling (#661). The
+         * floor is a property of this expression, not of the retry loop's
+         * shape: an ungoverned call (no per-op retry block) at a cap of 0
+         * must still budget one attempt.
+         */
+        internal fun computeMaxAttempts(configuredCap: Int, opMaxRetries: Int?): Int =
+            minOf(configuredCap.coerceAtLeast(1), opMaxRetries ?: Int.MAX_VALUE)
 
         /**
          * Ceiling on the backoff term (SPEC §7 "Backoff Ceiling"). Jitter is
