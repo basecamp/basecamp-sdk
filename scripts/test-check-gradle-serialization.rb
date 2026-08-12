@@ -21,6 +21,7 @@
 # Run: ruby scripts/test-check-gradle-serialization.rb
 
 require "English"
+require "fileutils"
 require "tmpdir"
 
 CHECKER = ENV.fetch("GRADLE_SERIALIZATION_CHECKER", "scripts/check-gradle-serialization.rb")
@@ -28,22 +29,25 @@ MAKEFILE = File.read("Makefile", encoding: "UTF-8")
 
 failures = []
 
-def run_checker(makefile_path)
+def run_checker(makefile_path, root: nil)
+  env = { "GRADLE_SERIALIZATION_MAKEFILE" => makefile_path }
+  env["GRADLE_SERIALIZATION_ROOT"] = root if root
+
   # external_encoding pinned: the checker echoes Makefile recipe lines, which
   # carry em-dashes, and under LC_ALL=C an unpinned pipe read is US-ASCII (#669).
   out = IO.popen(
-    { "GRADLE_SERIALIZATION_MAKEFILE" => makefile_path },
+    env,
     ["ruby", CHECKER],
     err: [:child, :out], external_encoding: Encoding::UTF_8, &:read
   )
   [$CHILD_STATUS.exitstatus, out]
 end
 
-def check(name, mutated, expect_pass:, expect_fragment: nil)
+def check(name, mutated, expect_pass:, expect_fragment: nil, root: nil)
   Dir.mktmpdir("gradle-serialization") do |dir|
     path = File.join(dir, "Makefile.mutated")
     File.write(path, mutated, encoding: "UTF-8")
-    status, out = run_checker(path)
+    status, out = run_checker(path, root: root)
 
     if expect_pass && status != 0
       return "#{name}: expected the gate to PASS, got exit #{status}\n#{out}"
@@ -174,6 +178,97 @@ failures << check(
   expect_pass: false,
   expect_fragment: "cannot tell which project directory",
 )
+
+# --- Cases 8-9: the DELEGATED target, which is a real one, not a fixture ------
+#
+# kt-check-generated-drift's recipe is `@./scripts/check-kotlin-generated-drift.sh`
+# and the Gradle call is inside that script, wrapped across a backslash
+# continuation and cd'd via a shell variable. It is the counterexample the gate's
+# first cut could not see: added to check-targets it was the exact "sixth target"
+# case, and the gate passed. Case 8 is that scenario; case 9 pins that the remedy
+# is an EDGE, not a ban on the target.
+
+delegated_unchained = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: kt-check-generated-drift ",
+)
+
+failures << check(
+  "8: a Gradle target that delegates through a shell script",
+  delegated_unchained,
+  expect_pass: false,
+  expect_fragment: "kt-check-generated-drift",
+)
+
+failures << check(
+  "9: the same target, chained",
+  delegated_unchained + "\nkt-check-generated-drift: | conformance-kotlin\n",
+  expect_pass: true,
+)
+
+# --- Cases 10-11: the delegation boundaries, against fixture trees ------------
+#
+# These use GRADLE_SERIALIZATION_ROOT so the fixtures never enter the real
+# scripts/. Case 10 pins the fail-loud direction. Case 11 pins the gate's DECLARED
+# HOLE as measured behaviour rather than a claim in a comment: a Ruby helper that
+# shells out to Gradle is NOT seen. It is asserted here so that the day someone
+# writes one, this test is where they find out what the gate does not do — and so
+# that "shell scripts only" cannot quietly become "all scripts" in the prose while
+# the code says otherwise.
+
+def with_fixture_root(script_name, script_body)
+  Dir.mktmpdir("gradle-serialization-root") do |root|
+    FileUtils.mkdir_p(File.join(root, "scripts"))
+    FileUtils.mkdir_p(File.join(root, "kotlin"))
+    FileUtils.touch(File.join(root, "kotlin", "gradlew"))
+    File.write(File.join(root, "scripts", script_name), script_body, encoding: "UTF-8")
+    yield root
+  end
+end
+
+unplaceable_delegate = must_substitute(
+  MAKEFILE,
+  "check-targets: ",
+  "check-targets: probe-delegate ",
+) + <<~MAKE
+
+  .PHONY: probe-delegate
+  probe-delegate:
+  \t@./scripts/probe-delegate.sh
+MAKE
+
+with_fixture_root("probe-delegate.sh", <<~SH) do |root|
+  #!/usr/bin/env bash
+  # The directory is not resolvable from the text: two variables, no literal.
+  (cd "$SOME_DIR/$SUBPROJECT" && ./gradlew build)
+SH
+  failures << check(
+    "10: a delegated Gradle call in a directory the gate cannot resolve",
+    unplaceable_delegate,
+    expect_pass: false,
+    expect_fragment: "cannot tell which project directory",
+    root: root,
+  )
+end
+
+with_fixture_root("probe-delegate.rb", <<~RB) do |root|
+  #!/usr/bin/env ruby
+  # Declared hole: a Ruby helper that shells out to Gradle is not followed.
+  system("cd kotlin && ./gradlew build")
+RB
+  failures << check(
+    "11: a Ruby delegate is NOT followed (declared limitation, asserted)",
+    must_substitute(MAKEFILE, "check-targets: ", "check-targets: probe-ruby-delegate ") + <<~MAKE,
+
+      .PHONY: probe-ruby-delegate
+      probe-ruby-delegate:
+      \t@ruby ./scripts/probe-delegate.rb
+    MAKE
+    expect_pass: true,
+    root: root,
+  )
+end
 
 failures.compact!
 

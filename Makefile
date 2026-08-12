@@ -33,8 +33,8 @@ smithy-mapper:
 #
 # ORDER-ONLY EDGE: `| smithy-mapper` (#674).
 #
-# This is the anchor comment for every `| ` edge added for that issue; the other
-# three say "see smithy-mapper-test".
+# This is the anchor comment for the three `| ` edges added for that issue. The
+# other two — on kt-test and conformance-kotlin — say "see smithy-mapper-test".
 #
 # Two Gradle invocations in one project directory are not a supported
 # configuration: they share <project>/.gradle (the file-hash and task-history
@@ -1324,7 +1324,9 @@ test-lint-npm-lockfile-writes:
 # Assert `make -j` cannot schedule two Gradle builds in one project directory
 # (#674). Reads make's own parsed database, so it sees the order-only edges as
 # make does, and it fails on a SIXTH Gradle-backed target added to check-targets
-# without one — not just on the three edges that exist today.
+# without one — not just on the three edges that exist today. It follows a
+# recipe ONE level into a shell script under scripts/, which is how it sees
+# kt-check-generated-drift; the script's header states what that does not cover.
 check-gradle-serialization:
 	@echo "==> Checking Gradle target serialization..."
 	@ruby ./scripts/check-gradle-serialization.rb

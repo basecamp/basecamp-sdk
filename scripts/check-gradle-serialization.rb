@@ -31,24 +31,53 @@
 # ordered by that relation. That is the mechanism, and it goes red the moment an
 # edge is deleted.
 #
-# COVERAGE, HONESTLY. This checks the targets reachable from ONE goal
-# (check-targets by default), because that is the graph `make check` executes.
-# Gradle-backed targets outside it — kt-check-generated-drift is the live
-# example — are NOT covered: `make check` cannot schedule them, but a
-# hand-written `make -j kt-check kt-check-generated-drift` still can. Chaining
-# those would charge CI, which invokes them as standalone goals, for work it
-# already does a different way. Pass a different goal to check a different
-# graph.
+# COVERAGE, HONESTLY. Three boundaries, and none of them is "every Gradle
+# target":
+#
+#   1. ONE GOAL. Only targets reachable from check-targets (by default), because
+#      that is the graph `make check` executes. kt-check-generated-drift is
+#      DISCOVERED (see 2) but not COVERED: `make check` cannot schedule it, so
+#      it collides with nothing there, while a hand-written
+#      `make -j kt-check kt-check-generated-drift` still can. Chaining it would
+#      charge CI, which invokes it as a standalone goal, for work it already
+#      does another way. Pass a different goal to check a different graph.
+#
+#   2. ONE LEVEL OF DELEGATION, SHELL SCRIPTS ONLY. A recipe's own `./gradlew`
+#      is found directly. A recipe that delegates — `@./scripts/foo.sh`, the
+#      shape kt-check-generated-drift uses — is followed exactly one level, and
+#      only into a file whose shebang names a shell. A script that delegates to
+#      another script is not followed, and NEITHER IS A RUBY OR PYTHON HELPER
+#      THAT SHELLS OUT TO GRADLE. There is none today; if one appears, this gate
+#      will not see it, and that is a hole in this gate rather than a fact about
+#      the repo. The shebang test is not squeamishness about Ruby: this file and
+#      its self-test both contain the literal text `./gradlew` (in a regex, in
+#      comments, in fixture heredocs) and are themselves reachable from
+#      check-targets, so a scanner that read every delegated script would
+#      classify the gate as a Gradle build in kotlin/ and fail on the real
+#      Makefile.
+#
+#   3. TEXTUAL, AND IT ERRS TOWARD REPORTING. The delegation scan reads source,
+#      it does not execute anything, so a `./gradlew` inside a shell heredoc
+#      would be taken at face value. That direction is deliberate: a false
+#      positive costs one unnecessary order-only edge and says so out loud; a
+#      false negative costs the guarantee silently. An invocation it cannot
+#      place is a hard error for the same reason.
 #
 # Env overrides (used by scripts/test-check-gradle-serialization.rb):
 #   GRADLE_SERIALIZATION_MAKEFILE  makefile to read (default: Makefile)
 #   GRADLE_SERIALIZATION_GOAL      goal to walk from (default: check-targets)
+#   GRADLE_SERIALIZATION_ROOT      directory a recipe's `scripts/...` paths
+#                                  resolve against (default: cwd). Test-only, so
+#                                  the delegation branches can be exercised
+#                                  against fixture trees instead of by adding
+#                                  fixture scripts to the real scripts/.
 
 require "English"
 require "set"
 
 MAKEFILE = ENV.fetch("GRADLE_SERIALIZATION_MAKEFILE", "Makefile")
 GOAL = ENV.fetch("GRADLE_SERIALIZATION_GOAL", "check-targets")
+REPO_ROOT = ENV.fetch("GRADLE_SERIALIZATION_ROOT", Dir.pwd)
 
 # A goal make cannot resolve: make prints its whole parsed database, then exits
 # non-zero without running or recursing into a single recipe. Asking for a real
@@ -144,23 +173,94 @@ end
 # be filed under the repo root, share a group with nothing, and be certified
 # collision-free while colliding with everything in kotlin/. The gate's own
 # blind spot is the one failure it must not have.
-def gradle_targets(recipes, makefile)
+#
+# DELEGATION (boundary 2 in the header). A recipe that runs a shell script under
+# scripts/ is followed one level into that script, because the live
+# counterexample is exactly that shape: kt-check-generated-drift's recipe is
+# `@./scripts/check-kotlin-generated-drift.sh`, and the Gradle invocation is at
+# that script's line 71, spelled across a backslash continuation as
+# `(cd "$ROOT_DIR/kotlin" && \` / `./gradlew ...`. Without this, the target is
+# invisible: added to check-targets it is the exact "sixth target" case this
+# gate exists to reject, and the gate would have passed.
+
+# Scan shell text for a Gradle invocation. Returns the project directory as
+# written, :unplaceable, or nil. Continuations are joined and whole-line
+# comments dropped first, so a wrapped invocation reads as one command and a
+# commented-out one is not mistaken for a live call.
+def scan_shell_for_gradle(text)
+  code = text.lines.reject { |l| l.match?(/\A\s*#/) }.join.gsub(/\\\n\s*/, " ")
+  return nil unless code.include?("./gradlew")
+
+  matched = code.match(%r{cd\s+["']?([^"'\s]+)["']?\s*&&[^\n]*?\./gradlew})
+  return matched[1] if matched
+
+  :unplaceable
+end
+
+# `$ROOT_DIR/kotlin` -> `kotlin`. Exactly one leading shell variable is stripped
+# — the repo-root handle every script under scripts/ computes for itself — and
+# the result must actually be a Gradle project, which is what keeps the strip
+# from being a guess. Anything still holding a `$` is unplaceable.
+def resolve_script_dir(raw, repo_root)
+  dir = raw.sub(/\A\$\{?\w+\}?\/+/, "")
+  return :unplaceable if dir.include?("$")
+  return :unplaceable unless File.exist?(File.join(repo_root, dir, "gradlew"))
+
+  dir
+end
+
+def delegated_gradle_dir(lines, repo_root)
+  lines.each do |line|
+    # Lookbehind rather than a leading-character class: the live case is
+    # `@./scripts/check-kotlin-generated-drift.sh`, and make's recipe prefixes
+    # (@, -, +) sit flush against the path.
+    line.scan(%r{(?<![\w/.\-])\.?/?(scripts/[\w.\-]+)}) do |(rel)|
+      path = File.join(repo_root, rel)
+      next unless File.file?(path)
+
+      # UTF-8 pinned for the same reason as the pipe read above: these scripts
+      # carry em-dashes, and LC_ALL=C would make an unpinned read US-ASCII.
+      source = File.read(path, encoding: "UTF-8")
+      shebang = source.lines.first.to_s
+      next unless shebang.start_with?("#!") && shebang.match?(/\b(?:ba|da|k|z)?sh\b/)
+
+      found = scan_shell_for_gradle(source)
+      next if found.nil?
+      return [:unplaceable, rel] if found == :unplaceable
+
+      resolved = resolve_script_dir(found, repo_root)
+      return [resolved == :unplaceable ? :unplaceable : resolved, rel]
+    end
+  end
+  nil
+end
+
+def gradle_targets(recipes, makefile, repo_root = REPO_ROOT)
   found = {}
   unrecognized = []
 
   recipes.each do |target, lines|
-    lines.each do |line|
-      next unless line.include?("./gradlew")
+    direct = lines.find { |line| line.include?("./gradlew") }
 
-      matched = line.match(%r{cd\s+(\S+)\s*&&\s*\./gradlew})
+    if direct
+      matched = direct.match(%r{cd\s+(\S+)\s*&&\s*\./gradlew})
       if matched
         found[target] = matched[1]
-      elsif line.match?(%r{\A\s*\./gradlew})
+      elsif direct.match?(%r{\A\s*\./gradlew})
         found[target] = "."
       else
-        unrecognized << [target, line]
+        unrecognized << [target, direct]
       end
-      break
+      next
+    end
+
+    dir, via = delegated_gradle_dir(lines, repo_root)
+    next if dir.nil?
+
+    if dir == :unplaceable
+      unrecognized << [target, "delegates to #{via}, which invokes Gradle in a directory this gate cannot resolve"]
+    else
+      found[target] = dir
     end
   end
 
@@ -168,8 +268,10 @@ def gradle_targets(recipes, makefile)
     warn "ERROR: cannot tell which project directory these Gradle recipes run in:"
     unrecognized.each { |target, line| warn "  #{target}: #{line}" }
     warn ""
-    warn "This gate reads `cd <dir> && ./gradlew ...`. Spell the recipe that way, " \
-         "or teach scripts/check-gradle-serialization.rb the new shape — do not " \
+    warn "This gate reads `cd <dir> && ./gradlew ...` in a recipe, and follows a " \
+         "recipe ONE level into a shell script under scripts/ (not into a second " \
+         "script, and not into a Ruby or Python helper). Spell it that way, or " \
+         "teach scripts/check-gradle-serialization.rb the new shape — do not " \
          "leave it guessing, since a guess here passes silently. (#{makefile})"
     exit 1
   end
