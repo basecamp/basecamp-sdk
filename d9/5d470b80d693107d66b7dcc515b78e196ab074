@@ -1,0 +1,28 @@
+go/pkg/basecamp/my_assignments_test.go
+  s_655f73c03e416d::t_ee9411b44acbc4 33-35,51-63
+typescript/tests/services/my-assignments.test.ts
+  s_655f73c03e416d::t_0c6b92dfee8239 21-52
+spec/api-gaps/rich-text-attachments-coverage.md
+  s_655f73c03e416d::t_2ddfb428824ba9 30-31
+  s_655f73c03e416d::t_c98c045d0b76a8 93-115,117
+ruby/test/basecamp/services/my_assignments_service_test.rb
+  s_655f73c03e416d::t_73c96fefe8678c 12-31
+python/tests/services/test_my_assignments_service.py
+  s_655f73c03e416d::t_ca5bb49acf8459 21-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d95d470b80d693107d66b7dcc515b78e196ab074",
+  "prompts": {},
+  "sessions": {
+    "s_655f73c03e416d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63961da9-ceae-42e8-b214-bfd628bfb5e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
