@@ -30,7 +30,37 @@ smithy-mapper:
 # (bare bodies), and their tests were unrunnable for long enough that three of
 # them had drifted out of agreement with the code: `./gradlew test` here could
 # not even resolve JUnit, so nothing reported it.
-smithy-mapper-test:
+#
+# ORDER-ONLY EDGE: `| smithy-mapper` (#674).
+#
+# This is the anchor comment for every `| ` edge added for that issue; the other
+# three say "see smithy-mapper-test".
+#
+# Two Gradle invocations in one project directory are not a supported
+# configuration: they share <project>/.gradle (the file-hash and task-history
+# caches, i.e. the FilePageCache) and they write the same task output
+# directories. Gradle's cross-process locks serialize the caches; nothing
+# serializes the outputs. `check-targets` lists five Gradle-backed targets as
+# INDEPENDENT prerequisites, so `make -j` is free to schedule any two of them at
+# once — including this one against smithy-mapper, a second same-directory pair
+# beyond the Kotlin trio #674 describes.
+#
+# Order-only rather than a normal prerequisite because it is a mutex, not a
+# dependency: `./gradlew test` already builds main, so nothing here needs the
+# published jar. Order-only over a per-target GRADLE_USER_HOME because
+# GRADLE_USER_HOME isolates ~/.gradle and leaves <project>/.gradle and
+# <project>/build — where the collision actually is — shared; it would also cost
+# a second cold cache, and this repo already runs concurrent Gradle across ~30
+# worktrees against one ~/.gradle without trouble.
+#
+# The cost of an order-only edge on a .PHONY target is that it RUNS: `make
+# smithy-mapper-test` now publishes the jar first (~3s, and up-to-date on the
+# second run). Direction chosen accordingly — see the Kotlin edges, where it
+# decides which target absorbs the collateral.
+#
+# scripts/check-gradle-serialization.rb enforces that these edges exist and that
+# every Gradle target reachable from check-targets is totally ordered.
+smithy-mapper-test: | smithy-mapper
 	@echo "==> Testing Smithy OpenAPI mappers..."
 	cd spec/smithy-bare-arrays && ./gradlew test --quiet
 
@@ -716,7 +746,11 @@ conformance-go-replay:
 	cd conformance/runner/go && go run .
 
 # Run Kotlin conformance tests
-conformance-kotlin:
+# ORDER-ONLY EDGE: tail of the kotlin/ chain (#674); rationale at
+# smithy-mapper-test. Standalone `make conformance-kotlin` therefore also runs
+# kt-test and the runner tests. CI is unaffected: its Kotlin job invokes
+# `./gradlew :conformance:run` directly, not this target.
+conformance-kotlin: | kt-test
 	@echo "==> Running Kotlin conformance tests..."
 	cd kotlin && ./gradlew :conformance:run
 
@@ -915,7 +949,14 @@ kt-build:
 # :generator:test covers the emitters themselves — notably the append-only
 # constructor-order rule for options classes, which the generated output alone
 # cannot demonstrate.
-kt-test:
+#
+# ORDER-ONLY EDGE: middle of the kotlin/ chain
+# conformance-runner-tests-kotlin -> kt-test -> conformance-kotlin (#674);
+# rationale at smithy-mapper-test. The chain runs cheapest-first so the target
+# CI drives through make — conformance-runner-tests-kotlin, at the head — gains
+# no prerequisite at all, and so the common developer target `make kt-check`
+# absorbs only :conformance:test rather than the whole conformance run.
+kt-test: | conformance-runner-tests-kotlin
 	@echo "==> Running Kotlin tests..."
 	cd kotlin && ./gradlew :basecamp-sdk:check :generator:test
 
@@ -1119,7 +1160,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1280,6 +1321,21 @@ lint-npm-lockfile-writes:
 test-lint-npm-lockfile-writes:
 	@./scripts/test-lint-npm-lockfile-writes
 
+# Assert `make -j` cannot schedule two Gradle builds in one project directory
+# (#674). Reads make's own parsed database, so it sees the order-only edges as
+# make does, and it fails on a SIXTH Gradle-backed target added to check-targets
+# without one — not just on the three edges that exist today.
+check-gradle-serialization:
+	@echo "==> Checking Gradle target serialization..."
+	@ruby ./scripts/check-gradle-serialization.rb
+
+# Prove that gate is not vacuous. Its live run only ever sees a chained
+# Makefile; this drives it at mutated copies (one edge deleted, then an
+# unchained new target) and asserts each verdict, including that a Gradle target
+# alone in its own project directory is NOT reported.
+test-check-gradle-serialization:
+	@ruby ./scripts/test-check-gradle-serialization.rb
+
 # Drive conformance/runner/typescript/assert-sdk-built.mjs at synthetic SDK
 # trees. That assertion is what stops a bare `npm test` in the runner from
 # reporting green against a build that no longer matches src, and its live run
@@ -1349,7 +1405,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts
