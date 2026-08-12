@@ -14,7 +14,7 @@ import (
 // treat a non-positive duration as "no wait" — so a long failure streak stopped
 // backing off entirely and hammered a server already answering 429/503.
 //
-// WithMaxRetries only rejects n < 1, so a caller can set the attempt count that
+// WithMaxRetries only rejects n < 0, so a caller can set the attempt count that
 // reaches this. The bound is two-sided on purpose: a one-sided "never too long"
 // check passes on exactly the attempts that tight-loop.
 func TestBackoffDelaySaturates(t *testing.T) {

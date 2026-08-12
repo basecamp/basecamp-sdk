@@ -13,6 +13,44 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Go: typed operations now honour `WithMaxRetries`, and `0` is a legal cap (#718)
+
+Two changes to the same knob, one of them a bug fix you may feel in production.
+
+**`initGeneratedClient` never passed the client's retry settings to the
+generated client.** It was constructed with only `WithHTTPClient` and
+`WithRequestEditorFn`, so its retry loop ran on
+`generated.DefaultRetryConfig{MaxRetries: 3}` regardless of what
+`WithMaxRetries(n)` said. Every typed operation — which is essentially every
+API call — retried up to three times; only the raw `Get`/`GetAll` and download
+paths, which run the hand-written loop, honoured the setting. `WithMaxRetries`'
+doc comment promised "GET requests" and delivered a subset of them.
+
+```go
+// Before: three attempts on a 503, despite the cap. After: one.
+c := basecamp.NewClient(cfg, tp, basecamp.WithMaxRetries(1))
+_, err := c.ForAccount("999").Projects().Get(ctx, 12345)
+```
+
+**Wrong behaviour you get if you ignore it:** none to fix — this makes the SDK
+obey a setting it was already documented to obey. But if you lowered the cap to
+fail fast and tuned timeouts around the three attempts you were actually
+getting, your effective worst-case latency just dropped, and a caller relying on
+the accidental extra attempts to ride out flapping upstreams will now see the
+first failure surface. Raise the cap deliberately if you want the old count.
+`BaseDelay` carries over too; `MaxDelay` and `Multiplier` keep the generated
+defaults, `HTTPOptions` having no counterpart for either.
+
+**`WithMaxRetries(0)` no longer panics.** `NewClient` accepted only `n >= 1`
+and panicked `"basecamp: max retries must be at least 1"`. Zero is now legal and
+means "no retries — exactly one attempt", which is what the other SDKs with a
+numeric cap already did and what SPEC §14's attempt-budget table already
+described; the GET and download loops floor the cap at one attempt so a request
+is always made. Only a negative cap now panics, with a new message:
+`"basecamp: max retries must not be negative"`. Code matching on the old string
+(a `recover` that inspects the message, as the conformance runner did) needs
+updating; code that simply never passed `0` is unaffected.
+
 ### Kotlin: `search.search` returns `ListResult<SearchResult>`, not `ListResult<JsonElement>` (#717)
 
 ```kotlin

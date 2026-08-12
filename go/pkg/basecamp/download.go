@@ -135,14 +135,16 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	}
 
 	// MaxRetries is the total attempt count for this loop, matching
-	// Client.doRequestURL's iteration. MaxRetries<=0 skips the loop entirely
-	// and is surfaced as ErrUsage by the fallback after the loop. On
+	// Client.doRequestURL's iteration — including its floor: a cap of 0 means
+	// "no retries — exactly one attempt", not "no request" (SPEC §2 validation
+	// step 4). The loop is pre-check, so without the floor a 0 cap would send
+	// nothing at all. On
 	// exhaustion, the last per-attempt error is returned directly. Retry-
 	// eligible statuses are aligned with the main GET loop's @retryable set:
 	// 429 (rate limit) and 502/503/504 (gateway errors), plus transport
 	// errors. 500 and other non-@retryable 5xx fall through to the dispatch
 	// switch and surface as errors without retry.
-	maxAttempts := c.httpOpts.MaxRetries
+	maxAttempts := max(c.httpOpts.MaxRetries, 1)
 
 	var resp *http.Response
 	var lastErr error
@@ -208,11 +210,14 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	}
 
 	if resp == nil {
-		// Defense in depth: NewClient panics on MaxRetries<1, so this path
-		// is unreachable from normal construction. Direct-struct-built
-		// Clients with a zero MaxRetries would skip the loop entirely and
-		// land here.
-		return nil, ErrUsage(fmt.Sprintf("download aborted: MaxRetries (%d) must be >= 1", maxAttempts))
+		// Unreachable: maxAttempts is floored at 1, so the loop always runs,
+		// and every iteration either returns or assigns resp. It used to be
+		// reachable — a directly-struct-built Client with a zero MaxRetries
+		// skipped the loop entirely and landed here — which the floor now
+		// prevents at the source. Kept so that an edit to the loop's exit
+		// conditions surfaces as this error rather than a nil dereference two
+		// lines below.
+		return nil, ErrUsage("download aborted: retry loop made no attempt")
 	}
 
 	switch {

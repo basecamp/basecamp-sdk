@@ -189,7 +189,7 @@ func WithAuthStrategy(strategy AuthStrategy) ClientOption {
 //
 // Configuration options:
 //   - WithTimeout(d)      - Request timeout (default: 30s)
-//   - WithMaxRetries(n)   - Total attempt count for GET (default: 3, minimum 1)
+//   - WithMaxRetries(n)   - Total attempt count (default: 3; 0 means no retry)
 //   - WithCache(c)        - Enable ETag-based caching
 //   - WithTransport(t)    - Custom http.RoundTripper
 //   - WithLogger(l)       - slog.Logger for debug output
@@ -251,11 +251,15 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	if c.httpOpts.Timeout <= 0 {
 		panic("basecamp: timeout must be positive")
 	}
-	if c.httpOpts.MaxRetries < 1 {
+	if c.httpOpts.MaxRetries < 0 {
 		// MaxRetries names the total attempt count used by the retry loops in
-		// doRequestURL and fetchAPIDownload. Zero attempts is always a
-		// misconfiguration; reject it here so both loops can assume >= 1.
-		panic("basecamp: max retries must be at least 1")
+		// doRequestURL and fetchAPIDownload. Zero is legal and means "no
+		// retries — exactly one attempt" (SPEC §2 validation step 4): it is the
+		// spelling callers reach for to turn retry off, and every other SDK
+		// with a numeric cap already accepted it. Both loops floor the cap at
+		// one attempt, so what they can assume is >= 0, not >= 1. A negative
+		// cap is the genuine misconfiguration and is what this rejects.
+		panic("basecamp: max retries must not be negative")
 	}
 	if c.httpOpts.MaxPages <= 0 {
 		panic("basecamp: max pages must be positive")
@@ -386,8 +390,27 @@ func (c *Client) initGeneratedClient() {
 			req.Header.Set("Accept", "application/json")
 			return nil
 		}
+		// The generated client runs its own retry loop for idempotent
+		// operations, and until #718 it was never told this client's settings —
+		// so every typed operation retried on DefaultRetryConfig{MaxRetries: 3}
+		// no matter what WithMaxRetries said. A caller who lowered the cap to
+		// fail fast still got three attempts on essentially every API call,
+		// because typed operations are essentially every API call; only the raw
+		// Get/GetAll and download paths, which run doRequestURL's own loop,
+		// honored it. Pass the settings the caller actually configured.
+		//
+		// BaseDelay carries over; MaxDelay and Multiplier keep the generated
+		// defaults because HTTPOptions has no counterpart for either. MaxJitter
+		// has no counterpart in the other direction and stays with doRequestURL.
+		retryCfg := generated.DefaultRetryConfig()
+		retryCfg.MaxRetries = c.httpOpts.MaxRetries
+		if c.httpOpts.BaseDelay > 0 {
+			retryCfg.BaseDelay = c.httpOpts.BaseDelay
+		}
+
 		gen, err := generated.NewClientWithResponses(serverURL,
 			generated.WithHTTPClient(c.httpClient),
+			generated.WithRetryConfig(retryCfg),
 			generated.WithRequestEditorFn(authEditor))
 		if err != nil {
 			panic(fmt.Sprintf("basecamp: failed to create generated client: %v", err))
@@ -634,7 +657,16 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 	var attempt int
 	var lastErr error
 
-	for attempt = 1; attempt <= c.httpOpts.MaxRetries; attempt++ {
+	// MaxRetries is the total attempt count, floored at one: a cap of 0 means
+	// "no retries", not "no request" (SPEC §2 validation step 4). The floor
+	// belongs here rather than only at construction because this loop is
+	// pre-check — `attempt <= 0` would send nothing at all — and because a
+	// directly-struct-built Client never passes through NewClient's validation.
+	// Mirrors generated Go's effectiveMaxAttempts, Ruby's [cap, 1].max and
+	// Kotlin's computeMaxAttempts.
+	maxAttempts := max(c.httpOpts.MaxRetries, 1)
+
+	for attempt = 1; attempt <= maxAttempts; attempt++ {
 		resp, err := c.singleRequest(ctx, method, url, body, attempt)
 		if err == nil {
 			return resp, nil
@@ -663,11 +695,11 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 		// MaxRetries is the total attempt count. After the final attempt there is
 		// no retry, so don't sleep the backoff delay or fire OnRetry for an
 		// attempt that will never happen — return the last error immediately.
-		if attempt >= c.httpOpts.MaxRetries {
+		if attempt >= maxAttempts {
 			break
 		}
 
-		c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", c.httpOpts.MaxRetries, "delay", delay, "error", lastErr)
+		c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", maxAttempts, "delay", delay, "error", lastErr)
 
 		// Notify hooks about the retry
 		info := RequestInfo{Method: method, URL: url, Attempt: attempt}
@@ -682,10 +714,10 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 	}
 
 	noun := "attempts"
-	if c.httpOpts.MaxRetries == 1 {
+	if maxAttempts == 1 {
 		noun = "attempt"
 	}
-	return nil, fmt.Errorf("request failed after %d %s: %w", c.httpOpts.MaxRetries, noun, lastErr)
+	return nil, fmt.Errorf("request failed after %d %s: %w", maxAttempts, noun, lastErr)
 }
 
 func (c *Client) singleRequest(ctx context.Context, method, url string, body any, attempt int) (*Response, error) {

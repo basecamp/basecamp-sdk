@@ -236,6 +236,14 @@ struct Runner {
                 userAgent: "basecamp-conformance-runner/1.0",
                 config: BasecampConfig(
                     baseURL: baseURL,
+                    // Swift exposes no numeric cap by design (SPEC section 2
+                    // validation step 4): its loop is driven by the per-operation
+                    // retry.max ceiling, so the cap maps onto the on/off knob that
+                    // IS its spelling of the same contract. 0 means "no retries,
+                    // exactly one attempt", which is enableRetry: false; a positive
+                    // cap only re-asserts the default policy, and an exact attempt
+                    // count above 1 constrains the four numeric SDKs, not this one.
+                    enableRetry: (tc.configOverrides?.maxRetries).map { $0 > 0 } ?? true,
                     maxPages: tc.configOverrides?.maxPages ?? 10_000
                 ),
                 transport: transport

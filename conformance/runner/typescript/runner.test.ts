@@ -56,7 +56,13 @@ interface TestCase {
   mockResponses: MockResponse[];
   assertions: Assertion[];
   tags?: string[];
-  configOverrides?: { baseUrl?: string; maxPages?: number; maxItems?: number; page?: number };
+  configOverrides?: {
+    baseUrl?: string;
+    maxPages?: number;
+    maxItems?: number;
+    page?: number;
+    maxRetries?: number;
+  };
   /**
    * Live tests are loaded by live-runner.test.ts; this runner ignores them.
    * Defaults to "mock" when omitted.
@@ -1763,8 +1769,21 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
  * Retry tests, idempotency tests, and network-retry tests need retry enabled.
  * Status-code tests generally need retry disabled to avoid interference,
  * except for the 429-retries-exhausted test which requires retry.
+ *
+ * A case carrying configOverrides.maxRetries decides for itself and wins over
+ * every rule below. TypeScript exposes no numeric cap by design (SPEC §2
+ * validation step 4) — its loop is driven by the per-operation retry.max
+ * ceiling — so the cap maps onto the on/off knob that IS its spelling of the
+ * same contract: 0 means "no retries, exactly one attempt", which is
+ * enableRetry: false. A positive cap only re-asserts the default policy here;
+ * an exact attempt count above 1 constrains the four numeric SDKs, not this one.
  */
 function shouldEnableRetry(tc: TestCase, filename: string): boolean {
+  const cap = tc.configOverrides?.maxRetries;
+  if (cap != null) {
+    return cap > 0;
+  }
+
   if (
     filename === "retry.json" ||
     filename === "idempotency.json" ||

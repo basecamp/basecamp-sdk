@@ -154,6 +154,10 @@ struct ConfigOverrides: Decodable {
     let maxItems: Int?
     /// Pins the list operation to a single page (SPEC section 8).
     let page: Int?
+    /// Overrides the client-wide retry cap as a TOTAL attempt count (SPEC
+    /// section 2). Swift exposes no numeric cap by design, so the runner maps
+    /// this onto `enableRetry` — see Runner.swift.
+    let maxRetries: Int?
 }
 
 struct MockResponse: Decodable, Sendable {
