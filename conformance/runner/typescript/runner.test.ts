@@ -1774,14 +1774,20 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
  * every rule below. TypeScript exposes no numeric cap by design (SPEC §2
  * validation step 4) — its loop is driven by the per-operation retry.max
  * ceiling — so the cap maps onto the on/off knob that IS its spelling of the
- * same contract: 0 means "no retries, exactly one attempt", which is
- * enableRetry: false. A positive cap only re-asserts the default policy here;
- * an exact attempt count above 1 constrains the four numeric SDKs, not this one.
+ * same contract.
+ *
+ * The cutoff is `> 1`, not `> 0`, because the key is a TOTAL attempt count: 0
+ * and 1 both mean exactly one attempt, and "one attempt" is what
+ * enableRetry: false spells here. Mapping 1 to enabled would hand this runner
+ * the per-operation ceiling of 2-3 attempts while the four numeric SDKs made
+ * exactly one — a fixture producing contradictory results across the matrix
+ * from a single declared cap. A cap above 1 only re-asserts the default policy
+ * here; an exact attempt count constrains the numeric SDKs, not this one.
  */
 function shouldEnableRetry(tc: TestCase, filename: string): boolean {
   const cap = tc.configOverrides?.maxRetries;
   if (cap != null) {
-    return cap > 0;
+    return cap > 1;
   }
 
   if (

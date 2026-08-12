@@ -390,22 +390,39 @@ func (c *Client) initGeneratedClient() {
 			req.Header.Set("Accept", "application/json")
 			return nil
 		}
-		// The generated client runs its own retry loop for idempotent
-		// operations, and until #718 it was never told this client's settings —
-		// so every typed operation retried on DefaultRetryConfig{MaxRetries: 3}
-		// no matter what WithMaxRetries said. A caller who lowered the cap to
-		// fail fast still got three attempts on essentially every API call,
-		// because typed operations are essentially every API call; only the raw
-		// Get/GetAll and download paths, which run doRequestURL's own loop,
-		// honored it. Pass the settings the caller actually configured.
+		// The generated client runs its own retry loop, and until #718 it was
+		// never told this client's settings — so a RETRY-ELIGIBLE typed
+		// operation ran on DefaultRetryConfig{MaxRetries: 3} no matter what
+		// WithMaxRetries said, and a caller who lowered the cap to fail fast
+		// still got the generated default. Only the raw Get/GetAll and download
+		// paths, which run doRequestURL's own loop, honored it.
 		//
-		// BaseDelay carries over; MaxDelay and Multiplier keep the generated
-		// defaults because HTTPOptions has no counterpart for either. MaxJitter
-		// has no counterpart in the other direction and stays with doRequestURL.
+		// "Retry-eligible" is the whole qualification: doWithRetry forces
+		// maxAttempts to 1 for a non-idempotent operation before consulting the
+		// config at all, and then clamps to the per-operation ceiling. So this
+		// changes nothing for CreateTodo, and nothing for an op declaring
+		// max: 2 beyond lowering it further. Pass what the caller configured.
+		//
+		// BaseDelay carries over, CLAMPED to the same ceiling doRequestURL
+		// applies: the generated loop uses BaseDelay verbatim for its first
+		// sleep and only applies MaxDelay after multiplying for the next one, so
+		// an unclamped WithBaseDelay(10*time.Minute) would stall a typed
+		// operation for ten minutes. SPEC §7's backoff ceiling is explicit that
+		// no single computed sleep exceeds it, "with no carve-out for the first
+		// one". The clamp is not conditional on being non-zero: a caller who
+		// sets 0 wants no backoff, and skipping the assignment would leave typed
+		// operations on the generated 1s default while raw GETs waited only for
+		// jitter — the exact split this change exists to remove.
+		//
+		// MaxDelay and Multiplier keep the generated defaults, HTTPOptions
+		// having no counterpart for either (MaxDelay's default is already
+		// MaxBackoffDelay). MaxJitter has no counterpart in the other direction
+		// and stays with doRequestURL.
 		retryCfg := generated.DefaultRetryConfig()
 		retryCfg.MaxRetries = c.httpOpts.MaxRetries
-		if c.httpOpts.BaseDelay > 0 {
-			retryCfg.BaseDelay = c.httpOpts.BaseDelay
+		retryCfg.BaseDelay = min(c.httpOpts.BaseDelay, MaxBackoffDelay)
+		if retryCfg.BaseDelay < 0 {
+			retryCfg.BaseDelay = 0
 		}
 
 		gen, err := generated.NewClientWithResponses(serverURL,

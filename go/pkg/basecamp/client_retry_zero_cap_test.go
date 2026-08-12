@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 // A cap of zero means "no retries — exactly one attempt", not "no request"
@@ -15,10 +17,11 @@ import (
 // outright, panicking at construction, while every other SDK with a numeric cap
 // accepted and floored it.
 //
-// Each test below pins one of the three loops the cap reaches. They fail
-// against the un-fixed code in two distinct ways, which is the point of having
-// all three: the raw GET and download loops are pre-check (`attempt <= 0` sends
-// nothing), and the typed path never consulted the cap at all.
+// The cap tests below pin one loop each. They fail against the un-fixed code in
+// two distinct ways, which is the point of having all three: the raw GET and
+// download loops are pre-check (`attempt <= 0` sends nothing), and the typed
+// path never consulted the cap at all. The last test covers the other half of
+// what now reaches the generated client — BaseDelay, and its ceiling.
 
 func TestNewClient_AcceptsZeroMaxRetries(t *testing.T) {
 	defer func() {
@@ -121,6 +124,40 @@ func TestClient_LoweredMaxRetriesReachesTypedOperations(t *testing.T) {
 
 	if got := atomic.LoadInt32(&requests); got != 2 {
 		t.Errorf("typed GetProject made %d requests, want 2 (the configured cap, not the generated default of 3)", got)
+	}
+}
+
+// BaseDelay reaches the generated client, but never above the §7 backoff
+// ceiling. The generated loop uses RetryConfig.BaseDelay verbatim for its FIRST
+// sleep and applies MaxDelay only after multiplying for the next one, so an
+// unclamped value would stall a typed operation for its full length — where
+// doRequestURL's own loop saturates every computed delay at MaxBackoffDelay.
+//
+// Asserted on the config rather than by timing a request: the point is the
+// value handed to the generated client, and sleeping 30s to observe it would be
+// a wall-clock test of exactly the kind #715 removed.
+func TestInitGeneratedClient_ClampsBaseDelayToTheBackoffCeiling(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		base time.Duration
+		want time.Duration
+	}{
+		{"above the ceiling is clamped", 10 * time.Minute, MaxBackoffDelay},
+		{"at the ceiling is kept", MaxBackoffDelay, MaxBackoffDelay},
+		{"below the ceiling is kept", 250 * time.Millisecond, 250 * time.Millisecond},
+		// A caller asking for no backoff must get none on the typed path too;
+		// leaving it at the generated 1s default is the split this closes.
+		{"zero carries over rather than reverting to the generated default", 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := NewClient(&Config{BaseURL: "https://3.basecampapi.com"},
+				&StaticTokenProvider{Token: "test-token"}, WithBaseDelay(tc.base))
+			client.initGeneratedClient()
+
+			if got := client.gen.ClientInterface.(*generated.Client).RetryConfig.BaseDelay; got != tc.want {
+				t.Errorf("generated RetryConfig.BaseDelay = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 
