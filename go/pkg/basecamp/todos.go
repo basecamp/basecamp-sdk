@@ -309,14 +309,15 @@ func fieldsFromTodo(t *Todo) *TodoFields {
 	return f
 }
 
-// fullBody serializes the complete writable state for the replace
-// transport: content, description, and both ID lists are always sent
-// (empties included, so clears survive the PUT); dates are sent only when
-// non-empty (the server clears an omitted date, and "" is a format error);
-// notify is sent only when true.
-func (f *TodoFields) fullBody() (map[string]any, error) {
+// fullBody builds the complete writable state for the replace transport:
+// content, description, and both ID lists are always sent (empties included,
+// so clears survive the PUT — the description pointer and slice pointers are
+// non-nil even when empty, which `omitempty` preserves); dates are sent only
+// when non-empty (the server clears an omitted date, and "" is a format
+// error); notify is sent only when true.
+func (f *TodoFields) fullBody() (generated.ReplaceTodoJSONRequestBody, error) {
 	if f.Content == "" {
-		return nil, ErrUsage("todo content is required")
+		return generated.ReplaceTodoJSONRequestBody{}, ErrUsage("todo content is required")
 	}
 	assigneeIDs := f.AssigneeIDs
 	if assigneeIDs == nil {
@@ -326,26 +327,29 @@ func (f *TodoFields) fullBody() (map[string]any, error) {
 	if subscriberIDs == nil {
 		subscriberIDs = []int64{}
 	}
-	body := map[string]any{
-		"content":                   f.Content,
-		"description":               f.Description,
-		"assignee_ids":              assigneeIDs,
-		"completion_subscriber_ids": subscriberIDs,
+	body := generated.ReplaceTodoJSONRequestBody{
+		Content:                 f.Content,
+		Description:             &f.Description,
+		AssigneeIds:             &assigneeIDs,
+		CompletionSubscriberIds: &subscriberIDs,
 	}
 	if f.DueOn != "" {
-		if _, parseErr := types.ParseDate(f.DueOn); parseErr != nil {
-			return nil, ErrUsage("todo due_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(f.DueOn)
+		if parseErr != nil {
+			return generated.ReplaceTodoJSONRequestBody{}, ErrUsage("todo due_on must be in YYYY-MM-DD format")
 		}
-		body["due_on"] = f.DueOn
+		body.DueOn = &d
 	}
 	if f.StartsOn != "" {
-		if _, parseErr := types.ParseDate(f.StartsOn); parseErr != nil {
-			return nil, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+		d, parseErr := types.ParseDate(f.StartsOn)
+		if parseErr != nil {
+			return generated.ReplaceTodoJSONRequestBody{}, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
 		}
-		body["starts_on"] = f.StartsOn
+		body.StartsOn = &d
 	}
 	if f.Notify {
-		body["notify"] = true
+		notify := true
+		body.Notify = &notify
 	}
 	return body, nil
 }
@@ -729,37 +733,40 @@ func (s *TodosService) Edit(ctx context.Context, todoID int64, fn func(*TodoFiel
 // unspecified fields.
 // Returns the updated todo.
 func (s *TodosService) Replace(ctx context.Context, todoID int64, req *ReplaceTodoRequest) (*Todo, error) {
-	return s.replaceTodo(ctx, todoID, func() (map[string]any, error) {
+	return s.replaceTodo(ctx, todoID, func() (generated.ReplaceTodoJSONRequestBody, error) {
 		if req == nil {
-			return nil, ErrUsage("replace request is required")
+			return generated.ReplaceTodoJSONRequestBody{}, ErrUsage("replace request is required")
 		}
 		if req.Content == "" {
-			return nil, ErrUsage("todo content is required")
+			return generated.ReplaceTodoJSONRequestBody{}, ErrUsage("todo content is required")
 		}
-		body := map[string]any{"content": req.Content}
+		body := generated.ReplaceTodoJSONRequestBody{Content: req.Content}
 		if req.Description != "" {
-			body["description"] = req.Description
+			body.Description = &req.Description
 		}
 		if req.AssigneeIDs != nil {
-			body["assignee_ids"] = req.AssigneeIDs
+			body.AssigneeIds = &req.AssigneeIDs
 		}
 		if req.CompletionSubscriberIDs != nil {
-			body["completion_subscriber_ids"] = req.CompletionSubscriberIDs
+			body.CompletionSubscriberIds = &req.CompletionSubscriberIDs
 		}
 		if req.Notify {
-			body["notify"] = true
+			notify := true
+			body.Notify = &notify
 		}
 		if req.DueOn != "" {
-			if _, parseErr := types.ParseDate(req.DueOn); parseErr != nil {
-				return nil, ErrUsage("todo due_on must be in YYYY-MM-DD format")
+			d, parseErr := types.ParseDate(req.DueOn)
+			if parseErr != nil {
+				return generated.ReplaceTodoJSONRequestBody{}, ErrUsage("todo due_on must be in YYYY-MM-DD format")
 			}
-			body["due_on"] = req.DueOn
+			body.DueOn = &d
 		}
 		if req.StartsOn != "" {
-			if _, parseErr := types.ParseDate(req.StartsOn); parseErr != nil {
-				return nil, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+			d, parseErr := types.ParseDate(req.StartsOn)
+			if parseErr != nil {
+				return generated.ReplaceTodoJSONRequestBody{}, ErrUsage("todo starts_on must be in YYYY-MM-DD format")
 			}
-			body["starts_on"] = req.StartsOn
+			body.StartsOn = &d
 		}
 		return body, nil
 	})
@@ -769,7 +776,7 @@ func (s *TodosService) Replace(ctx context.Context, todoID int64, req *ReplaceTo
 // shared by Replace, Update, and Edit. It owns the Todos.Replace hook
 // envelope and the one generated-client call site; buildBody runs inside
 // the envelope so usage errors are observable to hooks.
-func (s *TodosService) replaceTodo(ctx context.Context, todoID int64, buildBody func() (map[string]any, error)) (result *Todo, err error) {
+func (s *TodosService) replaceTodo(ctx context.Context, todoID int64, buildBody func() (generated.ReplaceTodoJSONRequestBody, error)) (result *Todo, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Replace",
 		ResourceType: "todo", IsMutation: true,
@@ -789,11 +796,7 @@ func (s *TodosService) replaceTodo(ctx context.Context, todoID int64, buildBody 
 		return nil, err
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.parent.gen.ReplaceTodoWithBodyWithResponse(ctx, s.client.accountID, todoID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.ReplaceTodoWithResponse(ctx, s.client.accountID, todoID, body)
 	if err != nil {
 		return nil, err
 	}

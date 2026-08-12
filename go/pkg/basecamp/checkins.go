@@ -963,20 +963,17 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, answerID int64, req 
 	if groupOn == "" {
 		return ErrUsage("group_on is required")
 	}
-	if _, parseErr := types.ParseDate(groupOn); parseErr != nil {
+	groupOnDate, parseErr := types.ParseDate(groupOn)
+	if parseErr != nil {
 		return ErrUsage("group_on must be in YYYY-MM-DD format")
 	}
 
-	body := map[string]any{
-		"content":  req.Content,
-		"group_on": groupOn,
+	body := generated.UpdateAnswerJSONRequestBody{
+		Content: req.Content,
+		GroupOn: &groupOnDate,
 	}
 
-	bodyReader, err := marshalBody(body)
-	if err != nil {
-		return err
-	}
-	resp, err := s.client.parent.gen.UpdateAnswerWithBodyWithResponse(ctx, s.client.accountID, answerID, "application/json", bodyReader)
+	resp, err := s.client.parent.gen.UpdateAnswerWithResponse(ctx, s.client.accountID, answerID, body)
 	if err != nil {
 		return err
 	}
