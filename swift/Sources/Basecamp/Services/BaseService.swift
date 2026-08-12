@@ -498,6 +498,12 @@ open class BaseService: @unchecked Sendable {
         }
     }
 
+    /// The one place a decode failure is rendered. `.api` carries no `cause`, and
+    /// statuslessness alone does not identify this failure — the pagination
+    /// same-origin guard above is statusless too — so "returned a body that does
+    /// not decode" is what tells them apart. The conformance runner matches that
+    /// phrase to keep applying the #555 fixture-body policy; change it in both
+    /// places or in neither.
     private static func malformedBody(_ operation: String, _ error: any Error) -> BasecampError {
         .api(
             message: BasecampError.truncate(

@@ -381,10 +381,18 @@ private func runHTTPSProbe(_ baseURL: String) -> HTTPSProbeOutcome {
 ///
 /// The SDK maps a decode failure to a statusless `api_error` (#604) and cannot
 /// carry the `DecodingError` structurally — `BasecampError.api` has no `cause`
-/// slot — so the shape is what identifies it: every other `.api` the runner can
-/// provoke comes from an HTTP response and carries that response's status.
+/// slot, and adding one would break every `switch` over the case — so the
+/// message is the discriminator.
+///
+/// Statuslessness alone is NOT enough, and the security fixtures prove it: the
+/// pagination same-origin guard throws a statusless `.api` too, and it is a
+/// deliberate refusal those cases assert on rather than a fixture body to
+/// repair. Matching the phrase the decode mapping emits keeps the two apart.
+/// The coupling is noted at `BaseService.malformedBody` in the SDK.
 private func malformedBodyMessage(_ error: BasecampError) -> String? {
-    guard case .api(let message, let httpStatus, _, _) = error, httpStatus == nil else {
+    guard case .api(let message, let httpStatus, _, _) = error, httpStatus == nil,
+        message.contains("returned a body that does not decode")
+    else {
         return nil
     }
     return message
