@@ -1,0 +1,91 @@
+typescript/tests/services/tools.test.ts
+  s_23e48791aed839::t_c1b66e8a4174eb 16-20,24-33
+  s_23e48791aed839::t_cf7122e2b98793 175,183-184,189-198,203,211,217
+  s_23e48791aed839::t_a6849c99cb8290 258,265-266,272-279
+  s_23e48791aed839::t_b236c01d7bc33a 52,58-158
+  s_23e48791aed839::t_f17de50c4b969c 239
+  s_23e48791aed839::t_0b6262fd0534d8 34
+go/pkg/basecamp/tools_test.go
+  s_23e48791aed839::t_07817fa4c7f229 30-32,41-42,47-48,50-51,53-54,56-57,59-70,73,77-88,101-102,110-119
+  s_23e48791aed839::t_db6d5ab07cd401 120,437,440-500
+  s_23e48791aed839::t_f8916b2dc1eb7b 364-365,367-368,370-371,375-379,391-395,397-398,400-401,406-436,438
+  s_23e48791aed839::t_b52dee6b9fbb6f 330-334,336-337,339-341,343-349
+  s_23e48791aed839::t_c86d43bdc33ab5 439
+python/tests/services/test_tools.py
+  s_23e48791aed839::t_bc07aa90690445 167-176,178-235
+  s_23e48791aed839::t_dc6ec656cbd455 326,331-383
+  s_23e48791aed839::t_3b4c07d2f088ff 6,15-18,28-32,34-50,53-56,58-78
+  s_23e48791aed839::t_5b6aac641dc982 177
+  s_23e48791aed839::t_4ce7cd58b4a9be 325,327-330
+go/pkg/basecamp/tools.go
+  s_23e48791aed839::t_374861ae763885 314-326,338-347,356-359
+  s_23e48791aed839::t_59fcdaf9961cad 12-14,16-48
+  s_23e48791aed839::t_1c2daa711fe11e 360
+swift/Tests/BasecampTests/ToolDecodeTests.swift
+  s_23e48791aed839::t_a766d74c36f25b 1-175
+ruby/test/basecamp/services/tools_service_test.rb
+  s_23e48791aed839::t_004f9cb585eb80 12-20,22,27-121,125,128,131-140,144,147,150-152,159,171,182
+  s_23e48791aed839::t_02d892e2dfcf89 206,209,212-219
+spec/fixtures/tools/get.json
+  s_23e48791aed839::t_c5cad1d2c013ff 2,4-14,16,19-46
+spec/fixtures/manifest.yaml
+  s_23e48791aed839::t_c9c6aef813d3c0 340-375
+  s_23e48791aed839::t_8f99df29695a57 410
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ToolsServiceTest.kt
+  s_23e48791aed839::t_d2a7c237fade70 15
+  s_23e48791aed839::t_bd325606ce2c3f 193-301
+  s_23e48791aed839::t_a34401f3cca7de 30-45,48-51,53-92,95-101
+  s_23e48791aed839::t_30fb3f0c871c76 102
+MIGRATING.md
+  s_23e48791aed839::t_e335a613e14df0 16-77
+spec/basecamp.smithy
+  s_23e48791aed839::t_4aaf6f284c9735 9626-9630,9636-9637,9644-9645,9647,9650-9658,9660-9671
+conformance/tests/paths.json
+  s_23e48791aed839::t_7015752f6e63a1 363-365,371-372,377-380,419-421,427,432-435,473-475,481,486-489,556-558,564-565,570-573,612-614,620-621,626-629
+go/pkg/generated/client.gen.go
+  s_23e48791aed839::t_abb257060c79d9 3631-3662
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Tool.kt
+  s_23e48791aed839::t_e449c630ed66d9 16,20-22,26-32
+openapi.json
+  s_23e48791aed839::t_c4d7b037fa08ea 34974-34976,34994,34997-34999,35007-35021,35024-35034,35039,35041,35043-35045
+python/src/basecamp/generated/types.py
+  s_23e48791aed839::t_23e5bac467098f 1931,1934-1935,1937-1939,1942,1944,1947
+ruby/lib/basecamp/generated/metadata.json
+  s_23e48791aed839::t_b935a720aaec71 4
+ruby/lib/basecamp/generated/types.rb
+  s_23e48791aed839::t_16be5fa29e337c 4,4826,4830,4835,4837,4839,4841,4843,4845-4847,4850,4857,4859,4861,4863,4865,4867-4869,4872
+spec/fixtures/tools/create.json
+  s_23e48791aed839::t_8c3e49d9e10865 2,4-13,16,19-46
+spec/fixtures/tools/disabled.json
+  s_23e48791aed839::t_9b9e8c8974b6bb 4-12,14,17-44
+spec/fixtures/tools/nested_vault.json
+  s_23e48791aed839::t_246e1388c322d3 1-53
+spec/fixtures/tools/update.json
+  s_23e48791aed839::t_b70d5146e40cf5 2,4-14,16,19-46
+swift/Sources/Basecamp/Generated/Models/Tool.swift
+  s_23e48791aed839::t_dea207b8a2d9f2 6,8,10,12,14,16-18,21,26,28,30,32,34,36-38,41,45,47,49,51,53,55-57,60
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_23e48791aed839::t_27ea21fe5955d8 531-539,542-550,552-557,580,599
+typescript/src/generated/metadata.ts
+  s_23e48791aed839::t_88c8c944dad0b5 40
+typescript/src/generated/openapi-stripped.json
+  s_23e48791aed839::t_d976384386da5b 32134-32136,32154,32157-32159,32167-32181,32184-32194,32199,32201,32203-32205
+typescript/src/generated/schema.d.ts
+  s_23e48791aed839::t_38ee9b79d48d5b 6582,6586-6588,6591-6599,6601-6613
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "597d9e61bc5e2c47d56bdd98cd9674665a23c835",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
