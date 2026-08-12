@@ -100,6 +100,12 @@ verify:
 clean:
 	rm -f coverage.out coverage.html
 	rm -f bench-baseline.txt bench-current.txt
+
+# Remove the generated client so `make generate` rebuilds it from scratch.
+# pkg/generated/client.gen.go is TRACKED, so removing it must be an explicit
+# opt-in — `clean` must never delete tracked files (issue #668).
+.PHONY: clean-generated
+clean-generated:
 	rm -f pkg/generated/*.gen.go
 
 # Run all checks (local development gate)

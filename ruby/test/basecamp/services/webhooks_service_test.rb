@@ -99,7 +99,9 @@ class WebhooksServiceTest < Minitest::Test
   end
 
   def test_get_with_recent_deliveries
-    fixture = JSON.parse(File.read(File.expand_path("../../../../spec/fixtures/webhooks/get.json", __dir__)))
+    # UTF-8 regardless of process locale (LC_ALL=C would otherwise read as US-ASCII)
+    path = File.expand_path("../../../../spec/fixtures/webhooks/get.json", __dir__)
+    fixture = JSON.parse(File.read(path, encoding: "UTF-8"))
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/webhooks/\d+})
       .to_return(status: 200, body: fixture.to_json, headers: { "Content-Type" => "application/json" })

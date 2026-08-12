@@ -7,7 +7,6 @@ spec/build/
 # Conformance test runner artifacts
 conformance/runner/go/conformance-runner
 conformance/runner/go/go
-conformance/runner/ruby/Gemfile.lock
 conformance/runner/typescript/node_modules
 # Vitest writes its results cache under whichever node_modules is closest to the
 # cwd, which is not always a package directory — ignore the tree everywhere so a
@@ -57,7 +56,6 @@ scripts/*.pyc
 conformance/runner/python/.venv/
 conformance/runner/python/**/__pycache__/
 conformance/runner/python/**/*.pyc
-conformance/runner/python/uv.lock
 
 # TypeScript SDK build artifacts
 typescript/coverage/

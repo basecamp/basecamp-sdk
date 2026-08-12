@@ -78,8 +78,9 @@ echo "Syncing conformance TypeScript runner lockfile..."
 
 # Sync conformance Ruby and Python runner lockfiles (they record the SDK's
 # version via their path deps on ../../../ruby and ../../../python). Both are
-# gitignored: left stale, the conformance targets' installs re-resolve and
-# WRITE them mid-check, so assert-lockfiles-unchanged fails (#671).
+# tracked and installed frozen (#670): left stale, the conformance targets'
+# installs fail fast instead of rewriting them mid-check (#671). This is the
+# sanctioned rewriter, so it stays unfrozen.
 echo "Syncing conformance Ruby runner lockfile..."
 (cd conformance/runner/ruby && bundle install --quiet)
 

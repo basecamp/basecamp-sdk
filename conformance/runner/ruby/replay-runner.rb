@@ -86,7 +86,9 @@ class ReplayRunner
     @backend = backend
     @fixture_path = fixture_path
     @walker = Basecamp::Conformance::SchemaWalker.new(openapi_path)
-    @fixture = JSON.parse(File.read(fixture_path)).select { |t| t["mode"] == "live" }
+    # Fixture and snapshot reads are pinned to UTF-8 regardless of process
+    # locale (LC_ALL=C would otherwise read as US-ASCII).
+    @fixture = JSON.parse(File.read(fixture_path, encoding: "UTF-8")).select { |t| t["mode"] == "live" }
   end
 
   def run
@@ -149,7 +151,7 @@ class ReplayRunner
     if Dir.exist?(wire_dir)
       Dir.glob(File.join(wire_dir, "*.json")).each do |f|
         snap = begin
-          JSON.parse(File.read(f))
+          JSON.parse(File.read(f, encoding: "UTF-8"))
         rescue Errno::ENOENT, IOError, SystemCallError => e
           msgs << "Snapshot #{File.basename(f)} could not be read: #{e.class}: #{e.message}."
           next
@@ -205,7 +207,7 @@ class ReplayRunner
 
   def read_snapshot(test_name)
     path = File.join(@replay_dir, @backend, "wire", "#{safe_name(test_name)}.json")
-    JSON.parse(File.read(path))
+    JSON.parse(File.read(path, encoding: "UTF-8"))
   end
 
   def decode_snapshot(snapshot)

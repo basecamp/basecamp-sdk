@@ -8,8 +8,9 @@ class Basecamp::Webhooks::ReceiverTest < Minitest::Test
     File.expand_path("../../../../spec/fixtures/webhooks", __dir__)
   end
 
+  # UTF-8 regardless of process locale (LC_ALL=C would otherwise read as US-ASCII)
   def fixture_body(name)
-    File.read(File.join(fixtures_dir, name))
+    File.read(File.join(fixtures_dir, name), encoding: "UTF-8")
   end
 
   def empty_headers

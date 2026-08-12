@@ -22,9 +22,11 @@ class OAuthResourceDiscoveryTest < Minitest::Test
   WELL_KNOWN_RESOURCE = "/.well-known/oauth-protected-resource"
   WELL_KNOWN_AS = "/.well-known/oauth-authorization-server"
 
-  # Generate one test method per fixture file.
+  # Generate one test method per fixture file. Read as UTF-8 regardless of
+  # process locale — under LC_ALL=C this class-body read would otherwise load
+  # the non-ASCII fixtures as US-ASCII and abort the whole suite.
   Dir.glob(File.join(FIXTURE_DIR, "*.json")).sort.each do |path|
-    fixture = JSON.parse(File.read(path))
+    fixture = JSON.parse(File.read(path, encoding: "UTF-8"))
     # The oversized-body scenario needs a genuine streaming transport; it is
     # exercised by a dedicated test below (WebMock delivers the body as one
     # chunk, so it can't demonstrate a bounded read).

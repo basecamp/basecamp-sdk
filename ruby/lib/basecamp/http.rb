@@ -493,8 +493,10 @@ module Basecamp
     # Memoized per-operation retry metadata, keyed by canonical operation ID.
     # Benign-race memoization: concurrent first loads compute identical values.
     def self.operation_retry(operation)
+      # UTF-8 regardless of process locale — JSON is UTF-8 (RFC 8259), and
+      # LC_ALL=C would otherwise read as US-ASCII.
       @operation_metadata ||= JSON.parse(
-        File.read(File.join(__dir__, "generated", "metadata.json"))
+        File.read(File.join(__dir__, "generated", "metadata.json"), encoding: "UTF-8")
       ).fetch("operations").freeze
       @operation_metadata.dig(operation, "retry")
     end

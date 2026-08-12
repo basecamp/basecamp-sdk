@@ -178,7 +178,9 @@ module Basecamp
     # @param path [String] path to JSON config file
     # @return [Config]
     def self.from_file(path)
-      data = JSON.parse(File.read(path))
+      # UTF-8 regardless of process locale — JSON is UTF-8 (RFC 8259), and
+      # LC_ALL=C would otherwise read as US-ASCII.
+      data = JSON.parse(File.read(path, encoding: "UTF-8"))
       config = new(
         base_url: data["base_url"] || DEFAULT_BASE_URL,
         timeout: data["timeout"] || DEFAULT_TIMEOUT,

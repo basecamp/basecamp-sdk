@@ -517,11 +517,24 @@ jobs:
         run: ../scripts/check-ruby-service-drift.sh
 
       - name: Test
+        if: matrix.ruby != '3.3'
+        run: bundle exec rake test
+
+      # File reads are pinned to encoding: "UTF-8"; this leg proves it stays
+      # that way by running the suite under the C locale (#702).
+      - name: Test (LC_ALL=C)
+        if: matrix.ruby == '3.3'
+        env:
+          LC_ALL: C
         run: bundle exec rake test
 
       - name: Run Ruby conformance tests
         if: matrix.ruby == '3.3'
         working-directory: conformance/runner/ruby
+        # Frozen: the runner Gemfile.lock is tracked (#670), so the install
+        # must fail fast rather than rewrite it.
+        env:
+          BUNDLE_FROZEN: 'true'
         run: |
           bundle install
           ruby runner.rb
@@ -617,8 +630,10 @@ jobs:
       - name: Run Python conformance tests
         if: matrix.python == '3.13'
         working-directory: conformance/runner/python
+        # --locked: the runner uv.lock is tracked (#670), so a missing or
+        # out-of-date lockfile must fail the install, not regenerate it.
         run: |
-          uv sync --python ${{ matrix.python }}
+          uv sync --locked --python ${{ matrix.python }}
           uv run --python ${{ matrix.python }} python runner.py
 
       - name: Run Python conformance runner unit tests
