@@ -195,8 +195,9 @@ inside one `try`/`do` per request primitive, with a terminal catch that mapped
 nothing. A response that did not decode therefore arrived as the decoder's own
 exception — indistinguishable from the auth strategy throwing or the socket
 dropping, and invisible to a caller catching the SDK's error type. Only the
-decode expression is wrapped now, for **every operation**, not just the §18
-composites that already did this by hand.
+decode expression is wrapped now, in **every request primitive** — so every
+operation's response decode, not just the §18 composites that already did this by
+hand. The one exception is called out below.
 
 | SDK | was | now |
 |---|---|---|
@@ -218,6 +219,18 @@ same `try`, and throws the same `SerializationException` type the decoder does.
 `BasecampError.api` gained no `cause` slot: adding an associated value would
 break every `switch` over the case. Swift carries the underlying error in the
 message, as its composites already did.
+
+**One operation is exempt, and it is `GetPersonProgress`.** Its wrapper is
+decoded by generated code that runs *after* the request primitive returns — the
+`person` member in both SDKs, plus the `events` array, which the Kotlin
+generator reaches through `["events"]!!.jsonArray`. A wrong-shaped or incomplete
+wrapper therefore still surfaces a raw `DecodingError` (Swift) or a
+`NullPointerException`/`IllegalArgumentException` (Kotlin), and Swift's missing
+`events` is not refused at all — it decodes to an empty list. Nothing about that
+changed in this release; it is the one place the contract above does not yet
+reach, it needs both service generators plus a regeneration to fix, and it is
+tracked in #728. If you catch decoder exceptions anywhere, keep doing so
+around this operation.
 
 ### `SearchResult` lost five required members and gained the special-branch keys (#651)
 

@@ -1,6 +1,8 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.generated.people
 import com.basecamp.sdk.generated.projects
+import com.basecamp.sdk.generated.recordings
 import com.basecamp.sdk.generated.reports
 import com.basecamp.sdk.services.BaseService
 import io.ktor.client.engine.mock.*
@@ -133,7 +135,84 @@ class DecodeIsolationTest {
         client.close()
     }
 
-    /** `requestPaginatedWrapped`: a body that is not JSON at all. */
+    /**
+     * A *numeric* refusal, which kotlinx reports as a [NumberFormatException]
+     * rather than a [SerializationException].
+     *
+     * `Person.id` decodes through `FlexibleLongSerializer`, which reaches
+     * `JsonPrimitive.long` for an unquoted number — and that is `content.toLong()`,
+     * so a fractional or out-of-range literal throws the numeric type, not the
+     * serialization one. Nearly every response carries a Person, so this is an
+     * ordinary operation's ordinary failure, not an exotic one.
+     */
+    @Test
+    fun aNumericRefusalIsAStatuslessApiError() = runTest {
+        for (badId in listOf("1.5", "99999999999999999999")) {
+            val client = mockClient {
+                respond(
+                    """{"id": $badId, "name": "Ann"}""",
+                    HttpStatusCode.OK,
+                    jsonHeaders,
+                )
+            }
+
+            val error = assertFailsWith<BasecampException.Api>(
+                "an id of $badId must be refused as a malformed body",
+            ) {
+                client.forAccount("12345").people.get(1L)
+            }
+
+            assertNull(error.httpStatus)
+            assertFalse(error.retryable)
+            assertIs<NumberFormatException>(
+                error.cause,
+                "the numeric conversion failure must survive as the cause, got ${error.cause}",
+            )
+            client.close()
+        }
+    }
+
+    /**
+     * A value-returning operation that unexpectedly receives 204.
+     *
+     * The primitive used to short-circuit ANY 204 to `Unit as T`, which handed
+     * the caller a ClassCastException from the cast site — a failure naming the
+     * SDK's own generics rather than the response. The empty body now reaches
+     * the decoder, where it is what it looks like: a body that does not decode.
+     */
+    @Test
+    fun a204ForAValueReturningOperationIsAStatuslessApiError() = runTest {
+        val client = mockClient { respond("", HttpStatusCode.NoContent, jsonHeaders) }
+
+        val error = assertFailsWith<BasecampException.Api> {
+            client.forAccount("12345").projects.get(1L)
+        }
+
+        assertNull(error.httpStatus, "204 is a success; the body is what failed")
+        assertFalse(error.retryable)
+        assertIs<SerializationException>(error.cause)
+        client.close()
+    }
+
+    /** The other half of that: a void operation's 204 still decodes to Unit. */
+    @Test
+    fun a204ForAVoidOperationStillSucceeds() = runTest {
+        val client = mockClient { respond("", HttpStatusCode.NoContent, jsonHeaders) }
+
+        client.forAccount("12345").recordings.trash(42L)
+
+        client.close()
+    }
+
+    /**
+     * `requestPaginatedWrapped`: a body that is not JSON at all.
+     *
+     * Deliberately not a valid-JSON-wrong-shape body. The generated wrapper
+     * accessor for this operation reaches `["events"]!!.jsonArray`, whose
+     * `NullPointerException`/`IllegalArgumentException` this helper does not map
+     * — a generated-code defect tracked with the rest of the wrapper-decode gap
+     * (#728), not an exception type to widen the catch for.
+     */
     @Test
     fun malformedWrappedBodyIsAStatuslessApiError() = runTest {
         val client = mockClient { respond("not json at all", HttpStatusCode.OK, jsonHeaders) }

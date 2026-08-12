@@ -184,13 +184,14 @@ abstract class BaseService(
                 throw error
             }
 
-            // 204 No Content
-            if (response.status.value == 204) {
-                hooks.safeOnOperationEnd(info, OperationResult(duration))
-                @Suppress("UNCHECKED_CAST")
-                return Unit as T
-            }
-
+            // 204 No Content needs no special case. Every void operation the
+            // generator emits parses with `{ Unit }`, which ignores the body and
+            // so answers an empty one correctly — all 48 of them. The shortcut
+            // this replaces returned `Unit as T` for ANY operation, so a
+            // value-returning one that unexpectedly got a 204 handed the caller
+            // a ClassCastException from the cast site rather than a described
+            // failure. Letting the empty body reach the decoder makes that a
+            // malformed response, which is what it is.
             val bodyText = normalizePersonIds(response.bodyAsText(), json)
             val result = decodeOrApiError(info.operation) { parse(bodyText) }
             hooks.safeOnOperationEnd(info, OperationResult(duration))
@@ -517,8 +518,25 @@ abstract class BaseService(
      *
      * Statusless because the request succeeded, so no HTTP status describes the
      * failure; non-retryable because re-requesting cannot repair a malformed
-     * body. The [SerializationException] is kept as `cause`, so a caller that
-     * wants the decoder's own account of what was wrong still has it.
+     * body. The decoder's own exception is kept as `cause`, so a caller that
+     * wants its account of what was wrong still has it.
+     *
+     * **Two mapped types, and the second is not redundant.**
+     * [SerializationException] is what kotlinx raises for a structural refusal.
+     * [NumberFormatException] is what it raises for a *numeric* one: a
+     * `JsonPrimitive.long` conversion — [com.basecamp.sdk.serialization.FlexibleLongSerializer]
+     * reaches one for every `Person` id off the wire — throws it rather than a
+     * [SerializationException] on an unquoted fractional or out-of-range number.
+     * It is the narrowest possible widening: number parsing is the only thing
+     * that raises it, so nothing in a decode closure can raise one for a reason
+     * that is not a malformed body. Its parent [IllegalArgumentException] is
+     * deliberately NOT mapped — that would swallow every `require()` in reach.
+     *
+     * A third class stays unmapped on purpose: the `!!` and `.jsonArray`
+     * accessors the generator emits for `GetPersonProgress` raise
+     * [NullPointerException] and [IllegalArgumentException] on a wrong-shaped
+     * wrapper body. Those are generated-code defects to fix where they are
+     * written, not exception types to catch here (#728).
      *
      * **Wrap the decode expression, never the block.** Each primitive above runs
      * encode → URL build → auth → transport → status check → decode inside one
@@ -535,15 +553,21 @@ abstract class BaseService(
         try {
             decode()
         } catch (e: SerializationException) {
-            throw BasecampException.Api(
-                message = BasecampException.truncateMessage(
-                    "$operation returned a body that does not decode: ${e.message}"
-                ),
-                httpStatus = null,
-                retryable = false,
-                cause = e,
-            )
+            throw malformedBody(operation, e)
+        } catch (e: NumberFormatException) {
+            throw malformedBody(operation, e)
         }
+
+    /** The one place a decode failure is rendered. */
+    private fun malformedBody(operation: String, cause: Exception): BasecampException.Api =
+        BasecampException.Api(
+            message = BasecampException.truncateMessage(
+                "$operation returned a body that does not decode: ${cause.message}"
+            ),
+            httpStatus = null,
+            retryable = false,
+            cause = cause,
+        )
 
     /**
      * Converts an HTTP error response to a [BasecampException] via the shared
