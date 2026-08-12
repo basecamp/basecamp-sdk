@@ -445,9 +445,6 @@ func newLiveBuffer(capacity int, onChange func(int)) *liveBuffer {
 	return &liveBuffer{capacity: capacity, onChange: onChange}
 }
 
-// empty reports whether the buffer holds nothing awaiting replay.
-func (b *liveBuffer) empty() bool { return len(b.events) == 0 }
-
 // add admits ev, returning the ids of any events dropped to make room —
 // oldest first.
 func (b *liveBuffer) add(ev Event) []int64 {
@@ -461,15 +458,31 @@ func (b *liveBuffer) add(ev Event) []int64 {
 	return dropped
 }
 
-// take empties the buffer, returning its contents in admission order — the
-// drain's one read, so a replayed event can never be replayed twice.
-func (b *liveBuffer) take() []Event {
-	events := b.events
-	b.events = nil
-	if len(events) > 0 {
-		b.changed()
+// shift removes and returns the oldest buffered event, reporting false when
+// the buffer is empty. It is the drain's ONLY read, one event at a time: an
+// event leaves the buffer exactly when it is about to be delivered, so
+// occupancy always accounts for everything still pending and the capacity
+// stays a bound on events held at once.
+//
+// Taking the whole buffer in one batch instead — the shape this replaced —
+// let a drain hold `capacity` events outside the buffer while the buffer
+// refilled to `capacity` behind them, so a slow drain retained twice the
+// configured number of events and twice SPEC.md §23's published memory
+// ceiling. Counting that batch against admission instead of removing it would
+// need the batch to be evictable too (an overflow drops the OLDEST, which
+// during a drain are precisely the taken ones), which is this method with a
+// second container in front of it.
+func (b *liveBuffer) shift() (Event, bool) {
+	if len(b.events) == 0 {
+		return Event{}, false
 	}
-	return events
+	ev := b.events[0]
+	// Re-slicing alone would pin the whole backing array through the
+	// drain; zeroing the vacated slot lets it go.
+	b.events[0] = Event{}
+	b.events = b.events[1:]
+	b.changed()
+	return ev, true
 }
 
 func (b *liveBuffer) changed() {
@@ -671,6 +684,13 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	l.setState(stateMinting)
 	if l.cfg.observer.Connecting != nil {
 		l.cfg.observer.Connecting(l.failedCycles+1, delay)
+	}
+	// The observer runs on this goroutine and may Close from inside it, which
+	// cancels synchronously (Connector.Close). Re-checking here is what turns
+	// that cancellation into the universal Closed edge BEFORE the run's first
+	// wire act, rather than one mint after it.
+	if l.runCtx.Err() != nil {
+		return cycleOutcome{kind: outcomeClosed}
 	}
 	ticket, err := l.cfg.minter.MintStreamTicket(at.ctx)
 	if l.runCtx.Err() != nil {

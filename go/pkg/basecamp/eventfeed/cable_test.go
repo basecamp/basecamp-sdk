@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -296,16 +297,37 @@ func mustErr(t *testing.T, f func() error) error {
 	return err
 }
 
-func TestDecodeMessageEvent_VisibleToClientsIsOptional(t *testing.T) {
-	// visible_to_clients is presence-bearing, never decode-required: absence
-	// must decode with a nil pointer, not trip the invalid-frame class.
-	payload := []byte(`{"id":7,"kind":"todo","event_type":"todo.completed","action":"completed","created_at":"2026-08-01T12:00:00Z","bucket_id":1,"creator_id":2,"recording_id":3}`)
-	ev, err := decodeMessageEvent(payload)
-	if err != nil {
-		t.Fatalf("decodeMessageEvent: %v", err)
-	}
-	if ev.VisibleToClients != nil {
-		t.Errorf("VisibleToClients = %v, want absent (nil)", *ev.VisibleToClients)
+// TestDecodeMessageEvent_RequiresVisibleToClients: decodeMessageEvent decodes
+// PUSH payloads only, and conformance/event-feed/schema.json's `pushEvent`
+// requires all nine keys ("Push-payload event: all 9 keys required, including
+// visible_to_clients (presence-bearing; absent ≠ false)"). The asymmetry is
+// the whole point — `pollEvent` requires eight and forbids the ninth
+// outright — so a push frame that omits it, or sends JSON null, has broken
+// the contract that makes absence meaningful and takes the invalid-frame
+// class's socket-failure path. Accepting it would deliver an Event whose
+// presence-bearing pointer is nil, i.e. a push row indistinguishable from a
+// poll row.
+func TestDecodeMessageEvent_RequiresVisibleToClients(t *testing.T) {
+	const eightKeys = `"id":7,"kind":"todo","event_type":"todo.completed","action":"completed","created_at":"2026-08-01T12:00:00Z","bucket_id":1,"creator_id":2,"recording_id":3`
+	t.Run("absent", func(t *testing.T) {
+		assertEventDecodeFails(t, []byte(`{`+eightKeys+`}`))
+	})
+	t.Run("explicit null", func(t *testing.T) {
+		assertEventDecodeFails(t, []byte(`{`+eightKeys+`,"visible_to_clients":null}`))
+	})
+	// Present is still presence-bearing on the way out: a false must decode
+	// to a non-nil pointer, never a defaulted boolean.
+	for _, want := range []bool{false, true} {
+		t.Run(fmt.Sprintf("present %v", want), func(t *testing.T) {
+			raw := []byte(fmt.Sprintf(`{%s,"visible_to_clients":%v}`, eightKeys, want))
+			ev, err := decodeMessageEvent(raw)
+			if err != nil {
+				t.Fatalf("decodeMessageEvent: %v", err)
+			}
+			if ev.VisibleToClients == nil || *ev.VisibleToClients != want {
+				t.Fatalf("VisibleToClients = %v, want a pointer to %v", ev.VisibleToClients, want)
+			}
+		})
 	}
 }
 
@@ -317,8 +339,12 @@ func TestDecodeMessageEvent_Failures(t *testing.T) {
 		"id": int64(105), "kind": "message", "event_type": "message.created",
 		"action": "created", "created_at": "2026-08-01T12:00:00Z",
 		"bucket_id": int64(2), "creator_id": int64(3), "recording_id": int64(900),
+		"visible_to_clients": false,
 	}
-	requiredKeys := []string{"id", "kind", "event_type", "action", "created_at", "bucket_id", "creator_id", "recording_id"}
+	requiredKeys := []string{
+		"id", "kind", "event_type", "action", "created_at",
+		"bucket_id", "creator_id", "recording_id", "visible_to_clients",
+	}
 	for _, missing := range requiredKeys {
 		t.Run("missing "+missing, func(t *testing.T) {
 			partial := make(map[string]any, len(full))

@@ -181,11 +181,23 @@ func WithObserver(o Observer) Option { return func(c *config) { c.observer = o }
 // Connector is the SPEC.md §23 Event Feed connector. Construct with New,
 // consume with Events (single-shot), stop with Close.
 type Connector struct {
-	cfg       config
-	consumed  atomic.Bool
-	closeOnce sync.Once
-	closed    chan struct{}
-	hooks     testHooks
+	cfg      config
+	consumed atomic.Bool
+	hooks    testHooks
+
+	// mu guards the close latch and the active run's cancellation, which have
+	// to move together: close() is a universal edge from every non-absorbing
+	// state, so cancellation must be VISIBLE to the run before Close returns
+	// (see Close). The lock is held only across those two field accesses —
+	// never across a seam call, a yield, or an observer callback — so a Close
+	// taken from inside any of them cannot contend with the run goroutine.
+	mu sync.Mutex
+	// isClosed latches Close, so a run that starts afterwards cancels itself
+	// immediately rather than making one wire attempt first.
+	isClosed bool
+	// cancelRun cancels the active run's context. Registered by Events for
+	// exactly the span of one iteration, nil otherwise.
+	cancelRun context.CancelFunc
 }
 
 // testHooks are unexported in-package observation points for the tier-2/3
@@ -265,7 +277,7 @@ func New(origin, accountID string, minter TicketMinter, polls PollSource, opts .
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}
-	return &Connector{cfg: cfg, closed: make(chan struct{})}, nil
+	return &Connector{cfg: cfg}, nil
 }
 
 // validateConfig applies §23's construction-time validation, fail-closed. It
@@ -382,19 +394,24 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 		}
 		runCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		select {
-		case <-c.closed:
+		// Register this run's cancellation under the same lock Close latches
+		// under, so the two cannot straddle each other: a Close that already
+		// latched cancels here, and one that latches later finds the func and
+		// cancels it itself. Either way runCtx is done before Close returns —
+		// there is no window in which the run proceeds past a returned Close.
+		c.mu.Lock()
+		if c.isClosed {
 			// Closed before the first iteration: end cleanly with zero wire
 			// attempts, deterministically.
 			cancel()
-		default:
+		} else {
+			c.cancelRun = cancel
 		}
-		go func() {
-			select {
-			case <-c.closed:
-				cancel()
-			case <-runCtx.Done():
-			}
+		c.mu.Unlock()
+		defer func() {
+			c.mu.Lock()
+			c.cancelRun = nil
+			c.mu.Unlock()
 		}()
 		newLoop(runCtx, &c.cfg, c.hooks).run(yield)
 	}
@@ -402,9 +419,31 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 
 // Close stops the feed: it abandons, never drains (undelivered buffered
 // events are re-served from the last usable checkpoint on the next run).
-// Idempotent and safe from any goroutine; the iterator observes it at the
-// next loop turn and ends with no error element.
+// Idempotent and safe from any goroutine, including the iteration goroutine
+// itself. The iterator ends with no error element.
+//
+// Cancellation is SYNCHRONOUS with the return: an active run's context is
+// cancelled here, on the caller's goroutine, so no seam call (mint, dial,
+// poll) and no delivery can BEGIN after Close has returned. §23 makes
+// close() a universal edge from every non-absorbing state, and delegating the
+// cancel to an independently scheduled goroutine would leave the edge merely
+// eventual — a Close taken inside Observer.Connecting would return, and the
+// mint one statement later would still go out.
+//
+// What Close deliberately does NOT do is wait for the run goroutine to exit.
+// Close is callable from inside a consumer callback — an observer, a signal
+// handler, the iteration's own loop body — every one of which runs ON that
+// goroutine, so waiting for it would deadlock on the caller. Cancellation
+// visible before the return is the guarantee; the run then unwinds through
+// its own dispatch points, closing the socket and joining the pump.
 func (c *Connector) Close() error {
-	c.closeOnce.Do(func() { close(c.closed) })
+	c.mu.Lock()
+	cancel := c.cancelRun
+	c.cancelRun = nil
+	c.isClosed = true
+	c.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 	return nil
 }

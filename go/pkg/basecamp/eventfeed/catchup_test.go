@@ -1310,6 +1310,78 @@ func TestDrainScanAdmissionIsNotStranded(t *testing.T) {
 	assertPositions(t, store.Saves(), "pos-1")
 }
 
+// TestDrainHoldsNoMoreThanTheLiveBufferCapacity: the live buffer's capacity
+// is a bound on events HELD AT ONCE — SPEC §23 sizes the connector's whole
+// memory ceiling off it, "(pump depth + EVENT_FEED_LIVE_BUFFER_CAPACITY) ×
+// EVENT_FEED_MAX_FRAME_BYTES" — so a drain must not be able to hold a batch
+// outside the buffer while the buffer refills to capacity behind it.
+//
+// The scenario pins it exactly: the buffer is FULL at capacity when Draining
+// begins, and 2× capacity more live frames are already queued in the pump, with
+// no consumer progress possible in between. Every one of them passes through a
+// capacity-sized buffer, so at most `capacity` may survive to delivery and the
+// rest must be reported dropped, oldest-id first.
+func TestDrainHoldsNoMoreThanTheLiveBufferCapacity(t *testing.T) {
+	const capacity = 4
+	var dropped []int64
+	handler := func(s eventfeed.Signal) eventfeed.Disposition {
+		ov, ok := s.(eventfeed.BufferOverflow)
+		if !ok {
+			t.Errorf("signal = %+v, want a BufferOverflow", s)
+			return eventfeed.Terminate
+		}
+		if ov.DroppedCount != len(ov.DroppedIDs) {
+			t.Errorf("signal = %+v: DroppedCount disagrees with DroppedIDs", ov)
+		}
+		dropped = append(dropped, ov.DroppedIDs...)
+		return eventfeed.Accept
+	}
+	// A position-resume entry: no ownership cut, so the ONLY pass that can
+	// dequeue the queued frames is the drain's own.
+	h := newHarness(t,
+		eventfeed.WithLiveBufferCapacity(capacity),
+		eventfeed.WithStart(eventfeed.StartAtPosition("pos-0")),
+		eventfeed.WithSignalHandler(handler))
+	h.pauseAfter = 1
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(1)}, Position: "pos-1"})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	// Fill the buffer to capacity before confirmation.
+	for id := int64(11); id <= 14; id++ {
+		conn.Serve(frameMessage(noFilterIdentifier, id))
+	}
+	h.serveSettled(conn)
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	// Park inside the entry page's delivery: the poll has returned and the
+	// drain has not begun, so the frames queued now are exactly what the
+	// drain's scan will find.
+	h.waitUntil("the entry page parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
+	for id := int64(21); id <= 28; id++ {
+		conn.Serve(frameMessage(noFilterIdentifier, id))
+	}
+	h.serveSettled(conn)
+	h.resume()
+	h.awaitStreaming()
+	h.conn.Close()
+	h.join()
+
+	var live []int64
+	for _, id := range h.deliveredIDs() {
+		if id != 1 {
+			live = append(live, id)
+		}
+	}
+	if len(live) > capacity {
+		t.Fatalf("the drain delivered %d live-buffered events (%v) under a capacity of %d: "+
+			"the taken batch escaped the buffer's accounting", len(live), live, capacity)
+	}
+	assertIDs(t, live, 25, 26, 27, 28)
+	assertIDs(t, dropped, 11, 12, 13, 14, 21, 22, 23, 24)
+}
+
 // TestRedirectRefusalExposesOnlyTheLocationOrigin: the refused-redirect edge
 // promises the rejected Location redacted to its ORIGIN — a hostile
 // continuation's path and query are exactly what must not be echoed — so the

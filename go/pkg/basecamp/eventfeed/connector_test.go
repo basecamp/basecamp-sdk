@@ -241,6 +241,85 @@ func TestCloseIdempotent(t *testing.T) {
 	}
 }
 
+// TestCloseFromAnObserverCancelsBeforeItReturns: SPEC §23 makes close() a
+// universal edge from EVERY non-absorbing state, so the active run must
+// observe cancellation before Close returns — not when some independently
+// scheduled goroutine happens to run. Observer.Connecting is the tightest
+// statement of the rule: it fires on the iteration goroutine itself, one
+// statement before the mint seam call, so a Close taken inside it must stop
+// the mint that was about to happen. It must also not deadlock — Close is
+// waiting on nothing, least of all on the goroutine that called it.
+func TestCloseFromAnObserverCancelsBeforeItReturns(t *testing.T) {
+	const runs = 200
+	for i := range runs {
+		minter := feedtest.NewMinter()
+		tr := feedtest.NewTransport()
+		var c *eventfeed.Connector
+		var err error
+		c, err = eventfeed.New(testOrigin, "1", minter, feedtest.NewPolls(),
+			eventfeed.WithTransport(tr),
+			eventfeed.WithClock(feedtest.NewClock()),
+			eventfeed.WithObserver(eventfeed.Observer{
+				Connecting: func(int, time.Duration) {
+					if cerr := c.Close(); cerr != nil {
+						t.Fatalf("run %d: Close: %v", i, cerr)
+					}
+				},
+			}))
+		if err != nil {
+			t.Fatalf("run %d: New: %v", i, err)
+		}
+		// Scripted so an un-cancelled mint SUCCEEDS: the assertion must be
+		// that the seam was never called, not that it happened to fail.
+		minter.ScriptTicket(ticket(1))
+		elements := 0
+		for range c.Events(context.Background()) {
+			elements++
+		}
+		if minter.Calls() != 0 {
+			t.Fatalf("run %d: %d mint seam call(s) after Close returned, want 0", i, minter.Calls())
+		}
+		if got := len(tr.Dials()); got != 0 {
+			t.Fatalf("run %d: %d dial(s) after Close returned, want 0", i, got)
+		}
+		if elements != 0 {
+			t.Fatalf("run %d: iteration yielded %d element(s), want none (the Closed edge)", i, elements)
+		}
+	}
+}
+
+// TestCloseStopsDeliveryAlreadyUnderway: the same universal edge, stated over
+// deliveries rather than seam calls. The consumer is parked inside the loop
+// body — the state machine is mid-page, with two more rows to yield — when
+// Close is called from another goroutine. Nothing may be delivered after it
+// returns; the run abandons the rest of the page and ends with no error
+// element (the page is re-served from the last usable checkpoint next run).
+func TestCloseStopsDeliveryAlreadyUnderway(t *testing.T) {
+	h := newHarness(t)
+	h.pauseAfter = 1
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{
+		Events:   []eventfeed.Event{pollEvent(101), pollEvent(102), pollEvent(103)},
+		Position: "pos-1",
+	})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.waitUntil("the page's first row was delivered", func() bool { return len(h.deliveredIDs()) == 1 })
+	if err := h.conn.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	h.resume()
+	h.join()
+
+	assertIDs(t, h.deliveredIDs(), 101)
+	if _, terminal, elements := h.snapshot(); terminal != nil || elements != 1 {
+		t.Fatalf("iteration yielded %d element(s), terminal %v; want exactly the one pre-Close delivery",
+			elements, terminal)
+	}
+}
+
 // filterMutationHarness drives one full run under caller-held filter slices,
 // mutating them at the moment mutate says, and returns everything the run
 // derived the filters from: the subscribe frame written to the socket, the

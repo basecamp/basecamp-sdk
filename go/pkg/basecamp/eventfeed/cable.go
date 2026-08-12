@@ -220,10 +220,24 @@ func isJSONObject(data []byte) bool {
 }
 
 // decodeMessageEvent decodes a correlated message frame's payload as an
-// Event. The eight always-present keys are required with correct types; a
+// Event. All NINE push-payload keys are required with correct types; a
 // missing required key or a wrong-typed value is the invalid-frame class's
-// decode shape. visible_to_clients is presence-bearing, never required —
-// absent decodes as a nil pointer, not a violation.
+// decode shape.
+//
+// visible_to_clients is required here and only here. It is presence-bearing
+// on the Event — absent ≠ false, which is why it is a *bool — and this
+// decoder sees push payloads exclusively, where §23's presence asymmetry says
+// the key is always carried ("push payloads carry it, poll rows omit it";
+// conformance/event-feed/schema.json requires all 9 keys on pushEvent and
+// forbids the key outright on pollEvent). A push frame that omits it, or
+// sends JSON null, has erased the distinction the pointer exists to carry:
+// the decoded Event would be indistinguishable from a poll row. That is a
+// peer protocol violation, so it takes the invalid-frame class's
+// socket-failure path rather than being delivered.
+//
+// The poll lane is untouched by this: poll rows never reach this function —
+// they arrive through the PollSource seam as Events — and the plain
+// encoding/json decoding of an Event keeps its 8-key tolerance.
 func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 	var p struct {
 		ID               *int64     `json:"id"`
@@ -251,6 +265,7 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		{"bucket_id", p.BucketID != nil},
 		{"creator_id", p.CreatorID != nil},
 		{"recording_id", p.RecordingID != nil},
+		{"visible_to_clients", p.VisibleToClients != nil},
 	} {
 		if !req.present {
 			return Event{}, newInvalidFrameError(invalidFrameEventDecode,

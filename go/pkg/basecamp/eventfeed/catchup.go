@@ -492,9 +492,11 @@ func (l *loop) admissionPass(at *attempt) (cycleOutcome, bool) {
 
 // drain replays the live buffer through the dedupe LRU (transition 23). It is
 // a bounded in-memory completion, not socket delivery: it dequeues no frames
-// and takes no wire waits. Everything admitted up to this point is replayed —
+// and takes no wire waits. Everything the buffer STILL HOLDS is replayed —
 // the pre-cut snapshot the save-ordering invariant is stated over, plus any
-// straggler admitted after it, which is a superset and never a shortfall.
+// straggler admitted after it, less anything an overflowing admission evicted
+// along the way, which is the one subtraction the invariant already allows
+// for and which the BufferOverflow signal reports before the held save.
 func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 	// The scan runs under ONE budget for the whole drain — pumpDepth
 	// dequeues, the depth of the queue being scanned.
@@ -526,33 +528,43 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 	// §23's ordinary deferred-consumption rule: it was not observable when
 	// the drain started, so no ordering between it and the drain's completion
 	// was ever established.
+	//
+	// The replay dequeues ONE event at a time, and the scan runs before each
+	// one. Both halves matter. Scanning first is what keeps the
+	// protocol-fatal carve-out ahead of every delivery; dequeuing singly is
+	// what keeps the drain inside the live buffer's capacity, which is a
+	// bound on events held AT ONCE (SPEC.md §23 sizes the connector's whole
+	// memory ceiling off it). Taking the buffer's whole contents into a batch
+	// instead let the buffer read as empty while `capacity` events were still
+	// pending in that batch, so the scan could admit another full capacity
+	// without dropping anything — twice the configured retention and twice
+	// the published ceiling, during exactly the slow drain the bound is for.
+	//
+	// Because nothing is held outside the buffer, an admission that overflows
+	// evicts the oldest events still pending — including ones this drain has
+	// not replayed yet. That is the same pre-cut loss condition the buffer
+	// always had, taking its drop-time dispatch in drainScan, before the held
+	// save: the conjunctive invariant asks that every such loss be explicitly
+	// accepted, not that a drain be exempt from the capacity it was
+	// configured with.
+	//
+	// Termination is unchanged, and now falls out of two independently
+	// decreasing quantities: each turn either delivers one buffered event or
+	// finds the buffer empty and ends, while the scan's budget bounds total
+	// admissions. Total replay work stays the buffer's occupancy at entry
+	// plus pumpDepth.
 	budget := pumpDepth
 	for {
-		batch := l.buffer.take()
 		if out, done := l.drainScan(at, &budget); done {
 			return out, true
 		}
-		// The scan admits as it goes, so an iteration that took the buffer
-		// empty can end with it repopulated — and returning then STRANDS what
-		// the scan just admitted: Streaming never drains the buffer, so the
-		// event would wait for a later repair walk, behind the `caught_up`
-		// announcement and behind the held save this drain is what gates. The
-		// scan's own budget is what still bounds the loop: once it is spent the
-		// scan admits nothing, so the buffer empties and the drain ends. Total
-		// replay work is bounded by the buffer's occupancy at entry plus
-		// pumpDepth.
-		if len(batch) == 0 && l.buffer.empty() {
+		ev, ok := l.buffer.shift()
+		if !ok {
 			return cycleOutcome{}, false
 		}
-		for _, ev := range batch {
-			if l.runCtx.Err() != nil {
-				l.disposeAttempt(at, nil)
-				return cycleOutcome{kind: outcomeClosed}, true
-			}
-			if !l.deliver(ev) {
-				l.disposeAttempt(at, nil)
-				return cycleOutcome{kind: outcomeClosed}, true
-			}
+		if !l.deliver(ev) {
+			l.disposeAttempt(at, nil)
+			return cycleOutcome{kind: outcomeClosed}, true
 		}
 	}
 }
@@ -703,8 +715,18 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 // there first. It reports whether the consumer is still consuming: a false
 // yield (a `break`) ends iteration with no error element, so nothing is ever
 // yielded after it.
+//
+// Cancellation is checked HERE, per delivery, rather than only at the loop's
+// dispatch points, because Close is callable from the consumer's own loop
+// body and from any observer or handler callback — all of which run on this
+// goroutine, between one delivery and the next. Close cancels synchronously
+// (Connector.Close), so this check is what makes "no delivery begins after
+// Close returns" true mid-page and mid-drain, not merely at the next page
+// boundary. It reports the same false every caller already routes onto the
+// Closed edge, and deliberately does NOT latch `stopped`: cancellation is not
+// a consumer break.
 func (l *loop) deliver(ev Event) bool {
-	if l.stopped {
+	if l.stopped || l.runCtx.Err() != nil {
 		return false
 	}
 	if l.dedupe.Seen(ev.ID) {
