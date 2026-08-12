@@ -174,6 +174,20 @@
 //   - An embedded pointer to an unexported type, for direct-decode pairs only:
 //     encoding/json cannot allocate it, so the decoder never populates it.
 //
+// Known to OVER-report, and deliberately left that way, because each fails
+// loudly and naming the shape is cheaper than modelling it:
+//
+//   - A promoted field written through the second path of a diamond
+//     (`w.Right.Common.Field` where the walk retained the Left path, which is
+//     also the one encoding/json indexes) reads as unpopulated.
+//   - A defined type whose name chain reaches a marshaller is refused even
+//     where Go would walk its fields, because the closure does not model
+//     which declaration form carries a method set.
+//   - The decode-allocation report fires for an embed whose fields would
+//     have annihilated anyway.
+//   - A skipped-segment selector (`w.Base.Field` where an embed sits between)
+//     is not among the recognised spellings.
+//
 // The invariant: ANYTHING UNRECOGNISED IS REPORTED. Never credited, never
 // skipped. Both failure modes this walk has actually had — the original #599
 // bug and every regression found while fixing it — were a silent assumption
