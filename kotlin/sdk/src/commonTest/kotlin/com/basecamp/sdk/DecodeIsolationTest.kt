@@ -190,10 +190,13 @@ class DecodeIsolationTest {
     /**
      * A value-returning operation that unexpectedly receives 204.
      *
-     * The primitive used to short-circuit ANY 204 to `Unit as T`, which handed
-     * the caller a ClassCastException from the cast site — a failure naming the
-     * SDK's own generics rather than the response. The empty body now reaches
-     * the decoder, where it is what it looks like: a body that does not decode.
+     * The primitive used to short-circuit ANY 204 to `Unit as T`. Against the
+     * un-fixed primitive this test does not merely fail — it reports "completed
+     * successfully", because the unchecked cast raises nothing at the boundary:
+     * the caller gets Unit wearing `Project`'s type, and the ClassCastException
+     * arrives later at whatever site first uses it, or never. The empty body now
+     * reaches the decoder, where it is what it looks like: a body that does not
+     * decode.
      */
     @Test
     fun a204ForAValueReturningOperationIsAStatuslessApiError() = runTest {

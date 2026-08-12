@@ -188,10 +188,12 @@ abstract class BaseService(
             // generator emits parses with `{ Unit }`, which ignores the body and
             // so answers an empty one correctly — all 48 of them. The shortcut
             // this replaces returned `Unit as T` for ANY operation, so a
-            // value-returning one that unexpectedly got a 204 handed the caller
-            // a ClassCastException from the cast site rather than a described
-            // failure. Letting the empty body reach the decoder makes that a
-            // malformed response, which is what it is.
+            // value-returning one that unexpectedly got a 204 reported no
+            // failure at all: the unchecked cast hands back Unit wearing the
+            // model's type, and the ClassCastException surfaces later, at
+            // whatever site first uses the value — or never, if the caller
+            // discards it. Letting the empty body reach the decoder makes it
+            // what it is, where it happens: a malformed response.
             val bodyText = normalizePersonIds(response.bodyAsText(), json)
             val result = decodeOrApiError(info.operation) { parse(bodyText) }
             hooks.safeOnOperationEnd(info, OperationResult(duration))
