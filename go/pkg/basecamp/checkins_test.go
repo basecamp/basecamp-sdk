@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -766,6 +767,136 @@ func TestCheckinsService_UpdateQuestionEmptySchedule(t *testing.T) {
 
 	if _, ok := receivedBody["schedule"]; ok {
 		t.Errorf("expected schedule to be omitted for empty struct, but it was present: %v", receivedBody["schedule"])
+	}
+}
+
+// TestCheckinsService_QuestionBodyBytes pins the exact bytes CreateQuestion and
+// UpdateQuestion put on the wire. The expectations were captured from the
+// questionScheduleToMap implementation before both moved to the generated
+// request types (#653): the test is the invariant, the swap is the change.
+// Byte-level equality is deliberate — key order, the explicit-empty `days: []`,
+// and the presence or absence of every omitted member are the contract being
+// preserved.
+func TestCheckinsService_QuestionBodyBytes(t *testing.T) {
+	intp := func(v int) *int { return &v }
+	boolp := func(v bool) *bool { return &v }
+
+	for _, tc := range []struct {
+		name string
+		call func(svc *CheckinsService) error
+		want string
+	}{
+		{
+			name: "create full schedule",
+			call: func(svc *CheckinsService) error {
+				_, err := svc.CreateQuestion(context.Background(), 777, &CreateQuestionRequest{
+					Title: "What did you work on today?",
+					Schedule: &QuestionSchedule{
+						Frequency:     "on_certain_days",
+						Days:          []int{1, 2, 3, 4, 5},
+						Hour:          intp(17),
+						Minute:        intp(0),
+						WeekInstance:  intp(1),
+						WeekInterval:  intp(2),
+						MonthInterval: intp(3),
+						StartDate:     "2025-01-01",
+						EndDate:       "2025-06-30",
+					},
+					VisibleToClients: boolp(true),
+				})
+				return err
+			},
+			want: `{"schedule":{"days":[1,2,3,4,5],"end_date":"2025-06-30","frequency":"on_certain_days","hour":17,"minute":0,"month_interval":3,"start_date":"2025-01-01","week_instance":1,"week_interval":2},"title":"What did you work on today?","visible_to_clients":true}`,
+		},
+		{
+			name: "create explicit empty days",
+			call: func(svc *CheckinsService) error {
+				_, err := svc.CreateQuestion(context.Background(), 777, &CreateQuestionRequest{
+					Title: "Standup?",
+					Schedule: &QuestionSchedule{
+						Frequency: "every_day",
+						Days:      []int{},
+					},
+				})
+				return err
+			},
+			want: `{"schedule":{"days":[],"frequency":"every_day"},"title":"Standup?"}`,
+		},
+		{
+			name: "create frequency only",
+			call: func(svc *CheckinsService) error {
+				_, err := svc.CreateQuestion(context.Background(), 777, &CreateQuestionRequest{
+					Title:    "Standup?",
+					Schedule: &QuestionSchedule{Frequency: "every_day"},
+				})
+				return err
+			},
+			want: `{"schedule":{"frequency":"every_day"},"title":"Standup?"}`,
+		},
+		{
+			name: "update title only",
+			call: func(svc *CheckinsService) error {
+				_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
+					Title: "New question title",
+				})
+				return err
+			},
+			want: `{"title":"New question title"}`,
+		},
+		{
+			name: "update paused only",
+			call: func(svc *CheckinsService) error {
+				_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
+					Paused: boolp(true),
+				})
+				return err
+			},
+			want: `{"paused":true}`,
+		},
+		{
+			name: "update partial schedule",
+			call: func(svc *CheckinsService) error {
+				_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
+					Schedule: &QuestionSchedule{EndDate: "2025-06-30"},
+				})
+				return err
+			},
+			want: `{"schedule":{"end_date":"2025-06-30"}}`,
+		},
+		{
+			name: "update empty schedule struct omitted",
+			call: func(svc *CheckinsService) error {
+				_, err := svc.UpdateQuestion(context.Background(), 12345, &UpdateQuestionRequest{
+					Title:    "New title",
+					Schedule: &QuestionSchedule{},
+				})
+				return err
+			},
+			want: `{"title":"New title"}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := loadCheckinsFixture(t, "question.json")
+			var gotBody string
+			svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				b, _ := io.ReadAll(r.Body)
+				gotBody = string(b)
+				w.Header().Set("Content-Type", "application/json")
+				if r.Method == "POST" {
+					w.WriteHeader(201)
+				} else {
+					w.WriteHeader(200)
+				}
+				w.Write(fixture)
+			})
+
+			if err := tc.call(svc); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if gotBody != tc.want {
+				t.Errorf("request body = %s, want %s", gotBody, tc.want)
+			}
+		})
 	}
 }
 
