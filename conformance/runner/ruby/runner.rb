@@ -1371,7 +1371,8 @@ class ConformanceRunner
     results = []
 
     files.each do |file|
-      tests = JSON.parse(File.read(file))
+      # UTF-8 regardless of process locale (LC_ALL=C would otherwise read as US-ASCII)
+      tests = JSON.parse(File.read(file, encoding: "UTF-8"))
       # Live tests are TS-only (canonical wire-capturer); accept only mock
       # so unresolved ${PROJECT_ID} fixtures and live-only operations don't
       # surface as mock failures or false passes — and any future mode added

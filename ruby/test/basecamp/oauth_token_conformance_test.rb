@@ -16,8 +16,9 @@ class OAuthTokenConformanceTest < Minitest::Test
   fixtures = Dir.glob(File.join(FIXTURE_DIR, "*.json")).sort
   raise "no fixtures found in #{FIXTURE_DIR}" if fixtures.empty?
 
+  # UTF-8 regardless of process locale — see oauth_resource_discovery_test.rb
   fixtures.each do |path|
-    fixture = JSON.parse(File.read(path))
+    fixture = JSON.parse(File.read(path, encoding: "UTF-8"))
     define_method("test_fixture_#{File.basename(path, '.json').tr('-', '_')}") do
       assert_equal "refreshToken", fixture["operation"]
 

@@ -7,8 +7,9 @@ class Basecamp::Webhooks::EventTest < Minitest::Test
     File.expand_path("../../../../spec/fixtures/webhooks", __dir__)
   end
 
+  # UTF-8 regardless of process locale (LC_ALL=C would otherwise read as US-ASCII)
   def load_fixture(name)
-    JSON.parse(File.read(File.join(fixtures_dir, name)))
+    JSON.parse(File.read(File.join(fixtures_dir, name), encoding: "UTF-8"))
   end
 
   def test_parses_todo_created_event

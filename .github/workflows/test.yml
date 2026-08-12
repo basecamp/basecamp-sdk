@@ -517,6 +517,15 @@ jobs:
         run: ../scripts/check-ruby-service-drift.sh
 
       - name: Test
+        if: matrix.ruby != '3.3'
+        run: bundle exec rake test
+
+      # File reads are pinned to encoding: "UTF-8"; this leg proves it stays
+      # that way by running the suite under the C locale (#702).
+      - name: Test (LC_ALL=C)
+        if: matrix.ruby == '3.3'
+        env:
+          LC_ALL: C
         run: bundle exec rake test
 
       - name: Run Ruby conformance tests

@@ -40,8 +40,9 @@ end
 class DecoderCoverageTest < Minitest::Test
   LIVE_FIXTURE = File.expand_path("../../tests/live-my-surface.json", __dir__)
 
+  # UTF-8 regardless of process locale (LC_ALL=C would otherwise read as US-ASCII)
   def live_operations
-    ops = JSON.parse(File.read(LIVE_FIXTURE))
+    ops = JSON.parse(File.read(LIVE_FIXTURE, encoding: "UTF-8"))
       .select { |t| t["mode"] == "live" }
       .map { |t| t["operation"] }
       .uniq
