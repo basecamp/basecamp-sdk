@@ -201,8 +201,8 @@ class CampfiresServiceTest < Minitest::Test
     chatbot = @account.campfires.get_chatbot(bucket_id: 100, campfire_id: 200, chatbot_id: 300)
 
     assert_equal 300, chatbot["id"]
-    refute chatbot.key?("command_url")
-    refute chatbot.key?("lines_url")
+    assert_not chatbot.key?("command_url")
+    assert_not chatbot.key?("lines_url")
   end
 
   def test_create_chatbot
