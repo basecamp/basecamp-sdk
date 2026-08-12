@@ -498,20 +498,39 @@ open class BaseService: @unchecked Sendable {
         }
     }
 
-    /// The one place a decode failure is rendered. `.api` carries no `cause`, and
-    /// statuslessness alone does not identify this failure — the pagination
-    /// same-origin guard above is statusless too — so "returned a body that does
-    /// not decode" is what tells them apart. The conformance runner matches that
-    /// phrase to keep applying the #555 fixture-body policy; change it in both
-    /// places or in neither.
+    /// The phrase that identifies a malformed-body error, since `.api` carries
+    /// no `cause` to identify one structurally and statuslessness alone will not
+    /// do it: the pagination same-origin guard above throws a statusless `.api`
+    /// too. Written once, read back by ``malformedBodyMessage(_:)``.
+    private static let malformedBodyPhrase = "returned a body that does not decode"
+
+    /// The one place a decode failure is rendered.
     private static func malformedBody(_ operation: String, _ error: any Error) -> BasecampError {
         .api(
             message: BasecampError.truncate(
-                "\(operation) returned a body that does not decode: \(error)"),
+                "\(operation) \(malformedBodyPhrase): \(error)"),
             httpStatus: nil,
             hint: nil,
             requestId: nil
         )
+    }
+
+    /// The message of a malformed-body error, or nil for any other
+    /// ``BasecampError`` — including the *other* statusless `.api`, the
+    /// pagination same-origin refusal, which is a deliberate guard rather than a
+    /// bad body.
+    ///
+    /// The composites use it to add their own hint to this failure and only this
+    /// one. The conformance runner asks the same question of the same phrase to
+    /// keep applying its fixture-body policy, but cannot call this — it links the
+    /// SDK as a product, so internal symbols are out of reach.
+    static func malformedBodyMessage(_ error: BasecampError) -> String? {
+        guard case .api(let message, let httpStatus, _, _) = error, httpStatus == nil,
+            message.contains(malformedBodyPhrase)
+        else {
+            return nil
+        }
+        return message
     }
 
     // MARK: - Shared Coders

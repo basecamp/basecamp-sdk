@@ -284,23 +284,21 @@ extension SchedulesService {
         // renders that as the SPEC §6 malformed-2xx-body shape for every
         // operation (#604) — statusless, non-retryable `api_error` — so what is
         // left to add here is the part the base layer cannot know: the
-        // composite's escape hatch. A statusless `.api` is exactly that failure
-        // and nothing else, because a plain GET produces one only when the
-        // transport succeeded and the body did not decode; every other `.api`
-        // carries the status it came from.
+        // composite's escape hatch. `BaseService.malformedBodyMessage` is what
+        // recognizes that one failure — statuslessness alone would also match
+        // the pagination same-origin guard — so every other error passes
+        // through untouched.
         do {
             return try await getEntry(entryId: entryId)
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, let requestId) = error,
-                  httpStatus == nil
-            else { throw error }
+            guard let message = BaseService.malformedBodyMessage(error) else { throw error }
             throw BasecampError.api(
                 message: message,
                 httpStatus: nil,
                 hint: "The merge-safe updateEntry/editEntry resend this record's fields verbatim, "
                     + "so a malformed response cannot be written back safely. Use "
                     + "replaceEntry(entryId:req:) to write the record deliberately.",
-                requestId: requestId
+                requestId: nil
             )
         }
     }
