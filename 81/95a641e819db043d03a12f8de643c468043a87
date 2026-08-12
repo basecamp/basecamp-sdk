@@ -1,0 +1,38 @@
+go/pkg/basecamp/eventfeed/cable.go
+  s_62d102ac250358::t_662d51d6a78b75 1-2,28,32-36,38,41,43,46,49,52,55-56,79-81,88,99,108,117,120,123-124,232,262,268,274,287
+  s_62d102ac250358::t_5d7ce1e6faf2ff 3-27,29-31,37,39-40,42,44-45,47-48,50-51,53-54,57-78,82-87,89-98,100-107,109-116,118-119,121-122,125-231,233-261,263-267,269-273,275-286,288-295
+go/pkg/basecamp/eventfeed/transport_test.go
+  s_62d102ac250358::t_2559f4ca623cd6 1-92
+go/pkg/basecamp/eventfeed/transport.go
+  s_62d102ac250358::t_99d9e334b1eab2 1-35,39-56
+  s_62d102ac250358::t_12fa61cbd0b83e 36-38
+go/pkg/basecamp/eventfeed/cable_test.go
+  s_62d102ac250358::t_190268b99814dd 1-344
+go/pkg/basecamp/eventfeed/feedtest/transport_test.go
+  s_62d102ac250358::t_27deb135576a1a 1-7,10-110,113,120-161
+  s_62d102ac250358::t_ea8da5a878e795 111-112,114-119
+  s_62d102ac250358::t_cfcc8125df4d47 8-9
+go/pkg/basecamp/eventfeed/feedtest/transport.go
+  s_62d102ac250358::t_831733c5cd7ea8 1-323
+go/pkg/basecamp/eventfeed/transport_contract_test.go
+  s_62d102ac250358::t_d13311966ecf25 1-117,120-124,129-135,138-157,159-217,219-276,278-285,287-373
+  s_62d102ac250358::t_ae9208c7acc1f6 118-119,126-128,136
+  s_62d102ac250358::t_0d0001c43e831e 125
+  s_62d102ac250358::t_5ff8d396e0109c 137,158,218,277,286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8195a641e819db043d03a12f8de643c468043a87",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

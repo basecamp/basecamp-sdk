@@ -1,0 +1,49 @@
+go/pkg/basecamp/eventfeed/connector.go
+  s_62d102ac250358::t_df93f09f53cde2 1-241,244-277,285-291,293-303
+  s_62d102ac250358::t_e9478c740f2c08 292
+  s_62d102ac250358::t_f634f56bd3ac64 278-284
+  s_62d102ac250358::t_55c374b1afd01f 242-243
+go/pkg/basecamp/eventfeed/feedtest/minter_test.go
+  s_62d102ac250358::t_a11d312d663cbc 1-64
+go/pkg/basecamp/eventfeed/loop.go
+  s_62d102ac250358::t_03c86033ac5dc8 165,442,463,469
+  s_62d102ac250358::t_6ebb0671dcfc75 5,7,12-20,71-72,80-91,93-94,99-111,121-164,166-168,171-178,185,187-226,229-239,246-257,260-263,265-272,274-276,279-280,282-283,285-286,292-293,295,297-298,302-303,310-312,314-317,324-325,337,351-353,356-441,443-462,464-468,470-776,779-782,789
+  s_62d102ac250358::t_8eaafe7d47994b 1-4,6,8-11,21-70,73-79,92,95-98,112-120,169-170,179-184,186,227-228,240-245,258-259,264,273,277-278,281,284,287-291,294,296,299-301,304-309,313,318-323,326-328,330-336,338-350,354-355,777-778,783-788,790-791
+  s_62d102ac250358::t_4472ede9887265 329
+go/pkg/basecamp/eventfeed/export_test.go
+  s_62d102ac250358::t_032f5cd923a051 1-56,58,60,62
+  s_62d102ac250358::t_21b81c3d550f23 57,59,61,63
+go/pkg/basecamp/eventfeed/feedtest/clock.go
+  s_62d102ac250358::t_85b0e54e1dbf4c 51
+  s_62d102ac250358::t_07e48904eab81c 100-127
+  s_62d102ac250358::t_d57389f1c2c0fe 176
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_62d102ac250358::t_8ed718b8e4599d 1-295,297-334,337-1127,1129-1135,1137-1214
+  s_62d102ac250358::t_1a9d8a2add3fe4 296,335-336,1128,1136
+go/pkg/basecamp/eventfeed/feedtest/minter.go
+  s_62d102ac250358::t_352dda7cc3adec 1-93
+go/pkg/basecamp/eventfeed/feedtest/clock_test.go
+  s_62d102ac250358::t_acec23eac7a165 97-141
+go/pkg/basecamp/eventfeed/connector_test.go
+  s_62d102ac250358::t_8d8e02515005ab 1-181
+go/pkg/basecamp/eventfeed/feedtest/polls.go
+  s_62d102ac250358::t_ac9b1309509e84 1-108
+go/pkg/basecamp/eventfeed/feedtest/polls_test.go
+  s_62d102ac250358::t_e5e14d45f83bc8 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "573e4f7f6597f03297788e248923a8cd582a392d",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

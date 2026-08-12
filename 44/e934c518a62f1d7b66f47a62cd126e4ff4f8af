@@ -1,0 +1,49 @@
+go/pkg/basecamp/eventfeed/catchup.go
+  s_62d102ac250358::t_1b45131945c972 478-479,482-492
+  s_62d102ac250358::t_900ed4677d8040 44,47-58,64-65,68-70,75,82
+  s_62d102ac250358::t_f560c68a56ff16 289-292,298
+  s_62d102ac250358::t_d22837931b5849 409-418,420-421,424,431,441
+  s_62d102ac250358::t_7519ee19fc3ad6 91-93
+  s_62d102ac250358::t_0ea5e9128e7357 122,126-133,142-149
+  s_62d102ac250358::t_294ffd5e4fd857 16-19
+  s_62d102ac250358::t_d454ea4811c460 449,455,460,468,475,480
+go/pkg/basecamp/eventfeed/loop.go
+  s_62d102ac250358::t_c17d1e11f97a93 27-30
+  s_62d102ac250358::t_2b2b260d521021 103-107
+  s_62d102ac250358::t_796a8de929a5b8 31-34
+  s_62d102ac250358::t_de7392d54482d9 892
+  s_62d102ac250358::t_23a0a0572d3a33 438-443
+go/pkg/basecamp/eventfeed/recovery_test.go
+  s_62d102ac250358::t_984ff0ac4f8a25 276-307
+  s_62d102ac250358::t_9d05265e09b284 1-11,13-166,168-172,174-275,308-415,422-509,544-656
+  s_62d102ac250358::t_8ba2333c01e9d2 416-421
+  s_62d102ac250358::t_0b4cbd6b91423d 510-543
+  s_62d102ac250358::t_564732f183b834 167,173
+  s_62d102ac250358::t_e0f4fdc71c8c5d 12
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_62d102ac250358::t_c40b1bcfbe37c8 597-601
+  s_62d102ac250358::t_61be59de989024 804-805,809-811,823
+  s_62d102ac250358::t_cb223d021346b9 596
+go/pkg/basecamp/eventfeed/recovery.go
+  s_62d102ac250358::t_d61c53881655a3 104-116
+  s_62d102ac250358::t_0faacc4d81c32d 1-22,33-103,117-160
+  s_62d102ac250358::t_6c70aa2ca0e8cf 23-32
+go/pkg/basecamp/eventfeed/doc.go
+  s_62d102ac250358::t_6590a81fd39b05 7-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "44e934c518a62f1d7b66f47a62cd126e4ff4f8af",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
