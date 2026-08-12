@@ -1,0 +1,22 @@
+ruby/lib/basecamp/security.rb
+  s_e0ea331ca7cb0c::t_5d573e034821bc 42-45,51-54
+ruby/test/basecamp/security_test.rb
+  s_e0ea331ca7cb0c::t_a8fa40a2c4593c 146-156
+  s_e0ea331ca7cb0c::t_cd2ec9cb474db1 183-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "111c6d8966655b39d7dd1f4a161484c55bc038d5",
+  "prompts": {},
+  "sessions": {
+    "s_e0ea331ca7cb0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ba37ea7-c286-4fb7-9d5f-a36ec299a392",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
