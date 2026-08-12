@@ -577,6 +577,79 @@ func TestFileCheckpointStore_ConcurrentSavesKeepTheFileParseable(t *testing.T) {
 	}
 }
 
+// Two stores constructed independently over one path are two objects over one
+// file, and the file's update is a read-modify-write: without coordination by
+// path both instances read the same absent-or-old object and each renames a
+// single-lineage file into place, so one lineage's cursor is silently lost.
+// Sharing a checkpoint file between lineages is the documented setup — that is
+// why the file is keyed by the identity array rather than one file per lineage
+// — so the loss is a real defect, not a misuse. Run under -race.
+func TestFileCheckpointStore_ConcurrentSavesAcrossInstancesKeepEveryLineage(t *testing.T) {
+	ctx := context.Background()
+	path := storePath(t)
+	lineages := []struct {
+		key      CheckpointKey
+		position string
+	}{
+		{storeKey("openclaw"), "pos-openclaw"},
+		{storeKey("shadowfax"), "pos-shadowfax"},
+	}
+
+	// Each round starts from an absent file so both savers read the same empty
+	// object: any overlap of the two read-modify-writes loses a lineage.
+	for round := range 50 {
+		if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("round %d: clearing the store file: %v", round, err)
+		}
+
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		for _, lineage := range lineages {
+			store := NewFileCheckpointStore(path)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				if err := store.Save(ctx, lineage.key, lineage.position); err != nil {
+					t.Errorf("Save(%s) = %v, want nil", lineage.position, err)
+				}
+			}()
+		}
+		close(start)
+		wg.Wait()
+
+		for _, lineage := range lineages {
+			position, ok, err := NewFileCheckpointStore(path).Load(ctx, lineage.key)
+			if err != nil || !ok || position != lineage.position {
+				t.Fatalf("round %d: Load(%s) = (%q, %v, %v), want (%q, true, nil): "+
+					"a concurrent save over the same path lost this lineage",
+					round, lineage.position, position, ok, err, lineage.position)
+			}
+		}
+	}
+}
+
+// The lock is keyed by the file, so spellings that name one file — relative,
+// absolute, or routed through "..", the divergence two components reading one
+// configured path actually produce — must land on one lock, and two different
+// files must not.
+func TestFileCheckpointStore_OnePathIsOneLockAcrossSpellings(t *testing.T) {
+	dir := t.TempDir()
+	direct := filepath.Join(dir, "checkpoints.json")
+	roundabout := filepath.Join(dir, "nested", "..", "checkpoints.json")
+	if pathLock(direct) != pathLock(roundabout) {
+		t.Errorf("%q and %q took different locks, want one lock per file", direct, roundabout)
+	}
+
+	t.Chdir(dir)
+	if pathLock("checkpoints.json") != pathLock(direct) {
+		t.Error("the relative spelling of the store file took a different lock than the absolute one")
+	}
+	if pathLock(filepath.Join(dir, "other.json")) == pathLock(direct) {
+		t.Error("two different store files share one lock")
+	}
+}
+
 // Concurrent readers and a writer must not race. Run under -race.
 func TestFileCheckpointStore_ConcurrentLoadAndSave(t *testing.T) {
 	ctx := context.Background()

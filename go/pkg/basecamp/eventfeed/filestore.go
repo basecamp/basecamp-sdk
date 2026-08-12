@@ -45,13 +45,21 @@ import (
 //
 // # Concurrency
 //
-// Safe for concurrent use by any number of goroutines in one process. It is
-// deliberately NOT safe across processes: there is no advisory locking, so two
-// processes sharing one file can lose an update (last writer wins for the
-// lineages it holds). SPEC.md §23 documents the file store as single-process; a
-// server-side advisory checkpoint API is deferred until a multi-host connector
-// needs a shared cursor. Within the connector's own usage this is moot — one
-// writer per key per run.
+// Safe for concurrent use by any number of goroutines in one process, and by
+// any number of store instances over one path: the lock that serializes the
+// read-modify-write belongs to the file — every store constructed over one
+// canonical path shares it — not to the instance. One connector is one writer
+// per key per run, so what the shared lock is for is the setup this store is
+// shaped for: two connectors on different filter lineages sharing one
+// checkpoint file, each with its own store. Under a per-instance lock both
+// would read the same old object and rename a different single-lineage update
+// into place, silently dropping one lineage's cursor.
+//
+// It is deliberately NOT safe across processes: there is no advisory locking,
+// so two processes sharing one file can lose an update (last writer wins for
+// the lineages it holds). SPEC.md §23 documents the file store as
+// single-process; a server-side advisory checkpoint API is deferred until a
+// multi-host connector needs a shared cursor.
 //
 // # No delete
 //
@@ -63,7 +71,9 @@ type FileCheckpointStore struct {
 	// path is the JSON file itself, not a directory.
 	path string
 	// mu serializes Save's read-modify-write against itself and against Load.
-	mu sync.RWMutex
+	// It is the lock for the canonical path, shared with every other store
+	// instance over the same file, not a lock of this instance's own.
+	mu *sync.RWMutex
 }
 
 // FileCheckpointStore fills the CheckpointStore seam.
@@ -74,7 +84,58 @@ var _ CheckpointStore = (*FileCheckpointStore)(nil)
 // constructing a store touches the filesystem not at all, so a path that does
 // not yet exist is normal and loads as Missing.
 func NewFileCheckpointStore(path string) *FileCheckpointStore {
-	return &FileCheckpointStore{path: path}
+	return &FileCheckpointStore{path: path, mu: pathLock(path)}
+}
+
+// pathLocks holds one lock per canonical store path, shared by every store
+// instance over that path.
+//
+// Entries are never evicted, and that is the intended shape: a process holds
+// one entry — a path string and a mutex — per distinct checkpoint file it
+// opens, and store paths come from a host's configuration, never from feed
+// data, so the set is bounded by how many checkpoint files the host names.
+// Eviction would need refcounting and would reintroduce the very lost update
+// the registry exists to prevent.
+var (
+	pathLocksMu sync.Mutex
+	pathLocks   = map[string]*sync.RWMutex{}
+)
+
+// pathLock returns the lock serializing every store over path's canonical
+// spelling, creating it on first use.
+func pathLock(path string) *sync.RWMutex {
+	canonical := canonicalStorePath(path)
+
+	pathLocksMu.Lock()
+	defer pathLocksMu.Unlock()
+	lock, ok := pathLocks[canonical]
+	if !ok {
+		lock = new(sync.RWMutex)
+		pathLocks[canonical] = lock
+	}
+	return lock
+}
+
+// canonicalStorePath is a store file's lock identity: the cleaned absolute
+// path, so "state/checkpoints.json", "./state/checkpoints.json" and
+// "<cwd>/state/../state/checkpoints.json" all name one lock. When the working
+// directory cannot be read — the only way filepath.Abs fails — the cleaned
+// spelling stands in: two stores spelled alike still serialize, which is what
+// a caller passing one configured path gets either way.
+//
+// Symlinks are deliberately not resolved. Resolving them requires the file to
+// exist, and this store's file is created on the first Save, so a resolved key
+// would change identity mid-life and two stores constructed either side of
+// that first Save would take different locks — strictly worse than a stable
+// spelling. Two spellings that alias one file only through a symlinked
+// ancestor therefore behave like the documented cross-process case: last
+// writer wins for the lineages it holds.
+func canonicalStorePath(path string) string {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return filepath.Clean(path)
+	}
+	return absolute
 }
 
 // Load returns the stored position for key. The tri-state contract maps onto
@@ -194,8 +255,8 @@ func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
 
 // writeAtomic replaces the store file with data via a temp file in the same
 // directory plus a rename, which is atomic within a filesystem. The temp file
-// is uniquely named so that a concurrent writer — another process, since this
-// store's own writes are serialized — cannot corrupt this one's staging file,
+// is uniquely named so that a concurrent writer — another process, since every
+// store over this path is serialized — cannot corrupt this one's staging file,
 // and it is removed on every failure path so a failed save leaves no debris
 // beside the store.
 func (s *FileCheckpointStore) writeAtomic(data []byte) error {

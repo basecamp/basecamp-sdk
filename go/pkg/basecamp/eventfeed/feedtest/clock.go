@@ -18,6 +18,12 @@ import (
 // rendezvous for driving a loop running on another goroutine without
 // wall-clock sleeps.
 type Clock struct {
+	// advancing keeps one advance atomic against another: c.mu is released
+	// inside a window (that is what lets a recipient arm a follow-on timer),
+	// so two goroutines advancing concurrently could otherwise interleave
+	// their re-selections and rewind now to the earlier window's target.
+	advancing sync.Mutex
+
 	mu   sync.Mutex
 	cond *sync.Cond
 	now  time.Time
@@ -76,10 +82,35 @@ func (c *Clock) Outstanding() []string {
 // order (ties by creation order), re-evaluating the registry after each fire
 // so a timer armed mid-advance with a deadline inside the window also fires.
 // Firings are delivered on each timer's buffered channel; the fired timer is
-// removed from the registry before delivery.
+// removed from the registry before delivery, and the clock is unlocked between
+// firings so a recipient can arm its follow-on timer from the firing instant
+// rather than from the window's end.
+//
+// Whether that follow-on timer lands before the re-selection that would fire
+// it is up to the recipient's goroutine, so a caller that depends on a chained
+// firing inside one window uses AdvanceSettling to say what to wait for.
 func (c *Clock) Advance(d time.Duration) {
+	c.advance(d, nil)
+}
+
+// AdvanceSettling advances exactly as Advance does, additionally running settle
+// after each firing — with the clock unlocked, before the next due timer is
+// selected. It is the rendezvous for the normative algorithm's reentrant
+// clause when the recipient runs on another goroutine: settle is where the
+// caller blocks until that goroutine has armed the timer the firing was
+// supposed to arm (AwaitTimer is the usual body), so the re-selection below
+// sees it and fires it if it is due inside the window. settle runs after every
+// firing, including the last, and a body that can only be satisfied once
+// should guard itself with a sync.Once.
+func (c *Clock) AdvanceSettling(d time.Duration, settle func()) {
+	c.advance(d, settle)
+}
+
+func (c *Clock) advance(d time.Duration, settle func()) {
+	c.advancing.Lock()
+	defer c.advancing.Unlock()
+
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	target := c.now.Add(d)
 	for {
 		next := c.earliestDue(target)
@@ -90,10 +121,22 @@ func (c *Clock) Advance(d time.Duration) {
 			c.now = next.deadline
 		}
 		c.removeLocked(next)
+		// The channel is buffered and a timer is removed from the registry
+		// before it is ever delivered to, so this send cannot block.
 		next.c <- next.deadline
+
+		// Unlocked across the firing's aftermath: a recipient woken by it
+		// arms from now — the firing instant — and the next iteration's
+		// selection can still find that timer inside the window.
+		c.mu.Unlock()
 		c.cond.Broadcast()
+		if settle != nil {
+			settle()
+		}
+		c.mu.Lock()
 	}
 	c.now = target
+	c.mu.Unlock()
 	c.cond.Broadcast()
 }
 

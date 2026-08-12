@@ -180,6 +180,12 @@ func (d *driver) runStep(step scenarioStep) error {
 	case *expectClientCloseStep:
 		return d.expectClientClose()
 	case *advanceStep:
+		// Plain Advance: no fixture scripts a firing that arms a follow-on
+		// timer due inside the same window — 05, the suite's only advance,
+		// deliberately configures staleness and repair-poll out of it, so the
+		// window fires nothing. A script that did want a chained firing would
+		// pass feedtest.Clock.AdvanceSettling the rendezvous for the arming,
+		// since the connector arms on its own goroutine.
 		d.h.clock.Advance(millis(payload.Ms))
 		return nil
 	case *fireTimerStep:

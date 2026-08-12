@@ -1,8 +1,11 @@
 package feedtest
 
 import (
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/eventfeed"
 )
 
 func TestClock_AdvanceFiresDueTimersInDeadlineOrder(t *testing.T) {
@@ -71,6 +74,50 @@ func TestClock_EqualDeadlinesTieBreakByCreationOrder(t *testing.T) {
 	case <-second.C():
 	default:
 		t.Error("second timer did not fire")
+	}
+}
+
+// The virtual-advance algorithm's reentrancy clause (conformance/event-feed
+// README, normative): a timer armed during an advance whose deadline lands
+// inside the window also fires — including one armed by the recipient of an
+// earlier firing in that same window, which is the shape the state machine
+// produces (a staleness firing tears the socket down and arms backoff). The
+// recipient runs on another goroutine here, so AdvanceSettling supplies the
+// rendezvous; without it the advance would end before the arming landed and
+// the follow-on timer would be anchored at the window's end instead.
+func TestClock_AdvanceFiresATimerArmedByAFiringsRecipient(t *testing.T) {
+	c := NewClock()
+	base := c.Now()
+	first := c.NewTimer(5*time.Millisecond, "staleness")
+
+	armed := make(chan eventfeed.Timer, 1)
+	go func() {
+		<-first.C()
+		armed <- c.NewTimer(3*time.Millisecond, "backoff")
+	}()
+
+	// Only the first firing has a successor to wait for; the chained firing
+	// arms nothing, so the wait must not be demanded again.
+	var once sync.Once
+	c.AdvanceSettling(20*time.Millisecond, func() {
+		once.Do(func() { c.AwaitTimer("backoff") })
+	})
+
+	chained := <-armed
+	select {
+	case got := <-chained.C():
+		if want := base.Add(8 * time.Millisecond); !got.Equal(want) {
+			t.Errorf("the chained timer fired at %v, want %v — 3ms after the firing that armed it, "+
+				"not 3ms after the window's end", got, want)
+		}
+	default:
+		t.Errorf("the chained timer did not fire inside the 20ms window: outstanding %v", c.Outstanding())
+	}
+	if got := c.Now(); !got.Equal(base.Add(20 * time.Millisecond)) {
+		t.Errorf("Now() = %v, want %v", got, base.Add(20*time.Millisecond))
+	}
+	if got := c.Outstanding(); len(got) != 0 {
+		t.Errorf("Outstanding() = %v, want empty", got)
 	}
 }
 
