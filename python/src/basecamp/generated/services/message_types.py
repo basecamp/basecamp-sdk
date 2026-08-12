@@ -16,8 +16,8 @@ class MessageTypesService(BaseService):
 
         Args:
             bucket_id: The bucket id.
-            max_items: Client-side cap on the total number of items collected across pages; None
-                collects every page.
+            max_items: Client-side cap on the number of items collected across pages; None means no
+                item cap. Collection is always bounded by config.max_pages.
         """
         return self._request_paginated(
             OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=bucket_id),
@@ -102,8 +102,8 @@ class AsyncMessageTypesService(AsyncBaseService):
 
         Args:
             bucket_id: The bucket id.
-            max_items: Client-side cap on the total number of items collected across pages; None
-                collects every page.
+            max_items: Client-side cap on the number of items collected across pages; None means no
+                item cap. Collection is always bounded by config.max_pages.
         """
         return await self._request_paginated(
             OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=bucket_id),

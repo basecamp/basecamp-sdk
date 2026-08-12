@@ -552,16 +552,20 @@ def escape_docstring_text(text: str) -> str:
     string literals), this keeps real newlines: it escapes backslashes (so no
     accidental escape sequences form), neutralizes any embedded triple-quote
     that would close the docstring early, and normalizes the control characters
-    that would confuse the emitted source. The closing delimiter is always
-    emitted on its own line, so a trailing double-quote in the text is safe.
+    that would confuse the emitted source. Any remaining C0 control or DEL is
+    dropped — a literal NUL in particular makes the whole module uncompilable
+    ("source code string cannot contain null bytes"). The closing delimiter is
+    always emitted on its own line, so a trailing double-quote in the text is
+    safe.
     """
-    return (
+    text = (
         text.replace("\\", "\\\\")
         .replace('"""', '\\"\\"\\"')
         .replace("\r\n", "\n")
         .replace("\r", "\n")
         .replace("\t", "    ")
     )
+    return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
 
 
 def _split_paragraphs(text: str) -> list[str]:
@@ -574,8 +578,10 @@ def _fallback_param_doc(python_name: str) -> str:
     Path params carry no descriptions in the OpenAPI spec at all, so this
     humanized fallback ("project_id" -> "The project id.") is what documents
     them — matching the Ruby and TypeScript generators' fallback convention.
+    The trailing underscore a Python-keyword collision appends (``from_``) is
+    stripped before humanizing, so it reads "The from." not "The from .".
     """
-    return f"The {python_name.replace('_', ' ')}."
+    return f"The {python_name.rstrip('_').replace('_', ' ')}."
 
 
 def build_params(op: dict) -> list[dict]:
@@ -625,19 +631,35 @@ def build_params(op: dict) -> list[dict]:
     # Paginated operations take a client-side cap on collected items,
     # matching the maxItems pagination option in the other SDKs.
     if op["has_pagination"]:
-        add(
-            "max_items: int | None = None",
-            "max_items",
-            "Client-side cap on the total number of items collected across pages; None collects every page.",
+        max_items_doc = (
+            "Client-side cap on the number of items collected across pages; "
+            "None means no item cap. Collection is always bounded by config.max_pages."
         )
+        # SPEC section 8: a positive `page` pins a single page, so the
+        # follow loop stops after one request. Only worth saying on the
+        # operations that actually take a `page` param.
+        if any(q["python_name"] == "page" for q in op["query_params"]):
+            max_items_doc += " A positive page argument fetches exactly that one page."
+        add("max_items: int | None = None", "max_items", max_items_doc)
 
     return params
 
 
 def _wrap_args_entry(python_name: str, description: str) -> list[str]:
-    """Wrap one Args entry to Google style: entry at 12 spaces, continuations at 16."""
+    """Wrap one Args entry to Google style: entry at 12 spaces, continuations at 16.
+
+    Long tokens and hyphenated words stay whole (descriptions carry URLs,
+    ``x-header-…`` names, and ``Module::Class`` references that must not be
+    split mid-token); an over-long token overflows its line instead.
+    """
     text = " ".join(escape_docstring_text(description).split())
-    wrapped = textwrap.wrap(f"{python_name}: {text}", width=88, subsequent_indent="    ") or [f"{python_name}:"]
+    wrapped = textwrap.wrap(
+        f"{python_name}: {text}",
+        width=88,
+        subsequent_indent="    ",
+        break_long_words=False,
+        break_on_hyphens=False,
+    ) or [f"{python_name}:"]
     return [f"            {line}" for line in wrapped]
 
 

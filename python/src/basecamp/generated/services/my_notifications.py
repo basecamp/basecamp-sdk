@@ -43,8 +43,9 @@ class MyNotificationsService(BaseService):
         Args:
             page: Page number. Defaults to 1. A positive value selects exactly that page, not a
                 starting offset; see SPEC section 8.
-            max_items: Client-side cap on the total number of items collected across pages; None
-                collects every page.
+            max_items: Client-side cap on the number of items collected across pages; None means no
+                item cap. Collection is always bounded by config.max_pages. A positive page argument
+                fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
@@ -104,8 +105,9 @@ class AsyncMyNotificationsService(AsyncBaseService):
         Args:
             page: Page number. Defaults to 1. A positive value selects exactly that page, not a
                 starting offset; see SPEC section 8.
-            max_items: Client-side cap on the total number of items collected across pages; None
-                collects every page.
+            max_items: Client-side cap on the number of items collected across pages; None means no
+                item cap. Collection is always bounded by config.max_pages. A positive page argument
+                fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),

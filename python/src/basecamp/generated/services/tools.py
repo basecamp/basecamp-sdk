@@ -18,8 +18,8 @@ class ToolsService(BaseService):
 
         Args:
             bucket_id: The bucket id.
-            tool_type: Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::
-                Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
+            tool_type: Tool type to add to the project dock. Values:
+                Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
             title: Title for the new tool. When omitted, Basecamp assigns the next available default
                 title for the tool type.
             visible_to_clients: Create the tool already visible to clients. Honored only for tool
@@ -126,8 +126,8 @@ class AsyncToolsService(AsyncBaseService):
 
         Args:
             bucket_id: The bucket id.
-            tool_type: Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::
-                Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
+            tool_type: Tool type to add to the project dock. Values:
+                Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
             title: Title for the new tool. When omitted, Basecamp assigns the next available default
                 title for the tool type.
             visible_to_clients: Create the tool already visible to clients. Honored only for tool

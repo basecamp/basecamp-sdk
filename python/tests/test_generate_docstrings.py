@@ -14,9 +14,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 from generate_services import build_params, method_docstring  # noqa: E402
 
 # Triple quotes (would close the docstring), a backslash + `u` (would be an
-# invalid unicode escape), an embedded newline, and a trailing double-quote
-# (would fuse with the closing delimiter if it ever ended a docstring).
-NASTY = 'has """ triple, back\\slash \\u not-unicode, and\na newline, ends with quote "'
+# invalid unicode escape), an embedded newline, a literal NUL (JSON `\\u0000`
+# — "source code string cannot contain null bytes"), and a trailing
+# double-quote (would fuse with the closing delimiter if it ever ended a
+# docstring).
+NASTY = 'has """ triple, back\\slash \\u not-unicode, a \x00 NUL, and\na newline, ends with quote "'
 
 
 def _hostile_op() -> dict:
@@ -63,6 +65,8 @@ def test_hostile_description_stays_valid_and_composes_deprecation():
     doc, runtime = _emit(_hostile_op())
     # The hostile text survives escaping intact at runtime...
     assert '"""' in runtime
+    # ...minus the source-breaking NUL, which is dropped, not smuggled through.
+    assert "\x00" not in doc and "\x00" not in runtime
     # ...and every docstring section is present: summary, deprecation note
     # (composed, not clobbered), and Args covering path/body/query/max_items.
     assert "Deprecated parameters (prefer the replacement):" in runtime
@@ -102,6 +106,15 @@ def test_degenerate_operation_shapes_compile():
     }
     doc, runtime = _emit(no_params)
     assert doc.strip() == '"""X operation."""'
+    # A no-param op whose description ends in a double-quote must not emit
+    # `"""text""""`: the summary-period rule treats a trailing quote as
+    # non-terminal punctuation, so every one-line docstring ends in `.!?`,
+    # never adjacent to the closing delimiter.
+    trailing_quote = {**base, "operation_id": "T", "description": 'Group by "bucket" or "date"'}
+    doc, runtime = _emit(trailing_quote)
+    assert '""""' not in doc
+    assert doc.strip().endswith('"."""')
+    assert runtime == 'Group by "bucket" or "date".'
     _, runtime = _emit(pagination_only)
     # The manual Link-following boilerplate is dropped (the method paginates
     # itself); max_items documents the collected-pages behavior instead.

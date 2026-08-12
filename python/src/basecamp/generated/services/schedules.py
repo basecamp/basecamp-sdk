@@ -182,8 +182,9 @@ class SchedulesService(BaseService):
             status: active|archived|trashed
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the total number of items collected across pages; None
-                collects every page.
+            max_items: Client-side cap on the number of items collected across pages; None means no
+                item cap. Collection is always bounded by config.max_pages. A positive page argument
+                fetches exactly that one page.
         """
         return self._request_paginated(
             OperationInfo(service="schedules", operation="list_entries", is_mutation=False, resource_id=schedule_id),
@@ -238,9 +239,9 @@ class SchedulesService(BaseService):
                 link. Accepted on create since long before it was documented:
                 `Schedules::Entries::BaseController#base_schedule_entry_params` permits it and
                 `new_schedule_entry_params` passes it through unchanged for API requests. Modeling
-                it only on ReplaceScheduleEntry forced callers into a three-request read-modify-
-                write for a field the create already took — and create is the notifying write, so
-                participants learned about a video call before its link existed.
+                it only on ReplaceScheduleEntry forced callers into a three-request
+                read-modify-write for a field the create already took — and create is the notifying
+                write, so participants learned about a video call before its link existed.
             highlighted: Whether the entry is highlighted on the schedule. Defaults to false. Do not
                 send an explicit null: `schedule_entries.highlighted` is NOT NULL, so BC3 raises
                 rather than falling back to the default. Omit it instead — every SDK's request
@@ -450,8 +451,9 @@ class AsyncSchedulesService(AsyncBaseService):
             status: active|archived|trashed
             page: Page number for paginating through results. Defaults to 1. A positive value
                 selects exactly that page, not a starting offset; see SPEC section 8.
-            max_items: Client-side cap on the total number of items collected across pages; None
-                collects every page.
+            max_items: Client-side cap on the number of items collected across pages; None means no
+                item cap. Collection is always bounded by config.max_pages. A positive page argument
+                fetches exactly that one page.
         """
         return await self._request_paginated(
             OperationInfo(service="schedules", operation="list_entries", is_mutation=False, resource_id=schedule_id),
@@ -506,9 +508,9 @@ class AsyncSchedulesService(AsyncBaseService):
                 link. Accepted on create since long before it was documented:
                 `Schedules::Entries::BaseController#base_schedule_entry_params` permits it and
                 `new_schedule_entry_params` passes it through unchanged for API requests. Modeling
-                it only on ReplaceScheduleEntry forced callers into a three-request read-modify-
-                write for a field the create already took — and create is the notifying write, so
-                participants learned about a video call before its link existed.
+                it only on ReplaceScheduleEntry forced callers into a three-request
+                read-modify-write for a field the create already took — and create is the notifying
+                write, so participants learned about a video call before its link existed.
             highlighted: Whether the entry is highlighted on the schedule. Defaults to false. Do not
                 send an explicit null: `schedule_entries.highlighted` is NOT NULL, so BC3 raises
                 rather than falling back to the default. Omit it instead — every SDK's request
