@@ -1,0 +1,65 @@
+go/pkg/basecamp/client.go
+  s_be95a2377e6b9a::t_26d637fb247b69 393-410,413
+  s_be95a2377e6b9a::t_31425e323ae1c1 192
+  s_be95a2377e6b9a::t_6efcc0be003fb8 254,256-262
+  s_be95a2377e6b9a::t_2c4c77987b28ab 660-669
+  s_be95a2377e6b9a::t_975daaea55b037 698,702,717,720
+go/pkg/basecamp/backoff_ceiling_test.go
+  s_be95a2377e6b9a::t_b3cb64fa45982a 17
+conformance/runner/ruby/runner.rb
+  s_be95a2377e6b9a::t_b9c602471c0b9b 1345-1348,1353
+conformance/runner/typescript/runner.test.ts
+  s_be95a2377e6b9a::t_295f7fd7f91e05 1673-1680,1683-1687
+  s_be95a2377e6b9a::t_26629aebeb2519 59-65
+conformance/schema.json
+  s_be95a2377e6b9a::t_ea00b3cbf1c92f 188-192,194-196
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_be95a2377e6b9a::t_b3ec85cb2f8bbd 239-246
+go/pkg/basecamp/download.go
+  s_be95a2377e6b9a::t_99541dfa95784c 213-220
+  s_be95a2377e6b9a::t_f55c1b07899496 138-141
+  s_be95a2377e6b9a::t_08ce7754f53149 147
+conformance/runner/swift/Sources/ConformanceRunner/Fixtures.swift
+  s_be95a2377e6b9a::t_80a755f8acd95c 157-160
+go/pkg/basecamp/http.go
+  s_be95a2377e6b9a::t_25283c96cfea72 33-38
+  s_be95a2377e6b9a::t_0e8040f65c3d83 73-80
+SPEC.md
+  s_be95a2377e6b9a::t_b998a631392766 1428
+  s_be95a2377e6b9a::t_60f71bf39bdf46 136-142
+  s_be95a2377e6b9a::t_04aa672febd3b6 115
+  s_be95a2377e6b9a::t_1573d66f1be99a 826
+  s_be95a2377e6b9a::t_52199ebcb3fa35 111
+  s_be95a2377e6b9a::t_8124d3f8d9723f 3503
+MIGRATING.md
+  s_be95a2377e6b9a::t_fc5f3221e985ca 16-53
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_be95a2377e6b9a::t_8ff2f9b2ff8c00 371-377
+  s_be95a2377e6b9a::t_410369064c287b 214-215
+conformance/runner/go/main.go
+  s_be95a2377e6b9a::t_83e8c1fc2fe339 417-420,422
+  s_be95a2377e6b9a::t_f4243171ff374d 59-63
+  s_be95a2377e6b9a::t_d3217afa126c11 406
+go/pkg/basecamp/client_retry_zero_cap_test.go
+  s_be95a2377e6b9a::t_e32969dc1a02ba 1-155
+conformance/runner/python/runner.py
+  s_be95a2377e6b9a::t_549e858b2be71f 1206-1210,1217-1218
+conformance/tests/retry.json
+  s_be95a2377e6b9a::t_d84c81594d78b2 135-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e4b4a943ce8769f96de4f5176552f2909b0ea3ed",
+  "prompts": {},
+  "sessions": {
+    "s_be95a2377e6b9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d94a31f-3d7d-442e-8ff1-6740138a75b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
