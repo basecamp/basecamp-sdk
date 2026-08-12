@@ -12,6 +12,14 @@ from basecamp.hooks import OperationInfo
 
 class CardColumnsService(BaseService):
     def set_color(self, *, bucket_id: int, column_id: int, color: str) -> dict[str, Any]:
+        """Set the color of a column.
+
+        Args:
+            bucket_id: The bucket id.
+            column_id: The column id.
+            color: Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink,
+                brown
+        """
         return self._request(
             OperationInfo(
                 service="cardcolumns",
@@ -27,6 +35,12 @@ class CardColumnsService(BaseService):
         )
 
     def enable_on_hold(self, *, bucket_id: int, column_id: int) -> dict[str, Any]:
+        """Enable on-hold section in a column.
+
+        Args:
+            bucket_id: The bucket id.
+            column_id: The column id.
+        """
         return self._request(
             OperationInfo(
                 service="cardcolumns",
@@ -41,6 +55,12 @@ class CardColumnsService(BaseService):
         )
 
     def disable_on_hold(self, *, bucket_id: int, column_id: int) -> dict[str, Any]:
+        """Disable on-hold section in a column.
+
+        Args:
+            bucket_id: The bucket id.
+            column_id: The column id.
+        """
         return self._request(
             OperationInfo(
                 service="cardcolumns",
@@ -55,6 +75,11 @@ class CardColumnsService(BaseService):
         )
 
     def get(self, *, column_id: int) -> dict[str, Any]:
+        """Get a card column by ID.
+
+        Args:
+            column_id: The column id.
+        """
         return self._request(
             OperationInfo(service="cardcolumns", operation="get", is_mutation=False, resource_id=column_id),
             "GET",
@@ -63,6 +88,13 @@ class CardColumnsService(BaseService):
         )
 
     def update(self, *, column_id: int, title: str | None = None, description: str | None = None) -> dict[str, Any]:
+        """Update an existing column.
+
+        Args:
+            column_id: The column id.
+            title: The title.
+            description: The description.
+        """
         return self._request(
             OperationInfo(service="cardcolumns", operation="update", is_mutation=True, resource_id=column_id),
             "PUT",
@@ -72,6 +104,11 @@ class CardColumnsService(BaseService):
         )
 
     def subscribe_to_column(self, *, column_id: int) -> None:
+        """Subscribe to a card column (watch for changes).
+
+        Args:
+            column_id: The column id.
+        """
         self._request_void(
             OperationInfo(
                 service="cardcolumns", operation="subscribe_to_column", is_mutation=True, resource_id=column_id
@@ -82,6 +119,11 @@ class CardColumnsService(BaseService):
         )
 
     def unsubscribe_from_column(self, *, column_id: int) -> None:
+        """Unsubscribe from a card column (stop watching for changes).
+
+        Args:
+            column_id: The column id.
+        """
         self._request_void(
             OperationInfo(
                 service="cardcolumns", operation="unsubscribe_from_column", is_mutation=True, resource_id=column_id
@@ -92,6 +134,13 @@ class CardColumnsService(BaseService):
         )
 
     def create(self, *, card_table_id: int, title: str, description: str | None = None) -> dict[str, Any]:
+        """Create a column in a card table.
+
+        Args:
+            card_table_id: The card table id.
+            title: The title.
+            description: The description.
+        """
         return self._request(
             OperationInfo(service="cardcolumns", operation="create", is_mutation=True, resource_id=card_table_id),
             "POST",
@@ -101,6 +150,14 @@ class CardColumnsService(BaseService):
         )
 
     def move(self, *, card_table_id: int, source_id: int, target_id: int, position: int | None = None) -> None:
+        """Move a column within a card table.
+
+        Args:
+            card_table_id: The card table id.
+            source_id: The source id.
+            target_id: The target id.
+            position: The position.
+        """
         self._request_void(
             OperationInfo(service="cardcolumns", operation="move", is_mutation=True, resource_id=card_table_id),
             "POST",
@@ -112,6 +169,14 @@ class CardColumnsService(BaseService):
 
 class AsyncCardColumnsService(AsyncBaseService):
     async def set_color(self, *, bucket_id: int, column_id: int, color: str) -> dict[str, Any]:
+        """Set the color of a column.
+
+        Args:
+            bucket_id: The bucket id.
+            column_id: The column id.
+            color: Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink,
+                brown
+        """
         return await self._request(
             OperationInfo(
                 service="cardcolumns",
@@ -127,6 +192,12 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def enable_on_hold(self, *, bucket_id: int, column_id: int) -> dict[str, Any]:
+        """Enable on-hold section in a column.
+
+        Args:
+            bucket_id: The bucket id.
+            column_id: The column id.
+        """
         return await self._request(
             OperationInfo(
                 service="cardcolumns",
@@ -141,6 +212,12 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def disable_on_hold(self, *, bucket_id: int, column_id: int) -> dict[str, Any]:
+        """Disable on-hold section in a column.
+
+        Args:
+            bucket_id: The bucket id.
+            column_id: The column id.
+        """
         return await self._request(
             OperationInfo(
                 service="cardcolumns",
@@ -155,6 +232,11 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def get(self, *, column_id: int) -> dict[str, Any]:
+        """Get a card column by ID.
+
+        Args:
+            column_id: The column id.
+        """
         return await self._request(
             OperationInfo(service="cardcolumns", operation="get", is_mutation=False, resource_id=column_id),
             "GET",
@@ -165,6 +247,13 @@ class AsyncCardColumnsService(AsyncBaseService):
     async def update(
         self, *, column_id: int, title: str | None = None, description: str | None = None
     ) -> dict[str, Any]:
+        """Update an existing column.
+
+        Args:
+            column_id: The column id.
+            title: The title.
+            description: The description.
+        """
         return await self._request(
             OperationInfo(service="cardcolumns", operation="update", is_mutation=True, resource_id=column_id),
             "PUT",
@@ -174,6 +263,11 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def subscribe_to_column(self, *, column_id: int) -> None:
+        """Subscribe to a card column (watch for changes).
+
+        Args:
+            column_id: The column id.
+        """
         await self._request_void(
             OperationInfo(
                 service="cardcolumns", operation="subscribe_to_column", is_mutation=True, resource_id=column_id
@@ -184,6 +278,11 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def unsubscribe_from_column(self, *, column_id: int) -> None:
+        """Unsubscribe from a card column (stop watching for changes).
+
+        Args:
+            column_id: The column id.
+        """
         await self._request_void(
             OperationInfo(
                 service="cardcolumns", operation="unsubscribe_from_column", is_mutation=True, resource_id=column_id
@@ -194,6 +293,13 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def create(self, *, card_table_id: int, title: str, description: str | None = None) -> dict[str, Any]:
+        """Create a column in a card table.
+
+        Args:
+            card_table_id: The card table id.
+            title: The title.
+            description: The description.
+        """
         return await self._request(
             OperationInfo(service="cardcolumns", operation="create", is_mutation=True, resource_id=card_table_id),
             "POST",
@@ -203,6 +309,14 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def move(self, *, card_table_id: int, source_id: int, target_id: int, position: int | None = None) -> None:
+        """Move a column within a card table.
+
+        Args:
+            card_table_id: The card table id.
+            source_id: The source id.
+            target_id: The target id.
+            position: The position.
+        """
         await self._request_void(
             OperationInfo(service="cardcolumns", operation="move", is_mutation=True, resource_id=card_table_id),
             "POST",

@@ -12,6 +12,13 @@ from basecamp.hooks import OperationInfo
 
 class MessageTypesService(BaseService):
     def list(self, *, bucket_id: int, max_items: int | None = None) -> ListResult:
+        """List message types in a project.
+
+        Args:
+            bucket_id: The bucket id.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/categories.json",
@@ -20,6 +27,13 @@ class MessageTypesService(BaseService):
         )
 
     def create(self, *, bucket_id: int, name: str, icon: str) -> dict[str, Any]:
+        """Create a new message type in a project.
+
+        Args:
+            bucket_id: The bucket id.
+            name: The name.
+            icon: The icon.
+        """
         return self._request(
             OperationInfo(service="messagetypes", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
@@ -29,6 +43,12 @@ class MessageTypesService(BaseService):
         )
 
     def get(self, *, bucket_id: int, type_id: int) -> dict[str, Any]:
+        """Get a single message type by id.
+
+        Args:
+            bucket_id: The bucket id.
+            type_id: The type id.
+        """
         return self._request(
             OperationInfo(
                 service="messagetypes", operation="get", is_mutation=False, project_id=bucket_id, resource_id=type_id
@@ -41,6 +61,14 @@ class MessageTypesService(BaseService):
     def update(
         self, *, bucket_id: int, type_id: int, name: str | None = None, icon: str | None = None
     ) -> dict[str, Any]:
+        """Update an existing message type.
+
+        Args:
+            bucket_id: The bucket id.
+            type_id: The type id.
+            name: The name.
+            icon: The icon.
+        """
         return self._request(
             OperationInfo(
                 service="messagetypes", operation="update", is_mutation=True, project_id=bucket_id, resource_id=type_id
@@ -52,6 +80,12 @@ class MessageTypesService(BaseService):
         )
 
     def delete(self, *, bucket_id: int, type_id: int) -> None:
+        """Delete a message type.
+
+        Args:
+            bucket_id: The bucket id.
+            type_id: The type id.
+        """
         self._request_void(
             OperationInfo(
                 service="messagetypes", operation="delete", is_mutation=True, project_id=bucket_id, resource_id=type_id
@@ -64,6 +98,13 @@ class MessageTypesService(BaseService):
 
 class AsyncMessageTypesService(AsyncBaseService):
     async def list(self, *, bucket_id: int, max_items: int | None = None) -> ListResult:
+        """List message types in a project.
+
+        Args:
+            bucket_id: The bucket id.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/categories.json",
@@ -72,6 +113,13 @@ class AsyncMessageTypesService(AsyncBaseService):
         )
 
     async def create(self, *, bucket_id: int, name: str, icon: str) -> dict[str, Any]:
+        """Create a new message type in a project.
+
+        Args:
+            bucket_id: The bucket id.
+            name: The name.
+            icon: The icon.
+        """
         return await self._request(
             OperationInfo(service="messagetypes", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
@@ -81,6 +129,12 @@ class AsyncMessageTypesService(AsyncBaseService):
         )
 
     async def get(self, *, bucket_id: int, type_id: int) -> dict[str, Any]:
+        """Get a single message type by id.
+
+        Args:
+            bucket_id: The bucket id.
+            type_id: The type id.
+        """
         return await self._request(
             OperationInfo(
                 service="messagetypes", operation="get", is_mutation=False, project_id=bucket_id, resource_id=type_id
@@ -93,6 +147,14 @@ class AsyncMessageTypesService(AsyncBaseService):
     async def update(
         self, *, bucket_id: int, type_id: int, name: str | None = None, icon: str | None = None
     ) -> dict[str, Any]:
+        """Update an existing message type.
+
+        Args:
+            bucket_id: The bucket id.
+            type_id: The type id.
+            name: The name.
+            icon: The icon.
+        """
         return await self._request(
             OperationInfo(
                 service="messagetypes", operation="update", is_mutation=True, project_id=bucket_id, resource_id=type_id
@@ -104,6 +166,12 @@ class AsyncMessageTypesService(AsyncBaseService):
         )
 
     async def delete(self, *, bucket_id: int, type_id: int) -> None:
+        """Delete a message type.
+
+        Args:
+            bucket_id: The bucket id.
+            type_id: The type id.
+        """
         await self._request_void(
             OperationInfo(
                 service="messagetypes", operation="delete", is_mutation=True, project_id=bucket_id, resource_id=type_id

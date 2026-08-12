@@ -22,6 +22,20 @@ class RecordingsService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List recordings of a given type across projects.
+
+        Args:
+            type: Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule:
+                :Entry|Todo|Todolist|Upload|Vault
+            bucket: The bucket.
+            status: active|archived|trashed
+            sort: created_at|updated_at
+            direction: asc|desc
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="recordings", operation="list", is_mutation=False),
             "/projects/recordings.json",
@@ -31,6 +45,11 @@ class RecordingsService(BaseService):
         )
 
     def unarchive(self, *, recording_id: int) -> None:
+        """Unarchive a recording (restore to active status).
+
+        Args:
+            recording_id: The recording id.
+        """
         self._request_void(
             OperationInfo(service="recordings", operation="unarchive", is_mutation=True, resource_id=recording_id),
             "PUT",
@@ -39,6 +58,11 @@ class RecordingsService(BaseService):
         )
 
     def archive(self, *, recording_id: int) -> None:
+        """Archive a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         self._request_void(
             OperationInfo(service="recordings", operation="archive", is_mutation=True, resource_id=recording_id),
             "PUT",
@@ -47,6 +71,11 @@ class RecordingsService(BaseService):
         )
 
     def trash(self, *, recording_id: int) -> None:
+        """Trash a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         self._request_void(
             OperationInfo(service="recordings", operation="trash", is_mutation=True, resource_id=recording_id),
             "PUT",
@@ -67,6 +96,20 @@ class AsyncRecordingsService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List recordings of a given type across projects.
+
+        Args:
+            type: Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule:
+                :Entry|Todo|Todolist|Upload|Vault
+            bucket: The bucket.
+            status: active|archived|trashed
+            sort: created_at|updated_at
+            direction: asc|desc
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="recordings", operation="list", is_mutation=False),
             "/projects/recordings.json",
@@ -76,6 +119,11 @@ class AsyncRecordingsService(AsyncBaseService):
         )
 
     async def unarchive(self, *, recording_id: int) -> None:
+        """Unarchive a recording (restore to active status).
+
+        Args:
+            recording_id: The recording id.
+        """
         await self._request_void(
             OperationInfo(service="recordings", operation="unarchive", is_mutation=True, resource_id=recording_id),
             "PUT",
@@ -84,6 +132,11 @@ class AsyncRecordingsService(AsyncBaseService):
         )
 
     async def archive(self, *, recording_id: int) -> None:
+        """Archive a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         await self._request_void(
             OperationInfo(service="recordings", operation="archive", is_mutation=True, resource_id=recording_id),
             "PUT",
@@ -92,6 +145,11 @@ class AsyncRecordingsService(AsyncBaseService):
         )
 
     async def trash(self, *, recording_id: int) -> None:
+        """Trash a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         await self._request_void(
             OperationInfo(service="recordings", operation="trash", is_mutation=True, resource_id=recording_id),
             "PUT",

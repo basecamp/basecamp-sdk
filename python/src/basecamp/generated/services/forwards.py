@@ -12,6 +12,11 @@ from basecamp.hooks import OperationInfo
 
 class ForwardsService(BaseService):
     def get(self, *, forward_id: int) -> dict[str, Any]:
+        """Get a forward by ID.
+
+        Args:
+            forward_id: The forward id.
+        """
         return self._request(
             OperationInfo(service="forwards", operation="get", is_mutation=False, resource_id=forward_id),
             "GET",
@@ -20,6 +25,15 @@ class ForwardsService(BaseService):
         )
 
     def list_replies(self, *, forward_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List all replies to a forward.
+
+        Args:
+            forward_id: The forward id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="forwards", operation="list_replies", is_mutation=False, resource_id=forward_id),
             f"/inbox_forwards/{forward_id}/replies.json",
@@ -29,6 +43,12 @@ class ForwardsService(BaseService):
         )
 
     def get_reply(self, *, forward_id: int, reply_id: int) -> dict[str, Any]:
+        """Get a forward reply by ID.
+
+        Args:
+            forward_id: The forward id.
+            reply_id: The reply id.
+        """
         return self._request(
             OperationInfo(service="forwards", operation="get_reply", is_mutation=False, resource_id=reply_id),
             "GET",
@@ -37,6 +57,11 @@ class ForwardsService(BaseService):
         )
 
     def get_inbox(self, *, inbox_id: int) -> dict[str, Any]:
+        """Get an inbox by ID.
+
+        Args:
+            inbox_id: The inbox id.
+        """
         return self._request(
             OperationInfo(service="forwards", operation="get_inbox", is_mutation=False, resource_id=inbox_id),
             "GET",
@@ -53,6 +78,17 @@ class ForwardsService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List all forwards in an inbox.
+
+        Args:
+            inbox_id: The inbox id.
+            sort: created_at|updated_at
+            direction: asc|desc
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="forwards", operation="list", is_mutation=False, resource_id=inbox_id),
             f"/inboxes/{inbox_id}/inbox_forwards.json",
@@ -64,6 +100,11 @@ class ForwardsService(BaseService):
 
 class AsyncForwardsService(AsyncBaseService):
     async def get(self, *, forward_id: int) -> dict[str, Any]:
+        """Get a forward by ID.
+
+        Args:
+            forward_id: The forward id.
+        """
         return await self._request(
             OperationInfo(service="forwards", operation="get", is_mutation=False, resource_id=forward_id),
             "GET",
@@ -74,6 +115,15 @@ class AsyncForwardsService(AsyncBaseService):
     async def list_replies(
         self, *, forward_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List all replies to a forward.
+
+        Args:
+            forward_id: The forward id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="forwards", operation="list_replies", is_mutation=False, resource_id=forward_id),
             f"/inbox_forwards/{forward_id}/replies.json",
@@ -83,6 +133,12 @@ class AsyncForwardsService(AsyncBaseService):
         )
 
     async def get_reply(self, *, forward_id: int, reply_id: int) -> dict[str, Any]:
+        """Get a forward reply by ID.
+
+        Args:
+            forward_id: The forward id.
+            reply_id: The reply id.
+        """
         return await self._request(
             OperationInfo(service="forwards", operation="get_reply", is_mutation=False, resource_id=reply_id),
             "GET",
@@ -91,6 +147,11 @@ class AsyncForwardsService(AsyncBaseService):
         )
 
     async def get_inbox(self, *, inbox_id: int) -> dict[str, Any]:
+        """Get an inbox by ID.
+
+        Args:
+            inbox_id: The inbox id.
+        """
         return await self._request(
             OperationInfo(service="forwards", operation="get_inbox", is_mutation=False, resource_id=inbox_id),
             "GET",
@@ -107,6 +168,17 @@ class AsyncForwardsService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List all forwards in an inbox.
+
+        Args:
+            inbox_id: The inbox id.
+            sort: created_at|updated_at
+            direction: asc|desc
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="forwards", operation="list", is_mutation=False, resource_id=inbox_id),
             f"/inboxes/{inbox_id}/inbox_forwards.json",

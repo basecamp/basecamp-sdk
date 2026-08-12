@@ -14,6 +14,16 @@ class ClientRepliesService(BaseService):
     def list(
         self, *, bucket_id: int, recording_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List all client replies for a recording (correspondence or approval).
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The recording id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(
                 service="clientreplies",
@@ -29,6 +39,13 @@ class ClientRepliesService(BaseService):
         )
 
     def get(self, *, bucket_id: int, recording_id: int, reply_id: int) -> dict[str, Any]:
+        """Get a single client reply by id.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The recording id.
+            reply_id: The reply id.
+        """
         return self._request(
             OperationInfo(
                 service="clientreplies", operation="get", is_mutation=False, project_id=bucket_id, resource_id=reply_id
@@ -43,6 +60,16 @@ class AsyncClientRepliesService(AsyncBaseService):
     async def list(
         self, *, bucket_id: int, recording_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List all client replies for a recording (correspondence or approval).
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The recording id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(
                 service="clientreplies",
@@ -58,6 +85,13 @@ class AsyncClientRepliesService(AsyncBaseService):
         )
 
     async def get(self, *, bucket_id: int, recording_id: int, reply_id: int) -> dict[str, Any]:
+        """Get a single client reply by id.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The recording id.
+            reply_id: The reply id.
+        """
         return await self._request(
             OperationInfo(
                 service="clientreplies", operation="get", is_mutation=False, project_id=bucket_id, resource_id=reply_id

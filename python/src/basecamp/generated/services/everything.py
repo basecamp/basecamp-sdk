@@ -19,6 +19,17 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Completed cards across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_cards", is_mutation=False),
             "/cards/completed.json",
@@ -37,6 +48,17 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Open cards with no due date across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_no_due_date_cards", is_mutation=False),
             "/cards/no_due_date.json",
@@ -55,6 +77,17 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_not_now_cards", is_mutation=False),
             "/cards/not_now.json",
@@ -73,6 +106,18 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
+        Each bucket entry carries the matching cards and their steps.
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_open_cards", is_mutation=False),
             "/cards/open.json",
@@ -86,6 +131,14 @@ class EverythingService(BaseService):
     def get_everything_overdue_cards(
         self, *, assignee_ids: list[int] | None = None, due: str | None = None
     ) -> ListResult:
+        """Get every overdue card across all accessible projects, oldest-due-date-first.
+        A complete, unpaginated array; each item embeds its `bucket`.
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+        """
         return self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_cards", is_mutation=False),
             "/cards/overdue.json",
@@ -101,6 +154,17 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Open, unassigned cards across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_unassigned_cards", is_mutation=False),
             "/cards/unassigned.json",
@@ -112,6 +176,15 @@ class EverythingService(BaseService):
         )
 
     def get_everything_checkins(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get every automatic check-in answer across all accessible projects, newest-first.
+        Paginated; each item embeds its `bucket`.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_checkins", is_mutation=False),
             "/checkins.json",
@@ -121,6 +194,15 @@ class EverythingService(BaseService):
         )
 
     def get_everything_comments(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get every comment across all accessible projects, newest-first (paginated).
+        Each item embeds its `bucket`.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_comments", is_mutation=False),
             "/comments.json",
@@ -137,6 +219,21 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Get every file recording across all accessible projects, newest-first (paginated).
+        Heterogeneous: uploads and Basecamp documents carry their
+        standard recording shapes, while rich-text attachments are wrapped in a
+        recording envelope plus an `attachable_sgid` and blob metadata. Modeled as
+        an optional-field superset (EverythingFile) so one element type decodes any
+        variant.
+
+        Args:
+            kind: Filter by file kind: all (default), images, pdfs, documents, or videos.
+            people_ids: Restrict to files created by the given people (repeatable).
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_files", is_mutation=False),
             "/files.json",
@@ -146,6 +243,15 @@ class EverythingService(BaseService):
         )
 
     def get_everything_forwards(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get every inbox forward across all accessible projects, newest-first (paginated).
+        Each item embeds its `bucket`.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_forwards", is_mutation=False),
             "/forwards.json",
@@ -155,6 +261,15 @@ class EverythingService(BaseService):
         )
 
     def get_everything_messages(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get every message across all accessible projects, newest-first (paginated).
+        Each item embeds its `bucket` for project context.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_messages", is_mutation=False),
             "/messages.json",
@@ -171,6 +286,17 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Completed to-dos across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_todos", is_mutation=False),
             "/todos/completed.json",
@@ -189,6 +315,17 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Open to-dos with no due date across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_no_due_date_todos", is_mutation=False),
             "/todos/no_due_date.json",
@@ -207,6 +344,18 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
+        Each bucket entry carries the matching to-dos and their steps.
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_open_todos", is_mutation=False),
             "/todos/open.json",
@@ -220,6 +369,14 @@ class EverythingService(BaseService):
     def get_everything_overdue_todos(
         self, *, assignee_ids: list[int] | None = None, due: str | None = None
     ) -> ListResult:
+        """Get every overdue to-do across all accessible projects, oldest-due-date-first.
+        A complete, unpaginated array; each item embeds its `bucket`.
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+        """
         return self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_todos", is_mutation=False),
             "/todos/overdue.json",
@@ -235,6 +392,17 @@ class EverythingService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_unassigned_todos", is_mutation=False),
             "/todos/unassigned.json",
@@ -255,6 +423,17 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Completed cards across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_cards", is_mutation=False),
             "/cards/completed.json",
@@ -273,6 +452,17 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Open cards with no due date across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_no_due_date_cards", is_mutation=False),
             "/cards/no_due_date.json",
@@ -291,6 +481,17 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_not_now_cards", is_mutation=False),
             "/cards/not_now.json",
@@ -309,6 +510,18 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
+        Each bucket entry carries the matching cards and their steps.
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_open_cards", is_mutation=False),
             "/cards/open.json",
@@ -322,6 +535,14 @@ class AsyncEverythingService(AsyncBaseService):
     async def get_everything_overdue_cards(
         self, *, assignee_ids: list[int] | None = None, due: str | None = None
     ) -> ListResult:
+        """Get every overdue card across all accessible projects, oldest-due-date-first.
+        A complete, unpaginated array; each item embeds its `bucket`.
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+        """
         return await self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_cards", is_mutation=False),
             "/cards/overdue.json",
@@ -337,6 +558,17 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Open, unassigned cards across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_unassigned_cards", is_mutation=False),
             "/cards/unassigned.json",
@@ -348,6 +580,15 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_checkins(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get every automatic check-in answer across all accessible projects, newest-first.
+        Paginated; each item embeds its `bucket`.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_checkins", is_mutation=False),
             "/checkins.json",
@@ -357,6 +598,15 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_comments(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get every comment across all accessible projects, newest-first (paginated).
+        Each item embeds its `bucket`.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_comments", is_mutation=False),
             "/comments.json",
@@ -373,6 +623,21 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Get every file recording across all accessible projects, newest-first (paginated).
+        Heterogeneous: uploads and Basecamp documents carry their
+        standard recording shapes, while rich-text attachments are wrapped in a
+        recording envelope plus an `attachable_sgid` and blob metadata. Modeled as
+        an optional-field superset (EverythingFile) so one element type decodes any
+        variant.
+
+        Args:
+            kind: Filter by file kind: all (default), images, pdfs, documents, or videos.
+            people_ids: Restrict to files created by the given people (repeatable).
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_files", is_mutation=False),
             "/files.json",
@@ -382,6 +647,15 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_forwards(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get every inbox forward across all accessible projects, newest-first (paginated).
+        Each item embeds its `bucket`.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_forwards", is_mutation=False),
             "/forwards.json",
@@ -391,6 +665,15 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_messages(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """Get every message across all accessible projects, newest-first (paginated).
+        Each item embeds its `bucket` for project context.
+
+        Args:
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_messages", is_mutation=False),
             "/messages.json",
@@ -407,6 +690,17 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Completed to-dos across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_todos", is_mutation=False),
             "/todos/completed.json",
@@ -425,6 +719,17 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Open to-dos with no due date across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_no_due_date_todos", is_mutation=False),
             "/todos/no_due_date.json",
@@ -443,6 +748,18 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
+        Each bucket entry carries the matching to-dos and their steps.
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_open_todos", is_mutation=False),
             "/todos/open.json",
@@ -456,6 +773,14 @@ class AsyncEverythingService(AsyncBaseService):
     async def get_everything_overdue_todos(
         self, *, assignee_ids: list[int] | None = None, due: str | None = None
     ) -> ListResult:
+        """Get every overdue to-do across all accessible projects, oldest-due-date-first.
+        A complete, unpaginated array; each item embeds its `bucket`.
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+        """
         return await self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_todos", is_mutation=False),
             "/todos/overdue.json",
@@ -471,6 +796,17 @@ class AsyncEverythingService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
+
+        Args:
+            assignee_ids: Restrict to tasks assigned to at least one of the given people
+                (repeatable). Assignees on nested steps are not considered.
+            due: Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_unassigned_todos", is_mutation=False),
             "/todos/unassigned.json",

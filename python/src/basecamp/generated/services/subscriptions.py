@@ -12,6 +12,11 @@ from basecamp.hooks import OperationInfo
 
 class SubscriptionsService(BaseService):
     def get(self, *, recording_id: int) -> dict[str, Any]:
+        """Get subscription information for a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         return self._request(
             OperationInfo(service="subscriptions", operation="get", is_mutation=False, resource_id=recording_id),
             "GET",
@@ -20,6 +25,11 @@ class SubscriptionsService(BaseService):
         )
 
     def subscribe(self, *, recording_id: int) -> dict[str, Any]:
+        """Subscribe the current user to a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         return self._request(
             OperationInfo(service="subscriptions", operation="subscribe", is_mutation=True, resource_id=recording_id),
             "POST",
@@ -30,6 +40,13 @@ class SubscriptionsService(BaseService):
     def update(
         self, *, recording_id: int, subscriptions: list[int] | None = None, unsubscriptions: list[int] | None = None
     ) -> dict[str, Any]:
+        """Update subscriptions by adding or removing specific users.
+
+        Args:
+            recording_id: The recording id.
+            subscriptions: The subscriptions.
+            unsubscriptions: The unsubscriptions.
+        """
         return self._request(
             OperationInfo(service="subscriptions", operation="update", is_mutation=True, resource_id=recording_id),
             "PUT",
@@ -39,6 +56,11 @@ class SubscriptionsService(BaseService):
         )
 
     def unsubscribe(self, *, recording_id: int) -> None:
+        """Unsubscribe the current user from a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         self._request_void(
             OperationInfo(service="subscriptions", operation="unsubscribe", is_mutation=True, resource_id=recording_id),
             "DELETE",
@@ -49,6 +71,11 @@ class SubscriptionsService(BaseService):
 
 class AsyncSubscriptionsService(AsyncBaseService):
     async def get(self, *, recording_id: int) -> dict[str, Any]:
+        """Get subscription information for a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         return await self._request(
             OperationInfo(service="subscriptions", operation="get", is_mutation=False, resource_id=recording_id),
             "GET",
@@ -57,6 +84,11 @@ class AsyncSubscriptionsService(AsyncBaseService):
         )
 
     async def subscribe(self, *, recording_id: int) -> dict[str, Any]:
+        """Subscribe the current user to a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         return await self._request(
             OperationInfo(service="subscriptions", operation="subscribe", is_mutation=True, resource_id=recording_id),
             "POST",
@@ -67,6 +99,13 @@ class AsyncSubscriptionsService(AsyncBaseService):
     async def update(
         self, *, recording_id: int, subscriptions: list[int] | None = None, unsubscriptions: list[int] | None = None
     ) -> dict[str, Any]:
+        """Update subscriptions by adding or removing specific users.
+
+        Args:
+            recording_id: The recording id.
+            subscriptions: The subscriptions.
+            unsubscriptions: The unsubscriptions.
+        """
         return await self._request(
             OperationInfo(service="subscriptions", operation="update", is_mutation=True, resource_id=recording_id),
             "PUT",
@@ -76,6 +115,11 @@ class AsyncSubscriptionsService(AsyncBaseService):
         )
 
     async def unsubscribe(self, *, recording_id: int) -> None:
+        """Unsubscribe the current user from a recording.
+
+        Args:
+            recording_id: The recording id.
+        """
         await self._request_void(
             OperationInfo(service="subscriptions", operation="unsubscribe", is_mutation=True, resource_id=recording_id),
             "DELETE",

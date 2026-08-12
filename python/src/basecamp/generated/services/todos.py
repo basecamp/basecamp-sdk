@@ -24,6 +24,22 @@ class TodosService(BaseService):
         due_on: str | None = None,
         starts_on: str | None = None,
     ) -> dict[str, Any]:
+        """Create a to-do directly under a project's to-do set, outside any to-do list.
+        This form exists only project-scoped (no account-scoped variant); parameters
+        and response match the to-do-list create. Find a project's to-do set id via
+        GetTodoset.
+
+        Args:
+            bucket_id: The bucket id.
+            todoset_id: The todoset id.
+            content: The content.
+            description: The description.
+            assignee_ids: The assignee ids.
+            completion_subscriber_ids: The completion subscriber ids.
+            notify: The notify.
+            due_on: The due on.
+            starts_on: The starts on.
+        """
         return self._request(
             OperationInfo(
                 service="todos",
@@ -55,6 +71,17 @@ class TodosService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List todos in a todolist.
+
+        Args:
+            todolist_id: The todolist id.
+            status: active|archived|trashed
+            completed: The completed.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/todos.json",
@@ -75,6 +102,18 @@ class TodosService(BaseService):
         due_on: str | None = None,
         starts_on: str | None = None,
     ) -> dict[str, Any]:
+        """Create a new todo in a todolist.
+
+        Args:
+            todolist_id: The todolist id.
+            content: The content.
+            description: The description.
+            assignee_ids: The assignee ids.
+            completion_subscriber_ids: The completion subscriber ids.
+            notify: The notify.
+            due_on: The due on.
+            starts_on: The starts on.
+        """
         return self._request(
             OperationInfo(service="todos", operation="create", is_mutation=True, resource_id=todolist_id),
             "POST",
@@ -92,6 +131,11 @@ class TodosService(BaseService):
         )
 
     def get(self, *, todo_id: int) -> dict[str, Any]:
+        """Get a single todo by id.
+
+        Args:
+            todo_id: The todo id.
+        """
         return self._request(
             OperationInfo(service="todos", operation="get", is_mutation=False, resource_id=todo_id),
             "GET",
@@ -111,6 +155,27 @@ class TodosService(BaseService):
         due_on: str | None = None,
         starts_on: str | None = None,
     ) -> dict[str, Any]:
+        """Replace a todo with a new complete representation.
+        The request body is the todo's full writable state: any writable field
+        omitted from the request is cleared server-side (empty/missing
+        assignee_ids clears assignees, missing description clears it, and so
+        on). content is required — a request without it is rejected.
+        To set some fields while preserving the rest, use the SDK's merge-safe
+        update or edit methods, which GET the current todo and PUT the full
+        representation back. Those read-modify-write helpers are not atomic:
+        a concurrent write between the GET and PUT is overwritten (last write
+        wins for the whole representation; the window is one round-trip).
+
+        Args:
+            todo_id: The todo id.
+            content: The content.
+            description: The description.
+            assignee_ids: The assignee ids.
+            completion_subscriber_ids: The completion subscriber ids.
+            notify: The notify.
+            due_on: The due on.
+            starts_on: The starts on.
+        """
         return self._request(
             OperationInfo(service="todos", operation="replace", is_mutation=True, resource_id=todo_id),
             "PUT",
@@ -128,6 +193,11 @@ class TodosService(BaseService):
         )
 
     def complete(self, *, todo_id: int) -> None:
+        """Mark a todo as complete.
+
+        Args:
+            todo_id: The todo id.
+        """
         self._request_void(
             OperationInfo(service="todos", operation="complete", is_mutation=True, resource_id=todo_id),
             "POST",
@@ -136,6 +206,11 @@ class TodosService(BaseService):
         )
 
     def uncomplete(self, *, todo_id: int) -> None:
+        """Mark a todo as incomplete.
+
+        Args:
+            todo_id: The todo id.
+        """
         self._request_void(
             OperationInfo(service="todos", operation="uncomplete", is_mutation=True, resource_id=todo_id),
             "DELETE",
@@ -144,6 +219,13 @@ class TodosService(BaseService):
         )
 
     def reposition(self, *, todo_id: int, position: int, parent_id: int | None = None) -> None:
+        """Reposition a todo within its todolist.
+
+        Args:
+            todo_id: The todo id.
+            position: The position.
+            parent_id: Optional todolist ID to move the todo to a different parent
+        """
         self._request_void(
             OperationInfo(service="todos", operation="reposition", is_mutation=True, resource_id=todo_id),
             "PUT",
@@ -167,6 +249,22 @@ class AsyncTodosService(AsyncBaseService):
         due_on: str | None = None,
         starts_on: str | None = None,
     ) -> dict[str, Any]:
+        """Create a to-do directly under a project's to-do set, outside any to-do list.
+        This form exists only project-scoped (no account-scoped variant); parameters
+        and response match the to-do-list create. Find a project's to-do set id via
+        GetTodoset.
+
+        Args:
+            bucket_id: The bucket id.
+            todoset_id: The todoset id.
+            content: The content.
+            description: The description.
+            assignee_ids: The assignee ids.
+            completion_subscriber_ids: The completion subscriber ids.
+            notify: The notify.
+            due_on: The due on.
+            starts_on: The starts on.
+        """
         return await self._request(
             OperationInfo(
                 service="todos",
@@ -198,6 +296,17 @@ class AsyncTodosService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List todos in a todolist.
+
+        Args:
+            todolist_id: The todolist id.
+            status: active|archived|trashed
+            completed: The completed.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/todos.json",
@@ -218,6 +327,18 @@ class AsyncTodosService(AsyncBaseService):
         due_on: str | None = None,
         starts_on: str | None = None,
     ) -> dict[str, Any]:
+        """Create a new todo in a todolist.
+
+        Args:
+            todolist_id: The todolist id.
+            content: The content.
+            description: The description.
+            assignee_ids: The assignee ids.
+            completion_subscriber_ids: The completion subscriber ids.
+            notify: The notify.
+            due_on: The due on.
+            starts_on: The starts on.
+        """
         return await self._request(
             OperationInfo(service="todos", operation="create", is_mutation=True, resource_id=todolist_id),
             "POST",
@@ -235,6 +356,11 @@ class AsyncTodosService(AsyncBaseService):
         )
 
     async def get(self, *, todo_id: int) -> dict[str, Any]:
+        """Get a single todo by id.
+
+        Args:
+            todo_id: The todo id.
+        """
         return await self._request(
             OperationInfo(service="todos", operation="get", is_mutation=False, resource_id=todo_id),
             "GET",
@@ -254,6 +380,27 @@ class AsyncTodosService(AsyncBaseService):
         due_on: str | None = None,
         starts_on: str | None = None,
     ) -> dict[str, Any]:
+        """Replace a todo with a new complete representation.
+        The request body is the todo's full writable state: any writable field
+        omitted from the request is cleared server-side (empty/missing
+        assignee_ids clears assignees, missing description clears it, and so
+        on). content is required — a request without it is rejected.
+        To set some fields while preserving the rest, use the SDK's merge-safe
+        update or edit methods, which GET the current todo and PUT the full
+        representation back. Those read-modify-write helpers are not atomic:
+        a concurrent write between the GET and PUT is overwritten (last write
+        wins for the whole representation; the window is one round-trip).
+
+        Args:
+            todo_id: The todo id.
+            content: The content.
+            description: The description.
+            assignee_ids: The assignee ids.
+            completion_subscriber_ids: The completion subscriber ids.
+            notify: The notify.
+            due_on: The due on.
+            starts_on: The starts on.
+        """
         return await self._request(
             OperationInfo(service="todos", operation="replace", is_mutation=True, resource_id=todo_id),
             "PUT",
@@ -271,6 +418,11 @@ class AsyncTodosService(AsyncBaseService):
         )
 
     async def complete(self, *, todo_id: int) -> None:
+        """Mark a todo as complete.
+
+        Args:
+            todo_id: The todo id.
+        """
         await self._request_void(
             OperationInfo(service="todos", operation="complete", is_mutation=True, resource_id=todo_id),
             "POST",
@@ -279,6 +431,11 @@ class AsyncTodosService(AsyncBaseService):
         )
 
     async def uncomplete(self, *, todo_id: int) -> None:
+        """Mark a todo as incomplete.
+
+        Args:
+            todo_id: The todo id.
+        """
         await self._request_void(
             OperationInfo(service="todos", operation="uncomplete", is_mutation=True, resource_id=todo_id),
             "DELETE",
@@ -287,6 +444,13 @@ class AsyncTodosService(AsyncBaseService):
         )
 
     async def reposition(self, *, todo_id: int, position: int, parent_id: int | None = None) -> None:
+        """Reposition a todo within its todolist.
+
+        Args:
+            todo_id: The todo id.
+            position: The position.
+            parent_id: Optional todolist ID to move the todo to a different parent
+        """
         await self._request_void(
             OperationInfo(service="todos", operation="reposition", is_mutation=True, resource_id=todo_id),
             "PUT",

@@ -12,6 +12,11 @@ from basecamp.hooks import OperationInfo
 
 class CommentsService(BaseService):
     def get(self, *, comment_id: int) -> dict[str, Any]:
+        """Get a single comment by id.
+
+        Args:
+            comment_id: The comment id.
+        """
         return self._request(
             OperationInfo(service="comments", operation="get", is_mutation=False, resource_id=comment_id),
             "GET",
@@ -20,6 +25,12 @@ class CommentsService(BaseService):
         )
 
     def update(self, *, comment_id: int, content: str) -> dict[str, Any]:
+        """Update an existing comment.
+
+        Args:
+            comment_id: The comment id.
+            content: The content.
+        """
         return self._request(
             OperationInfo(service="comments", operation="update", is_mutation=True, resource_id=comment_id),
             "PUT",
@@ -29,6 +40,15 @@ class CommentsService(BaseService):
         )
 
     def list(self, *, recording_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List comments on a recording.
+
+        Args:
+            recording_id: The recording id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="comments", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/comments.json",
@@ -38,6 +58,12 @@ class CommentsService(BaseService):
         )
 
     def create(self, *, recording_id: int, content: str) -> dict[str, Any]:
+        """Create a new comment on a recording.
+
+        Args:
+            recording_id: The recording id.
+            content: The content.
+        """
         return self._request(
             OperationInfo(service="comments", operation="create", is_mutation=True, resource_id=recording_id),
             "POST",
@@ -49,6 +75,11 @@ class CommentsService(BaseService):
 
 class AsyncCommentsService(AsyncBaseService):
     async def get(self, *, comment_id: int) -> dict[str, Any]:
+        """Get a single comment by id.
+
+        Args:
+            comment_id: The comment id.
+        """
         return await self._request(
             OperationInfo(service="comments", operation="get", is_mutation=False, resource_id=comment_id),
             "GET",
@@ -57,6 +88,12 @@ class AsyncCommentsService(AsyncBaseService):
         )
 
     async def update(self, *, comment_id: int, content: str) -> dict[str, Any]:
+        """Update an existing comment.
+
+        Args:
+            comment_id: The comment id.
+            content: The content.
+        """
         return await self._request(
             OperationInfo(service="comments", operation="update", is_mutation=True, resource_id=comment_id),
             "PUT",
@@ -66,6 +103,15 @@ class AsyncCommentsService(AsyncBaseService):
         )
 
     async def list(self, *, recording_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List comments on a recording.
+
+        Args:
+            recording_id: The recording id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="comments", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/comments.json",
@@ -75,6 +121,12 @@ class AsyncCommentsService(AsyncBaseService):
         )
 
     async def create(self, *, recording_id: int, content: str) -> dict[str, Any]:
+        """Create a new comment on a recording.
+
+        Args:
+            recording_id: The recording id.
+            content: The content.
+        """
         return await self._request(
             OperationInfo(service="comments", operation="create", is_mutation=True, resource_id=recording_id),
             "POST",

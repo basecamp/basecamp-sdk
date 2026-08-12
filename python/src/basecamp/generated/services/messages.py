@@ -20,6 +20,17 @@ class MessagesService(BaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List messages on a message board.
+
+        Args:
+            board_id: The board id.
+            sort: created_at|updated_at
+            direction: asc|desc
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="messages", operation="list", is_mutation=False, resource_id=board_id),
             f"/message_boards/{board_id}/messages.json",
@@ -39,6 +50,17 @@ class MessagesService(BaseService):
         subscriptions: list[int] | None = None,
         visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
+        """Create a new message on a message board.
+
+        Args:
+            board_id: The board id.
+            subject: The subject.
+            content: The content.
+            status: active|drafted
+            category_id: The category id.
+            subscriptions: The subscriptions.
+            visible_to_clients: The visible to clients.
+        """
         return self._request(
             OperationInfo(service="messages", operation="create", is_mutation=True, resource_id=board_id),
             "POST",
@@ -55,6 +77,11 @@ class MessagesService(BaseService):
         )
 
     def get(self, *, message_id: int) -> dict[str, Any]:
+        """Get a single message by id.
+
+        Args:
+            message_id: The message id.
+        """
         return self._request(
             OperationInfo(service="messages", operation="get", is_mutation=False, resource_id=message_id),
             "GET",
@@ -71,6 +98,15 @@ class MessagesService(BaseService):
         status: str | None = None,
         category_id: int | None = None,
     ) -> dict[str, Any]:
+        """Update an existing message.
+
+        Args:
+            message_id: The message id.
+            subject: The subject.
+            content: The content.
+            status: active|drafted
+            category_id: The category id.
+        """
         return self._request(
             OperationInfo(service="messages", operation="update", is_mutation=True, resource_id=message_id),
             "PUT",
@@ -80,6 +116,11 @@ class MessagesService(BaseService):
         )
 
     def pin(self, *, message_id: int) -> None:
+        """Pin a message to the top of the message board.
+
+        Args:
+            message_id: The message id.
+        """
         self._request_void(
             OperationInfo(service="messages", operation="pin", is_mutation=True, resource_id=message_id),
             "POST",
@@ -88,6 +129,11 @@ class MessagesService(BaseService):
         )
 
     def unpin(self, *, message_id: int) -> None:
+        """Unpin a message from the message board.
+
+        Args:
+            message_id: The message id.
+        """
         self._request_void(
             OperationInfo(service="messages", operation="unpin", is_mutation=True, resource_id=message_id),
             "DELETE",
@@ -106,6 +152,17 @@ class AsyncMessagesService(AsyncBaseService):
         page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
+        """List messages on a message board.
+
+        Args:
+            board_id: The board id.
+            sort: created_at|updated_at
+            direction: asc|desc
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="messages", operation="list", is_mutation=False, resource_id=board_id),
             f"/message_boards/{board_id}/messages.json",
@@ -125,6 +182,17 @@ class AsyncMessagesService(AsyncBaseService):
         subscriptions: list[int] | None = None,
         visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
+        """Create a new message on a message board.
+
+        Args:
+            board_id: The board id.
+            subject: The subject.
+            content: The content.
+            status: active|drafted
+            category_id: The category id.
+            subscriptions: The subscriptions.
+            visible_to_clients: The visible to clients.
+        """
         return await self._request(
             OperationInfo(service="messages", operation="create", is_mutation=True, resource_id=board_id),
             "POST",
@@ -141,6 +209,11 @@ class AsyncMessagesService(AsyncBaseService):
         )
 
     async def get(self, *, message_id: int) -> dict[str, Any]:
+        """Get a single message by id.
+
+        Args:
+            message_id: The message id.
+        """
         return await self._request(
             OperationInfo(service="messages", operation="get", is_mutation=False, resource_id=message_id),
             "GET",
@@ -157,6 +230,15 @@ class AsyncMessagesService(AsyncBaseService):
         status: str | None = None,
         category_id: int | None = None,
     ) -> dict[str, Any]:
+        """Update an existing message.
+
+        Args:
+            message_id: The message id.
+            subject: The subject.
+            content: The content.
+            status: active|drafted
+            category_id: The category id.
+        """
         return await self._request(
             OperationInfo(service="messages", operation="update", is_mutation=True, resource_id=message_id),
             "PUT",
@@ -166,6 +248,11 @@ class AsyncMessagesService(AsyncBaseService):
         )
 
     async def pin(self, *, message_id: int) -> None:
+        """Pin a message to the top of the message board.
+
+        Args:
+            message_id: The message id.
+        """
         await self._request_void(
             OperationInfo(service="messages", operation="pin", is_mutation=True, resource_id=message_id),
             "POST",
@@ -174,6 +261,11 @@ class AsyncMessagesService(AsyncBaseService):
         )
 
     async def unpin(self, *, message_id: int) -> None:
+        """Unpin a message from the message board.
+
+        Args:
+            message_id: The message id.
+        """
         await self._request_void(
             OperationInfo(service="messages", operation="unpin", is_mutation=True, resource_id=message_id),
             "DELETE",

@@ -14,6 +14,15 @@ class TimelineService(BaseService):
     def get_project_timeline(
         self, *, project_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """Get project timeline.
+
+        Args:
+            project_id: The project id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(
                 service="timeline", operation="get_project_timeline", is_mutation=False, project_id=project_id
@@ -29,6 +38,15 @@ class AsyncTimelineService(AsyncBaseService):
     async def get_project_timeline(
         self, *, project_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """Get project timeline.
+
+        Args:
+            project_id: The project id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(
                 service="timeline", operation="get_project_timeline", is_mutation=False, project_id=project_id

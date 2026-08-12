@@ -12,6 +12,11 @@ from basecamp.hooks import OperationInfo
 
 class GaugesService(BaseService):
     def get_gauge_needle(self, *, needle_id: int) -> dict[str, Any]:
+        """Get a gauge needle by ID.
+
+        Args:
+            needle_id: The needle id.
+        """
         return self._request(
             OperationInfo(service="gauges", operation="get_gauge_needle", is_mutation=False, resource_id=needle_id),
             "GET",
@@ -20,6 +25,12 @@ class GaugesService(BaseService):
         )
 
     def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict | None = None) -> dict[str, Any]:
+        """Update a gauge needle's description. Position and color are immutable.
+
+        Args:
+            needle_id: The needle id.
+            gauge_needle: The gauge needle.
+        """
         return self._request(
             OperationInfo(service="gauges", operation="update_gauge_needle", is_mutation=True, resource_id=needle_id),
             "PUT",
@@ -29,6 +40,11 @@ class GaugesService(BaseService):
         )
 
     def destroy_gauge_needle(self, *, needle_id: int) -> None:
+        """Destroy a gauge needle.
+
+        Args:
+            needle_id: The needle id.
+        """
         self._request_void(
             OperationInfo(service="gauges", operation="destroy_gauge_needle", is_mutation=True, resource_id=needle_id),
             "DELETE",
@@ -37,6 +53,12 @@ class GaugesService(BaseService):
         )
 
     def toggle_gauge(self, *, project_id: int, gauge: dict) -> None:
+        """Enable or disable the gauge for a project. Only project admins can toggle gauges.
+
+        Args:
+            project_id: The project id.
+            gauge: The gauge.
+        """
         self._request_void(
             OperationInfo(service="gauges", operation="toggle_gauge", is_mutation=True, project_id=project_id),
             "PUT",
@@ -48,6 +70,15 @@ class GaugesService(BaseService):
     def list_gauge_needles(
         self, *, project_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List gauge needles for a project, ordered newest first.
+
+        Args:
+            project_id: The project id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauge_needles", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/gauge/needles.json",
@@ -59,6 +90,14 @@ class GaugesService(BaseService):
     def create_gauge_needle(
         self, *, project_id: int, gauge_needle: dict, notify: str | None = None, subscriptions: list[int] | None = None
     ) -> dict[str, Any]:
+        """Create a gauge needle (progress update) for a project.
+
+        Args:
+            project_id: The project id.
+            gauge_needle: The gauge needle.
+            notify: Who to notify: "everyone", "working_on", "custom", or omit for nobody
+            subscriptions: Array of people IDs to notify (only used when notify is "custom")
+        """
         return self._request(
             OperationInfo(service="gauges", operation="create_gauge_needle", is_mutation=True, project_id=project_id),
             "POST",
@@ -70,6 +109,17 @@ class GaugesService(BaseService):
     def list_gauges(
         self, *, bucket_ids: str | None = None, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List gauges across all projects the authenticated user has access to.
+        Gauges are sorted by risk level (red, yellow, green), then alphabetically.
+
+        Args:
+            bucket_ids: Comma-separated list of project IDs. When provided, results are returned in
+                the order specified instead of by risk level.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauges", is_mutation=False),
             "/reports/gauges.json",
@@ -81,6 +131,11 @@ class GaugesService(BaseService):
 
 class AsyncGaugesService(AsyncBaseService):
     async def get_gauge_needle(self, *, needle_id: int) -> dict[str, Any]:
+        """Get a gauge needle by ID.
+
+        Args:
+            needle_id: The needle id.
+        """
         return await self._request(
             OperationInfo(service="gauges", operation="get_gauge_needle", is_mutation=False, resource_id=needle_id),
             "GET",
@@ -89,6 +144,12 @@ class AsyncGaugesService(AsyncBaseService):
         )
 
     async def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict | None = None) -> dict[str, Any]:
+        """Update a gauge needle's description. Position and color are immutable.
+
+        Args:
+            needle_id: The needle id.
+            gauge_needle: The gauge needle.
+        """
         return await self._request(
             OperationInfo(service="gauges", operation="update_gauge_needle", is_mutation=True, resource_id=needle_id),
             "PUT",
@@ -98,6 +159,11 @@ class AsyncGaugesService(AsyncBaseService):
         )
 
     async def destroy_gauge_needle(self, *, needle_id: int) -> None:
+        """Destroy a gauge needle.
+
+        Args:
+            needle_id: The needle id.
+        """
         await self._request_void(
             OperationInfo(service="gauges", operation="destroy_gauge_needle", is_mutation=True, resource_id=needle_id),
             "DELETE",
@@ -106,6 +172,12 @@ class AsyncGaugesService(AsyncBaseService):
         )
 
     async def toggle_gauge(self, *, project_id: int, gauge: dict) -> None:
+        """Enable or disable the gauge for a project. Only project admins can toggle gauges.
+
+        Args:
+            project_id: The project id.
+            gauge: The gauge.
+        """
         await self._request_void(
             OperationInfo(service="gauges", operation="toggle_gauge", is_mutation=True, project_id=project_id),
             "PUT",
@@ -117,6 +189,15 @@ class AsyncGaugesService(AsyncBaseService):
     async def list_gauge_needles(
         self, *, project_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List gauge needles for a project, ordered newest first.
+
+        Args:
+            project_id: The project id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauge_needles", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/gauge/needles.json",
@@ -128,6 +209,14 @@ class AsyncGaugesService(AsyncBaseService):
     async def create_gauge_needle(
         self, *, project_id: int, gauge_needle: dict, notify: str | None = None, subscriptions: list[int] | None = None
     ) -> dict[str, Any]:
+        """Create a gauge needle (progress update) for a project.
+
+        Args:
+            project_id: The project id.
+            gauge_needle: The gauge needle.
+            notify: Who to notify: "everyone", "working_on", "custom", or omit for nobody
+            subscriptions: Array of people IDs to notify (only used when notify is "custom")
+        """
         return await self._request(
             OperationInfo(service="gauges", operation="create_gauge_needle", is_mutation=True, project_id=project_id),
             "POST",
@@ -139,6 +228,17 @@ class AsyncGaugesService(AsyncBaseService):
     async def list_gauges(
         self, *, bucket_ids: str | None = None, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
+        """List gauges across all projects the authenticated user has access to.
+        Gauges are sorted by risk level (red, yellow, green), then alphabetically.
+
+        Args:
+            bucket_ids: Comma-separated list of project IDs. When provided, results are returned in
+                the order specified instead of by risk level.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauges", is_mutation=False),
             "/reports/gauges.json",

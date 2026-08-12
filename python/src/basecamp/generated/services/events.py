@@ -12,6 +12,15 @@ from basecamp.hooks import OperationInfo
 
 class EventsService(BaseService):
     def list(self, *, recording_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List all events for a recording.
+
+        Args:
+            recording_id: The recording id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return self._request_paginated(
             OperationInfo(service="events", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/events.json",
@@ -23,6 +32,15 @@ class EventsService(BaseService):
 
 class AsyncEventsService(AsyncBaseService):
     async def list(self, *, recording_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
+        """List all events for a recording.
+
+        Args:
+            recording_id: The recording id.
+            page: Page number for paginating through results. Defaults to 1. A positive value
+                selects exactly that page, not a starting offset; see SPEC section 8.
+            max_items: Client-side cap on the total number of items collected across pages; None
+                collects every page.
+        """
         return await self._request_paginated(
             OperationInfo(service="events", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/events.json",
