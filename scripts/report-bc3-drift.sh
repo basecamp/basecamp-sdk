@@ -47,28 +47,34 @@ if [ "$(jq 'length' <<< "$FILES_JSON")" -ge 300 ]; then
     exit 1
   }
   # Reduce the raw diff to the same [{status, filename}] shape: one block per
-  # `diff --git` header, status from the block's mode/rename lines, filename
-  # preferring the post-image path (matching the JSON endpoint's `filename`,
-  # which is the new name for renames).
+  # `diff --git` header, status from the block's mode/rename lines. The
+  # filename baseline comes from the header itself — its ` b/` path is the
+  # JSON endpoint's `filename` in every case (post-image path; the old path
+  # for a delete, where both header paths are the same; the new name for a
+  # rename) — because a block is not guaranteed any other line naming the
+  # file: mode-only changes and empty-file adds/deletes carry no ---/+++,
+  # rename, or Binary lines at all. `rename to`/`+++ b/` then refine it,
+  # which also covers headers the naive parse cannot split (git quotes paths
+  # with unusual characters). A block that still has no filename aborts the
+  # whole run — this fallback exists to never under-report.
   FILES_JSON="$(awk '
     function flush() {
-      if (fn != "") printf "%s\t%s\n", st, fn
-      st = "modified"; fn = ""
+      if (inblock) {
+        if (fn == "") { bad = 1; print "ERROR: diff block with no derivable filename; refusing to under-report" > "/dev/stderr"; exit 1 }
+        printf "%s\t%s\n", st, fn
+      }
+      inblock = 1; st = "modified"; fn = ""
     }
-    /^diff --git /  { flush() }
+    /^diff --git /  {
+      flush()
+      if (match($0, / b\//)) fn = substr($0, RSTART + 3)
+    }
     /^new file mode /   { st = "added" }
     /^deleted file mode / { st = "removed" }
     /^rename from /     { st = "renamed" }
     /^rename to /       { fn = substr($0, 11) }
-    /^--- a\//          { if (fn == "") fn = substr($0, 7) }
     /^\+\+\+ b\//       { fn = substr($0, 7) }
-    /^Binary files /    {
-      if (fn == "") {
-        if (match($0, / b\/.* differ$/)) fn = substr($0, RSTART + 3, RLENGTH - 10)
-        else if (match($0, /^Binary files a\/.* and /)) fn = substr($0, 16, RLENGTH - 20)
-      }
-    }
-    END { flush() }
+    END { if (!bad) flush() }
   ' <<< "$DIFF" | jq -Rn '[inputs | split("\t") | {status: .[0], filename: .[1]}]')"
 fi
 
