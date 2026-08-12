@@ -650,6 +650,75 @@ func TestFileCheckpointStore_OnePathIsOneLockAcrossSpellings(t *testing.T) {
 	}
 }
 
+// The lock is keyed by the canonical absolute path, so the file operations
+// must use that same path and not re-resolve a relative spelling against
+// whatever the working directory happens to be later. A process that chdirs
+// after constructing a store — a CLI resolving a workspace, a test using
+// t.Chdir — would otherwise have the store write a DIFFERENT file while
+// holding the original file's lock, and a store constructed for that new file
+// takes a different lock: two writers, one file, no serialization, which is
+// exactly the lost update the lock registry exists to prevent.
+func TestFileCheckpointStore_RelativePathSurvivesAWorkingDirectoryChange(t *testing.T) {
+	ctx := context.Background()
+	home := t.TempDir()
+	elsewhere := t.TempDir()
+	key := storeKey("openclaw")
+
+	t.Chdir(home)
+	store := NewFileCheckpointStore("checkpoints.json")
+	if err := store.Save(ctx, key, "pos-1"); err != nil {
+		t.Fatalf("Save() before the chdir = %v, want nil", err)
+	}
+
+	t.Chdir(elsewhere)
+	if err := store.Save(ctx, key, "pos-2"); err != nil {
+		t.Fatalf("Save() after the chdir = %v, want nil", err)
+	}
+	if files := filesUnder(t, elsewhere); len(files) != 0 {
+		t.Fatalf("files under the new working directory = %v, want none: "+
+			"the store must keep writing the file whose lock it holds", files)
+	}
+
+	// A store constructed now over the same relative spelling names a
+	// different file, and therefore takes a different lock. The two must stay
+	// on their own files — under the defect they would share one file while
+	// holding different locks.
+	other := NewFileCheckpointStore("checkpoints.json")
+	if other.mu == store.mu {
+		t.Fatal("two stores over two different files share one lock")
+	}
+	if err := other.Save(ctx, storeKey("shadowfax"), "pos-other"); err != nil {
+		t.Fatalf("Save() into the new working directory = %v, want nil", err)
+	}
+
+	homeFile := readStoreFile(t, filepath.Join(home, "checkpoints.json"))
+	if got := homeFile[key.FlatKey()]; got != "pos-2" {
+		t.Errorf("the original file holds %q for the original lineage, want %q", got, "pos-2")
+	}
+	if _, ok := homeFile[storeKey("shadowfax").FlatKey()]; ok {
+		t.Error("the second store wrote into the first store's file")
+	}
+	elsewhereFile := readStoreFile(t, filepath.Join(elsewhere, "checkpoints.json"))
+	if _, ok := elsewhereFile[key.FlatKey()]; ok {
+		t.Error("the first store wrote into the second store's file after the chdir")
+	}
+}
+
+// readStoreFile parses the store file at path, failing the test if it is
+// absent or unparseable.
+func readStoreFile(t *testing.T, path string) map[string]string {
+	t.Helper()
+	data, err := os.ReadFile(path) // #nosec G304 -- test-owned temp path
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+	var entries map[string]string
+	if err := json.Unmarshal(data, &entries); err != nil {
+		t.Fatalf("parsing %s: %v", path, err)
+	}
+	return entries
+}
+
 // Concurrent readers and a writer must not race. Run under -race.
 func TestFileCheckpointStore_ConcurrentLoadAndSave(t *testing.T) {
 	ctx := context.Background()

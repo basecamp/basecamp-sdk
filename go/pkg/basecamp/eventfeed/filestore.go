@@ -68,7 +68,9 @@ import (
 // and after a filter change the key itself changed, so the old lineage simply
 // goes cold.
 type FileCheckpointStore struct {
-	// path is the JSON file itself, not a directory.
+	// path is the JSON file itself, not a directory: the canonical spelling
+	// the lock is keyed on, so the file this store operates on and the file
+	// its lock protects cannot drift apart — see canonicalStorePath.
 	path string
 	// mu serializes Save's read-modify-write against itself and against Load.
 	// It is the lock for the canonical path, shared with every other store
@@ -83,8 +85,19 @@ var _ CheckpointStore = (*FileCheckpointStore)(nil)
 // file and its parent directories are created on the first successful Save;
 // constructing a store touches the filesystem not at all, so a path that does
 // not yet exist is normal and loads as Missing.
+//
+// A relative path is resolved once, here, against the working directory at
+// construction — the same resolution the lock is keyed on. Keeping the two
+// together is the point: were the store to hold the relative spelling and
+// re-resolve it at every write, a process that later changed directory would
+// have it writing a different file while holding the original file's lock,
+// and a store constructed for that new file would take a different lock —
+// two unserialized writers over one file, which is precisely the lost update
+// the per-path lock exists to prevent. Errors therefore name the resolved
+// path rather than the spelling the caller passed.
 func NewFileCheckpointStore(path string) *FileCheckpointStore {
-	return &FileCheckpointStore{path: path, mu: pathLock(path)}
+	canonical := canonicalStorePath(path)
+	return &FileCheckpointStore{path: canonical, mu: pathLock(canonical)}
 }
 
 // pathLocks holds one lock per canonical store path, shared by every store

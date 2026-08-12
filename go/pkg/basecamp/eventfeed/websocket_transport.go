@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 )
@@ -15,7 +16,8 @@ import (
 // github.com/coder/websocket behind the cable seam. Dial applies the
 // cable-URL policy before any network I/O, performs the handshake under the
 // caller's ctx (the connector owns the handshake deadline), negotiates
-// subprotocol "actioncable-v1-json", sends no Origin header, refuses
+// subprotocol "actioncable-v1-json" and refuses a handshake that did not
+// select it, sends no Origin header, refuses
 // redirects, and enforces the dial's maxFrameBytes while reading via the
 // socket read limit — an over-limit message aborts the read without being
 // materialized. No error it returns ever carries the dialed URL's query
@@ -81,6 +83,32 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 			return nil, &DialError{Kind: DialPolicy, Reason: "cable URL redirected; redirects are refused"}
 		}
 		return nil, &DialError{Kind: DialTransient, Err: redactDialErr(err, wsURL)}
+	}
+	if negotiated := conn.Subprotocol(); !strings.EqualFold(negotiated, cableSubprotocol) {
+		// coder/websocket verifies the server's selection only when it made
+		// one: verifySubprotocol (dial.go) returns nil for an ABSENT
+		// Sec-WebSocket-Protocol, so a 101 that selected nothing arrives here
+		// as a healthy connection that never agreed to speak Action Cable. A
+		// mismatched selection the library already rejects, which leaves the
+		// empty case as the only one this can see — the comparison is
+		// case-insensitive to match the library's own (it accepts a
+		// case-varying echo), so nothing the library passed is refused here
+		// for spelling alone.
+		//
+		// CloseNow, not a graceful close: no Action Cable session exists to
+		// close down (nothing was subscribed), and the dial is on the
+		// connector's handshake deadline, which a close handshake with an
+		// already-misbehaving peer would eat.
+		_ = conn.CloseNow()
+		// Policy, not transient. The classification asks whether a retry can
+		// differ, and a fresh mint returns a URL pointing at the same server,
+		// which selects the same nothing — so this is the redirect case, not
+		// the refused-connection case: Terminal(invalid_cable_url) surfaces a
+		// server that cannot speak the protocol instead of reconnecting
+		// against it forever. The counterargument — a proxy stripping the
+		// header transiently — argues for a loud stop even harder: an
+		// operator can see a terminal, but not an endless backoff cycle.
+		return nil, &DialError{Kind: DialPolicy, Reason: "cable server did not negotiate the " + cableSubprotocol + " subprotocol"}
 	}
 	if maxFrameBytes > 0 {
 		conn.SetReadLimit(maxFrameBytes)
@@ -164,9 +192,48 @@ func (c *wsConn) WriteFrame(ctx context.Context, data []byte) error {
 	return c.conn.Write(ctx, websocket.MessageText, data)
 }
 
+// closeGraceBudget bounds how long Close waits on the graceful close
+// handshake before returning to its caller.
+//
+// coder/websocket's Conn.Close is two phases with hardcoded timeouts and no
+// way to bound them separately (close.go: writeClose under a 5s context, then
+// waitCloseHandshake under another 5s). Only the first phase is contractual —
+// §23 requires the peer to SEE a close frame, and liveConn.dispose closes
+// before cancelling the attempt precisely so it does — while the second is
+// politeness the connector never reads. Left synchronous, that politeness puts
+// up to ten seconds in front of caller cancellation, Connector.Close, every
+// terminal outcome and every reconnect, all of which must reach the universal
+// Closed edge promptly.
+//
+// One second is the budget because the phase that must complete is a control
+// frame write to an open socket — microseconds locally, and bounded by the
+// kernel's send buffer, not by the peer — while the phase worth allowing for
+// is one close-reply round trip, which a WAN peer answers well inside a
+// second. So a live, well-behaved peer still completes the whole handshake
+// synchronously, and a peer that ignores it costs a tenth of the library's
+// worst case.
+const closeGraceBudget = time.Second
+
+// errCloseNotAcknowledged is what Close reports when the peer did not answer
+// the close handshake within closeGraceBudget. The close frame was still
+// written (it is the first thing the handshake does), so this is a slow or
+// silent peer, not a failure to close.
+var errCloseNotAcknowledged = errors.New("eventfeed: cable close handshake not acknowledged within the close budget")
+
 // Close implements CableConn: idempotent, safe from any goroutine, unblocks
-// ReadFrame and WriteFrame. The first call attempts the graceful close
-// handshake and falls back to tearing the socket down; repeats are no-ops.
+// ReadFrame and WriteFrame. The first call runs the graceful close handshake
+// and waits at most closeGraceBudget for it; repeats are no-ops.
+//
+// Past the budget the handshake is left to finish off-caller. That is not a
+// leak and not an abandoned close: coder/websocket's Conn.Close tears the
+// underlying socket down unconditionally once its handshake attempt ends
+// (close.go calls c.close() whether the handshake succeeded or not), within
+// its own 5s+5s ceiling, so the socket always dies and any read still blocked
+// inside the library unblocks with it. What the caller trades for returning
+// early is the last word on whether the peer acknowledged — and, if the
+// attempt's context is cancelled immediately afterward (dispose does exactly
+// that), the tail of a close frame a peer that already ignored it for a second
+// might not have flushed anyway.
 func (c *wsConn) Close(code int, reason string) error {
 	c.mu.Lock()
 	if c.closed {
@@ -175,12 +242,18 @@ func (c *wsConn) Close(code int, reason string) error {
 	}
 	c.closed = true
 	c.mu.Unlock()
-	if err := c.conn.Close(websocket.StatusCode(code), reason); err != nil {
-		// The graceful handshake failed (peer already gone, socket dead);
-		// make sure the underlying socket is torn down so pending reads and
-		// writes unblock regardless.
-		_ = c.conn.CloseNow()
+
+	// Deliberately no CloseNow fallback on error: it would be a no-op here.
+	// Conn.Close has already closed the socket by the time it returns, and
+	// CloseNow while a Close is still in flight takes the library's
+	// already-closing branch, which only waits (up to 15s) for that Close's
+	// goroutines — the opposite of a prompt teardown.
+	done := make(chan error, 1)
+	go func() { done <- c.conn.Close(websocket.StatusCode(code), reason) }()
+	select {
+	case err := <-done:
 		return err
+	case <-time.After(closeGraceBudget):
+		return errCloseNotAcknowledged
 	}
-	return nil
 }

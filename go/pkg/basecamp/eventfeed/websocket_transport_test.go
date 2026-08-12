@@ -20,6 +20,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/coder/websocket"
 
@@ -353,6 +354,161 @@ func TestWebSocketTransport_DialErrorsRedactTicket(t *testing.T) {
 		}
 		assertNoTicket(t, err)
 	})
+}
+
+// TestWebSocketTransport_RejectsUnnegotiatedSubprotocol closes the gap
+// coder/websocket leaves open: its verifySubprotocol (dial.go) returns nil
+// when the 101 response carries NO Sec-WebSocket-Protocol at all, so a server
+// that selects nothing yields a live connection that never agreed to speak
+// actioncable-v1-json. The transport must refuse it — as policy, not
+// transient: a fresh mint returns a URL pointing at the same server, which
+// will keep selecting nothing, so reconnecting cannot help.
+func TestWebSocketTransport_RejectsUnnegotiatedSubprotocol(t *testing.T) {
+	accepted := make(chan *websocket.Conn, 1)
+	// AcceptOptions with no Subprotocols: the handshake succeeds and selects
+	// none, which is exactly the case the library lets through.
+	srv := newParkedWSServer(t, accepted, nil)
+
+	tr := &eventfeed.WebSocketTransport{}
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/cable?ticket=sekrit-ticket-value"
+	conn, err := tr.Dial(context.Background(), wsURL, 1<<20)
+	if conn != nil {
+		_ = conn.Close(1000, "")
+		t.Fatal("dial returned a connection although the server negotiated no subprotocol")
+	}
+	var de *eventfeed.DialError
+	if !errors.As(err, &de) {
+		t.Fatalf("dial error = %v (%T), want *eventfeed.DialError", err, err)
+	}
+	if de.Kind != eventfeed.DialPolicy {
+		t.Errorf("DialError.Kind = %v, want policy (a server that never negotiates the subprotocol is not retryable)", de.Kind)
+	}
+	assertNoTicket(t, err)
+
+	// The refused connection is torn down rather than leaked: the server side
+	// sees its socket die without the test releasing the handler.
+	peer := awaitPeer(t, accepted)
+	if err := awaitPeerRead(t, peer); err == nil {
+		t.Error("the refused connection was left open, want it torn down")
+	}
+}
+
+// TestWebSocketTransport_UppercaseSchemeDials pins the pairing between the
+// cable-URL policy — which compares the scheme case-insensitively — and what
+// the library actually dials. net/url.Parse lowercases the scheme before
+// coder/websocket's handshake switch sees it (dial.go handshakeRequest, over
+// url.Parse's `url.Scheme = strings.ToLower(url.Scheme)`), so a "WS://"
+// spelling connects; this test is the regression pin that the two halves stay
+// in agreement, and that the ticket-bearing remainder still rides through
+// byte-identical.
+func TestWebSocketTransport_UppercaseSchemeDials(t *testing.T) {
+	h := newWSHarness(t)
+	target := "/cable?ticket=t-1%2Fabc&b=2&a=1"
+	wsURL := "WS" + strings.TrimPrefix(h.srv.URL, "http") + target
+	conn, err := h.transport.Dial(context.Background(), wsURL, 1<<20)
+	if err != nil {
+		t.Fatalf("dial of an uppercase-scheme URL the policy accepts: %v", err)
+	}
+	defer conn.Close(1000, "")
+	if targets := h.DialedTargets(); len(targets) != 1 || targets[0] != target {
+		t.Errorf("DialedTargets = %q, want [%q]", targets, target)
+	}
+}
+
+// closeBoundWatchdog bounds the teardown assertion below. It sits between the
+// transport's own close budget and coder/websocket's unbounded-to-us handshake
+// (5s to write the close frame, then 5s waiting for the peer's answer), so it
+// fails the stall without racing a slow machine.
+const closeBoundWatchdog = 3 * time.Second
+
+// TestWebSocketTransport_CloseIsBoundedAgainstAnUnresponsivePeer drives the
+// teardown that stalls: a peer that stays alive and never answers the close
+// handshake. coder/websocket's Conn.Close waits 5s for that answer, and
+// liveConn.dispose closes BEFORE cancelling the attempt (deliberately — the
+// peer must see a close frame), so an unbounded close delays cancellation,
+// Connector.Close, every terminal outcome and every reconnect behind it.
+// Both halves are asserted: Close returns under the watchdog, AND the close
+// frame still reached the peer.
+func TestWebSocketTransport_CloseIsBoundedAgainstAnUnresponsivePeer(t *testing.T) {
+	accepted := make(chan *websocket.Conn, 1)
+	// The handler parks without reading, so the close frame sits unanswered in
+	// the peer's socket — coder/websocket only answers a close while reading.
+	srv := newParkedWSServer(t, accepted, []string{"actioncable-v1-json"})
+
+	tr := &eventfeed.WebSocketTransport{}
+	conn, err := tr.Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/cable", 1<<20)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	peer := awaitPeer(t, accepted)
+
+	closed := make(chan error, 1)
+	go func() { closed <- conn.Close(1000, "teardown") }()
+	select {
+	case <-closed:
+	case <-time.After(closeBoundWatchdog):
+		t.Fatalf("Close blocked past %v against a peer that never answers the close handshake", closeBoundWatchdog)
+	}
+
+	// Only now — after the bound was measured — does the peer read, so the
+	// close frame it sees was written without the transport waiting for it.
+	if err := awaitPeerRead(t, peer); websocket.CloseStatus(err) != websocket.StatusNormalClosure {
+		t.Errorf("peer read after teardown = %v, want a %d close frame: the close frame must still be written",
+			err, websocket.StatusNormalClosure)
+	}
+}
+
+// newParkedWSServer starts a WebSocket server whose handler accepts one
+// connection, publishes it on accepted, and then parks WITHOUT READING until
+// the test ends — the shape both the subprotocol refusal and the close-bound
+// test need, where the peer must stay alive but silent. Parking is what makes
+// a close frame go unanswered: coder/websocket answers one only while reading.
+func newParkedWSServer(t *testing.T, accepted chan<- *websocket.Conn, subprotocols []string) *httptest.Server {
+	t.Helper()
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: subprotocols})
+		if err != nil {
+			return
+		}
+		accepted <- c
+		<-release
+		_ = c.CloseNow()
+	}))
+	// LIFO: release the parked handler first so srv.Close cannot block on it.
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release) })
+	return srv
+}
+
+// awaitPeer takes the accepted server-side connection under the watchdog.
+func awaitPeer(t *testing.T, accepted <-chan *websocket.Conn) *websocket.Conn {
+	t.Helper()
+	select {
+	case peer := <-accepted:
+		return peer
+	case <-time.After(contractWatchdog):
+		t.Fatal("the server never accepted a connection")
+		return nil
+	}
+}
+
+// awaitPeerRead performs one server-side read under the watchdog, returning
+// its error (a close frame surfaces as websocket.CloseError).
+func awaitPeerRead(t *testing.T, peer *websocket.Conn) error {
+	t.Helper()
+	result := make(chan error, 1)
+	go func() {
+		_, _, err := peer.Read(context.Background())
+		result <- err
+	}()
+	select {
+	case err := <-result:
+		return err
+	case <-time.After(contractWatchdog):
+		t.Fatal("the peer's read never returned")
+		return nil
+	}
 }
 
 // assertNoTicket asserts err's rendering never leaks the ticket-bearing
