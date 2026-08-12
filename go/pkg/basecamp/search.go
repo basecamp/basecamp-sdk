@@ -19,7 +19,12 @@ import (
 // keys entirely (they stay zero-valued) and carries the file fields
 // (Filename through AppDownloadURL) instead.
 type SearchResult struct {
-	ID               int64  `json:"id"`
+	// ID, Title, Type, URL and AppURL stay value-typed for compatibility, but
+	// carry omitempty: a file-attachment hit never receives them, and the
+	// absence of these keys is the branch discriminator, so a re-marshal must
+	// not fabricate `"id":0` and empty strings — the same absence-round-trips-
+	// as-absence discipline as CreatedAt/UpdatedAt/BubbleUpURL below.
+	ID               int64  `json:"id,omitempty"`
 	Status           string `json:"status"`
 	VisibleToClients bool   `json:"visible_to_clients"`
 	// CreatedAt and UpdatedAt are optional on this polymorphic projection —
@@ -31,11 +36,11 @@ type SearchResult struct {
 	// value-typed field would always emit).
 	CreatedAt      *time.Time `json:"created_at,omitempty"`
 	UpdatedAt      *time.Time `json:"updated_at,omitempty"`
-	Title          string     `json:"title"`
+	Title          string     `json:"title,omitempty"`
 	InheritsStatus bool       `json:"inherits_status"`
-	Type           string     `json:"type"`
-	URL            string     `json:"url"`
-	AppURL         string     `json:"app_url"`
+	Type           string     `json:"type,omitempty"`
+	URL            string     `json:"url,omitempty"`
+	AppURL         string     `json:"app_url,omitempty"`
 	BookmarkURL    string     `json:"bookmark_url"`
 	// BubbleUpURL is the URL of the Bubble Up record for this recording. Optional
 	// on this polymorphic projection: recordings/_recording.json.jbuilder emits

@@ -302,6 +302,62 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 	}
 }
 
+// TestSearchResult_AttachmentHitRoundTrip pins the branch discriminator
+// through a re-marshal: a file-attachment hit is recognizable by the ABSENCE
+// of the five envelope keys (id, title, type, url, app_url), so decoding one
+// and re-encoding it must not fabricate `"id":0` and empty strings for keys
+// the wire never carried. The five are value-typed for compatibility; their
+// omitempty tags are what this test guards.
+func TestSearchResult_AttachmentHitRoundTrip(t *testing.T) {
+	data := loadSearchFixture(t, "results.json")
+
+	var results []SearchResult
+	if err := json.Unmarshal(data, &results); err != nil {
+		t.Fatalf("failed to unmarshal results.json: %v", err)
+	}
+
+	out, err := json.Marshal(results[4]) // the file-attachment hit
+	if err != nil {
+		t.Fatalf("failed to re-marshal attachment hit: %v", err)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(out, &obj); err != nil {
+		t.Fatalf("failed to parse re-marshaled attachment hit: %v", err)
+	}
+
+	for _, key := range []string{"id", "title", "type", "url", "app_url"} {
+		if _, ok := obj[key]; ok {
+			t.Errorf("re-marshaled attachment hit fabricates %q — absence of this key is the branch discriminator", key)
+		}
+	}
+	// The keys the wire did carry survive the round trip.
+	if obj["filename"] != "leto-hero.jpg" {
+		t.Errorf("expected filename to round-trip, got %v", obj["filename"])
+	}
+	// content/description stay present-and-null (required, no omitempty).
+	for _, key := range []string{"content", "description"} {
+		if v, ok := obj[key]; !ok || v != nil {
+			t.Errorf("expected %s to round-trip as present-and-null, got %v (present=%v)", key, v, ok)
+		}
+	}
+
+	// A generic hit keeps all five on re-marshal — omitempty must not eat
+	// real values.
+	out0, err := json.Marshal(results[0])
+	if err != nil {
+		t.Fatalf("failed to re-marshal message hit: %v", err)
+	}
+	var obj0 map[string]any
+	if err := json.Unmarshal(out0, &obj0); err != nil {
+		t.Fatalf("failed to parse re-marshaled message hit: %v", err)
+	}
+	for _, key := range []string{"id", "title", "type", "url", "app_url"} {
+		if _, ok := obj0[key]; !ok {
+			t.Errorf("re-marshaled message hit lost %q", key)
+		}
+	}
+}
+
 func TestSearchMetadata_Unmarshal(t *testing.T) {
 	data := loadSearchFixture(t, "metadata.json")
 
