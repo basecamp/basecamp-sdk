@@ -41,7 +41,8 @@ FILES_JSON="$(gh api "$COMPARE" --jq '[.files[] | {status, filename}]')"
 # full file list from the diff media type, which is not subject to it; if
 # that fetch fails too (GitHub also bounds raw-diff rendering, at sizes far
 # beyond the cap), refuse to answer rather than under-report.
-if [ "$(jq 'length' <<< "$FILES_JSON")" -ge 300 ]; then
+JSON_COUNT="$(jq 'length' <<< "$FILES_JSON")"
+if [ "$JSON_COUNT" -ge 300 ]; then
   DIFF="$(gh api -H "Accept: application/vnd.github.diff" "$COMPARE")" || {
     echo "ERROR: $SHORT_REV..$BRANCH exceeds GitHub's 300-file compare cap and the raw-diff fallback failed; refusing to report a partial file list" >&2
     exit 1
@@ -92,6 +93,19 @@ if [ "$(jq 'length' <<< "$FILES_JSON")" -ge 300 ]; then
     /^\+\+\+ b\//       { fn = substr($0, 7) }
     END { if (!bad) flush() }
   ' <<< "$DIFF" | jq -Rn '[inputs | split("\t") | {status: .[0], filename: .[1]}]')"
+
+  # Response-integrity invariant, closing this class the way quote-refusal
+  # closed the path grammar: this branch only executes because the JSON
+  # endpoint just proved the comparison holds at least JSON_COUNT (>= 300)
+  # files, so a fallback that recovers fewer — an empty 200, a truncated
+  # body, a blockless response — is by definition incomplete. Require the
+  # recovery to be at least as large as what was already proven, or answer
+  # nothing at all.
+  RECOVERED="$(jq 'length' <<< "$FILES_JSON")"
+  if [ "$RECOVERED" -lt "$JSON_COUNT" ]; then
+    echo "ERROR: raw-diff fallback recovered only $RECOVERED files where the compare endpoint already proved $JSON_COUNT; refusing to under-report" >&2
+    exit 1
+  fi
 fi
 
 report() {
