@@ -48,15 +48,19 @@ if [ "$(jq 'length' <<< "$FILES_JSON")" -ge 300 ]; then
   }
   # Reduce the raw diff to the same [{status, filename}] shape: one block per
   # `diff --git` header, status from the block's mode/rename lines. The
-  # filename baseline comes from the header itself — its ` b/` path is the
-  # JSON endpoint's `filename` in every case (post-image path; the old path
-  # for a delete, where both header paths are the same; the new name for a
-  # rename) — because a block is not guaranteed any other line naming the
-  # file: mode-only changes and empty-file adds/deletes carry no ---/+++,
-  # rename, or Binary lines at all. `rename to`/`+++ b/` then refine it,
-  # which also covers headers the naive parse cannot split (git quotes paths
-  # with unusual characters). A block that still has no filename aborts the
-  # whole run — this fallback exists to never under-report.
+  # filename baseline comes from the header itself, because a block is not
+  # guaranteed any other line naming the file: mode-only changes and
+  # empty-file adds/deletes carry no ---/+++, rename, or Binary lines at
+  # all. Those degenerate blocks are always symmetric — `a/X b/X`, same X on
+  # both sides — so X is recovered by length, validating that the two halves
+  # match; searching for a ` b/` delimiter instead would mis-split any X that
+  # itself contains ` b/`, first match and last match alike, and hand back a
+  # wrong-but-nonempty name the abort guard cannot see. Asymmetric headers
+  # are renames or copies, which git always names on their own `rename to` /
+  # `copy to` lines; `+++ b/` refines content-bearing blocks. A block that
+  # still has no filename aborts the whole run (git quotes headers holding
+  # unusual characters, defeating both parses) — this fallback exists to
+  # never under-report.
   FILES_JSON="$(awk '
     function flush() {
       if (inblock) {
@@ -67,12 +71,16 @@ if [ "$(jq 'length' <<< "$FILES_JSON")" -ge 300 ]; then
     }
     /^diff --git /  {
       flush()
-      if (match($0, / b\//)) fn = substr($0, RSTART + 3)
+      s = substr($0, 12)
+      n = (length(s) - 5) / 2
+      if (s ~ /^a\// && n == int(n) && substr(s, n + 3, 3) == " b/" && substr(s, 3, n) == substr(s, n + 6)) fn = substr(s, 3, n)
     }
     /^new file mode /   { st = "added" }
     /^deleted file mode / { st = "removed" }
     /^rename from /     { st = "renamed" }
     /^rename to /       { fn = substr($0, 11) }
+    /^copy from /       { st = "copied" }
+    /^copy to /         { fn = substr($0, 9) }
     /^\+\+\+ b\//       { fn = substr($0, 7) }
     END { if (!bad) flush() }
   ' <<< "$DIFF" | jq -Rn '[inputs | split("\t") | {status: .[0], filename: .[1]}]')"
