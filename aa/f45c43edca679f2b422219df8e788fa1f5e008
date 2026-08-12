@@ -1,0 +1,22 @@
+ruby/lib/basecamp/http.rb
+  s_e0ea331ca7cb0c::t_838a1e609225c2 788-813
+ruby/test/basecamp/pagination_link_test.rb
+  s_e0ea331ca7cb0c::t_8ef786a1fa94ee 230
+  s_e0ea331ca7cb0c::t_cd96174fc1e53d 197-229,231-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "aaf45c43edca679f2b422219df8e788fa1f5e008",
+  "prompts": {},
+  "sessions": {
+    "s_e0ea331ca7cb0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ba37ea7-c286-4fb7-9d5f-a36ec299a392",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
