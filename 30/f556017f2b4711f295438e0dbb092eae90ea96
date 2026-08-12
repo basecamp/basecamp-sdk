@@ -1,0 +1,19 @@
+ruby/test/basecamp/oauth_transport_test.rb
+  s_b429eb5f926267::t_f2d004e0fe1bea 967-970
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "30f556017f2b4711f295438e0dbb092eae90ea96",
+  "prompts": {},
+  "sessions": {
+    "s_b429eb5f926267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50a1085e-2c16-4b99-b4e1-e3cc5665f1c4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
