@@ -1,0 +1,21 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_23e48791aed839::t_7059f068a7be3f 191-196
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DecodeIsolationTest.kt
+  s_23e48791aed839::t_3b61284b734b02 193-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c9c939164d4c2981b146f17c723d07062e5126fb",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
