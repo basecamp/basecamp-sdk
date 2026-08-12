@@ -1,0 +1,32 @@
+ruby/lib/basecamp/services/authorization_service.rb
+  s_0e78c6630b4ac4::t_1dee5e7db2f20b 13,15-16
+ruby/test/basecamp/services/authorization_service_test.rb
+  s_0e78c6630b4ac4::t_c1bb0e016fd8e3 92
+go/pkg/basecamp/authorization_test.go
+  s_0e78c6630b4ac4::t_dcbee3c38f68b2 134-136,147-148
+  s_0e78c6630b4ac4::t_472d024e978590 544-547
+ruby/test/test_helper.rb
+  s_0e78c6630b4ac4::t_1aae0197082c07 256-258,271
+typescript/tests/services/authorization.test.ts
+  s_0e78c6630b4ac4::t_ded0332a394517 43-45,64
+  s_0e78c6630b4ac4::t_31622fd8cf84c4 168-185
+typescript/src/oauth/authorization-document.ts
+  s_0e78c6630b4ac4::t_99cbe498911bf1 157,159-165,167-171
+  s_0e78c6630b4ac4::t_668dc9a93eb0cf 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "78137d17791d267909b6898e5c4fb1de5339cd1a",
+  "prompts": {},
+  "sessions": {
+    "s_0e78c6630b4ac4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23a29ef5-f8f1-48fc-80f2-0ef9d7827559",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
