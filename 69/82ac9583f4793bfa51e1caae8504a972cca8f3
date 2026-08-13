@@ -1,0 +1,21 @@
+spec/doc-constants.json
+  s_004b300f1ab3a9::t_28d00506e32e11 5-6
+scripts/test-doc-constants.rb
+  s_004b300f1ab3a9::t_ff6345cddeabd1 726-759,765-778
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6982ac9583f4793bfa51e1caae8504a972cca8f3",
+  "prompts": {},
+  "sessions": {
+    "s_004b300f1ab3a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e61a809-755b-4da8-94be-3334b6a9f67a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
