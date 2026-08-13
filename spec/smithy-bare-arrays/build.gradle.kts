@@ -42,6 +42,15 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// See kotlin/build.gradle.kts for the full rationale: the Wrapper task defaults
+// `retries` to 0, so one transient services.gradle.org fault fails the job
+// (#729). Configured here too so `./gradlew wrapper` re-emits it, and so this
+// wrapper cannot drift away from the Kotlin SDK's.
+tasks.wrapper {
+    retries.set(3)
+    retryBackOffMs.set(500)
+}
+
 publishing {
     publications {
         create<MavenPublication>("maven") {
