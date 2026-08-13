@@ -1,0 +1,22 @@
+scripts/conformance_skips.rb
+  s_004b300f1ab3a9::t_23eacf9c585921 201-229
+  s_004b300f1ab3a9::t_50b2e7e68299e3 445-456
+scripts/test-check-fixture-execution.rb
+  s_004b300f1ab3a9::t_2fee90c65be11b 351-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b46062288ab95ad17f3fe3dc97db385b24580e3d",
+  "prompts": {},
+  "sessions": {
+    "s_004b300f1ab3a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e61a809-755b-4da8-94be-3334b6a9f67a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
