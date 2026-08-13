@@ -1,0 +1,28 @@
+SPEC.md
+  s_004b300f1ab3a9::t_4b9df520bc6ecb 3376-3380
+  s_004b300f1ab3a9::t_1896a7ce95f871 2105-2109
+  s_004b300f1ab3a9::t_d0c311f8dc4c21 3463
+  s_004b300f1ab3a9::t_0cc2a58fe5aace 2134
+scripts/sync-doc-constants.rb
+  s_004b300f1ab3a9::t_c34b4eaa20a9df 6-7,9-25,89-96,138,233-253,677-854,1023-1029,1033-1038,1062-1064,1080-1084
+scripts/test-doc-constants.rb
+  s_004b300f1ab3a9::t_1cd574a8c366b8 113-114,117-123,143-156,678-762,843-861,949-966
+spec/doc-constants.json
+  s_004b300f1ab3a9::t_1b2c78bdef3c30 33-34,48-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "292a73db1e66107385a531d2e7a5f33c82120faa",
+  "prompts": {},
+  "sessions": {
+    "s_004b300f1ab3a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e61a809-755b-4da8-94be-3334b6a9f67a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
