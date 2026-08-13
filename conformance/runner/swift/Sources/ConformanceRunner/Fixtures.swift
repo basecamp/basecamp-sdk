@@ -1,3 +1,4 @@
+import ConformanceSupport
 import Foundation
 
 /// Arbitrary JSON value that preserves 64-bit integer precision.
@@ -144,8 +145,10 @@ struct TestCase: Decodable {
     /// through as a test that exercises nothing.
     var declaresMockResponses: Bool { mockResponses != nil }
     /// Live tests are TS-only (canonical wire-capturer); other runners filter
-    /// them out at load time.
-    var isMock: Bool { (mode ?? "mock") == "mock" }
+    /// them out at load time. The rule itself lives in `ConformanceSupport` so
+    /// the case census (#602) tests the predicate this run loop applies rather
+    /// than a copy of it.
+    var isMock: Bool { CaseCensus.isMockMode(mode) }
 }
 
 struct ConfigOverrides: Decodable {
