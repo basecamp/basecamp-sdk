@@ -303,23 +303,8 @@ module ConformanceSkips
         next
       end
 
-      if (comment == :hash && char == "#") ||
-         (comment == :slash && char == "/" && source[index + 1] == "/")
-        index = source.index("\n", index) || length
-        next
-      end
-
-      # Block comments. Four of the six runners are `/* … */` languages, and an
-      # unhandled one truncates or empties the table: a comment holding an
-      # unbalanced brace ("dropped in #123 because the } branch went away")
-      # moves the depth counter and ends the scan early, losing every entry
-      # after it. A comment with balanced brackets happens to work, which is
-      # what makes the failure hard to anticipate rather than obvious.
-      if comment == :slash && char == "/" && source[index + 1] == "*"
-        close = source.index("*/", index + 2)
-        raise ExtractionError, "unterminated block comment while reading a skip table" if close.nil?
-
-        index = close + 2
+      if (skip = comment_end(source, index, comment))
+        index = skip
         next
       end
 
@@ -395,34 +380,60 @@ module ConformanceSkips
     [value, cursor + 1]
   end
 
+  # Where a comment starting at `index` ends, or nil if none starts there.
+  #
+  # ONE definition, two callers, and it is one definition because it was two.
+  # `scan` was taught about `/* … */`; `separator_follows?` kept the older
+  # line-comments-only rule of the SAME idea, and nothing connected them — so
+  # `"key" /* why */ : "value"` found no separator, no string landed in key
+  # position, and the whole table fell to set mode with every reason string read
+  # as a skip.
+  #
+  # That is a DUPLICATED CONCEPT, not a default surviving in an unvisited branch,
+  # and the distinction picks the remedy: a stale default wants a conservative
+  # value, one idea with two implementations wants one definition with a name,
+  # so that teaching it once teaches it everywhere. The rest of this parser was
+  # audited for the same shape when this was found — string delimiters, bracket
+  # depth, key position and the separator each have exactly one definition. The
+  # "anchor matched exactly one line" predicate appears at three call sites and
+  # is deliberately left alone: it is a repeated one-line idiom whose substance
+  # is three different human-facing messages, with no shared definition that
+  # could be taught something and drift.
+  def self.comment_end(source, index, comment)
+    char = source[index]
+    return nil unless ["#", "/"].include?(char)
+
+    if (comment == :hash && char == "#") ||
+       (comment == :slash && char == "/" && source[index + 1] == "/")
+      return source.index("\n", index) || source.length
+    end
+
+    # Four of the six runners are `/* … */` languages, and an unhandled block
+    # comment truncates or empties a table: one holding an unbalanced brace
+    # ("dropped in #123 because the } branch went away") moves the depth counter
+    # and ends the scan early. A comment with balanced brackets happens to work,
+    # which is what made the failure hard to anticipate rather than obvious.
+    if comment == :slash && char == "/" && source[index + 1] == "*"
+      close = source.index("*/", index + 2)
+      raise ExtractionError, "unterminated block comment while reading a skip table" if close.nil?
+
+      return close + 2
+    end
+
+    nil
+  end
+
   KEY_SEPARATOR_RE = /\A(?::|=>|to\b)/
 
   # Whether the next meaningful token after a string is a key separator, which
   # is what distinguishes `"k": "v"` (k is a key, v is not) from `"k",`.
-  #
-  # "Meaningful" has to mean the same thing here as it does in `scan`, and it
-  # did not: block comments were taught to the depth scanner and not to this
-  # one, so `"key" /* why */ : "value"` found no separator, no string landed in
-  # key position, and the whole table fell to SET mode — every reason string
-  # read as a skip. That direction is loud (the roster comparison reports the
-  # reasons as unrostered skips), so it is a false alarm on legitimate code
-  # rather than a miss, but it is the same "the first flip did not reach every
-  # path" shape as the bug that made it necessary: one notion of "skippable
-  # text", implemented twice, fixed once.
   def self.separator_follows?(source, index, comment)
     cursor = index
     while cursor < source.length
-      char = source[cursor]
-      if char =~ /\s/
+      if source[cursor] =~ /\s/
         cursor += 1
-      elsif (comment == :hash && char == "#") ||
-            (comment == :slash && char == "/" && source[cursor + 1] == "/")
-        cursor = (source.index("\n", cursor) || source.length)
-      elsif comment == :slash && char == "/" && source[cursor + 1] == "*"
-        close = source.index("*/", cursor + 2)
-        break if close.nil?
-
-        cursor = close + 2
+      elsif (skip = comment_end(source, cursor, comment))
+        cursor = skip
       else
         break
       end
