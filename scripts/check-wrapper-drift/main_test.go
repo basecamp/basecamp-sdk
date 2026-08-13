@@ -3575,3 +3575,59 @@ func TestIsJSONMethod_ByteAliasSpelling(t *testing.T) {
 		}
 	}
 }
+
+// TestFlattenEmbedded_RootMarshallerWithEmbedIsRefused covers the combination
+// that is silent: a wrapper that declares its own MarshalJSON AND promotes
+// fields through an embed certifies tags against an encoder that bypasses them.
+//
+// The pairing matters. A root method ALONE is not disqualifying — every wrapper
+// in this repo that declares one (Upload, SearchResult, RichTextAttachment, …)
+// is a decode adapter that unmarshals into the generated type and hands off to
+// the *FromGenerated conversion, so the pairing is what it is built on. The
+// second case asserts that shape keeps working.
+func TestFlattenEmbedded_RootMarshallerWithEmbedIsRefused(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+type WithEmbed struct {
+	Base
+	Name string ~json:"name"~
+}
+
+func (w WithEmbed) MarshalJSON() ([]byte, error) { return nil, nil }
+
+type Adapter struct {
+	ID   int64  ~json:"id"~
+	Name string ~json:"name"~
+}
+
+func (a *Adapter) UnmarshalJSON(b []byte) error { return nil }
+`))
+	we := structs["WithEmbed"]
+	if we == nil {
+		t.Fatal("WithEmbed not collected")
+	}
+	if len(we.unresolved) == 0 {
+		t.Error("a root marshaller over promoted fields certifies tags the encoder bypasses; it must be reported")
+	}
+	if we.tags["id"] {
+		t.Error("the promoted tag must not be certified")
+	}
+	if !we.tags["name"] {
+		t.Errorf("its OWN declarations are still its own, got %v", we.tags)
+	}
+	// The decode-adapter shape — a root method and no embed — is untouched.
+	ad := structs["Adapter"]
+	if ad == nil {
+		t.Fatal("Adapter not collected")
+	}
+	if len(ad.unresolved) != 0 {
+		t.Errorf("a root method with no promotion is the repo's own adapter shape and must pass, got %v", ad.unresolved)
+	}
+	if !ad.tags["id"] || !ad.tags["name"] {
+		t.Errorf("its tags are judged normally, got %v", ad.tags)
+	}
+}

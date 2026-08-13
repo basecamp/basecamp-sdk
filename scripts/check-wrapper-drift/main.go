@@ -1621,6 +1621,24 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 		}
 	}
 
+	// A root that declares its own MarshalJSON/UnmarshalJSON AND promotes
+	// fields through an embed is refused — for the promotion only.
+	//
+	// The root method alone is not disqualifying, and deliberately so: every
+	// wrapper in this repo that declares one is a decode adapter that
+	// unmarshals into the GENERATED type and hands off to the *FromGenerated
+	// conversion this check verifies, so the pairing is what they are built
+	// on. But once such a root also PROMOTES fields, the promoted tags are
+	// being certified against an encoder that bypasses them, and that is the
+	// silent case. None of today's adapters embed anything, so this fires on
+	// none of them.
+	if jsonMethods[rootName] && len(root.embeds)+len(root.taggedEmbeds) > 0 {
+		root.unresolved = append(root.unresolved,
+			fmt.Sprintf("%s declares MarshalJSON/UnmarshalJSON itself and also embeds a struct; encoding/json calls that method rather than walking the promoted fields, so promotion is not certified here (its own declared tags still are)", rootName))
+		discardPromotions()
+		return
+	}
+
 	// Go-name resolution, tracked alongside the tag walk: nameDepth records the
 	// shallowest depth at which each field NAME appears and nameConflict the
 	// names two same-depth structs both declare, which makes the selector
