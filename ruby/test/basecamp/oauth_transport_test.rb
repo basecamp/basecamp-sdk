@@ -68,6 +68,54 @@ class OAuthTransportTest < Minitest::Test
     Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
   end
 
+  PROXY_ENV_KEYS = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY].freeze
+
+  # TEST-NET-3 (RFC 5737). Documentation-only and never routable — but what
+  # matters to find_proxy is only that it is NOT loopback, so the proxy is
+  # kept rather than skipped.
+  STUB_TARGET_ADDRESS = "203.0.113.1"
+
+  # Runs the block with ONLY +vars+ among the proxy environment variables, and
+  # — unless +resolves_to+ is nil — with target-name resolution stubbed.
+  #
+  # The stub is the point (#720). {Fetcher.stream_http} resolves the proxy with
+  # URI#find_proxy INSIDE the advertised deadline, and find_proxy calls
+  # IPSocket.getaddress(hostname) to evaluate its loopback rule. Every proxy
+  # test here targets a `.test` name, which RFC 6761 reserves as never
+  # resolvable — so that call is a REAL round trip to a resolver that has to
+  # answer NXDOMAIN, and on a loaded runner (or one with search-domain
+  # expansion across several nameservers) it can consume the whole 0.5-1s
+  # budget before the behavior under test is even reachable.
+  #
+  # Both failures recorded on #720 are that one cause wearing two masks: the
+  # validation error arrives as Faraday::TimeoutError, or the proxy never sees
+  # a connection at all and the mechanism queue stays empty. Neither is a
+  # timing assertion that needs widening; the resolver simply does not belong
+  # inside the deadline these tests are measuring. Stubbing getaddress removes
+  # it while preserving the only thing find_proxy asks of it — a non-loopback
+  # answer.
+  #
+  # Tests that are ABOUT resolution pass resolves_to: nil and install their
+  # own stub, so this one never sits underneath theirs.
+  def with_proxy_env(vars, resolves_to: STUB_TARGET_ADDRESS)
+    saved = ENV.to_h.slice(*PROXY_ENV_KEYS)
+    PROXY_ENV_KEYS.each { |key| ENV.delete(key) }
+    vars.each { |key, value| ENV[key] = value }
+
+    real_getaddress = IPSocket.method(:getaddress)
+    IPSocket.define_singleton_method(:getaddress) { |_host| resolves_to } if resolves_to
+    begin
+      yield
+    ensure
+      # Restore by re-delegating, not by remove_method: getaddress is defined
+      # directly on IPSocket's singleton class, so removing the override would
+      # delete the original rather than uncover it.
+      IPSocket.define_singleton_method(:getaddress) { |host| real_getaddress.call(host) } if resolves_to
+      PROXY_ENV_KEYS.each { |key| ENV.delete(key) }
+      saved.each { |key, value| ENV[key] = value }
+    end
+  end
+
   # --- status-first: a skipped status classifies at HEADER time -------------
 
   def test_device_auth_non_2xx_with_stalled_body_is_immediate_api_error
@@ -779,21 +827,14 @@ class OAuthTransportTest < Minitest::Test
       nil
     end
 
-    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
-    saved = ENV.to_h.slice(*proxy_env)
-    proxy_env.each { |k| ENV.delete(k) }
     # p%40s+s: the %40 percent-decodes to @, while the literal + must stay a
     # plus (userinfo is percent-decoded, never form-decoded).
-    ENV["https_proxy"] = "http://user:p%40s+s@127.0.0.1:#{proxy.addr[1]}"
-    begin
+    with_proxy_env({ "https_proxy" => "http://user:p%40s+s@127.0.0.1:#{proxy.addr[1]}" }) do
       assert_raises(Faraday::Error) do
         Basecamp::Oauth::Fetcher.stream_http(:get, "https://proxy-auth.test/token", timeout: 1)
       end
       expected = [ "user:p@s+s" ].pack("m0")
       assert_includes captured, "Proxy-Authorization: Basic #{expected}"
-    ensure
-      proxy_env.each { |k| ENV.delete(k) }
-      saved.each { |k, v| ENV[k] = v }
     end
   end
 
@@ -803,37 +844,41 @@ class OAuthTransportTest < Minitest::Test
     # advertised bound, not hold the request open before any deadline exists.
     resolver_finished = false
     real = IPSocket.method(:getaddress)
-    IPSocket.define_singleton_method(:getaddress) do |host|
+    IPSocket.define_singleton_method(:getaddress) do |_host|
       sleep(5)
       resolver_finished = true
-      real.call(host)
+      # A fixed non-loopback answer, never the real resolver: the stall IS the
+      # subject here, and the un-cut path must not go on to make a live lookup.
+      STUB_TARGET_ADDRESS
     end
 
-    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
-    saved = ENV.to_h.slice(*proxy_env)
-    proxy_env.each { |k| ENV.delete(k) }
-    ENV["https_proxy"] = "http://127.0.0.1:9"
+    # resolves_to: nil — this test is ABOUT resolution, so it keeps its own
+    # (deterministic, already-stubbed) resolver rather than sitting on top of
+    # with_proxy_env's.
     begin
-      took = elapsed do
-        assert_raises(Faraday::TimeoutError) do
-          Basecamp::Oauth::Fetcher.stream_http(:get, "https://dns-stall.test/token", timeout: 0.5)
+      with_proxy_env({ "https_proxy" => "http://127.0.0.1:9" }, resolves_to: nil) do
+        took = elapsed do
+          assert_raises(Faraday::TimeoutError) do
+            Basecamp::Oauth::Fetcher.stream_http(:get, "https://dns-stall.test/token", timeout: 0.5)
+          end
         end
+        # Assert the MECHANISM, not wall clock (#708): the find_proxy bound's
+        # asynchronous raise interrupts the resolver stub MID-SLEEP, so its
+        # completion flag never flips. Without the bound the call sits out the
+        # full 5s stall and the flag flips — which is the observation that does
+        # not depend on where the resulting error is raised or how it is
+        # classified. (Removing the bound happens to surface
+        # ReadDeadlineExceeded from the post-resolution budget check rather
+        # than a mapped timeout, so the assert_raises above fires too; the flag
+        # is the assertion that stays true to the mechanism either way.)
+        assert_not resolver_finished, \
+          "stream_http returned only after the stalled resolver ran to completion — the find_proxy bound did not cut it"
+        # Hang guard ONLY — generous on purpose: it protects the suite from a
+        # wedged resolution phase and asserts nothing about timing tightness.
+        assert_operator took, :<, 15, \
+          "hang guard, not a timing bound: the stalled resolver should be cut in ~0.5s; #{took.round(2)}s means nothing cut it"
       end
-      # Assert the MECHANISM, not wall clock (#708): the find_proxy bound's
-      # asynchronous raise interrupts the resolver stub MID-SLEEP, so its
-      # completion flag never flips. Without the bound the call sits out the
-      # full 5s stall, the flag flips, and the ECONNREFUSED that follows still
-      # maps to Faraday::TimeoutError (past-deadline classification) — this
-      # assertion, not the error class, is what discriminates.
-      assert_not resolver_finished, \
-        "stream_http returned only after the stalled resolver ran to completion — the find_proxy bound did not cut it"
-      # Hang guard ONLY — generous on purpose: it protects the suite from a
-      # wedged resolution phase and asserts nothing about timing tightness.
-      assert_operator took, :<, 15, \
-        "hang guard, not a timing bound: the stalled resolver should be cut in ~0.5s; #{took.round(2)}s means nothing cut it"
     ensure
-      proxy_env.each { |k| ENV.delete(k) }
-      saved.each { |k, v| ENV[k] = v }
       IPSocket.define_singleton_method(:getaddress) { |host| real.call(host) }
     end
   end
@@ -845,19 +890,15 @@ class OAuthTransportTest < Minitest::Test
     real = Basecamp::Oauth::Fetcher.method(:proxy_tls_capable?)
     Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :proxy_tls_capable?) { false }
 
-    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
-    saved = ENV.to_h.slice(*proxy_env)
-    proxy_env.each { |k| ENV.delete(k) }
-    ENV["https_proxy"] = "https://127.0.0.1:9"
     begin
-      error = assert_raises(Basecamp::Oauth::OauthError) do
-        Basecamp::Oauth::Fetcher.stream_http(:get, "https://old-net-http.test/token", timeout: 1)
+      with_proxy_env({ "https_proxy" => "https://127.0.0.1:9" }) do
+        error = assert_raises(Basecamp::Oauth::OauthError) do
+          Basecamp::Oauth::Fetcher.stream_http(:get, "https://old-net-http.test/token", timeout: 1)
+        end
+        assert_equal "validation", error.type
+        assert_match(/net-http >= 0\.5/, error.message)
       end
-      assert_equal "validation", error.type
-      assert_match(/net-http >= 0\.5/, error.message)
     ensure
-      proxy_env.each { |k| ENV.delete(k) }
-      saved.each { |k, v| ENV[k] = v }
       Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :proxy_tls_capable?) { real.call }
     end
   end
@@ -879,20 +920,16 @@ class OAuthTransportTest < Minitest::Test
       nil
     end
 
-    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
-    saved = ENV.to_h.slice(*proxy_env)
-    proxy_env.each { |k| ENV.delete(k) }
-    ENV["https_proxy"] = "https://127.0.0.1:#{port}"
     begin
-      assert_raises(Faraday::Error) do
-        Basecamp::Oauth::Fetcher.stream_http(:get, "https://tls-proxy.test/token", timeout: 1)
+      with_proxy_env({ "https_proxy" => "https://127.0.0.1:#{port}" }) do
+        assert_raises(Faraday::Error) do
+          Basecamp::Oauth::Fetcher.stream_http(:get, "https://tls-proxy.test/token", timeout: 1)
+        end
+        thread.join(2)
+        assert_equal 0x16, first_bytes&.bytes&.first,
+          "expected a TLS ClientHello to the https:// proxy, got #{first_bytes.inspect}"
       end
-      thread.join(2)
-      assert_equal 0x16, first_bytes&.bytes&.first,
-        "expected a TLS ClientHello to the https:// proxy, got #{first_bytes.inspect}"
     ensure
-      proxy_env.each { |k| ENV.delete(k) }
-      saved.each { |k, v| ENV[k] = v }
       thread&.kill&.join
       server&.close
     end
@@ -945,11 +982,7 @@ class OAuthTransportTest < Minitest::Test
     # https_proxy), unlike Net::HTTP's broken built-in :ENV detection which
     # reads http_proxy even for TLS requests — so this ALSO pins that an
     # https_proxy-only environment routes HTTPS requests through its proxy.
-    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
-    saved = ENV.to_h.slice(*proxy_env)
-    proxy_env.each { |k| ENV.delete(k) }
-    ENV["https_proxy"] = "http://127.0.0.1:#{proxy.addr[1]}"
-    begin
+    with_proxy_env({ "https_proxy" => "http://127.0.0.1:#{proxy.addr[1]}" }) do
       took = elapsed do
         # Discriminating on its own now that the drip is endless: without the
         # whole-phase connect bound the call cannot return before the drip's
@@ -965,17 +998,21 @@ class OAuthTransportTest < Minitest::Test
       # watchdog's finish raises IOError until the session is started, and no
       # per-read timeout can fire. A drip that ran out on the proxy's side
       # instead leaves the queue empty. The pop timeout is a WAIT bound, not a
-      # timing assertion — as generous as the hang guard, so a loaded runner
-      # cannot fail it spuriously (#708's whole class).
+      # timing assertion.
+      #
+      # #708 sized that wait bound at 15s on the theory that no plausible
+      # scheduling delay could exceed it, and #720 recorded it failing anyway.
+      # The bound was not the problem: with a slow resolver the request died in
+      # find_proxy, the proxy never received a CONNECT at all, and an empty
+      # queue is indistinguishable from a late one no matter how long the wait.
+      # with_proxy_env removes the resolver, which is what actually closes it —
+      # 15s stays as the hang guard #708 meant it to be.
       assert cut.pop(timeout: 15), \
         "the proxy never saw the client cut the CONNECT drip — the whole-phase connect bound did not fire"
       # Hang guard ONLY — generous on purpose: it protects the suite from a
       # wedged connect phase and asserts nothing about timing tightness.
       assert_operator took, :<, 15, \
         "hang guard, not a timing bound: the endless drip should be cut in ~0.5s; #{took.round(2)}s means nothing cut it"
-    ensure
-      proxy_env.each { |k| ENV.delete(k) }
-      saved.each { |k, v| ENV[k] = v }
     end
   end
 
