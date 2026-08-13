@@ -1,0 +1,27 @@
+conformance/runner/python/test_case_census.py
+  s_fca5acb3cc9413::t_2962cedc4c1bb6 1-72,80-113
+  s_fca5acb3cc9413::t_89a8923e8e6efc 73-79
+conformance/runner/python/runner.py
+  s_fca5acb3cc9413::t_5618cf8354042e 1435-1443
+  s_fca5acb3cc9413::t_fe9441ef3cfbde 114,116-117,121-123
+  s_fca5acb3cc9413::t_6845954a5077ad 1458
+  s_fca5acb3cc9413::t_3b9738bcdf96b7 44-69,83-113,115,118-120,124-145
+  s_fca5acb3cc9413::t_e7093d3ba5aba8 70-82
+  s_fca5acb3cc9413::t_0267687f25c68c 1486-1495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "32bb6a232ea677dbfe96e2a00d0dcd1ae617e709",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
