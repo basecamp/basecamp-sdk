@@ -739,6 +739,35 @@ end
 # A table cell naming a fixture file: a single backticked *.json and nothing else.
 FIXTURE_CELL_RE = /\A`([A-Za-z0-9][A-Za-z0-9_.-]*\.json)`\z/
 
+# The section numbers a document actually defines, from its `## §N.` headings.
+def spec_sections(file)
+  @spec_sections ||= {}
+  @spec_sections[file] ||= begin
+    found = File.readlines(File.join(ROOT, file), chomp: true, encoding: UTF8)
+               .filter_map { |line| line[/\A## §(\d+)\./, 1] }.to_set
+    if found.empty?
+      raise Failure, "#{file}: no `## §N.` headings found, so section references in its tables " \
+                     "cannot be validated — this check has no source of truth"
+    end
+
+    found
+  end
+end
+
+# Section references in a table cell that resolve to no heading.
+#
+# Catches a typo (`§99`) and, more usefully, a reference that RESOLVED when it
+# was written and stopped resolving when a section was renumbered — the case a
+# reviewer reading the same PR cannot see, unlike an obviously wrong number.
+#
+# Deliberately does NOT require a row to carry a section reference at all. That
+# would catch a `TBD` placeholder, but only with a carve-out for the row that
+# legitimately has none — `live-my-surface.json`, attributed to external
+# governance — and the carve-out list is the part that grows.
+def unresolved_sections(cell, file)
+  cell.scan(/§(\d+)/).flatten.uniq.reject { |number| spec_sections(file).include?(number) }
+end
+
 # Vacuity guards, stated explicitly rather than left to emerge.
 #
 # Both directions already fail loudly on their own — an empty table makes every
@@ -804,6 +833,14 @@ def check_fixture_categories(span, fixtures)
     end
 
     documented << [cells[0], match[1], line_no]
+
+    unresolved = unresolved_sections(cells[2], span.file)
+    unless unresolved.empty?
+      errors << "#{span.file}:#{line_no}: owning section(s) #{unresolved.map { |n| "§#{n}" }.join(', ')} " \
+                "do not resolve to a `## §N.` heading in #{span.file} — a renumbered section " \
+                "leaves a reference that reads fine and points nowhere"
+    end
+
     next if cells[0] == category_slug(match[1])
 
     errors << "#{span.file}:#{line_no}: category `#{cells[0]}` does not match its file — " \
@@ -878,6 +915,12 @@ def check_fixture_section_map(span, fixtures)
     end
 
     covered << match[1]
+
+    unresolved = unresolved_sections(cells[2], span.file)
+    next if unresolved.empty?
+
+    errors << "#{span.file}:#{line_no}: primary section(s) #{unresolved.map { |n| "§#{n}" }.join(', ')} " \
+              "do not resolve to a `## §N.` heading in #{span.file}"
   end
 
   missing = fixtures - covered

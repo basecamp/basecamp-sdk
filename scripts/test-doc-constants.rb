@@ -129,6 +129,10 @@ def default_files
     "SPEC.md" => <<~MD,
       # Spec
 
+      ## §1. Something
+
+      ## §2. Something Else
+
       API_VERSION is `#{API_VER}`. <!-- @api-version -->
 
       The surface is `#{OP_COUNT}` operations across 2 paths. <!-- @operation-count -->
@@ -725,6 +729,41 @@ out, status = gate lambda { |f|
 }
 expect_fail(failures, "Appendix D row with blank cells", out, status,
             "leaves Test name and Primary section empty")
+
+# A section reference that resolves to no heading. Catches a typo, and more
+# usefully a reference that resolved when written and stopped resolving when a
+# section was renumbered — the case a reviewer of the same PR cannot see.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| beta-write | `beta_write.json` | §2 Something Else |",
+                                  "| beta-write | `beta_write.json` | §99 Renumbered Away |")
+}
+expect_fail(failures, "category row cites a section that does not exist", out, status,
+            "owning section(s) §99 do not resolve")
+
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| `beta_write.json` | does another thing | §2 |",
+                                  "| `beta_write.json` | does another thing | §99 |")
+}
+expect_fail(failures, "Appendix D row cites a section that does not exist", out, status,
+            "primary section(s) §99 do not resolve")
+
+# A document whose `## §N.` headings cannot be found gives the check nothing to
+# resolve against, and "no sections defined" must not read as "every reference
+# resolves" — the both-sides-empty shape, one table over.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("## §1. Something\n\n", "").sub("## §2. Something Else\n\n", "")
+}
+expect_fail(failures, "no section headings to resolve against", out, status,
+            "no `## §N.` headings found")
+
+# A row with NO section reference is deliberately still accepted — the real
+# table has one (`live-my-surface.json`, attributed to external governance), and
+# rejecting it would need a carve-out list rather than a rule.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| `beta_write.json` | does another thing | §2 |",
+                                  "| `beta_write.json` | does another thing | External governance |")
+}
+expect_pass(failures, "a row attributed to external governance is accepted", out, status)
 
 # Git's pathspec `*` matches across `/`, but all six runners glob fixtures
 # NON-RECURSIVELY. Demanding a roster row for a fixture nothing executes would
