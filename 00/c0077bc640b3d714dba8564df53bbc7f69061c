@@ -1,0 +1,21 @@
+conformance/runner/ruby/runner.rb
+  s_fca5acb3cc9413::t_98f6f448aae932 71-76,78
+conformance/runner/ruby/case_census_test.rb
+  s_fca5acb3cc9413::t_24d7053f6f82cd 139-140,142-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "00c0077bc640b3d714dba8564df53bbc7f69061c",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
