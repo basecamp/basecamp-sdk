@@ -1,0 +1,25 @@
+python/tests/services/test_gauges_service.py
+  s_23e48791aed839::t_1e46786a05946e 1-695
+typescript/tests/services/gauges.test.ts
+  s_23e48791aed839::t_f9ed27e2af45a4 50-64
+  s_23e48791aed839::t_a1b265da6fc1ed 1-18,21-49,65-624
+  s_23e48791aed839::t_adbe6ff6985d79 19-20
+ruby/test/basecamp/services/gauges_service_test.rb
+  s_23e48791aed839::t_3d1c10e340a5c5 1-468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8466736a847877a5330069770761ca3e10399524",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
