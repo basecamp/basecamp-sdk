@@ -122,6 +122,14 @@ unless out.include?("WARN:") && out.include?("unsettled case")
   failures << "partial mode should WARN about an all-visible exclusion:\n#{out}"
 end
 
+# `--partial` describes the INPUT, not a softer verdict. With every runner
+# reporting anyway — a macOS developer passing the flag out of habit — this IS
+# the all-six claim, and warning here would let the one state the gate exists to
+# reject exit 0.
+out, status = gate(lambda { |m| exclude(m, "dead fixture case", RUNNERS) }, partial: true)
+expect_fail(failures, "partial flag does not soften a complete six-runner set", out, status,
+            "is excluded by ALL 6 runners")
+
 # Zero manifests is not agreement. An empty directory means the runners did not
 # run, and a gate reporting success over no input certifies nothing.
 out, status = gate lambda { |m| RUNNERS.each { |r| m[r] = nil } }

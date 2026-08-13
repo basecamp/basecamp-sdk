@@ -178,6 +178,14 @@ def run(partial:)
 
   everywhere = by_case.select { |_, runners| runners.sort == present }
 
+  # `--partial` is a statement about the INPUT, not a licence to soften the
+  # verdict. When every expected runner reported anyway — a macOS developer
+  # passing the flag out of habit, or a CI step that keeps it for safety —
+  # "excluded by all present runners" IS the all-six claim, and downgrading it
+  # to a warning would let the one state this gate exists to reject exit 0.
+  # Partial handling applies only when a manifest is genuinely absent.
+  partial &&= !missing.empty?
+
   if partial
     puts "==> Fixture execution (partial: #{present.length} of #{EXPECTED_RUNNERS.length} runners — " \
          "#{missing.join(', ')} did not report)"
