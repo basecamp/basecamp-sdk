@@ -837,9 +837,25 @@ def check_fixture_categories(span, fixtures)
 
   documented = []
   rows.each do |line_no, cells|
-    if cells.length < 3
-      errors << "#{span.file}:#{line_no}: category row has #{cells.length} cell(s); the shape is " \
-                "| Category | `file.json` | Owning Spec Section(s) |"
+    # EXACTLY three, not at least three. An extra cell is not a harmless
+    # surplus: a raw pipe in the attribution shifts the real section into a
+    # fourth cell and puts the fragment before it into cells[2], where
+    # non-`§` attributions are legitimately allowed — so the gate validates the
+    # wrong cell and a `§99` in the actual section position is never checked,
+    # while the row renders with a column GFM drops.
+    #
+    # This is deliberately a REFUSAL, not another spelling rule. Teaching the
+    # splitter more Markdown (separator widths, backslash parity) is the
+    # treadmill declined elsewhere in this PR; rejecting a row whose shape the
+    # parser does not recognise is the direction this file already argues for —
+    # "a row the parser cannot see is a row it silently vouches for". It closes
+    # the pipe class as a class: however a stray pipe was spelled, the cell
+    # count is wrong and the row fails loudly instead of being mis-parsed
+    # quietly.
+    if cells.length != 3
+      errors << "#{span.file}:#{line_no}: category row has #{cells.length} cell(s), not 3; the " \
+                "shape is | Category | `file.json` | Owning Spec Section(s) |. An unescaped `|` " \
+                "in a cell splits the row — write it as `\\|`."
       next
     end
 
@@ -942,9 +958,14 @@ def check_fixture_section_map(span, fixtures)
 
   covered = []
   rows.each do |line_no, cells|
-    if cells.length < 3
-      errors << "#{span.file}:#{line_no}: mapping row has #{cells.length} cell(s); the shape is " \
-                "| `file.json` | Test name | Primary section |"
+    # Exactly three, for the reason given on the categories table above: a raw
+    # pipe in a free-form test summary shifts the real section into an ignored
+    # fourth cell, and this table's summaries are the likeliest place in the
+    # repo for someone to write `supports A | B`.
+    if cells.length != 3
+      errors << "#{span.file}:#{line_no}: mapping row has #{cells.length} cell(s), not 3; the " \
+                "shape is | `file.json` | Test name | Primary section |. An unescaped `|` in a " \
+                "cell splits the row — write it as `\\|`."
       next
     end
 

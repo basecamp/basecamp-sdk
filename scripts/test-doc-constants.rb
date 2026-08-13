@@ -723,6 +723,27 @@ out, status = gate lambda { |f|
 expect_fail(failures, "category row with a blank owning section", out, status,
             "names no owning spec section")
 
+# A raw pipe in the attribution shifts the real section into a FOURTH cell and
+# leaves the fragment before it in cells[2] — where non-`§` attributions are
+# legitimately allowed, so the gate would validate the wrong cell and never see
+# the `§99` sitting in the actual section position. Accepting "at least three"
+# is what made that silent; the row must fail on its shape.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| beta-write | `beta_write.json` | §2 Something Else |",
+                                  "| beta-write | `beta_write.json` | see A | B §99 |")
+}
+expect_fail(failures, "category row with a fourth cell from a raw pipe", out, status,
+            "cell(s), not 3")
+
+# Same shape on Appendix D, whose free-form test summaries are the likeliest
+# place in the repo for someone to write `supports A | B`.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| `beta_write.json` | does another thing | §2 |",
+                                  "| `beta_write.json` | supports A | B | §99 |")
+}
+expect_fail(failures, "mapping row with a fourth cell from a raw pipe", out, status,
+            "cell(s), not 3")
+
 # Two DISTINCT fixtures deriving ONE category. `_` and `-` collapse to the same
 # slug, so both rows satisfy the per-row slug rule and the file tally sees two
 # different files — the table passes every check that looks at filenames while

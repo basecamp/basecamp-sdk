@@ -233,9 +233,9 @@ All SDKs are generated from a single Smithy specification. When adding support f
 
    A NEW fixture file also needs a row in SPEC.md §19's Test Categories table
    and a row in its Appendix D, naming the spec sections that own it.
-   `make doc-constants-check` fails until both exist — it is the only place
-   this convention was written down, which is why three fixtures in a row
-   landed with one row, the other, or neither.
+   `make doc-constants-check` fails until both exist. Until this checklist item
+   and that gate, the convention was written down nowhere, which is why three
+   fixtures in a row landed with one row, the other, or neither.
 
 6. **Update documentation**:
    - Add to the services table in each SDK's README
