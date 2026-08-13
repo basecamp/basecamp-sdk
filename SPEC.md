@@ -2102,10 +2102,16 @@ index past the number of recorded requests fails rather than passing vacuously.
 
 ### Test Categories and Owning Sections
 
+Every tracked fixture under `conformance/tests/` has exactly one row here, and
+the category slug is the filename (basename, `_` written as `-`).
+`make doc-constants-check` asserts the bijection.
+
+<!-- @fixture-categories:begin -->
 | Category | Files | Owning Spec Section(s) |
 |----------|-------|----------------------|
 | auth | `auth.json` | §4 Authentication, §13 HTTP Transport |
 | cards-write | `cards_write.json` | §5 Merge-Safe Write Surface (Cards), §18 Hand-Written Composite Methods |
+| documents-write | `documents_write.json` | §5 Merge-Safe Write Surface (Documents), §18 Hand-Written Composite Methods |
 | downloads | `downloads.json` | §14 Download |
 | error-mapping | `error-mapping.json` | §6 Error Taxonomy |
 | idempotency | `idempotency.json` | §7 Retry (Gate 2) |
@@ -2115,8 +2121,8 @@ index past the number of recorded requests fails rather than passing vacuously.
 | pagination | `pagination.json` | §8 Pagination |
 | paths | `paths.json` | §3 Client Architecture (account path construction) |
 | retry | `retry.json` | §7 Retry |
-| search | `search.json` | §10 Type Fidelity — the polymorphic search projection, whose file-attachment branch is recognized by the ABSENCE of the recording envelope's `id`/`title`/`type`/`url`/`app_url` |
 | schedule-entries-write | `schedule_entries_write.json` | §5 Merge-Safe Write Surface (Schedule Entries), §18 Hand-Written Composite Methods, §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
+| search | `search.json` | §10 Type Fidelity — the polymorphic search projection, whose file-attachment branch is recognized by the ABSENCE of the recording envelope's `id`/`title`/`type`/`url`/`app_url` |
 | security | `security.json` | §9 Security |
 | status-codes | `status-codes.json` | §11 Response Semantics |
 | todolists-read | `todolists_read.json` | §5 Merge-Safe Write Surface (Todolists) — the flat read shape the composites read through |
@@ -2124,6 +2130,8 @@ index past the number of recorded requests fails rather than passing vacuously.
 | todos-write | `todos_write.json` | §5 Merge-Safe Write Surface (Todos), §18 Hand-Written Composite Methods |
 | upcoming-schedule | `upcoming_schedule.json` | §10 Type Fidelity — the reduced calendar projection `GetUpcomingSchedule` renders, distinct from the shared `ScheduleEntry` shape |
 | uploads-download | `uploads_download.json` | §14 Download, §18 Hand-Written Composite Methods |
+| uploads-write | `uploads_write.json` | §5 Merge-Safe Write Surface (Cards, Uploads), §18 Hand-Written Composite Methods, §10 Type Fidelity, §6 Error Taxonomy (507 → limit_exceeded) |
+<!-- @fixture-categories:end -->
 
 ### Runner Pattern
 
@@ -2173,8 +2181,29 @@ Note the shape this avoids: #573 first narrowed nothing and instead added the
 whole-case skip to all four remaining runners, which left the fixture skipped by
 all six — present in `pagination.json`, passing `conformance-fixtures-check` and
 `check-fixture-coverage`, and executed by nothing. That is #572's defect one
-layer down. Nothing in the build detects a fixture no runner runs; that gap is
-tracked as #602.
+layer down.
+
+**Nothing detects that state today, and #602 is open for it.** Each runner now
+takes a case census (#742): at the end of its own run it asserts that
+`passed + failed + skipped` equals the number of cases under `conformance/tests`
+whose `mode` is not `live`, counted by a walk independent of its own load path.
+That catches a case executed by NO runner for a mechanical reason — an
+unrecognized `mode`, a fixture that failed to parse or was never globbed, one
+nested where no runner looks, a case dropped between load and dispatch. It does
+NOT catch the case this section describes, where every runner excludes the same
+fixture deliberately: each census counts its own skip and stays green. Detecting
+that needs the six exclusion sets compared in one place, which needs a manifest
+per runner and artifact plumbing across six CI jobs — and the Swift lane is
+macOS-only, so a Linux run can never assemble all six. Maximum overlap today is
+2 of 6, narrowed by #596.
+
+The roster below is therefore RESTATED, not derived: nothing checks it against
+the runners it claims to summarise (#736). The bullets are an enumeration and
+the classification on each line is judgement; both are hand-maintained, so a
+skip added to a runner without a line here goes unrecorded. When #602's
+cross-runner manifest lands, this roster becomes checkable for set equality
+against what the runners actually reported — which is stronger than parsing
+their source, and is why #736 waits for it rather than being fixed on its own.
 
 **Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin
 logic is covered by `TestIsSameOrigin` unit tests:
@@ -3365,6 +3394,11 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 
 ## Appendix D: Conformance Test → Spec Section Mapping
 
+Every tracked fixture under `conformance/tests/` appears on at least one row.
+Rows are curated summaries and may bundle several cases, so the coverage is
+what `make doc-constants-check` asserts — not a case-by-case index.
+
+<!-- @fixture-section-map:begin -->
 | Test file | Test name | Primary section |
 |-----------|----------|----------------|
 | `auth.json` | Bearer token injected | §4, §13 |
@@ -3439,12 +3473,15 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `uploads_write.json` | list-versions decodes the version payload | §10 (One Renderer, One Schema) |
 | `uploads_write.json` | 507 → limit_exceeded, not retried | §6 |
 | `todos_write.json` | update-merge / edit-clear / replace-omission-clears | §5 (Todos), §18 |
+| `documents_write.json` | update-merge / edit-clear / replace-omission-clears | §5 (Documents), §18 |
 | `todolists_write.json` | update-merge / update-group / edit-clear / replace-omission-clears | §5 (Todolists), §18 |
 | `todolists_read.json` | list-read / group-read / group-list-read (one flat shape decodes for both variants) | §5 (Todolists) |
 | `cards_write.json` | Presence-aware update composite (5 cases: unaddressed fields stay off the wire, verbatim raw path, explicit `due_on` clear as `""`, explicit empty content/assignees) | §5 (Cards), §18 |
 | `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad, plus the create-side #641 fields (11 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched, and `url`/`highlighted`/`status` present-when-set vs absent-when-unset on `CreateScheduleEntry`) | §5 (Schedule Entries), §18 |
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
+| `search.json` | The polymorphic search projection: the generic recording envelope plus all four special branches, and the file-attachment branch in isolation (2 cases) | §10 (Type Fidelity) |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
+<!-- @fixture-section-map:end -->
 
 ---
 
