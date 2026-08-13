@@ -19,6 +19,7 @@ import type {
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { caseCountFailure, countNonLiveCases, isMockMode } from "./case-census.js";
 import { checkDelayGaps } from "./delay-gaps.js";
 import { errorRaisedFailure } from "./error-raised.js";
 import { checkRequestCount, requestCountApplies } from "./request-count.js";
@@ -1757,7 +1758,7 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
       }
       // Live tests are owned by live-runner.test.ts. Drop them here so they
       // never reach installMockHandlers / MSW.
-      const tests = all.filter((tc) => (tc.mode ?? "mock") === "mock");
+      const tests = all.filter((tc) => isMockMode(tc.mode));
       return { filename, tests };
     })
     .filter((suite) => suite.tests.length > 0);
@@ -1829,6 +1830,19 @@ function shouldEnableRetry(tc: TestCase, filename: string): boolean {
 
 // Generate test suites dynamically from JSON definitions
 const suites = loadTestSuites();
+
+// Case census (#602) — see case-census.ts. The other five runners compare
+// passed+failed+skipped against the census after their run loop; vitest owns
+// that accounting here, so the equivalent claim is that every non-live fixture
+// case became a registered `it`. `it.skip` cases still count: they are
+// registered and reported, which is what distinguishes them from a case dropped
+// at load and printed nowhere.
+describe("conformance case census", () => {
+  it("registers every non-live fixture case", () => {
+    const registered = suites.reduce((total, suite) => total + suite.tests.length, 0);
+    expect(caseCountFailure(registered, countNonLiveCases(TESTS_DIR))).toBeNull();
+  });
+});
 
 for (const { filename, tests } of suites) {
   describe(`conformance/${filename}`, () => {
