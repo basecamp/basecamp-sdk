@@ -300,6 +300,21 @@ module ConformanceSkips
     # Kotlin's `"k" to "v"`, Swift's `["k": "v"]`, Ruby's `Set.new(["k"])` and
     # Python's `{"k"}` without six spellings of the same rule.
     keyed = strings.select { |_, separator| separator }
+
+    # KNOWN RESIDUAL, stated rather than papered over: if NO string literal is
+    # recognized at all, this returns an empty table and the entry check below
+    # never runs. A Ruby `%q{case name}` key lands here — the extraction reads
+    # empty while the runner skips the case, which is the quiet direction.
+    #
+    # Not closed, and the reason is the scoring in the header rather than
+    # difficulty. Closing it needs "zero keys is only credible if the literal
+    # LOOKS empty", which means an allowlist of per-language empty spellings —
+    # `set()`, `emptyMap()`, `[:]`, `{}`, `Set.new([])` — and that is another
+    # selector against another spelling, in a control whose rule count has grown
+    # nine times while its coverage has not moved. The instrument that closes
+    # this whole class at once is reading the runners' own `SKIP:` output, and
+    # it closes the percent-string, the nested block comment and every spelling
+    # nobody has written yet along with it.
     return strings.map(&:first) if keyed.empty?
 
     # In map mode, the key of every ENTRY must be positively recognized.
@@ -322,26 +337,36 @@ module ConformanceSkips
     #
     # Deliberately NOT strict alternation: `{"a": REASON, "b": OTHER}` yields two
     # adjacent keyed strings and is perfectly readable.
-    entry_depth = strings.map { |s| s[2] }.min
-    entries = [[]]
-    events.each do |kind, value, is_keyed, depth|
-      if kind == :comma && depth == entry_depth
-        entries << []
-      elsif kind == :string
-        entries.last << [value, is_keyed]
+    # The container the KEYS live in, identified rather than inferred from
+    # depth. Everything in it is one of: an entry's tokens, or a comma between
+    # entries. Tokens in nested containers (`Pair(...)`'s arguments, Go's
+    # `map[string]string` type parameter) belong to their own container.
+    entry_container = strings.first[2]
+    entries = [{ strings: [], content: false }]
+    events.each do |kind, value, is_keyed, container|
+      next unless container == entry_container
+
+      case kind
+      when :comma then entries << { strings: [], content: false }
+      when :string then entries.last[:strings] << [value, is_keyed]
+      when :content then entries.last[:content] = true
       end
     end
 
     entries.each do |entry|
-      next if entry.empty?
-      next if entry.first[1]
+      # No content at all is a trailing comma, which is ordinary.
+      next unless entry[:content] || entry[:strings].any?
+      next if entry[:strings].first&.at(1)
 
+      found = entry[:strings].first
       raise ExtractionError,
-            "a skip table entry has no key this parser can place: #{entry.first[0].inspect} " \
-            "opens an entry whose key position is not recognized. A key is spelled with `:`, " \
-            "`=>` or `to`; an entry written any other way — `Pair(\"k\", CONST)`, a spread, a " \
-            "percent-string — is REPORTED rather than read, because reading it as a value would " \
-            "drop a real skip and turn an all-six exclusion into a passing five-of-six."
+            "a skip table entry has no key this parser can place " \
+            "(#{found ? "it opens with #{found[0].inspect}" : 'it holds no string literal at all'}). " \
+            "A key is spelled with `:`, `=>` or `to`; an entry written any other way — " \
+            "`Pair(\"k\", CONST)`, a spread such as `...COMMON_SKIPS`, a percent-string — is " \
+            "REPORTED rather than read, because reading it as a value, or skipping it as if it " \
+            "were a trailing comma, would drop a real skip and turn an all-six exclusion into a " \
+            "passing five-of-six."
     end
 
     # Map mode drops every string that is not a key, which is correct for the
@@ -413,6 +438,20 @@ module ConformanceSkips
     entered = false
     index = offset
     length = source.length
+    # Each opener gets an identity, and a token belongs to the container on top
+    # of the stack. Bracket DEPTH alone would conflate containers that happen to
+    # sit at the same level — Go's `map[string]string{` opens `[…]` and `{…}` at
+    # depth 1 — so the type parameter's text would be read as content of the
+    # literal's first entry.
+    #
+    # DEFENSIVE, not load-bearing today, and said plainly because a mutation
+    # proved it: swapping identity back to depth breaks no case. For it to
+    # matter, a language would need type text at the literal's own depth AND an
+    # entry spelling the parser cannot read, and Go is the only one with the
+    # former while having no spread or percent-string form. It is kept because
+    # the cost is a stack push and the failure it prevents is the quiet kind.
+    container_seq = 0
+    stack = [0]
 
     while index < length
       char = source[index]
@@ -458,18 +497,30 @@ module ConformanceSkips
       # strings, both able to hold a brace that would otherwise move depth.
       if char == '"' || char == "'" || (comment == :slash && char == "`")
         value, index = read_string(source, index)
-        events << [:string, value, separator_follows?(source, index, comment), depth]
+        events << [:string, value, separator_follows?(source, index, comment), stack.last]
         next
       end
 
-      events << [:comma, nil, nil, depth] if char == ","
+      if char == ","
+        events << [:comma, nil, nil, stack.last]
+      elsif !char.match?(/\s/) && !OPENERS.include?(char) && !CLOSERS.include?(char)
+        # Any other bare token: an identifier, a spread's dots, a `%q` sigil, a
+        # separator. Entries are recognized by CONTENT, so an entry holding
+        # something this parser cannot read is reported rather than skipped as
+        # if it were a trailing comma.
+        events << [:content, nil, nil, stack.last]
+      end
 
       if OPENERS.include?(char)
         depth += 1
         entered = true
+        container_seq += 1
+        stack.push(container_seq)
       elsif CLOSERS.include?(char)
         depth -= 1
         raise ExtractionError, "unbalanced closing bracket while reading a skip table" if depth.negative?
+
+        stack.pop
       end
 
       index += 1

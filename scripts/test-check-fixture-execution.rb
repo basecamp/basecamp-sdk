@@ -481,6 +481,16 @@ out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
 expect_fail(failures, "unrecognized entry after one with a constant value", out, status,
             "entry has no key this parser can place")
 
+# An entry holding NO string literal — a spread — must be rejected rather than
+# skipped as if it were a trailing comma. Entries are therefore recognized by
+# CONTENT: a trailing comma leaves an entry with nothing in it, a spread leaves
+# one with tokens the parser cannot read.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, TS_RUNNER, "};", "  ...COMMON_SKIPS,\n};")
+})
+expect_fail(failures, "skip table composed from a spread", out, status,
+            "it holds no string literal at all")
+
 # A raw or multiline literal is reported rather than guessed at: mis-tokenizing
 # one shifts every string after it.
 out, status = run_gate(mutate: lambda { |f|
