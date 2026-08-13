@@ -3455,3 +3455,65 @@ func (m (M)) MarshalJSON() ([]byte, error) { return nil, nil }
 		t.Error("a parenthesized receiver still declares the method")
 	}
 }
+
+// TestExtractJSONTag_EscapedQuoteInAnotherTag covers a tag body whose EARLIER
+// value contains an escaped quote. The hand-rolled scanner that used to live
+// here stopped at it and reported no json tag, which on an anonymous field
+// silently turns a tagged member into a promotion source. Parsing is now
+// reflect's job — the same parser encoding/json consults — so the two cannot
+// disagree.
+func TestExtractJSONTag_EscapedQuoteInAnotherTag(t *testing.T) {
+	// `xml:"a\"b" json:"base"` as it appears in source, inside a raw literal.
+	literal := "`" + `xml:"a\"b" json:"base"` + "`"
+	if got := extractJSONTag(literal); got != "base" {
+		t.Errorf("escaped quote in a preceding tag: got %q, want \"base\"", got)
+	}
+	// And the consequence at the walk level: such a field is NOT a promotion
+	// source, so the embedded type's tags must not appear on the outer struct.
+	structs := flattenFixture(t, "package fixture\n\ntype Base struct {\n\tID int64 `json:\"id\"`\n}\n\ntype Outer struct {\n\tBase "+literal+"\n}\n")
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if outer.tags["id"] {
+		t.Error("a tagged anonymous field is not a promotion source, whatever the earlier tags contain")
+	}
+	if !outer.tags["base"] {
+		t.Errorf("it registers under its own json tag, got %v", outer.tags)
+	}
+}
+
+// TestFlattenEmbedded_GenericInstantiationIsReported covers a name declared
+// over an instantiated generic (`type A G[int]`). Such a type keeps G's fields
+// — and an alias to one keeps its method set — so treating it as fieldless
+// would drop those tags from BOTH sides of a pair and let a wrapper omit them
+// with no report at all. Modelling instantiation is the type checker's job, so
+// the walk reports instead.
+func TestFlattenEmbedded_GenericInstantiationIsReported(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type G[T any] struct {
+	Value T ~json:"value"~
+}
+
+type Defined G[int]
+type Aliased = G[int]
+
+type UsesDefined struct {
+	Defined
+}
+
+type UsesAlias struct {
+	Aliased
+}
+`))
+	for _, name := range []string{"UsesDefined", "UsesAlias"} {
+		sf := structs[name]
+		if sf == nil {
+			t.Fatalf("%s not collected", name)
+		}
+		if len(sf.unresolved) == 0 {
+			t.Errorf("%s: an instantiated generic is not modelled and must be reported, not treated as fieldless", name)
+		}
+	}
+}

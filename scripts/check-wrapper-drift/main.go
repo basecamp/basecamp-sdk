@@ -304,6 +304,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -1775,6 +1776,13 @@ func resolveEmbedFull(e embedRef, structs map[string]*structFields, decls map[st
 			name = t.Name
 		case *ast.SelectorExpr:
 			return nil, "", methodsTravel, "defined in terms of another package's type, which this check does not parse"
+		case *ast.IndexExpr, *ast.IndexListExpr:
+			// `type A G[int]` keeps G's fields, and an alias to one keeps its
+			// method set too. Modelling instantiation is type-checker work;
+			// under this file's invariant the answer is to report, not to
+			// treat it as fieldless — which would drop its tags from the
+			// GENERATED side as well and let a wrapper omit them silently.
+			return nil, "", methodsTravel, "declared over an instantiated generic type, whose fields and method set this check does not model"
 		default:
 			// (fallthrough comment below applies to the default branch)
 			// An interface, map, slice, func, chan or generic type. It is a
@@ -2427,44 +2435,20 @@ func extractJSONTag(tagLiteral string) string {
 	default:
 		return ""
 	}
-	// Use reflect-style key-value parsing. Tags look like `json:"foo,omitempty" xml:"bar"`.
-	for inner != "" {
-		// Skip leading spaces.
-		i := 0
-		for i < len(inner) && inner[i] == ' ' {
-			i++
-		}
-		inner = inner[i:]
-		if inner == "" {
-			break
-		}
-		// Find key (up to ':').
-		colon := strings.IndexByte(inner, ':')
-		if colon == -1 {
-			break
-		}
-		key := inner[:colon]
-		// Value must start with a quote.
-		if colon+1 >= len(inner) || inner[colon+1] != '"' {
-			break
-		}
-		// Find closing quote (Go struct tags don't escape quotes in values).
-		end := strings.IndexByte(inner[colon+2:], '"')
-		if end == -1 {
-			break
-		}
-		val := inner[colon+2 : colon+2+end]
-		if key == "json" {
-			// Take everything before the first comma.
-			comma := strings.IndexByte(val, ',')
-			if comma == -1 {
-				return val
-			}
-			return val[:comma]
-		}
-		inner = inner[colon+3+end:]
+	// The tag body is parsed by reflect, not by hand. A hand-rolled scanner
+	// has to re-derive Go's quoted-string rules, and the one that lived here
+	// stopped at an escaped quote inside an unrelated tag — reading a TAGGED
+	// anonymous field as untagged, which promotes members that are not on the
+	// wire. reflect.StructTag is the same parser encoding/json consults, so
+	// the two cannot disagree.
+	val, ok := reflect.StructTag(inner).Lookup("json")
+	if !ok {
+		return ""
 	}
-	return ""
+	if comma := strings.IndexByte(val, ','); comma != -1 {
+		return val[:comma]
+	}
+	return val
 }
 
 // assignedAny reports whether the construction site assigned any of the given
