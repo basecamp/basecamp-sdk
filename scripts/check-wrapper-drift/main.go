@@ -851,18 +851,36 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 			}
 		}
 		// A value shape the walker could not interpret was recorded rather
-		// than credited. Report it: an uninterpreted assignment is exactly
-		// where a silently-credited field would hide.
+		// than credited. Report it — but only where the SUBTREE mattered.
+		//
+		// Every expression yields a value of its field's type, so an
+		// unclassifiable one is only interesting when this walker would
+		// otherwise have credited what is UNDER it: an assignment to an embed
+		// on some promoted field's path. On an ordinary field there is nothing
+		// underneath to get wrong, and `w.ID = 1` or `w.Name = first + last`
+		// are perfectly good assignments the check has always accepted.
 		if !isTier2 {
+			subtreeMatters := map[string]bool{}
+			for tag := range wrap.tagPath {
+				for _, target := range wrap.populationTargets(tag) {
+					if strings.HasSuffix(target, ".*") {
+						subtreeMatters[strings.TrimSuffix(target, ".*")] = true
+					}
+				}
+			}
 			var unrecognized []string
 			for spelling := range assigned {
-				if strings.HasPrefix(spelling, unrecognizedPrefix) {
-					unrecognized = append(unrecognized, strings.TrimPrefix(spelling, unrecognizedPrefix))
+				if !strings.HasPrefix(spelling, unrecognizedPrefix) {
+					continue
+				}
+				path := strings.TrimPrefix(spelling, unrecognizedPrefix)
+				if subtreeMatters[path] {
+					unrecognized = append(unrecognized, path)
 				}
 			}
 			sort.Strings(unrecognized)
 			for _, u := range unrecognized {
-				drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: the value assigned to %s is a shape this walker does not interpret, so it credits nothing. Assign the field with a composite literal, a call or a variable, or mark the tags with `// intentionally-omitted: <tag> - <reason>`.", wrapName, genName, u))
+				drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: %s is an embed on a promoted field's path, and the value assigned to it is a shape this walker does not interpret — so it credits none of the fields under it rather than guessing. Assign it with a composite literal, a call or a variable, or mark the affected tags with `// intentionally-omitted: <tag> - <reason>`.", wrapName, genName, u))
 			}
 		}
 		for _, u := range gen.unresolved {
@@ -2222,9 +2240,14 @@ func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) 
 			return
 		}
 		// Positional: every direct field is listed, so the subtree is covered
-		// unless one of the elements is itself statically zero.
+		// — unless an element is statically zero, or is itself a literal whose
+		// contents the walker can see but cannot ATTRIBUTE to a field without
+		// the declaration order. `Base{Audit{At: x}, g.ID}` fills one field of
+		// Audit and leaves the rest zero; claiming the subtree would credit
+		// them. Seeing content it cannot place is a reason to stop claiming,
+		// not to assume.
 		for _, elt := range lit.Elts {
-			if zeroValued(elt) {
+			if zeroValued(elt) || literalToEnumerate(elt) != nil {
 				return
 			}
 		}

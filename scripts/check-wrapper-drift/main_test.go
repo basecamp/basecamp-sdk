@@ -2306,8 +2306,12 @@ func TestRecordAssignedValue_ValueShapes(t *testing.T) {
 		{"positional literal with an empty nested literal", "Base{Audit{}, g.Name}", nil, false, []string{"Base.*"}},
 		{"positional literal with new(T)", "Base{new(Audit), g.Name}", nil, false, []string{"Base.*"}},
 		{"positional literal with a typed nil", "Base{(*Audit)(nil), g.Name}", nil, false, []string{"Base.*"}},
-		// A populated nested literal is not zero, so the claim stands.
-		{"positional literal with a populated nested literal", "Base{Audit{At: g.At}, g.Name}", nil, true, nil},
+		// A populated nested literal is content the walker can SEE but cannot
+		// attribute to a field without the declaration order — it fills some
+		// of Audit and leaves the rest zero — so the subtree claim is dropped
+		// rather than assumed. A positional literal of opaque elements still
+		// claims it, which is the row above.
+		{"positional literal with a populated nested literal", "Base{Audit{At: g.At}, g.Name}", nil, false, []string{"Base.*"}},
 		{"empty literal", "Base{}", nil, false, []string{"Base.*"}},
 		{"opaque call", "baseFrom(g)", nil, true, nil},
 		// Statically zero-producing values carry nothing in, so they cannot
@@ -3704,5 +3708,71 @@ func (t *Two[A, B]) UnmarshalJSON(b []byte) error { return nil }
 	}
 	if !got["Two"] {
 		t.Error("the multi-parameter receiver form counts too")
+	}
+}
+
+// TestRun_OrdinaryFieldValuesAreNotReported is the regression for an
+// over-report the unrecognised-shape rule introduced: `recordAssignedValue`
+// runs for EVERY field, so a literal or an expression assigned to an ordinary
+// scalar — `n.ID = 1`, `n.Name = g.Name + "!"` — was being reported as
+// uninterpretable.
+//
+// Every expression yields a value of its field's type; an unclassifiable one
+// only matters when the walker would otherwise credit what is UNDER it. On a
+// scalar there is nothing underneath, so the report is scoped to embeds on a
+// promoted field's path — which the second half of this test still catches.
+func TestRun_OrdinaryFieldValuesAreNotReported(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id   int64  ~json:"id"~
+	Name string ~json:"name"~
+}
+`)
+	scalarSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Note struct {
+	ID   int64  ~json:"id"~
+	Name string ~json:"name"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = 1
+	n.Name = g.Name + "!"
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": scalarSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("run: ordinary field assignments must not be reported as uninterpretable, got %v", err)
+	}
+
+	// The same unclassifiable shape assigned to an EMBED still reports: there
+	// the walker would have credited every field underneath.
+	embedSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	ID   int64  ~json:"id"~
+	Name string ~json:"name"~
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.Base = *baseOf(g) + *baseOf(g)
+	return n
+}
+`)
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": embedSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Error("run: an uninterpretable value assigned to an embed must still be reported")
 	}
 }
