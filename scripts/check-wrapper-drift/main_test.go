@@ -4239,3 +4239,59 @@ func noteFromGenerated(g generated.Note) Note {
 		t.Errorf("expected the generated-side embed to count, got:\n%s", stdout)
 	}
 }
+
+// TestRun_ScopeCountsOnlyTagsTheCheckConsumed pins the other half of the
+// derivation: "contributed" means a generated tag the check actually consumed.
+// A promoted tag the wrapper intentionally omits was answered by the marker,
+// and a tag promoted on the GENERATED side that the wrapper does not declare is
+// reported as missing — neither was verified through promotion, and counting
+// them would overstate what the run exercised.
+func TestRun_ScopeCountsOnlyTagsTheCheckConsumed(t *testing.T) {
+	genSrc := src(`package generated
+
+type Timestamps struct {
+	CreatedAt string ~json:"created_at"~
+	UpdatedAt string ~json:"updated_at"~
+}
+
+type Note struct {
+	Timestamps
+	Id int64 ~json:"id"~
+}
+`)
+	// created_at is omitted by marker; updated_at is simply absent from the
+	// wrapper. Both are promoted on the generated side; neither is consumed.
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Note struct {
+	// intentionally-omitted: created_at - answered here, not through promotion
+	// intentionally-omitted: updated_at - same
+	ID int64 ~json:"id"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	var stdout string
+	_ = captureStderr(t, func() {
+		stdout = captureStdout(t, func() {
+			if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+				t.Errorf("fixture setup: the markers answer both promoted tags, got %v", err)
+			}
+		})
+	})
+	// The generated side embeds, so the pair counts as embedding...
+	if !strings.Contains(stdout, "1 of 1 pairs embed a struct") {
+		t.Errorf("the generated-side embed must still count, got:\n%s", stdout)
+	}
+	// ...but no promoted tag was consumed by a check.
+	if !strings.Contains(stdout, "no promoted tag reached the check") {
+		t.Errorf("an omitted or absent tag was not verified through promotion; the line must not claim it was:\n%s", stdout)
+	}
+}
