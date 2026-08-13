@@ -3,13 +3,26 @@
 
 # Doc-constant drift gate + writer.
 #
-# Three constants are restated in prose and drift silently from their sources:
+# Several constants and rosters are restated in prose and drift silently from
+# their sources:
 #
-#   @api-version      openapi.json  .info.version
-#   @bc3-pin          spec/api-provenance.json  .bc3.revision / .bc3.date
-#   @assertion-types  conformance/schema.json
-#   @operation-count  openapi.json  count of path × HTTP-method pairs
-#                       .properties.assertions.items.properties.type.enum
+#   @api-version          openapi.json  .info.version
+#   @bc3-pin              spec/api-provenance.json  .bc3.revision / .bc3.date
+#   @assertion-types      conformance/schema.json
+#                           .properties.assertions.items.properties.type.enum
+#   @operation-count      openapi.json  count of path × HTTP-method pairs
+#   @fixture-categories   git ls-files conformance/tests/*.json
+#   @fixture-section-map  git ls-files conformance/tests/*.json
+#
+# The last two are the same shape as @assertion-types one level out: a table
+# that CLAIMS to account for every conformance fixture, with nothing checking
+# it. Both were missed by the last three fixture-adding commits, in three
+# different ways — dee221c85 added documents_write.json and updated neither
+# table, b238e5ed4 added uploads_write.json with Appendix D rows and no §19
+# row, and #726 added search.json's §19 row and missed Appendix D. Two
+# half-applications in opposite directions is not carelessness; it is a rule
+# nobody can see (CONTRIBUTING.md tells contributors to add conformance tests
+# and mentions neither table).
 #
 # Only spans MARKED with an HTML comment are checked. That is deliberate:
 # spec/api-gaps/ legitimately cites ~20 historical bc3 SHAs in narrative
@@ -73,12 +86,14 @@
 # Modes
 #   --check (default)  Report drift; exit 1 on any error.
 #   --write            Rewrite marked spans in place from the sources.
-#                      Only the two scalar constants are writable — an
-#                      assertion-type row needs a human-written description,
-#                      so --write never touches @assertion-types and never
-#                      fails on it. `make doc-constants-check` is what catches
-#                      that one; keeping it out of the writer keeps a schema
-#                      edit from breaking every `make generate`.
+#                      Only the scalar constants are writable — every BLOCK
+#                      kind is a table whose rows carry a human-authored
+#                      column (an assertion type's meaning, a fixture's owning
+#                      spec sections, a fixture's case summary), so --write
+#                      never touches them and never fails on them.
+#                      `make doc-constants-check` is what catches those;
+#                      keeping them out of the writer keeps a schema or
+#                      fixture edit from breaking every `make generate`.
 #                      Files listed in spec/doc-constants.json .writerExcludes
 #                      are never rewritten either: this script runs inside
 #                      `make generate`, and a document whose marked value is
@@ -120,7 +135,7 @@ LINE_KINDS  = %w[api-version bc3-pin operation-count].freeze
 # The OpenAPI verbs an operation can be keyed under. Anything else in a path
 # item (parameters, servers, summary) is not an operation and must not count.
 HTTP_METHODS = %w[get put post delete patch head options trace].freeze
-BLOCK_KINDS = %w[assertion-types].freeze
+BLOCK_KINDS = %w[assertion-types fixture-categories fixture-section-map].freeze
 KNOWN_KINDS = (LINE_KINDS + BLOCK_KINDS).freeze
 
 MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
@@ -213,6 +228,42 @@ def tracked_markdown
   raise Failure, "git ls-files failed (is #{ROOT} a git checkout?)" unless $?.success?
 
   out.split("\0").reject(&:empty?).sort
+end
+
+# The conformance fixtures the two §19/Appendix D rosters claim to account for.
+#
+# `git ls-files` rather than Dir.glob, for tracked_markdown's reason one step
+# further: an untracked scratch fixture sitting in a working checkout must not
+# fail that developer's build, and a fixture that IS tracked is exactly the one
+# a reviewer will see and expect the tables to cover.
+#
+# Scoped to conformance/tests/ deliberately, and that scope is the whole of how
+# SPEC §23's carve-out is honored. The parallel fixture families —
+# conformance/oauth/, conformance/oauth-token/, conformance/event-feed*/ — are
+# documented at their own consuming section and directory, "not in §19's
+# operation-dispatch category table or Appendix D". They are not absent from
+# these rosters by oversight, so the gate must not pull them in.
+#
+# Named by reference rather than by count on purpose. This comment carried "68
+# JSON files" for several commits; the real number is 74 and was 74 when it was
+# written. Nothing keeps a restated count current, which is the whole reason
+# @operation-count exists two hundred lines up — and a number is not what the
+# reader needs here. AGENTS.md: reach for a literal only when the sentence is
+# genuinely about the value.
+# DIRECT CHILDREN ONLY. Git's pathspec `*` matches across `/`, so the pattern
+# alone would also return `conformance/tests/nested/case.json` — which no runner
+# discovers, since all six glob non-recursively. Requiring a roster row for a
+# fixture nothing executes would be this gate demanding documentation for a
+# claim that is not true; the basename collapse would also make
+# `nested/auth.json` and `auth.json` indistinguishable.
+def tracked_fixtures
+  out = IO.popen(["git", "-C", ROOT, "ls-files", "-z", "--", "conformance/tests/*.json"],
+                 external_encoding: UTF8, &:read)
+  raise Failure, "git ls-files failed (is #{ROOT} a git checkout?)" unless $?.success?
+
+  out.split("\0").reject(&:empty?)
+     .select { |path| File.dirname(path) == "conformance/tests" }
+     .map { |path| File.basename(path) }.sort
 end
 
 Span = Struct.new(:kind, :file, :line_no, :lines, :block, keyword_init: true) do
@@ -638,6 +689,256 @@ def check_assertion_types(span, schema_types)
   errors
 end
 
+# --- conformance fixture rosters ---------------------------------------------
+
+# A Markdown alignment cell: `---`, `:---`, `---:` or `:---:`.
+SEPARATOR_CELL_RE = /\A:?-+:?\z/
+
+# The cells of one Markdown table row, stripped. The leading empty string before
+# the opening pipe is dropped; Ruby's split already drops the trailing one.
+def table_cells(line)
+  # Split on UNESCAPED pipes only. `\|` inside a cell is ordinary Markdown —
+  # "supports A \| B" is a legitimate test summary — and a raw split would treat
+  # the text after it as the next column, shifting every cell along. A row whose
+  # Primary section is actually blank then presents a non-empty cell there and
+  # satisfies the blank-cell guard.
+  parts = line.split(/(?<!\\)\|/)
+  parts.shift
+  parts.map { |cell| cell.strip.gsub("\\|", "|") }
+end
+
+# The DATA rows of the table inside a marked span, as [line_no, cells] pairs.
+#
+# check_assertion_types identifies a row by whether its first cell already
+# parses, and filter_maps the rest away. That is safe there: a row it drops
+# reappears as a `missing:` assertion type, because the schema is the source of
+# truth and every name in it must be found somewhere. The fixture rosters get
+# the stricter form — a row is whatever follows the |---|---| separator, and a
+# row whose file cell does not parse is REPORTED rather than skipped. Same rule
+# the fence handling follows: a row the parser cannot see is a row it silently
+# vouches for, and over-scanning costs a false alarm while under-scanning costs
+# a claim nobody checked, wearing this gate's own green tick.
+def table_rows(span)
+  numbered = span.lines.each_with_index
+                 .map { |line, index| [span.line_no + index, line.strip] }
+                 .select { |_, line| line.start_with?("|") }
+
+  separator = numbered.index do |_, line|
+    cells = table_cells(line)
+    !cells.empty? && cells.all? { |cell| cell.match?(SEPARATOR_CELL_RE) }
+  end
+
+  if separator.nil?
+    return [["#{span.location}: the @#{span.kind} span holds no Markdown table (no |---|---| " \
+             "separator row) — the marker pair is around the wrong lines"], []]
+  end
+
+  [[], numbered[(separator + 1)..].map { |line_no, line| [line_no, table_cells(line)] }]
+end
+
+# A table cell naming a fixture file: a single backticked *.json and nothing else.
+FIXTURE_CELL_RE = /\A`([A-Za-z0-9][A-Za-z0-9_.-]*\.json)`\z/
+
+# The section numbers a document actually defines, from its `## §N.` headings.
+def spec_sections(file)
+  @spec_sections ||= {}
+  @spec_sections[file] ||= begin
+    found = File.readlines(File.join(ROOT, file), chomp: true, encoding: UTF8)
+               .filter_map { |line| line[/\A## §(\d+)\./, 1] }.to_set
+    if found.empty?
+      raise Failure, "#{file}: no `## §N.` headings found, so section references in its tables " \
+                     "cannot be validated — this check has no source of truth"
+    end
+
+    found
+  end
+end
+
+# Section references in a table cell that resolve to no heading.
+#
+# Catches a typo (`§99`) and, more usefully, a reference that RESOLVED when it
+# was written and stopped resolving when a section was renumbered — the case a
+# reviewer reading the same PR cannot see, unlike an obviously wrong number.
+#
+# Deliberately does NOT require a row to carry a section reference at all. That
+# would catch a `TBD` placeholder, but only with a carve-out for the row that
+# legitimately has none — `live-my-surface.json`, attributed to external
+# governance — and the carve-out list is the part that grows.
+def unresolved_sections(cell, file)
+  cell.scan(/§(\d+)/).flatten.uniq.reject { |number| spec_sections(file).include?(number) }
+end
+
+# Vacuity guards, stated explicitly rather than left to emerge.
+#
+# Both directions already fail loudly on their own — an empty table makes every
+# fixture `missing`, an empty fixture list makes every row `extra` — so this
+# buys no coverage. It buys the message: a regex that stopped matching would
+# otherwise be reported as 22 individually plausible drift findings instead of
+# the one thing that is actually wrong. House standard since
+# check-search-fixture-copy.py.
+def roster_vacuity(span, fixtures, rows)
+  if fixtures.empty?
+    ["#{span.location}: internal error: `git ls-files conformance/tests/*.json` matched nothing, " \
+     "so this check has no source of truth and cannot vouch for the table"]
+  elsif rows.empty?
+    ["#{span.location}: the @#{span.kind} table has no data rows"]
+  else
+    []
+  end
+end
+
+# The category slug a fixture's filename dictates: basename minus `.json`, with
+# `_` written as `-`. Verified to hold across every row of the table with zero
+# violations, which is what makes it an invariant to assert rather than a
+# convention to hope for.
+def category_slug(file)
+  File.basename(file, ".json").tr("_", "-")
+end
+
+# SPEC §19's Test Categories table: exactly one row per tracked fixture, and the
+# category slug is the filename. The invariant is a bijection, so all of it is
+# asserted — both directions plus the slug.
+def check_fixture_categories(span, fixtures)
+  errors, rows = table_rows(span)
+  return errors unless errors.empty?
+
+  vacuity = roster_vacuity(span, fixtures, rows)
+  return vacuity unless vacuity.empty?
+
+  documented = []
+  rows.each do |line_no, cells|
+    if cells.length < 3
+      errors << "#{span.file}:#{line_no}: category row has #{cells.length} cell(s); the shape is " \
+                "| Category | `file.json` | Owning Spec Section(s) |"
+      next
+    end
+
+    # The table's claim is that every fixture HAS an owning spec section. A row
+    # with an empty third cell satisfies presence and states nothing, so it
+    # would let a new fixture through with the attribution the row exists to
+    # carry left blank — the gate reporting the claim as kept while it is
+    # vacuous. Both PR bots flagged this on both tables.
+    if cells[2].empty?
+      errors << "#{span.file}:#{line_no}: category row for #{cells[1]} names no owning spec " \
+                "section. That attribution is the whole claim of this table — a row without it " \
+                "records that the fixture exists, not that anything in the spec owns it."
+      next
+    end
+
+    match = cells[1].match(FIXTURE_CELL_RE)
+    if match.nil?
+      errors << "#{span.file}:#{line_no}: the Files cell #{cells[1].inspect} is not a single " \
+                "backticked fixture filename (`something.json`)"
+      next
+    end
+
+    documented << [cells[0], match[1], line_no]
+
+    unresolved = unresolved_sections(cells[2], span.file)
+    unless unresolved.empty?
+      errors << "#{span.file}:#{line_no}: owning section(s) #{unresolved.map { |n| "§#{n}" }.join(', ')} " \
+                "do not resolve to a `## §N.` heading in #{span.file} — a renumbered section " \
+                "leaves a reference that reads fine and points nowhere"
+    end
+
+    next if cells[0] == category_slug(match[1])
+
+    errors << "#{span.file}:#{line_no}: category `#{cells[0]}` does not match its file — " \
+              "`#{match[1]}` dictates the slug `#{category_slug(match[1])}` (basename, `_` as `-`)"
+  end
+
+  listed = documented.map { |_, file, _| file }
+  listed.tally.select { |_, n| n > 1 }.each_key do |file|
+    errors << "#{span.location}: `#{file}` is tabulated on more than one row; one fixture, one " \
+              "category"
+  end
+
+  missing = fixtures - listed
+  extra   = listed - fixtures
+
+  unless missing.empty?
+    errors << "#{span.location}: conformance/tests holds #{fixtures.length} tracked fixture(s), " \
+              "the table categorises #{listed.uniq.length}; missing: " \
+              "#{missing.map { |f| "`#{f}`" }.join(', ')}. Every fixture needs a row naming the " \
+              "spec section that owns it — add one, or the fixture is a test nothing in the spec " \
+              "claims."
+  end
+  unless extra.empty?
+    errors << "#{span.location}: the table categorises files git does not track under " \
+              "conformance/tests/: #{extra.map { |f| "`#{f}`" }.join(', ')}"
+  end
+
+  errors
+end
+
+# SPEC Appendix D's Conformance Test → Spec Section mapping: every tracked
+# fixture appears on at least one row, and no row names a file that is not one.
+#
+# Deliberately weaker than the categories check, because the artifact is
+# weaker. Its rows are curated free-form summaries — one row bundles eleven
+# schedule-entry cases, four rows split uploads_write.json by theme — so
+# "exactly one row per fixture" is not true of it and never was. Asserting
+# coverage is what the table actually claims; asserting shape would be
+# asserting an invariant nobody wrote.
+def check_fixture_section_map(span, fixtures)
+  errors, rows = table_rows(span)
+  return errors unless errors.empty?
+
+  vacuity = roster_vacuity(span, fixtures, rows)
+  return vacuity unless vacuity.empty?
+
+  covered = []
+  rows.each do |line_no, cells|
+    if cells.length < 3
+      errors << "#{span.file}:#{line_no}: mapping row has #{cells.length} cell(s); the shape is " \
+                "| `file.json` | Test name | Primary section |"
+      next
+    end
+
+    # Coverage by a row that names neither the cases nor a section is coverage
+    # in name only. This table is already the weaker of the two — it asserts
+    # that a fixture appears, not that every case does — so a blank row would
+    # reduce it to asserting nothing at all.
+    blank = [["Test name", cells[1]], ["Primary section", cells[2]]].select { |_, cell| cell.empty? }
+    unless blank.empty?
+      errors << "#{span.file}:#{line_no}: mapping row for #{cells[0]} leaves " \
+                "#{blank.map(&:first).join(' and ')} empty — a row that summarises no cases and " \
+                "names no section covers the fixture only nominally."
+      next
+    end
+
+    match = cells[0].match(FIXTURE_CELL_RE)
+    if match.nil?
+      errors << "#{span.file}:#{line_no}: the Test file cell #{cells[0].inspect} is not a single " \
+                "backticked fixture filename (`something.json`)"
+      next
+    end
+
+    covered << match[1]
+
+    unresolved = unresolved_sections(cells[2], span.file)
+    next if unresolved.empty?
+
+    errors << "#{span.file}:#{line_no}: primary section(s) #{unresolved.map { |n| "§#{n}" }.join(', ')} " \
+              "do not resolve to a `## §N.` heading in #{span.file}"
+  end
+
+  missing = fixtures - covered
+  extra   = covered.uniq - fixtures
+
+  unless missing.empty?
+    errors << "#{span.location}: no row maps these tracked fixtures to a primary section: " \
+              "#{missing.map { |f| "`#{f}`" }.join(', ')}. One row per theme is enough — the " \
+              "table claims coverage, not a case-by-case index."
+  end
+  unless extra.empty?
+    errors << "#{span.location}: rows name files git does not track under conformance/tests/: " \
+              "#{extra.map { |f| "`#{f}`" }.join(', ')}"
+  end
+
+  errors
+end
+
 # --- writer ------------------------------------------------------------------
 
 def rewrite_line(kind, line, api_version:, revision:, date:, operation_count_value:)
@@ -806,13 +1107,22 @@ def run(mode, openapi)
   schema_types = dig!(schema, "conformance/schema.json",
                       "properties", "assertions", "items", "properties", "type", "enum")
 
+  # Derived lazily for op_count's reason: a repo carrying no fixture roster has
+  # no business shelling out to git for a list it never consults.
+  fixtures_memo = nil
+  fixtures = lambda do
+    fixtures_memo ||= tracked_fixtures
+  end
+
   spans.each do |span|
     errors.concat(
       case span.kind
-      when "api-version"     then check_api_version(span, api_version, openapi)
-      when "bc3-pin"         then check_bc3_pin(span, revision, date)
-      when "assertion-types" then check_assertion_types(span, schema_types)
-      when "operation-count" then check_operation_count(span, op_count.call, openapi)
+      when "api-version"         then check_api_version(span, api_version, openapi)
+      when "bc3-pin"             then check_bc3_pin(span, revision, date)
+      when "assertion-types"     then check_assertion_types(span, schema_types)
+      when "operation-count"     then check_operation_count(span, op_count.call, openapi)
+      when "fixture-categories"  then check_fixture_categories(span, fixtures.call)
+      when "fixture-section-map" then check_fixture_section_map(span, fixtures.call)
       else []
       end
     )
@@ -836,6 +1146,9 @@ def run(mode, openapi)
     puts "  bc3-pin          #{revision[0, 8]} (#{date})"
     puts "  assertion-types  #{schema_types.length}"
     puts "  operation-count  #{op_count.call}" if spans.any? { |s| s.kind == "operation-count" }
+    if spans.any? { |s| %w[fixture-categories fixture-section-map].include?(s.kind) }
+      puts "  fixtures         #{fixtures.call.length} tracked under conformance/tests/"
+    end
     0
   else
     warn "ERROR: documentation constants have drifted from their sources."
@@ -851,6 +1164,11 @@ def run(mode, openapi)
     end
     warn "  Assertion types:  edit SPEC.md §19's marked table by hand — a new row " \
          "needs a description only a human can write."
+    warn "  Fixture rosters:  a new conformance/tests fixture needs a row in BOTH SPEC.md §19's " \
+         "Test Categories"
+    warn "                    table and Appendix D. Neither is auto-written: the owning-section " \
+         "and case-summary"
+    warn "                    columns are attributions only the fixture's author can make."
     warn "  Unmarked pin:     see the A/B rule in AGENTS.md §Provenance is Mandatory."
     1
   end

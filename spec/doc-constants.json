@@ -2,6 +2,8 @@
   "$comment": [
     "Policy for scripts/sync-doc-constants.rb (make doc-constants-check).",
     "",
+    "THE GENERAL RULE, so a seventh kind does not have to be inferred from six examples: anything DERIVED from a machine-readable source and restated in prose gets a marker and an exact count here. The marker says 'this span is a claim about the current value of that source'; the count says 'this file carries exactly N such claims', so deleting one fails instead of silencing the check. A scalar claim is a LINE kind and the writer keeps it current. A claim the writer cannot author is a BLOCK kind — a table whose rows carry a human-written column (an assertion type's meaning, a fixture's owning spec sections) is the recurring shape — and --check is what holds it, by set comparison against the derived source. Whichever kind it is, the checker must fail when EITHER side parses to nothing: with both vacuity guards removed, an emptied table compared against an empty source is trivially satisfied and the gate exits 0, which is the one hole a set comparison cannot close on its own. Prose that merely mentions a value it is not claiming stays unmarked; see the A/B rule below and in AGENTS.md.",
+    "",
     "markerCounts — the EXACT number of spans each file carries for a given HTML",
     "comment. Any deviation fails: too few means a claim was deleted or unmarked,",
     "too many means one was added without being recorded here (and so would not be",
@@ -30,6 +32,8 @@
     "The N+1th citation fails until someone reads it and restates the number;",
     "fewer than N means the entry has outlived what it described.",
     "",
+    "fixture-categories / fixture-section-map — the two SPEC.md tables that claim to account for every tracked fixture under conformance/tests/, sourced from `git ls-files conformance/tests/*.json`. Neither is writable, for @assertion-types' reason: a row carries an owning-section attribution or a case summary only the fixture's author can make. The categories table is a bijection (one row per fixture, and the category slug IS the filename); Appendix D is coverage only, because its rows deliberately bundle several cases each. Added after the same drift appeared three times in three different shapes — a fixture with neither row, a fixture with Appendix D rows and no category row, and a fixture with a category row and no Appendix D row. SPEC §23's parallel fixture families (conformance/oauth/, oauth-token/, event-feed*/) are carved out of both rosters by their own section, which the conformance/tests/ scope honors with no special case.",
+    "",
     "operation-count — the number of (path, HTTP method) pairs in openapi.json. It is one jq away from the source and was restated in prose in six places across four files, which is how a single new operation left five of them stale and took three review rounds to reconcile. The marked span must carry the count as a BACKTICKED integer, and exactly one: the marked sentences state other numbers (SECURITY.md names 125 GETs and 83 mutations beside the total), so backticks are what distinguishes the derived constant from prose arithmetic the writer has no source for."
   ],
   "markerCounts": {
@@ -41,6 +45,12 @@
       "spec/api-gaps/README.md": 1
     },
     "assertion-types": {
+      "SPEC.md": 1
+    },
+    "fixture-categories": {
+      "SPEC.md": 1
+    },
+    "fixture-section-map": {
       "SPEC.md": 1
     },
     "operation-count": {
