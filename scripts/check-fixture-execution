@@ -52,12 +52,24 @@ class Failure < StandardError; end
 
 # `git ls-files`, not Dir.glob: an untracked scratch fixture in a working
 # checkout must not fail that developer's build.
+#
+# DIRECT CHILDREN ONLY. Git's pathspec `*` matches across `/`, so the pattern
+# alone would also return `conformance/tests/nested/case.json` — while all six
+# runners discover fixtures with a NON-RECURSIVE glob and would never execute
+# it. Counting a nested fixture here would be the exact defect this gate exists
+# to catch, committed by the gate itself: its cases appear in no skip table, so
+# they read as executed everywhere while nothing runs them.
+#
+# A nested fixture is therefore invisible to this gate rather than vouched for.
+# That is the honest scope, not a fix — if one is ever added, the runners need
+# teaching first, and `check-runner-test-reachability` is the gate that watches
+# discovery.
 def tracked_fixtures
   out = IO.popen(["git", "-C", ROOT, "ls-files", "-z", "--", "conformance/tests/*.json"],
                  external_encoding: UTF8, &:read)
   raise Failure, "git ls-files failed (is #{ROOT} a git checkout?)" unless $?.success?
 
-  out.split("\0").reject(&:empty?).sort
+  out.split("\0").reject(&:empty?).select { |path| File.dirname(path) == "conformance/tests" }.sort
 end
 
 # [{case}, ...] with the owning file attached, so a message can name it.
@@ -105,6 +117,30 @@ def check_companion_tables(tables)
       end
       [message.join("\n")]
     end
+  end
+end
+
+# A skip table entry that names no fixture case is a waiver for nothing. It
+# arrives by rename or deletion: the case moves on, the entry stays, and the
+# runner silently stops skipping anything — which is the direction that LOOKS
+# fine (the case now runs) right up until it fails there for a capability the
+# waiver still claims is absent. It also keeps a line alive in SPEC §19's
+# roster, where it reads as an accepted divergence nobody can find.
+#
+# Compared against every tracked case name, mock and live alike: a skip naming a
+# live case is equally dead, and this is the drift that matters rather than a
+# ruling on which modes a skip may name.
+def check_stale_skips(tables, cases)
+  names = cases.map { |c| c["name"] }.to_set
+
+  ConformanceSkips::RUNNERS.filter_map do |runner|
+    table = runner.skip_table
+    stale = tables.fetch(table.id(runner.name)).reject { |key| names.include?(key) }
+    next if stale.empty?
+
+    "#{table.file}: #{table.label} names #{stale.length} case(s) no fixture defines: " \
+      "#{stale.map(&:inspect).join(', ')}. A renamed or deleted case leaves the entry behind, " \
+      "waiving a skip that no longer happens — delete it, or fix the name."
   end
 end
 
@@ -206,7 +242,8 @@ def run
   end
 
   errors = check_companion_tables(tables) + check_roster(ROOT, tables) +
-           check_modes(cases) + check_execution(cases, exclusions)
+           check_stale_skips(tables, cases) + check_modes(cases) +
+           check_execution(cases, exclusions)
 
   if errors.empty?
     puts "  ok: no case is excluded by every runner, and SPEC §19's roster matches the runners"

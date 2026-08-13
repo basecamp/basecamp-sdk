@@ -348,6 +348,69 @@ expect_fail(failures, "literal on the line after the name", out, status,
 out, status = run_gate(mutate: ->(f) { f.delete(SWIFT_RUNNER) })
 expect_fail(failures, "runner source missing", out, status, "missing conformance/runner/swift")
 
+# A TYPE ANNOTATION's brackets must never reach the depth counter. Both PR bots
+# found this independently: `SKIPS: set[str] =` with its literal on the next
+# line opens and closes `[str]` on the declaration line, so a scan that started
+# at the anchor saw depth return to zero at end of line and read the table as
+# EMPTY while it held every skip it ever had. Silent, and in the direction that
+# turns a real all-six exclusion into a passing five-of-six — which is why both
+# of these craft the all-six state and demand it still be seen.
+out, status = run_gate(skips: with_skips(python: ["five of six"]),
+                       mutate: lambda { |f|
+                         edit(f, PY_RUNNER, 'SKIPS: set[str] = {"five of six"}',
+                              "SKIPS: set[str] = (\n        {\"five of six\"}\n    )")
+                       })
+expect_fail(failures, "python type brackets before a wrapped literal", out, status,
+            '"five of six" is skipped by all 6 runners')
+
+# "runs everywhere" is UNTAGGED, so all six exclusions have to come from the
+# name tables and Swift's parse is load-bearing: read its table as empty and the
+# count drops to five, which passes. Using a link-header-tagged case here would
+# have let the tag branch supply Swift's exclusion and the test would hold
+# whether the parse worked or not.
+all_six = %w[go python ruby typescript kotlin swift]
+          .to_h { |runner| [runner.to_sym, ["runs everywhere"]] }
+
+out, status = run_gate(skips: with_skips(**all_six),
+                       mutate: lambda { |f|
+                         edit(f, SWIFT_RUNNER,
+                              'private let temporarySkips: [String: String] = ["runs everywhere": "swift reason"]',
+                              "private let temporarySkips: [String: String] =\n    [\"runs everywhere\": \"swift reason\"]")
+                       })
+expect_fail(failures, "swift type brackets before a wrapped literal", out, status,
+            '"runs everywhere" is skipped by all 6 runners')
+
+# An UNREGISTERED whole-case tag branch skips cases this module never accounts
+# for. The anchor proves the branch the registry knows about still exists and
+# says nothing about a second one added beside it.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, KT_MAIN, '        if ("link-header" in tc.tags) {',
+       "        if (\"slow\" in tc.tags) {\n            continue\n        }\n" \
+       "        if (\"link-header\" in tc.tags) {")
+})
+expect_fail(failures, "unregistered tag branch", out, status,
+            "ConformanceSkips::RUNNERS registers 1 whole-case tag branch(es) there")
+
+# A skip naming no fixture case is a waiver for nothing — it arrives by rename
+# or deletion, and keeps a line alive in SPEC §19's roster that reads as an
+# accepted divergence nobody can find.
+out, status = run_gate(skips: with_skips(go: ["a case that was renamed away"]))
+expect_fail(failures, "skip names no fixture case", out, status,
+            "names 1 case(s) no fixture defines")
+
+# Git's pathspec `*` matches across `/`, but all six runners glob fixtures
+# NON-RECURSIVELY. A nested fixture is executed by nothing, so counting its
+# cases here would have this gate commit the exact defect it exists to catch:
+# they appear in no skip table, so they read as executed everywhere.
+out, status = run_gate(mutate: lambda { |f|
+  f["conformance/tests/nested/deep.json"] =
+    JSON.pretty_generate([{ "name" => "nested case nothing runs", "operation" => "Op" }])
+})
+expect_pass(failures, "nested fixtures are out of scope, not vouched for", out, status)
+unless utf8(out).include?("across 1 fixture(s)")
+  failures << "nested fixture must not be counted as discovered:\n#{utf8(out)}"
+end
+
 # An entry whose key spelling the parser does not recognize must be REPORTED,
 # never read as a value. Kotlin's `Pair(...)` form is the concrete case, and it
 # fails quiet: the dropped key is one fewer exclusion, so a case skipped by all

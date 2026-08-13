@@ -707,6 +707,37 @@ out, status = gate lambda { |f|
 expect_fail(failures, "category slug disagrees with its filename", out, status,
             "`beta_write.json` dictates the slug `beta-write`")
 
+# A row that satisfies PRESENCE and states NOTHING. Both PR bots flagged this
+# on both tables: the claim is that every fixture has an owning spec section,
+# and a blank attribution cell would let a new fixture through with exactly the
+# thing the row exists to carry left empty — the gate reporting the claim kept
+# while it is vacuous.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| beta-write | `beta_write.json` | §2 Something Else |",
+                                  "| beta-write | `beta_write.json` |  |")
+}
+expect_fail(failures, "category row with a blank owning section", out, status,
+            "names no owning spec section")
+
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| `beta_write.json` | does another thing | §2 |",
+                                  "| `beta_write.json` |  |  |")
+}
+expect_fail(failures, "Appendix D row with blank cells", out, status,
+            "leaves Test name and Primary section empty")
+
+# Git's pathspec `*` matches across `/`, but all six runners glob fixtures
+# NON-RECURSIVELY. Demanding a roster row for a fixture nothing executes would
+# be this gate requiring documentation for a claim that is not true — and the
+# basename collapse would make `nested/alpha.json` and `alpha.json`
+# indistinguishable, so a nested file could silently satisfy the row for a real
+# one.
+out, status = gate ->(f) { f["conformance/tests/nested/deep.json"] = "[]\n" }
+expect_pass(failures, "nested fixtures are out of scope", out, status)
+unless utf8(out).include?("fixtures         2 tracked")
+  failures << "nested fixture must not be counted as tracked:\n#{utf8(out)}"
+end
+
 # A row the parser cannot read must be REPORTED, not filter_mapped away — the
 # fail-open shape the fence handling exists to avoid, one table out.
 out, status = gate lambda { |f|

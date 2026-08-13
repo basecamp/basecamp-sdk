@@ -66,7 +66,14 @@ module ConformanceSkips
   # literal to parse, so the registry states the tag and this pins the branch
   # that implements it: if the line goes or changes shape, the gate fails loudly
   # rather than carrying a claim about code that no longer exists.
-  TagBranch = Struct.new(:tag, :file, :anchor, keyword_init: true)
+  # `accessor` is how the run loop reaches a case's tags in that language. Every
+  # occurrence of it in the file must belong to a registered branch: the anchor
+  # proves the branch this registry KNOWS about still exists, and says nothing
+  # about a SECOND branch added later, which would skip whole cases this module
+  # never accounts for. Counting the accessor bounds that — not by recognizing
+  # arbitrary new syntax, but by refusing to vouch for a file that inspects tags
+  # somewhere the registry does not name.
+  TagBranch = Struct.new(:tag, :file, :anchor, :accessor, keyword_init: true)
 
   Runner = Struct.new(:name, :tables, :tag_branches, keyword_init: true) do
     # The authoritative exclusion table is the FIRST; any others are companions
@@ -123,7 +130,8 @@ module ConformanceSkips
       tag_branches: [
         TagBranch.new(tag: "link-header",
                       file: "kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt",
-                      anchor: 'if ("link-header" in tc.tags) {'),
+                      anchor: 'if ("link-header" in tc.tags) {',
+                      accessor: "tc.tags"),
       ]
     ),
     Runner.new(
@@ -141,7 +149,8 @@ module ConformanceSkips
       tag_branches: [
         TagBranch.new(tag: "link-header",
                       file: "conformance/runner/swift/Sources/ConformanceRunner/Runner.swift",
-                      anchor: 'if tc.allTags.contains("link-header") {'),
+                      anchor: 'if tc.allTags.contains("link-header") {',
+                      accessor: "allTags"),
       ]
     ),
   ].freeze
@@ -178,11 +187,33 @@ module ConformanceSkips
             "a broken parser is not."
     end
 
-    # Scanning starts at the anchor itself, not after it, so a declaration
-    # header carrying brackets of its own — `map[string]string{`,
-    # `[String: String] = [:]`, `Set.new([` — is balanced by the same counter
-    # that finds the end.
-    offset = lines[0, hits.first].sum(&:length) + lines[hits.first].index(table.anchor)
+    # Scanning starts at the ASSIGNMENT, not at the anchor, so that a TYPE
+    # ANNOTATION's brackets never reach the depth counter.
+    #
+    # Starting at the anchor was wrong in the quiet direction, and both PR bots
+    # found it independently. `SKIPS: set[str] =` with its literal on the next
+    # line — what a formatter produces — opens and closes `[str]` on the anchor
+    # line, so depth returns to zero at end of line with `entered` set, the scan
+    # reports :closed, and the table reads EMPTY while holding every skip it
+    # ever had. Swift's `[String: String]` is the same shape. A silently empty
+    # skip table is one fewer exclusion, so a case skipped by all six reads as a
+    # passing five-of-six and this gate reports success.
+    #
+    # Anchoring on `=` removes the class rather than patching the two spellings:
+    # every one of these declarations is an assignment, nothing before the `=`
+    # is ever part of the literal, and Go's `= map[string]string{` — where the
+    # brackets sit AFTER the `=` — still balances on the same counter.
+    # From the anchor's START, not its end: two anchors are the assignment
+    # themselves (`RUBY_SKIPS =`), so searching past them finds nothing.
+    anchor_start = lines[hits.first].index(table.anchor)
+    assignment = lines[hits.first].index("=", anchor_start)
+    if assignment.nil?
+      raise ExtractionError,
+            "#{table.file}: the declaration at #{table.anchor.inspect} has no `=` on its line, " \
+            "so this parser cannot tell where the declaration header ends and the literal begins"
+    end
+
+    offset = lines[0, hits.first].sum(&:length) + assignment
     strings, state = scan(source, offset, table.comment)
 
     if state == :unclosed
@@ -426,6 +457,29 @@ module ConformanceSkips
                 "true, drop the tag from the registry — do not widen the anchor until it matches."
         end
         branch.tag
+      end
+
+      # The anchors above prove the registered branches still exist and say
+      # nothing about an UNREGISTERED one. A second `if (... in tc.tags)` would
+      # skip whole cases this module never accounts for, and the miss is quiet
+      # in the usual direction: fewer known exclusions, so an all-six skip reads
+      # as a passing five-of-six.
+      #
+      # Bounded syntactically rather than by recognizing arbitrary new branches:
+      # every mention of the language's tag accessor in the run-loop file must
+      # belong to a registered branch. That is a real guarantee over the file it
+      # reads and no guarantee at all over a branch written elsewhere, which is
+      # why the two files it reads are the two run loops.
+      runner.tag_branches.group_by(&:file).each do |file, branches|
+        accessor = branches.first.accessor
+        mentions = read(root, file).lines.count { |line| line.include?(accessor) }
+        next if mentions == branches.length
+
+        raise ExtractionError,
+              "#{file}: #{mentions} line(s) inspect #{accessor.inspect}, but " \
+              "ConformanceSkips::RUNNERS registers #{branches.length} whole-case tag branch(es) " \
+              "there. An unregistered branch skips cases this gate cannot see — register it with " \
+              "its tag, or if it is not a whole-case skip, say so here."
       end
     end
   end

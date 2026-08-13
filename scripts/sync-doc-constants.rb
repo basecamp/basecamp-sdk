@@ -243,12 +243,20 @@ end
 # JSON files — are documented at their own consuming section and directory,
 # "not in §19's operation-dispatch category table or Appendix D". They are not
 # absent from these rosters by oversight, so the gate must not pull them in.
+# DIRECT CHILDREN ONLY. Git's pathspec `*` matches across `/`, so the pattern
+# alone would also return `conformance/tests/nested/case.json` — which no runner
+# discovers, since all six glob non-recursively. Requiring a roster row for a
+# fixture nothing executes would be this gate demanding documentation for a
+# claim that is not true; the basename collapse would also make
+# `nested/auth.json` and `auth.json` indistinguishable.
 def tracked_fixtures
   out = IO.popen(["git", "-C", ROOT, "ls-files", "-z", "--", "conformance/tests/*.json"],
                  external_encoding: UTF8, &:read)
   raise Failure, "git ls-files failed (is #{ROOT} a git checkout?)" unless $?.success?
 
-  out.split("\0").reject(&:empty?).map { |path| File.basename(path) }.sort
+  out.split("\0").reject(&:empty?)
+     .select { |path| File.dirname(path) == "conformance/tests" }
+     .map { |path| File.basename(path) }.sort
 end
 
 Span = Struct.new(:kind, :file, :line_no, :lines, :block, keyword_init: true) do
@@ -758,9 +766,21 @@ def check_fixture_categories(span, fixtures)
 
   documented = []
   rows.each do |line_no, cells|
-    if cells.length < 2
+    if cells.length < 3
       errors << "#{span.file}:#{line_no}: category row has #{cells.length} cell(s); the shape is " \
                 "| Category | `file.json` | Owning Spec Section(s) |"
+      next
+    end
+
+    # The table's claim is that every fixture HAS an owning spec section. A row
+    # with an empty third cell satisfies presence and states nothing, so it
+    # would let a new fixture through with the attribution the row exists to
+    # carry left blank — the gate reporting the claim as kept while it is
+    # vacuous. Both PR bots flagged this on both tables.
+    if cells[2].empty?
+      errors << "#{span.file}:#{line_no}: category row for #{cells[1]} names no owning spec " \
+                "section. That attribution is the whole claim of this table — a row without it " \
+                "records that the fixture exists, not that anything in the spec owns it."
       next
     end
 
@@ -820,9 +840,21 @@ def check_fixture_section_map(span, fixtures)
 
   covered = []
   rows.each do |line_no, cells|
-    if cells.empty?
-      errors << "#{span.file}:#{line_no}: mapping row has no cells; the shape is " \
+    if cells.length < 3
+      errors << "#{span.file}:#{line_no}: mapping row has #{cells.length} cell(s); the shape is " \
                 "| `file.json` | Test name | Primary section |"
+      next
+    end
+
+    # Coverage by a row that names neither the cases nor a section is coverage
+    # in name only. This table is already the weaker of the two — it asserts
+    # that a fixture appears, not that every case does — so a blank row would
+    # reduce it to asserting nothing at all.
+    blank = [["Test name", cells[1]], ["Primary section", cells[2]]].select { |_, cell| cell.empty? }
+    unless blank.empty?
+      errors << "#{span.file}:#{line_no}: mapping row for #{cells[0]} leaves " \
+                "#{blank.map(&:first).join(' and ')} empty — a row that summarises no cases and " \
+                "names no section covers the fixture only nominally."
       next
     end
 
