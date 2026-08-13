@@ -1,0 +1,68 @@
+conformance/runner/go/case_census.go
+  s_fca5acb3cc9413::t_5c98a3b6d98faa 23-27
+  s_fca5acb3cc9413::t_70ccbddc0035df 98,103-120,122
+  s_fca5acb3cc9413::t_9c475d7151d29d 61-69
+conformance/runner/go/case_census_test.go
+  s_fca5acb3cc9413::t_b7fe448056bda7 166-168,171,174,177,180-183
+  s_fca5acb3cc9413::t_5f8c9070d66fae 123-127,130,132-133,135-145
+  s_fca5acb3cc9413::t_1ebdd8ce149821 184
+conformance/runner/swift/Sources/ConformanceSupport/CaseCensus.swift
+  s_fca5acb3cc9413::t_0e05627e044f9d 59,66
+  s_fca5acb3cc9413::t_ebf639079c80ee 23-26
+  s_fca5acb3cc9413::t_ef07be0174ba59 121-123
+  s_fca5acb3cc9413::t_2aeab0e62f309e 97-103,106-111
+  s_fca5acb3cc9413::t_5e2793cd761942 136-149
+conformance/runner/ruby/runner.rb
+  s_fca5acb3cc9413::t_24c980d4a96a29 92-104
+  s_fca5acb3cc9413::t_ee3ec5df96eb45 38-41
+  s_fca5acb3cc9413::t_c249e77064da21 1595-1600,1602
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/CaseCensus.kt
+  s_fca5acb3cc9413::t_239a5c8117966b 39-42
+  s_fca5acb3cc9413::t_32440f6a857ab7 108-122
+conformance/runner/typescript/case-census.ts
+  s_fca5acb3cc9413::t_009719e4780c3f 108-121
+  s_fca5acb3cc9413::t_50c794ed0131e5 23-26
+conformance/runner/go/main.go
+  s_fca5acb3cc9413::t_3d6c5369741ba1 172-177
+  s_fca5acb3cc9413::t_5c6dc78bcd4f64 37-41
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_fca5acb3cc9413::t_b0d5629358af89 83-89
+conformance/runner/ruby/case_census_test.rb
+  s_fca5acb3cc9413::t_f4f30a609ae2b5 117-119
+  s_fca5acb3cc9413::t_ed752fbe9d5009 89-94,96
+conformance/runner/swift/Tests/ConformanceSupportTests/CaseCensusTests.swift
+  s_fca5acb3cc9413::t_54f4a6dffe941c 100-107
+  s_fca5acb3cc9413::t_2952ee503a3b02 128-153
+conformance/runner/python/test_case_census.py
+  s_fca5acb3cc9413::t_8ce30fbe73883a 87-91,93,95-96
+  s_fca5acb3cc9413::t_dca57b692b8dbf 116-122
+conformance/runner/typescript/case-census.test.ts
+  s_fca5acb3cc9413::t_66b94c4b8d1b3b 82-86,89,92
+  s_fca5acb3cc9413::t_1e0a1c353c3862 127-129
+conformance/runner/python/runner.py
+  s_fca5acb3cc9413::t_9766774b4924f8 97-101,103
+  s_fca5acb3cc9413::t_379c02ca7c5db3 67-70
+  s_fca5acb3cc9413::t_03fb349ba316c2 1464-1469
+  s_fca5acb3cc9413::t_574e64595aadc7 125-137
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_fca5acb3cc9413::t_2247f7a18cdbdc 235-240,243,245
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/CaseCensusTest.kt
+  s_fca5acb3cc9413::t_1b0ca65c8526bc 112-119
+  s_fca5acb3cc9413::t_ab43131985f17e 143-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c45a686c69dd088c836af869e33ff0bd2e327edf",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
