@@ -189,7 +189,21 @@
 //     is not among the recognised spellings.
 //
 // The invariant: ANYTHING UNRECOGNISED IS REPORTED. Never credited, never
-// skipped. Both failure modes this walk has actually had — the original #599
+// skipped. It holds at all THREE places this file makes a coverage judgement,
+// and a new one must join them:
+//
+//   - the embed walk (an embed it cannot vouch for is reported),
+//   - the assignment walk (a value shape it cannot classify credits nothing
+//     and is reported),
+//   - the method graph (a type whose method set it cannot evaluate — a
+//     qualified alias, a generic instantiation — counts as carrying, which
+//     makes every embed of it refused).
+//
+// The third was the last to get it, and its absence was invisible until a
+// reviewer produced `type A = json.Marshaler; type B interface { A }`: field
+// promotion and assignment population were already flipped, so the bug had
+// nowhere to show except through the method set. Fixing one instance of this
+// class rather than the class is how that happens. Both failure modes this walk has actually had — the original #599
 // bug and every regression found while fixing it — were a silent assumption
 // about something the walker did not understand.
 //
@@ -1101,12 +1115,8 @@ func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) 
 		// `func (m (M)) MarshalJSON()` is legal, and reading the receiver as
 		// unrecognized would leave M out of the method set — a silent miss, so
 		// the parentheses come off even though nobody writes them.
-		recv := unparen(fd.Recv.List[0].Type)
-		if star, ok := recv.(*ast.StarExpr); ok {
-			recv = unparen(star.X)
-		}
-		if id, ok := recv.(*ast.Ident); ok {
-			out[id.Name] = true
+		if name := receiverTypeName(fd.Recv.List[0].Type); name != "" {
+			out[name] = true
 		}
 	}
 	// Interfaces carrying the method in their method set. Embedding one
@@ -1122,14 +1132,30 @@ func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) 
 		// defined type over a method-bearing struct is therefore refused
 		// though Go would walk it — one over-report, in exchange for closing
 		// the alias/defined surface entirely.
-		if id, ok := decl.expr.(*ast.Ident); ok {
-			ifaceEmbeds[name] = append(ifaceEmbeds[name], id.Name)
+		switch decl.expr.(type) {
+		case *ast.Ident:
+			ifaceEmbeds[name] = append(ifaceEmbeds[name], decl.expr.(*ast.Ident).Name)
+			continue
+		case *ast.InterfaceType:
+			// Handled below.
+		case *ast.StructType, *ast.MapType, *ast.ArrayType, *ast.FuncType,
+			*ast.ChanType:
+			// A type literal has no method set of its own; methods declared on
+			// THIS name are already collected from their receivers above.
+			continue
+		default:
+			// A qualified name (`type A = json.Marshaler`), a generic
+			// instantiation (`type A = G[int]`), or anything else this check
+			// does not parse. The method set is unknown, and unknown counts as
+			// carrying — the same answer the interface scan below gives a
+			// qualified embed, and the same answer the field walk gives an
+			// unresolvable embed. Skipping here would let a struct embedding
+			// A be certified while a promoted MarshalJSON redirects the
+			// encoder, which is the silent case this invariant exists for.
+			out[name] = true
 			continue
 		}
-		it, ok := decl.expr.(*ast.InterfaceType)
-		if !ok {
-			continue
-		}
+		it := decl.expr.(*ast.InterfaceType)
 		for _, m := range it.Methods.List {
 			if len(m.Names) == 0 {
 				// An embedded interface contributes its whole method set.
@@ -1209,6 +1235,32 @@ func vouch(e embedRef, childName string, methodsTravel bool, resolveErr string, 
 		// An unresolvable type may also be a marshaller — time.Time is one —
 		// so this cannot be treated as merely "fields we cannot see".
 		return resolveErr + "; its fields AND any custom JSON methods it would promote are invisible here"
+	}
+	return ""
+}
+
+// receiverTypeName returns the defined type a method is declared on, or "" if
+// the receiver is not a shape Go allows. A receiver base is always a type NAME,
+// optionally parenthesized, pointer-taken, or generic-instantiated
+// (`func (b Base[T]) …`), so this classification is complete rather than a
+// best effort — there is no legal receiver it silently drops.
+func receiverTypeName(expr ast.Expr) string {
+	expr = unparen(expr)
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = unparen(star.X)
+	}
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name
+	case *ast.IndexExpr:
+		// A generic receiver: the method belongs to the base type.
+		if id, ok := unparen(e.X).(*ast.Ident); ok {
+			return id.Name
+		}
+	case *ast.IndexListExpr:
+		if id, ok := unparen(e.X).(*ast.Ident); ok {
+			return id.Name
+		}
 	}
 	return ""
 }

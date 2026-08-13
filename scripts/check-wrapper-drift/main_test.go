@@ -3631,3 +3631,78 @@ func (a *Adapter) UnmarshalJSON(b []byte) error { return nil }
 		t.Errorf("its tags are judged normally, got %v", ad.tags)
 	}
 }
+
+// TestCollectJSONMethodTypes_UnknownRHSCounts covers the method graph's half of
+// the "unrecognised is never credited" invariant. A type declaration whose
+// right-hand side this check cannot evaluate — a qualified name, a generic
+// instantiation — has an UNKNOWN method set, and unknown counts as carrying.
+// Skipping it silently is how a struct embedding the alias gets its sibling
+// tags certified while a promoted MarshalJSON redirects the encoder.
+//
+// The paired negatives matter as much: a type literal has no method set of its
+// own, so `type A = struct{…}` and friends must NOT be marked, or the rule
+// degenerates into refusing every declaration.
+func TestCollectJSONMethodTypes_UnknownRHSCounts(t *testing.T) {
+	f, err := parser.ParseFile(token.NewFileSet(), "f.go", `package fixture
+
+import "encoding/json"
+
+type QualifiedAlias = json.Marshaler
+type Generic[T any] struct{ V T }
+type GenericAlias = Generic[int]
+
+type ViaInterface interface {
+	QualifiedAlias
+}
+
+type PlainStruct = struct{ ID int64 }
+type PlainMap map[string]string
+type PlainFunc func() error
+`, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	direct, graph := collectJSONMethodTypes(f)
+	closeJSONMethodTypes(direct, graph)
+	for _, name := range []string{"QualifiedAlias", "GenericAlias"} {
+		if !direct[name] {
+			t.Errorf("%s: an unevaluable right-hand side has an unknown method set and must count as carrying", name)
+		}
+	}
+	// And it propagates: an interface embedding the unknown alias carries too.
+	if !direct["ViaInterface"] {
+		t.Error("an interface embedding a name with an unknown method set carries it as well")
+	}
+	for _, name := range []string{"PlainStruct", "PlainMap", "PlainFunc"} {
+		if direct[name] {
+			t.Errorf("%s: a type literal has no method set of its own and must not be marked", name)
+		}
+	}
+}
+
+// TestCollectJSONMethodTypes_GenericReceiver covers the other silent skip in
+// the method graph: `func (b Base[T]) MarshalJSON()` declares the method on
+// Base, and reading the receiver as unrecognized left Base unmarked — so a
+// wrapper embedding it would be certified while the encoder is redirected.
+func TestCollectJSONMethodTypes_GenericReceiver(t *testing.T) {
+	f, err := parser.ParseFile(token.NewFileSet(), "f.go", `package fixture
+
+type Base[T any] struct{ V T }
+
+func (b Base[T]) MarshalJSON() ([]byte, error) { return nil, nil }
+
+type Two[A any, B any] struct{}
+
+func (t *Two[A, B]) UnmarshalJSON(b []byte) error { return nil }
+`, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got, _ := collectJSONMethodTypes(f)
+	if !got["Base"] {
+		t.Error("a generic receiver declares the method on its base type")
+	}
+	if !got["Two"] {
+		t.Error("the multi-parameter receiver form counts too")
+	}
+}
