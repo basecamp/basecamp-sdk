@@ -238,6 +238,29 @@ jobs:
       - name: Runner-test reachability guard self-test
         run: ./scripts/check-runner-test-reachability --self-test
 
+      # Also static and also reads the Makefile — via `make -p`, so it sees the
+      # graph make sees rather than a hand-rolled parse. `make -j check` may not
+      # schedule two Gradle builds in one project directory (#674); the
+      # order-only edges that prevent it are invisible to every other gate, and
+      # deleting one leaves a build that still passes almost every time.
+      #
+      # Under LC_ALL=C so CI exercises the non-UTF-8-locale path: the gate reads
+      # a Makefile full of em-dashed comments, so its pipe reads are pinned to
+      # UTF-8 and this proves they stay that way. The unpinned first cut raised
+      # ArgumentError here and nowhere else.
+      - name: Gradle-backed check targets cannot run concurrently
+        run: make check-gradle-serialization
+        env:
+          LC_ALL: C
+
+      # The run above only ever sees a chained Makefile. This drives the gate at
+      # mutated copies — one edge deleted, then an unchained new Gradle target —
+      # and is the proof the edges are load-bearing.
+      - name: Gradle-serialization gate self-test (mutated Makefiles)
+        run: make test-check-gradle-serialization
+        env:
+          LC_ALL: C
+
       # The replay runners' own coverage gates fire only during a live canary,
       # and that canary skips when its secrets are unset — so four decoder maps
       # drifted 20 operations behind the live fixture with CI fully green

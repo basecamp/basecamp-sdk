@@ -16,6 +16,18 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+// javac takes its source encoding from the platform default charset, which is
+// US-ASCII wherever the ambient locale is not UTF-8 — a non-interactive ssh
+// shell, cron, a locale-less container image. These sources carry em-dashes in
+// their prose (#669), and the current toolchain does not stop when it cannot
+// read them: Gradle 9.7 prints `unmappable character (0xE2) for encoding
+// US-ASCII`, substitutes U+FFFD and reports BUILD SUCCESSFUL, so a non-ASCII
+// string literal would ship silently mangled rather than fail loudly. Plain
+// `javac` on the same input exits 1. Pin the encoding so neither can happen.
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
 repositories {
     mavenCentral()
 }
