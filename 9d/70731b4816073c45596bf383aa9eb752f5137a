@@ -1,0 +1,21 @@
+scripts/sync-doc-constants.rb
+  s_fca5acb3cc9413::t_204845f2be1f2c 790-808
+SPEC.md
+  s_fca5acb3cc9413::t_b016f10cf653af 2184-2206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9d70731b4816073c45596bf383aa9eb752f5137a",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
