@@ -1,0 +1,28 @@
+ruby/test/basecamp/oauth_transport_test.rb
+  s_23e48791aed839::t_00910a05f7f55f 832
+  s_23e48791aed839::t_4a61db68cd258f 847,850-852,859-860
+  s_23e48791aed839::t_a4c33385c98bea 868-873
+  s_23e48791aed839::t_67fcad606fc0fd 71-118
+  s_23e48791aed839::t_a01757c4055691 894-899
+  s_23e48791aed839::t_c1a0540fca14dc 855-857
+  s_23e48791aed839::t_968efc549ee438 861-863,865-867,874-879
+  s_23e48791aed839::t_d5ff9e9836f286 985
+  s_23e48791aed839::t_2aace4d1f352a5 924-930
+  s_23e48791aed839::t_41bca3afdb22ca 1001-1009
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f57a753900af0390dc3f5868ed81eb7b25413cd0",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
