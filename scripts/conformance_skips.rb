@@ -109,7 +109,14 @@ module ConformanceSkips
         Table.new(label: "goSDKSkips", file: "conformance/runner/go/main.go",
                   anchor: "var goSDKSkips", comment: :slash),
       ],
-      tag_branches: [], pins: []
+      tag_branches: [],
+      pins: [
+        PinnedLine.new(
+          file: 'conformance/runner/go/main.go',
+          anchor: 'if reason, ok := goSDKSkips[tc.Name]; ok {',
+          claim: "the run loop must consult the table this registry parses; without this, a runner switching to a derived table (`ACTIVE = SKIPS | EXTRA`) keeps every declaration anchor valid while its real exclusions go unread"
+        ),
+      ]
     ),
     Runner.new(
       name: "python",
@@ -121,7 +128,14 @@ module ConformanceSkips
         Table.new(label: "SKIP_REASONS", file: "conformance/runner/python/runner.py",
                   anchor: "SKIP_REASONS: dict[str, str]", comment: :hash),
       ],
-      tag_branches: [], pins: []
+      tag_branches: [],
+      pins: [
+        PinnedLine.new(
+          file: 'conformance/runner/python/runner.py',
+          anchor: 'if name in self.SKIPS:',
+          claim: "the run loop must consult the table this registry parses; without this, a runner switching to a derived table (`ACTIVE = SKIPS | EXTRA`) keeps every declaration anchor valid while its real exclusions go unread"
+        ),
+      ]
     ),
     Runner.new(
       name: "ruby",
@@ -131,7 +145,14 @@ module ConformanceSkips
         Table.new(label: "RUBY_SKIP_REASONS", file: "conformance/runner/ruby/runner.rb",
                   anchor: "RUBY_SKIP_REASONS =", comment: :hash),
       ],
-      tag_branches: [], pins: []
+      tag_branches: [],
+      pins: [
+        PinnedLine.new(
+          file: 'conformance/runner/ruby/runner.rb',
+          anchor: 'if RUBY_SKIPS.include?(test_case["name"])',
+          claim: "the run loop must consult the table this registry parses; without this, a runner switching to a derived table (`ACTIVE = SKIPS | EXTRA`) keeps every declaration anchor valid while its real exclusions go unread"
+        ),
+      ]
     ),
     Runner.new(
       name: "typescript",
@@ -139,7 +160,14 @@ module ConformanceSkips
         Table.new(label: "TS_SDK_SKIPS", file: "conformance/runner/typescript/runner.test.ts",
                   anchor: "const TS_SDK_SKIPS", comment: :slash),
       ],
-      tag_branches: [], pins: []
+      tag_branches: [],
+      pins: [
+        PinnedLine.new(
+          file: 'conformance/runner/typescript/runner.test.ts',
+          anchor: 'if (tc.name in TS_SDK_SKIPS) {',
+          claim: "the run loop must consult the table this registry parses; without this, a runner switching to a derived table (`ACTIVE = SKIPS | EXTRA`) keeps every declaration anchor valid while its real exclusions go unread"
+        ),
+      ]
     ),
     Runner.new(
       name: "kotlin",
@@ -154,7 +182,13 @@ module ConformanceSkips
                       anchor: 'if ("link-header" in tc.tags) {',
                       accessor: /\.tags\b/),
       ],
-      pins: []
+      pins: [
+        PinnedLine.new(
+          file: 'kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt',
+          anchor: 'val skipReason = KOTLIN_SKIPS[tc.name]',
+          claim: "the run loop must consult the table this registry parses; without this, a runner switching to a derived table (`ACTIVE = SKIPS | EXTRA`) keeps every declaration anchor valid while its real exclusions go unread"
+        ),
+      ]
     ),
     Runner.new(
       name: "swift",
@@ -183,6 +217,11 @@ module ConformanceSkips
           anchor: /\?\s*\[:\]\s*:\s*temporarySkips\s*\z/,
           claim: "the run loop consults `swiftSkips`, which this registry does not parse; " \
                  "pinning its else-branch is what makes reading `temporarySkips` equivalent"
+        ),
+        PinnedLine.new(
+          file: 'conformance/runner/swift/Sources/ConformanceRunner/Runner.swift',
+          anchor: 'if let reason = swiftSkips[tc.name] {',
+          claim: "the run loop must consult the table this registry parses; without this, a runner switching to a derived table (`ACTIVE = SKIPS | EXTRA`) keeps every declaration anchor valid while its real exclusions go unread"
         ),
       ]
     ),

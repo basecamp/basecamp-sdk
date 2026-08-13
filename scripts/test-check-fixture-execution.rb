@@ -108,7 +108,8 @@ def go_source(names)
    "// Tests where the Go SDK's behavior intentionally differs.\n" \
    "var goSDKSkips = map[string]string{\n" +
     names.map { |n| "\t#{n.inspect}: \"go reason\",\n" }.join +
-    "}\n"
+    "}\n\nfunc run() {\n\tfor _, tc := range tests {\n" \
+    "\t\tif reason, ok := goSDKSkips[tc.Name]; ok {\n\t\t\tcontinue\n\t\t}\n\t}\n}\n"
 end
 
 # `set()` / `{}` when empty, exercising the spelling that has no bracketed block
@@ -118,7 +119,9 @@ def python_source(names)
   reasons = "{#{names.map { |n| "#{n.inspect}: \"python reason\"" }.join(', ')}}"
   "class ConformanceRunner:\n" \
     "    SKIPS: set[str] = #{skips}\n" \
-    "    SKIP_REASONS: dict[str, str] = #{reasons}\n"
+    "    SKIP_REASONS: dict[str, str] = #{reasons}\n\n" \
+    "    def run(self):\n        for name in names:\n" \
+    "            if name in self.SKIPS:\n                continue\n"
 end
 
 def ruby_source(names)
@@ -126,7 +129,8 @@ def ruby_source(names)
     names.map { |n| "  #{n.inspect},\n" }.join +
     "].freeze)\n\nRUBY_SKIP_REASONS = {\n" +
     names.map { |n| "  #{n.inspect} => \"ruby reason\",\n" }.join +
-    "}.freeze\n"
+    "}.freeze\n\ndef run\n  tests.each do |test_case|\n" \
+    "    if RUBY_SKIPS.include?(test_case[\"name\"])\n      next\n    end\n  end\nend\n"
 end
 
 # The value on its own line, as the real table writes it: a key/value pair split
@@ -134,7 +138,8 @@ end
 def ts_source(names)
   +"const TS_SDK_SKIPS: Record<string, string> = {\n" +
     names.map { |n| "  #{n.inspect}:\n    \"typescript reason\",\n" }.join +
-    "};\n"
+    "};\n\nfunction run() {\n  for (const tc of tests) {\n" \
+    "      if (tc.name in TS_SDK_SKIPS) {\n        continue;\n      }\n  }\n}\n"
 end
 
 def kotlin_source(names)
@@ -147,6 +152,11 @@ def kotlin_source(names)
     "fun run() {\n" \
     "    for (tc in cases) {\n" \
     "        if (\"link-header\" in tc.tags) {\n" \
+    "            skipped++\n" \
+    "            continue\n" \
+    "        }\n" \
+    "        val skipReason = KOTLIN_SKIPS[tc.name]\n" \
+    "        if (skipReason != null) {\n" \
     "            skipped++\n" \
     "            continue\n" \
     "        }\n" \
@@ -761,6 +771,18 @@ out, status = run_gate(mutate: lambda { |f|
 })
 expect_fail(failures, "second swift tag branch spelled tags", out, status,
             "ConformanceSkips::RUNNERS registers 1 whole-case tag branch(es) there")
+
+# A runner that keeps its parsed declaration but starts consulting a DERIVED
+# table — `ACTIVE = SKIPS | EXTRA` — leaves every declaration anchor valid while
+# its real exclusions go unread. Each runner's lookup is pinned for that reason,
+# and this proves the pin bites: the table the registry parses is untouched, only
+# the lookup moves.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, GO_MAIN, "if reason, ok := goSDKSkips[tc.Name]; ok {",
+       "if reason, ok := activeGoSkips[tc.Name]; ok {")
+})
+expect_fail(failures, "run loop consults a table the registry does not parse", out, status,
+            "the run loop must consult the table this registry parses")
 
 # The run loop consults `swiftSkips`, not the `temporarySkips` this module
 # parses. Wrapping the else-branch honours a skip in Swift and hides it here.
