@@ -198,7 +198,35 @@ module ConformanceSkips
     # Kotlin's `"k" to "v"`, Swift's `["k": "v"]`, Ruby's `Set.new(["k"])` and
     # Python's `{"k"}` without six spellings of the same rule.
     keyed = strings.select { |_, separator| separator }
-    (keyed.empty? ? strings : keyed).map(&:first)
+    return strings.map(&:first) if keyed.empty?
+
+    # Map mode drops every string that is not a key, which is correct for the
+    # VALUES and silently wrong for an entry written in a spelling
+    # KEY_SEPARATOR_RE does not know. `mapOf("a" to "b", Pair("c", "d"))` is the
+    # concrete case: "a" is keyed, so the parser commits to map mode, and "c" —
+    # a real skip — is discarded as if it were a value.
+    #
+    # That fails QUIET, in the direction that matters. A dropped key is one
+    # fewer exclusion, so a case genuinely skipped by all six reads as a passing
+    # five-of-six and the gate reports success. A gate that silently
+    # under-reports is worse than no gate, because it also stops people looking.
+    #
+    # The invariant that separates the two: in a map, every non-key string is a
+    # VALUE, and a value is always immediately preceded by its key. Two
+    # unkeyed strings in a row means an entry this parser did not understand.
+    # Anything not positively interpreted is reported, never credited.
+    strings.each_cons(2) do |(previous, previous_keyed), (value, value_keyed)|
+      next if value_keyed || previous_keyed
+
+      raise ExtractionError,
+            "a skip table mixes key spellings this parser does not recognize: #{value.inspect} " \
+            "follows #{previous.inspect} with neither in key position. Every entry must spell " \
+            "its key with one of `:`, `=>` or `to`, or ConformanceSkips::KEY_SEPARATOR_RE has to " \
+            "learn the new spelling — silently reading it as a value would drop a real skip and " \
+            "turn an all-six exclusion into a passing five-of-six."
+    end
+
+    keyed.map(&:first)
   end
 
   # Walk from `offset`, tracking bracket depth outside strings and comments.
@@ -414,6 +442,18 @@ module ConformanceSkips
       unless runner_tags.empty?
         cases.each do |test_case|
           case_tags = test_case["tags"] || []
+          # A non-array `tags` would answer include? in whatever way its own
+          # class defines — a Hash by key, a String by substring — and the wrong
+          # answer here is silent under-exclusion, which reads as a case some
+          # runner still executes. conformance-fixtures-check validates the
+          # fixture schema, but a gate that credits malformed input because
+          # another gate usually catches it is crediting what it did not read.
+          unless case_tags.is_a?(Array)
+            raise ExtractionError,
+                  "#{test_case['name'].inspect} has a non-array \"tags\" " \
+                  "(#{case_tags.class}); this gate cannot tell which cases the tag branches skip"
+          end
+
           excluded << test_case["name"] if runner_tags.any? { |tag| case_tags.include?(tag) }
         end
       end

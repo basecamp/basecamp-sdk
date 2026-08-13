@@ -348,6 +348,28 @@ expect_fail(failures, "literal on the line after the name", out, status,
 out, status = run_gate(mutate: ->(f) { f.delete(SWIFT_RUNNER) })
 expect_fail(failures, "runner source missing", out, status, "missing conformance/runner/swift")
 
+# An entry whose key spelling the parser does not recognize must be REPORTED,
+# never read as a value. Kotlin's `Pair(...)` form is the concrete case, and it
+# fails quiet: the dropped key is one fewer exclusion, so a case skipped by all
+# six reads as a passing five-of-six. Anything not positively interpreted is
+# reported, never credited.
+out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
+                       mutate: lambda { |f|
+                         edit(f, KT_MAIN, '"five of six" to "kotlin reason"',
+                              '"five of six" to "kotlin reason", Pair("also skipped", "why")')
+                       })
+expect_fail(failures, "unrecognized key spelling in a map", out, status,
+            "mixes key spellings this parser does not recognize")
+
+# A non-array `tags` answers include? by its own class's rules — a Hash by key,
+# a String by substring — and the wrong answer is silent under-exclusion.
+out, status = run_gate(mutate: lambda { |f|
+  cases = fixture_cases
+  cases[1]["tags"] = { "link-header" => true }
+  f["conformance/tests/alpha.json"] = JSON.pretty_generate(cases)
+})
+expect_fail(failures, "non-array tags", out, status, 'has a non-array "tags"')
+
 # The tag branch has no literal to parse, so the registry asserts it by naming
 # the line that implements it. If that line goes, the registry's claim that
 # kotlin skips every link-header case is no longer backed by anything.
