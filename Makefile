@@ -1169,7 +1169,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-fixture-execution test-check-fixture-execution check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1200,6 +1200,25 @@ validate-api-gaps:
 check-fixture-coverage:
 	@./scripts/check-fixture-coverage.sh
 	@ruby ./scripts/test-check-fixture-coverage.rb
+
+# Fixture EXECUTION, the layer check-fixture-coverage does not reach (#602).
+# Both gates above validate fixtures that nothing has to run: #573 skipped
+# "List operation returns first page with Link header" in all six runners and
+# it stayed green in both. This reads the six runners' skip mechanisms — five
+# literal tables plus Kotlin's and Swift's whole-case `link-header` tag branch,
+# which the other four use to suppress one ASSERTION rather than the case — and
+# fails when a mock case is excluded everywhere. It also rejects a `mode` no
+# runner recognizes, which is the same all-six exclusion arriving at load time.
+check-fixture-execution:
+	@ruby ./scripts/check-fixture-execution
+
+# Maximum overlap across the six runners is 2 of 6, so the check above is green
+# on arrival and can only ever prove it says yes. This crafts the all-six state
+# — which cannot occur in this checkout — plus each extraction failure the
+# parser has to survive, including the three empty-table spellings a
+# "non-empty extraction" rule would choke on.
+test-check-fixture-execution:
+	@ruby ./scripts/test-check-fixture-execution.rb
 
 # Projected-example guard: every example openapi.json publishes must satisfy
 # the schema it sits under IN THE PROJECTION. `smithy validate` checks
@@ -1423,7 +1442,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage check-fixture-execution test-check-fixture-execution kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts
@@ -1512,6 +1531,7 @@ help:
 	@echo "  event-feed-digest-fixtures-check Validate event-feed srv1 digest vectors against their schema"
 	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json (and pin the search bodies to spec/fixtures)"
 	@echo "  check-runner-test-reachability  Assert every runner test file is reachable from discovery"
+	@echo "  check-fixture-execution  Assert no conformance fixture case is skipped by every runner"
 	@echo "  check-replay-decoder-parity  Assert all five replay/dispatch tables cover the live fixture"
 	@echo ""
 	@echo "Ruby SDK:"

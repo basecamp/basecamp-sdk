@@ -1,0 +1,229 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# check-fixture-execution — assert no conformance fixture case is skipped by
+# every runner.
+#
+# #602. `conformance-fixtures-check` validates fixture SHAPE and
+# `check-fixture-coverage` validates the SCHEMAS the shared fixtures represent.
+# Nothing checks that anything ever RUNS a case. #573 produced exactly that
+# state: it narrowed nothing and added the whole-case `link-header` skip to all
+# four remaining runners, leaving "List operation returns first page with Link
+# header" present in pagination.json, passing both existing gates, and executed
+# by nothing. #596 narrowed four of the six back.
+#
+# THE GATE IS GREEN ON ARRIVAL. Maximum overlap today is 2 of 6, so this guards
+# a regression that has been approached and is not present. That is what makes
+# the self-test mandatory rather than nice to have — a live run can only ever
+# prove this says yes. scripts/test-check-fixture-execution.rb crafts the
+# all-six state, which cannot occur in this repo today, and asserts the gate
+# rejects it.
+#
+# Three things make the obvious implementation wrong; each is answered where it
+# bites, and the reasoning for reading the runners at all lives in
+# scripts/conformance_skips.rb:
+#
+#   - The `link-header` literal is an ASSERTION suppression in four runners and
+#     a whole-CASE skip in two. Only the latter is an exclusion.
+#   - Skip tables are legitimately empty in three of six, so "extracted set is
+#     non-empty" cannot be the fail-closed rule.
+#   - All six exclude non-`mock` cases at load, and all six do it by treating
+#     any UNRECOGNIZED mode as non-mock — so a typo'd `mode` is a silent
+#     all-six exclusion. Modes are therefore validated, not merely filtered on.
+#
+# Exit 1 on any violation, 2 on an extraction failure. Wired into `make check`
+# and CI (spec-gates).
+
+require "json"
+require "set"
+require_relative "conformance_skips"
+
+ROOT = File.expand_path(ENV["FIXTURE_EXECUTION_ROOT"] || File.expand_path("..", __dir__))
+
+# Every input is UTF-8 by construction — fixture case names carry em dashes,
+# and so do this script's own messages. Pinned explicitly rather than left to
+# the locale, so `LC_ALL=C` in CI does not kill the gate on the first non-ASCII
+# byte. Same fix, same reason, as scripts/sync-doc-constants.rb.
+UTF8 = "UTF-8"
+$stdout.set_encoding(UTF8)
+$stderr.set_encoding(UTF8)
+
+class Failure < StandardError; end
+
+# `git ls-files`, not Dir.glob: an untracked scratch fixture in a working
+# checkout must not fail that developer's build.
+def tracked_fixtures
+  out = IO.popen(["git", "-C", ROOT, "ls-files", "-z", "--", "conformance/tests/*.json"],
+                 external_encoding: UTF8, &:read)
+  raise Failure, "git ls-files failed (is #{ROOT} a git checkout?)" unless $?.success?
+
+  out.split("\0").reject(&:empty?).sort
+end
+
+# [{case}, ...] with the owning file attached, so a message can name it.
+def load_cases(files)
+  files.flat_map do |file|
+    body = JSON.parse(File.read(File.join(ROOT, file), encoding: UTF8))
+    raise Failure, "#{file}: expected a JSON array of test cases" unless body.is_a?(Array)
+
+    body.each_with_index.map do |test_case, index|
+      unless test_case.is_a?(Hash) && test_case["name"].is_a?(String)
+        raise Failure, "#{file}[#{index}]: test case has no string \"name\""
+      end
+
+      test_case.merge("__file" => file)
+    end
+  end
+rescue JSON::ParserError => e
+  raise Failure, "a fixture is not valid JSON: #{e.message}"
+end
+
+# The companion reason tables enumerate the same names as the skip table they
+# annotate, twelve lines apart, with nothing keeping them in sync. A name
+# dropped from RUBY_SKIPS but left in RUBY_SKIP_REASONS is invisible today, in
+# both directions: the orphaned reason is dead, and a skip that lost its reason
+# silently falls back to "Ruby SDK behavior differs" — a skip with no recorded
+# justification, which is the one thing SPEC §19's roster exists to prevent.
+def check_companion_tables(tables)
+  ConformanceSkips::RUNNERS.flat_map do |runner|
+    primary = runner.skip_table
+    runner.tables.drop(1).flat_map do |companion|
+      expected = tables.fetch(primary.id(runner.name))
+      found    = tables.fetch(companion.id(runner.name))
+      missing  = expected - found
+      extra    = found - expected
+
+      next [] if missing.empty? && extra.empty?
+
+      message = ["#{companion.file}: #{companion.label} does not enumerate the same cases as " \
+                 "#{primary.label} (#{expected.length} vs #{found.length})"]
+      unless missing.empty?
+        message << "    skipped with no recorded reason: #{missing.map(&:inspect).join(', ')}"
+      end
+      unless extra.empty?
+        message << "    reason for a case that is not skipped: #{extra.map(&:inspect).join(', ')}"
+      end
+      [message.join("\n")]
+    end
+  end
+end
+
+# A mode no runner recognizes excludes the case from all six at load time, and
+# does it silently — every runner spells the filter as "mock unless told
+# otherwise", so `"mdoe": "mock"` or `mode: "Mock"` is dropped everywhere with
+# no output. This is the same defect as an all-six skip, arriving one step
+# earlier.
+def check_modes(cases)
+  cases.filter_map do |test_case|
+    mode = test_case["mode"] || ConformanceSkips::DEFAULT_MODE
+    next if ConformanceSkips::KNOWN_MODES.include?(mode)
+
+    "#{test_case['__file']}: #{test_case['name'].inspect} declares mode #{mode.inspect}, which no " \
+      "runner recognizes. Every runner filters as `mode == \"mock\"` with \"mock\" as the default, " \
+      "so an unrecognized mode is dropped by all six with nothing printed. Known modes: " \
+      "#{ConformanceSkips::KNOWN_MODES.join(', ')}."
+  end
+end
+
+# SPEC §19's Zero-Skip Target roster is the third unenforced roster in that one
+# section, and the sharpest of them: its own text narrates the #573/#572
+# incident — "present in `pagination.json` … and executed by nothing" — which is
+# the defect this gate exists to catch. It is partly hand-maintained to
+# compensate for the check above.
+#
+# Set equality on the enumeration, and nothing on the justification text. My
+# first instinct was to rule the roster out entirely because its lines carry
+# reasoning no gate can derive; that let the hardest part of the artifact set
+# the ceiling for all of it. The two halves are separable, so the derivable half
+# gets checked.
+def check_roster(root, tables)
+  rostered = ConformanceSkips.roster(root)
+
+  ConformanceSkips::RUNNERS.flat_map do |runner|
+    table = runner.skip_table
+    actual = tables.fetch(table.id(runner.name))
+    listed = rostered.fetch(runner.name)
+    missing = actual - listed
+    extra   = listed - actual
+
+    next [] if missing.empty? && extra.empty?
+
+    message = ["SPEC.md §19's Zero-Skip roster does not match #{table.file} #{table.label} " \
+               "(#{actual.length} skipped, #{listed.length} rostered)"]
+    unless missing.empty?
+      message << "    skipped but not rostered: #{missing.map(&:inspect).join(', ')}"
+    end
+    unless extra.empty?
+      message << "    rostered but not skipped: #{extra.map(&:inspect).join(', ')}"
+    end
+    message << "    A PR that closes a gap deletes exactly its own lines; one that opens a " \
+               "skip adds one, with its waiver ID or its architectural reason."
+    [message.join("\n")]
+  end
+end
+
+def check_execution(cases, exclusions)
+  runners = exclusions.keys
+
+  cases.filter_map do |test_case|
+    # Live cases are out of scope, not exempt: they are executed by the
+    # TypeScript live canary under BASECAMP_LIVE, which is governed by
+    # CONTRIBUTING.md and has its own coverage gate in
+    # check-replay-decoder-parity. The six mock runners exclude them by design.
+    next unless (test_case["mode"] || ConformanceSkips::DEFAULT_MODE) == "mock"
+
+    skipping = runners.select { |runner| exclusions.fetch(runner).include?(test_case["name"]) }
+    next unless skipping.length == runners.length
+
+    "#{test_case['__file']}: #{test_case['name'].inspect} is skipped by all #{runners.length} " \
+      "runners (#{skipping.join(', ')}) — it is a fixture nothing executes. Either narrow one " \
+      "runner's exclusion so the case still runs there, or delete the fixture; a case that no " \
+      "runner runs still passes conformance-fixtures-check and check-fixture-coverage, which is " \
+      "the state #573 shipped and #596 undid."
+  end
+end
+
+def run
+  files = tracked_fixtures
+  if files.empty?
+    raise Failure, "internal error: `git ls-files conformance/tests/*.json` matched nothing, so " \
+                   "this gate has no cases to check and cannot vouch for anything"
+  end
+
+  cases = load_cases(files)
+  raise Failure, "internal error: #{files.length} fixture file(s) yielded no test cases" if cases.empty?
+
+  tables = ConformanceSkips.tables(ROOT)
+  exclusions = ConformanceSkips.exclusions(ROOT, cases)
+
+  mock_cases = cases.count { |c| (c["mode"] || ConformanceSkips::DEFAULT_MODE) == "mock" }
+  puts "==> Checking every conformance fixture case is executed by some runner"
+  puts "    #{mock_cases} mock case(s) across #{files.length} fixture(s), " \
+       "#{exclusions.length} runners"
+  tables.sort.each { |id, keys| puts "    #{id.ljust(30)} #{keys.length} name-keyed skip(s)" }
+  ConformanceSkips.excluded_tags(ROOT).reject { |_, tags| tags.empty? }.each do |runner, tags|
+    puts "    #{runner.ljust(30)} whole-case tag branch: #{tags.join(', ')}"
+  end
+
+  errors = check_companion_tables(tables) + check_roster(ROOT, tables) +
+           check_modes(cases) + check_execution(cases, exclusions)
+
+  if errors.empty?
+    puts "  ok: no case is excluded by every runner, and SPEC §19's roster matches the runners"
+    0
+  else
+    warn ""
+    warn "ERROR: conformance fixtures are not all reachable."
+    errors.each { |e| warn "  #{e}" }
+    warn ""
+    warn "  The runners are the source of truth here; SPEC §19's Zero-Skip roster restates them."
+    1
+  end
+end
+
+begin
+  exit run
+rescue Failure, ConformanceSkips::ExtractionError => e
+  warn "ERROR: #{e.message}"
+  exit 2
+end

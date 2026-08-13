@@ -2181,8 +2181,18 @@ Note the shape this avoids: #573 first narrowed nothing and instead added the
 whole-case skip to all four remaining runners, which left the fixture skipped by
 all six — present in `pagination.json`, passing `conformance-fixtures-check` and
 `check-fixture-coverage`, and executed by nothing. That is #572's defect one
-layer down. Nothing in the build detects a fixture no runner runs; that gap is
-tracked as #602.
+layer down. `make check-fixture-execution` (#602) is what detects it now: it
+reads the six runners' skip mechanisms and fails when a mock case is excluded
+everywhere. Maximum overlap today is 2 of 6, so that gate is green on arrival
+and its self-test — which crafts the all-six state — is what proves it can say
+no.
+
+The same gate holds the roster below to the runners it claims to restate. The
+bullets are an ENUMERATION, derivable and therefore checked for set equality;
+the classification and reasoning on each line are judgement, and nothing
+asserts them. The runners stay the sole source of truth: if this roster were an
+input, a wrong extraction and a stale roster could agree and both stay green,
+which is the failure the gate exists to prevent.
 
 **Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin
 logic is covered by `TestIsSameOrigin` unit tests:

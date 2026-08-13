@@ -261,6 +261,24 @@ jobs:
         env:
           LC_ALL: C
 
+      # conformance-fixtures-check validates fixture SHAPE and
+      # check-fixture-coverage validates the SCHEMAS the shared fixtures
+      # represent. Neither can see whether anything RUNS a case: #573 skipped
+      # one in all six runners and both stayed green (#602). Static — it reads
+      # the six runners' skip mechanisms, no SDK is built.
+      - name: Every conformance fixture case is executed by some runner
+        run: make check-fixture-execution
+        env:
+          LC_ALL: C
+
+      # The run above is green on arrival — maximum overlap today is 2 of 6 —
+      # so it can only ever prove the gate says yes. This crafts the all-six
+      # state, which cannot occur in this checkout.
+      - name: Fixture-execution gate self-test (crafted all-six skip)
+        run: make test-check-fixture-execution
+        env:
+          LC_ALL: C
+
       # The replay runners' own coverage gates fire only during a live canary,
       # and that canary skips when its secrets are unset — so four decoder maps
       # drifted 20 operations behind the live fixture with CI fully green

@@ -1,0 +1,414 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# What each conformance runner refuses to execute, read out of the runners
+# themselves.
+#
+# Six runners exclude fixture cases through two unrelated mechanisms, and both
+# have to be read to answer "does anything actually run this case?":
+#
+#   1. A name-keyed literal skip table — goSDKSkips, RUBY_SKIPS, TS_SDK_SKIPS,
+#      SKIPS, KOTLIN_SKIPS, temporarySkips.
+#   2. A whole-case tag branch in the run loop. Kotlin and Swift skip any case
+#      tagged `link-header` outright.
+#
+# The `link-header` literal means two DIFFERENT things across the six, and a
+# gate that read it as one thing would be wrong in both directions. Go, Python,
+# Ruby and TypeScript use the tag to suppress that case's `requestCount`
+# ASSERTION — the case still runs, its `statusCode` and `noError` assertions
+# still fire, and it is not an exclusion. Kotlin and Swift use it to skip the
+# whole CASE, because both derive a response's status from the last mock
+# response the SDK consumed and an auto-paginating SDK walks past the end of a
+# one-response queue, so `statusCode: 200` cannot pass there. That asymmetry is
+# deliberate and documented (SPEC §19, #573 narrowed the four; #596 kept the
+# two), so only Kotlin and Swift carry `excluded_tags` below.
+#
+# Extracted here rather than in the gate so scripts/check-fixture-execution and
+# any later consumer read one parser. Precedent: scripts/schema_instance_validator.rb,
+# required by scripts/check-projected-examples.rb.
+#
+# WHY NOT THE BASH TEMPLATE. scripts/check-replay-decoder-parity solves a
+# similar-looking problem with awk and sed, and neither of its two load-bearing
+# devices transfers:
+#
+#   - Its fail-closed rule is "the extracted set is non-empty", which is right
+#     for a decoder table and would fail this build on arrival: three of the six
+#     skip tables are LEGITIMATELY empty, and two of those (`emptyMap()`, `[:]`)
+#     have no bracketed block for its `block()` helper to bound at all. The
+#     predicate here is instead "the declaration anchor matched exactly one
+#     line" — a missing anchor is the internal error; an anchor with zero keys
+#     is a valid empty table.
+#   - Its keys are identifiers. These keys are prose sentences — "Mixed-case
+#     host and explicit default port stay on the mocked origin" — with spaces,
+#     commas and em dashes, so every `[[:alnum:]]+` capture in that template
+#     matches nothing.
+
+require "json"
+require "set"
+
+module ConformanceSkips
+  class ExtractionError < StandardError; end
+
+  # One literal declaration to read out of a runner.
+  #
+  # `anchor` names the declaration and nothing else — no type annotation, no
+  # opening bracket — so ordinary reformatting does not break the gate while a
+  # RENAME does, which is the deliberate act a reviewer should have to answer
+  # for. It must match exactly one line; see declaration_keys.
+  #
+  # `comment` is the line-comment syntax, needed so a `#`/`//` that mentions a
+  # bracket or a quote cannot move the depth counter.
+  Table = Struct.new(:label, :file, :anchor, :comment, keyword_init: true) do
+    def id(runner) = "#{runner}/#{label}"
+  end
+
+  # A branch in a runner's run loop that skips a whole case by tag. There is no
+  # literal to parse, so the registry states the tag and this pins the branch
+  # that implements it: if the line goes or changes shape, the gate fails loudly
+  # rather than carrying a claim about code that no longer exists.
+  TagBranch = Struct.new(:tag, :file, :anchor, keyword_init: true)
+
+  Runner = Struct.new(:name, :tables, :tag_branches, keyword_init: true) do
+    # The authoritative exclusion table is the FIRST; any others are companions
+    # whose key sets must match it (see check_companion_tables).
+    def skip_table = tables.first
+  end
+
+  RUNNERS = [
+    Runner.new(
+      name: "go",
+      tables: [
+        Table.new(label: "goSDKSkips", file: "conformance/runner/go/main.go",
+                  anchor: "var goSDKSkips", comment: :slash),
+      ],
+      tag_branches: []
+    ),
+    Runner.new(
+      name: "python",
+      tables: [
+        # A class attribute, not a module constant — the anchor is indented, so
+        # it is matched anywhere on the line rather than at column 1.
+        Table.new(label: "SKIPS", file: "conformance/runner/python/runner.py",
+                  anchor: "SKIPS: set[str]", comment: :hash),
+        Table.new(label: "SKIP_REASONS", file: "conformance/runner/python/runner.py",
+                  anchor: "SKIP_REASONS: dict[str, str]", comment: :hash),
+      ],
+      tag_branches: []
+    ),
+    Runner.new(
+      name: "ruby",
+      tables: [
+        Table.new(label: "RUBY_SKIPS", file: "conformance/runner/ruby/runner.rb",
+                  anchor: "RUBY_SKIPS =", comment: :hash),
+        Table.new(label: "RUBY_SKIP_REASONS", file: "conformance/runner/ruby/runner.rb",
+                  anchor: "RUBY_SKIP_REASONS =", comment: :hash),
+      ],
+      tag_branches: []
+    ),
+    Runner.new(
+      name: "typescript",
+      tables: [
+        Table.new(label: "TS_SDK_SKIPS", file: "conformance/runner/typescript/runner.test.ts",
+                  anchor: "const TS_SDK_SKIPS", comment: :slash),
+      ],
+      tag_branches: []
+    ),
+    Runner.new(
+      name: "kotlin",
+      tables: [
+        Table.new(label: "KOTLIN_SKIPS",
+                  file: "kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt",
+                  anchor: "val KOTLIN_SKIPS", comment: :slash),
+      ],
+      tag_branches: [
+        TagBranch.new(tag: "link-header",
+                      file: "kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt",
+                      anchor: 'if ("link-header" in tc.tags) {'),
+      ]
+    ),
+    Runner.new(
+      name: "swift",
+      tables: [
+        # `temporarySkips`, not `swiftSkips`. #602's issue text names the
+        # latter; the latter is an env-gated ternary
+        # (SWIFT_CONFORMANCE_NO_SKIPS) holding no literals of its own, so
+        # parsing it would read an empty table no matter what was skipped.
+        # SPEC.md §19's roster has this right and the issue is stale.
+        Table.new(label: "temporarySkips",
+                  file: "conformance/runner/swift/Sources/ConformanceRunner/Runner.swift",
+                  anchor: "let temporarySkips", comment: :slash),
+      ],
+      tag_branches: [
+        TagBranch.new(tag: "link-header",
+                      file: "conformance/runner/swift/Sources/ConformanceRunner/Runner.swift",
+                      anchor: 'if tc.allTags.contains("link-header") {'),
+      ]
+    ),
+  ].freeze
+
+  # All six exclude any case whose mode is not "mock" at load time, and all six
+  # do it by treating an UNRECOGNIZED mode as non-mock — `(mode ?? "mock") ==
+  # "mock"` and its five equivalents. So a typo'd mode is a silent all-six
+  # exclusion, which is why the gate validates modes rather than merely
+  # filtering on them.
+  KNOWN_MODES = %w[mock live].freeze
+  DEFAULT_MODE = "mock"
+
+  OPENERS = "{[(".freeze
+  CLOSERS = "}])".freeze
+  ESCAPES = { "n" => "\n", "t" => "\t", "r" => "\r", "0" => "\0" }.freeze
+
+  # The keys of one literal declaration.
+  #
+  # Fail-closed on the ANCHOR, not on the key count: an anchor that matches no
+  # line (renamed, reformatted past recognition) or more than one (ambiguous) is
+  # an extraction failure and must stop the build. An anchor that matches
+  # exactly one line and yields zero keys is a genuinely empty table, which
+  # three of the six are today.
+  def self.declaration_keys(source, table)
+    lines = source.lines
+    hits = lines.each_index.select { |index| lines[index].include?(table.anchor) }
+
+    unless hits.length == 1
+      raise ExtractionError,
+            "#{table.file}: the declaration anchor #{table.anchor.inspect} matched " \
+            "#{hits.length} line(s), expected exactly 1. The table was renamed or reshaped — " \
+            "read it, then update ConformanceSkips::RUNNERS in the same commit. This is an " \
+            "extraction failure, not an empty table: an empty table is a valid answer here and " \
+            "a broken parser is not."
+    end
+
+    # Scanning starts at the anchor itself, not after it, so a declaration
+    # header carrying brackets of its own — `map[string]string{`,
+    # `[String: String] = [:]`, `Set.new([` — is balanced by the same counter
+    # that finds the end.
+    offset = lines[0, hits.first].sum(&:length) + lines[hits.first].index(table.anchor)
+    strings, state = scan(source, offset, table.comment)
+
+    if state == :unclosed
+      raise ExtractionError,
+            "#{table.file}: the declaration at #{table.anchor.inspect} never closes — its " \
+            "brackets are unbalanced through end of file"
+    end
+
+    # Map or set, decided by the text rather than by a per-runner setting: if any
+    # top-level string is followed by a key separator the declaration is a map
+    # and only those strings are keys; otherwise every string is an element.
+    # This is what lets one parser read Go's `"k": "v"`, Ruby's `"k" => "v"`,
+    # Kotlin's `"k" to "v"`, Swift's `["k": "v"]`, Ruby's `Set.new(["k"])` and
+    # Python's `{"k"}` without six spellings of the same rule.
+    keyed = strings.select { |_, separator| separator }
+    (keyed.empty? ? strings : keyed).map(&:first)
+  end
+
+  # Walk from `offset`, tracking bracket depth outside strings and comments.
+  #
+  # Returns [[value, followed_by_separator], ...] and :closed / :unclosed. The
+  # declaration ends at the END OF THE LINE on which depth returns to zero, not
+  # the instant it does: `map[string]string{` closes its `[...]` and reopens
+  # with `{` on one line, and stopping at the first zero would read the type
+  # parameter and call the table empty.
+  def self.scan(source, offset, comment)
+    strings = []
+    depth = 0
+    entered = false
+    index = offset
+    length = source.length
+
+    while index < length
+      char = source[index]
+
+      if char == "\n"
+        return [strings, :closed] if entered && depth.zero?
+
+        index += 1
+        next
+      end
+
+      if (comment == :hash && char == "#") ||
+         (comment == :slash && char == "/" && source[index + 1] == "/")
+        index = source.index("\n", index) || length
+        next
+      end
+
+      # Single quotes are string delimiters only where the language has no
+      # character literal: Go, Kotlin and Swift all spell a char with them, and
+      # treating `'{'` as a string there would be as wrong as the reverse.
+      if char == '"' || (comment == :hash && char == "'")
+        value, index = read_string(source, index)
+        strings << [value, separator_follows?(source, index, comment)]
+        next
+      end
+
+      if OPENERS.include?(char)
+        depth += 1
+        entered = true
+      elsif CLOSERS.include?(char)
+        depth -= 1
+        raise ExtractionError, "unbalanced closing bracket while reading a skip table" if depth.negative?
+      end
+
+      index += 1
+    end
+
+    [strings, entered && depth.zero? ? :closed : :unclosed]
+  end
+
+  # The string literal starting at `index`; returns [value, index_after_quote].
+  def self.read_string(source, index)
+    quote = source[index]
+    value = +""
+    cursor = index + 1
+
+    while cursor < source.length
+      char = source[cursor]
+      if char == "\\"
+        escaped = source[cursor + 1]
+        value << (ESCAPES[escaped] || escaped || "")
+        cursor += 2
+        next
+      end
+      break if char == quote
+
+      value << char
+      cursor += 1
+    end
+
+    raise ExtractionError, "unterminated string literal while reading a skip table" if cursor >= source.length
+
+    [value, cursor + 1]
+  end
+
+  KEY_SEPARATOR_RE = /\A(?::|=>|to\b)/
+
+  # Whether the next meaningful token after a string is a key separator, which
+  # is what distinguishes `"k": "v"` (k is a key, v is not) from `"k",`.
+  def self.separator_follows?(source, index, comment)
+    cursor = index
+    while cursor < source.length
+      char = source[cursor]
+      if char =~ /\s/
+        cursor += 1
+      elsif (comment == :hash && char == "#") ||
+            (comment == :slash && char == "/" && source[cursor + 1] == "/")
+        cursor = (source.index("\n", cursor) || source.length)
+      else
+        break
+      end
+    end
+
+    source[cursor..].to_s.match?(KEY_SEPARATOR_RE)
+  end
+
+  # SPEC §19's Zero-Skip Target roster, as { runner => [case name, ...] }.
+  #
+  # Read for COMPARISON only, never as an input to exclusions: a wrong
+  # extraction and a stale roster could otherwise agree and both stay green,
+  # which is the failure the gate exists to prevent.
+  #
+  # The roster holds two separable things and only the first is derivable. The
+  # ENUMERATION — "one line per runner × test, verbatim from the runners' skip
+  # mechanisms", in the section's own words — is what this returns. The
+  # CLASSIFICATION beside it (waiver-backed / architectural / unwaivered, plus
+  # the reasoning) is judgement no gate can derive, and nothing here reads it.
+  #
+  # Only the NAME-KEYED tables are compared. Kotlin's and Swift's whole-case
+  # `link-header` exclusion is documented in the roster's prose rather than as a
+  # bullet, deliberately, and their bullet lists are correspondingly empty.
+  #
+  # The TypeScript live canary's placeholder skip is likewise absent from both
+  # sides and needs no special case: it lives in live-runner.test.ts, which is
+  # not a skip table this module reads. The roster says outright that it "is
+  # deliberately not rostered" — do not teach the parser about it.
+  ROSTER_ANCHOR = "### Zero-Skip Target"
+  ROSTER_HEADINGS = {
+    "Go" => "go",
+    "Python" => "python",
+    "Ruby" => "ruby",
+    "TypeScript" => "typescript",
+    "Kotlin" => "kotlin",
+    "Swift" => "swift",
+  }.freeze
+
+  def self.roster(root, relative = "SPEC.md")
+    source = read(root, relative)
+    lines = source.lines
+    hits = lines.each_index.select { |index| lines[index].start_with?(ROSTER_ANCHOR) }
+    unless hits.length == 1
+      raise ExtractionError,
+            "#{relative}: the roster heading #{ROSTER_ANCHOR.inspect} matched #{hits.length} " \
+            "line(s), expected exactly 1"
+    end
+
+    body = lines[(hits.first + 1)..].take_while { |line| !line.start_with?("## ", "---") }.join
+    blocks = body.split(/^\*\*([A-Za-z]+)\*\*/)[1..].to_a.each_slice(2).to_h
+
+    missing = ROSTER_HEADINGS.keys - blocks.keys
+    unless missing.empty?
+      raise ExtractionError,
+            "#{relative}: the Zero-Skip roster has no **#{missing.first}** block. Every runner " \
+            "needs one, including the ones with nothing to list — an absent heading is how a " \
+            "runner's skips stop being restated at all."
+    end
+
+    ROSTER_HEADINGS.to_h do |heading, runner|
+      # Each block runs to the next bolded runner heading; a bullet is a line
+      # whose first token is a quoted case name, which is what separates the
+      # enumeration from the surrounding prose.
+      [runner, blocks.fetch(heading).scan(/^- "([^"]+)"/).flatten]
+    end
+  end
+
+  def self.read(root, relative)
+    path = File.join(root, relative)
+    raise ExtractionError, "missing #{relative}" unless File.exist?(path)
+
+    File.read(path, encoding: "UTF-8")
+  end
+
+  # Every table's keys, as { "runner/label" => [key, ...] }.
+  def self.tables(root)
+    RUNNERS.each_with_object({}) do |runner, out|
+      runner.tables.each do |table|
+        out[table.id(runner.name)] = declaration_keys(read(root, table.file), table)
+      end
+    end
+  end
+
+  # The tag branches, verified to still exist. Returns { runner => [tag, ...] }.
+  def self.excluded_tags(root)
+    RUNNERS.each_with_object({}) do |runner, out|
+      out[runner.name] = runner.tag_branches.map do |branch|
+        source = read(root, branch.file)
+        hits = source.lines.count { |line| line.include?(branch.anchor) }
+        unless hits == 1
+          raise ExtractionError,
+                "#{branch.file}: the whole-case tag branch #{branch.anchor.inspect} matched " \
+                "#{hits} line(s), expected exactly 1. ConformanceSkips::RUNNERS claims this " \
+                "runner skips every case tagged #{branch.tag.inspect}; if that stopped being " \
+                "true, drop the tag from the registry — do not widen the anchor until it matches."
+        end
+        branch.tag
+      end
+    end
+  end
+
+  # What each runner will not execute: { runner => Set(case names) }, given the
+  # loaded fixture cases (each a Hash with "name" and optional "tags").
+  def self.exclusions(root, cases)
+    table_keys = tables(root)
+    tags = excluded_tags(root)
+
+    RUNNERS.each_with_object({}) do |runner, out|
+      excluded = Set.new(table_keys.fetch(runner.skip_table.id(runner.name)))
+      runner_tags = tags.fetch(runner.name)
+      unless runner_tags.empty?
+        cases.each do |test_case|
+          case_tags = test_case["tags"] || []
+          excluded << test_case["name"] if runner_tags.any? { |tag| case_tags.include?(tag) }
+        end
+      end
+      out[runner.name] = excluded
+    end
+  end
+end
