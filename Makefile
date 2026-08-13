@@ -1042,6 +1042,13 @@ endif
 # Run Swift conformance tests (macOS only — the SDK requires Apple platforms).
 # Defined here rather than in the conformance section so the IS_MACOS ifdef
 # parses after the variable is defined above.
+#
+# The macOS gate bounds the case census (#602) too, and the bound is worth
+# naming: every runner asserts that passed+failed+skipped equals the non-live
+# case count in conformance/tests, but on Linux this recipe prints SKIP and
+# Swift's copy of that assertion never runs. A green Linux `make` is five-runner
+# census coverage, not six. CI closes it by running test-swift on macos-15;
+# nothing closes it for a Linux developer.
 conformance-swift:
 ifdef IS_MACOS
 	@echo "==> Running Swift conformance tests..."

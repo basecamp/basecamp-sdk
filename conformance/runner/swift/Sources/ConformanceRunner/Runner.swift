@@ -1,4 +1,5 @@
 @_spi(Conformance) import Basecamp
+import ConformanceSupport
 import Foundation
 
 /// Default account ID for conformance tests. Not private: the path invariant
@@ -55,6 +56,20 @@ struct Runner {
         }
 
         let testsDir = URL(fileURLWithPath: "../../tests", isDirectory: true)
+
+        // Case census (#602) — see ConformanceSupport/CaseCensus.swift. Taken up
+        // front, by its own walk, so a fixture tree this runner's directory
+        // listing cannot see is reported before the run rather than inferred
+        // from a short count afterwards.
+        let expectedCases: Int
+        do {
+            expectedCases = try CaseCensus.nonLiveCaseCount(in: testsDir)
+        } catch {
+            FileHandle.standardError.write(
+                Data("Error taking fixture census: \(error)\n".utf8))
+            exit(1)
+        }
+
         let files: [URL]
         do {
             files = try FileManager.default
@@ -65,9 +80,15 @@ struct Runner {
             print("No test files found in \(testsDir.path): \(error)")
             exit(1)
         }
+        // No early exit on an empty listing — unlike the catch above, which is a
+        // genuine read failure. The census walks recursively and this listing
+        // does not, so "the census found fixtures but this runner listed none"
+        // is the nested-fixture under-count the census exists to reject. Exiting
+        // here is non-zero either way, but it prints "No test files found" for a
+        // tree that is full of them; falling through prints the count check's
+        // diagnosis instead, which is the one that names what actually happened.
         if files.isEmpty {
             print("No test files found in \(testsDir.path)")
-            exit(1)
         }
 
         var passed = 0
@@ -124,9 +145,17 @@ struct Runner {
         }
 
         print("\n=== Summary ===")
-        print("Passed: \(passed), Failed: \(failed), Skipped: \(skipped), Total: \(passed + failed + skipped)")
+        print("Passed: \(passed), Failed: \(failed), Skipped: \(skipped), "
+            + "Total: \(passed + failed + skipped) "
+            + "(fixtures declare \(expectedCases) non-live case(s))")
 
-        exit(failed > 0 ? 1 : 0)
+        let countFailure = CaseCensus.countFailure(
+            ran: passed + failed + skipped, expected: expectedCases)
+        if let countFailure {
+            FileHandle.standardError.write(Data("\nFAIL: \(countFailure)\n".utf8))
+        }
+
+        exit(failed > 0 || countFailure != nil ? 1 : 0)
     }
 
     static func runTest(_ tc: TestCase) async -> TestResult {

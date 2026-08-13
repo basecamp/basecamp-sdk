@@ -15,6 +15,153 @@ require "set"
 WebMock.enable!
 WebMock.disable_net_connect!
 
+# The case census (#602): every non-live fixture case must be accounted for by
+# the run.
+#
+#   passed + failed + skipped  ==  cases in conformance/tests/**/*.json
+#                                  whose mode != "live"
+#
+# The left side is what the runner actually did. The right side is counted by
+# +non_live_case_count+ below — a SEPARATE walk and parse, deliberately not the
+# runner's own load path. That independence is the entire point: a check fed by
+# the load path can only confirm the load path agrees with itself.
+#
+# Why `mode != "live"` rather than `mode == "mock"`: all six runners select with
+# "mock unless told otherwise" (+mock_mode?+ here, and its five equivalents), so
+# a typo'd `mode: "moc"` is dropped by every runner at once with nothing printed
+# anywhere. Counting the expected side as "not explicitly live" turns that
+# silent divergence into arithmetic.
+#
+# Catches: an unrecognized `mode`; a fixture that failed to parse or was never
+# globbed (including one nested below conformance/tests/, which no runner
+# discovers — hence the recursive walk); a case dropped between load and
+# dispatch; a fixture emptied to `[]` (which the census REFUSES rather than
+# counts — see +non_live_case_count+, and note that counting it would make this
+# bullet a lie); and any future skip channel that bypasses the counters, because
+# the counters are what it reads.
+#
+# The typo is not this check's alone to catch, and saying so is what keeps the
+# rest of the list honest: `make conformance-fixtures-check` validates
+# conformance/tests/*.json against conformance/schema.json, whose `mode` is
+# `enum: ["mock", "live"]`, so a typo in a TOP-LEVEL fixture fails there first
+# and this census is defense in depth for that one case. What that gate
+# structurally cannot see is everything else above — its glob is not recursive,
+# so a fixture nested below conformance/tests/ is validated by nothing AND run
+# by nothing (verified: such a file passes the schema gate and fails this
+# census); a fixture truncated to `[]` is a valid array of zero cases; and a
+# case dropped between load and dispatch is not a fixture-format question at
+# all. Nor does that gate run when `make conformance-<lang>` is invoked alone.
+#
+# Does NOT catch the all-six case #602 names — one case every runner excludes
+# for its own reason, which leaves each runner's own census green. That needs
+# the six exclusion sets in one place, hence artifact plumbing across six CI
+# jobs; #602 stays open for it.
+#
+# Kept apart from the runner so it is unit-testable (case_census_test.rb).
+module CaseCensus
+  # Raised for every fail-closed condition below, so a caller cannot catch the
+  # parse failure and miss the empty-tree one.
+  class Error < StandardError; end
+
+  # Whether a fixture case's mode selects this runner.
+  #
+  # Absent means mock: live cases are TS-only (the canonical wire-capturer), and
+  # every other value is nobody's. Shared with the census self-tests so the rule
+  # the run loop applies is the rule under test, not a copy of it.
+  #
+  # Defaults on nil ONLY. `mode || "mock"` also defaults an explicit JSON
+  # `false`, which Ruby alone would then run as mock while the census counts it
+  # as non-live — matching totals over a value no other runner accepts. Python
+  # had the same defect more broadly (its `or` defaulted every falsy value); the
+  # typed runners reject a non-string `mode` when they decode it.
+  def self.mock_mode?(mode)
+    (mode.nil? ? "mock" : mode) == "mock"
+  end
+
+  # Counts fixture cases whose mode is not "live", recursively.
+  #
+  # Fail-closed in three places, each a way the count could certify nothing
+  # while looking green: an unreadable tree, a fixture that does not parse, and
+  # a walk that found no fixture files at all.
+  # Every *.json under +dir+, recursively, sorted by path.
+  #
+  # A hand-rolled walk over Dir.children, NOT Dir.glob and NOT Find.find. Both
+  # of those swallow the error from a directory they cannot read (find.rb
+  # rescues Errno::EACCES and moves on), so an unreadable subdirectory is simply
+  # omitted. The runner's non-recursive glob omits it too, so its cases leave
+  # both sides of the census at once and the totals still agree — a fail-closed
+  # walk failing open, which is the one failure this must not have.
+  # Dir.children raises, which is the whole reason it is the API used here.
+  def self.fixture_files(dir)
+    entries = begin
+      Dir.children(dir)
+    rescue SystemCallError => e
+      raise Error, "could not walk #{dir}: #{e.message}"
+    end
+
+    entries.sort.flat_map do |name|
+      path = File.join(dir, name)
+      if File.directory?(path)
+        fixture_files(path)
+      elsif File.extname(path) == ".json"
+        [ path ]
+      else
+        []
+      end
+    end
+  end
+
+  def self.non_live_case_count(tests_dir)
+    files = fixture_files(tests_dir).sort
+    raise Error, "no *.json fixture files found under #{tests_dir}" if files.empty?
+
+    files.sum do |file|
+      begin
+        parsed = JSON.parse(File.read(file))
+      rescue JSON::ParserError, SystemCallError => e
+        raise Error, "#{file}: #{e.message}"
+      end
+      raise Error, "#{file}: fixture is not a JSON array" unless parsed.is_a?(Array)
+
+      # An emptied fixture is REFUSED, not counted as zero, and this is the one
+      # rejection that carries the whole-file guarantee. It is the single
+      # truncation both sides of the census read identically: the runner
+      # registers nothing from the file and the census expects nothing, so the
+      # two totals fall together and no mismatch ever appears. Counting it would
+      # make "a fixture truncated to []" a claim this check cannot keep. A file
+      # declaring no cases tests nothing, so refusing it costs nothing — and it
+      # closes the same hole in conformance-fixtures-check, where an empty array
+      # is a schema-valid list of zero items.
+      if parsed.empty?
+        raise Error, "#{file}: fixture declares no cases; delete the file or restore its cases"
+      end
+
+      # Only `mode` is read: the census must survive a fixture whose other
+      # fields this runner cannot model, or it would report a failure for a case
+      # the run itself handled fine.
+      parsed.count { |test_case| !test_case.is_a?(Hash) || test_case["mode"] != "live" }
+    end
+  end
+
+  # Compares what the run accounted for against the census, returning nil when
+  # they agree and a message naming the short side otherwise.
+  def self.count_failure(ran, expected)
+    if ran == expected
+      nil
+    elsif ran < expected
+      "case census: the run accounted for #{ran} case(s) (passed+failed+skipped) " \
+        "but conformance/tests holds #{expected} non-live case(s) — " \
+        "#{expected - ran} executed by nothing. An unrecognized `mode`, a fixture " \
+        "that failed to parse or was never globbed, or a case dropped between load " \
+        "and dispatch will do this."
+    else
+      "case census: the run accounted for #{ran} case(s) (passed+failed+skipped) " \
+        "but conformance/tests holds only #{expected} non-live case(s) — " \
+        "#{ran - expected} more than the fixtures declare."
+    end
+  end
+end
+
 # The errorRaised assertion contract, kept apart from the runner so its failing
 # branch is unit-testable (error_raised_test.rb).
 module ErrorRaised
@@ -1469,12 +1616,24 @@ class ConformanceRunner
   end
 
   def run
-    files = Dir.glob(File.join(@tests_dir, "*.json"))
-
-    if files.empty?
-      puts "No test files found in #{@tests_dir}"
-      return 0
+    # Case census (#602) — see CaseCensus. Taken up front, by its own walk, so a
+    # fixture tree this runner's glob cannot see is reported before the run
+    # rather than inferred from a short count afterwards.
+    begin
+      expected_cases = CaseCensus.non_live_case_count(@tests_dir)
+    rescue CaseCensus::Error => e
+      warn "Error taking fixture census: #{e.message}"
+      return 1
     end
+
+    # No early return on an empty glob. The census walks recursively and this
+    # glob does not, so "the census found fixtures but this runner globbed none"
+    # is exactly the nested-fixture under-count the census exists to reject —
+    # and returning success here would step over the comparison that rejects it.
+    # Falling through runs zero cases and lets the count check fail, which is
+    # the correct answer.
+    files = Dir.glob(File.join(@tests_dir, "*.json"))
+    puts "No test files found in #{@tests_dir}" if files.empty?
 
     passed = 0
     failed = 0
@@ -1488,7 +1647,7 @@ class ConformanceRunner
       # so unresolved ${PROJECT_ID} fixtures and live-only operations don't
       # surface as mock failures or false passes — and any future mode added
       # to the schema enum stays opt-in for this runner.
-      tests = tests.select { |t| (t["mode"] || "mock") == "mock" }
+      tests = tests.select { |t| CaseCensus.mock_mode?(t["mode"]) }
       next if tests.empty?
 
       puts "\n=== #{File.basename(file)} ==="
@@ -1521,9 +1680,13 @@ class ConformanceRunner
     end
 
     puts "\n" + "=" * 40
-    puts "Results: #{passed} passed, #{failed} failed, #{skipped} skipped"
+    puts "Results: #{passed} passed, #{failed} failed, #{skipped} skipped " \
+         "(fixtures declare #{expected_cases} non-live case(s))"
 
-    failed > 0 ? 1 : 0
+    count_failure = CaseCensus.count_failure(passed + failed + skipped, expected_cases)
+    warn "\nFAIL: #{count_failure}" if count_failure
+
+    failed > 0 || count_failure ? 1 : 0
   end
 end
 

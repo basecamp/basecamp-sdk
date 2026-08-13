@@ -221,12 +221,29 @@ private fun summarizeSearch(results: List<SearchResult>): JsonElement = buildJso
 fun main() {
     val testsDir = File("../conformance/tests")
 
+    // Case census (#602) — see CaseCensus. Taken up front, by its own walk, so a
+    // fixture tree this runner's listFiles cannot see is reported before the run
+    // rather than inferred from a short count afterwards.
+    val expectedCases = try {
+        CaseCensus.nonLiveCaseCount(testsDir)
+    } catch (e: CaseCensus.CensusException) {
+        System.err.println("Error taking fixture census: ${e.message}")
+        System.exit(1)
+        return
+    }
+
+    // No early return on an empty listing. The census walks recursively and
+    // this listing does not, so "the census found fixtures but this runner
+    // listed none" is exactly the nested-fixture under-count the census exists
+    // to reject — and returning success here would step over the comparison
+    // that rejects it. Falling through runs zero cases and lets the count check
+    // fail, which is the correct answer.
     val testFiles = testsDir.listFiles { f -> f.extension == "json" }
         ?.sorted()
+        .orEmpty()
 
-    if (testFiles.isNullOrEmpty()) {
+    if (testFiles.isEmpty()) {
         println("No test files found in ${testsDir.absolutePath}")
-        return
     }
 
     val json = Json { ignoreUnknownKeys = true }
@@ -239,7 +256,7 @@ fun main() {
         // here so the offline Kotlin runner doesn't see live entries with
         // unresolved ${PROJECT_ID} fixtures or unknown operations.
         val testCases = json.decodeFromString<List<TestCase>>(file.readText())
-            .filter { it.mode == "mock" }
+            .filter { CaseCensus.isMockMode(it.mode) }
         if (testCases.isEmpty()) continue
         println("\n=== ${file.name} ===")
 
@@ -285,9 +302,17 @@ fun main() {
     }
 
     println("\n=== Summary ===")
-    println("Passed: $passed, Failed: $failed, Skipped: $skipped, Total: ${passed + failed + skipped}")
+    println(
+        "Passed: $passed, Failed: $failed, Skipped: $skipped, Total: ${passed + failed + skipped} " +
+            "(fixtures declare $expectedCases non-live case(s))"
+    )
 
-    if (failed > 0) {
+    val countFailure = CaseCensus.countFailure(passed + failed + skipped, expectedCases)
+    if (countFailure != null) {
+        System.err.println("\nFAIL: $countFailure")
+    }
+
+    if (failed > 0 || countFailure != null) {
         System.exit(1)
     }
 }

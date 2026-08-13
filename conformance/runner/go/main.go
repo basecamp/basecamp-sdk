@@ -34,7 +34,11 @@ type TestCase struct {
 	// runner; non-TS runners filter them out at load time so unresolved
 	// fixture placeholders and unknown operations don't false-pass as
 	// mock conformance.
-	Mode            string                 `json:"mode"`
+	//
+	// A POINTER so an absent key stays distinguishable from `"mode": ""`. A
+	// plain string collapses both to "", which would run an unrecognized mode
+	// the other five runners refuse — see isMockMode in case_census.go.
+	Mode            *string                `json:"mode"`
 	Name            string                 `json:"name"`
 	Description     string                 `json:"description"`
 	Operation       string                 `json:"operation"`
@@ -150,15 +154,29 @@ func main() {
 
 	testsDir := filepath.Join("..", "..", "tests")
 
+	// Case census (#602) — see case_census.go. Taken up front, by its own walk,
+	// so a fixture tree this runner's glob cannot see is reported before the run
+	// rather than inferred from a short count afterwards.
+	expectedCases, err := countNonLiveCases(testsDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error taking fixture census: %v\n", err)
+		os.Exit(1)
+	}
+
 	files, err := filepath.Glob(filepath.Join(testsDir, "*.json"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error finding test files: %v\n", err)
 		os.Exit(1)
 	}
 
+	// No early exit on an empty glob. The census walks recursively and this
+	// glob does not, so "the census found fixtures but this runner globbed
+	// none" is exactly the nested-fixture under-count the census exists to
+	// reject — and returning success here would step over the comparison that
+	// rejects it. Falling through runs zero cases and lets the count check
+	// fail, which is the correct answer.
 	if len(files) == 0 {
 		fmt.Println("No test files found in", testsDir)
-		os.Exit(0)
 	}
 
 	var results []TestResult
@@ -195,9 +213,15 @@ func main() {
 	}
 
 	fmt.Printf("\n=== Summary ===\n")
-	fmt.Printf("Passed: %d, Failed: %d, Skipped: %d, Total: %d\n", passed, failed, skipped, passed+failed+skipped)
+	fmt.Printf("Passed: %d, Failed: %d, Skipped: %d, Total: %d (fixtures declare %d non-live case(s))\n",
+		passed, failed, skipped, passed+failed+skipped, expectedCases)
 
-	if failed > 0 {
+	countFailure := caseCountFailure(passed+failed+skipped, expectedCases)
+	if countFailure != "" {
+		fmt.Fprintf(os.Stderr, "\nFAIL: %s\n", countFailure)
+	}
+
+	if failed > 0 || countFailure != "" {
 		os.Exit(1)
 	}
 }
@@ -227,7 +251,7 @@ func loadTests(filename string) ([]TestCase, error) {
 	// fixtures or operations that only the live runner knows about.
 	mockTests := tests[:0]
 	for _, tc := range tests {
-		if tc.Mode == "" || tc.Mode == "mock" {
+		if isMockMode(tc.Mode) {
 			mockTests = append(mockTests, tc)
 		}
 	}
