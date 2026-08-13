@@ -1,0 +1,46 @@
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_fca5acb3cc9413::t_a2def9dd9f0ae4 125,133,142
+conformance/runner/python/runner.py
+  s_fca5acb3cc9413::t_2d91501b21eff8 168,195,1532,1551
+conformance/runner/go/manifest.go
+  s_fca5acb3cc9413::t_2d91501b21eff8 41-48,79-84
+conformance/runner/typescript/case-census.ts
+  s_fca5acb3cc9413::t_a2def9dd9f0ae4 170-177,203-206
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_fca5acb3cc9413::t_a2def9dd9f0ae4 273-274,282,296
+conformance/runner/swift/Sources/ConformanceSupport/ExecutionManifest.swift
+  s_fca5acb3cc9413::t_a2def9dd9f0ae4 23-27,29,33-34,72
+conformance/runner/typescript/runner.test.ts
+  s_fca5acb3cc9413::t_a2def9dd9f0ae4 1858-1866
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ExecutionManifest.kt
+  s_fca5acb3cc9413::t_a2def9dd9f0ae4 30-37,62
+conformance/runner/go/main.go
+  s_fca5acb3cc9413::t_2d91501b21eff8 200
+scripts/test-check-fixture-execution.rb
+  s_fca5acb3cc9413::t_522785de5d2a64 73-75,78,183-216
+  s_fca5acb3cc9413::t_82d376b9367bfd 217
+conformance/runner/ruby/runner.rb
+  s_fca5acb3cc9413::t_2d91501b21eff8 193,1696
+.github/workflows/test.yml
+  s_fca5acb3cc9413::t_60ddd83dd3d9e9 925-935
+scripts/check-fixture-execution.rb
+  s_fca5acb3cc9413::t_81ff44b1539ef0 94-102,108-117,193,209-210,221-223,225
+Makefile
+  s_fca5acb3cc9413::t_cde8e2dae072ef 1088-1090,1092-1113,1497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e2c29d913e3fa07fa93f2775f1838f2137e5e22e",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
