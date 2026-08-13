@@ -1,0 +1,19 @@
+Makefile
+  s_fca5acb3cc9413::t_d6d2c766702fca 739-761,1111-1112,1114-1121,1123-1125,1509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c62df667c3d71ccd1f7bc9e65089d1ae324e3aa2",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
