@@ -4,11 +4,11 @@
   "visible_to_clients": false,
   "created_at": "2022-11-28T14:12:00.000Z",
   "updated_at": "2022-11-28T14:12:00.000Z",
-  "title": "Progress update",
+  "title": "Moved the needle",
   "inherits_status": true,
   "type": "Gauge::Needle",
-  "url": "https://3.basecampapi.com/999999999/buckets/2085958500/gauge_needles/1069479850.json",
-  "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/gauge_needles/1069479850",
+  "url": "https://3.basecampapi.com/999999999/projects/2085958500/gauge/needles/1069479850.json",
+  "app_url": "https://3.basecamp.com/999999999/projects/2085958500/gauge/needles/1069479850",
   "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5ODUwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcd1234.json",
   "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479850/subscription.json",
   "comments_count": 2,
@@ -17,10 +17,10 @@
   "boosts_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479850/boosts.json",
   "parent": {
     "id": 1069479800,
-    "title": "Gauge",
+    "title": "How far along are we?",
     "type": "Gauge",
-    "url": "https://3.basecampapi.com/999999999/buckets/2085958500/gauges/1069479800.json",
-    "app_url": "https://3.basecamp.com/999999999/buckets/2085958500/gauges/1069479800"
+    "url": "https://3.basecampapi.com/999999999/projects/2085958500/gauge.json",
+    "app_url": "https://3.basecamp.com/999999999/projects/2085958500/gauge"
   },
   "bucket": {
     "id": 2085958500,

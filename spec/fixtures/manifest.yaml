@@ -305,17 +305,32 @@ targets:
     pointer: "/description_attachments/0"
     schema: RichTextAttachment
 
-  # Gauge is a docked tool: bc3 app/views/api/gauges/_gauge.json.jbuilder renders
-  # the base recordings/recording partial (no commentable/boostable), then — only
-  # when `gauge.any_needles?` — the rich-text partial for the last needle plus
+  # bc3 app/views/api/gauges/_gauge.json.jbuilder renders the base
+  # recordings/recording partial (no commentable/boostable), then — only when
+  # `gauge.any_needles?` — the rich-text partial for the last needle plus
   # enabled/last_needle_*/previous_needle_position. The fixture is the
   # has-needles variant so the optional description_attachments array is present.
+  # A gauge carries no `parent` and no `position` because the recording is
+  # created parentless and unpositioned (`bucket.record Gauge.new(enabled:
+  # false)` in app/models/project/gauged.rb), NOT because it is docked; and no
+  # `subscription_url`, since Gauge does not override Recordable#subscribable?.
+  # `url`/`app_url` are the singleton project_gauge route (Gauge#route,
+  # app/models/gauge.rb) — the gauge id never appears in them — and `title` is
+  # the model's fixed "How far along are we?".
   - id: gauge-get
     fixture: gauges/get.json
     pointer: ""
     schema: Gauge
   # gauges/needles/_needle.json.jbuilder renders the base partial WITH
-  # commentable + boostable, then rich text, color, and position.
+  # commentable + boostable, then rich text, color, and position. `url`/`app_url`
+  # are the project_gauge_needle route (Gauge::Needle#route) while the envelope's
+  # subscription/comments/boosts URLs stay bucket_recording_*-scoped, and `title`
+  # is the model's fixed "Moved the needle".
+  # KNOWN INCOMPLETE: bc3 also emits a singular `comment_count` unconditionally
+  # (_needle.json.jbuilder:8), distinct from the envelope's `comments_count`.
+  # GaugeNeedle does not model it — SearchResult already does — so the fixture
+  # cannot carry it until the spec does. Tracked in the follow-up issue filed
+  # alongside this manifest note.
   - id: gauge-needle-get
     fixture: gauges/needle_get.json
     pointer: ""
