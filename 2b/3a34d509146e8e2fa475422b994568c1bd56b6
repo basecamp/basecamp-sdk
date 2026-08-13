@@ -1,0 +1,37 @@
+conformance/runner/swift/Tests/ConformanceSupportTests/CaseCensusTests.swift
+  s_fca5acb3cc9413::t_0c9b6a26eefbea 137-141,150-157
+kotlin/conformance/src/test/kotlin/com/basecamp/sdk/conformance/CaseCensusTest.kt
+  s_fca5acb3cc9413::t_7bb3d507e1401c 103-131
+  s_fca5acb3cc9413::t_ef06208b40beaf 102
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/CaseCensus.kt
+  s_fca5acb3cc9413::t_2c1333412ba5c2 91-95,97
+conformance/runner/ruby/runner.rb
+  s_fca5acb3cc9413::t_a8e69b0ea42fa6 80-107,109
+conformance/runner/python/test_case_census.py
+  s_fca5acb3cc9413::t_2167343b36c03e 16
+  s_fca5acb3cc9413::t_d5f80b3f0eb5bd 81-100
+conformance/runner/ruby/case_census_test.rb
+  s_fca5acb3cc9413::t_8dbe3f88e30c37 81-102
+conformance/runner/python/runner.py
+  s_fca5acb3cc9413::t_c60a3e4d236722 10
+  s_fca5acb3cc9413::t_c4403a4618525a 107-125,129-131,133
+conformance/runner/swift/Sources/ConformanceSupport/CaseCensus.swift
+  s_fca5acb3cc9413::t_fae3164d79bafd 93,95
+  s_fca5acb3cc9413::t_cabd6273d28cf7 116-119,122-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2b3a34d509146e8e2fa475422b994568c1bd56b6",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
