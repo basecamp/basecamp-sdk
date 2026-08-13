@@ -3979,3 +3979,138 @@ func TestRecordAssignedValue_ChannelReceive(t *testing.T) {
 		t.Errorf("and must not be recorded as unrecognised, got %v", assigned)
 	}
 }
+
+// TestIsJSONMethod_ArityBeatsUnknownTypes pins that arity is decisive. A method
+// whose parameter or result COUNT is wrong cannot implement the interface
+// however unfamiliar its types are; treating an unknown type as a wildcard for
+// the whole signature made `MarshalJSON(Custom) error` a marshaller and would
+// have refused any struct embedding its type over an ordinary same-named
+// method. The wildcard applies to its own slot only.
+func TestIsJSONMethod_ArityBeatsUnknownTypes(t *testing.T) {
+	cases := []struct {
+		decl string
+		want bool
+	}{
+		// Right arity, unknown type in one slot: still a match, because a
+		// marshaller spelled through an alias must not slip past.
+		{"func (s Stamp) MarshalJSON() (Bytes, error) { return nil, nil }", true},
+		{"func (s *Stamp) UnmarshalJSON(b Bytes) error { return nil }", true},
+		// Wrong arity: decisive, whatever the types are called.
+		{"func (s Stamp) MarshalJSON(c Custom) error { return nil }", false},
+		{"func (s Stamp) MarshalJSON() (Custom, int, error) { return nil, 0, nil }", false},
+		{"func (s *Stamp) UnmarshalJSON() error { return nil }", false},
+		// Right arity, a KNOWN type that is wrong: also decisive.
+		{"func (s Stamp) MarshalJSON() (string, error) { return \"\", nil }", false},
+		{"func (s *Stamp) UnmarshalJSON(b string) error { return nil }", false},
+		// Right arity, known-wrong in one slot and unknown in the other: the
+		// known mismatch still decides it.
+		{"func (s Stamp) MarshalJSON() (Custom, int) { return nil, 0 }", false},
+	}
+	for _, c := range cases {
+		f, err := parser.ParseFile(token.NewFileSet(), "f.go", "package fixture\n\ntype Stamp struct{}\n\n"+c.decl+"\n", parser.ParseComments)
+		if err != nil {
+			t.Fatalf("parse %q: %v", c.decl, err)
+		}
+		got, _ := collectJSONMethodTypes(f)
+		if got["Stamp"] != c.want {
+			t.Errorf("%s: recognized = %v, want %v", c.decl, got["Stamp"], c.want)
+		}
+	}
+}
+
+// TestRun_ScopeCountersMeanWhatTheySay is the second pass on the scope line.
+// Counting "any anonymous field" as embedding a struct claims embedding for a
+// TAGGED embed (an ordinary field) and for an embedded interface (which
+// promotes nothing); counting "any promoted tag" as contributing claims a
+// contribution for a promoted tag no GENERATED tag ever asked for. Both make
+// the gate overstate what it exercised.
+func TestRun_ScopeCountersMeanWhatTheySay(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id int64 ~json:"id"~
+}
+`)
+	// Tagged embed (an ordinary field), an interface embed (promotes nothing),
+	// and a promoted tag no generated tag asks for. Nothing here is an
+	// exercised struct promotion.
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Doer interface{ Do() }
+
+type Extra struct {
+	Unasked string ~json:"unasked"~
+}
+
+type Tagged struct {
+	Extra ~json:"tagged"~
+	Doer
+	ID int64 ~json:"id"~
+}
+
+type Note struct {
+	Tagged
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	var stdout string
+	_ = captureStderr(t, func() {
+		stdout = captureStdout(t, func() { _ = run(wrapperDir, generatedFile, nil, nil, false) })
+	})
+	// Note DOES embed Tagged, a struct, and `id` IS promoted through it and
+	// asked for by the generated struct — so this pair legitimately counts.
+	if !strings.Contains(stdout, "1 of 1 pairs embed a struct") {
+		t.Errorf("expected the resolved struct embed to count, got:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "1 promoted fields") {
+		t.Errorf("expected exactly the asked-for promoted field to count, got:\n%s", stdout)
+	}
+	// The Tagged struct itself embeds only a tagged field and an interface, so
+	// it must NOT read as promoting from a struct.
+	structs := flattenFixture(t, wrapperSrc)
+	if tg := structs["Tagged"]; tg == nil || tg.promotesFromStruct {
+		t.Errorf("a tagged embed and an interface embed are not struct promotion, got %+v", structs["Tagged"])
+	}
+
+	// And the discriminating case at the RUN level: a paired wrapper whose only
+	// anonymous fields are a tagged embed and an interface. Counting "any
+	// anonymous field" would claim it embeds a struct; nothing here promotes.
+	onlyNonPromoting := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Doer interface{ Do() }
+
+type Extra struct {
+	Unasked string ~json:"unasked"~
+}
+
+type Note struct {
+	Extra ~json:"tagged"~
+	Doer
+	ID int64 ~json:"id"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	n.Extra = Extra{}
+	return n
+}
+`)
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": onlyNonPromoting})
+	_ = captureStderr(t, func() {
+		stdout = captureStdout(t, func() { _ = run(wrapperDir, generatedFile, nil, nil, false) })
+	})
+	if !strings.Contains(stdout, "no pair embeds a struct") {
+		t.Errorf("a tagged embed and an interface embed are not struct promotion; the scope line must say so:\n%s", stdout)
+	}
+}

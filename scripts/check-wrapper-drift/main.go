@@ -209,7 +209,9 @@
 //
 // # An honest tally, for whoever adds the next rule
 //
-// This support was reviewed in ten rounds and grew a rule in almost every one:
+// This support was reviewed over a long run of rounds — the PR discussion has
+// the count, and it kept climbing after this paragraph was written — growing a
+// rule in almost every one:
 // promotion, annihilation, same-depth multiplicity, export visibility, literal
 // enumeration, qualified assignment paths, Go-name shadowing, depth-0
 // conflicts, method promotion (declared, inherited, interface, aliased, text),
@@ -523,6 +525,15 @@ type structFields struct {
 	// depend on Go-name shadowing across the whole promotion tree. Own tags
 	// are absent; see populationTargets.
 	tagTargets map[string][]string
+	// promotesFromStruct is true when at least one UNTAGGED embed of this
+	// struct resolves to a struct — the only shape that promotes fields at
+	// all. It is what the scope line means by "embeds a struct", and it is
+	// deliberately not "has an anonymous field": a tagged embed is an ordinary
+	// field, and an embedded interface or map promotes nothing. Set in the
+	// pre-pass, so a promotion later REFUSED (method-bearing) still counts as
+	// embedding — which is the case the scope line most needs to be honest
+	// about.
+	promotesFromStruct bool
 	// fieldNames lists every field name declared directly on this struct —
 	// tagged or not, exported or not, including the embedded fields' own
 	// names. Go resolves a selector by NAME with the same shallowest-wins
@@ -910,17 +921,17 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		}
 		sort.Strings(tags)
 
-		// Two different facts, and conflating them lets the scope line below
-		// claim nothing embeds a struct while something does: a wrapper whose
-		// promotion was REFUSED (method-bearing), whose embedded struct has no
-		// tagged fields, or whose tags annihilated in a diamond declares an
-		// embed and contributes no tagPath.
-		if len(wrap.embeds)+len(wrap.taggedEmbeds) > 0 {
+		// Each counter must mean exactly what its sentence says. "Embeds a
+		// struct" is an untagged embed that RESOLVES to one — not any
+		// anonymous field, since a tagged embed is an ordinary field and an
+		// embedded interface or map promotes nothing. "Contributed" is a
+		// promoted tag that a GENERATED tag actually asked for, counted at the
+		// check itself below, not merely a promoted tag the wrapper happens to
+		// carry.
+		if wrap.promotesFromStruct {
 			pairsWithEmbeds++
 		}
-		if len(wrap.tagPath) > 0 {
-			pairsWithPromotions++
-		}
+		pairPromotedFields := 0
 		var missing []string
 		var unpopulated []string
 		for _, tag := range tags {
@@ -934,6 +945,7 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 			}
 			if len(wrap.tagPath[tag]) > 0 {
 				promotedFieldsChecked++
+				pairPromotedFields++
 			}
 			// Tag is declared on the wrapper. For tier-1 and tier-3 pairs,
 			// also confirm the construction site actually assigns the field —
@@ -950,6 +962,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 					unpopulated = append(unpopulated, fmt.Sprintf("%s (field %s)", tag, goField))
 				}
 			}
+		}
+		if pairPromotedFields > 0 {
+			pairsWithPromotions++
 		}
 		if len(missing) > 0 {
 			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: missing JSON tags %v (add to wrapper struct or mark with `// intentionally-omitted: <tag> - <reason>`)", wrapName, genName, missing))
@@ -1343,56 +1358,57 @@ func isJSONMethod(name string, ft *ast.FuncType) bool {
 	return false
 }
 
-// signatureMatches is signatureIs plus a deliberate bias: a component this
-// check cannot resolve to a builtin spelling — a local name like
-// `type Bytes = []byte`, or any imported type — counts as a MATCH rather than
-// a miss. The alternative is to certify a wrapper whose promoted marshaller
-// was spelled through an alias, which is the silent direction. A signature
-// built entirely from resolvable spellings is compared exactly, so
-// `MarshalJSON(int) []byte` is still correctly not a marshaller.
+// signatureMatches compares a method signature against the one an interface
+// requires, slot by slot.
+//
+// ARITY IS COMPARED FIRST, and a mismatch is decisive: `MarshalJSON(Custom)
+// error` cannot implement json.Marshaler however unfamiliar `Custom` is, and
+// refusing to judge a struct that embeds its type would manufacture drift over
+// an ordinary same-named method.
+//
+// Within a matching arity, a type this check cannot evaluate — a local name
+// like `type Bytes = []byte`, or any imported type — is a wildcard in ITS OWN
+// slot only. That bias is deliberate and one-directional: a false match costs
+// an over-report that names the type, while a false miss silently certifies a
+// wrapper whose promoted marshaller was spelled through an alias.
 func signatureMatches(ft *ast.FuncType, params, results []string) bool {
-	if signatureIs(ft, params, results) {
-		return true
-	}
-	return signatureHasUnresolvableComponent(ft)
+	return fieldListMatches(ft.Params, params) && fieldListMatches(ft.Results, results)
 }
 
-// signatureHasUnresolvableComponent reports whether any parameter or result
-// type is spelled with a name this check cannot evaluate — anything that is
-// not a builtin, a slice of one, or an error.
-func signatureHasUnresolvableComponent(ft *ast.FuncType) bool {
-	resolvable := func(expr ast.Expr) bool {
-		switch e := expr.(type) {
-		case *ast.Ident:
-			return predeclaredTypes[e.Name]
-		case *ast.ArrayType:
-			if e.Len != nil {
-				return false
+// fieldListMatches compares one parameter or result list against the required
+// spellings, treating each declared name in a grouped field as its own slot.
+func fieldListMatches(fl *ast.FieldList, want []string) bool {
+	var got []ast.Expr
+	if fl != nil {
+		for _, f := range fl.List {
+			n := 1
+			if len(f.Names) > 0 {
+				n = len(f.Names)
 			}
-			if id, ok := e.Elt.(*ast.Ident); ok {
-				return predeclaredTypes[id.Name]
+			for i := 0; i < n; i++ {
+				got = append(got, f.Type)
 			}
 		}
+	}
+	if len(got) != len(want) {
 		return false
 	}
-	for _, fl := range []*ast.FieldList{ft.Params, ft.Results} {
-		if fl == nil {
-			continue
-		}
-		for _, f := range fl.List {
-			if !resolvable(f.Type) {
-				return true
-			}
+	for i, expr := range got {
+		if !typeSlotMatches(expr, want[i]) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
-// signatureIs compares a function type's parameter and result types against
-// rendered type expressions, treating each declared name in a grouped
-// parameter as its own entry.
-func signatureIs(ft *ast.FuncType, params, results []string) bool {
-	return fieldListIs(ft.Params, params) && fieldListIs(ft.Results, results)
+// typeSlotMatches reports whether one parameter or result type satisfies the
+// required spelling. A type spelled entirely in terms this check can evaluate
+// is compared exactly; anything else is a wildcard for that slot alone.
+func typeSlotMatches(expr ast.Expr, want string) bool {
+	if !resolvableTypeSpelling(expr) {
+		return true
+	}
+	return normalizeTypeSpelling(exprDisplay(expr)) == normalizeTypeSpelling(want)
 }
 
 // normalizeTypeSpelling collapses spellings Go treats as identical. `byte` is
@@ -1406,34 +1422,26 @@ func normalizeTypeSpelling(s string) string {
 	case "uint8":
 		return "byte"
 	case "int32":
-		// rune, likewise, for any signature that ever spells one.
 		return "rune"
 	}
 	return s
 }
 
-func fieldListIs(fl *ast.FieldList, want []string) bool {
-	var got []string
-	if fl != nil {
-		for _, f := range fl.List {
-			n := 1
-			if len(f.Names) > 0 {
-				n = len(f.Names)
-			}
-			for i := 0; i < n; i++ {
-				got = append(got, normalizeTypeSpelling(exprDisplay(f.Type)))
-			}
-		}
-	}
-	if len(got) != len(want) {
-		return false
-	}
-	for i := range got {
-		if got[i] != normalizeTypeSpelling(want[i]) {
+// resolvableTypeSpelling reports whether a type expression is spelled entirely
+// in builtins — the only names this check can compare without a type checker.
+func resolvableTypeSpelling(expr ast.Expr) bool {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return predeclaredTypes[e.Name]
+	case *ast.ArrayType:
+		if e.Len != nil {
 			return false
 		}
+		if id, ok := e.Elt.(*ast.Ident); ok {
+			return predeclaredTypes[id.Name]
+		}
 	}
-	return true
+	return false
 }
 
 // collectTypeDecls returns every top-level `type X <expr>` declaration in the
@@ -1610,6 +1618,15 @@ func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl
 			}
 			sf.decodeUnsafeOwn = append(sf.decodeUnsafeOwn,
 				fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates its promoted fields)", name, ref.display))
+		}
+	}
+
+	for _, sf := range structs {
+		for _, ref := range sf.embeds {
+			if child, _, _, err := resolveEmbedFull(ref, structs, decls); err == "" && child != nil {
+				sf.promotesFromStruct = true
+				break
+			}
 		}
 	}
 
