@@ -1,0 +1,39 @@
+.github/workflows/test.yml
+  s_004b300f1ab3a9::t_7a4404f3a91620 264-281
+SPEC.md
+  s_004b300f1ab3a9::t_eb53e726ce9cc0 2184-2195
+CONTRIBUTING.md
+  s_004b300f1ab3a9::t_e13d601c8ddbf0 234-239
+scripts/test-check-fixture-execution.rb
+  s_004b300f1ab3a9::t_e7dacc144da35c 100,172-173
+  s_004b300f1ab3a9::t_1fac116565a0d3 1-12,14-15,22-26,28-36,44-66,69,96-99,101-103,192-193,195-196,204-206,208-209,211-245,250-268,274-277,280-284,288-292,306-309,311-313,315-323,325-327,329,331,333-334,350-353,358-359,361-363,365-371,383-384,421-440
+  s_004b300f1ab3a9::t_2c232749a4a86d 73-74
+  s_004b300f1ab3a9::t_95244a1489e4f5 345-347
+  s_004b300f1ab3a9::t_69f7a7f4afd2dc 13,16-21,27,37-43,67-68,70-72,75-95,104-171,174-191,194,197-203,207,210,246-249,269-273,278-279,285-287,293-305,310,314,324,328,330,332,335-344,348-349,354-357,360,364,372-382,385-420
+Makefile
+  s_004b300f1ab3a9::t_670415f526a984 1204-1222
+  s_004b300f1ab3a9::t_4976e52e2e3a17 1172,1445,1534
+scripts/check-fixture-execution
+  s_004b300f1ab3a9::t_7d50353d0c254e 208-209,212
+  s_004b300f1ab3a9::t_7e1cd9ad3c87d3 1-127,165-207,210-211,213-229
+  s_004b300f1ab3a9::t_049749c31f2935 128-164
+scripts/conformance_skips.rb
+  s_004b300f1ab3a9::t_f431b0c5514786 303-361
+  s_004b300f1ab3a9::t_0e1fdce1abb802 1-302,362-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e9dc8392c9a883303a475dfed62f294e1019342a",
+  "prompts": {},
+  "sessions": {
+    "s_004b300f1ab3a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e61a809-755b-4da8-94be-3334b6a9f67a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
