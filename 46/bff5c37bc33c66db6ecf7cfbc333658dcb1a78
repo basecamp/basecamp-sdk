@@ -1,0 +1,24 @@
+CONTRIBUTING.md
+  s_fca5acb3cc9413::t_3e06ae26a1690f 236-238
+scripts/sync-doc-constants.rb
+  s_fca5acb3cc9413::t_8506b79def6b2d 961-968
+  s_fca5acb3cc9413::t_10db52509356a4 840-858
+scripts/test-doc-constants.rb
+  s_fca5acb3cc9413::t_543ab2c46313cd 726-746
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "46bff5c37bc33c66db6ecf7cfbc333658dcb1a78",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
