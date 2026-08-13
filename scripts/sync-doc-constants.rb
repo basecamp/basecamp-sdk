@@ -239,10 +239,17 @@ end
 #
 # Scoped to conformance/tests/ deliberately, and that scope is the whole of how
 # SPEC §23's carve-out is honored. The parallel fixture families —
-# conformance/oauth/, conformance/oauth-token/, conformance/event-feed*/, 68
-# JSON files — are documented at their own consuming section and directory,
-# "not in §19's operation-dispatch category table or Appendix D". They are not
-# absent from these rosters by oversight, so the gate must not pull them in.
+# conformance/oauth/, conformance/oauth-token/, conformance/event-feed*/ — are
+# documented at their own consuming section and directory, "not in §19's
+# operation-dispatch category table or Appendix D". They are not absent from
+# these rosters by oversight, so the gate must not pull them in.
+#
+# Named by reference rather than by count on purpose. This comment carried "68
+# JSON files" for several commits; the real number is 74 and was 74 when it was
+# written. Nothing keeps a restated count current, which is the whole reason
+# @operation-count exists two hundred lines up — and a number is not what the
+# reader needs here. AGENTS.md: reach for a literal only when the sentence is
+# genuinely about the value.
 # DIRECT CHILDREN ONLY. Git's pathspec `*` matches across `/`, so the pattern
 # alone would also return `conformance/tests/nested/case.json` — which no runner
 # discovers, since all six glob non-recursively. Requiring a roster row for a
