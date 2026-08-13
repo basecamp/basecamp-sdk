@@ -398,6 +398,73 @@ out, status = run_gate(skips: with_skips(go: ["a case that was renamed away"]))
 expect_fail(failures, "skip names no fixture case", out, status,
             "names 1 case(s) no fixture defines")
 
+# --- string and comment syntax the scanner must not mis-read --------------------
+#
+# Every one of these fails QUIET if unhandled — a key that never becomes a token
+# is a lost exclusion, and a brace inside an unread literal moves the depth
+# counter and truncates the table. All four craft the all-six state so a silent
+# under-count drops the count to five and passes.
+
+# Nothing in this repo enforces double quotes — there is no prettier or eslint
+# config, only .editorconfig — so a single-quoted TypeScript key is ordinary
+# authoring, not an exotic case.
+out, status = run_gate(skips: with_skips(**all_six),
+                       mutate: lambda { |f|
+                         f[TS_RUNNER] = f[TS_RUNNER].gsub('"runs everywhere"', "'runs everywhere'")
+                       })
+expect_fail(failures, "single-quoted TypeScript key", out, status,
+            '"runs everywhere" is skipped by all 6 runners')
+
+# A Go raw string holding a brace moves the depth counter and ends the scan
+# early, losing every entry AFTER it. So the raw string has to sit on the first
+# of two entries: with it on the last, truncation costs nothing and the case
+# holds whether backticks are handled or not — which is how the first draft of
+# this case passed against a parser that did not read them.
+out, status = run_gate(skips: with_skips(**all_six.merge(go: ["five of six", "runs everywhere"])),
+                       mutate: lambda { |f|
+                         edit(f, GO_MAIN, '"five of six": "go reason",',
+                              '"five of six": `a reason with a } brace`,')
+                       })
+expect_fail(failures, "go raw string containing a brace", out, status,
+            '"runs everywhere" is skipped by all 6 runners')
+
+# Four of six runners are `/* … */` languages. A block comment with an
+# unbalanced brace is the case that empties an entire table.
+out, status = run_gate(skips: with_skips(**all_six),
+                       mutate: lambda { |f|
+                         edit(f, GO_MAIN, "var goSDKSkips = map[string]string{\n",
+                              "var goSDKSkips = map[string]string{\n\t/* dropped in #123 because the } branch went away */\n")
+                       })
+expect_fail(failures, "go block comment containing a brace", out, status,
+            '"runs everywhere" is skipped by all 6 runners')
+
+# An unrecognized-spelling entry placed FIRST has no predecessor at all, so a
+# pairwise adjacency rule structurally cannot see it. This is the ordering the
+# earlier `Pair(...)` case did not cover.
+out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
+                       mutate: lambda { |f|
+                         edit(f, KT_MAIN, 'mapOf("five of six" to "kotlin reason")',
+                              'mapOf(Pair("also skipped", REASON), "five of six" to "kotlin reason")')
+                       })
+expect_fail(failures, "unrecognized spelling in the first entry", out, status,
+            "mixes key spellings this parser does not recognize")
+
+# A raw or multiline literal is reported rather than guessed at: mis-tokenizing
+# one shifts every string after it.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, KT_MAIN, "emptyMap()", 'mapOf("""triple quoted""" to "reason")')
+})
+expect_fail(failures, "raw/multiline string literal", out, status,
+            "raw or multiline string literal")
+
+# Zero MOCK cases is the third way to have nothing to check, beside no files and
+# no cases: the six mock runners execute nothing, reported as success.
+out, status = run_gate(mutate: lambda { |f|
+  cases = fixture_cases.map { |c| c.merge("mode" => "live") }
+  f["conformance/tests/alpha.json"] = JSON.pretty_generate(cases)
+})
+expect_fail(failures, "no mock cases at all", out, status, "not one runs in mock mode")
+
 # Git's pathspec `*` matches across `/`, but all six runners glob fixtures
 # NON-RECURSIVELY. A nested fixture is executed by nothing, so counting its
 # cases here would have this gate commit the exact defect it exists to catch:
@@ -474,10 +541,32 @@ expect_fail(failures, "reason for a case that is not skipped", out, status,
 # exclusion sets: if it were, a wrong extraction and a stale roster could agree
 # and both stay green, which is the failure the gate exists to prevent.
 
+# Ruby carries TWO skips here so that deleting one bullet leaves the block
+# non-empty. Deleting the only bullet would empty the block instead, which the
+# parsed-not-merely-present guard below rejects for a different reason — and
+# this case is about the set comparison, not about that.
+out, status = run_gate(skips: with_skips(ruby: ["five of six", "runs everywhere"]),
+                       mutate: lambda { |f|
+                         edit(f, "SPEC.md",
+                              "- \"runs everywhere\" — some justification only a human can write.\n", "")
+                       })
+expect_fail(failures, "skip missing from the roster", out, status, "skipped but not rostered")
+
+# A roster block that lists nothing must SAY "none". Otherwise absence-of-parse
+# reads as absence-of-claim: three of these six comparisons are `[] == []`
+# today, and any parser failure makes a fourth vacuous at exactly the moment it
+# would have mattered — the skip vanishes from the exclusion sets AND the roster
+# omission goes unreported, both from one cause.
 out, status = run_gate(mutate: lambda { |f|
   edit(f, "SPEC.md", "- \"five of six\" — some justification only a human can write.\n", "")
 })
-expect_fail(failures, "skip missing from the roster", out, status, "skipped but not rostered")
+expect_fail(failures, "roster block emptied without saying none", out, status,
+            'lists no skips and does not say "none"')
+
+# ...and the three genuinely-empty blocks must still pass, or the guard would
+# reject the state the roster is aiming at.
+out, status = run_gate
+expect_pass(failures, "empty blocks saying none are accepted", out, status)
 
 out, status = run_gate(mutate: lambda { |f|
   edit(f, "SPEC.md", "**Python** (`table`) — none.",

@@ -232,7 +232,16 @@ def run
   tables = ConformanceSkips.tables(ROOT)
   exclusions = ConformanceSkips.exclusions(ROOT, cases)
 
+  # Zero MOCK cases is the third way to have nothing to check, beside no files
+  # and no cases. Every case flipped to `mode: "live"` would otherwise print
+  # "0 mock case(s) across 22 fixture(s)" and exit 0 — the six mock runners
+  # executing nothing at all, reported as success.
   mock_cases = cases.count { |c| (c["mode"] || ConformanceSkips::DEFAULT_MODE) == "mock" }
+  if mock_cases.zero?
+    raise Failure, "internal error: #{cases.length} case(s) across #{files.length} fixture(s) and " \
+                   "not one runs in mock mode, so the six mock runners execute nothing"
+  end
+
   puts "==> Checking every conformance fixture case is executed by some runner"
   puts "    #{mock_cases} mock case(s) across #{files.length} fixture(s), " \
        "#{exclusions.length} runners"

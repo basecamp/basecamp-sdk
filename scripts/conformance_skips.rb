@@ -243,18 +243,37 @@ module ConformanceSkips
     # under-reports is worse than no gate, because it also stops people looking.
     #
     # The invariant that separates the two: in a map, every non-key string is a
-    # VALUE, and a value is always immediately preceded by its key. Two
-    # unkeyed strings in a row means an entry this parser did not understand.
-    # Anything not positively interpreted is reported, never credited.
-    strings.each_cons(2) do |(previous, previous_keyed), (value, value_keyed)|
-      next if value_keyed || previous_keyed
+    # VALUE, and a value is always immediately preceded by its key. So an unkeyed
+    # string must have a keyed predecessor — anything else is an entry this
+    # parser did not understand, and anything not positively interpreted is
+    # reported, never credited.
+    #
+    # Stated per-string rather than over adjacent PAIRS, which was
+    # order-dependent and missed half the cases. `mapOf(Pair("B", CONST), "A" to
+    # "inline")` reads as B(unkeyed), A(keyed), inline(unkeyed): no two unkeyed
+    # strings are adjacent, so a pairwise rule saw nothing and dropped "B" — a
+    # real skip — silently. Reversing the two entries made the same construct
+    # raise, which is the order the self-test happened to use. A first string
+    # that is unkeyed has no predecessor at all and is the case a pairwise rule
+    # structurally cannot see.
+    #
+    # Deliberately NOT strict alternation: `{"a": REASON, "b": OTHER}` with
+    # constant values yields two adjacent KEYED strings and is perfectly
+    # readable, so requiring key/value/key/value would reject a table this
+    # parser handles correctly.
+    strings.each_with_index do |(value, value_keyed), position|
+      next if value_keyed
 
+      predecessor = position.positive? ? strings[position - 1] : nil
+      next if predecessor && predecessor[1]
+
+      context = predecessor ? "follows #{predecessor[0].inspect}" : "opens the literal"
       raise ExtractionError,
             "a skip table mixes key spellings this parser does not recognize: #{value.inspect} " \
-            "follows #{previous.inspect} with neither in key position. Every entry must spell " \
-            "its key with one of `:`, `=>` or `to`, or ConformanceSkips::KEY_SEPARATOR_RE has to " \
-            "learn the new spelling — silently reading it as a value would drop a real skip and " \
-            "turn an all-six exclusion into a passing five-of-six."
+            "#{context} with neither in key position. Every entry must spell its key with one of " \
+            "`:`, `=>` or `to`, or ConformanceSkips::KEY_SEPARATOR_RE has to learn the new " \
+            "spelling — silently reading it as a value would drop a real skip and turn an " \
+            "all-six exclusion into a passing five-of-six."
     end
 
     keyed.map(&:first)
@@ -290,10 +309,48 @@ module ConformanceSkips
         next
       end
 
-      # Single quotes are string delimiters only where the language has no
-      # character literal: Go, Kotlin and Swift all spell a char with them, and
-      # treating `'{'` as a string there would be as wrong as the reverse.
-      if char == '"' || (comment == :hash && char == "'")
+      # Block comments. Four of the six runners are `/* … */` languages, and an
+      # unhandled one truncates or empties the table: a comment holding an
+      # unbalanced brace ("dropped in #123 because the } branch went away")
+      # moves the depth counter and ends the scan early, losing every entry
+      # after it. A comment with balanced brackets happens to work, which is
+      # what makes the failure hard to anticipate rather than obvious.
+      if comment == :slash && char == "/" && source[index + 1] == "*"
+        close = source.index("*/", index + 2)
+        raise ExtractionError, "unterminated block comment while reading a skip table" if close.nil?
+
+        index = close + 2
+        next
+      end
+
+      # Raw and multiline string literals this parser deliberately does not
+      # read: Kotlin/Python `"""`, Python `'''`, Swift `#"…"#`. Mis-tokenizing
+      # one silently shifts every string after it, so it is reported rather than
+      # guessed at — the same rule as an unrecognized key spelling.
+      if source[index, 3] == '"""' || source[index, 3] == "'''" ||
+         (comment == :slash && char == "#" && source[index + 1] == '"')
+        raise ExtractionError,
+              "a skip table uses a raw or multiline string literal (#{source[index, 3].inspect}); " \
+              "this parser reads only ordinary quoted strings, and guessing at the delimiter " \
+              "would shift every key after it"
+      end
+
+      # Single quotes are string delimiters EVERYWHERE, not only in the `#`
+      # comment languages. The narrower rule was wrong in the quiet direction:
+      # nothing in this repo enforces double quotes — there is no prettier or
+      # eslint config, only .editorconfig — so a single-quoted TS_SDK_SKIPS key
+      # was invisible, and a mixed table dropped just the single-quoted entries
+      # with no raise, because an unread string never becomes a token for the
+      # key-position check to see.
+      #
+      # The cost is that Go's and Kotlin's CHARACTER literals now read as
+      # strings. That is the right trade twice over: for depth tracking it is
+      # exactly correct, and for extraction it can only ADD a token, which the
+      # key-position check turns into a loud failure rather than a silent drop.
+      #
+      # Backticks are Go raw strings and TypeScript template literals — both
+      # strings, both able to hold a brace that would otherwise move depth.
+      if char == '"' || char == "'" || (comment == :slash && char == "`")
         value, index = read_string(source, index)
         strings << [value, separator_follows?(source, index, comment)]
         next
@@ -423,7 +480,27 @@ module ConformanceSkips
       # Each block runs to the next bolded runner heading; a bullet is a line
       # whose first token is a quoted case name, which is what separates the
       # enumeration from the surrounding prose.
-      [runner, blocks.fetch(heading).scan(/^- "([^"]+)"/).flatten]
+      block = blocks.fetch(heading)
+      bullets = block.scan(/^- "([^"]+)"/).flatten
+
+      # A block that yields no bullets must SAY it has none.
+      #
+      # Otherwise absence-of-parse reads as absence-of-claim, structurally:
+      # three of these six comparisons are `[] == []` today, and any parser
+      # failure makes a fourth vacuous at exactly the moment it would have
+      # mattered — the skip vanishes from the exclusion sets AND the roster
+      # omission the gate exists to force goes unreported, both from one cause.
+      # The three genuinely-empty blocks already write "none", so requiring the
+      # word costs nothing and restates no list, which is what keeps this from
+      # reopening the pinned-key-count question.
+      if bullets.empty? && !block.match?(/\bnone\b/i)
+        raise ExtractionError,
+              "#{relative}: the Zero-Skip roster's **#{heading}** block lists no skips and does " \
+              "not say \"none\". An unparsed block is indistinguishable from an empty one, and " \
+              "both halves of this gate then compare nothing against nothing."
+      end
+
+      [runner, bullets]
     end
   end
 

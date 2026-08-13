@@ -1204,11 +1204,12 @@ check-fixture-coverage:
 # Fixture EXECUTION, the layer check-fixture-coverage does not reach (#602).
 # Both gates above validate fixtures that nothing has to run: #573 skipped
 # "List operation returns first page with Link header" in all six runners and
-# it stayed green in both. This reads the six runners' skip mechanisms — five
-# literal tables plus Kotlin's and Swift's whole-case `link-header` tag branch,
-# which the other four use to suppress one ASSERTION rather than the case — and
-# fails when a mock case is excluded everywhere. It also rejects a `mode` no
-# runner recognizes, which is the same all-six exclusion arriving at load time.
+# it stayed green in both. This reads the six runners' skip mechanisms — one
+# name-keyed literal table per runner, plus Kotlin's and Swift's whole-case
+# `link-header` tag branch, which the other four use to suppress one ASSERTION
+# rather than the case — and fails when a mock case is excluded everywhere. It
+# also rejects a `mode` no runner recognizes, which is the same all-six
+# exclusion arriving at load time.
 check-fixture-execution:
 	@ruby ./scripts/check-fixture-execution
 
