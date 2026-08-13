@@ -2,6 +2,8 @@
   "$comment": [
     "Policy for scripts/sync-doc-constants.rb (make doc-constants-check).",
     "",
+    "THE GENERAL RULE, so a seventh kind does not have to be inferred from six examples: anything DERIVED from a machine-readable source and restated in prose gets a marker and an exact count here. The marker says 'this span is a claim about the current value of that source'; the count says 'this file carries exactly N such claims', so deleting one fails instead of silencing the check. A scalar claim is a LINE kind and the writer keeps it current. A claim the writer cannot author is a BLOCK kind — a table whose rows carry a human-written column (an assertion type's meaning, a fixture's owning spec sections) is the recurring shape — and --check is what holds it, by set comparison against the derived source. Whichever kind it is, the checker must fail when EITHER side parses to nothing: with both vacuity guards removed, an emptied table compared against an empty source is trivially satisfied and the gate exits 0, which is the one hole a set comparison cannot close on its own. Prose that merely mentions a value it is not claiming stays unmarked; see the A/B rule below and in AGENTS.md.",
+    "",
     "markerCounts — the EXACT number of spans each file carries for a given HTML",
     "comment. Any deviation fails: too few means a claim was deleted or unmarked,",
     "too many means one was added without being recorded here (and so would not be",

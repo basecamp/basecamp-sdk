@@ -723,15 +723,59 @@ out, status = gate lambda { |f|
 }
 expect_fail(failures, "marked span holds no table", out, status, "holds no Markdown table")
 
-# Vacuity: `git ls-files conformance/tests/*.json` matching nothing is an
-# extraction failure, not 22 pieces of drift. Both fixtures are deleted, so
-# every row would otherwise be reported as `extra` and the cause would be
-# buried under the symptoms.
+# Vacuity, both sides. These two are what make the pinned per-table count the
+# bash template carries genuinely redundant rather than merely argued away.
+#
+# The reasoning for dropping it runs: markerCounts already guarantees the marked
+# span EXISTS, and a bidirectional set comparison catches a deleted row, a bogus
+# row, and a wholesale emptied table. That holds only if the comparison actually
+# RUNS when one side parses to nothing. If an empty parse short-circuits —
+# nothing to compare, so nothing to fail — then gutting the table between intact
+# markers is silent, and the count would have caught precisely that. It is the
+# same silent-empty failure as a scan that reads `map[string]string{` as an
+# empty table, one level up: absence of parsed CONTENT must never be readable as
+# absence of a CLAIM.
+
+# Documented side emptied, markers and header left intact.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("| alpha | `alpha.json` | §1 Something |\n", "")
+                 .sub("| beta-write | `beta_write.json` | §2 Something Else |\n", "")
+}
+expect_fail(failures, "categories table gutted between intact markers", out, status,
+            "the @fixture-categories table has no data rows")
+
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("| `alpha.json` | does a thing | §1 |\n", "")
+                 .sub("| `beta_write.json` | does another thing | §2 |\n", "")
+}
+expect_fail(failures, "Appendix D gutted between intact markers", out, status,
+            "the @fixture-section-map table has no data rows")
+
+# Derived side emptied: `git ls-files conformance/tests/*.json` matching nothing
+# is an extraction failure, not 22 pieces of drift — and emphatically not a
+# vacuously satisfied comparison. Both fixtures are deleted, so every row would
+# otherwise be reported as `extra` and the cause would be buried under symptoms.
 out, status = gate lambda { |f|
   f.delete("conformance/tests/alpha.json")
   f.delete("conformance/tests/beta_write.json")
 }
 expect_fail(failures, "no tracked fixtures at all", out, status,
+            "matched nothing, so this check has no source of truth")
+
+# Both sides empty at once — the case where a naive set comparison is trivially
+# satisfied and BOTH halves are wrong together.
+out, status = gate lambda { |f|
+  f.delete("conformance/tests/alpha.json")
+  f.delete("conformance/tests/beta_write.json")
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("| alpha | `alpha.json` | §1 Something |\n", "")
+                 .sub("| beta-write | `beta_write.json` | §2 Something Else |\n", "")
+                 .sub("| `alpha.json` | does a thing | §1 |\n", "")
+                 .sub("| `beta_write.json` | does another thing | §2 |\n", "")
+}
+expect_fail(failures, "both sides empty is not agreement", out, status,
             "matched nothing, so this check has no source of truth")
 
 # --- @fixture-section-map (SPEC Appendix D) -------------------------------------
