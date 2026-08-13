@@ -1085,18 +1085,32 @@ endif
 # overlap today is 2 of 6 (#596 narrowed it), so a live run proves only that the
 # gate can say yes. The state it exists to reject cannot be produced by any
 # committed fixture.
-# Depends on `conformance` rather than trusting whatever manifests are on disk.
-# The gate reads files a previous run left behind, so without this edge it would
-# happily validate last week's exclusion sets — and a skip added to a runner
-# since then would be invisible. Standalone invocation therefore runs the suite,
-# which is the honest cost: you cannot compare exclusion sets without running
-# the runners that produce them. Inside `make check` it is free, because
-# conformance is phony and already a prerequisite there.
+# OWNS the conformance run rather than depending on it, and wipes the manifest
+# directory first. A plain `: conformance` prerequisite is not enough, and the
+# gap is exactly the kind this gate exists to catch:
 #
-# CI does NOT use this target: its fan-in job collects the Linux five and the
-# macOS one as artifacts and runs the script directly, so the runners are not
-# re-run there either.
-check-fixture-execution: conformance
+#   On Linux `conformance-swift` is a no-op, so a `swift.json` left by an
+#   earlier macOS run over the same checkout SURVIVES while the other five are
+#   refreshed. The gate then sees six manifests, stops treating the run as
+#   partial, and compares five current exclusion sets against a stale sixth —
+#   missing a newly all-excluded case, or failing on an exclusion Swift no
+#   longer has. Both PR bots found this; it is silent-wrong, which is the worst
+#   shape for a gate whose whole claim is about what the runners actually did.
+#
+# `rm -rf` before the sub-make is what makes "six manifests present" mean "six
+# runners reported IN THIS RUN". It runs in the recipe rather than as a
+# prerequisite because prerequisite order is not guaranteed under `make -j`, and
+# a reset that raced the runners would delete the output it exists to protect.
+#
+# Because this target runs the suite itself, `check-targets` lists it INSTEAD of
+# `conformance` — otherwise the suite would run twice per `make check`.
+#
+# CI does not use this target: its fan-in job collects the six manifests as
+# artifacts, where freshness comes from their being uploaded by the very jobs
+# that produced them.
+check-fixture-execution:
+	@rm -rf conformance/manifests
+	@$(MAKE) conformance
 ifdef IS_MACOS
 	@echo "==> Checking no fixture case is executed by nothing (all six runners)..."
 	@ruby scripts/check-fixture-execution.rb
@@ -1480,7 +1494,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts

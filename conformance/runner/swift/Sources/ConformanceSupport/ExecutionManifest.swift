@@ -20,11 +20,18 @@ import Foundation
 /// It lives in this SDK-free target so the writer's own failure modes are
 /// unit-testable, for the reason the target exists.
 public enum ExecutionManifest {
+    /// `file` is part of the identity because case names are NOT unique across
+    /// fixtures: one name appears in three files and another in two. Keyed on
+    /// name alone, a runner excluding one of those collapses entries — under-
+    /// counting its own exclusions against the census, and making two different
+    /// cases indistinguishable in the cross-runner comparison.
     public struct Exclusion: Codable, Sendable, Equatable {
+        public let file: String
         public let name: String
         public let reason: String
 
-        public init(name: String, reason: String) {
+        public init(file: String, name: String, reason: String) {
+            self.file = file
             self.name = name
             self.reason = reason
         }
@@ -62,7 +69,7 @@ public enum ExecutionManifest {
 
         let body = Body(
             runner: runner, total_non_live: total, executed: executed,
-            excluded: excluded.sorted { $0.name < $1.name })
+            excluded: excluded.sorted { ($0.file, $0.name) < ($1.file, $1.name) })
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

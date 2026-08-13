@@ -27,7 +27,14 @@ object ExecutionManifest {
     class Error(message: String) : Exception(message)
 
     @kotlinx.serialization.Serializable
-    data class Exclusion(val name: String, val reason: String)
+    /**
+     * `file` is part of the identity because case names are NOT unique across
+     * fixtures: one name appears in three files and another in two. Keyed on
+     * name alone, a runner excluding one of those collapses entries — under-
+     * counting its own exclusions against the census, and making two different
+     * cases indistinguishable in the cross-runner comparison.
+     */
+    data class Exclusion(val file: String, val name: String, val reason: String)
 
     @kotlinx.serialization.Serializable
     data class Body(
@@ -52,7 +59,7 @@ object ExecutionManifest {
         val dir = File("../conformance/manifests")
         try {
             dir.mkdirs()
-            val body = Body(runner, total, executed, excluded.sortedBy { it.name })
+            val body = Body(runner, total, executed, excluded.sortedWith(compareBy({ it.file }, { it.name })))
             File(dir, "$runner.json").writeText(json.encodeToString(body) + "\n")
         } catch (e: IOException) {
             throw Error("could not write $runner manifest: ${e.message}")

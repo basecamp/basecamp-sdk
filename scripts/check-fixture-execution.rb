@@ -91,13 +91,30 @@ def load_manifest(path)
     raise Failure, "#{File.basename(path)}: `excluded` is not an array (got #{entries.class})"
   end
 
+  # Keyed on [file, name], NOT name alone. Case names are not unique across
+  # fixtures — "replace-omission-clears: sparse replace sends the request
+  # verbatim with no GET" appears in three files and the non-idempotent POST
+  # retry name in two — while names ARE unique within a file. Keyed on name
+  # alone, a runner excluding one of those collapses two entries into one: its
+  # own `executed + excluded` integrity check then fails spuriously, and two
+  # genuinely different cases become indistinguishable in the intersection
+  # below, where a name excluded by three runners in one file and three in
+  # another would read as excluded by all six.
   excluded = entries.map do |entry|
     unless entry.is_a?(Hash)
       raise Failure, "#{File.basename(path)}: an `excluded` entry is not an object"
     end
 
-    [entry.fetch("name"), entry["reason"].to_s]
-  end.to_h
+    [[entry.fetch("file"), entry.fetch("name")], entry["reason"].to_s]
+  end
+
+  duplicated = excluded.map(&:first).tally.select { |_, n| n > 1 }.keys
+  unless duplicated.empty?
+    raise Failure, "#{File.basename(path)}: #{duplicated.first.join(' / ')} is excluded twice; " \
+                   "one case, one exclusion"
+  end
+
+  excluded = excluded.to_h
 
   manifest = Manifest.new(
     runner: runner,
@@ -173,7 +190,7 @@ def run(partial:)
   # name => the runners that did NOT execute it
   by_case = Hash.new { |h, k| h[k] = [] }
   manifests.each do |m|
-    m.excluded.each_key { |name| by_case[name] << m.runner }
+    m.excluded.each_key { |id| by_case[id] << m.runner }
   end
 
   everywhere = by_case.select { |_, runners| runners.sort == present }
@@ -189,8 +206,8 @@ def run(partial:)
   if partial
     puts "==> Fixture execution (partial: #{present.length} of #{EXPECTED_RUNNERS.length} runners — " \
          "#{missing.join(', ')} did not report)"
-    everywhere.each do |name, runners|
-      warn "WARN: #{name.inspect} is excluded by all #{runners.length} reporting runner(s) " \
+    everywhere.each do |id, runners|
+      warn "WARN: #{id.join(' / ').inspect} is excluded by all #{runners.length} reporting runner(s) " \
            "(#{runners.join(', ')}); #{missing.join(', ')} unknown. Not a failure — " \
            "#{missing.length == 1 ? 'that runner' : 'those runners'} may execute it. Re-run on a " \
            "host that can produce every manifest to settle it."
@@ -201,11 +218,11 @@ def run(partial:)
   end
 
   unless everywhere.empty?
-    everywhere.each do |name, runners|
-      warn "FAIL: #{name.inspect} is excluded by ALL #{runners.length} runners — it is a fixture " \
-           "case executed by nothing, which no single runner's census can see."
+    everywhere.each do |id, runners|
+      warn "FAIL: #{id.join(' / ').inspect} is excluded by ALL #{runners.length} runners — it is a " \
+           "fixture case executed by nothing, which no single runner's census can see."
       manifests.each do |m|
-        reason = m.excluded[name]
+        reason = m.excluded[id]
         warn "        #{m.runner}: #{reason.empty? ? '(no reason recorded)' : reason}"
       end
     end

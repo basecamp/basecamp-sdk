@@ -38,6 +38,14 @@ import (
 
 // ManifestExclusion is one case this runner did not execute.
 type ManifestExclusion struct {
+	// File is the fixture basename. Part of the identity because case names are
+	// NOT unique across files: "replace-omission-clears: sparse replace sends
+	// the request verbatim with no GET" appears in three fixtures and the
+	// non-idempotent POST retry name in two. Keyed on name alone, a runner
+	// excluding one of those collapses entries — under-counting its own
+	// exclusions against the census, and making two different cases
+	// indistinguishable in the cross-runner comparison.
+	File   string `json:"file"`
 	Name   string `json:"name"`
 	Reason string `json:"reason"`
 }
@@ -68,7 +76,12 @@ func writeManifest(repoRoot string, m Manifest) error {
 			m.Runner, m.Executed, len(m.Excluded), m.Total)
 	}
 
-	sort.Slice(m.Excluded, func(i, j int) bool { return m.Excluded[i].Name < m.Excluded[j].Name })
+	sort.Slice(m.Excluded, func(i, j int) bool {
+		if m.Excluded[i].File != m.Excluded[j].File {
+			return m.Excluded[i].File < m.Excluded[j].File
+		}
+		return m.Excluded[i].Name < m.Excluded[j].Name
+	})
 	if m.Excluded == nil {
 		// `null` and `[]` decode differently downstream, and "this runner
 		// excluded nothing" is a real, checkable claim rather than a missing one.

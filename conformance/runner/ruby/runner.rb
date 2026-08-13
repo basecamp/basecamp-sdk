@@ -190,7 +190,7 @@ module ExecutionManifest
       "runner" => runner,
       "total_non_live" => total,
       "executed" => executed,
-      "excluded" => excluded.sort_by(&:first).map { |name, reason| { "name" => name, "reason" => reason } }
+      "excluded" => excluded.sort.map { |file, name, reason| { "file" => file, "name" => name, "reason" => reason } }
     }
     File.write(File.join(dir, "#{runner}.json"), "#{JSON.pretty_generate(body)}\n")
   end
@@ -1693,7 +1693,7 @@ class ConformanceRunner
         if RUBY_SKIPS.include?(test_case["name"])
           skipped += 1
           reason = RUBY_SKIP_REASONS[test_case["name"]] || "Ruby SDK behavior differs"
-          excluded << [ test_case["name"], reason ]
+          excluded << [ File.basename(file), test_case["name"], reason ]
           puts "  SKIP: #{test_case["name"]} (#{reason})"
           WebMock.reset!
           next

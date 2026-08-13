@@ -167,6 +167,14 @@ export function caseCountFailure(registered: number, expected: number): string |
  * exclusion set and no case could ever reach all-six.
  */
 export interface ManifestExclusion {
+  /**
+   * Part of the identity because case names are NOT unique across fixtures: one
+   * name appears in three files and another in two. Keyed on name alone, a
+   * runner excluding one of those collapses entries — under-counting its own
+   * exclusions against the census, and making two different cases
+   * indistinguishable in the cross-runner comparison.
+   */
+  file: string;
   name: string;
   reason: string;
 }
@@ -192,7 +200,10 @@ export function writeExecutionManifest(
     runner,
     total_non_live: total,
     executed,
-    excluded: [...excluded].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+    excluded: [...excluded].sort((a, b) => {
+      const key = (e: ManifestExclusion) => `${e.file}\u0000${e.name}`;
+      return key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0;
+    }),
   };
   fs.writeFileSync(
     path.join(directory, `${runner}.json`),

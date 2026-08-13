@@ -1855,10 +1855,15 @@ describe("conformance case census", () => {
   // loaded, so a stale TS_SDK_SKIPS entry for a deleted fixture does not
   // contribute a phantom exclusion.
   it("writes its execution manifest", () => {
-    const loaded = suites.flatMap((suite) => suite.tests.map((tc) => tc.name));
-    const excluded = loaded
-      .filter((name) => name in TS_SDK_SKIPS)
-      .map((name) => ({ name, reason: TS_SDK_SKIPS[name] }));
+    const excluded = suites.flatMap((suite) =>
+      suite.tests
+        .filter((tc) => tc.name in TS_SDK_SKIPS)
+        .map((tc) => ({
+          file: suite.filename,
+          name: tc.name,
+          reason: TS_SDK_SKIPS[tc.name],
+        })),
+    );
 
     writeExecutionManifest(
       "typescript",

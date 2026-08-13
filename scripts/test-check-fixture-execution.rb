@@ -70,11 +70,12 @@ def expect_fail(failures, label, out, status, fragment)
   end
 end
 
-# Adds `name` to the exclusion set of the named runners.
-def exclude(manifests, name, runners)
+# Adds a case to the exclusion set of the named runners. Identity is
+# [file, name]: case names are not unique across fixtures.
+def exclude(manifests, name, runners, file: "alpha.json")
   runners.each do |runner|
     m = manifests.fetch(runner)
-    m["excluded"] << { "name" => name, "reason" => "#{runner} cannot do this" }
+    m["excluded"] << { "file" => file, "name" => name, "reason" => "#{runner} cannot do this" }
     m["executed"] -= 1
   end
 end
@@ -178,6 +179,41 @@ expect_fail(failures, "a manifest that is not valid JSON structure", out, status
 
 out, status = gate lambda { |m| m["kotlin"].delete("executed") }
 expect_fail(failures, "a manifest missing a required key", out, status, "missing required key")
+
+# --- case identity is [file, name], not name ---------------------------------
+
+# The same NAME in two different fixtures is two different cases. Three files
+# share "replace-omission-clears: sparse replace sends the request verbatim with
+# no GET" and two share the non-idempotent POST retry name, so a name-keyed
+# comparison would read "excluded by three runners in one file and three in
+# another" as excluded by all six — a false failure on cases that all run.
+out, status = gate lambda { |m|
+  exclude(m, "shared name", RUNNERS.first(3), file: "alpha.json")
+  exclude(m, "shared name", RUNNERS.last(3), file: "beta.json")
+}
+expect_pass(failures, "one name in two files is two cases, not an all-six overlap", out, status)
+
+# ...and the converse: the SAME case in the same file, excluded everywhere,
+# still fails. Without this the case above could be "fixed" by never matching.
+out, status = gate lambda { |m| exclude(m, "shared name", RUNNERS, file: "alpha.json") }
+expect_fail(failures, "one name in one file excluded everywhere still fails", out, status,
+            "is excluded by ALL 6 runners")
+
+# A manifest whose entries lack `file` cannot be compared by identity at all.
+# This is also what a manifest written by a pre-#602 runner looks like.
+out, status = gate lambda { |m|
+  m["ruby"]["excluded"] << { "name" => "no file key", "reason" => "..." }
+  m["ruby"]["executed"] -= 1
+}
+expect_fail(failures, "an exclusion without its fixture file", out, status, "missing required key")
+
+# One case excluded twice by one runner: its own integrity count would still add
+# up while the comparison saw a single entry.
+out, status = gate lambda { |m|
+  2.times { m["go"]["excluded"] << { "file" => "alpha.json", "name" => "dup", "reason" => "x" } }
+  m["go"]["executed"] -= 2
+}
+expect_fail(failures, "one case excluded twice in one manifest", out, status, "is excluded twice")
 
 # --- report ------------------------------------------------------------------
 

@@ -197,7 +197,7 @@ func main() {
 		for _, tc := range tests {
 			if reason, ok := goSDKSkips[tc.Name]; ok {
 				skipped++
-				excluded = append(excluded, ManifestExclusion{Name: tc.Name, Reason: reason})
+				excluded = append(excluded, ManifestExclusion{File: filepath.Base(file), Name: tc.Name, Reason: reason})
 				fmt.Printf("  SKIP: %s (%s)\n", tc.Name, reason)
 				continue
 			}

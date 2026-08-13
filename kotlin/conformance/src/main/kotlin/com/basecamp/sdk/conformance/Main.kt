@@ -270,7 +270,8 @@ fun main() {
             if ("link-header" in tc.tags) {
                 skipped++
                 excluded.add(ExecutionManifest.Exclusion(
-                    tc.name, "Kotlin SDK auto-paginates (follows Link headers by design)"))
+                    file.name, tc.name,
+                    "Kotlin SDK auto-paginates (follows Link headers by design)"))
                 println("  SKIP: ${tc.name}")
                 println("        Kotlin SDK auto-paginates (follows Link headers by design)")
                 continue
@@ -278,7 +279,7 @@ fun main() {
             val skipReason = KOTLIN_SKIPS[tc.name]
             if (skipReason != null) {
                 skipped++
-                excluded.add(ExecutionManifest.Exclusion(tc.name, skipReason))
+                excluded.add(ExecutionManifest.Exclusion(file.name, tc.name, skipReason))
                 println("  SKIP: ${tc.name}")
                 println("        $skipReason")
                 continue
@@ -292,7 +293,7 @@ fun main() {
             when {
                 result.skipped -> {
                     skipped++
-                    excluded.add(ExecutionManifest.Exclusion(tc.name, result.message))
+                    excluded.add(ExecutionManifest.Exclusion(file.name, tc.name, result.message))
                     println("  SKIP: ${tc.name}")
                     println("        ${result.message}")
                 }

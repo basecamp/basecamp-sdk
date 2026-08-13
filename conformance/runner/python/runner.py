@@ -165,7 +165,7 @@ def count_non_live_cases(tests_dir: str | Path) -> int:
 
 
 def write_execution_manifest(runner: str, total: int, executed: int,
-                             excluded: list[tuple[str, str]]) -> None:
+                             excluded: list[tuple[str, str, str]]) -> None:
     """Write one runner's exclusion set for the cross-runner gate (#602).
 
     The case census answers "did THIS runner account for every case". A case
@@ -192,7 +192,7 @@ def write_execution_manifest(runner: str, total: int, executed: int,
         "runner": runner,
         "total_non_live": total,
         "executed": executed,
-        "excluded": [{"name": n, "reason": r} for n, r in sorted(excluded)],
+        "excluded": [{"file": f, "name": n, "reason": r} for f, n, r in sorted(excluded)],
     }
     (path / f"{runner}.json").write_text(json.dumps(body, indent=2) + "\n")
 
@@ -1529,7 +1529,7 @@ class ConformanceRunner:
         skipped = 0
         # Recorded from the same branch that increments `skipped`, so the
         # manifest cannot claim a different set than the run took.
-        excluded: list[tuple[str, str]] = []
+        excluded: list[tuple[str, str, str]] = []
 
         for file in files:
             tests = json.loads(file.read_text())
@@ -1548,7 +1548,7 @@ class ConformanceRunner:
                 if name in self.SKIPS:
                     skipped += 1
                     reason = self.SKIP_REASONS.get(name, "Python SDK behavior differs")
-                    excluded.append((name, reason))
+                    excluded.append((file.name, name, reason))
                     print(f"  SKIP: {name} ({reason})")
                     continue
 

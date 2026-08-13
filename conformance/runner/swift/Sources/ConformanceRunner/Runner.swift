@@ -122,7 +122,7 @@ struct Runner {
                 if tc.allTags.contains("link-header") {
                     skipped += 1
                     excluded.append(.init(
-                        name: tc.name,
+                        file: file.lastPathComponent, name: tc.name,
                         reason: "Swift SDK auto-paginates (follows Link headers by design)"))
                     print("  SKIP: \(tc.name)")
                     print("        Swift SDK auto-paginates (follows Link headers by design)")
@@ -130,7 +130,7 @@ struct Runner {
                 }
                 if let reason = swiftSkips[tc.name] {
                     skipped += 1
-                    excluded.append(.init(name: tc.name, reason: reason))
+                    excluded.append(.init(file: file.lastPathComponent, name: tc.name, reason: reason))
                     print("  SKIP: \(tc.name)")
                     print("        \(reason)")
                     continue
@@ -139,7 +139,7 @@ struct Runner {
                 let result = await runTest(tc)
                 if result.skipped {
                     skipped += 1
-                    excluded.append(.init(name: tc.name, reason: result.message))
+                    excluded.append(.init(file: file.lastPathComponent, name: tc.name, reason: result.message))
                     print("  SKIP: \(tc.name)")
                     print("        \(result.message)")
                 } else if result.passed {

@@ -922,6 +922,17 @@ jobs:
           merge-multiple: true
           path: conformance/manifests/
 
+      - name: Fixture-execution gate self-test (crafts the all-six state)
+        # The live check below runs against committed inputs that are built to
+        # PASS — maximum overlap is 2 of 6 — so on its own it proves only that
+        # the gate can say yes. Without this step a regression that made the
+        # gate accept a missing manifest, or an all-six exclusion, would leave
+        # CI green: the self-test is otherwise reachable only through the Make
+        # target, which this workflow deliberately bypasses (it must not re-run
+        # the runners). Same reason the other gates' self-tests run in
+        # spec-gates.
+        run: ruby scripts/test-check-fixture-execution.rb
+
       - name: No fixture case is executed by nothing (all six runners)
         # THE #602 check, and the only place it can run. Each language job sees
         # one runner's exclusion set; a case every runner excludes leaves all
