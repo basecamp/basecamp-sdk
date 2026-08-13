@@ -1,0 +1,23 @@
+scripts/sync-doc-constants.rb
+  s_fca5acb3cc9413::t_b201d159a02474 873-879,894-895
+  s_fca5acb3cc9413::t_587890a448165f 880-893
+  s_fca5acb3cc9413::t_e53cbdf7206ebd 374-386,388-392
+scripts/test-doc-constants.rb
+  s_fca5acb3cc9413::t_f9104748ff1b30 726-758
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "865bacccb682d1df39ec3e700c16bef478d218ab",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
