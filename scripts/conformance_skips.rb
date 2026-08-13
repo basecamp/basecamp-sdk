@@ -341,7 +341,16 @@ module ConformanceSkips
     end
 
     body = lines[(hits.first + 1)..].take_while { |line| !line.start_with?("## ", "---") }.join
-    blocks = body.split(/^\*\*([A-Za-z]+)\*\*/)[1..].to_a.each_slice(2).to_h
+    split = body.split(/^\*\*([A-Za-z]+)\*\*/)[1..].to_a.each_slice(2).to_a
+    blocks = split.to_h
+
+    # to_h keeps the last of a repeated key, so a second **Ruby** block would
+    # silently replace the first and half the roster would stop being compared.
+    repeated = split.map(&:first).tally.select { |_, n| n > 1 }.keys & ROSTER_HEADINGS.keys
+    unless repeated.empty?
+      raise ExtractionError,
+            "#{relative}: the Zero-Skip roster has more than one **#{repeated.first}** block"
+    end
 
     missing = ROSTER_HEADINGS.keys - blocks.keys
     unless missing.empty?

@@ -409,6 +409,15 @@ out, status = run_gate(mutate: ->(f) { edit(f, "SPEC.md", "### Zero-Skip Target"
 expect_fail(failures, "roster section renamed", out, status,
             'the roster heading "### Zero-Skip Target" matched 0 line(s)')
 
+# A repeated heading would be silently collapsed by a hash build, dropping the
+# first block's bullets out of the comparison entirely.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, "SPEC.md", "**Swift** (`table`) — none.",
+       "**Ruby** (`table`) — none.\n\n**Swift** (`table`) — none.")
+})
+expect_fail(failures, "roster repeats a runner block", out, status,
+            "more than one **Ruby** block")
+
 # The justification is judgement, and nothing asserts it. A roster whose
 # reasoning is rewritten wholesale must still pass, or the gate would be
 # demanding text it has no source for — the reason the first pass ruled this
