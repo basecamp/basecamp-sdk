@@ -218,6 +218,23 @@
 // bug and every regression found while fixing it — were a silent assumption
 // about something the walker did not understand.
 //
+// # This analysis is best-effort, and the gaps are inventoried
+//
+// Issue #741 lists every shape where the promotion analysis is known to be
+// wrong — separated into the ones that can SILENTLY pass a wrapper dropping a
+// generated field and the ones that merely over-report — plus the two that are
+// verified impossible. The gate prints a pointer to it on every run, because a
+// clean run is not proof that this part is sound.
+//
+// Read that issue before extending this code. In particular: the conservative
+// default above cannot reach those defects. A default only helps where the
+// walker recognises its own ignorance, and in every case listed there the
+// walker is not unsure — it resolves a name or classifies a shape and returns a
+// definite answer that differs from Go's. Closing them means enumerating type
+// identity and conversion rules, which does not end in an AST-only walk.
+// Restricting what may be embedded, or moving to go/types, are the two real
+// options.
+//
 // # An honest tally, for whoever adds the next rule
 //
 // This support was reviewed over a long run of rounds — the PR discussion has
@@ -1018,6 +1035,7 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		fmt.Printf("  Embedded-field promotion: %d of %d pairs embed a struct, %d of them contributing %d promoted fields to the checks above.\n", pairsWithEmbeds, len(pairNames), pairsWithPromotions, promotedFieldsChecked)
 	}
 	fmt.Println("  Scope: shapes this walker resolves. Unrecognised embeds and assignment shapes are reported as drift, never assumed away — see the CAN/CANNOT list in this file's header.")
+	fmt.Println("  Limitation: certifying promoted fields through embeds is BEST-EFFORT. Known shapes where it is confidently wrong — including ones that can pass a wrapper dropping a generated field — are enumerated in issue #741. A clean run is not proof that the promotion analysis is sound.")
 
 	if len(drift) > 0 {
 		fmt.Fprintln(os.Stderr)

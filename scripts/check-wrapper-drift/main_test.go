@@ -4295,3 +4295,48 @@ func noteFromGenerated(g generated.Note) Note {
 		t.Errorf("an omitted or absent tag was not verified through promotion; the line must not claim it was:\n%s", stdout)
 	}
 }
+
+// TestRun_OutputCarriesTheBestEffortLimitation pins the honesty requirement one
+// step further than the scope line. The scope line says which SHAPES this
+// walker resolves; this one says that where it does resolve a promotion, the
+// certification is best-effort — there are enumerated shapes where it is
+// confidently wrong, including some that can pass a wrapper dropping a
+// generated field. A reader must not take a clean run as proof of soundness,
+// and the pointer to the inventory has to survive refactors of this output.
+func TestRun_OutputCarriesTheBestEffortLimitation(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id int64 ~json:"id"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Note struct {
+	ID int64 ~json:"id"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	var stdout string
+	_ = captureStderr(t, func() {
+		stdout = captureStdout(t, func() {
+			if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+				t.Fatalf("fixture setup: this pair is in sync, got %v", err)
+			}
+		})
+	})
+	// A CLEAN run is exactly when the disclaimer matters.
+	for _, want := range []string{"BEST-EFFORT", "#741", "not proof"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("a clean run must still carry %q:\n%s", want, stdout)
+		}
+	}
+}
