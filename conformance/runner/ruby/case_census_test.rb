@@ -86,13 +86,14 @@ class CaseCensusTest < Minitest::Test
     end
   end
 
-  def test_census_accepts_a_truncated_fixture_as_zero_cases
-    # `[]` parses, so the census counts zero for it — and the runner counts zero
-    # too. The mismatch this produces is against the OTHER files' cases, which
-    # is why the count is taken over the whole tree rather than per file.
-    files = { "empty.json" => "[]", "cases.json" => JSON.dump(FIXTURE) }
+  def test_census_rejects_an_emptied_fixture
+    # The one truncation both sides read identically: the runner registers
+    # nothing from the file and the census would expect nothing, so the totals
+    # fall together and no mismatch appears. Counting it as zero is what would
+    # make the whole-file guarantee a lie, so the census refuses it instead.
+    files = { "cases.json" => JSON.dump(FIXTURE), "emptied.json" => "[]" }
     with_fixture_tree(files) do |dir|
-      assert_equal 2, CaseCensus.non_live_case_count(dir)
+      assert_raises(CaseCensus::Error) { CaseCensus.non_live_case_count(dir) }
     end
   end
 
@@ -113,5 +114,8 @@ class CaseCensusTest < Minitest::Test
     refute CaseCensus.mock_mode?("live")
     # The census is what catches this one; the filter must not run it.
     refute CaseCensus.mock_mode?("moc")
+    # Ruby null-coalesces rather than defaulting on falsiness, so an explicit
+    # empty mode is not an absent one. Python defaulted on falsiness and ran it.
+    refute CaseCensus.mock_mode?("")
   end
 end

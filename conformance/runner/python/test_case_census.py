@@ -84,14 +84,16 @@ def test_census_rejects_an_empty_tree(tmp_path: Path):
         count_non_live_cases(tmp_path)
 
 
-def test_census_accepts_a_truncated_fixture_as_zero_cases(tmp_path: Path):
-    # ``[]`` parses, so the census counts zero for it — and the runner counts
-    # zero too. The mismatch this produces is against the OTHER files' cases,
-    # which is why the count is taken over the whole tree rather than per file.
-    write_fixture(tmp_path / "empty.json", "[]")
+def test_census_rejects_an_emptied_fixture(tmp_path: Path):
+    # The one truncation both sides read identically: the runner registers
+    # nothing from the file and the census would expect nothing, so the totals
+    # fall together and no mismatch appears. Counting it as zero is what would
+    # make the whole-file guarantee a lie, so the census refuses it instead.
     write_fixture(tmp_path / "cases.json", json.dumps(CENSUS_FIXTURE))
+    write_fixture(tmp_path / "emptied.json", "[]")
 
-    assert count_non_live_cases(tmp_path) == 2
+    with pytest.raises(RuntimeError):
+        count_non_live_cases(tmp_path)
 
 
 def test_case_count_failure_accepts_agreement():
@@ -111,3 +113,10 @@ def test_is_mock_mode_treats_absence_as_mock():
     assert not is_mock_mode("live")
     # The census is what catches this one; the filter must not run it.
     assert not is_mock_mode("moc")
+
+
+def test_is_mock_mode_does_not_default_on_falsiness():
+    # `(mode or "mock")` read this as an absent key and ran it, where the four
+    # null-coalescing runners refuse it. The census counts "" as non-live either
+    # way, so the divergence would have stayed green in Python alone.
+    assert not is_mock_mode("")

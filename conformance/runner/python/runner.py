@@ -64,8 +64,10 @@ _MISSING = object()
 # Catches: an unrecognized ``mode``; a fixture that failed to parse or was never
 # globbed (including one nested below ``conformance/tests/``, which no runner
 # discovers — hence the recursive walk); a case dropped between load and
-# dispatch; a fixture truncated to ``[]``; and any future skip channel that
-# bypasses the counters, because the counters are what it reads.
+# dispatch; a fixture emptied to ``[]`` (which the census REFUSES rather than
+# counts — see ``count_non_live_cases``, and note that counting it would make
+# this bullet a lie); and any future skip channel that bypasses the counters,
+# because the counters are what it reads.
 #
 # The typo is not this check's alone to catch, and saying so is what keeps the
 # rest of the list honest: ``make conformance-fixtures-check`` validates
@@ -92,8 +94,13 @@ def is_mock_mode(mode: str | None) -> bool:
     Absent means mock: live cases are TS-only (the canonical wire-capturer), and
     every other value is nobody's. Shared with the census self-tests so the rule
     the run loop applies is the rule under test, not a copy of it.
+
+    Defaults on ``None`` ONLY, not on falsiness. ``(mode or "mock")`` reads
+    ``"mode": ""`` as an absent key and runs it, where the four null-coalescing
+    runners refuse it — and since the census counts ``""`` as non-live either
+    way, the divergence this check exists to expose would have stayed green here.
     """
-    return (mode or "mock") == "mock"
+    return (mode if mode is not None else "mock") == "mock"
 
 
 def count_non_live_cases(tests_dir: str | Path) -> int:
@@ -115,6 +122,19 @@ def count_non_live_cases(tests_dir: str | Path) -> int:
             raise RuntimeError(f"{file}: {e}") from e
         if not isinstance(parsed, list):
             raise RuntimeError(f"{file}: fixture is not a JSON array")
+        # An emptied fixture is REFUSED, not counted as zero, and this is the
+        # one rejection that carries the whole-file guarantee. It is the single
+        # truncation both sides of the census read identically: the runner
+        # registers nothing from the file and the census expects nothing, so the
+        # two totals fall together and no mismatch ever appears. Counting it
+        # would make "a fixture truncated to []" a claim this check cannot keep.
+        # A file declaring no cases tests nothing, so refusing it costs nothing
+        # — and it closes the same hole in conformance-fixtures-check, where an
+        # empty array is a schema-valid list of zero items.
+        if not parsed:
+            raise RuntimeError(
+                f"{file}: fixture declares no cases; delete the file or restore its cases"
+            )
         # Only ``mode`` is read: the census must survive a fixture whose other
         # fields this runner cannot model, or it would report a failure for a
         # case the run itself handled fine.
@@ -1441,10 +1461,15 @@ class ConformanceRunner:
             print(f"Error taking fixture census: {e}", file=sys.stderr)
             return 1
 
+        # No early return on an empty glob. The census walks recursively and
+        # this glob does not, so "the census found fixtures but this runner
+        # globbed none" is exactly the nested-fixture under-count the census
+        # exists to reject — and returning success here would step over the
+        # comparison that rejects it. Falling through runs zero cases and lets
+        # the count check fail, which is the correct answer.
         files = sorted(self._tests_dir.glob("*.json"))
         if not files:
             print(f"No test files found in {self._tests_dir}")
-            return 0
 
         passed = 0
         failed = 0

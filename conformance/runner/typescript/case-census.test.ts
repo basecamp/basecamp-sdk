@@ -79,16 +79,17 @@ describe("countNonLiveCases", () => {
     expect(() => countNonLiveCases(fixtureTree({}))).toThrow();
   });
 
-  it("accepts a truncated fixture as zero cases", () => {
-    // `[]` parses, so the census counts zero for it — and the runner registers
-    // zero too. The mismatch this produces is against the OTHER files' cases,
-    // which is why the count is taken over the whole tree rather than per file.
+  it("rejects an emptied fixture", () => {
+    // The one truncation both sides read identically: the runner registers
+    // nothing from the file and the census would expect nothing, so the totals
+    // fall together and no mismatch appears. Counting it as zero is what would
+    // make the whole-file guarantee a lie, so the census refuses it instead.
     const dir = fixtureTree({
-      "empty.json": "[]",
       "cases.json": JSON.stringify(FIXTURE),
+      "emptied.json": "[]",
     });
 
-    expect(countNonLiveCases(dir)).toBe(2);
+    expect(() => countNonLiveCases(dir)).toThrow();
   });
 });
 
@@ -123,5 +124,8 @@ describe("isMockMode", () => {
     expect(isMockMode("live")).toBe(false);
     // The census is what catches this one; the filter must not run it.
     expect(isMockMode("moc")).toBe(false);
+    // `??`, not falsiness: an explicit empty mode is not an absent one.
+    // Python defaulted on falsiness and ran it.
+    expect(isMockMode("")).toBe(false);
   });
 });

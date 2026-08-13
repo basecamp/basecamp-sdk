@@ -20,9 +20,11 @@ package main
 // What it catches: a typo'd or otherwise unrecognized `mode`; a fixture file
 // that failed to parse or was never globbed (including one nested below
 // conformance/tests/, which no runner discovers — hence the recursive walk); a
-// case dropped between load and dispatch; a whole fixture truncated to `[]`; and
-// any future skip channel that bypasses the counters, because the counters are
-// what it reads rather than any particular skip mechanism.
+// case dropped between load and dispatch; a whole fixture emptied to `[]` (which
+// the census REFUSES rather than counts — see countNonLiveCases, and note that
+// counting it would make this bullet a lie); and any future skip channel that
+// bypasses the counters, because the counters are what it reads rather than any
+// particular skip mechanism.
 //
 // The typo is not this check's alone to catch, and saying so is what keeps the
 // rest of the list honest: `make conformance-fixtures-check` validates
@@ -56,8 +58,15 @@ import (
 // Absent means mock: live cases are TS-only (the canonical wire-capturer), and
 // every other mode value is nobody's. Shared with the census self-tests so the
 // rule the run loop applies is the rule under test, not a copy of it.
-func isMockMode(mode string) bool {
-	return mode == "" || mode == "mock"
+//
+// The parameter is a pointer because a plain string cannot tell an ABSENT key
+// from `"mode": ""`, and the two must not be the same answer. The other five
+// runners null-coalesce, so they run the first and refuse the second; a Go
+// `string` collapses both to "" and would run an unrecognized mode the other
+// five reject — a hole in the very invariant this census exists to hold, in the
+// reference runner.
+func isMockMode(mode *string) bool {
+	return mode == nil || *mode == "mock"
 }
 
 // countNonLiveCases counts the fixture cases whose mode is not "live",
@@ -86,13 +95,31 @@ func countNonLiveCases(dir string) (int, error) {
 		// fields this runner cannot model, or it would report a parse failure
 		// for a case the run itself handled fine.
 		var parsed []struct {
-			Mode string `json:"mode"`
+			Mode *string `json:"mode"`
 		}
 		if err := json.Unmarshal(raw, &parsed); err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
+		// A top-level `null` unmarshals into a nil slice without error, so it
+		// would otherwise pass as a fixture of zero cases — the one non-array
+		// root the other five runners reject and this one would not.
+		if parsed == nil {
+			return fmt.Errorf("%s: fixture is not a JSON array of cases", path)
+		}
+		// An emptied fixture is REFUSED, not counted as zero, and this is the
+		// one rejection that carries the whole-file guarantee. It is the single
+		// truncation both sides of the census read identically: the runner
+		// registers nothing from the file and the census expects nothing, so
+		// the two totals fall together and no mismatch ever appears. Counting
+		// it would make "a fixture truncated to []" a claim this check cannot
+		// keep. A file declaring no cases tests nothing, so refusing it costs
+		// nothing — and it closes the same hole in conformance-fixtures-check,
+		// where an empty array is a schema-valid list of zero items.
+		if len(parsed) == 0 {
+			return fmt.Errorf("%s: fixture declares no cases; delete the file or restore its cases", path)
+		}
 		for _, c := range parsed {
-			if c.Mode != "live" {
+			if c.Mode == nil || *c.Mode != "live" {
 				cases++
 			}
 		}

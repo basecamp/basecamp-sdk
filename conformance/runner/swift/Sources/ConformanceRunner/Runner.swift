@@ -80,9 +80,15 @@ struct Runner {
             print("No test files found in \(testsDir.path): \(error)")
             exit(1)
         }
+        // No early exit on an empty listing — unlike the catch above, which is a
+        // genuine read failure. The census walks recursively and this listing
+        // does not, so "the census found fixtures but this runner listed none"
+        // is the nested-fixture under-count the census exists to reject. Exiting
+        // here is non-zero either way, but it prints "No test files found" for a
+        // tree that is full of them; falling through prints the count check's
+        // diagnosis instead, which is the one that names what actually happened.
         if files.isEmpty {
             print("No test files found in \(testsDir.path)")
-            exit(1)
         }
 
         var passed = 0

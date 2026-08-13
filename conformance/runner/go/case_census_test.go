@@ -120,20 +120,29 @@ func TestCensusRejectsAnEmptyTree(t *testing.T) {
 	}
 }
 
-func TestCensusAcceptsATruncatedFixtureAsZeroCases(t *testing.T) {
-	// `[]` parses, so the census counts zero for it — and the runner counts
-	// zero too. The mismatch this produces is against the OTHER files' cases,
-	// which is why the count is taken over the whole tree rather than per file.
+func TestCensusRejectsAnEmptiedFixture(t *testing.T) {
+	// The one truncation both sides read identically: the runner registers
+	// nothing from the file and the census would expect nothing, so the totals
+	// fall together and no mismatch appears. Counting it as zero is what would
+	// make the whole-file guarantee a lie, so the census refuses it instead.
 	dir := t.TempDir()
-	writeFixture(t, filepath.Join(dir, "empty.json"), `[]`)
 	writeFixture(t, filepath.Join(dir, "cases.json"), censusFixture)
+	writeFixture(t, filepath.Join(dir, "emptied.json"), `[]`)
 
-	got, err := countNonLiveCases(dir)
-	if err != nil {
-		t.Fatalf("census: %v", err)
+	if _, err := countNonLiveCases(dir); err == nil {
+		t.Fatal("a fixture emptied to [] must fail the census; counted as zero it is invisible on both sides")
 	}
-	if got != 2 {
-		t.Fatalf("an empty fixture contributes nothing; got %d", got)
+}
+
+func TestCensusRejectsATopLevelNull(t *testing.T) {
+	// `null` unmarshals into a nil slice WITHOUT error, so it would otherwise
+	// pass as a fixture of zero cases — the one non-array root that reaches
+	// this far in Go.
+	dir := t.TempDir()
+	writeFixture(t, filepath.Join(dir, "null.json"), `null`)
+
+	if _, err := countNonLiveCases(dir); err == nil {
+		t.Fatal("a top-level null must fail the census, not decode to zero cases")
 	}
 }
 
@@ -154,16 +163,23 @@ func TestCaseCountFailureNamesAnOverCount(t *testing.T) {
 }
 
 func TestIsMockModeTreatsAbsenceAsMock(t *testing.T) {
-	if !isMockMode("") {
+	mode := func(s string) *string { return &s }
+
+	if !isMockMode(nil) {
 		t.Fatal("an absent mode is a mock case")
 	}
-	if !isMockMode("mock") {
+	if !isMockMode(mode("mock")) {
 		t.Fatal("an explicit mock mode is a mock case")
 	}
-	if isMockMode("live") {
+	if isMockMode(mode("live")) {
 		t.Fatal("live cases belong to the TS live runner")
 	}
-	if isMockMode("moc") {
+	if isMockMode(mode("moc")) {
 		t.Fatal("an unrecognized mode must not be run as mock; the census is what catches it")
+	}
+	// The reason Mode is a pointer. With a plain string this is indistinguishable
+	// from an absent key, so Go alone would run a mode the other five refuse.
+	if isMockMode(mode("")) {
+		t.Fatal(`an explicit "mode": "" is not an absent mode; the other five runners refuse it`)
 	}
 }

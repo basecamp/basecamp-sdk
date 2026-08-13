@@ -34,7 +34,11 @@ type TestCase struct {
 	// runner; non-TS runners filter them out at load time so unresolved
 	// fixture placeholders and unknown operations don't false-pass as
 	// mock conformance.
-	Mode            string                 `json:"mode"`
+	//
+	// A POINTER so an absent key stays distinguishable from `"mode": ""`. A
+	// plain string collapses both to "", which would run an unrecognized mode
+	// the other five runners refuse — see isMockMode in case_census.go.
+	Mode            *string                `json:"mode"`
 	Name            string                 `json:"name"`
 	Description     string                 `json:"description"`
 	Operation       string                 `json:"operation"`
@@ -165,9 +169,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// No early exit on an empty glob. The census walks recursively and this
+	// glob does not, so "the census found fixtures but this runner globbed
+	// none" is exactly the nested-fixture under-count the census exists to
+	// reject — and returning success here would step over the comparison that
+	// rejects it. Falling through runs zero cases and lets the count check
+	// fail, which is the correct answer.
 	if len(files) == 0 {
 		fmt.Println("No test files found in", testsDir)
-		os.Exit(0)
 	}
 
 	var results []TestResult

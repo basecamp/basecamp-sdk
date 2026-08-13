@@ -97,13 +97,14 @@ final class CaseCensusTests: XCTestCase {
         }
     }
 
-    func testCensusAcceptsATruncatedFixtureAsZeroCases() throws {
-        // `[]` parses, so the census counts zero for it — and the runner counts
-        // zero too. The mismatch this produces is against the OTHER files'
-        // cases, which is why the count is taken over the whole tree rather
-        // than per file.
-        try withFixtureTree(["empty.json": "[]", "cases.json": fixture]) { dir in
-            XCTAssertEqual(try CaseCensus.nonLiveCaseCount(in: dir), 2)
+    func testCensusRejectsAnEmptiedFixture() throws {
+        // The one truncation both sides read identically: the runner registers
+        // nothing from the file and the census would expect nothing, so the
+        // totals fall together and no mismatch appears. Counting it as zero is
+        // what would make the whole-file guarantee a lie, so the census refuses
+        // it instead.
+        try withFixtureTree(["cases.json": fixture, "emptied.json": "[]"]) { dir in
+            XCTAssertThrowsError(try CaseCensus.nonLiveCaseCount(in: dir))
         }
     }
 
@@ -124,5 +125,31 @@ final class CaseCensusTests: XCTestCase {
         XCTAssertFalse(CaseCensus.isMockMode("live"))
         // The census is what catches this one; the filter must not run it.
         XCTAssertFalse(CaseCensus.isMockMode("moc"))
+        // Null-coalescing, not falsiness: an explicit empty mode is not an
+        // absent one. Python defaulted on falsiness and ran it.
+        XCTAssertFalse(CaseCensus.isMockMode(""))
+    }
+
+    func testCensusReportsAnUnreadableSubtree() throws {
+        // Without an errorHandler the enumerator skips the unreadable subtree
+        // and keeps going, so its cases leave both sides of the census at once
+        // and the totals still agree — a fail-closed check failing open.
+        try withFixtureTree(["cases.json": fixture, "locked/nested.json": fixture]) { dir in
+            let locked = dir.appendingPathComponent("locked", isDirectory: true)
+            try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked.path)
+            defer {
+                try? FileManager.default.setAttributes(
+                    [.posixPermissions: 0o755], ofItemAtPath: locked.path)
+            }
+
+            // Root can read through a 0o000 directory, so this cannot assert a
+            // throw unconditionally — but it must never silently drop the
+            // subtree: either the walk fails, or the nested cases are counted.
+            if let count = try? CaseCensus.nonLiveCaseCount(in: dir) {
+                XCTAssertEqual(
+                    count, 4,
+                    "the subtree was neither reported nor counted — the census failed open")
+            }
+        }
     }
 }

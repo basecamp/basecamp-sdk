@@ -232,12 +232,18 @@ fun main() {
         return
     }
 
+    // No early return on an empty listing. The census walks recursively and
+    // this listing does not, so "the census found fixtures but this runner
+    // listed none" is exactly the nested-fixture under-count the census exists
+    // to reject — and returning success here would step over the comparison
+    // that rejects it. Falling through runs zero cases and lets the count check
+    // fail, which is the correct answer.
     val testFiles = testsDir.listFiles { f -> f.extension == "json" }
         ?.sorted()
+        .orEmpty()
 
-    if (testFiles.isNullOrEmpty()) {
+    if (testFiles.isEmpty()) {
         println("No test files found in ${testsDir.absolutePath}")
-        return
     }
 
     val json = Json { ignoreUnknownKeys = true }
