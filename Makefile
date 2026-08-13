@@ -736,6 +736,29 @@ conformance-runner-tests-kotlin:
 	@echo "==> Running Kotlin conformance runner unit tests..."
 	cd kotlin && ./gradlew --quiet :conformance:test
 
+# Wipes the manifest directory before ANY conformance runner writes to it, so
+# "six manifests present" means "six runners reported in this run" rather than
+# "five reported and a sixth is left over from a different machine".
+#
+# An ORDER-ONLY prerequisite (`|`) shared by all six language targets, which is
+# what makes it correct under `make -j`: make builds a prerequisite to
+# completion before any dependent starts, and builds this phony target once per
+# invocation — so the reset cannot race the runners it protects. Ordering it as
+# a plain prerequisite of the aggregate `conformance` target would not do that;
+# sibling prerequisites may run concurrently, and a reset racing the runners
+# would delete the output it exists to guarantee.
+#
+# It fires for a single-language run too (`make conformance-go` clears the
+# directory). That is deliberate and fail-safe: the directory then holds only
+# what this invocation produced, so the gate sees fewer manifests and goes
+# partial rather than silently mixing runs.
+.PHONY: conformance-manifests-reset
+conformance-manifests-reset:
+	@rm -rf conformance/manifests
+
+conformance-go conformance-kotlin conformance-typescript conformance-ruby \
+conformance-python conformance-swift: | conformance-manifests-reset
+
 # Build conformance test runner
 conformance-build:
 	@echo "==> Building conformance test runner..."
@@ -1085,32 +1108,21 @@ endif
 # overlap today is 2 of 6 (#596 narrowed it), so a live run proves only that the
 # gate can say yes. The state it exists to reject cannot be produced by any
 # committed fixture.
-# OWNS the conformance run rather than depending on it, and wipes the manifest
-# directory first. A plain `: conformance` prerequisite is not enough, and the
-# gap is exactly the kind this gate exists to catch:
+# Depends on `conformance`, and freshness is guaranteed by
+# `conformance-manifests-reset` below rather than by this edge alone.
 #
-#   On Linux `conformance-swift` is a no-op, so a `swift.json` left by an
-#   earlier macOS run over the same checkout SURVIVES while the other five are
-#   refreshed. The gate then sees six manifests, stops treating the run as
-#   partial, and compares five current exclusion sets against a stale sixth —
-#   missing a newly all-excluded case, or failing on an exclusion Swift no
-#   longer has. Both PR bots found this; it is silent-wrong, which is the worst
-#   shape for a gate whose whole claim is about what the runners actually did.
+# The edge on its own is not enough, and the gap is exactly the kind this gate
+# exists to catch: on Linux `conformance-swift` is a no-op, so a `swift.json`
+# left by an earlier macOS run over the same checkout SURVIVES while the other
+# five are refreshed. The gate then sees six manifests, stops treating the run
+# as partial, and compares five current exclusion sets against a stale sixth —
+# missing a newly all-excluded case, or failing on an exclusion Swift no longer
+# has. Both PR bots found it; it is silent-wrong, the worst shape for a gate
+# whose whole claim is about what the runners actually did.
 #
-# `rm -rf` before the sub-make is what makes "six manifests present" mean "six
-# runners reported IN THIS RUN". It runs in the recipe rather than as a
-# prerequisite because prerequisite order is not guaranteed under `make -j`, and
-# a reset that raced the runners would delete the output it exists to protect.
-#
-# Because this target runs the suite itself, `check-targets` lists it INSTEAD of
-# `conformance` — otherwise the suite would run twice per `make check`.
-#
-# CI does not use this target: its fan-in job collects the six manifests as
-# artifacts, where freshness comes from their being uploaded by the very jobs
-# that produced them.
-check-fixture-execution:
-	@rm -rf conformance/manifests
-	@$(MAKE) conformance
+# CI does not depend on the reset: freshness there comes from each manifest
+# being uploaded by the very job that produced it.
+check-fixture-execution: conformance
 ifdef IS_MACOS
 	@echo "==> Checking no fixture case is executed by nothing (all six runners)..."
 	@ruby scripts/check-fixture-execution.rb
@@ -1494,7 +1506,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts
