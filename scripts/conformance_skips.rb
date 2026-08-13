@@ -73,9 +73,30 @@ module ConformanceSkips
   # never accounts for. Counting the accessor bounds that — not by recognizing
   # arbitrary new syntax, but by refusing to vouch for a file that inspects tags
   # somewhere the registry does not name.
+  #
+  # A REGEXP, not a string, and the difference is the whole guarantee. As one
+  # literal it was one SPELLING wide: Kotlin registered `tc.tags`, so
+  # `.filter { "slow" !in it.tags }` sailed past it — and `it.tags` is not an
+  # exotic alternative, it is the idiom the surrounding code teaches, seven
+  # lines above at `.filter { it.mode == "mock" }`. The registered spelling only
+  # reads `tc.tags` because that branch happens to sit inside
+  # `for (tc in testCases)`. Swift was the same: `allTags` is a computed
+  # convenience (`var allTags: [String] { tags ?? [] }`) over a stored `tags`
+  # sitting right beside it.
+  #
+  # Neither evasion needs anyone to be evading anything — an ordinary refactor
+  # reaches both — and the roster gives NO backstop here, because Kotlin's and
+  # Swift's tag exclusions are deliberately prose-only, so those bullet lists are
+  # empty and the comparison is `[] == []` whichever way it goes.
   TagBranch = Struct.new(:tag, :file, :anchor, :accessor, keyword_init: true)
 
-  Runner = Struct.new(:name, :tables, :tag_branches, keyword_init: true) do
+  # A line the registry asserts still exists, where there is no literal to parse
+  # and no tag to count — a wire between two declarations, say. Same fail-closed
+  # predicate as every other anchor: exactly one matching line, or the claim the
+  # registry makes about this file is no longer backed by anything.
+  PinnedLine = Struct.new(:file, :anchor, :claim, keyword_init: true)
+
+  Runner = Struct.new(:name, :tables, :tag_branches, :pins, keyword_init: true) do
     # The authoritative exclusion table is the FIRST; any others are companions
     # whose key sets must match it (see check_companion_tables).
     def skip_table = tables.first
@@ -88,7 +109,7 @@ module ConformanceSkips
         Table.new(label: "goSDKSkips", file: "conformance/runner/go/main.go",
                   anchor: "var goSDKSkips", comment: :slash),
       ],
-      tag_branches: []
+      tag_branches: [], pins: []
     ),
     Runner.new(
       name: "python",
@@ -100,7 +121,7 @@ module ConformanceSkips
         Table.new(label: "SKIP_REASONS", file: "conformance/runner/python/runner.py",
                   anchor: "SKIP_REASONS: dict[str, str]", comment: :hash),
       ],
-      tag_branches: []
+      tag_branches: [], pins: []
     ),
     Runner.new(
       name: "ruby",
@@ -110,7 +131,7 @@ module ConformanceSkips
         Table.new(label: "RUBY_SKIP_REASONS", file: "conformance/runner/ruby/runner.rb",
                   anchor: "RUBY_SKIP_REASONS =", comment: :hash),
       ],
-      tag_branches: []
+      tag_branches: [], pins: []
     ),
     Runner.new(
       name: "typescript",
@@ -118,7 +139,7 @@ module ConformanceSkips
         Table.new(label: "TS_SDK_SKIPS", file: "conformance/runner/typescript/runner.test.ts",
                   anchor: "const TS_SDK_SKIPS", comment: :slash),
       ],
-      tag_branches: []
+      tag_branches: [], pins: []
     ),
     Runner.new(
       name: "kotlin",
@@ -131,16 +152,20 @@ module ConformanceSkips
         TagBranch.new(tag: "link-header",
                       file: "kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt",
                       anchor: 'if ("link-header" in tc.tags) {',
-                      accessor: "tc.tags"),
-      ]
+                      accessor: /\.tags\b/),
+      ],
+      pins: []
     ),
     Runner.new(
       name: "swift",
       tables: [
         # `temporarySkips`, not `swiftSkips`. #602's issue text names the
-        # latter; the latter is an env-gated ternary
-        # (SWIFT_CONFORMANCE_NO_SKIPS) holding no literals of its own, so
-        # parsing it would read an empty table no matter what was skipped.
+        # latter, which is an env-gated ternary (SWIFT_CONFORMANCE_NO_SKIPS)
+        # holding no skip literals of its own. Parsing it does not read an
+        # empty table — it reads ["SWIFT_CONFORMANCE_NO_SKIPS", "1"], two junk
+        # keys that check_stale_skips would report loudly — but it is still the
+        # wrong declaration to read, and the `pins` entry below is what makes
+        # reading `temporarySkips` equivalent to obeying `swiftSkips`.
         # SPEC.md §19's roster has this right and the issue is stale.
         Table.new(label: "temporarySkips",
                   file: "conformance/runner/swift/Sources/ConformanceRunner/Runner.swift",
@@ -150,7 +175,15 @@ module ConformanceSkips
         TagBranch.new(tag: "link-header",
                       file: "conformance/runner/swift/Sources/ConformanceRunner/Runner.swift",
                       anchor: 'if tc.allTags.contains("link-header") {',
-                      accessor: "allTags"),
+                      accessor: /\.tags\b|\ballTags\b/),
+      ],
+      pins: [
+        PinnedLine.new(
+          file: "conformance/runner/swift/Sources/ConformanceRunner/Runner.swift",
+          anchor: /\?\s*\[:\]\s*:\s*temporarySkips\s*\z/,
+          claim: "the run loop consults `swiftSkips`, which this registry does not parse; " \
+                 "pinning its else-branch is what makes reading `temporarySkips` equivalent"
+        ),
       ]
     ),
   ].freeze
@@ -160,6 +193,13 @@ module ConformanceSkips
   # "mock"` and its five equivalents. So a typo'd mode is a silent all-six
   # exclusion, which is why the gate validates modes rather than merely
   # filtering on them.
+  # UNMODELLED BY DECISION: Kotlin and Swift both count a `TestResult.skipped`
+  # flag as a skip at runtime. Both default false and neither has a writer in
+  # the mock path today (Kotlin's only producer is ReplayRunner.kt, a separate
+  # entry point; Swift declares the field with no assignment anywhere), so
+  # there is nothing to extract and nothing to anchor. If either ever gains a
+  # writer it becomes a whole-case exclusion this module cannot see — register
+  # it here then.
   KNOWN_MODES = %w[mock live].freeze
   DEFAULT_MODE = "mock"
 
@@ -183,10 +223,17 @@ module ConformanceSkips
   # is exactly how `comment_end` came to exist. `anchored:` keeps the one real
   # difference in intent: a roster heading must START its line, or prose merely
   # mentioning it would match.
+  # `anchor` is a String matched as a substring, or a Regexp matched against the
+  # line — the latter for notions that have more than one legitimate spelling,
+  # like how a run loop reaches a case's tags.
   def self.anchor_lines(source, anchor, anchored: false)
     lines = source.is_a?(Array) ? source : source.lines
     lines.each_index.select do |index|
-      anchored ? lines[index].start_with?(anchor) : lines[index].include?(anchor)
+      line = lines[index]
+      if anchor.is_a?(Regexp) then line.match?(anchor)
+      elsif anchored then line.start_with?(anchor)
+      else line.include?(anchor)
+      end
     end
   end
 
@@ -292,11 +339,14 @@ module ConformanceSkips
 
       context = predecessor ? "follows #{predecessor[0].inspect}" : "opens the literal"
       raise ExtractionError,
-            "a skip table mixes key spellings this parser does not recognize: #{value.inspect} " \
-            "#{context} with neither in key position. Every entry must spell its key with one of " \
-            "`:`, `=>` or `to`, or ConformanceSkips::KEY_SEPARATOR_RE has to learn the new " \
-            "spelling — silently reading it as a value would drop a real skip and turn an " \
-            "all-six exclusion into a passing five-of-six."
+            "a skip table has a string this parser cannot place: #{value.inspect} #{context} " \
+            "with neither in key position. Two causes, and the message cannot tell them apart: " \
+            "an entry whose key uses a spelling KEY_SEPARATOR_RE does not know (`:`, `=>` and " \
+            "`to` are the ones it does), or a VALUE split across string literals — " \
+            "`\"reason one\" +\\n \"reason two\"` — which this parser does not join. For the " \
+            "second, put the reason on one literal. Reading either as a value would drop a real " \
+            "skip and turn an all-six exclusion into a passing five-of-six, so it is reported " \
+            "rather than guessed at."
     end
 
     keyed.map(&:first)
@@ -306,7 +356,12 @@ module ConformanceSkips
   #
   # Returns [[value, followed_by_separator], ...] and :closed / :unclosed. The
   # declaration ends at the END OF THE LINE on which depth returns to zero, not
-  # the instant it does: `map[string]string{` closes its `[...]` and reopens
+  # the instant it does. That is a BOUND, not a guarantee: a declaration that
+  # returns to depth zero mid-statement and continues (`emptyMap() +\n
+  # mapOf(...)`, Swift `.merging`, a second `const`) is truncated there. The
+  # roster comparison catches every such shape tried except truncate-to-empty
+  # paired with a "none" block, which is why the unread-bullet guard exists.
+  # The reason it terminates here at all: `map[string]string{` closes its `[...]` and reopens
   # with `{` on one line, and stopping at the first zero would read the type
   # parameter and call the table empty.
   def self.scan(source, offset, comment)
@@ -530,7 +585,12 @@ module ConformanceSkips
       # whose first token is a quoted case name, which is what separates the
       # enumeration from the surrounding prose.
       block = blocks.fetch(heading)
-      bullets = block.scan(/^- "([^"]+)"/).flatten
+      # Greedy to the LAST quote before the em dash, because case names contain
+      # inner quotes: cards_write.json already carries `…goes on the wire as
+      # "", with no GET`. A lazy `[^"]+` truncates that at the first inner quote,
+      # so the day that case needs a skip, `make check` could not be made green
+      # without renaming the fixture.
+      bullets = block.scan(/^- "(.+)"\s+—/).flatten
 
       # A block that yields no bullets must SAY it has none.
       #
@@ -542,11 +602,30 @@ module ConformanceSkips
       # The three genuinely-empty blocks already write "none", so requiring the
       # word costs nothing and restates no list, which is what keeps this from
       # reopening the pinned-key-count question.
-      if bullets.empty? && !block.match?(/\bnone\b/i)
-        raise ExtractionError,
-              "#{relative}: the Zero-Skip roster's **#{heading}** block lists no skips and does " \
-              "not say \"none\". An unparsed block is indistinguishable from an empty one, and " \
-              "both halves of this gate then compare nothing against nothing."
+      if bullets.empty?
+        # A bullet line the parser could not read is NOT an empty block, and the
+        # "none" token cannot tell them apart. That matters most exactly where
+        # it is weakest: Kotlin's and Swift's blocks already say "none BEYOND
+        # the whole-case tag branch", so the two runners likeliest to gain a
+        # first skip are the two whose prose permanently pre-satisfies the
+        # token. Checking for unread bullets first closes that, and unlike
+        # requiring "none" on the heading line it survives Swift's block, which
+        # wraps its prose so the token lands on the second line.
+        unread = block.lines.select { |line| line.start_with?("- ") }
+        unless unread.empty?
+          raise ExtractionError,
+                "#{relative}: the Zero-Skip roster's **#{heading}** block has " \
+                "#{unread.length} bullet line(s) this parser could not read, e.g. " \
+                "#{unread.first.strip.inspect}. A bullet is `- \"case name\" — justification`; " \
+                "an unreadable one is a skip that silently stops being rostered."
+        end
+
+        unless block.match?(/\bnone\b/i)
+          raise ExtractionError,
+                "#{relative}: the Zero-Skip roster's **#{heading}** block lists no skips and does " \
+                "not say \"none\". An unparsed block is indistinguishable from an empty one, and " \
+                "both halves of this gate then compare nothing against nothing."
+        end
       end
 
       [runner, bullets]
@@ -606,6 +685,22 @@ module ConformanceSkips
               "ConformanceSkips::RUNNERS registers #{branches.length} whole-case tag branch(es) " \
               "there. An unregistered branch skips cases this gate cannot see — register it with " \
               "its tag, or if it is not a whole-case skip, say so here."
+      end
+
+      # Lines the registry asserts still exist where there is nothing to parse
+      # and nothing to count. Swift's is the one that matters: the run loop
+      # consults `swiftSkips`, an env-gated view, while this module parses
+      # `temporarySkips`. Pinning the else-branch is what makes reading the
+      # latter equivalent to obeying the former — without it, a skip added as
+      # `: temporarySkips.merging(["solo": "…"]) { a, _ in a }` is honoured by
+      # Swift and invisible here.
+      runner.pins.each do |pin|
+        hits = anchor_lines(read(root, pin.file), pin.anchor).length
+        next if hits == 1
+
+        raise ExtractionError,
+              "#{pin.file}: the pinned line #{pin.anchor.inspect} matched #{hits} line(s), " \
+              "expected exactly 1 — #{pin.claim}"
       end
     end
   end

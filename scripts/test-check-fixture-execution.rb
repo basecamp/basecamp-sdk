@@ -154,6 +154,13 @@ def kotlin_source(names)
     "}\n"
 end
 
+# Carries the `swiftSkips` WIRE, which the real runner has and the first draft
+# of this stub did not. That omission was structural, not cosmetic: the run loop
+# consults `swiftSkips` while the registry parses `temporarySkips`, so a stub
+# without the wire made the suite unable to notice that the parser reads one
+# variable and the runner obeys another. A generator is a source of truth for
+# everything the suite can conclude, and a shape it never emits is a shape
+# nothing can test — which is why the registry now pins the else-branch.
 def swift_source(names)
   literal = if names.empty?
               "[:]"
@@ -161,9 +168,16 @@ def swift_source(names)
               "[#{names.map { |n| "#{n.inspect}: \"swift reason\"" }.join(', ')}]"
             end
   "private let temporarySkips: [String: String] = #{literal}\n\n" \
+    "private let swiftSkips: [String: String] =\n" \
+    "    ProcessInfo.processInfo.environment[\"SWIFT_CONFORMANCE_NO_SKIPS\"] == \"1\" " \
+    "? [:] : temporarySkips\n\n" \
     "func run() {\n" \
     "    for tc in testCases {\n" \
     "        if tc.allTags.contains(\"link-header\") {\n" \
+    "            skipped += 1\n" \
+    "            continue\n" \
+    "        }\n" \
+    "        if let reason = swiftSkips[tc.name] {\n" \
     "            skipped += 1\n" \
     "            continue\n" \
     "        }\n" \
@@ -181,7 +195,7 @@ def spec_source(skips)
       "**#{heading}** (`table`) — none.\n\n"
     else
       "**#{heading}** (`table`):\n" +
-        names.map { |n| "- #{n.inspect} — some justification only a human can write.\n" }.join +
+        names.map { |n| "- \"#{n}\" — some justification only a human can write.\n" }.join +
         "\n"
     end
   end.join
@@ -450,7 +464,7 @@ out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
                               'mapOf(Pair("also skipped", REASON), "five of six" to "kotlin reason")')
                        })
 expect_fail(failures, "unrecognized spelling in the first entry", out, status,
-            "mixes key spellings this parser does not recognize")
+            "has a string this parser cannot place")
 
 # A raw or multiline literal is reported rather than guessed at: mis-tokenizing
 # one shifts every string after it.
@@ -492,7 +506,7 @@ out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
                               '"five of six" to "kotlin reason", Pair("also skipped", "why")')
                        })
 expect_fail(failures, "unrecognized key spelling in a map", out, status,
-            "mixes key spellings this parser does not recognize")
+            "has a string this parser cannot place")
 
 # A non-array `tags` answers include? by its own class's rules — a Hash by key,
 # a String by substring — and the wrong answer is silent under-exclusion.
@@ -627,6 +641,69 @@ out, status = run_gate(mutate: lambda { |f|
 })
 expect_pass(failures, "roster justification text is not asserted", out, status)
 
+# --- tag accessors, the swiftSkips wire, and roster bullets ----------------------
+#
+# All four are quiet, and three were reachable by an ordinary refactor in the
+# idiom the surrounding code already uses. The roster gives no backstop for the
+# first two: Kotlin's and Swift's tag exclusions are prose-only, so those bullet
+# lists are empty and the comparison is `[] == []` either way.
+
+# `it.tags` is not an exotic spelling — `Main.kt` writes `.filter { it.mode ==
+# "mock" }` seven lines above the tag branch, so it is the idiom the file
+# teaches. Against a single-literal accessor this branch is invisible.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, KT_MAIN, '        if ("link-header" in tc.tags) {',
+       "        if (cases.filter { \"slow\" !in it.tags }.isEmpty()) { return }\n" \
+       "        if (\"link-header\" in tc.tags) {")
+})
+expect_fail(failures, "second kotlin tag branch spelled it.tags", out, status,
+            "ConformanceSkips::RUNNERS registers 1 whole-case tag branch(es) there")
+
+# Swift's `allTags` is a computed convenience over a stored `tags` sitting right
+# beside it, so the raw spelling is equally natural.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, SWIFT_RUNNER, '        if tc.allTags.contains("link-header") {',
+       "        if tc.tags?.contains(\"slow\") == true { continue }\n" \
+       "        if tc.allTags.contains(\"link-header\") {")
+})
+expect_fail(failures, "second swift tag branch spelled tags", out, status,
+            "ConformanceSkips::RUNNERS registers 1 whole-case tag branch(es) there")
+
+# The run loop consults `swiftSkips`, not the `temporarySkips` this module
+# parses. Wrapping the else-branch honours a skip in Swift and hides it here.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, SWIFT_RUNNER, "? [:] : temporarySkips",
+       '? [:] : temporarySkips.merging(["solo case": "not yet supported"]) { a, _ in a }')
+})
+expect_fail(failures, "swiftSkips wire rewired around temporarySkips", out, status,
+            "the run loop consults `swiftSkips`")
+
+# A case name with inner quotes is not hypothetical: cards_write.json already
+# carries one. A lazy bullet capture truncates it, so the roster could never be
+# made to match the runner.
+out, status = run_gate(skips: with_skips(go: ['a name with "inner" quotes']),
+                       mutate: lambda { |f|
+                         cases = fixture_cases + [{ "name" => 'a name with "inner" quotes',
+                                                    "operation" => "Op" }]
+                         f["conformance/tests/alpha.json"] = JSON.pretty_generate(cases)
+                       })
+expect_pass(failures, "roster bullet with inner quotes round-trips", out, status)
+
+# A bullet the parser cannot read is not an empty block, and "none" cannot tell
+# them apart — worst exactly where Kotlin's and Swift's blocks already say
+# "none BEYOND the tag branch", pre-satisfying the token forever.
+out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
+                       mutate: lambda { |f|
+                         f["SPEC.md"] = f["SPEC.md"].sub(
+                           "- \"five of six\" — some justification only a human can write.",
+                           "- “five of six” — curly quotes the parser cannot read."
+                         )
+                         f["SPEC.md"] = f["SPEC.md"].sub("**Kotlin** (`table`):",
+                                                         "**Kotlin** (`table`) — none beyond the tag branch:")
+                       })
+expect_fail(failures, "unreadable bullet masked by a none token", out, status,
+            "bullet line(s) this parser could not read")
+
 # --- guard sites the per-case matrix showed nothing was reaching -----------------
 #
 # The matrix measures cases against MUTATIONS, so a guard nobody mutated
@@ -651,14 +728,13 @@ out, status = run_gate(skips: with_skips(**all_six.merge(ruby: ["five of six", "
 expect_fail(failures, "ruby line comment containing a brace", out, status,
             '"runs everywhere" is skipped by all 6 runners')
 
-# An escaped quote inside a key must round-trip, or the name never matches the
-# fixture case and the exclusion is silently lost.
-out, status = run_gate(skips: with_skips(**all_six.merge(go: ['a "quoted" case'])),
-                       mutate: lambda { |f|
-                         cases = fixture_cases + [{ "name" => 'a "quoted" case', "operation" => "Op" }]
-                         f["conformance/tests/alpha.json"] = JSON.pretty_generate(cases)
-                       })
-expect_fail(failures, "escaped quote in a key", out, status, "skipped but not rostered")
+# (An escaped quote in a runner key is covered by "roster bullet with inner
+# quotes round-trips" below, which exercises both halves at once: the runner
+# side must unescape `\"` and the roster side must capture past the inner
+# quotes. This case previously asserted a MISMATCH between them, which turned
+# out to be a bug in the crafted roster generator rather than a property —
+# it escaped quotes the way Ruby's `inspect` does, where a human writing prose
+# would not.)
 
 # The separator may be separated from its key by whitespace, a newline or a
 # comment. If that scan stopped recognizing it, NO string would be in key
