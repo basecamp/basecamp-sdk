@@ -525,6 +525,12 @@ type structFields struct {
 	// depend on Go-name shadowing across the whole promotion tree. Own tags
 	// are absent; see populationTargets.
 	tagTargets map[string][]string
+	// declaresJSONMethodDirectly is set from the PRE-CLOSURE method set: this
+	// type's own receiver declarations, not what it inherits or what an
+	// unknown name might carry. The root gate below needs "declares one
+	// itself" to actually mean that; inherited and unknown cases belong to
+	// vouch, which reports them per embed with the right explanation.
+	declaresJSONMethodDirectly bool
 	// promotesFromStruct is true when at least one UNTAGGED embed of this
 	// struct resolves to a struct — the only shape that promotes fields at
 	// all. It is what the scope line means by "embeds a struct", and it is
@@ -730,8 +736,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 	}
 	genStructs := collectStructsAndMarkers(fset, genFile)
 	genJSONMethods, genIfaceEmbeds := collectJSONMethodTypes(genFile)
+	genJSONMethodsDirect := copySet(genJSONMethods) // before the closure widens it
 	closeJSONMethodTypes(genJSONMethods, genIfaceEmbeds)
-	flattenEmbedded(genStructs, collectTypeDecls(genFile), genJSONMethods)
+	flattenEmbedded(genStructs, collectTypeDecls(genFile), genJSONMethods, genJSONMethodsDirect)
 
 	// Parse all wrapper files.
 	entries, err := os.ReadDir(wrapperDir)
@@ -810,8 +817,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 	// across the package: an embed may name a struct declared in another file.
 	// Closed across the whole package: an interface may embed one declared in
 	// another file, and the promotion is just as real.
+	wrapperJSONMethodsDirect := copySet(wrapperJSONMethods) // before the closure widens it
 	closeJSONMethodTypes(wrapperJSONMethods, wrapperIfaceEmbeds)
-	flattenEmbedded(wrapperStructs, wrapperTypeDecls, wrapperJSONMethods)
+	flattenEmbedded(wrapperStructs, wrapperTypeDecls, wrapperJSONMethods, wrapperJSONMethodsDirect)
 
 	// Build the final pair list: union of fromGen + directDecode.
 	pairs := map[string]string{}
@@ -928,7 +936,10 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		// promoted tag that a GENERATED tag actually asked for, counted at the
 		// check itself below, not merely a promoted tag the wrapper happens to
 		// carry.
-		if wrap.promotesFromStruct {
+		// EITHER side embedding counts: this check flattens both universes, and
+		// a flat wrapper paired with a generated struct that embeds is still a
+		// pair whose verdict came through the promotion machinery.
+		if wrap.promotesFromStruct || gen.promotesFromStruct {
 			pairsWithEmbeds++
 		}
 		pairPromotedFields := 0
@@ -943,7 +954,7 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 				missing = append(missing, tag)
 				continue
 			}
-			if len(wrap.tagPath[tag]) > 0 {
+			if len(wrap.tagPath[tag]) > 0 || len(gen.tagPath[tag]) > 0 {
 				promotedFieldsChecked++
 				pairPromotedFields++
 			}
@@ -1239,6 +1250,17 @@ func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) 
 		}
 	}
 	return out, ifaceEmbeds
+}
+
+// copySet snapshots a set so a later closure over it cannot change what the
+// snapshot means. The root gate needs the method sets a type DECLARES, which
+// only exists before the transitive closure runs.
+func copySet(in map[string]bool) map[string]bool {
+	out := make(map[string]bool, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
 }
 
 // closeJSONMethodTypes propagates the method sets through interface embedding
@@ -1557,7 +1579,7 @@ const maxEmbedDepth = 16
 // full rule list. Unresolvable embeds are recorded on the embedding struct's
 // unresolved list — never skipped — and reported by run when a pair reaches
 // them.
-func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl, jsonMethods map[string]bool) {
+func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl, jsonMethods, directJSONMethods map[string]bool) {
 	// Settle which fields the encoder ignores before any promotion runs, for
 	// every struct rather than just the roots: the walk reads a descendant's
 	// ownFields directly, so filtering only at depth 0 would promote a tag out
@@ -1621,7 +1643,8 @@ func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl
 		}
 	}
 
-	for _, sf := range structs {
+	for name, sf := range structs {
+		sf.declaresJSONMethodDirectly = directJSONMethods[name]
 		for _, ref := range sf.embeds {
 			if child, _, _, err := resolveEmbedFull(ref, structs, decls); err == "" && child != nil {
 				sf.promotesFromStruct = true
@@ -1741,9 +1764,9 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 	// being certified against an encoder that bypasses them, and that is the
 	// silent case. None of today's adapters embed anything, so this fires on
 	// none of them.
-	if jsonMethods[rootName] && len(root.embeds)+len(root.taggedEmbeds) > 0 {
+	if root.declaresJSONMethodDirectly && root.promotesFromStruct {
 		root.unresolved = append(root.unresolved,
-			fmt.Sprintf("%s declares MarshalJSON/UnmarshalJSON itself and also embeds a struct; encoding/json calls that method rather than walking the promoted fields, so promotion is not certified here (its own declared tags still are)", rootName))
+			fmt.Sprintf("%s declares a custom JSON or text marshaller itself and also promotes fields through an embedded struct; encoding/json calls that method rather than walking the promoted fields, so promotion is not certified here (its own declared tags still are)", rootName))
 		discardPromotions()
 		return
 	}
@@ -2366,8 +2389,19 @@ func literalToEnumerate(expr ast.Expr) *ast.CompositeLit {
 	if u, ok := expr.(*ast.UnaryExpr); ok && u.Op == token.AND {
 		expr = unparen(u.X)
 	}
-	if cl, ok := expr.(*ast.CompositeLit); ok && cl.Type == nil {
-		return cl
+	if cl, ok := expr.(*ast.CompositeLit); ok {
+		// Type == nil is the ELIDED form inside another literal. A StructType
+		// is an ANONYMOUS struct, which Go lets you assign to a named struct
+		// with the same underlying type — so `n.Base = struct{ID int;
+		// Content string}{ID: g.Id}` sets one field and leaves the other
+		// zero. Both are enumerable, and crediting either as a whole value
+		// would certify fields nobody assigned.
+		if cl.Type == nil {
+			return cl
+		}
+		if _, anon := cl.Type.(*ast.StructType); anon {
+			return cl
+		}
 	}
 	return nil
 }
@@ -2383,8 +2417,10 @@ func deliversWholeValue(expr ast.Expr) bool {
 		*ast.IndexListExpr, *ast.TypeAssertExpr, *ast.StarExpr:
 		return true
 	case *ast.CompositeLit:
-		// A slice or map literal: not a struct, nothing to enumerate as
-		// fields, and a complete value of its own type.
+		// Struct literals — named, elided or anonymous — are enumerated by
+		// literalToEnumerate before this point, so what reaches here is a
+		// slice, array or map literal: nothing to enumerate as fields, and a
+		// complete value of its own type.
 		return true
 	case *ast.UnaryExpr:
 		// &x delivers a pointer to whatever x delivers; <-ch delivers a whole

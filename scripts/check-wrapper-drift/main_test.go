@@ -1157,8 +1157,9 @@ func flattenFixture(t *testing.T, source string) map[string]*structFields {
 	}
 	structs := collectStructsAndMarkers(fset, f)
 	jsonMethods, ifaceEmbeds := collectJSONMethodTypes(f)
+	direct := copySet(jsonMethods)
 	closeJSONMethodTypes(jsonMethods, ifaceEmbeds)
-	flattenEmbedded(structs, collectTypeDecls(f), jsonMethods)
+	flattenEmbedded(structs, collectTypeDecls(f), jsonMethods, direct)
 	return structs
 }
 
@@ -1605,7 +1606,7 @@ type Selfish struct {
 	// terminate fails the test instead of hanging the whole package.
 	done := make(chan struct{})
 	go func() {
-		flattenEmbedded(structs, decls, jsonMethods)
+		flattenEmbedded(structs, decls, jsonMethods, copySet(jsonMethods))
 		close(done)
 	}()
 	select {
@@ -4112,5 +4113,129 @@ func noteFromGenerated(g generated.Note) Note {
 	})
 	if !strings.Contains(stdout, "no pair embeds a struct") {
 		t.Errorf("a tagged embed and an interface embed are not struct promotion; the scope line must say so:\n%s", stdout)
+	}
+}
+
+// TestRecordAssignedValue_AnonymousStructLiteral covers the assignment Go
+// permits between an unnamed struct and a named one with the same underlying
+// type. `n.Base = struct{ID int64; Content string}{ID: g.Id}` sets one field
+// and leaves the other zero; crediting it as a whole value certified a field
+// nobody assigned.
+func TestRecordAssignedValue_AnonymousStructLiteral(t *testing.T) {
+	expr, err := parser.ParseExpr("struct{ ID int64; Content string }{ID: g.Id}")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	assigned := map[string]bool{}
+	recordAssignedValue(assigned, "Base", expr)
+	if !assigned["Base.ID"] {
+		t.Errorf("an anonymous struct literal is enumerated like any other, got %v", assigned)
+	}
+	if assigned["Base.*"] {
+		t.Errorf("and must not be credited as a whole value, got %v", assigned)
+	}
+	if assigned["Base.Content"] {
+		t.Errorf("the field it omits stays uncovered, got %v", assigned)
+	}
+}
+
+// TestFlattenEmbedded_RootGateNeedsRealPromotionAndOwnMethod tightens the root
+// marshaller gate three ways it was wrong: it consulted the CLOSED method set,
+// so an inherited or unknown method read as "declares one itself"; it counted
+// any anonymous field as promotion, so a decode adapter with only a tagged
+// embed was rejected though it promotes nothing; and it named only the JSON
+// pair though the check also matches Text.
+//
+// Inherited cases are not dropped — they belong to vouch, which reports them
+// per embed with the right explanation.
+func TestFlattenEmbedded_RootGateNeedsRealPromotionAndOwnMethod(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type Extra struct {
+	Unasked string ~json:"unasked"~
+}
+
+type Base struct {
+	ID int64 ~json:"id"~
+}
+
+// Declares its own method AND promotes: the case the gate is for.
+type RealCase struct {
+	Base
+	Name string ~json:"name"~
+}
+
+func (r RealCase) MarshalJSON() ([]byte, error) { return nil, nil }
+
+// Declares its own method but promotes nothing — a tagged embed is an
+// ordinary field. This is the repo's decode-adapter shape and must pass.
+type AdapterWithTaggedEmbed struct {
+	Extra ~json:"extra"~
+	ID    int64 ~json:"id"~
+}
+
+func (a *AdapterWithTaggedEmbed) UnmarshalJSON(b []byte) error { return nil }
+`))
+	if rc := structs["RealCase"]; rc == nil || len(rc.unresolved) == 0 {
+		t.Errorf("a root that declares a marshaller AND promotes must be reported, got %+v", structs["RealCase"])
+	}
+	ad := structs["AdapterWithTaggedEmbed"]
+	if ad == nil {
+		t.Fatal("AdapterWithTaggedEmbed not collected")
+	}
+	if len(ad.unresolved) != 0 {
+		t.Errorf("a tagged embed promotes nothing; the adapter shape must not be rejected, got %v", ad.unresolved)
+	}
+	if !ad.tags["id"] || !ad.tags["extra"] {
+		t.Errorf("its own tags are judged normally, got %v", ad.tags)
+	}
+}
+
+// TestRun_ScopeLineCountsTheGeneratedSide closes the last gap in the coverage
+// statement: this check flattens BOTH universes, so a flat wrapper paired with
+// a generated struct that embeds still had its verdict produced by the
+// promotion machinery — and printing "no pair embeds a struct" there is false.
+func TestRun_ScopeLineCountsTheGeneratedSide(t *testing.T) {
+	genSrc := src(`package generated
+
+type Timestamps struct {
+	CreatedAt string ~json:"created_at"~
+}
+
+type Note struct {
+	Timestamps
+	Id int64 ~json:"id"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Note struct {
+	ID        int64  ~json:"id"~
+	CreatedAt string ~json:"created_at"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	n.CreatedAt = g.CreatedAt
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	var stdout string
+	_ = captureStderr(t, func() {
+		stdout = captureStdout(t, func() {
+			if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+				t.Errorf("fixture setup: the wrapper covers both generated tags, got %v", err)
+			}
+		})
+	})
+	if strings.Contains(stdout, "no pair embeds a struct") {
+		t.Errorf("the generated side embeds, and its promoted tag was verified; the scope line must say so:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "1 of 1 pairs embed a struct") {
+		t.Errorf("expected the generated-side embed to count, got:\n%s", stdout)
 	}
 }
