@@ -359,10 +359,22 @@ module ConformanceSkips
     # LOOKS empty", which means an allowlist of per-language empty spellings —
     # `set()`, `emptyMap()`, `[:]`, `{}`, `Set.new([])` — and that is another
     # selector against another spelling, in a control whose rule count has grown
-    # nine times while its coverage has not moved. The instrument that closes
-    # this whole class at once is reading the runners' own `SKIP:` output, and
-    # it closes the percent-string, the nested block comment and every spelling
-    # nobody has written yet along with it.
+    # nine times while its coverage has not moved.
+    #
+    # The instrument that closes the whole class is observing what the runners
+    # actually skip at RUNTIME rather than what their source appears to say.
+    # Five of the six print `  SKIP: <name>`; TypeScript does NOT — it calls
+    # `it.skip()` and the skip surfaces through vitest's reporter, so that lane
+    # needs `--reporter=json` rather than a line match. An earlier version of
+    # this comment said "the runners' own `SKIP:` output" flatly, which was
+    # wrong about TypeScript and made the follow-up sound cheaper than it is.
+    #
+    # The part that IS cheap, and is the real argument for moving: every runner
+    # already reports `Passed/Failed/Skipped/Total`, so `passed + failed +
+    # skipped == mock case count` per runner is one arithmetic identity that
+    # subsumes most of the hand-built guards in this file and in the gate —
+    # nested fixtures, `mode` typos, empty fixtures, dropped cases,
+    # `result.skipped`, derived tables, spreads and percent-strings alike.
     return strings.map(&:first) if keyed.empty?
 
     # In map mode, the key of every ENTRY must be positively recognized.
