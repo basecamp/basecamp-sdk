@@ -88,7 +88,13 @@ object CaseCensus {
      * and a walk that found no fixture files at all.
      */
     fun nonLiveCaseCount(testsDir: File): Int {
+        // onFail is not optional decoration. WITHOUT it, FileTreeWalk silently
+        // skips a directory whose listFiles() fails and keeps going: the
+        // subtree vanishes from the census, the runner never listed it either
+        // (it lists only the top level), and the two sides agree on a count
+        // that omits it — a fail-closed check quietly failing open.
         val files = testsDir.walkTopDown()
+            .onFail { file, e -> throw CensusException("could not walk ${file.path}: ${e.message}") }
             .filter { it.isFile && it.extension == "json" }
             .sortedBy { it.path }
             .toList()

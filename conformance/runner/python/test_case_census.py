@@ -13,6 +13,7 @@ Run: ``uv run pytest test_case_census.py``
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -75,6 +76,26 @@ def test_census_rejects_a_fixture_that_is_not_an_array(tmp_path: Path):
 
     with pytest.raises(RuntimeError):
         count_non_live_cases(tmp_path)
+
+
+def test_census_reports_an_unreadable_subtree(tmp_path: Path):
+    # `Path.rglob` suppressed the scan error, so the subtree was simply omitted
+    # — and the runner's non-recursive glob omits it too, leaving both sides of
+    # the census agreeing over cases neither counted. Root reads through a 0o000
+    # directory, so under root the assertion is that the cases are still
+    # counted; either way they must never be silently dropped.
+    write_fixture(tmp_path / "cases.json", json.dumps(CENSUS_FIXTURE))
+    write_fixture(tmp_path / "locked" / "nested.json", json.dumps(CENSUS_FIXTURE))
+    locked = tmp_path / "locked"
+    locked.chmod(0o000)
+    try:
+        if os.geteuid() == 0:
+            assert count_non_live_cases(tmp_path) == 4
+        else:
+            with pytest.raises(RuntimeError):
+                count_non_live_cases(tmp_path)
+    finally:
+        locked.chmod(0o755)
 
 
 def test_census_rejects_an_empty_tree(tmp_path: Path):

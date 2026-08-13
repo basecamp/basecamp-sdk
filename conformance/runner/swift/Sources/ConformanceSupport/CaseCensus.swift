@@ -90,9 +90,9 @@ public enum CaseCensus {
 
     /// Counts fixture cases whose mode is not `"live"`, recursively.
     ///
-    /// Fail-closed in three places, each a way the count could certify nothing
+    /// Fail-closed in four places, each a way the count could certify nothing
     /// while looking green: an unreadable tree, a fixture that does not parse,
-    /// and a walk that found no fixture files at all.
+    /// a fixture emptied to `[]`, and a walk that found no fixture files at all.
     public static func nonLiveCaseCount(in testsDir: URL) throws -> Int {
         // The errorHandler is not optional decoration. WITHOUT one, the
         // enumerator silently skips a descendant it cannot read and keeps
@@ -113,10 +113,19 @@ public enum CaseCensus {
             throw CensusError.unreadableTree("could not walk \(testsDir.path)")
         }
 
+        // `try`, not `try?`. A failed metadata lookup on a `.json` entry is a
+        // second silent-drop path: discarding it omits that fixture from the
+        // census while the runner omits it too (for a nested entry), so the
+        // totals agree over a file neither side counted.
         var files: [URL] = []
         for case let url as URL in walker where url.pathExtension == "json" {
-            let isRegular = (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile
-            if isRegular == true { files.append(url) }
+            do {
+                if try url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true {
+                    files.append(url)
+                }
+            } catch {
+                throw CensusError.unreadableTree("could not stat \(url.path): \(error)")
+            }
         }
         if let traversalFailure {
             throw CensusError.unreadableTree(traversalFailure)

@@ -7,6 +7,7 @@ them against the SDK using respx for HTTP stubbing.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import time
@@ -103,14 +104,33 @@ def is_mock_mode(mode: str | None) -> bool:
     return (mode if mode is not None else "mock") == "mock"
 
 
+def _fixture_files(tests_dir: str | Path) -> list[Path]:
+    """Every ``*.json`` under ``tests_dir``, recursively, sorted by path.
+
+    ``os.walk`` with ``onerror``, NOT ``Path.rglob``: rglob suppresses the
+    ``OSError`` raised while scanning, so an unreadable subdirectory is simply
+    omitted. The runner's non-recursive glob omits it too, so its cases leave
+    both sides of the census at once and the totals still agree — a fail-closed
+    walk failing open, which is the one failure this function must not have.
+    """
+
+    def onerror(err: OSError) -> None:
+        raise RuntimeError(f"could not walk {getattr(err, 'filename', tests_dir)}: {err}")
+
+    files: list[Path] = []
+    for root, _dirs, names in os.walk(tests_dir, onerror=onerror):
+        files.extend(Path(root) / name for name in names if name.endswith(".json"))
+    return sorted(files)
+
+
 def count_non_live_cases(tests_dir: str | Path) -> int:
     """Count fixture cases whose mode is not ``"live"``, recursively.
 
-    Fail-closed in three places, each a way the count could certify nothing
-    while looking green: an unreadable tree, a fixture that does not parse, and
-    a walk that found no fixture files at all.
+    Fail-closed in four places, each a way the count could certify nothing while
+    looking green: an unreadable tree, a fixture that does not parse, a fixture
+    emptied to ``[]``, and a walk that found no fixture files at all.
     """
-    files = sorted(Path(tests_dir).rglob("*.json"))
+    files = _fixture_files(tests_dir)
     if not files:
         raise RuntimeError(f"no *.json fixture files found under {tests_dir}")
 

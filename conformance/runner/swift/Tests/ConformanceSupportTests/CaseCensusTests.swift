@@ -134,6 +134,11 @@ final class CaseCensusTests: XCTestCase {
         // Without an errorHandler the enumerator skips the unreadable subtree
         // and keeps going, so its cases leave both sides of the census at once
         // and the totals still agree — a fail-closed check failing open.
+        //
+        // Root reads through a 0o000 directory, so under root there is no
+        // unreadable subtree to report and the assertion becomes "the cases are
+        // still counted". Either way the census must never silently drop them,
+        // which is the failure this pins.
         try withFixtureTree(["cases.json": fixture, "locked/nested.json": fixture]) { dir in
             let locked = dir.appendingPathComponent("locked", isDirectory: true)
             try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: locked.path)
@@ -142,13 +147,14 @@ final class CaseCensusTests: XCTestCase {
                     [.posixPermissions: 0o755], ofItemAtPath: locked.path)
             }
 
-            // Root can read through a 0o000 directory, so this cannot assert a
-            // throw unconditionally — but it must never silently drop the
-            // subtree: either the walk fails, or the nested cases are counted.
-            if let count = try? CaseCensus.nonLiveCaseCount(in: dir) {
-                XCTAssertEqual(
-                    count, 4,
-                    "the subtree was neither reported nor counted — the census failed open")
+            if getuid() == 0 {
+                XCTAssertEqual(try CaseCensus.nonLiveCaseCount(in: dir), 4)
+            } else {
+                XCTAssertThrowsError(try CaseCensus.nonLiveCaseCount(in: dir)) { error in
+                    guard case CaseCensus.CensusError.unreadableTree = error else {
+                        return XCTFail("expected an unreadable-tree failure; got \(error)")
+                    }
+                }
             }
         }
     }

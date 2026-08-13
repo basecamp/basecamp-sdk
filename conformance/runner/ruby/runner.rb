@@ -77,8 +77,36 @@ module CaseCensus
   # Fail-closed in three places, each a way the count could certify nothing
   # while looking green: an unreadable tree, a fixture that does not parse, and
   # a walk that found no fixture files at all.
+  # Every *.json under +dir+, recursively, sorted by path.
+  #
+  # A hand-rolled walk over Dir.children, NOT Dir.glob and NOT Find.find. Both
+  # of those swallow the error from a directory they cannot read (find.rb
+  # rescues Errno::EACCES and moves on), so an unreadable subdirectory is simply
+  # omitted. The runner's non-recursive glob omits it too, so its cases leave
+  # both sides of the census at once and the totals still agree — a fail-closed
+  # walk failing open, which is the one failure this must not have.
+  # Dir.children raises, which is the whole reason it is the API used here.
+  def self.fixture_files(dir)
+    entries = begin
+      Dir.children(dir)
+    rescue SystemCallError => e
+      raise Error, "could not walk #{dir}: #{e.message}"
+    end
+
+    entries.sort.flat_map do |name|
+      path = File.join(dir, name)
+      if File.directory?(path)
+        fixture_files(path)
+      elsif File.extname(path) == ".json"
+        [ path ]
+      else
+        []
+      end
+    end
+  end
+
   def self.non_live_case_count(tests_dir)
-    files = Dir.glob(File.join(tests_dir, "**", "*.json")).sort
+    files = fixture_files(tests_dir).sort
     raise Error, "no *.json fixture files found under #{tests_dir}" if files.empty?
 
     files.sum do |file|

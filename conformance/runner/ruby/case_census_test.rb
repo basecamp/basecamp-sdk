@@ -78,6 +78,28 @@ class CaseCensusTest < Minitest::Test
     end
   end
 
+  def test_census_reports_an_unreadable_subtree
+    # Dir.glob (and Find.find, which rescues Errno::EACCES) swallowed the error
+    # and omitted the subtree — and the runner's non-recursive glob omits it
+    # too, leaving both sides of the census agreeing over cases neither counted.
+    # Root reads through a 0o000 directory, so under root the assertion is that
+    # the cases are still counted; either way they must never be dropped.
+    files = { "cases.json" => JSON.dump(FIXTURE), "locked/nested.json" => JSON.dump(FIXTURE) }
+    with_fixture_tree(files) do |dir|
+      locked = File.join(dir, "locked")
+      File.chmod(0o000, locked)
+      begin
+        if Process.euid.zero?
+          assert_equal 4, CaseCensus.non_live_case_count(dir)
+        else
+          assert_raises(CaseCensus::Error) { CaseCensus.non_live_case_count(dir) }
+        end
+      ensure
+        File.chmod(0o755, locked)
+      end
+    end
+  end
+
   def test_census_rejects_an_empty_tree
     # A census that counted nothing certifies nothing: zero on both sides is the
     # shape a broken walk takes.

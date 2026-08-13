@@ -100,6 +100,36 @@ class CaseCensusTest {
     }
 
     @Test
+    fun `census reports an unreadable subtree`() {
+        // FileTreeWalk without onFail skipped the subtree and kept going — and
+        // the runner's non-recursive listing omits it too, leaving both sides
+        // of the census agreeing over cases neither counted. Root reads through
+        // a 0o000 directory, so under root the assertion is that the cases are
+        // still counted; either way they must never be silently dropped.
+        val files = mapOf("cases.json" to fixture, "locked/nested.json" to fixture)
+        withFixtureTree(files) { dir ->
+            val locked = File(dir, "locked")
+            val posix = java.nio.file.Files.getFileAttributeView(
+                locked.toPath(), java.nio.file.attribute.PosixFileAttributeView::class.java
+            )
+            posix.setPermissions(emptySet())
+            try {
+                if (System.getProperty("user.name") == "root") {
+                    assertEquals(4, CaseCensus.nonLiveCaseCount(dir))
+                } else {
+                    assertFailsWith<CaseCensus.CensusException> {
+                        CaseCensus.nonLiveCaseCount(dir)
+                    }
+                }
+            } finally {
+                posix.setPermissions(
+                    java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-xr-x")
+                )
+            }
+        }
+    }
+
+    @Test
     fun `census rejects an empty tree`() {
         // A census that counted nothing certifies nothing: zero on both sides
         // is the shape a broken walk takes.
