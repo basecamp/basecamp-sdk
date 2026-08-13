@@ -655,6 +655,62 @@ failures << check(
   expect_pass: true,
 )
 
+# --- Cases 27-28: the gate must not die reading bytes it did not decode ------
+#
+# Reported: an UNREACHABLE target delegating to a shell script with non-UTF-8
+# bytes took the whole gate down with `ArgumentError: invalid byte sequence in
+# UTF-8`. Two separate defects met there, and they need separate cases because
+# either fix alone hides the reported symptom:
+#
+#   27  scope — the scan now runs only over the reachable set, so an
+#       out-of-scope target's script is never opened at all. Goes red only when
+#       BOTH fixes are reverted, and the case says so rather than pretending to
+#       discriminate one.
+#   28  encoding — an IN-SCOPE script with the same bytes would still have
+#       crashed, which reordering alone would have hidden. `File.read(...,
+#       encoding: "UTF-8")` TAGS bytes, it does not validate them; the scrub is
+#       what keeps the gate runnable. This is #669's bug class inside the gate
+#       shipped to fix it.
+#
+# \xE2 alone is an invalid UTF-8 sequence (the lead byte of an em-dash with its
+# continuation bytes removed), which is what a truncated or latin-1 comment
+# looks like in practice.
+INVALID_UTF8_SCRIPT = %(#!/usr/bin/env bash\n# comment with a bad byte: \xE2 here\n(cd "$ROOT_DIR/kotlin" && ./gradlew help)\n).b
+
+Dir.mktmpdir("gradle-serialization-badbytes") do |root|
+  FileUtils.mkdir_p(File.join(root, "scripts"))
+  FileUtils.mkdir_p(File.join(root, "kotlin"))
+  FileUtils.touch(File.join(root, "kotlin", "gradlew"))
+  File.binwrite(File.join(root, "scripts", "probe-bad-bytes.sh"), INVALID_UTF8_SCRIPT)
+
+  # NOT added to check-targets: out of scope, so the gate must not read it.
+  failures << check(
+    "27: an out-of-scope delegate with invalid UTF-8 does not kill the gate",
+    MAKEFILE + <<~MAKE,
+
+      .PHONY: probe-out-of-scope-bytes
+      probe-out-of-scope-bytes:
+      \t@./scripts/probe-bad-bytes.sh
+    MAKE
+    expect_pass: true,
+    root: root,
+  )
+
+  # IN scope, and chained, so the correct verdict is a pass — reached, read,
+  # scrubbed, and its kotlin/ build ordered behind the chain.
+  failures << check(
+    "28: an in-scope delegate with invalid UTF-8 is read, not fatal",
+    must_substitute(MAKEFILE, "check-targets: ", "check-targets: probe-in-scope-bytes ") + <<~MAKE,
+
+      .PHONY: probe-in-scope-bytes
+      probe-in-scope-bytes: | conformance-kotlin
+      \t@./scripts/probe-bad-bytes.sh
+    MAKE
+    expect_pass: true,
+    root: root,
+  )
+end
+
 failures.compact!
 
 if failures.empty?

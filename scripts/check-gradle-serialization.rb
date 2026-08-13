@@ -34,7 +34,12 @@
 # COVERAGE, HONESTLY. Four boundaries, and none of them is "every Gradle
 # target":
 #
-#   1. ONE GOAL. Only targets reachable from check-targets (by default), because
+#   1. ONE GOAL — and it bounds what this gate TOUCHES, not just what it
+#      reports. Only recipes reachable from the goal are scanned at all; an
+#      earlier cut filtered the scan's RESULTS instead, which left it opening
+#      delegated scripts belonging to targets it had already declared out of
+#      scope, where an undecodable byte took the whole gate down. Only targets
+#      reachable from check-targets (by default), because
 #      that is the graph `make check` executes. kt-check-generated-drift is
 #      DISCOVERED (see 2) but not COVERED: `make check` cannot schedule it, so
 #      it collides with nothing there, while a hand-written
@@ -248,7 +253,7 @@ def read_make_database(makefile)
     { "MAKEFLAGS" => "", "MAKELEVEL" => "0" },
     ["make", "-p", "-n", "--no-print-directory", "-f", makefile, PROBE_GOAL],
     err: File::NULL, external_encoding: Encoding::UTF_8, &:read
-  )
+  )&.scrub
   die "could not read make's database from #{makefile}" if dump.nil? || dump.empty?
 
   graph = {}
@@ -459,7 +464,16 @@ def delegated_gradle_dir(lines, repo_root)
 
       # UTF-8 pinned for the same reason as the pipe read above: these scripts
       # carry em-dashes, and LC_ALL=C would make an unpinned read US-ASCII.
-      source = File.read(path, encoding: "UTF-8")
+      # Pinned AND scrubbed. The pin alone only decides how the bytes are
+      # TAGGED; it does not make them valid, and the first regex over a string
+      # holding an invalid sequence raises ArgumentError. That is #669's own bug
+      # class — the one this PR exists to fix — resurfacing inside the gate that
+      # ships with it, because this is the one place the gate reads arbitrary
+      # repo bytes rather than make's output. Scrubbing keeps a guard that can
+      # RUN: every pattern below is ASCII, so replacing an undecodable byte
+      # cannot hide a Gradle invocation, while raising would take out `make
+      # check` over a comment in a shell script.
+      source = File.read(path, encoding: "UTF-8").scrub
       shebang = source.lines.first.to_s
       next unless shebang.start_with?("#!") && shebang.match?(/\b(?:ba|da|k|z)?sh\b/)
 
@@ -616,16 +630,21 @@ end
 graph, recipes, variables, target_variables = read_make_database(MAKEFILE)
 die "goal #{GOAL} is not defined in #{MAKEFILE}" unless graph.key?(GOAL)
 
-gradle, unrecognized = gradle_targets(recipes, MAKEFILE, variables, target_variables)
+# Reachability BEFORE the scan, not after it. Filtering the scan's RESULTS left
+# the scan itself running over every recipe in the database, so an out-of-scope
+# target could still take the gate down from inside — reading a delegated script
+# it was never scoped to read. Boundary 1 has to bind what this gate TOUCHES,
+# not just what it reports. It is also strictly less work.
+in_goal = reachable_from(graph, GOAL)
+in_scope = recipes.select { |target, _| in_goal.include?(target) }
+
+gradle, unrecognized = gradle_targets(in_scope, MAKEFILE, variables, target_variables)
 die "found no Gradle-backed targets in #{MAKEFILE} — the recipe shape this " \
     "gate matches (`cd <dir> && ./gradlew`) must have changed" if gradle.empty?
 
-in_goal = reachable_from(graph, GOAL)
-
-# Scope first, complain second — boundary 1 applies to errors as well as to
-# collisions.
-report_unrecognized(unrecognized.select { |target, _| in_goal.include?(target) }, MAKEFILE)
-covered = gradle.select { |target, _| in_goal.include?(target) }
+# No scope filter needed here any more: nothing out of scope was ever scanned.
+report_unrecognized(unrecognized, MAKEFILE)
+covered = gradle
 
 # dir => targets that build in it. A target with two directories appears twice,
 # and must be ordered against the others in BOTH.
