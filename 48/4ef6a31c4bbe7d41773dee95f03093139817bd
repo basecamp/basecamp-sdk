@@ -1,0 +1,33 @@
+CONTRIBUTING.md
+  s_1422259b814b0b::t_0fe99b4685f5f0 236-237
+SPEC.md
+  s_1422259b814b0b::t_7a39fcf375f4b8 20
+scripts/test-doc-constants.rb
+  s_004b300f1ab3a9::t_0d27bf8208a4e1 779-807
+scripts/sync-doc-constants.rb
+  s_004b300f1ab3a9::t_68ec84e6610cf5 711-713,721,736-743,747
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "484ef6a31c4bbe7d41773dee95f03093139817bd",
+  "prompts": {},
+  "sessions": {
+    "s_004b300f1ab3a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e61a809-755b-4da8-94be-3334b6a9f67a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_1422259b814b0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74937094-d1a9-48b2-abca-c6cd34fafe43",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
