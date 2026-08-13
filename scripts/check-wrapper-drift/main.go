@@ -533,6 +533,13 @@ type structFields struct {
 	// promotion sources, but an unexported one is only on the wire if its type
 	// is a struct — which needs the universe, so flattenEmbedded settles it.
 	taggedEmbeds []taggedEmbed
+	// decodeUnsafeOwn lists this struct's OWN decode-breaking embeds, computed
+	// once by flattenEmbedded and never appended to afterwards. Keeping it
+	// separate from decodeUnsafe is what makes the walk's output deterministic:
+	// a root accumulates into decodeUnsafe, and if that were the same slice a
+	// parent read from, whether it saw a child's inherited records would depend
+	// on map iteration order — and the same record could be copied twice.
+	decodeUnsafeOwn []string
 	// decodeUnsafe lists embeds that break DECODING only: an embedded pointer
 	// to an unexported type, which encoding/json refuses to allocate ("cannot
 	// set embedded pointer to unexported struct"). Marshalling and in-Go
@@ -814,7 +821,8 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 	var drift []string
 	totalFieldsChecked := 0
 	totalFieldsPopChecked := 0
-	embeddedPairs := 0         // pairs whose wrapper actually promotes fields through an embed
+	pairsWithEmbeds := 0       // pairs whose wrapper DECLARES an embed, whatever came of it
+	pairsWithPromotions := 0   // pairs where a promoted tag actually survived to be checked
 	promotedFieldsChecked := 0 // generated tags satisfied by a promoted (not directly declared) field
 	for _, wrapName := range pairNames {
 		genName := pairs[wrapName]
@@ -860,8 +868,16 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		// underneath to get wrong, and `w.ID = 1` or `w.Name = first + last`
 		// are perfectly good assignments the check has always accepted.
 		if !isTier2 {
+			// Only tags that are actually being CHECKED count: a tag the
+			// generated struct does not declare is not this pair's business,
+			// and one the wrapper intentionally omits has been answered
+			// already. Without that filter the report survives the marker its
+			// own message recommends, which makes the instruction a dead end.
 			subtreeMatters := map[string]bool{}
 			for tag := range wrap.tagPath {
+				if !gen.tags[tag] || wrap.omitted[tag] {
+					continue
+				}
 				for _, target := range wrap.populationTargets(tag) {
 					if strings.HasSuffix(target, ".*") {
 						subtreeMatters[strings.TrimSuffix(target, ".*")] = true
@@ -894,8 +910,16 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		}
 		sort.Strings(tags)
 
+		// Two different facts, and conflating them lets the scope line below
+		// claim nothing embeds a struct while something does: a wrapper whose
+		// promotion was REFUSED (method-bearing), whose embedded struct has no
+		// tagged fields, or whose tags annihilated in a diamond declares an
+		// embed and contributes no tagPath.
+		if len(wrap.embeds)+len(wrap.taggedEmbeds) > 0 {
+			pairsWithEmbeds++
+		}
 		if len(wrap.tagPath) > 0 {
-			embeddedPairs++
+			pairsWithPromotions++
 		}
 		var missing []string
 		var unpopulated []string
@@ -963,10 +987,12 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 	// is the case in this repo today — the embedded-field machinery verified
 	// nothing and the line should not let a reader think otherwise.
 	switch {
-	case embeddedPairs == 0:
+	case pairsWithEmbeds == 0:
 		fmt.Println("  Embedded-field promotion: no pair embeds a struct, so nothing above was verified through it.")
+	case promotedFieldsChecked == 0:
+		fmt.Printf("  Embedded-field promotion: %d of %d pairs embed a struct, but no promoted tag reached the check — annihilated, untagged, or refused (any refusal is reported above).\n", pairsWithEmbeds, len(pairNames))
 	default:
-		fmt.Printf("  Embedded-field promotion: %d of %d pairs embed a struct; %d promoted fields verified through it.\n", embeddedPairs, len(pairNames), promotedFieldsChecked)
+		fmt.Printf("  Embedded-field promotion: %d of %d pairs embed a struct, %d of them contributing %d promoted fields to the checks above.\n", pairsWithEmbeds, len(pairNames), pairsWithPromotions, promotedFieldsChecked)
 	}
 	fmt.Println("  Scope: shapes this walker resolves. Unrecognised embeds and assignment shapes are reported as drift, never assumed away — see the CAN/CANNOT list in this file's header.")
 
@@ -1247,7 +1273,7 @@ func closeJSONMethodTypes(direct map[string]bool, ifaceEmbeds map[string][]strin
 // defined type starts with an empty method set.
 func vouch(e embedRef, childName string, methodsTravel bool, resolveErr string, jsonMethods map[string]bool) string {
 	if jsonMethods[e.name] || (methodsTravel && childName != "" && jsonMethods[childName]) {
-		return "the embedded type's method set carries MarshalJSON/UnmarshalJSON, which the embedding struct promotes; encoding/json then calls it instead of walking any of these fields, so no promoted tag here is trustworthy"
+		return "the embedded type's method set carries a custom JSON or text marshaller (MarshalJSON/UnmarshalJSON/MarshalText/UnmarshalText), which the embedding struct promotes; encoding/json then calls it instead of walking any of these fields, so no promoted tag here is trustworthy"
 	}
 	if resolveErr != "" {
 		// An unresolvable type may also be a marshaller — time.Time is one —
@@ -1566,7 +1592,7 @@ func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl
 	// and that is just as true when the field arrives by promotion as when the
 	// struct holding it is the one being judged.
 	for name, sf := range structs {
-		sf.decodeUnsafe = nil
+		sf.decodeUnsafeOwn = nil
 		refs := make([]embedRef, 0, len(sf.embeds)+len(sf.taggedEmbeds))
 		refs = append(refs, sf.embeds...)
 		for _, te := range sf.taggedEmbeds {
@@ -1582,7 +1608,7 @@ func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl
 			if child, _, _, err := resolveEmbedFull(ref, structs, decls); err != "" || child == nil {
 				continue
 			}
-			sf.decodeUnsafe = append(sf.decodeUnsafe,
+			sf.decodeUnsafeOwn = append(sf.decodeUnsafeOwn,
 				fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates its promoted fields)", name, ref.display))
 		}
 	}
@@ -1669,21 +1695,17 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 		root.tagTargets = map[string][]string{}
 	}
 
+	// This struct's own decode-breaking embeds — tagged and untagged alike —
+	// were settled by the pre-pass. Seed the accumulated list from them; the
+	// walk adds what it inherits from the structs it reaches.
+	root.decodeUnsafe = append([]string(nil), root.decodeUnsafeOwn...)
+
 	// A json tag stops an anonymous field from promoting its FIELDS. It does
 	// nothing to method promotion — that is a language rule which never
 	// consults tags — so a tagged embed is vouched for on exactly the same
 	// terms as an untagged one.
 	for _, te := range root.taggedEmbeds {
-		child, childName, methodsTravel, err := resolveEmbedFull(te.ref, structs, decls)
-		if child != nil && te.ref.pointer && !ast.IsExported(te.ref.name) {
-			// Same allocation problem as an untagged one: the tag changes which
-			// KEY the field appears under, not whether the decoder can create
-			// it. Only for a STRUCT, though — encoding/json ignores an
-			// anonymous unexported non-struct field outright, so there is
-			// nothing it failed to allocate.
-			root.decodeUnsafe = append(root.decodeUnsafe,
-				fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates it)", rootName, te.ref.display))
-		}
+		_, childName, methodsTravel, err := resolveEmbedFull(te.ref, structs, decls)
 		if reason := vouch(te.ref, childName, methodsTravel, err, jsonMethods); reason != "" {
 			root.unresolved = append(root.unresolved, fmt.Sprintf("%s -> %s (%s)", rootName, te.ref.display, reason))
 			discardPromotions()
@@ -1757,7 +1779,12 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 				// Those records are computed for every struct before any root
 				// is walked, so this does not depend on iteration order.
 				if child != nil && childName != rootName {
-					for _, du := range child.decodeUnsafe {
+					// Only the child's OWN records: its accumulated list may
+					// already hold what IT inherited, and copying that would
+					// duplicate entries and make the output depend on which
+					// struct flattenEmbedded happened to walk first. This walk
+					// reaches every descendant itself.
+					for _, du := range child.decodeUnsafeOwn {
 						root.decodeUnsafe = append(root.decodeUnsafe,
 							fmt.Sprintf("%s (reached through %s)", du, strings.Join(append([]string{rootName}, parent.path...), ".")))
 					}
@@ -2343,6 +2370,11 @@ func deliversWholeValue(expr ast.Expr) bool {
 		// fields, and a complete value of its own type.
 		return true
 	case *ast.UnaryExpr:
+		// &x delivers a pointer to whatever x delivers; <-ch delivers a whole
+		// value of the channel's element type, exactly as a call does.
+		if e.Op == token.ARROW {
+			return true
+		}
 		return e.Op == token.AND && deliversWholeValue(e.X)
 	}
 	return false

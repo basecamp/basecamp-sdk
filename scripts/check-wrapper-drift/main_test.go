@@ -3776,3 +3776,206 @@ func noteFromGenerated(g generated.Note) Note {
 		t.Error("run: an uninterpretable value assigned to an embed must still be reported")
 	}
 }
+
+// TestRun_ScopeLineDoesNotUnderstateEmbedding guards the gate's statement about
+// its OWN coverage. Counting "pairs that embed a struct" by whether a promoted
+// tag survived made the line claim nothing embeds a struct while something did:
+// a refused (method-bearing) promotion, an embedded struct with no tagged
+// fields, and a diamond whose tags annihilate all leave tagPath empty.
+//
+// A gate that overstates its reach is the failure this PR exists to fix; one
+// that misreports its own coverage is the same failure with the opposite sign.
+func TestRun_ScopeLineDoesNotUnderstateEmbedding(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id int64 ~json:"id"~
+}
+`)
+	// The wrapper embeds a struct whose promotion is REFUSED, so no promoted
+	// tag survives — but it plainly embeds one.
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Stamp struct {
+	At string ~json:"at"~
+}
+
+func (s Stamp) MarshalJSON() ([]byte, error) { return nil, nil }
+
+type Note struct {
+	Stamp
+	ID int64 ~json:"id"~
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.ID = g.Id
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	var stdout string
+	stderr := captureStderr(t, func() {
+		stdout = captureStdout(t, func() {
+			// The refusal itself is drift; the assertion here is about what the
+			// scope line SAYS, not about the verdict.
+			_ = run(wrapperDir, generatedFile, nil, nil, false)
+		})
+	})
+	_ = stderr
+	if strings.Contains(stdout, "no pair embeds a struct") {
+		t.Errorf("the scope line must not claim nothing embeds a struct when a pair does:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "1 of 1 pairs embed a struct") {
+		t.Errorf("expected the embed count to be reported, got:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "no promoted tag reached the check") {
+		t.Errorf("and to say that nothing was verified through it, got:\n%s", stdout)
+	}
+}
+
+// captureStdout is captureStderr's twin: the scope and summary lines go to
+// stdout, and they make claims worth asserting on.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	saved := os.Stdout
+	os.Stdout = w
+	done := make(chan string, 1)
+	go func() {
+		var buf strings.Builder
+		io.Copy(&buf, r)
+		done <- buf.String()
+	}()
+	fn()
+	os.Stdout = saved
+	w.Close()
+	out := <-done
+	r.Close()
+	return out
+}
+
+// TestFlattenEmbedded_DecodeUnsafeIsNotDoubleCounted pins the determinism fix.
+// Each struct's own records are computed once and never appended to; a root
+// accumulates separately. Sharing one slice made a parent's output depend on
+// whether its child had been flattened first — randomized map order — and
+// could copy the same record twice.
+func TestFlattenEmbedded_DecodeUnsafeIsNotDoubleCounted(t *testing.T) {
+	source := src(`package fixture
+
+type hidden struct {
+	ID int64 ~json:"id"~
+}
+
+type Inner struct {
+	*hidden
+	Name string ~json:"name"~
+}
+
+type Middle struct {
+	Inner
+}
+
+type Outer struct {
+	Middle
+}
+`)
+	// Flatten repeatedly: each run gets a fresh universe, and map iteration
+	// order differs between them. Every run must produce the same counts.
+	want := -1
+	for i := 0; i < 25; i++ {
+		structs := flattenFixture(t, source)
+		outer := structs["Outer"]
+		if outer == nil {
+			t.Fatal("Outer not collected")
+		}
+		if want == -1 {
+			want = len(outer.decodeUnsafe)
+		}
+		if len(outer.decodeUnsafe) != want {
+			t.Fatalf("run %d: got %d decode-unsafe records, first run got %d — output depends on map order: %v",
+				i, len(outer.decodeUnsafe), want, outer.decodeUnsafe)
+		}
+		seen := map[string]bool{}
+		for _, du := range outer.decodeUnsafe {
+			if seen[du] {
+				t.Fatalf("duplicate record: %q in %v", du, outer.decodeUnsafe)
+			}
+			seen[du] = true
+		}
+	}
+	if want != 1 {
+		t.Errorf("expected exactly one record for the single undecodable embed, got %d", want)
+	}
+}
+
+// TestRun_OmittedTagClearsUnrecognizedValueReport holds the report to its own
+// advice. It tells the reader to mark the affected tags
+// `intentionally-omitted`; before this, omitted tags still counted toward the
+// subtree, so the marker could not clear the drift it was recommended for. An
+// instruction that does not resolve the error is worse than none.
+func TestRun_OmittedTagClearsUnrecognizedValueReport(t *testing.T) {
+	genSrc := src(`package generated
+
+type Note struct {
+	Id      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+`)
+	wrapperSrc := src(`package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Base struct {
+	ID      int64  ~json:"id"~
+	Content string ~json:"content"~
+}
+
+type Note struct {
+	Base
+}
+
+func noteFromGenerated(g generated.Note) Note {
+	n := Note{}
+	n.Base = *baseOf(g) + *baseOf(g)
+	return n
+}
+`)
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"note.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
+		t.Fatal("fixture setup: the uninterpretable value must report before the markers are added")
+	}
+
+	marked := strings.Replace(wrapperSrc, "type Note struct {\n\tBase\n}",
+		"type Note struct {\n\t// intentionally-omitted: id - answered by the marker, not the walker\n\t// intentionally-omitted: content - same\n\tBase\n}", 1)
+	if !strings.Contains(marked, "intentionally-omitted: id") {
+		t.Fatal("fixture setup: markers were not added")
+	}
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"note.go": marked})
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
+		t.Errorf("the marker the message recommends must clear the report it is recommended for, got %v", err)
+	}
+}
+
+// TestRecordAssignedValue_ChannelReceive covers `w.Base = <-ch`, which delivers
+// a whole value of the field's type exactly as a call does. Treating it as
+// uninterpretable is the over-report class this walk shipped once already.
+func TestRecordAssignedValue_ChannelReceive(t *testing.T) {
+	expr, err := parser.ParseExpr("<-ch")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	assigned := map[string]bool{}
+	recordAssignedValue(assigned, "Base", expr)
+	if !assigned["Base.*"] {
+		t.Errorf("a channel receive delivers a whole value and covers the subtree, got %v", assigned)
+	}
+	if assigned[unrecognizedPrefix+"Base"] {
+		t.Errorf("and must not be recorded as unrecognised, got %v", assigned)
+	}
+}
