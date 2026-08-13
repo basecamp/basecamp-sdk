@@ -1,0 +1,27 @@
+conformance/runner/ruby/runner.rb
+  s_fca5acb3cc9413::t_48c95900658835 88-89,93
+  s_fca5acb3cc9413::t_f4e466301d2235 1599
+  s_fca5acb3cc9413::t_05bc134c968839 41-52
+  s_fca5acb3cc9413::t_d760556bff627c 1570-1579
+  s_fca5acb3cc9413::t_53466e055bf652 18-40,53-87,90-92,94-115
+  s_fca5acb3cc9413::t_732c40382f49b4 1632-1636,1638
+conformance/runner/ruby/case_census_test.rb
+  s_fca5acb3cc9413::t_cd5900b6c12a3f 75-80
+  s_fca5acb3cc9413::t_6e6477db20a815 1-74,81-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "97aceb24b921a35e08e85ee8841c4a5f93c40251",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
