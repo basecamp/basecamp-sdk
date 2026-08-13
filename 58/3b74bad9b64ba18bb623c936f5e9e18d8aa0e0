@@ -1,0 +1,27 @@
+conformance/runner/go/case_census_test.go
+  s_fca5acb3cc9413::t_ee883a7a23f39b 106-114
+  s_fca5acb3cc9413::t_068e74f204f7d1 1-105,115-169
+conformance/runner/go/main.go
+  s_fca5acb3cc9413::t_909558d153e3f5 153-161
+  s_fca5acb3cc9413::t_0447afa41a10dc 207-213,215
+  s_fca5acb3cc9413::t_ee08bb94833092 245
+conformance/runner/go/case_census.go
+  s_fca5acb3cc9413::t_f138dbf06870d7 27-38
+  s_fca5acb3cc9413::t_74d5a29c350d6d 1-26,39-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "583b74bad9b64ba18bb623c936f5e9e18d8aa0e0",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
