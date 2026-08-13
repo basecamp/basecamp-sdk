@@ -697,9 +697,14 @@ SEPARATOR_CELL_RE = /\A:?-+:?\z/
 # The cells of one Markdown table row, stripped. The leading empty string before
 # the opening pipe is dropped; Ruby's split already drops the trailing one.
 def table_cells(line)
-  parts = line.split("|")
+  # Split on UNESCAPED pipes only. `\|` inside a cell is ordinary Markdown —
+  # "supports A \| B" is a legitimate test summary — and a raw split would treat
+  # the text after it as the next column, shifting every cell along. A row whose
+  # Primary section is actually blank then presents a non-empty cell there and
+  # satisfies the blank-cell guard.
+  parts = line.split(/(?<!\\)\|/)
   parts.shift
-  parts.map(&:strip)
+  parts.map { |cell| cell.strip.gsub("\\|", "|") }
 end
 
 # The DATA rows of the table inside a marked span, as [line_no, cells] pairs.

@@ -320,7 +320,8 @@ out, status = run_gate(
     f["conformance/tests/alpha.json"] = JSON.pretty_generate(cases)
   }
 )
-expect_pass(failures, "live cases are out of scope", out, status)
+expect_fail(failures, "skip naming a live-only case is a dead waiver", out, status,
+            "exist only in live mode")
 
 # An unrecognized mode is an all-six exclusion one step earlier, and a silent
 # one: every runner spells the filter as "mock unless told otherwise".
@@ -464,7 +465,21 @@ out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
                               'mapOf(Pair("also skipped", REASON), "five of six" to "kotlin reason")')
                        })
 expect_fail(failures, "unrecognized spelling in the first entry", out, status,
-            "has a string this parser cannot place")
+            "entry has no key this parser can place")
+
+# The ordering that defeated the NEIGHBOUR heuristic, which inferred key-ness
+# from the previous string and so assumed values are strings. With a CONSTANT
+# value the value slot holds no string, so `mapOf("A" to REASON, Pair("B",
+# REASON))` read as A(keyed), B(unkeyed) and B — a real skip — was accepted as
+# A's value and dropped. Reading entry structure rather than adjacency is what
+# closes it, and this is the case that proves the difference.
+out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
+                       mutate: lambda { |f|
+                         edit(f, KT_MAIN, 'mapOf("five of six" to "kotlin reason")',
+                              'mapOf("five of six" to REASON, Pair("also skipped", REASON))')
+                       })
+expect_fail(failures, "unrecognized entry after one with a constant value", out, status,
+            "entry has no key this parser can place")
 
 # A raw or multiline literal is reported rather than guessed at: mis-tokenizing
 # one shifts every string after it.
@@ -490,10 +505,8 @@ out, status = run_gate(mutate: lambda { |f|
   f["conformance/tests/nested/deep.json"] =
     JSON.pretty_generate([{ "name" => "nested case nothing runs", "operation" => "Op" }])
 })
-expect_pass(failures, "nested fixtures are out of scope, not vouched for", out, status)
-unless utf8(out).include?("across 1 fixture(s)")
-  failures << "nested fixture must not be counted as discovered:\n#{utf8(out)}"
-end
+expect_fail(failures, "nested fixture is rejected, not silently excluded", out, status,
+            "executed by NO runner")
 
 # An entry whose key spelling the parser does not recognize must be REPORTED,
 # never read as a value. Kotlin's `Pair(...)` form is the concrete case, and it
@@ -506,7 +519,7 @@ out, status = run_gate(skips: with_skips(kotlin: ["five of six"]),
                               '"five of six" to "kotlin reason", Pair("also skipped", "why")')
                        })
 expect_fail(failures, "unrecognized key spelling in a map", out, status,
-            "has a string this parser cannot place")
+            "entry has no key this parser can place")
 
 # A non-array `tags` answers include? by its own class's rules — a Hash by key,
 # a String by substring — and the wrong answer is silent under-exclusion.

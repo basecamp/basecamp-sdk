@@ -284,7 +284,8 @@ module ConformanceSkips
     end
 
     offset = lines[0, hits.first].sum(&:length) + assignment
-    strings, state = scan(source, offset, table.comment)
+    events, state = scan(source, offset, table.comment)
+    strings = events.select { |kind,| kind == :string }.map { |_, v, k, d| [v, k, d] }
 
     if state == :unclosed
       raise ExtractionError,
@@ -300,6 +301,48 @@ module ConformanceSkips
     # Python's `{"k"}` without six spellings of the same rule.
     keyed = strings.select { |_, separator| separator }
     return strings.map(&:first) if keyed.empty?
+
+    # In map mode, the key of every ENTRY must be positively recognized.
+    #
+    # This replaces a neighbour heuristic that was defeated twice. It inferred
+    # key-ness from the previous string — "a value is always preceded by its
+    # key" — which assumes values ARE strings. With a constant value the value
+    # slot holds no string at all, so `mapOf("A" to REASON, Pair("B", REASON))`
+    # reads as A(keyed), B(unkeyed) and B is accepted as A's value. B is a real
+    # skip, silently dropped, and if the other five exclude that case the gate
+    # reports a passing five-of-six. Reversing the entries defeated the earlier
+    # pairwise form the same way.
+    #
+    # Both bites came from inferring structure from adjacency. So the rule now
+    # reads structure: commas at the entry depth delimit entries, and an entry
+    # holding strings must have its FIRST string in key position. That is the
+    # instrument change rather than a fifteenth selector — it rejects any entry
+    # spelling this parser does not recognize, including ones nobody has written
+    # yet, instead of enumerating the ones that have been.
+    #
+    # Deliberately NOT strict alternation: `{"a": REASON, "b": OTHER}` yields two
+    # adjacent keyed strings and is perfectly readable.
+    entry_depth = strings.map { |s| s[2] }.min
+    entries = [[]]
+    events.each do |kind, value, is_keyed, depth|
+      if kind == :comma && depth == entry_depth
+        entries << []
+      elsif kind == :string
+        entries.last << [value, is_keyed]
+      end
+    end
+
+    entries.each do |entry|
+      next if entry.empty?
+      next if entry.first[1]
+
+      raise ExtractionError,
+            "a skip table entry has no key this parser can place: #{entry.first[0].inspect} " \
+            "opens an entry whose key position is not recognized. A key is spelled with `:`, " \
+            "`=>` or `to`; an entry written any other way — `Pair(\"k\", CONST)`, a spread, a " \
+            "percent-string — is REPORTED rather than read, because reading it as a value would " \
+            "drop a real skip and turn an all-six exclusion into a passing five-of-six."
+    end
 
     # Map mode drops every string that is not a key, which is correct for the
     # VALUES and silently wrong for an entry written in a spelling
@@ -365,7 +408,7 @@ module ConformanceSkips
   # with `{` on one line, and stopping at the first zero would read the type
   # parameter and call the table empty.
   def self.scan(source, offset, comment)
-    strings = []
+    events = []
     depth = 0
     entered = false
     index = offset
@@ -375,7 +418,7 @@ module ConformanceSkips
       char = source[index]
 
       if char == "\n"
-        return [strings, :closed] if entered && depth.zero?
+        return [events, :closed] if entered && depth.zero?
 
         index += 1
         next
@@ -415,9 +458,11 @@ module ConformanceSkips
       # strings, both able to hold a brace that would otherwise move depth.
       if char == '"' || char == "'" || (comment == :slash && char == "`")
         value, index = read_string(source, index)
-        strings << [value, separator_follows?(source, index, comment)]
+        events << [:string, value, separator_follows?(source, index, comment), depth]
         next
       end
+
+      events << [:comma, nil, nil, depth] if char == ","
 
       if OPENERS.include?(char)
         depth += 1
@@ -430,7 +475,7 @@ module ConformanceSkips
       index += 1
     end
 
-    [strings, entered && depth.zero? ? :closed : :unclosed]
+    [events, entered && depth.zero? ? :closed : :unclosed]
   end
 
   # The string literal starting at `index`; returns [value, index_after_quote].
@@ -729,7 +774,17 @@ module ConformanceSkips
                   "(#{case_tags.class}); this gate cannot tell which cases the tag branches skip"
           end
 
-          excluded << test_case["name"] if runner_tags.any? { |tag| case_tags.include?(tag) }
+          # Only when EVERY case of that name carries the tag. Duplicate names
+          # occur (`replace-omission-clears…` in three fixtures), so crediting a
+          # tag exclusion to the name would mark an untagged twin excluded too —
+          # and if the other four name-skip it, the gate would report all-six for
+          # a case Kotlin and Swift actually run.
+          next unless runner_tags.any? { |tag| case_tags.include?(tag) }
+
+          twins = cases.select { |c| c["name"] == test_case["name"] }
+          next unless twins.all? { |c| runner_tags.any? { |tag| (c["tags"] || []).include?(tag) } }
+
+          excluded << test_case["name"]
         end
       end
       out[runner.name] = excluded
