@@ -221,6 +221,17 @@ private fun summarizeSearch(results: List<SearchResult>): JsonElement = buildJso
 fun main() {
     val testsDir = File("../conformance/tests")
 
+    // Case census (#602) — see CaseCensus. Taken up front, by its own walk, so a
+    // fixture tree this runner's listFiles cannot see is reported before the run
+    // rather than inferred from a short count afterwards.
+    val expectedCases = try {
+        CaseCensus.nonLiveCaseCount(testsDir)
+    } catch (e: CaseCensus.CensusException) {
+        System.err.println("Error taking fixture census: ${e.message}")
+        System.exit(1)
+        return
+    }
+
     val testFiles = testsDir.listFiles { f -> f.extension == "json" }
         ?.sorted()
 
@@ -239,7 +250,7 @@ fun main() {
         // here so the offline Kotlin runner doesn't see live entries with
         // unresolved ${PROJECT_ID} fixtures or unknown operations.
         val testCases = json.decodeFromString<List<TestCase>>(file.readText())
-            .filter { it.mode == "mock" }
+            .filter { CaseCensus.isMockMode(it.mode) }
         if (testCases.isEmpty()) continue
         println("\n=== ${file.name} ===")
 
@@ -285,9 +296,17 @@ fun main() {
     }
 
     println("\n=== Summary ===")
-    println("Passed: $passed, Failed: $failed, Skipped: $skipped, Total: ${passed + failed + skipped}")
+    println(
+        "Passed: $passed, Failed: $failed, Skipped: $skipped, Total: ${passed + failed + skipped} " +
+            "(fixtures declare $expectedCases non-live case(s))"
+    )
 
-    if (failed > 0) {
+    val countFailure = CaseCensus.countFailure(passed + failed + skipped, expectedCases)
+    if (countFailure != null) {
+        System.err.println("\nFAIL: $countFailure")
+    }
+
+    if (failed > 0 || countFailure != null) {
         System.exit(1)
     }
 }
