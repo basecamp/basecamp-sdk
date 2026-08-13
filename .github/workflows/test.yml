@@ -407,6 +407,13 @@ jobs:
           name: execution-manifest-go
           path: conformance/manifests/go.json
           if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI
@@ -490,6 +497,13 @@ jobs:
           name: execution-manifest-typescript
           path: conformance/manifests/typescript.json
           if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       # The freshness guard's own live run only ever sees a fresh tree. Its
       # first cut passed any existing dist/, its second passed a build whose
@@ -598,6 +612,13 @@ jobs:
           name: execution-manifest-ruby
           path: conformance/manifests/ruby.json
           if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       - name: Run Ruby conformance runner unit tests
         # Unit-tests the runner's own assertion helpers. Their bounds
@@ -710,6 +731,13 @@ jobs:
           name: execution-manifest-python
           path: conformance/manifests/python.json
           if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       - name: Run Python conformance runner unit tests
         # Unit-tests the runner's own assertion helpers. Their bounds
@@ -785,6 +813,13 @@ jobs:
           name: execution-manifest-swift
           path: conformance/manifests/swift.json
           if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI
@@ -863,6 +898,13 @@ jobs:
           name: execution-manifest-kotlin
           path: conformance/manifests/kotlin.json
           if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI
