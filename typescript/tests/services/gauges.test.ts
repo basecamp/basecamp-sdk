@@ -321,8 +321,12 @@ describe("GaugesService", () => {
     });
 
     // Rich-text attachments ride along on the needle's description. `width` is
-    // float-spelled (`1024.0`) on the image and `null` on the PDF — both must
-    // decode faithfully (SPEC section 10 Type Fidelity).
+    // float-spelled (`1024.0`) on the image and `null` on the PDF. JavaScript
+    // has a single numeric type, so the float spelling is unobservable here —
+    // `1024.0` and `1024` are the same value, and no assertion can separate
+    // them. What this pins is the half that IS observable: the array survives,
+    // and `null` stays null rather than collapsing to 0 or undefined (SPEC
+    // section 10 Type Fidelity). Python and Ruby carry the type assertion.
     it("decodes float-spelled and null attachment dimensions", async () => {
       const needleId = needleFixture.id;
 

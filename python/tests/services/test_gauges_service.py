@@ -190,6 +190,10 @@ class TestListGaugeNeedles:
 
         assert len(attachments) == 2
         assert attachments[0]["width"] == 1024.0
+        # The equality above cannot fail on its own: 1024 == 1024.0 in Python, so
+        # an integer-decoding regression would slip straight past it. The type
+        # assertion is what actually bites, as in test_uploads.py / test_todos.py.
+        assert isinstance(attachments[0]["width"], float)
         assert attachments[1]["width"] is None
 
     @respx.mock

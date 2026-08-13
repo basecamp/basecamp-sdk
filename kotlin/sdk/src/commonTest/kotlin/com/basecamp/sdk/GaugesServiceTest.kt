@@ -557,7 +557,7 @@ class GaugesServiceTest {
                     put("color", "yellow")
                     put("position", 40)
                 },
-                notify = "true",
+                notify = "custom",
                 subscriptions = listOf(1049715915L, 1049715916L),
             ),
         )
@@ -565,7 +565,7 @@ class GaugesServiceTest {
         val body = json.parseToJsonElement(capturedBody!!).jsonObject
         assertEquals(setOf("gauge_needle", "notify", "subscriptions"), body.keys)
         assertEquals("yellow", body["gauge_needle"]!!.jsonObject["color"]!!.jsonPrimitive.content)
-        assertEquals(JsonPrimitive("true"), body["notify"])
+        assertEquals(JsonPrimitive("custom"), body["notify"])
         assertEquals(
             JsonArray(listOf(JsonPrimitive(1049715915L), JsonPrimitive(1049715916L))),
             body["subscriptions"],

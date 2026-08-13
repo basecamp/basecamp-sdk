@@ -458,7 +458,7 @@ final class GaugesServiceTests: XCTestCase {
         let req = CreateGaugeNeedleRequest(
             gaugeNeedle: GaugeNeedlePayload(
                 position: 72, color: "green", description: "<div>Moved the needle</div>"),
-            notify: "true",
+            notify: "custom",
             subscriptions: [1049715915]
         )
         let needle = try await account.gauges.createGaugeNeedle(projectId: Self.bucketId, req: req)
@@ -475,7 +475,7 @@ final class GaugesServiceTests: XCTestCase {
         XCTAssertEqual(payload["position"] as? Int, 72)
         XCTAssertEqual(payload["color"] as? String, "green")
         XCTAssertEqual(payload["description"] as? String, "<div>Moved the needle</div>")
-        XCTAssertEqual(body["notify"] as? String, "true")
+        XCTAssertEqual(body["notify"] as? String, "custom")
         XCTAssertEqual(body["subscriptions"] as? [Int], [1049715915])
 
         XCTAssertEqual(needle.id, Self.needleId)
