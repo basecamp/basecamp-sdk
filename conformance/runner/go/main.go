@@ -181,6 +181,9 @@ func main() {
 
 	var results []TestResult
 	passed, failed, skipped := 0, 0, 0
+	// Exclusions recorded as they happen, from the same branch that increments
+	// `skipped` — so the manifest cannot claim a different set than the run.
+	var excluded []ManifestExclusion
 
 	for _, file := range files {
 		tests, err := loadTests(file)
@@ -194,6 +197,7 @@ func main() {
 		for _, tc := range tests {
 			if reason, ok := goSDKSkips[tc.Name]; ok {
 				skipped++
+				excluded = append(excluded, ManifestExclusion{Name: tc.Name, Reason: reason})
 				fmt.Printf("  SKIP: %s (%s)\n", tc.Name, reason)
 				continue
 			}
@@ -221,7 +225,21 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nFAIL: %s\n", countFailure)
 	}
 
-	if failed > 0 || countFailure != "" {
+	// Written even when the run failed. A failing runner still has a truthful
+	// exclusion set, and the collecting gate's absence rule reads a missing
+	// manifest as "this runner did not report" — which would turn one failing
+	// runner into a second, unrelated failure that obscures the first.
+	manifestFailure := writeManifest(filepath.Join("..", "..", ".."), Manifest{
+		Runner:   "go",
+		Total:    expectedCases,
+		Executed: passed + failed,
+		Excluded: excluded,
+	})
+	if manifestFailure != nil {
+		fmt.Fprintf(os.Stderr, "\nFAIL: could not write execution manifest: %v\n", manifestFailure)
+	}
+
+	if failed > 0 || countFailure != "" || manifestFailure != nil {
 		os.Exit(1)
 	}
 }

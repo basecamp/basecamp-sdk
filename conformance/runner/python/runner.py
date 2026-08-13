@@ -164,6 +164,39 @@ def count_non_live_cases(tests_dir: str | Path) -> int:
     return cases
 
 
+def write_execution_manifest(runner: str, total: int, executed: int,
+                             excluded: list[tuple[str, str]]) -> None:
+    """Write one runner's exclusion set for the cross-runner gate (#602).
+
+    The case census answers "did THIS runner account for every case". A case
+    every runner excludes leaves all six censuses green, because each counted
+    its own skip — only scripts/check-fixture-execution.rb, comparing these
+    manifests, can see it.
+
+    ``executed`` is recorded alongside the exclusions and asserted against the
+    census total: without it, a case a runner silently dropped is simply absent
+    from the exclusion set, and "absent" reads identically to "ran fine".
+
+    Sorted, so a re-run is byte-identical.
+    """
+    if executed + len(excluded) != total:
+        raise RuntimeError(
+            f"manifest for {runner} is internally inconsistent: {executed} executed + "
+            f"{len(excluded)} excluded != {total} non-live cases; the run dropped a case "
+            "without recording it as either"
+        )
+
+    path = Path(__file__).resolve().parents[3] / "conformance" / "manifests"
+    path.mkdir(parents=True, exist_ok=True)
+    body = {
+        "runner": runner,
+        "total_non_live": total,
+        "executed": executed,
+        "excluded": [{"name": n, "reason": r} for n, r in sorted(excluded)],
+    }
+    (path / f"{runner}.json").write_text(json.dumps(body, indent=2) + "\n")
+
+
 def case_count_failure(ran: int, expected: int) -> str | None:
     """Compare what the run accounted for against the census; None when equal."""
     if ran == expected:
@@ -1494,6 +1527,9 @@ class ConformanceRunner:
         passed = 0
         failed = 0
         skipped = 0
+        # Recorded from the same branch that increments `skipped`, so the
+        # manifest cannot claim a different set than the run took.
+        excluded: list[tuple[str, str]] = []
 
         for file in files:
             tests = json.loads(file.read_text())
@@ -1512,6 +1548,7 @@ class ConformanceRunner:
                 if name in self.SKIPS:
                     skipped += 1
                     reason = self.SKIP_REASONS.get(name, "Python SDK behavior differs")
+                    excluded.append((name, reason))
                     print(f"  SKIP: {name} ({reason})")
                     continue
 
@@ -1537,7 +1574,17 @@ class ConformanceRunner:
         if count_failure is not None:
             print(f"\nFAIL: {count_failure}", file=sys.stderr)
 
-        return 1 if failed > 0 or count_failure is not None else 0
+        # Written even when the run failed: a failing runner still has a
+        # truthful exclusion set, and a missing manifest reads to the gate as
+        # "this runner did not report", turning one failure into two.
+        manifest_failure = None
+        try:
+            write_execution_manifest("python", expected_cases, passed + failed, excluded)
+        except (RuntimeError, OSError) as e:
+            manifest_failure = e
+            print(f"\nFAIL: could not write execution manifest: {e}", file=sys.stderr)
+
+        return 1 if failed > 0 or count_failure is not None or manifest_failure else 0
 
 
 if __name__ == "__main__":

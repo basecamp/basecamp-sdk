@@ -94,6 +94,10 @@ struct Runner {
         var passed = 0
         var failed = 0
         var skipped = 0
+        // Recorded from the same branches that increment `skipped`, so the
+        // manifest cannot claim a different set than the run took. All THREE
+        // exclusion paths record: tag branch, named roster, runtime skip.
+        var excluded: [ExecutionManifest.Exclusion] = []
 
         for file in files {
             // Live tests are TS-only (canonical wire-capturer); filter them out
@@ -117,12 +121,16 @@ struct Runner {
                 // headers are not applicable.
                 if tc.allTags.contains("link-header") {
                     skipped += 1
+                    excluded.append(.init(
+                        name: tc.name,
+                        reason: "Swift SDK auto-paginates (follows Link headers by design)"))
                     print("  SKIP: \(tc.name)")
                     print("        Swift SDK auto-paginates (follows Link headers by design)")
                     continue
                 }
                 if let reason = swiftSkips[tc.name] {
                     skipped += 1
+                    excluded.append(.init(name: tc.name, reason: reason))
                     print("  SKIP: \(tc.name)")
                     print("        \(reason)")
                     continue
@@ -131,6 +139,7 @@ struct Runner {
                 let result = await runTest(tc)
                 if result.skipped {
                     skipped += 1
+                    excluded.append(.init(name: tc.name, reason: result.message))
                     print("  SKIP: \(tc.name)")
                     print("        \(result.message)")
                 } else if result.passed {
@@ -155,7 +164,22 @@ struct Runner {
             FileHandle.standardError.write(Data("\nFAIL: \(countFailure)\n".utf8))
         }
 
-        exit(failed > 0 || countFailure != nil ? 1 : 0)
+        // Written even when the run failed: a failing runner still has a
+        // truthful exclusion set, and a missing manifest reads to the gate as
+        // "this runner did not report", turning one failure into two.
+        var manifestFailed = false
+        do {
+            try ExecutionManifest.write(
+                runner: "swift", total: expectedCases, executed: passed + failed,
+                excluded: excluded,
+                to: URL(fileURLWithPath: "../../manifests", isDirectory: true))
+        } catch {
+            manifestFailed = true
+            FileHandle.standardError.write(
+                Data("\nFAIL: could not write execution manifest: \(error)\n".utf8))
+        }
+
+        exit(failed > 0 || countFailure != nil || manifestFailed ? 1 : 0)
     }
 
     static func runTest(_ tc: TestCase) async -> TestResult {

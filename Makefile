@@ -568,7 +568,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check check-search-fixture-copy
+.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check check-search-fixture-copy check-fixture-execution
 
 # NOTE: conformance-swift and conformance-runner-tests-swift are defined in the
 # Swift SDK targets section below — their IS_MACOS conditional must parse after
@@ -1057,6 +1057,56 @@ else
 	@echo "SKIP: conformance-swift (macOS only)"
 endif
 
+# Is any conformance fixture case executed by NOTHING? (#602)
+#
+# Each runner's own case census (#742) answers a narrower question: "did THIS
+# runner account for every case". A case every runner deliberately excludes
+# leaves all six censuses green, because each one counted its own skip. Only a
+# comparison ACROSS runners can see it, and that needs all six exclusion
+# manifests, which a conformance run produces.
+#
+# FULL mode is macOS-only, and the reason is the same ifdef as conformance-swift
+# directly above: on Linux `make conformance` produces five manifests and never
+# a sixth, so the all-six claim cannot be made there at all. Requiring six and
+# failing on absence is the whole point — a missing manifest must never read as
+# "that runner executed everything", which is precisely what would make an
+# all-six case invisible.
+#
+# On Linux it runs in PARTIAL mode instead: it reports a case excluded by every
+# VISIBLE runner as a warning and exits 0. That is deliberately not a failure —
+# five-of-six is not the all-six claim, Swift may well execute the case, and a
+# warning cannot produce a false failure. A Linux developer gets the signal
+# without the gate being able to lie.
+#
+# CI closes the gap properly: the fan-in job collects the Linux five and the
+# macOS one as artifacts and runs FULL mode over all six.
+#
+# The self-test runs after the live check for the reason it exists: maximum
+# overlap today is 2 of 6 (#596 narrowed it), so a live run proves only that the
+# gate can say yes. The state it exists to reject cannot be produced by any
+# committed fixture.
+# Depends on `conformance` rather than trusting whatever manifests are on disk.
+# The gate reads files a previous run left behind, so without this edge it would
+# happily validate last week's exclusion sets — and a skip added to a runner
+# since then would be invisible. Standalone invocation therefore runs the suite,
+# which is the honest cost: you cannot compare exclusion sets without running
+# the runners that produce them. Inside `make check` it is free, because
+# conformance is phony and already a prerequisite there.
+#
+# CI does NOT use this target: its fan-in job collects the Linux five and the
+# macOS one as artifacts and runs the script directly, so the runners are not
+# re-run there either.
+check-fixture-execution: conformance
+ifdef IS_MACOS
+	@echo "==> Checking no fixture case is executed by nothing (all six runners)..."
+	@ruby scripts/check-fixture-execution.rb
+else
+	@echo "==> Checking fixture execution (partial: Swift's manifest is macOS-only)..."
+	@ruby scripts/check-fixture-execution.rb --partial
+endif
+	@echo "==> Self-testing the fixture-execution gate's rejections..."
+	@ruby scripts/test-check-fixture-execution.rb
+
 # Unit-test the Swift runner's own assertion helpers (macOS only). Same reason
 # as the other five: the bounds branches never execute against a fixture that
 # passes, so a vacuous assertion survives a fully green conformance run.
@@ -1176,7 +1226,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
