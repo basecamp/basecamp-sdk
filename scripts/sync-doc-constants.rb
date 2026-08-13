@@ -787,12 +787,25 @@ end
 
 # Vacuity guards, stated explicitly rather than left to emerge.
 #
-# Both directions already fail loudly on their own — an empty table makes every
-# fixture `missing`, an empty fixture list makes every row `extra` — so this
-# buys no coverage. It buys the message: a regex that stopped matching would
-# otherwise be reported as 22 individually plausible drift findings instead of
-# the one thing that is actually wrong. House standard since
-# check-search-fixture-copy.py.
+# Mostly this buys the MESSAGE, but not entirely, and the difference is the
+# reason it cannot be deleted.
+#
+# When only ONE side is empty the set comparison does catch it — an empty table
+# makes every fixture `missing`, an empty fixture list makes every row `extra`.
+# There this guard only improves the report: a regex that stopped matching reads
+# as 22 individually plausible drift findings instead of the one thing actually
+# wrong. House standard since check-search-fixture-copy.py.
+#
+# When BOTH sides are empty it is the only thing standing. `missing` and `extra`
+# are both empty, the bidirectional comparison is trivially satisfied, and the
+# gate reports success over a roster checked against nothing — the vacuous pass
+# this whole file exists to refuse. `git ls-files` matching nothing is an
+# extraction failure, never a fact about the repo.
+#
+# Do not reduce this to a message-formatting nicety on the strength of the
+# one-sided reasoning. Both self-test cases are committed ("no tracked fixtures
+# at all" and "both sides empty is not agreement"); the second one is what
+# fails if this guard goes.
 def roster_vacuity(span, fixtures, rows)
   if fixtures.empty?
     ["#{span.location}: internal error: `git ls-files conformance/tests/*.json` matched nothing, " \

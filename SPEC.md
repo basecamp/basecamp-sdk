@@ -2181,18 +2181,29 @@ Note the shape this avoids: #573 first narrowed nothing and instead added the
 whole-case skip to all four remaining runners, which left the fixture skipped by
 all six — present in `pagination.json`, passing `conformance-fixtures-check` and
 `check-fixture-coverage`, and executed by nothing. That is #572's defect one
-layer down. `make check-fixture-execution` (#602) is what detects it now: it
-reads the six runners' skip mechanisms and fails when a mock case is excluded
-everywhere. Maximum overlap today is 2 of 6, so that gate is green on arrival
-and its self-test — which crafts the all-six state — is what proves it can say
-no.
+layer down.
 
-The same gate holds the roster below to the runners it claims to restate. The
-bullets are an ENUMERATION, derivable and therefore checked for set equality;
-the classification and reasoning on each line are judgement, and nothing
-asserts them. The runners stay the sole source of truth: if this roster were an
-input, a wrong extraction and a stale roster could agree and both stay green,
-which is the failure the gate exists to prevent.
+**Nothing detects that state today, and #602 is open for it.** Each runner now
+takes a case census (#742): at the end of its own run it asserts that
+`passed + failed + skipped` equals the number of cases under `conformance/tests`
+whose `mode` is not `live`, counted by a walk independent of its own load path.
+That catches a case executed by NO runner for a mechanical reason — an
+unrecognized `mode`, a fixture that failed to parse or was never globbed, one
+nested where no runner looks, a case dropped between load and dispatch. It does
+NOT catch the case this section describes, where every runner excludes the same
+fixture deliberately: each census counts its own skip and stays green. Detecting
+that needs the six exclusion sets compared in one place, which needs a manifest
+per runner and artifact plumbing across six CI jobs — and the Swift lane is
+macOS-only, so a Linux run can never assemble all six. Maximum overlap today is
+2 of 6, narrowed by #596.
+
+The roster below is therefore RESTATED, not derived: nothing checks it against
+the runners it claims to summarise (#736). The bullets are an enumeration and
+the classification on each line is judgement; both are hand-maintained, so a
+skip added to a runner without a line here goes unrecorded. When #602's
+cross-runner manifest lands, this roster becomes checkable for set equality
+against what the runners actually reported — which is stronger than parsing
+their source, and is why #736 waits for it rather than being fixed on its own.
 
 **Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin
 logic is covered by `TestIsSameOrigin` unit tests:
