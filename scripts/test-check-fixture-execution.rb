@@ -305,6 +305,52 @@ out, status = run_gate(skips: with_skips(go: ["link-header only"], python: ["lin
 expect_fail(failures, "tag-excluded case skipped by the other four", out, status,
             '"link-header only" is skipped by all 6 runners')
 
+# Two cases share a name; only one carries the tag. The TAGGED one is genuinely
+# skipped by all six — four by name, Kotlin and Swift by tag — and must be
+# reported. Collapsing tag exclusions to names got this wrong twice in
+# opposite directions: crediting the untagged twin (false positive), then
+# requiring every twin to agree (false negative, and quiet). Only per-case
+# identity can answer differently for two cases that differ in the tag.
+out, status = run_gate(skips: with_skips(go: ["shared name"], python: ["shared name"],
+                                         ruby: ["shared name"], typescript: ["shared name"]),
+                       mutate: lambda { |f|
+                         cases = fixture_cases +
+                                 [{ "name" => "shared name", "operation" => "Op",
+                                    "tags" => %w[link-header] },
+                                  { "name" => "shared name", "operation" => "Op" }]
+                         f["conformance/tests/alpha.json"] = JSON.pretty_generate(cases)
+                       })
+expect_fail(failures, "tagged twin skipped by all six is reported", out, status,
+            '"shared name" is skipped by all 6 runners')
+
+# ...and its UNTAGGED twin must not be, since Kotlin and Swift run it. Same
+# fixture, same name, opposite answer — which is the property that makes this
+# per-case rather than per-name.
+unless utf8(out).scan(/is skipped by all 6 runners/).length == 1
+  failures << "only the tagged twin should be reported:\n#{utf8(out)}"
+end
+
+# A renamed table left COMMENTED OUT above the live one used to match the
+# anchor, and the scan read an empty table off the dead line. The active table
+# here holds the sixth exclusion, so a parser fooled by the comment reports a
+# passing five-of-six — the quiet direction — while the fixed one still sees it.
+out, status = run_gate(skips: with_skips(python: ["five of six"]),
+                       mutate: lambda { |f|
+                         edit(f, PY_RUNNER, "class ConformanceRunner:",
+                              "class ConformanceRunner:\n    # SKIPS: set[str] = set()  # renamed")
+                       })
+expect_fail(failures, "commented-out declaration is not the active one", out, status,
+            '"five of six" is skipped by all 6 runners')
+
+# Array subtraction removes every copy, so a name rostered twice leaves both
+# sides of the comparison empty and passes.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, "SPEC.md", "- \"five of six\" — some justification only a human can write.\n",
+       "- \"five of six\" — some justification only a human can write.\n" \
+       "- \"five of six\" — a second, contradictory waiver.\n")
+})
+expect_fail(failures, "case rostered more than once", out, status, "rostered more than once")
+
 # --- scope ----------------------------------------------------------------------
 
 # A live case is excluded by all six mock runners by construction — named in the

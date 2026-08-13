@@ -209,7 +209,13 @@ def check_roster(root, tables)
     missing = actual - listed
     extra   = listed - actual
 
-    next [] if missing.empty? && extra.empty?
+    # Array subtraction removes EVERY copy, so a name listed twice leaves both
+    # `missing` and `extra` empty and the comparison passes — accepting a roster
+    # that violates its own stated "one line per runner × test" invariant, and
+    # with it two waiver descriptions that can contradict each other.
+    duplicated = listed.tally.select { |_, n| n > 1 }.keys
+
+    next [] if missing.empty? && extra.empty? && duplicated.empty?
 
     message = ["SPEC.md §19's Zero-Skip roster does not match #{table.file} #{table.label} " \
                "(#{actual.length} skipped, #{listed.length} rostered)"]
@@ -218,6 +224,9 @@ def check_roster(root, tables)
     end
     unless extra.empty?
       message << "    rostered but not skipped: #{extra.map(&:inspect).join(', ')}"
+    end
+    unless duplicated.empty?
+      message << "    rostered more than once: #{duplicated.map(&:inspect).join(', ')}"
     end
     message << "    A PR that closes a gap deletes exactly its own lines; one that opens a " \
                "skip adds one, with its waiver ID or its architectural reason."
@@ -228,14 +237,21 @@ end
 def check_execution(cases, exclusions)
   runners = exclusions.keys
 
-  cases.filter_map do |test_case|
+  cases.each_with_index.filter_map do |test_case, index|
+    # Asked per CASE, not per name. Duplicate names exist, and a tag skip
+    # applies to the case carrying the tag rather than to everything sharing its
+    # name — so the two cases that differ in exactly the deciding property get
+    # different answers, which is what neither a name-collapse nor an
+    # every-twin-must-agree rule could express.
+    identity = ConformanceSkips.case_id(test_case, index)
+
     # Live cases are out of scope, not exempt: they are executed by the
     # TypeScript live canary under BASECAMP_LIVE, which is governed by
     # CONTRIBUTING.md and has its own coverage gate in
     # check-replay-decoder-parity. The six mock runners exclude them by design.
     next unless (test_case["mode"] || ConformanceSkips::DEFAULT_MODE) == "mock"
 
-    skipping = runners.select { |runner| exclusions.fetch(runner).include?(test_case["name"]) }
+    skipping = runners.select { |runner| exclusions.fetch(runner).include?(identity) }
     next unless skipping.length == runners.length
 
     "#{test_case['__file']}: #{test_case['name'].inspect} is skipped by all #{runners.length} " \

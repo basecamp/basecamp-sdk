@@ -226,10 +226,19 @@ module ConformanceSkips
   # `anchor` is a String matched as a substring, or a Regexp matched against the
   # line — the latter for notions that have more than one legitimate spelling,
   # like how a run loop reaches a case's tags.
-  def self.anchor_lines(source, anchor, anchored: false)
+  # `comment:` strips line comments before matching, so a renamed table left
+  # commented out — `# SKIPS: set[str] = set()` above the live one — is not
+  # mistaken for the active declaration. Without it the anchor matched the dead
+  # line, the scan read an empty table from it, and the real exclusions became
+  # invisible.
+  def self.anchor_lines(source, anchor, anchored: false, comment: nil)
     lines = source.is_a?(Array) ? source : source.lines
     lines.each_index.select do |index|
       line = lines[index]
+      if comment
+        marker = comment == :hash ? line.index("#") : line.index("//")
+        line = line[0, marker] if marker
+      end
       if anchor.is_a?(Regexp) then line.match?(anchor)
       elsif anchored then line.start_with?(anchor)
       else line.include?(anchor)
@@ -246,7 +255,7 @@ module ConformanceSkips
   # three of the six are today.
   def self.declaration_keys(source, table)
     lines = source.lines
-    hits = anchor_lines(lines, table.anchor)
+    hits = anchor_lines(lines, table.anchor, comment: table.comment)
 
     unless hits.length == 1
       raise ExtractionError,
@@ -803,15 +812,37 @@ module ConformanceSkips
 
   # What each runner will not execute: { runner => Set(case names) }, given the
   # loaded fixture cases (each a Hash with "name" and optional "tags").
+  # What each runner will not execute, as a set of CASE IDENTITIES rather than
+  # names. Both bots found the reason independently, after an earlier fix here
+  # traded one error for its mirror image.
+  #
+  # Duplicate case names exist — `replace-omission-clears…` in three fixtures.
+  # Collapsing tag exclusions to names credited an UNTAGGED twin as skipped
+  # (false positive). Requiring every twin to carry the tag then discarded a
+  # GENUINELY tagged case's exclusion (false negative), which is the quiet
+  # direction: the tagged case really is skipped by all six and the gate reports
+  # it running. Neither is fixable by name, because the two cases differ in
+  # exactly the thing that decides the answer.
+  #
+  # So identity is carried through: a NAME-table skip applies to every case with
+  # that name, a TAG skip applies to the case that carries the tag, and
+  # check_execution asks per case.
+  def self.case_id(test_case, index) = [test_case["__file"], index]
+
   def self.exclusions(root, cases)
     table_keys = tables(root)
     tags = excluded_tags(root)
 
     RUNNERS.each_with_object({}) do |runner, out|
-      excluded = Set.new(table_keys.fetch(runner.skip_table.id(runner.name)))
+      named = Set.new(table_keys.fetch(runner.skip_table.id(runner.name)))
+      excluded = Set.new
+      cases.each_with_index do |test_case, index|
+        excluded << case_id(test_case, index) if named.include?(test_case["name"])
+      end
+
       runner_tags = tags.fetch(runner.name)
       unless runner_tags.empty?
-        cases.each do |test_case|
+        cases.each_with_index do |test_case, index|
           case_tags = test_case["tags"] || []
           # A non-array `tags` would answer include? in whatever way its own
           # class defines — a Hash by key, a String by substring — and the wrong
@@ -825,17 +856,9 @@ module ConformanceSkips
                   "(#{case_tags.class}); this gate cannot tell which cases the tag branches skip"
           end
 
-          # Only when EVERY case of that name carries the tag. Duplicate names
-          # occur (`replace-omission-clears…` in three fixtures), so crediting a
-          # tag exclusion to the name would mark an untagged twin excluded too —
-          # and if the other four name-skip it, the gate would report all-six for
-          # a case Kotlin and Swift actually run.
           next unless runner_tags.any? { |tag| case_tags.include?(tag) }
 
-          twins = cases.select { |c| c["name"] == test_case["name"] }
-          next unless twins.all? { |c| runner_tags.any? { |tag| (c["tags"] || []).include?(tag) } }
-
-          excluded << test_case["name"]
+          excluded << case_id(test_case, index)
         end
       end
       out[runner.name] = excluded
