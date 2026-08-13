@@ -1299,6 +1299,23 @@ func signatureIs(ft *ast.FuncType, params, results []string) bool {
 	return fieldListIs(ft.Params, params) && fieldListIs(ft.Results, results)
 }
 
+// normalizeTypeSpelling collapses spellings Go treats as identical. `byte` is
+// an alias for `uint8`, so `MarshalJSON() ([]uint8, error)` implements
+// json.Marshaler exactly as the usual spelling does — and missing that is a
+// SILENT miss, since the promoted method still redirects the encoder.
+func normalizeTypeSpelling(s string) string {
+	switch s {
+	case "[]uint8":
+		return "[]byte"
+	case "uint8":
+		return "byte"
+	case "int32":
+		// rune, likewise, for any signature that ever spells one.
+		return "rune"
+	}
+	return s
+}
+
 func fieldListIs(fl *ast.FieldList, want []string) bool {
 	var got []string
 	if fl != nil {
@@ -1308,7 +1325,7 @@ func fieldListIs(fl *ast.FieldList, want []string) bool {
 				n = len(f.Names)
 			}
 			for i := 0; i < n; i++ {
-				got = append(got, exprDisplay(f.Type))
+				got = append(got, normalizeTypeSpelling(exprDisplay(f.Type)))
 			}
 		}
 	}
@@ -1316,7 +1333,7 @@ func fieldListIs(fl *ast.FieldList, want []string) bool {
 		return false
 	}
 	for i := range got {
-		if got[i] != want[i] {
+		if got[i] != normalizeTypeSpelling(want[i]) {
 			return false
 		}
 	}
@@ -1473,6 +1490,33 @@ func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl
 		}
 	}
 
+	// Each struct's OWN decode-unsafe records, computed before any root is
+	// flattened so a parent can inherit them whatever order the map iterates.
+	// encoding/json cannot allocate an embedded pointer to an unexported type,
+	// and that is just as true when the field arrives by promotion as when the
+	// struct holding it is the one being judged.
+	for name, sf := range structs {
+		sf.decodeUnsafe = nil
+		refs := make([]embedRef, 0, len(sf.embeds)+len(sf.taggedEmbeds))
+		refs = append(refs, sf.embeds...)
+		for _, te := range sf.taggedEmbeds {
+			refs = append(refs, te.ref)
+		}
+		for _, ref := range refs {
+			if !ref.pointer || ref.name == "" || ast.IsExported(ref.name) {
+				continue
+			}
+			// A struct only: an anonymous pointer to an unexported NON-struct
+			// is ignored by encoding/json rather than allocated, so there is no
+			// field it failed to populate.
+			if child, _, _, err := resolveEmbedFull(ref, structs, decls); err != "" || child == nil {
+				continue
+			}
+			sf.decodeUnsafe = append(sf.decodeUnsafe,
+				fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates its promoted fields)", name, ref.display))
+		}
+	}
+
 	for _, sf := range structs {
 		sf.ignoredOwn = map[int]bool{}
 		for _, te := range sf.taggedEmbeds {
@@ -1619,13 +1663,16 @@ func flattenOne(rootName string, root *structFields, structs map[string]*structF
 					discardPromotions()
 					return
 				}
-				if child != nil && e.pointer && !ast.IsExported(e.name) {
-					// A struct only: an anonymous pointer to an unexported
-					// NON-struct is ignored by encoding/json rather than
-					// allocated, so there is no field it failed to populate.
-					root.decodeUnsafe = append(root.decodeUnsafe,
-						fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates its promoted fields)",
-							strings.Join(append([]string{rootName}, parent.path...), "."), e.display))
+				// A struct reached here brings its OWN decode-unsafe records
+				// with it: a tagged or untagged unexported pointer inside it is
+				// promoted onto this root and is just as unallocatable there.
+				// Those records are computed for every struct before any root
+				// is walked, so this does not depend on iteration order.
+				if child != nil && childName != rootName {
+					for _, du := range child.decodeUnsafe {
+						root.decodeUnsafe = append(root.decodeUnsafe,
+							fmt.Sprintf("%s (reached through %s)", du, strings.Join(append([]string{rootName}, parent.path...), ".")))
+					}
 				}
 				if child == nil || visited[childName] {
 					// Either the embedded type promotes no JSON-tagged fields

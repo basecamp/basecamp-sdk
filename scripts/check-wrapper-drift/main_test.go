@@ -3517,3 +3517,61 @@ type UsesAlias struct {
 		}
 	}
 }
+
+// TestFlattenEmbedded_DecodeUnsafeTravelsToTheEmbeddingStruct is the promotion
+// half of the allocation rule. `Base` holds a tagged anonymous `*hidden`; a
+// wrapper embedding `Base` promotes that field under the same key, and the
+// decoder can no more allocate it there than it could in Base. Recording it
+// only while Base is the struct being judged would leave every wrapper that
+// embeds Base silently unpopulated — and for a tier-2 pair, tag presence IS
+// the population claim.
+func TestFlattenEmbedded_DecodeUnsafeTravelsToTheEmbeddingStruct(t *testing.T) {
+	structs := flattenFixture(t, src(`package fixture
+
+type hidden struct {
+	ID int64 ~json:"id"~
+}
+
+type Base struct {
+	*hidden ~json:"hidden"~
+	Name    string ~json:"name"~
+}
+
+type Outer struct {
+	Base
+}
+`))
+	if b := structs["Base"]; b == nil || len(b.decodeUnsafe) == 0 {
+		t.Fatalf("Base itself must record it, got %+v", structs["Base"])
+	}
+	outer := structs["Outer"]
+	if outer == nil {
+		t.Fatal("Outer not collected")
+	}
+	if len(outer.decodeUnsafe) == 0 {
+		t.Error("the record must travel to the struct that promotes the field")
+	}
+	if !outer.tags["name"] {
+		t.Errorf("the rest of Base still promotes normally, got %v", outer.tags)
+	}
+}
+
+// TestIsJSONMethod_ByteAliasSpelling covers `[]uint8`. byte IS uint8, so
+// `MarshalJSON() ([]uint8, error)` implements json.Marshaler and its promotion
+// redirects the encoder — missing it is a silent certification, not a cosmetic
+// mismatch.
+func TestIsJSONMethod_ByteAliasSpelling(t *testing.T) {
+	for _, decl := range []string{
+		"func (s Stamp) MarshalJSON() ([]uint8, error) { return nil, nil }",
+		"func (s *Stamp) UnmarshalJSON(b []uint8) error { return nil }",
+	} {
+		f, err := parser.ParseFile(token.NewFileSet(), "f.go", "package fixture\n\ntype Stamp struct{}\n\n"+decl+"\n", parser.ParseComments)
+		if err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		got, _ := collectJSONMethodTypes(f)
+		if !got["Stamp"] {
+			t.Errorf("%s: []uint8 is []byte and must be recognized", decl)
+		}
+	}
+}
