@@ -1,0 +1,19 @@
+.github/workflows/test.yml
+  s_fca5acb3cc9413::t_45fc8abc57964d 410-416,500-506,615-621,734-740,816-822,901-907
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3aed2b54c1f2adf48ba590459e3da51b5ed5b1e4",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
