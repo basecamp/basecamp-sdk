@@ -399,6 +399,16 @@ module ConformanceSkips
 
   # Whether the next meaningful token after a string is a key separator, which
   # is what distinguishes `"k": "v"` (k is a key, v is not) from `"k",`.
+  #
+  # "Meaningful" has to mean the same thing here as it does in `scan`, and it
+  # did not: block comments were taught to the depth scanner and not to this
+  # one, so `"key" /* why */ : "value"` found no separator, no string landed in
+  # key position, and the whole table fell to SET mode — every reason string
+  # read as a skip. That direction is loud (the roster comparison reports the
+  # reasons as unrostered skips), so it is a false alarm on legitimate code
+  # rather than a miss, but it is the same "the first flip did not reach every
+  # path" shape as the bug that made it necessary: one notion of "skippable
+  # text", implemented twice, fixed once.
   def self.separator_follows?(source, index, comment)
     cursor = index
     while cursor < source.length
@@ -408,6 +418,11 @@ module ConformanceSkips
       elsif (comment == :hash && char == "#") ||
             (comment == :slash && char == "/" && source[cursor + 1] == "/")
         cursor = (source.index("\n", cursor) || source.length)
+      elsif comment == :slash && char == "/" && source[cursor + 1] == "*"
+        close = source.index("*/", cursor + 2)
+        break if close.nil?
+
+        cursor = close + 2
       else
         break
       end

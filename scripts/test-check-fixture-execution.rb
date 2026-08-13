@@ -204,7 +204,7 @@ def default_files(skips = BASE_SKIPS)
   }
 end
 
-def run_gate(skips: BASE_SKIPS, mutate: nil)
+def run_gate(skips: BASE_SKIPS, mutate: nil, git_init: true)
   base = Dir.mktmpdir("fixture-execution-test")
   begin
     files = default_files(skips)
@@ -217,9 +217,12 @@ def run_gate(skips: BASE_SKIPS, mutate: nil)
     end
 
     # The gate discovers fixtures through `git ls-files`, so an un-added tree
-    # would look empty and every case would vacuously "pass".
-    Open3.capture2e("git", "-C", base, "init", "-q")
-    Open3.capture2e("git", "-C", base, "add", "-A")
+    # would look empty and every case would vacuously "pass". `git_init: false`
+    # is the one case that wants exactly that, to reach the ls-files failure.
+    if git_init
+      Open3.capture2e("git", "-C", base, "init", "-q")
+      Open3.capture2e("git", "-C", base, "add", "-A")
+    end
 
     Open3.capture2e({ "FIXTURE_EXECUTION_ROOT" => base }, "ruby", GATE, chdir: base)
   ensure
@@ -501,12 +504,22 @@ out, status = run_gate(mutate: lambda { |f|
 expect_fail(failures, "non-array tags", out, status, 'has a non-array "tags"')
 
 # The tag branch has no literal to parse, so the registry asserts it by naming
-# the line that implements it. If that line goes, the registry's claim that
-# kotlin skips every link-header case is no longer backed by anything.
+# the line that implements it. If the registry can no longer find that line, its
+# claim that kotlin skips every link-header case is backed by nothing.
+#
+# The branch is REFORMATTED rather than deleted, and that is the whole point of
+# the case. Deleting it also removes the only mention of `tc.tags`, so the
+# accessor-count guard fires too — two independent mechanisms reaching the same
+# verdict, which means the case proves nothing about EITHER. It showed up in the
+# per-case mutation matrix as an orphan: no single mutation could kill it,
+# because disabling one guard left the other. Keeping `tc.tags` on the line
+# leaves exactly one mechanism able to answer.
 out, status = run_gate(mutate: lambda { |f|
-  edit(f, KT_MAIN, 'if ("link-header" in tc.tags) {', "if (false) {")
+  edit(f, KT_MAIN, '        if ("link-header" in tc.tags) {',
+       "        if (\"link-header\" in tc.tags)\n        {")
 })
-expect_fail(failures, "kotlin tag branch removed", out, status, "whole-case tag branch")
+expect_fail(failures, "kotlin tag branch reformatted past its anchor", out, status,
+            "whole-case tag branch")
 
 # Vacuity: no tracked fixtures is an extraction failure, not "nothing to check".
 out, status = run_gate(mutate: ->(f) { f.delete("conformance/tests/alpha.json") })
@@ -601,6 +614,81 @@ out, status = run_gate(mutate: lambda { |f|
                                    "— rewritten wholesale, waiver 9Z.9, architectural.")
 })
 expect_pass(failures, "roster justification text is not asserted", out, status)
+
+# --- guard sites the per-case matrix showed nothing was reaching -----------------
+#
+# The matrix measures cases against MUTATIONS, so a guard nobody mutated
+# produces no row and is invisible by construction — which is how one orphan
+# here turned out to be a short mutation list rather than a weak case. Walking
+# every raise and early return in the parser instead, against the code, found
+# eleven guard sites with no case behind them. These are the seven worth having.
+#
+# Deliberately still untested, and why: an unterminated block comment, an
+# unterminated string literal, and an unbalanced closing bracket are all
+# malformed source that would fail its own language's compiler long before this
+# gate ran, so a case would only assert that Ruby's own parsing works.
+
+# A line comment holding a brace, the `#`-language twin of the block-comment
+# case. Same failure: the brace moves the depth counter and truncates the table
+# after that entry, so the comment goes on the FIRST of two.
+out, status = run_gate(skips: with_skips(**all_six.merge(ruby: ["five of six", "runs everywhere"])),
+                       mutate: lambda { |f|
+                         edit(f, RB_RUNNER, "  \"five of six\",\n",
+                              "  \"five of six\", # dropped when the } branch went away\n")
+                       })
+expect_fail(failures, "ruby line comment containing a brace", out, status,
+            '"runs everywhere" is skipped by all 6 runners')
+
+# An escaped quote inside a key must round-trip, or the name never matches the
+# fixture case and the exclusion is silently lost.
+out, status = run_gate(skips: with_skips(**all_six.merge(go: ['a "quoted" case'])),
+                       mutate: lambda { |f|
+                         cases = fixture_cases + [{ "name" => 'a "quoted" case', "operation" => "Op" }]
+                         f["conformance/tests/alpha.json"] = JSON.pretty_generate(cases)
+                       })
+expect_fail(failures, "escaped quote in a key", out, status, "skipped but not rostered")
+
+# The separator may be separated from its key by whitespace, a newline or a
+# comment. If that scan stopped recognizing it, NO string would be in key
+# position, the table would fall to set mode, and every reason string would be
+# read as a skip — so this passes only because the separator is still found.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, GO_MAIN, '"five of six": "go reason",', "\"five of six\" /* why */ :\n\t\t\"go reason\",")
+})
+expect_pass(failures, "separator reached across a comment and a newline", out, status)
+
+# A declaration whose `=` is not on the anchor's line: the parser cannot tell
+# where the header ends and the literal begins, so it says so.
+#
+# Reached through GO, not Ruby. Two of the eight anchors (`RUBY_SKIPS =`) end in
+# the assignment themselves, so moving the `=` also moves the anchor and the
+# anchor-not-found error fires first — the guard is unreachable from those two
+# by construction, which is worth knowing rather than working around.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, GO_MAIN, "var goSDKSkips = map[string]string{", "var goSDKSkips\nvar _ = map[string]string{")
+})
+expect_fail(failures, "no assignment on the declaration line", out, status,
+            "has no `=` on its line")
+
+# Fixture-shape guards. conformance-fixtures-check validates the schema, but a
+# gate that credits malformed input because another gate usually catches it is
+# crediting what it did not read — the same argument as the non-array `tags`.
+out, status = run_gate(mutate: ->(f) { f["conformance/tests/alpha.json"] = "{}\n" })
+expect_fail(failures, "fixture is not a JSON array", out, status,
+            "expected a JSON array of test cases")
+
+out, status = run_gate(mutate: lambda { |f|
+  f["conformance/tests/alpha.json"] = JSON.pretty_generate([{ "operation" => "Op" }])
+})
+expect_fail(failures, "case has no name", out, status, 'test case has no string "name"')
+
+out, status = run_gate(mutate: ->(f) { f["conformance/tests/alpha.json"] = "[ not json\n" })
+expect_fail(failures, "fixture is not valid JSON", out, status, "is not valid JSON")
+
+# Discovery itself failing must be loud: an un-inited tree returns no files, and
+# reading that as "nothing to check" is the vacuity this gate exists to reject.
+out, status = run_gate(git_init: false)
+expect_fail(failures, "root is not a git checkout", out, status, "git ls-files")
 
 # --- locale independence --------------------------------------------------------
 #
