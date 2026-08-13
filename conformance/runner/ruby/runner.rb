@@ -68,8 +68,14 @@ module CaseCensus
   # Absent means mock: live cases are TS-only (the canonical wire-capturer), and
   # every other value is nobody's. Shared with the census self-tests so the rule
   # the run loop applies is the rule under test, not a copy of it.
+  #
+  # Defaults on nil ONLY. `mode || "mock"` also defaults an explicit JSON
+  # `false`, which Ruby alone would then run as mock while the census counts it
+  # as non-live — matching totals over a value no other runner accepts. Python
+  # had the same defect more broadly (its `or` defaulted every falsy value); the
+  # typed runners reject a non-string `mode` when they decode it.
   def self.mock_mode?(mode)
-    (mode || "mock") == "mock"
+    (mode.nil? ? "mock" : mode) == "mock"
   end
 
   # Counts fixture cases whose mode is not "live", recursively.

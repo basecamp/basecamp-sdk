@@ -136,8 +136,11 @@ class CaseCensusTest < Minitest::Test
     refute CaseCensus.mock_mode?("live")
     # The census is what catches this one; the filter must not run it.
     refute CaseCensus.mock_mode?("moc")
-    # Ruby null-coalesces rather than defaulting on falsiness, so an explicit
-    # empty mode is not an absent one. Python defaulted on falsiness and ran it.
+    # An explicit empty mode is not an absent one. Python defaulted on
+    # falsiness and ran it.
     refute CaseCensus.mock_mode?("")
+    # `mode || "mock"` defaulted this too, so Ruby alone ran it while the census
+    # counted it as non-live — matching totals over a value nothing accepts.
+    refute CaseCensus.mock_mode?(false)
   end
 end
