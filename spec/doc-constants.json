@@ -30,6 +30,8 @@
     "The N+1th citation fails until someone reads it and restates the number;",
     "fewer than N means the entry has outlived what it described.",
     "",
+    "fixture-categories / fixture-section-map — the two SPEC.md tables that claim to account for every tracked fixture under conformance/tests/, sourced from `git ls-files conformance/tests/*.json`. Neither is writable, for @assertion-types' reason: a row carries an owning-section attribution or a case summary only the fixture's author can make. The categories table is a bijection (one row per fixture, and the category slug IS the filename); Appendix D is coverage only, because its rows deliberately bundle several cases each. Added after the same drift appeared three times in three different shapes — a fixture with neither row, a fixture with Appendix D rows and no category row, and a fixture with a category row and no Appendix D row. SPEC §23's parallel fixture families (conformance/oauth/, oauth-token/, event-feed*/) are carved out of both rosters by their own section, which the conformance/tests/ scope honors with no special case.",
+    "",
     "operation-count — the number of (path, HTTP method) pairs in openapi.json. It is one jq away from the source and was restated in prose in six places across four files, which is how a single new operation left five of them stale and took three review rounds to reconcile. The marked span must carry the count as a BACKTICKED integer, and exactly one: the marked sentences state other numbers (SECURITY.md names 125 GETs and 83 mutations beside the total), so backticks are what distinguishes the derived constant from prose arithmetic the writer has no source for."
   ],
   "markerCounts": {
@@ -41,6 +43,12 @@
       "spec/api-gaps/README.md": 1
     },
     "assertion-types": {
+      "SPEC.md": 1
+    },
+    "fixture-categories": {
+      "SPEC.md": 1
+    },
+    "fixture-section-map": {
       "SPEC.md": 1
     },
     "operation-count": {

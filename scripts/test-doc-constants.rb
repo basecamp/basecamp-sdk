@@ -110,8 +110,17 @@ def default_files
         "bc3-pin" => { "COORDINATION.md" => 1 },
         "assertion-types" => { "SPEC.md" => 1 },
         "operation-count" => { "SPEC.md" => 1 },
+        "fixture-categories" => { "SPEC.md" => 1 },
+        "fixture-section-map" => { "SPEC.md" => 1 },
       }
     ),
+    # Two tracked conformance fixtures, which is the whole source of truth for
+    # the two roster checks — their CONTENT is never read, only their tracked
+    # filenames. `beta_write` earns its underscore: the category slug rule
+    # rewrites it to `beta-write`, so a check that compared basenames verbatim
+    # would pass the positive control and reject the real repo.
+    "conformance/tests/alpha.json" => "[]\n",
+    "conformance/tests/beta_write.json" => "[]\n",
     "COORDINATION.md" => <<~MD,
       # Coordination
 
@@ -131,6 +140,20 @@ def default_files
       | `header` | a header |
       | `jsonPath` | a JSON path |
       <!-- @assertion-types:end -->
+
+      <!-- @fixture-categories:begin -->
+      | Category | Files | Owning Spec Section(s) |
+      |----------|-------|----------------------|
+      | alpha | `alpha.json` | §1 Something |
+      | beta-write | `beta_write.json` | §2 Something Else |
+      <!-- @fixture-categories:end -->
+
+      <!-- @fixture-section-map:begin -->
+      | Test file | Test name | Primary section |
+      |-----------|----------|----------------|
+      | `alpha.json` | does a thing | §1 |
+      | `beta_write.json` | does another thing | §2 |
+      <!-- @fixture-section-map:end -->
     MD
     "spec/api-gaps/entry.md" => <<~MD,
       # An entry
@@ -652,6 +675,91 @@ out, status = gate lambda { |f|
 }
 expect_fail(failures, "assertion type tabulated twice", out, status, "is tabulated twice")
 
+# --- @fixture-categories (SPEC §19's Test Categories table) ---------------------
+#
+# The drift this catches happened three times in three shapes before the gate
+# existed, so each shape gets a case. The gate is green on the repo as it
+# stands only because Part 1 of this change backfilled the four missing rows;
+# against the tree it landed on, both checks fail.
+
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("| beta-write | `beta_write.json` | §2 Something Else |\n", "") }
+expect_fail(failures, "fixture with no category row", out, status, "missing: `beta_write.json`")
+
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @fixture-categories:end -->",
+                                  "| gamma | `gamma.json` | §3 |\n<!-- @fixture-categories:end -->")
+}
+expect_fail(failures, "category row for an untracked file", out, status,
+            "files git does not track under conformance/tests/: `gamma.json`")
+
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @fixture-categories:end -->",
+                                  "| alpha | `alpha.json` | §1 again |\n<!-- @fixture-categories:end -->")
+}
+expect_fail(failures, "fixture categorised twice", out, status,
+            "`alpha.json` is tabulated on more than one row")
+
+# The slug rule is the half of the bijection a set comparison cannot see: both
+# directions still match here, and only the category name is wrong.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| beta-write | `beta_write.json` |", "| beta_write | `beta_write.json` |")
+}
+expect_fail(failures, "category slug disagrees with its filename", out, status,
+            "`beta_write.json` dictates the slug `beta-write`")
+
+# A row the parser cannot read must be REPORTED, not filter_mapped away — the
+# fail-open shape the fence handling exists to avoid, one table out.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("| alpha | `alpha.json` |", "| alpha | alpha.json |")
+}
+expect_fail(failures, "unparseable Files cell", out, status,
+            "is not a single backticked fixture filename")
+
+# Marker pair around the wrong lines: a span with no table at all reads as
+# "nothing to check" unless the absence of a separator row is itself an error.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub(/<!-- @fixture-categories:begin -->.*<!-- @fixture-categories:end -->/m,
+                                  "<!-- @fixture-categories:begin -->\nProse, no table.\n<!-- @fixture-categories:end -->")
+}
+expect_fail(failures, "marked span holds no table", out, status, "holds no Markdown table")
+
+# Vacuity: `git ls-files conformance/tests/*.json` matching nothing is an
+# extraction failure, not 22 pieces of drift. Both fixtures are deleted, so
+# every row would otherwise be reported as `extra` and the cause would be
+# buried under the symptoms.
+out, status = gate lambda { |f|
+  f.delete("conformance/tests/alpha.json")
+  f.delete("conformance/tests/beta_write.json")
+}
+expect_fail(failures, "no tracked fixtures at all", out, status,
+            "matched nothing, so this check has no source of truth")
+
+# --- @fixture-section-map (SPEC Appendix D) -------------------------------------
+#
+# Coverage only, deliberately: Appendix D's rows bundle several cases each, so
+# "one row per fixture" is not true of it and is not asserted. What IS asserted
+# is that no fixture is absent and no row names a file that is not one.
+
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("| `alpha.json` | does a thing | §1 |\n", "") }
+expect_fail(failures, "fixture absent from Appendix D", out, status,
+            "no row maps these tracked fixtures to a primary section: `alpha.json`")
+
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @fixture-section-map:end -->",
+                                  "| `gamma.json` | invented | §3 |\n<!-- @fixture-section-map:end -->")
+}
+expect_fail(failures, "Appendix D row for an untracked file", out, status,
+            "rows name files git does not track under conformance/tests/: `gamma.json`")
+
+# Two rows for one fixture is CORRECT here — uploads_write.json legitimately has
+# four. A check that copied the categories table's bijection would reject the
+# real repo.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @fixture-section-map:end -->",
+                                  "| `alpha.json` | a second theme | §1 |\n<!-- @fixture-section-map:end -->")
+}
+expect_pass(failures, "Appendix D allows several rows per fixture", out, status)
+
 # --- marker structure ----------------------------------------------------------
 
 out, status = gate ->(f) { f["SPEC.md"] += "\nSomething. <!-- @nope -->\n" }
@@ -731,6 +839,25 @@ out, status = gate lambda { |f|
 }
 expect_fail(failures, "count declared for an unknown kind", out, status,
             "count declared for unknown marker @not-a-kind")
+
+# Unmarking a roster is the cheapest way to silence it, so the inventory has to
+# cover the two new kinds like every other. Without the count, deleting the
+# marker pair leaves a table nothing checks and a gate that reports success.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("<!-- @fixture-categories:begin -->\n", "")
+                 .sub("<!-- @fixture-categories:end -->\n", "")
+}
+expect_fail(failures, "fixture-categories markers deleted", out, status,
+            "SPEC.md: spec/doc-constants.json declares 1 @fixture-categories marker(s), found 0")
+
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("<!-- @fixture-section-map:begin -->\n", "")
+                 .sub("<!-- @fixture-section-map:end -->\n", "")
+}
+expect_fail(failures, "fixture-section-map markers deleted", out, status,
+            "SPEC.md: spec/doc-constants.json declares 1 @fixture-section-map marker(s), found 0")
 
 # --- source-of-truth failures --------------------------------------------------
 
@@ -818,6 +945,24 @@ writer lambda { |f|
   written = read_in(dir, "SPEC.md")
   if written.include?("brandNew")
     failures << "writer: must not invent an assertion-type row:\n#{written}"
+  end
+end
+
+# Same for the two fixture rosters: a row's owning-section attribution and case
+# summary are human-authored, so the writer must leave a stale table alone and
+# let `--check` fail. Repinning gives the writer real work to do in the same
+# file, which is what makes "it left the tables alone" mean something.
+writer lambda { |f|
+  repin_to.call("c" * 40, "2026-09-09").call(f)
+  f.delete("conformance/tests/beta_write.json")
+} do |out, status, dir|
+  expect_pass(failures, "writer ignores fixture-roster drift", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?("| beta-write | `beta_write.json` | §2 Something Else |")
+    failures << "writer: must not edit the fixture-categories table:\n#{written}"
+  end
+  unless written.include?("| `beta_write.json` | does another thing | §2 |")
+    failures << "writer: must not edit the fixture-section-map table:\n#{written}"
   end
 end
 

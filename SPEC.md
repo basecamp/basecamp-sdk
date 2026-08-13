@@ -2102,6 +2102,11 @@ index past the number of recorded requests fails rather than passing vacuously.
 
 ### Test Categories and Owning Sections
 
+Every tracked fixture under `conformance/tests/` has exactly one row here, and
+the category slug is the filename (basename, `_` written as `-`).
+`make doc-constants-check` asserts the bijection.
+
+<!-- @fixture-categories:begin -->
 | Category | Files | Owning Spec Section(s) |
 |----------|-------|----------------------|
 | auth | `auth.json` | §4 Authentication, §13 HTTP Transport |
@@ -2126,6 +2131,7 @@ index past the number of recorded requests fails rather than passing vacuously.
 | upcoming-schedule | `upcoming_schedule.json` | §10 Type Fidelity — the reduced calendar projection `GetUpcomingSchedule` renders, distinct from the shared `ScheduleEntry` shape |
 | uploads-download | `uploads_download.json` | §14 Download, §18 Hand-Written Composite Methods |
 | uploads-write | `uploads_write.json` | §5 Merge-Safe Write Surface (Cards, Uploads), §18 Hand-Written Composite Methods, §10 Type Fidelity, §6 Error Taxonomy (507 → limit_exceeded) |
+<!-- @fixture-categories:end -->
 
 ### Runner Pattern
 
@@ -3367,6 +3373,11 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 
 ## Appendix D: Conformance Test → Spec Section Mapping
 
+Every tracked fixture under `conformance/tests/` appears on at least one row.
+Rows are curated summaries and may bundle several cases, so the coverage is
+what `make doc-constants-check` asserts — not a case-by-case index.
+
+<!-- @fixture-section-map:begin -->
 | Test file | Test name | Primary section |
 |-----------|----------|----------------|
 | `auth.json` | Bearer token injected | §4, §13 |
@@ -3449,6 +3460,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `search.json` | The polymorphic search projection: the generic recording envelope plus all four special branches, and the file-attachment branch in isolation (2 cases) | §10 (Type Fidelity) |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
+<!-- @fixture-section-map:end -->
 
 ---
 
