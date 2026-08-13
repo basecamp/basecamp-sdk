@@ -371,8 +371,25 @@ def scan_file(file)
     errors << "#{file}:#{open_block[:line_no]}: @#{open_block[:kind]}:begin never closed"
   end
 
+  # Only LINE spans leave the prose pool. A line span IS the marked claim — the
+  # writer rewrites it from the source on every sync, so judging it as prose
+  # would flag the very restatement the marker sanctions.
+  #
+  # BLOCK bodies stay eligible, and the difference is not cosmetic. The writer
+  # rewrites line spans only (see the --write pass), and the block checkers read
+  # nothing but the `|` rows, so an ordinary sentence inside a roster or
+  # assertion-types block survives both untouched. Excluding the whole body
+  # would let "verified against <current pin>" sit inside a table block with no
+  # marker and no grant, invisible to check_unmarked_pin and silently stale at
+  # the next repin — the exact claim class this gate exists to catch, hidden by
+  # the gate's own span bookkeeping. No block kind legitimately restates a SHA:
+  # they hold assertion-type names and fixture filenames.
   covered = Set.new
-  spans.each { |s| (s.line_no...(s.line_no + s.lines.length)).each { |n| covered << n } }
+  spans.each do |s|
+    next if s.block
+
+    (s.line_no...(s.line_no + s.lines.length)).each { |n| covered << n }
+  end
   prose.reject! { |line_no, _| covered.include?(line_no) }
 
   [spans, errors, prose]
@@ -851,6 +868,29 @@ def check_fixture_categories(span, fixtures)
   listed.tally.select { |_, n| n > 1 }.each_key do |file|
     errors << "#{span.location}: `#{file}` is tabulated on more than one row; one fixture, one " \
               "category"
+  end
+
+  # Tallying FILES catches a fixture listed twice; it does not catch two
+  # different fixtures deriving the same category. `_` and `-` collapse to the
+  # same slug, so `foo_bar.json` and `foo-bar.json` each satisfy the per-row
+  # slug check above and both claim the category `foo-bar`. The table is then
+  # not the bijection its own heading asserts, and the category label is
+  # ambiguous about which fixture it names. The slug is what the table is keyed
+  # by, so the slug is what has to be unique.
+  # Keyed on the DERIVED slug, not the declared cell. A row whose category cell
+  # is simply wrong is already reported above and still reaches here, so
+  # grouping by what the row claims would both miss real collisions and invent
+  # false ones. The filename is what dictates the slug, so the filename is what
+  # this groups by. Only DISTINCT files count — one file on two rows is the
+  # tally above, and reporting it twice would just be noise.
+  documented.group_by { |_, file, _| category_slug(file) }
+            .each do |slug, rows|
+    files = rows.map { |_, file, _| file }.uniq
+    next if files.length < 2
+
+    errors << "#{span.location}: category `#{slug}` is dictated by #{files.map { |f| "`#{f}`" }.join(' and ')} " \
+              "— distinct fixtures deriving one slug (`_` and `-` collapse to the same category). " \
+              "The table is keyed by category, so this is not the bijection it claims; rename one."
   end
 
   missing = fixtures - listed

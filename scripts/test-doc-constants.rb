@@ -723,6 +723,39 @@ out, status = gate lambda { |f|
 expect_fail(failures, "category row with a blank owning section", out, status,
             "names no owning spec section")
 
+# Two DISTINCT fixtures deriving ONE category. `_` and `-` collapse to the same
+# slug, so both rows satisfy the per-row slug rule and the file tally sees two
+# different files — the table passes every check that looks at filenames while
+# not being the bijection its own heading asserts. Adding the file to both
+# rosters keeps the set comparisons satisfied, so the collision is the only
+# thing left for the gate to catch.
+out, status = gate lambda { |f|
+  f["conformance/tests/beta-write.json"] = "[]\n"
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("| beta-write | `beta_write.json` | §2 Something Else |\n",
+                      "| beta-write | `beta_write.json` | §2 Something Else |\n" \
+                      "| beta-write | `beta-write.json` | §2 Something Else |\n")
+                 .sub("| `beta_write.json` | does another thing | §2 |\n",
+                      "| `beta_write.json` | does another thing | §2 |\n" \
+                      "| `beta-write.json` | does a third thing | §2 |\n")
+}
+expect_fail(failures, "two fixtures deriving one category slug", out, status,
+            "category `beta-write` is dictated by")
+
+# A pin restatement INSIDE a block span. The writer rewrites line spans only and
+# the block checkers read nothing but the `|` rows, so an ordinary sentence
+# parked in a roster block survives both untouched. If block bodies were dropped
+# from the prose pool, this unmarked current-pin claim would be invisible to
+# check_unmarked_pin and silently stale at the next repin — the gate's own span
+# bookkeeping hiding the claim class it exists to catch.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @fixture-categories:end -->",
+                                  "\nRosters verified against `#{SHORT}`.\n" \
+                                  "<!-- @fixture-categories:end -->")
+}
+expect_fail(failures, "unmarked pin citation inside a block span", out, status,
+            SHORT)
+
 out, status = gate lambda { |f|
   f["SPEC.md"] = f["SPEC.md"].sub("| `beta_write.json` | does another thing | §2 |",
                                   "| `beta_write.json` |  |  |")
