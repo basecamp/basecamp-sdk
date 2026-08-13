@@ -1,0 +1,33 @@
+Makefile
+  s_fca5acb3cc9413::t_4d75f4ac9a0ed6 1045-1051
+conformance/runner/swift/Sources/ConformanceRunner/Fixtures.swift
+  s_fca5acb3cc9413::t_bbdb7a466462e5 148-151
+  s_fca5acb3cc9413::t_1ecbcba7c8b438 1
+conformance/runner/swift/Sources/ConformanceSupport/CaseCensus.swift
+  s_fca5acb3cc9413::t_f3d200ff67f37d 26-37
+  s_fca5acb3cc9413::t_b4fa6236cf426d 1-25,38-141
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_fca5acb3cc9413::t_dee4f6e9d52ae1 142-150,152
+  s_fca5acb3cc9413::t_d639f858ed2165 59-72
+  s_fca5acb3cc9413::t_a9c5757c2da647 2
+conformance/runner/swift/Tests/ConformanceSupportTests/CaseCensusTests.swift
+  s_fca5acb3cc9413::t_1af09e92c4629c 1-25,29-30,32-33,35-38,40,42-85,92-128
+  s_fca5acb3cc9413::t_83d8188238f7cf 86-91
+  s_fca5acb3cc9413::t_edafa5c543eaa0 26-28,31,34,39,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6ab3a665eb8600fad033ca1e68b9239beb9b766b",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
