@@ -1,0 +1,70 @@
+conformance/runner/go/main.go
+  s_fca5acb3cc9413::t_8d166a68ffa294 228-241
+  s_fca5acb3cc9413::t_231455fe390703 242
+  s_fca5acb3cc9413::t_cfe542ed787b82 200
+  s_fca5acb3cc9413::t_1820e1dc08c05b 184-186
+scripts/test-check-fixture-execution.rb
+  s_fca5acb3cc9413::t_f29535d44de2f0 1-183
+conformance/runner/ruby/runner.rb
+  s_fca5acb3cc9413::t_430dfe8b8a510b 14,166-198,1676-1678,1696,1727-1738
+scripts/check-fixture-execution.rb
+  s_fca5acb3cc9413::t_0a3d20aecf2946 1-59,65-79,88,99-229
+  s_fca5acb3cc9413::t_3965c03be8c3b2 80-87,89-98
+  s_fca5acb3cc9413::t_6e9a798fb674cf 60-64
+conformance/runner/go/manifest.go
+  s_fca5acb3cc9413::t_e6de6c7b31c65a 1-88
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_fca5acb3cc9413::t_ded43d248cb6a4 253-256,272-273,281,295,323-334
+.github/workflows/test.yml
+  s_fca5acb3cc9413::t_bdbeff4b54a6c6 896-924,933
+  s_fca5acb3cc9413::t_a4b577d77192bd 925-932
+  s_fca5acb3cc9413::t_14e4678baa5b2b 400-410,483-493,587-597,695-705,770-780,848-857
+  s_fca5acb3cc9413::t_a329e60daa8731 858,934
+conformance/runner/typescript/runner.test.ts
+  s_fca5acb3cc9413::t_6baad5b991f0a1 22-27,1846-1847,1851-1869
+  s_fca5acb3cc9413::t_3616fdffab2d5b 1870
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ExecutionManifest.kt
+  s_fca5acb3cc9413::t_4ad7b386eadfc0 1-61
+conformance/runner/swift/Sources/ConformanceSupport/ExecutionManifest.swift
+  s_fca5acb3cc9413::t_0c964a1c9cf51f 1-80
+Makefile
+  s_fca5acb3cc9413::t_f3e7037f25a82a 571,1060-1087,1100-1109,1229
+  s_fca5acb3cc9413::t_d38ec8ff57a704 1088-1099
+conformance/runner/python/runner.py
+  s_fca5acb3cc9413::t_20c02d63b9b3c0 167-199
+  s_fca5acb3cc9413::t_f327712a7e350f 1530-1532,1551,1577-1587
+SPEC.md
+  s_fca5acb3cc9413::t_182c35f3a98bd5 2186-2217
+  s_fca5acb3cc9413::t_b81205fe4a0a4d 2219-2224
+  s_d61589290be18c::t_c0c73e7d5f89ee 2218
+conformance/runner/typescript/case-census.ts
+  s_fca5acb3cc9413::t_6baad5b991f0a1 150-201
+.gitignore
+  s_fca5acb3cc9413::t_0c81d1e9df314f 69-75
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_fca5acb3cc9413::t_b344f75c8875cf 97-100,124-126,133,142,167-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a92317fa887e8b664cf446f6d1ebd014fca216d8",
+  "prompts": {},
+  "sessions": {
+    "s_d61589290be18c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be6cbab8-566e-430a-9854-86e17aa8bdc5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
