@@ -1,0 +1,25 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/GaugesServiceTest.kt
+  s_23e48791aed839::t_c8a2fa87d17887 560,568
+python/tests/services/test_gauges_service.py
+  s_23e48791aed839::t_a65d0f36997ba3 193-196
+swift/Tests/BasecampTests/GaugesServiceTests.swift
+  s_23e48791aed839::t_29190a4810f55a 461,478
+typescript/tests/services/gauges.test.ts
+  s_23e48791aed839::t_9efedb00539343 324-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c51e2e0a5a3115999fd0dd717a2d269e6f5f95a4",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
