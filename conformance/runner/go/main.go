@@ -150,6 +150,15 @@ func main() {
 
 	testsDir := filepath.Join("..", "..", "tests")
 
+	// Case census (#602) — see case_census.go. Taken up front, by its own walk,
+	// so a fixture tree this runner's glob cannot see is reported before the run
+	// rather than inferred from a short count afterwards.
+	expectedCases, err := countNonLiveCases(testsDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error taking fixture census: %v\n", err)
+		os.Exit(1)
+	}
+
 	files, err := filepath.Glob(filepath.Join(testsDir, "*.json"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error finding test files: %v\n", err)
@@ -195,9 +204,15 @@ func main() {
 	}
 
 	fmt.Printf("\n=== Summary ===\n")
-	fmt.Printf("Passed: %d, Failed: %d, Skipped: %d, Total: %d\n", passed, failed, skipped, passed+failed+skipped)
+	fmt.Printf("Passed: %d, Failed: %d, Skipped: %d, Total: %d (fixtures declare %d non-live case(s))\n",
+		passed, failed, skipped, passed+failed+skipped, expectedCases)
 
-	if failed > 0 {
+	countFailure := caseCountFailure(passed+failed+skipped, expectedCases)
+	if countFailure != "" {
+		fmt.Fprintf(os.Stderr, "\nFAIL: %s\n", countFailure)
+	}
+
+	if failed > 0 || countFailure != "" {
 		os.Exit(1)
 	}
 }
@@ -227,7 +242,7 @@ func loadTests(filename string) ([]TestCase, error) {
 	// fixtures or operations that only the live runner knows about.
 	mockTests := tests[:0]
 	for _, tc := range tests {
-		if tc.Mode == "" || tc.Mode == "mock" {
+		if isMockMode(tc.Mode) {
 			mockTests = append(mockTests, tc)
 		}
 	}
