@@ -1,0 +1,21 @@
+scripts/check-gradle-serialization.rb
+  s_23e48791aed839::t_08817690049a40 37-42,256,467-476,633-641,645-647
+scripts/test-check-gradle-serialization.rb
+  s_23e48791aed839::t_d892f2c9d78d63 658-713
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "16b1ea25c9b181c501bd27a16ed4e7dc66eedad5",
+  "prompts": {},
+  "sessions": {
+    "s_23e48791aed839": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b323a67b-cf04-4ce4-a15b-7f3e3410a9d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
