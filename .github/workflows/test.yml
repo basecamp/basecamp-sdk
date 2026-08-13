@@ -585,6 +585,10 @@ jobs:
           ruby runner.rb
 
       - name: Upload ruby execution manifest
+        # Same matrix condition as the conformance step above: that step runs on
+        # one version only, so an unconditional upload fires on every other one
+        # with nothing to upload and `if-no-files-found: error`.
+        if: matrix.ruby == '3.3'
         # One of the six exclusion sets the cross-runner gate compares (#602).
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
@@ -693,6 +697,10 @@ jobs:
           uv run --python ${{ matrix.python }} python runner.py
 
       - name: Upload python execution manifest
+        # Same matrix condition as the conformance step above: that step runs on
+        # one version only, so an unconditional upload fires on every other one
+        # with nothing to upload and `if-no-files-found: error`.
+        if: matrix.python == '3.13'
         # One of the six exclusion sets the cross-runner gate compares (#602).
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
