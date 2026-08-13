@@ -330,6 +330,30 @@ unless utf8(out).scan(/is skipped by all 6 runners/).length == 1
   failures << "only the tagged twin should be reported:\n#{utf8(out)}"
 end
 
+# A LIVE case excluded by all six must not be reported, and reaching that state
+# now takes a name shared with a mock case — otherwise the live-only-waiver
+# check fires first and the scope guard is never consulted. Both identities are
+# excluded by all six here; only the mock one is a finding.
+#
+# This case exists because the orphan matrix said nothing detected the
+# live-mode scope guard any more: the case that used to cover it became the
+# live-only-waiver case two commits ago, and its old property went uncovered
+# without anything going red. Deleting the guard now breaks this.
+out, status = run_gate(skips: with_skips(go: ["shared mode"], python: ["shared mode"],
+                                         ruby: ["shared mode"], typescript: ["shared mode"],
+                                         kotlin: ["shared mode"], swift: ["shared mode"]),
+                       mutate: lambda { |f|
+                         cases = fixture_cases +
+                                 [{ "name" => "shared mode", "operation" => "Op" },
+                                  { "name" => "shared mode", "operation" => "Op", "mode" => "live" }]
+                         f["conformance/tests/alpha.json"] = JSON.pretty_generate(cases)
+                       })
+expect_fail(failures, "live twin of an all-six mock case is not reported", out, status,
+            '"shared mode" is skipped by all 6 runners')
+unless utf8(out).scan(/is skipped by all 6 runners/).length == 1
+  failures << "the live twin must not be reported as well:\n#{utf8(out)}"
+end
+
 # A renamed table left COMMENTED OUT above the live one used to match the
 # anchor, and the scan read an empty table off the dead line. The active table
 # here holds the sixth exclusion, so a parser fooled by the comment reports a

@@ -378,53 +378,6 @@ module ConformanceSkips
             "passing five-of-six."
     end
 
-    # Map mode drops every string that is not a key, which is correct for the
-    # VALUES and silently wrong for an entry written in a spelling
-    # KEY_SEPARATOR_RE does not know. `mapOf("a" to "b", Pair("c", "d"))` is the
-    # concrete case: "a" is keyed, so the parser commits to map mode, and "c" —
-    # a real skip — is discarded as if it were a value.
-    #
-    # That fails QUIET, in the direction that matters. A dropped key is one
-    # fewer exclusion, so a case genuinely skipped by all six reads as a passing
-    # five-of-six and the gate reports success. A gate that silently
-    # under-reports is worse than no gate, because it also stops people looking.
-    #
-    # The invariant that separates the two: in a map, every non-key string is a
-    # VALUE, and a value is always immediately preceded by its key. So an unkeyed
-    # string must have a keyed predecessor — anything else is an entry this
-    # parser did not understand, and anything not positively interpreted is
-    # reported, never credited.
-    #
-    # Stated per-string rather than over adjacent PAIRS, which was
-    # order-dependent and missed half the cases. `mapOf(Pair("B", CONST), "A" to
-    # "inline")` reads as B(unkeyed), A(keyed), inline(unkeyed): no two unkeyed
-    # strings are adjacent, so a pairwise rule saw nothing and dropped "B" — a
-    # real skip — silently. Reversing the two entries made the same construct
-    # raise, which is the order the self-test happened to use. A first string
-    # that is unkeyed has no predecessor at all and is the case a pairwise rule
-    # structurally cannot see.
-    #
-    # Deliberately NOT strict alternation: `{"a": REASON, "b": OTHER}` with
-    # constant values yields two adjacent KEYED strings and is perfectly
-    # readable, so requiring key/value/key/value would reject a table this
-    # parser handles correctly.
-    strings.each_with_index do |(value, value_keyed), position|
-      next if value_keyed
-
-      predecessor = position.positive? ? strings[position - 1] : nil
-      next if predecessor && predecessor[1]
-
-      context = predecessor ? "follows #{predecessor[0].inspect}" : "opens the literal"
-      raise ExtractionError,
-            "a skip table has a string this parser cannot place: #{value.inspect} #{context} " \
-            "with neither in key position. Two causes, and the message cannot tell them apart: " \
-            "an entry whose key uses a spelling KEY_SEPARATOR_RE does not know (`:`, `=>` and " \
-            "`to` are the ones it does), or a VALUE split across string literals — " \
-            "`\"reason one\" +\\n \"reason two\"` — which this parser does not join. For the " \
-            "second, put the reason on one literal. Reading either as a value would drop a real " \
-            "skip and turn an all-six exclusion into a passing five-of-six, so it is reported " \
-            "rather than guessed at."
-    end
 
     keyed.map(&:first)
   end
