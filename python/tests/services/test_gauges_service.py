@@ -80,6 +80,16 @@ class TestListGauges:
         assert gauge["last_needle_position"] == 72
         assert gauge["previous_needle_position"] == 45
         assert gauge["bucket"]["id"] == 2085958500
+        # A gauge is a SINGLETON under its project: Gauge#route is
+        # [:project_gauge, bucket], so the gauge's own id never appears in its
+        # url, and the /buckets/{id}/gauges/{id}.json shape these fixtures used
+        # to carry is a route bc3 does not draw. Asserted here because
+        # check-fixture-coverage validates fixture shapes, never their values
+        # (see issue #733), so nothing else stops that drifting back.
+        assert gauge["url"] == "https://3.basecampapi.com/999999999/projects/2085958500/gauge.json"
+        assert gauge["app_url"] == "https://3.basecamp.com/999999999/projects/2085958500/gauge"
+        assert str(gauge["id"]) not in gauge["url"]
+        assert gauge["title"] == "How far along are we?"  # Gauge#title, hard-coded in bc3
 
     @respx.mock
     def test_sends_no_query_when_neither_bucket_ids_nor_page_is_given(self):
@@ -264,6 +274,17 @@ class TestGetGaugeNeedle:
         assert needle["position"] == 72
         assert needle["parent"]["id"] == 1069479800
         assert len(needle["description_attachments"]) == 2
+        # Gauge::Needle#route is [:project_gauge_needle, bucket, recording], and
+        # the parent gauge is the singleton route again. Same reasoning as the
+        # gauge url assertion in TestListGauges.
+        assert needle["url"] == "https://3.basecampapi.com/999999999/projects/2085958500/gauge/needles/1069479850.json"
+        assert needle["title"] == "Moved the needle"  # Gauge::Needle#title, hard-coded in bc3
+        assert needle["parent"]["url"] == "https://3.basecampapi.com/999999999/projects/2085958500/gauge.json"
+        assert needle["parent"]["title"] == "How far along are we?"
+        # The envelope's own URLs stay bucket_recording_*-scoped — those helpers
+        # are not the recordable route and must NOT move with it.
+        assert "/buckets/2085958500/recordings/" in needle["subscription_url"]
+        assert "/buckets/2085958500/recordings/" in needle["comments_url"]
 
     @respx.mock
     def test_404_surfaces_as_not_found_with_the_status_and_body_message(self):
@@ -408,9 +429,14 @@ class TestDestroyGaugeNeedle:
 
 
 class TestToggleGauge:
+    # bc3's Projects::GaugesController#update answers ``head :ok`` — a 200 with an
+    # EMPTY body, not a 204. These stubs say 200 deliberately: an empty 200 is where
+    # a void decode can trip over zero-length input, and a 204 (defined to carry no
+    # body) would never exercise that path. destroy_gauge_needle really is a 204 —
+    # bc3 answers that one with ``head :no_content``.
     @respx.mock
     def test_puts_the_enabled_flag_under_a_gauge_envelope_and_returns_none(self):
-        route = respx.put(_TOGGLE_URL).mock(return_value=httpx.Response(204))
+        route = respx.put(_TOGGLE_URL).mock(return_value=httpx.Response(200))
 
         assert _gauges().toggle_gauge(project_id=7, gauge={"enabled": True}) is None
 
@@ -424,7 +450,7 @@ class TestToggleGauge:
     def test_an_explicit_false_reaches_the_wire(self):
         # `enabled: False` is a real disable instruction, not an omission: it must
         # survive `_compact` (which only drops None) as a literal false.
-        route = respx.put(_TOGGLE_URL).mock(return_value=httpx.Response(204))
+        route = respx.put(_TOGGLE_URL).mock(return_value=httpx.Response(200))
 
         _gauges().toggle_gauge(project_id=7, gauge={"enabled": False})
 
@@ -669,7 +695,7 @@ class TestAsyncGauges:
     @pytest.mark.asyncio
     @respx.mock
     async def test_toggle_gauge_puts_the_enabled_flag_under_a_gauge_envelope(self):
-        route = respx.put(_TOGGLE_URL).mock(return_value=httpx.Response(204))
+        route = respx.put(_TOGGLE_URL).mock(return_value=httpx.Response(200))
 
         assert await _async_gauges().toggle_gauge(project_id=7, gauge={"enabled": False}) is None
 

@@ -541,6 +541,11 @@ describe("GaugesService", () => {
     });
   });
 
+  // bc3's Projects::GaugesController#update answers `head :ok` — a 200 with an
+  // EMPTY body, not a 204. These stubs say 200 deliberately: an empty 200 is
+  // where a void decode can trip over zero-length input, and a 204 (defined to
+  // carry no body) would never exercise that path. destroyGaugeNeedle above
+  // really is a 204 — bc3 answers that one with `head :no_content`.
   describe("toggleGauge", () => {
     it("should enable the gauge for a project", async () => {
       const projectId = 7;
@@ -549,7 +554,7 @@ describe("GaugesService", () => {
       server.use(
         http.put(`${BASE_URL}/projects/${projectId}/gauge.json`, async ({ request }) => {
           body = (await request.json()) as Record<string, unknown>;
-          return new HttpResponse(null, { status: 204 });
+          return new HttpResponse(null, { status: 200 });
         })
       );
 
@@ -567,7 +572,7 @@ describe("GaugesService", () => {
       server.use(
         http.put(`${BASE_URL}/projects/${projectId}/gauge.json`, async ({ request }) => {
           body = (await request.json()) as Record<string, unknown>;
-          return new HttpResponse(null, { status: 204 });
+          return new HttpResponse(null, { status: 200 });
         })
       );
 
@@ -586,7 +591,7 @@ describe("GaugesService", () => {
       server.use(
         http.put(`${BASE_URL}/projects/${projectId}/gauge.json`, () => {
           requests++;
-          return new HttpResponse(null, { status: 204 });
+          return new HttpResponse(null, { status: 200 });
         })
       );
 

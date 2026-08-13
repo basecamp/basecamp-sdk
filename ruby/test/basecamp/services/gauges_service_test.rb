@@ -427,8 +427,12 @@ class GaugesServiceTest < Minitest::Test
   # toggle_gauge
   # ===========================================================================
 
+  # bc3's Projects::GaugesController#update answers `head :ok` — a 200 with an
+  # EMPTY body, not a 204. Stubbed that way deliberately: an empty 200 is the
+  # path where a void decode can trip over zero-length input, and a 204 (which
+  # is defined to have no body) would never exercise it.
   def test_toggle_gauge_enable
-    stub_request(:put, TOGGLE_URL_EITHER).to_return(status: 204, body: "")
+    stub_request(:put, TOGGLE_URL_EITHER).to_return(status: 200, body: "")
 
     assert_nil @account.gauges.toggle_gauge(project_id: 7, gauge: { "enabled" => true })
 
@@ -440,7 +444,7 @@ class GaugesServiceTest < Minitest::Test
   # The gauge toggle lives at the singular /projects/{id}/gauge.json — the
   # needles collection beneath it is what is plural, not the gauge itself.
   def test_toggle_gauge_disable
-    stub_request(:put, TOGGLE_URL_EITHER).to_return(status: 204, body: "")
+    stub_request(:put, TOGGLE_URL_EITHER).to_return(status: 200, body: "")
 
     assert_nil @account.gauges.toggle_gauge(project_id: 7, gauge: { "enabled" => false })
 
