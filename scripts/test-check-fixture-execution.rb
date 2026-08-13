@@ -596,6 +596,18 @@ out, status = run_gate(mutate: ->(f) { edit(f, "SPEC.md", "### Zero-Skip Target"
 expect_fail(failures, "roster section renamed", out, status,
             'the roster heading "### Zero-Skip Target" matched 0 line(s)')
 
+# The roster heading must START its line. Prose that MENTIONS the heading is
+# ordinary — SPEC.md's own §19 narrative refers to the roster by name — and a
+# substring match would see two "headings" and fail the exactly-one predicate on
+# a document that is perfectly correct. This is the one place the shared anchor
+# matcher takes `anchored:`, and without a case the flag was unproven: dropping
+# the distinction entirely broke nothing.
+out, status = run_gate(mutate: lambda { |f|
+  edit(f, "SPEC.md", "One line per runner x test",
+       "The ### Zero-Skip Target roster below is one line per runner x test")
+})
+expect_pass(failures, "prose mentioning the roster heading is not a heading", out, status)
+
 # A repeated heading would be silently collapsed by a hash build, dropping the
 # first block's bullets out of the comparison entirely.
 out, status = run_gate(mutate: lambda { |f|

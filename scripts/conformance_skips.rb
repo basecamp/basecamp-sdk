@@ -167,6 +167,29 @@ module ConformanceSkips
   CLOSERS = "}])".freeze
   ESCAPES = { "n" => "\n", "t" => "\t", "r" => "\r", "0" => "\0" }.freeze
 
+  # The indices of the lines an anchor matches.
+  #
+  # ONE matching mechanism for every anchor this module looks for. The
+  # "exactly one line" PREDICATE beside each call is deliberately left repeated
+  # — it is `== 1` with no substance that could grow, and the substance at those
+  # sites is three different human-facing messages that unifying would
+  # parameterize away.
+  #
+  # But how the matches are FOUND is teachable, and it was written four
+  # different ways: `select` with `include?`, `select` with `start_with?`, and
+  # `count` with `include?` twice. That is a duplicated concept wearing the
+  # predicate's clothes — the day someone decides an anchor inside a commented-
+  # out line should not count, three of the four would keep the old rule, which
+  # is exactly how `comment_end` came to exist. `anchored:` keeps the one real
+  # difference in intent: a roster heading must START its line, or prose merely
+  # mentioning it would match.
+  def self.anchor_lines(source, anchor, anchored: false)
+    lines = source.is_a?(Array) ? source : source.lines
+    lines.each_index.select do |index|
+      anchored ? lines[index].start_with?(anchor) : lines[index].include?(anchor)
+    end
+  end
+
   # The keys of one literal declaration.
   #
   # Fail-closed on the ANCHOR, not on the key count: an anchor that matches no
@@ -176,7 +199,7 @@ module ConformanceSkips
   # three of the six are today.
   def self.declaration_keys(source, table)
     lines = source.lines
-    hits = lines.each_index.select { |index| lines[index].include?(table.anchor) }
+    hits = anchor_lines(lines, table.anchor)
 
     unless hits.length == 1
       raise ExtractionError,
@@ -475,7 +498,7 @@ module ConformanceSkips
   def self.roster(root, relative = "SPEC.md")
     source = read(root, relative)
     lines = source.lines
-    hits = lines.each_index.select { |index| lines[index].start_with?(ROSTER_ANCHOR) }
+    hits = anchor_lines(lines, ROSTER_ANCHOR, anchored: true)
     unless hits.length == 1
       raise ExtractionError,
             "#{relative}: the roster heading #{ROSTER_ANCHOR.inspect} matched #{hits.length} " \
@@ -551,7 +574,7 @@ module ConformanceSkips
     RUNNERS.each_with_object({}) do |runner, out|
       out[runner.name] = runner.tag_branches.map do |branch|
         source = read(root, branch.file)
-        hits = source.lines.count { |line| line.include?(branch.anchor) }
+        hits = anchor_lines(source, branch.anchor).length
         unless hits == 1
           raise ExtractionError,
                 "#{branch.file}: the whole-case tag branch #{branch.anchor.inspect} matched " \
@@ -575,7 +598,7 @@ module ConformanceSkips
       # why the two files it reads are the two run loops.
       runner.tag_branches.group_by(&:file).each do |file, branches|
         accessor = branches.first.accessor
-        mentions = read(root, file).lines.count { |line| line.include?(accessor) }
+        mentions = anchor_lines(read(root, file), accessor).length
         next if mentions == branches.length
 
         raise ExtractionError,
