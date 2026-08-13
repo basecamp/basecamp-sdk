@@ -98,6 +98,246 @@
 // tag on the parent, while a partial nested copy (where the nested wrapper
 // itself drifts) would surface only if that nested wrapper has its own pair
 // in the map.
+//
+// # Embedded (anonymous) fields
+//
+// An anonymous field has no tag and no name, so the field walk cannot read a
+// JSON tag off it — but its own tagged fields ARE on the wire, promoted into
+// the embedding struct. Both sides of every pair are therefore flattened
+// before comparison (see flattenEmbedded): each struct's tag set is its own
+// tagged fields plus the tagged fields promoted through its embedded types,
+// resolved recursively. Without this, a wrapper that embeds a struct reads as
+// having none of the promoted fields and every one of them is reported as
+// missing (issue #599).
+//
+// The flattening follows encoding/json's promotion rules, since the wire shape
+// is what this check is about:
+//
+//   - Embedded pointers (`*Base`) promote exactly like value embeds.
+//   - Promotion is transitive: a struct embedding a struct that embeds a struct
+//     contributes all three levels, breadth-first by depth.
+//   - Shallower wins. A JSON tag declared directly on the embedding struct
+//     shadows the same tag promoted from an embedded type; a depth-1 promotion
+//     shadows the same tag at depth 2.
+//   - Two embedded types contributing the SAME tag at the SAME depth cancel
+//     each other out — encoding/json emits neither — so the tag counts as
+//     absent, and deeper occurrences stay shadowed (matching
+//     encoding/json's dominantField).
+//   - The same applies to one type reached by two paths at the same depth (the
+//     diamond: Outer embeds Left and Right, both embedding Common). Such a
+//     type is walked once but its arrival count is remembered, and its fields
+//     are entered twice so the rule above annihilates them — mirroring the
+//     nextCount/count pair in encoding/json's typeFields, which duplicates the
+//     field for exactly this reason. Deduplicating without counting would
+//     claim a tag that is not on the wire.
+//   - Unexported fields are ignored, whatever their tag says, because
+//     encoding/json ignores unexported non-anonymous fields; one cannot
+//     satisfy a generated tag. An embedded unexported STRUCT TYPE is the
+//     opposite case — its exported fields promote normally.
+//   - An anonymous field that carries its own json:"…" tag is NOT promoted:
+//     encoding/json treats it as an ordinary named field under that tag, and so
+//     does this check — the tag is recorded, with the embedded type's name as
+//     its Go field name for the population check. (`json:"-"` is recorded as
+//     the literal tag "-", matching how the check already handles a named
+//     field spelled that way; see TestExtractJSONTag_DashSentinel.)
+//   - Cycles (A embeds B embeds A, or a self-embedding pointer) terminate: each
+//     type name is visited once per flattening.
+//
+// # CAN / CANNOT
+//
+// The honest boundary of the embedded-field support, and the invariant that
+// makes the boundary safe. Read this before adding a rule to either list.
+//
+// CAN resolve and judge:
+//
+//   - An embed of a locally-declared struct, by value or pointer, from any
+//     file of the same package, at any depth, including through a chain of
+//     `type A B` / `type A = B` declarations.
+//   - Promotion under encoding/json's rules: shallowest declaration wins,
+//     same-depth conflicts annihilate (including a type reached twice at one
+//     depth), unexported fields are ignored, a tagged anonymous field is an
+//     ordinary field rather than a promotion source.
+//   - Population of a promoted field through any legal spelling of it —
+//     `w.Field`, `w.Embed.Field`, or an assignment of any embed on its path —
+//     with the value classified exhaustively: literals are enumerated key by
+//     key, statically zero values credit nothing.
+//
+// CANNOT, and therefore REPORTS rather than assumes:
+//
+//   - A type from another package, or a name not declared in the parsed
+//     sources. Its fields and its method set are both invisible.
+//   - A type whose method set carries MarshalJSON/UnmarshalJSON/MarshalText/
+//     UnmarshalText by any route. Promotion redirects the encoder away from
+//     every field, so no tag on the struct is trustworthy.
+//   - An assignment whose right-hand side is a shape not in the classification
+//     above.
+//   - An embedded pointer to an unexported type, for direct-decode pairs only:
+//     encoding/json cannot allocate it, so the decoder never populates it.
+//
+// Known to OVER-report, and deliberately left that way, because each fails
+// loudly and naming the shape is cheaper than modelling it:
+//
+//   - A promoted field written through the second path of a diamond
+//     (`w.Right.Common.Field` where the walk retained the Left path, which is
+//     also the one encoding/json indexes) reads as unpopulated.
+//   - A defined type whose name chain reaches a marshaller is refused even
+//     where Go would walk its fields, because the closure does not model
+//     which declaration form carries a method set.
+//   - The decode-allocation report fires for an embed whose fields would
+//     have annihilated anyway.
+//   - A skipped-segment selector (`w.Base.Field` where an embed sits between)
+//     is not among the recognised spellings.
+//
+// The invariant: ANYTHING UNRECOGNISED IS REPORTED. Never credited, never
+// skipped. It holds at all THREE places this file makes a coverage judgement,
+// and each is now a single chokepoint rather than a property re-established at
+// every call site — because the same bug kept coming back in a path the last
+// fix had not reached:
+//
+//   - the embed walk (an embed it cannot vouch for is reported),
+//   - the assignment walk (classifyValue: ONE exhaustive switch whose default
+//     arm is valueUnrecognized, so a Go shape nobody thought about lands on
+//     "report" instead of on whichever branch happened to be permissive —
+//     three separate tests with three separate defaults is how an anonymous
+//     struct literal got credited as a whole value),
+//   - the method graph (a type whose method set it cannot evaluate — a
+//     qualified alias, a generic instantiation — counts as carrying, which
+//     makes every embed of it refused).
+//
+// The third was the last to get it, and its absence was invisible until a
+// reviewer produced `type A = json.Marshaler; type B interface { A }`: field
+// promotion and assignment population were already flipped, so the bug had
+// nowhere to show except through the method set. Fixing one instance of this
+// class rather than the class is how that happens.
+//
+// The gate's own coverage statement follows the same rule for the same reason:
+// embeddingScope DERIVES it from the flattened structs instead of counting at
+// the check sites, after three rounds of that sentence being false in three
+// different ways. A claim maintained alongside the code it describes will
+// eventually disagree with it. Both failure modes this walk has actually had — the original #599
+// bug and every regression found while fixing it — were a silent assumption
+// about something the walker did not understand.
+//
+// # This analysis is best-effort, and the gaps are inventoried
+//
+// Issue #741 lists every shape where the promotion analysis is known to be
+// wrong — separated into the ones that can SILENTLY pass a wrapper dropping a
+// generated field and the ones that merely over-report — plus the two that are
+// verified impossible. The gate prints a pointer to it on every run, because a
+// clean run is not proof that this part is sound.
+//
+// Read that issue before extending this code. In particular: the conservative
+// default above cannot reach those defects. A default only helps where the
+// walker recognises its own ignorance, and in every case listed there the
+// walker is not unsure — it resolves a name or classifies a shape and returns a
+// definite answer that differs from Go's. Closing them means enumerating type
+// identity and conversion rules, which does not end in an AST-only walk.
+// Restricting what may be embedded, or moving to go/types, are the two real
+// options.
+//
+// # An honest tally, for whoever adds the next rule
+//
+// This support was reviewed over a long run of rounds — the PR discussion has
+// the count, and it kept climbing after this paragraph was written — growing a
+// rule in almost every one:
+// promotion, annihilation, same-depth multiplicity, export visibility, literal
+// enumeration, qualified assignment paths, Go-name shadowing, depth-0
+// conflicts, method promotion (declared, inherited, interface, aliased, text),
+// decode allocation, value classification. The call sites that support covers
+// grew exactly once — at the original fix — and remain at ZERO: no wrapper in
+// a checked pair embeds a struct, and the gate's output on the real corpus has
+// been byte-identical throughout.
+//
+// The rules that earned their place are the ones that turn a silent assumption
+// into a report. A rule that only makes an already-loud report more precise, on
+// a shape with no call site, is the kind this file has enough of. Prefer
+// widening the reported set over modelling another corner of encoding/json or
+// of Go's type identity — those are the type checker's job, and every attempt
+// here to do a piece of it produced the next round's finding about itself.
+//
+// # What the walk will and will not judge
+//
+// Flattening happens only through embeds the walk can fully vouch for (see
+// vouch). Anything else is REPORTED — the struct is then judged on its own
+// declarations alone, and any pair that reaches it fails loudly. Two things
+// fail to vouch:
+//
+//   - A type this check does not parse: qualified from another package
+//     (`time.Time`), or a name not declared in the parsed sources. It cannot
+//     be assumed field-less, and it cannot be assumed method-less either.
+//
+//   - A type whose method set carries MarshalJSON/UnmarshalJSON — or
+//     MarshalText/UnmarshalText, which encoding/json falls back to — by any
+//     route: its own declaration, a type it embeds, an interface, a name
+//     chain. Promoting such a method makes the EMBEDDING struct implement the
+//     interface, so encoding/json calls it and never walks any of these
+//     fields; every promoted tag on the struct is then meaningless, not just
+//     that embed's. A json tag on the embed does not change this: a tag
+//     governs field selection, while method promotion is a language rule that
+//     never consults tags.
+//
+//     "By any route" is computed as one closure over name edges — every
+//     `type A B` and `type A = B`, every embedded type, every interface
+//     method set — rather than by modelling which routes carry a method set
+//     and which do not. Go distinguishes them (a defined type over a struct
+//     starts empty; an alias does not), and this walk deliberately does not:
+//     that distinction was the source of four consecutive rounds of review
+//     findings, each about the previous round's rule. The closure
+//     over-approximates, refusing a name chain that reaches a marshaller even
+//     where Go would walk the fields, and in exchange the class is closed.
+//     Signatures ARE checked, so an unrelated method that merely shares a
+//     name does not trigger it — but a signature spelled through a name this
+//     check cannot evaluate counts as a match, since the alternative is to
+//     certify a wrapper whose marshaller was hidden behind an alias.
+//
+// This is a whitelist on purpose, and it is where the design stops mirroring
+// encoding/json. Field promotion is a bounded, syntactic problem this walk can
+// model faithfully. Method promotion and cross-package types are not: they are
+// decided by the type checker, travel through interfaces, aliases and other
+// packages, and every rule that models one spelling of them invites the next.
+// Reporting is the bound. A new shape in that class belongs here as a refusal,
+// not as another mirror of the standard library.
+//
+// The report is deferred to the pair walk, so an unvouched embed on a struct
+// outside every pair (today: FlexTime embedding time.Time) costs nothing.
+//
+// An embedded name that resolves to a declared NON-struct type (an interface, a
+// map, a slice — today: generated.ClientWithResponses embedding ClientInterface)
+// promotes no JSON-tagged fields and contributes nothing. A defined type whose
+// underlying type is another name (`type Alias Base`) is followed to that name.
+//
+// # Population of promoted fields
+//
+// A promoted field can be assigned by several spellings, and the population
+// check accepts each (see populationTargets): the promoted field itself
+// (`w.CreatedAt`), any partially or fully qualified path to it
+// (`w.Audit.CreatedAt`, `w.Base.Audit.CreatedAt`), or an assignment of any
+// embed on the path. That last one is only total coverage when the assigned
+// value is OPAQUE — a call or a variable the walker cannot see inside. When it
+// is a visible struct literal the walker enumerates its keys instead, so
+// `w.Base = Base{ID: g.Id}` populates `id` and nothing else: the fields the
+// literal omits stay zero-valued on the wire, and crediting them would let the
+// next generated field through in silence.
+//
+// What this deliberately does NOT check is whether a pointer embed on the path
+// was initialized before a promoted write. `w.CreatedAt = …` across a nil
+// `*Audit` panics — but that is a loud, immediate crash on the first execution
+// of the path, not the silent zero-valued wire data this guard exists to
+// catch, and the guard is a reachability check by design (it counts a
+// conditional assignment as populated, and does not model statement order).
+// Demanding initialization means recognizing every spelling that provides it,
+// and a walk that misses one manufactures drift — which is the failure #599
+// itself was: it trains people to work around the guard rather than read it.
+// Nil-capability analysis is #621's subject; this walk is the input it needs,
+// not the place to do it.
+//
+// `intentionally-omitted` markers are NOT inherited through an embed: a marker
+// declares that one wrapper deliberately drops a tag of ITS generated
+// counterpart, and each marker is validated against that counterpart, so
+// inheriting one would suppress a check in an unrelated pair and would report
+// marker/generated mismatches for tags the embedded struct's own pair owns. An
+// embedding wrapper that means to drop a tag carries its own marker; the
+// failure mode of getting this wrong is a loud missing-tag report, not silence.
 package main
 
 import (
@@ -108,8 +348,10 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -279,11 +521,188 @@ var markerRe = regexp.MustCompile(`intentionally-omitted:\s*([a-zA-Z0-9_]+)\s*-\
 // "tagline" -> "Tagline"). The population check (see run) uses it to translate
 // the set of assigned Go fields collected from a *FromGenerated body into the
 // JSON-tag space the rest of the check operates in.
+//
+// tags and tagToGoField hold the FLATTENED view: the struct's own tagged fields
+// after collectStructsAndMarkers, plus the fields promoted through embedded
+// types after flattenEmbedded has run over the whole universe. ownFields and
+// embeds are the unflattened inputs flattenEmbedded walks; it never reads tags,
+// so flattening is order-independent across structs.
 type structFields struct {
 	tags         map[string]bool
 	omitted      map[string]bool
 	tagToGoField map[string]string
 	declaration  token.Pos
+
+	// ownFields lists this struct's own tagged fields in declaration order.
+	ownFields []taggedField
+	// embeds lists this struct's anonymous, untagged fields — the ones whose
+	// tagged fields are promoted onto this struct by encoding/json.
+	embeds []embedRef
+	// ignoredOwn marks ownFields slots encoding/json never sees — a tagged
+	// anonymous field of an unexported non-struct type. Computed once per
+	// struct by flattenEmbedded, and skipped at EVERY promotion depth: a field
+	// the encoder ignores cannot be promoted onto an embedding struct, nor
+	// annihilate or shadow a field the encoder does see.
+	ignoredOwn map[int]bool
+	// tagPath maps a PROMOTED tag to the embedded field names traversed to
+	// reach it (`{"Base", "Audit"}` for a field promoted through Base's
+	// embedded Audit). Own tags are absent.
+	tagPath map[string][]string
+	// tagTargets holds the assignment spellings that count as populating a
+	// PROMOTED tag, computed during flattening because the legal spellings
+	// depend on Go-name shadowing across the whole promotion tree. Own tags
+	// are absent; see populationTargets.
+	tagTargets map[string][]string
+	// declaresJSONMethodDirectly is set from the PRE-CLOSURE method set: this
+	// type's own receiver declarations, not what it inherits or what an
+	// unknown name might carry. The root gate below needs "declares one
+	// itself" to actually mean that; inherited and unknown cases belong to
+	// vouch, which reports them per embed with the right explanation.
+	declaresJSONMethodDirectly bool
+	// promotesFromStruct is true when at least one UNTAGGED embed of this
+	// struct resolves to a struct — the only shape that promotes fields at
+	// all. It is what the scope line means by "embeds a struct", and it is
+	// deliberately not "has an anonymous field": a tagged embed is an ordinary
+	// field, and an embedded interface or map promotes nothing. Set in the
+	// pre-pass, so a promotion later REFUSED (method-bearing) still counts as
+	// embedding — which is the case the scope line most needs to be honest
+	// about.
+	promotesFromStruct bool
+	// fieldNames lists every field name declared directly on this struct —
+	// tagged or not, exported or not, including the embedded fields' own
+	// names. Go resolves a selector by NAME with the same shallowest-wins
+	// rule, independently of json tags, so this is what decides whether a
+	// promoted field can be written by its bare name.
+	fieldNames []string
+	// taggedEmbeds lists anonymous fields that carry a json tag. They are not
+	// promotion sources, but an unexported one is only on the wire if its type
+	// is a struct — which needs the universe, so flattenEmbedded settles it.
+	taggedEmbeds []taggedEmbed
+	// decodeUnsafeOwn lists this struct's OWN decode-breaking embeds, computed
+	// once by flattenEmbedded and never appended to afterwards. Keeping it
+	// separate from decodeUnsafe is what makes the walk's output deterministic:
+	// a root accumulates into decodeUnsafe, and if that were the same slice a
+	// parent read from, whether it saw a child's inherited records would depend
+	// on map iteration order — and the same record could be copied twice.
+	decodeUnsafeOwn []string
+	// decodeUnsafe lists embeds that break DECODING only: an embedded pointer
+	// to an unexported type, which encoding/json refuses to allocate ("cannot
+	// set embedded pointer to unexported struct"). Marshalling and in-Go
+	// construction are unaffected, so this is reported for tier-2 pairs — the
+	// ones whose whole premise is that the decoder populates the tags — and not
+	// for wrappers built by a *FromGenerated or a composite literal.
+	decodeUnsafe []string
+	// unresolved lists embedded types the checker could not resolve, as
+	// human-readable paths ("Task.Meta -> time.Time"). Reported as drift when
+	// a pair reaches this struct; see run.
+	unresolved []string
+}
+
+// populationTargets returns the assignment spellings that count as populating
+// tag on this struct, in the dotted-path vocabulary collectAssignedFields
+// records (see recordAssignedValue).
+//
+// A field declared directly on the struct has exactly one spelling: itself.
+//
+// A PROMOTED field has several, because every embedded field name on its path
+// is itself promoted, so each suffix of that path is legal Go:
+//
+//	w.CreatedAt            — the promoted field
+//	w.Audit.CreatedAt      — through the inner embed, itself promoted
+//	w.Base.Audit.CreatedAt — fully qualified
+//
+// and so is assigning any ancestor OPAQUELY — `w.Base = baseFromGenerated(g)`,
+// which the walker records as the total marker `Base.*` because it cannot see
+// inside the value. Each such ancestor is spelled by any suffix of the path
+// that reaches it. An ancestor assigned from a composite literal produces no
+// total marker: the walker enumerates that literal's keys instead, so a
+// partial literal populates only the fields it names.
+func (sf *structFields) populationTargets(tag string) []string {
+	goField := sf.tagToGoField[tag]
+	if goField == "" {
+		return nil
+	}
+	if targets, ok := sf.tagTargets[tag]; ok {
+		return targets
+	}
+	return []string{goField}
+}
+
+// promotedTargets enumerates the spellings that populate a promoted field,
+// given the depth at which each Go name resolves on the embedding struct
+// (nameDepth, with nameConflict marking names that are ambiguous and therefore
+// unwritable). path is the chain of embedded field names and goField the
+// promoted field.
+//
+// Every suffix of the path is a candidate spelling, because each embed name is
+// itself promoted — but only while the FIRST component of that spelling still
+// resolves to this chain. If a shallower field shares that Go name it wins the
+// selector, and crediting the spelling would attribute a write that lands on a
+// different field: `w.ID = …` on a struct that declares its own ID writes the
+// outer one and leaves the promoted `id` zero, with BOTH keys on the wire.
+func promotedTargets(path []string, goField string, nameDepth map[string]int, nameConflict map[string]bool) []string {
+	resolves := func(name string, depth int) bool {
+		d, ok := nameDepth[name]
+		return ok && d == depth && !nameConflict[name]
+	}
+	var out []string
+	// The field itself, spelled from each suffix of its path. path[i] is
+	// declared at depth i; the field itself at depth len(path).
+	for i := 0; i <= len(path); i++ {
+		first, firstDepth := goField, len(path)
+		if i < len(path) {
+			first, firstDepth = path[i], i
+		}
+		if !resolves(first, firstDepth) {
+			continue
+		}
+		out = append(out, strings.Join(append(append([]string{}, path[i:]...), goField), "."))
+	}
+	// Ancestors: an opaque assignment to any embed on the path covers
+	// everything below it, and each is spelled from any suffix that reaches it.
+	for j := 1; j <= len(path); j++ {
+		for i := 0; i < j; i++ {
+			if !resolves(path[i], i) {
+				continue
+			}
+			out = append(out, strings.Join(path[i:j], ".")+".*")
+		}
+	}
+	return out
+}
+
+// taggedEmbed is an anonymous field carrying its own json tag: an ordinary
+// field under that tag rather than a promotion source.
+type taggedEmbed struct {
+	tag string
+	ref embedRef
+	// ownIndex is this field's slot in ownFields, so flattenEmbedded can take
+	// it out of the depth-0 dominance candidates when encoding/json ignores
+	// the field outright.
+	ownIndex int
+}
+
+// taggedField is one JSON-tagged field declared directly on a struct.
+type taggedField struct {
+	tag     string
+	goField string
+}
+
+// embedRef is one anonymous, untagged field — an embedded type whose tagged
+// fields are promoted onto the embedding struct.
+type embedRef struct {
+	// name is the embedded type's own name: "Base" for `Base` and `*Base`,
+	// "Time" for `time.Time`.
+	name string
+	// qualifier is the package qualifier for a cross-package embed ("time" for
+	// `time.Time`), empty for a same-package embed.
+	qualifier string
+	// display is the source spelling, used in messages ("*Base", "time.Time").
+	display string
+	// pointer is true for `*Base`. It matters for decoding: encoding/json
+	// cannot allocate an embedded pointer to an UNEXPORTED type, so a
+	// direct-decode wrapper with one never gets those fields populated.
+	pointer bool
 }
 
 func main() {
@@ -344,6 +763,10 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		return fmt.Errorf("parse generated: %w", err)
 	}
 	genStructs := collectStructsAndMarkers(fset, genFile)
+	genJSONMethods, genIfaceEmbeds := collectJSONMethodTypes(genFile)
+	genJSONMethodsDirect := copySet(genJSONMethods) // before the closure widens it
+	closeJSONMethodTypes(genJSONMethods, genIfaceEmbeds)
+	flattenEmbedded(genStructs, collectTypeDecls(genFile), genJSONMethods, genJSONMethodsDirect)
 
 	// Parse all wrapper files.
 	entries, err := os.ReadDir(wrapperDir)
@@ -351,6 +774,9 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		return fmt.Errorf("read wrapper dir: %w", err)
 	}
 	wrapperStructs := map[string]*structFields{}
+	wrapperTypeDecls := map[string]typeDecl{}      // every top-level type decl in the wrapper package, for embed resolution
+	wrapperJSONMethods := map[string]bool{}        // types declaring MarshalJSON/UnmarshalJSON, whose promotion invalidates flattening
+	wrapperIfaceEmbeds := map[string][]string{}    // interface -> embedded interfaces, closed once every file is in
 	fromGenPairs := map[string]string{}            // wrapper name -> generated name (derived from *FromGenerated signatures)
 	assignedFields := map[string]map[string]bool{} // wrapper name -> set of Go fields written at the wrapper's construction site (tier 1 + tier 3)
 	// Tier-3 names sourced from the production tier3Wrappers set. Tests can
@@ -369,6 +795,16 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		}
 		for k, v := range collectStructsAndMarkers(fset, f) {
 			wrapperStructs[k] = v
+		}
+		for k, v := range collectTypeDecls(f) {
+			wrapperTypeDecls[k] = v
+		}
+		fileJSONMethods, fileIfaceEmbeds := collectJSONMethodTypes(f)
+		for k := range fileJSONMethods {
+			wrapperJSONMethods[k] = true
+		}
+		for k, v := range fileIfaceEmbeds {
+			wrapperIfaceEmbeds[k] = append(wrapperIfaceEmbeds[k], v...)
 		}
 		// collectFromGeneratedPairs already drops excluded functions by their
 		// function name (see excludedFromGenerated check inside it), so no
@@ -405,6 +841,14 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		}
 	}
 
+	// Every wrapper file is parsed, so embedded types can now be resolved
+	// across the package: an embed may name a struct declared in another file.
+	// Closed across the whole package: an interface may embed one declared in
+	// another file, and the promotion is just as real.
+	wrapperJSONMethodsDirect := copySet(wrapperJSONMethods) // before the closure widens it
+	closeJSONMethodTypes(wrapperJSONMethods, wrapperIfaceEmbeds)
+	flattenEmbedded(wrapperStructs, wrapperTypeDecls, wrapperJSONMethods, wrapperJSONMethodsDirect)
+
 	// Build the final pair list: union of fromGen + directDecode.
 	pairs := map[string]string{}
 	for k, v := range fromGenPairs {
@@ -437,15 +881,71 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 			continue
 		}
 
-		// The population check runs for tier 1 (assignedFields sourced from
-		// the *FromGenerated body) and tier 3 (assignedFields sourced from the
-		// inline composite literal walker). Tier 2 is the only path that skips
-		// the population check — its wrappers have no in-package literal; the
-		// JSON decoder writes straight onto struct tags, so tag presence IS
-		// population.
+		// Tiering first: it decides which reports apply. Tier 2 is the only
+		// path that skips the population check — its wrappers have no
+		// in-package literal; the JSON decoder writes straight onto struct
+		// tags, so tag presence IS population.
 		_, isDirectDecode := directDecode[wrapName]
 		isTier2 := isDirectDecode && !tier3[wrapName]
 		assigned := assignedFields[wrapName]
+
+		// An embedded type the checker could not resolve hides an unknown
+		// number of promoted fields from both the tag and population checks.
+		// Report it instead of comparing against a knowingly-partial tag set —
+		// silently dropping embedded fields is the bug this reporting exists
+		// to prevent (#599).
+		for _, u := range wrap.unresolved {
+			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: unresolvable embedded type in the wrapper: %s. Promoted fields from it are invisible to this check; teach the resolver about it or replace the embed with named fields.", wrapName, genName, u))
+		}
+		if isTier2 {
+			for _, u := range wrap.decodeUnsafe {
+				drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: %s. This pair is direct-decode, where tag presence IS population, so those fields are silently absent.", wrapName, genName, u))
+			}
+		}
+		// A value shape the walker could not interpret was recorded rather
+		// than credited. Report it — but only where the SUBTREE mattered.
+		//
+		// Every expression yields a value of its field's type, so an
+		// unclassifiable one is only interesting when this walker would
+		// otherwise have credited what is UNDER it: an assignment to an embed
+		// on some promoted field's path. On an ordinary field there is nothing
+		// underneath to get wrong, and `w.ID = 1` or `w.Name = first + last`
+		// are perfectly good assignments the check has always accepted.
+		if !isTier2 {
+			// Only tags that are actually being CHECKED count: a tag the
+			// generated struct does not declare is not this pair's business,
+			// and one the wrapper intentionally omits has been answered
+			// already. Without that filter the report survives the marker its
+			// own message recommends, which makes the instruction a dead end.
+			subtreeMatters := map[string]bool{}
+			for tag := range wrap.tagPath {
+				if !gen.tags[tag] || wrap.omitted[tag] {
+					continue
+				}
+				for _, target := range wrap.populationTargets(tag) {
+					if strings.HasSuffix(target, ".*") {
+						subtreeMatters[strings.TrimSuffix(target, ".*")] = true
+					}
+				}
+			}
+			var unrecognized []string
+			for spelling := range assigned {
+				if !strings.HasPrefix(spelling, unrecognizedPrefix) {
+					continue
+				}
+				path := strings.TrimPrefix(spelling, unrecognizedPrefix)
+				if subtreeMatters[path] {
+					unrecognized = append(unrecognized, path)
+				}
+			}
+			sort.Strings(unrecognized)
+			for _, u := range unrecognized {
+				drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: %s is an embed on a promoted field's path, and the value assigned to it is a shape this walker does not interpret — so it credits none of the fields under it rather than guessing. Assign it with a composite literal, a call or a variable, or mark the affected tags with `// intentionally-omitted: <tag> - <reason>`.", wrapName, genName, u))
+			}
+		}
+		for _, u := range gen.unresolved {
+			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: unresolvable embedded type in the generated struct: %s. Promoted fields from it are invisible to this check; teach the resolver about it.", wrapName, genName, u))
+		}
 
 		// Walk every JSON tag declared on the generated struct.
 		tags := make([]string, 0, len(gen.tags))
@@ -454,6 +954,13 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 		}
 		sort.Strings(tags)
 
+		// Each counter must mean exactly what its sentence says. "Embeds a
+		// struct" is an untagged embed that RESOLVES to one — not any
+		// anonymous field, since a tagged embed is an ordinary field and an
+		// embedded interface or map promotes nothing. "Contributed" is a
+		// promoted tag that a GENERATED tag actually asked for, counted at the
+		// check itself below, not merely a promoted tag the wrapper happens to
+		// carry.
 		var missing []string
 		var unpopulated []string
 		for _, tag := range tags {
@@ -472,7 +979,11 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 			if !isTier2 {
 				totalFieldsPopChecked++
 				goField := wrap.tagToGoField[tag]
-				if goField != "" && (assigned == nil || !assigned[goField]) {
+				// A promoted field accepts more than one spelling at the
+				// construction site: the field itself (`w.Name = ...`, legal
+				// through promotion) or any embedded struct on the path to it
+				// (`w.Base = Base{...}`), which populates everything under it.
+				if goField != "" && !assignedAny(assigned, wrap.populationTargets(tag)) {
 					unpopulated = append(unpopulated, fmt.Sprintf("%s (field %s)", tag, goField))
 				}
 			}
@@ -508,6 +1019,24 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 
 	fmt.Printf("Wrapper drift check: %d pairs walked, %d generated fields verified (%d field assignments verified at tier-1 *FromGenerated bodies + tier-3 composite literals)\n", len(pairNames), totalFieldsChecked, totalFieldsPopChecked)
 
+	// Say what the verdict covers. A clean run means "no drift in the shapes
+	// this walker resolves", and when no pair embeds anything at all — which
+	// is the case in this repo today — the embedded-field machinery verified
+	// nothing and the line should not let a reader think otherwise.
+	// Derived from the flattened structs, not accumulated as the walk goes —
+	// see embeddingScope for why.
+	pairsWithEmbeds, pairsWithPromotions, promotedFieldsChecked := embeddingScope(pairs, wrapperStructs, genStructs)
+	switch {
+	case pairsWithEmbeds == 0:
+		fmt.Println("  Embedded-field promotion: no pair embeds a struct, so nothing above was verified through it.")
+	case promotedFieldsChecked == 0:
+		fmt.Printf("  Embedded-field promotion: %d of %d pairs embed a struct, but no promoted tag reached the check — annihilated, untagged, or refused (any refusal is reported above).\n", pairsWithEmbeds, len(pairNames))
+	default:
+		fmt.Printf("  Embedded-field promotion: %d of %d pairs embed a struct, %d of them contributing %d promoted fields to the checks above.\n", pairsWithEmbeds, len(pairNames), pairsWithPromotions, promotedFieldsChecked)
+	}
+	fmt.Println("  Scope: shapes this walker resolves. Unrecognised embeds and assignment shapes are reported as drift, never assumed away — see the CAN/CANNOT list in this file's header.")
+	fmt.Println("  Limitation: certifying promoted fields through embeds is BEST-EFFORT. Known shapes where it is confidently wrong — including ones that can pass a wrapper dropping a generated field — are enumerated in issue #741. A clean run is not proof that the promotion analysis is sound.")
+
 	if len(drift) > 0 {
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "=== DRIFT DETECTED ===")
@@ -523,12 +1052,63 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3
 	return nil
 }
 
+// embeddingScope answers how much of this run the embedded-field machinery
+// actually decided: how many pairs embed a struct on either side, how many of
+// those contributed a promoted tag the check consumed, and how many such tags
+// there were.
+//
+// It is DERIVED from the flattened structs rather than accumulated as the pair
+// walk goes, and that is the point. This sentence has been wrong three times —
+// once counting surviving promotions while claiming to count embedding, once
+// counting any anonymous field as an embed, once ignoring the generated side
+// entirely — because counters maintained at the check sites drift from the
+// sentence they feed, and every new branch is another chance to forget one.
+// Reading the answer back out of the same state the checks read means the
+// statement cannot fall behind the code that produced it.
+func embeddingScope(pairs map[string]string, wrapperStructs, genStructs map[string]*structFields) (embedded, contributing, promotedFields int) {
+	for wrapName, genName := range pairs {
+		wrap, gen := wrapperStructs[wrapName], genStructs[genName]
+		if wrap == nil || gen == nil {
+			continue
+		}
+		// "Embeds a struct" is an untagged embed that RESOLVES to one, on
+		// either side — a tagged embed is an ordinary field, an embedded
+		// interface or map promotes nothing, and this check flattens both
+		// universes.
+		if wrap.promotesFromStruct || gen.promotesFromStruct {
+			embedded++
+		}
+		// "Contributed" is a generated tag the check actually consumed —
+		// declared by the generated struct, not intentionally omitted, present
+		// on the wrapper — that got there by promotion on either side.
+		pairFields := 0
+		for tag := range gen.tags {
+			if wrap.omitted[tag] || !wrap.tags[tag] {
+				continue
+			}
+			if len(wrap.tagPath[tag]) > 0 || len(gen.tagPath[tag]) > 0 {
+				pairFields++
+			}
+		}
+		promotedFields += pairFields
+		if pairFields > 0 {
+			contributing++
+		}
+	}
+	return embedded, contributing, promotedFields
+}
+
 // collectStructsAndMarkers walks the AST and returns a map of struct name
 // -> tag/omitted info. Only top-level type X struct {…} declarations are
 // collected. Intentionally-omitted markers are scraped from ALL comments
 // that fall within the struct's source range (between the opening { and
 // closing }), so markers don't need to be attached to a specific field —
 // they can sit on their own line inside the struct body.
+//
+// The returned tag sets cover the struct's OWN tagged fields. Anonymous
+// (embedded) fields are recorded in embeds for flattenEmbedded to resolve once
+// every file has been parsed — an embedded type may be declared in a different
+// file of the same package, so it cannot be resolved here.
 func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*structFields {
 	out := map[string]*structFields{}
 	for _, decl := range f.Decls {
@@ -549,23 +1129,81 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 				tags:         map[string]bool{},
 				omitted:      map[string]bool{},
 				tagToGoField: map[string]string{},
+				tagPath:      map[string][]string{},
+				tagTargets:   map[string][]string{},
 				declaration:  ts.Pos(),
 			}
 			for _, field := range st.Fields.List {
-				if field.Tag == nil {
-					continue
-				}
-				tagVal := field.Tag.Value
-				if tag := extractJSONTag(tagVal); tag != "" {
-					sf.tags[tag] = true
-					// Record the Go field identifier for this tag. Tagged
-					// fields in these structs always have exactly one name;
-					// if a field ever had multiple names sharing a tag, the
-					// last wins (still correct for membership lookups).
-					for _, fn := range field.Names {
-						sf.tagToGoField[tag] = fn.Name
+				// Go resolves selectors by field NAME regardless of tags, so
+				// every name counts for shadowing — including untagged and
+				// unexported ones, and the embedded fields' own names.
+				if len(field.Names) == 0 {
+					if n := embedRefFromExpr(field.Type).name; n != "" {
+						sf.fieldNames = append(sf.fieldNames, n)
 					}
 				}
+				for _, fn := range field.Names {
+					sf.fieldNames = append(sf.fieldNames, fn.Name)
+				}
+				tag := ""
+				if field.Tag != nil {
+					tag = extractJSONTag(field.Tag.Value)
+				}
+				if tag == "" {
+					// An anonymous field with no json tag is an embedded type:
+					// its own tagged fields are promoted onto this struct by
+					// encoding/json. Record it for flattenEmbedded. (A NAMED
+					// field with no json tag is invisible on the wire and to
+					// this check, as before.)
+					if len(field.Names) == 0 {
+						sf.embeds = append(sf.embeds, embedRefFromExpr(field.Type))
+					}
+					continue
+				}
+				// A grouped declaration (`A, B string ` + "`json:\"x\"`" + `) is TWO
+				// fields to encoding/json, which then annihilates them for
+				// sharing a tag at one depth. Record one candidate per name so
+				// the dominance rules see the conflict.
+				if len(field.Names) > 1 {
+					for _, fn := range field.Names {
+						if !ast.IsExported(fn.Name) {
+							continue
+						}
+						sf.tags[tag] = true
+						sf.tagToGoField[tag] = fn.Name
+						sf.ownFields = append(sf.ownFields, taggedField{tag: tag, goField: fn.Name})
+					}
+					continue
+				}
+				// Record the Go field identifier for this tag.
+				goField := ""
+				for _, fn := range field.Names {
+					goField = fn.Name
+				}
+				if goField != "" && !ast.IsExported(goField) {
+					// encoding/json ignores unexported non-anonymous fields
+					// whatever their tag says, so this one is not on the wire
+					// and must not satisfy a generated tag. (Embedded
+					// unexported STRUCT TYPES are a different case: their
+					// exported fields do promote, and resolveEmbed handles
+					// them.)
+					continue
+				}
+				sf.tags[tag] = true
+				if goField == "" {
+					// A TAGGED anonymous field is not promoted — encoding/json
+					// treats it as an ordinary field under its tag, whose Go
+					// field name is the embedded type's name. Whether it is on
+					// the wire at all depends on the type when the type name is
+					// unexported, which only flattenEmbedded can settle.
+					ref := embedRefFromExpr(field.Type)
+					goField = ref.name
+					sf.taggedEmbeds = append(sf.taggedEmbeds, taggedEmbed{tag: tag, ref: ref, ownIndex: len(sf.ownFields)})
+				}
+				if goField != "" {
+					sf.tagToGoField[tag] = goField
+				}
+				sf.ownFields = append(sf.ownFields, taggedField{tag: tag, goField: goField})
 			}
 			// Scan every comment inside the struct body for opt-out markers.
 			// (Field-attached comments are duplicates of these for our purposes;
@@ -586,6 +1224,857 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 		}
 	}
 	return out
+}
+
+// collectJSONMethodTypes returns the names of types in this file that declare
+// MarshalJSON or UnmarshalJSON, on either a value or a pointer receiver.
+// Embedding such a type promotes the method, which makes the EMBEDDING type
+// implement json.Marshaler / json.Unmarshaler too — so encoding/json calls that
+// method for the whole struct instead of walking its fields, and no comparison
+// of promoted tags describes the wire shape any more.
+func collectJSONMethodTypes(f *ast.File) (map[string]bool, map[string][]string) {
+	out := map[string]bool{}
+	// Methods declared with a receiver.
+	for _, decl := range f.Decls {
+		fd, ok := decl.(*ast.FuncDecl)
+		if !ok || fd.Recv == nil || len(fd.Recv.List) != 1 {
+			continue
+		}
+		if !isJSONMethod(fd.Name.Name, fd.Type) {
+			continue
+		}
+		// `func (m (M)) MarshalJSON()` is legal, and reading the receiver as
+		// unrecognized would leave M out of the method set — a silent miss, so
+		// the parentheses come off even though nobody writes them.
+		if name := receiverTypeName(fd.Recv.List[0].Type); name != "" {
+			out[name] = true
+		}
+	}
+	// Interfaces carrying the method in their method set. Embedding one
+	// promotes it just as embedding a struct with the method does, and the
+	// interface itself has no field to give the walk a second chance.
+	ifaceEmbeds := map[string][]string{}
+	for name, decl := range collectTypeDecls(f) {
+		// `type A = M` and `type A M` both make A a name for M's shape, and
+		// the first also for its method set. Both become edges: the closure is
+		// deliberately conservative here, because distinguishing them means
+		// tracking which declaration form each hop used, and every rule of
+		// that kind has produced the next round's finding about itself. A
+		// defined type over a method-bearing struct is therefore refused
+		// though Go would walk it — one over-report, in exchange for closing
+		// the alias/defined surface entirely.
+		switch decl.expr.(type) {
+		case *ast.Ident:
+			ifaceEmbeds[name] = append(ifaceEmbeds[name], decl.expr.(*ast.Ident).Name)
+			continue
+		case *ast.InterfaceType:
+			// Handled below.
+		case *ast.StructType, *ast.MapType, *ast.ArrayType, *ast.FuncType,
+			*ast.ChanType:
+			// A type literal has no method set of its own; methods declared on
+			// THIS name are already collected from their receivers above.
+			continue
+		default:
+			// A qualified name (`type A = json.Marshaler`), a generic
+			// instantiation (`type A = G[int]`), or anything else this check
+			// does not parse. The method set is unknown, and unknown counts as
+			// carrying — the same answer the interface scan below gives a
+			// qualified embed, and the same answer the field walk gives an
+			// unresolvable embed. Skipping here would let a struct embedding
+			// A be certified while a promoted MarshalJSON redirects the
+			// encoder, which is the silent case this invariant exists for.
+			out[name] = true
+			continue
+		}
+		it := decl.expr.(*ast.InterfaceType)
+		for _, m := range it.Methods.List {
+			if len(m.Names) == 0 {
+				// An embedded interface contributes its whole method set.
+				if id, ok := m.Type.(*ast.Ident); ok {
+					ifaceEmbeds[name] = append(ifaceEmbeds[name], id.Name)
+					continue
+				}
+				// Qualified (`json.Marshaler`) or otherwise unreadable: this
+				// check does not parse the other package, so the method set is
+				// unknown. Unknown counts as carrying — the whole point of the
+				// vouching rule is that "cannot tell" is answered with a
+				// refusal, not an assumption.
+				out[name] = true
+				continue
+			}
+			ft, _ := m.Type.(*ast.FuncType)
+			for _, n := range m.Names {
+				if isJSONMethod(n.Name, ft) {
+					out[name] = true
+				}
+			}
+		}
+	}
+	return out, ifaceEmbeds
+}
+
+// copySet snapshots a set so a later closure over it cannot change what the
+// snapshot means. The root gate needs the method sets a type DECLARES, which
+// only exists before the transitive closure runs.
+func copySet(in map[string]bool) map[string]bool {
+	out := make(map[string]bool, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// closeJSONMethodTypes propagates the method sets through interface embedding
+// until stable. It runs over the MERGED package, not one file: the interface
+// declaring MarshalJSON and the interface embedding it routinely live in
+// different files, and a per-file closure would mark the first and never the
+// second. The loop is bounded by the graph size, so a cycle cannot spin.
+func closeJSONMethodTypes(direct map[string]bool, ifaceEmbeds map[string][]string) {
+	for range ifaceEmbeds {
+		changed := false
+		for name, embedded := range ifaceEmbeds {
+			if direct[name] {
+				continue
+			}
+			for _, e := range embedded {
+				if direct[e] {
+					direct[name] = true
+					changed = true
+				}
+			}
+		}
+		if !changed {
+			return
+		}
+	}
+}
+
+// vouch is the single gate on whether the walk may flatten through an embed. It
+// returns "" when the embed is safe to walk, or the reason it is not.
+//
+// This is deliberately a WHITELIST, and it is where the design stops chasing
+// encoding/json's tail. Two mechanisms decide an embedding struct's wire shape
+// that source text cannot settle: promoted METHODS (a promoted MarshalJSON
+// redirects the encoder away from every field, and method sets travel through
+// interfaces, aliases and other packages) and types this check never parses.
+// Each is an unbounded surface for a static walk, and each new rule modelling
+// one spelling of it invites the next. So anything not plainly vouched for —
+// a type from another package, a name not declared in the parsed sources, a
+// type whose method set carries MarshalJSON/UnmarshalJSON by any route — is
+// REPORTED rather than modelled, and the struct is judged on its own
+// declarations alone.
+//
+// The method check keys on the embed's own name as well as the resolved
+// struct: an embedded interface carries the method in its method set and
+// resolves to no struct at all. A name reached through declaration hops counts
+// only when the method set travelled with it (every hop an alias), since a
+// defined type starts with an empty method set.
+func vouch(e embedRef, childName string, methodsTravel bool, resolveErr string, jsonMethods map[string]bool) string {
+	if jsonMethods[e.name] || (methodsTravel && childName != "" && jsonMethods[childName]) {
+		return "the embedded type's method set carries a custom JSON or text marshaller (MarshalJSON/UnmarshalJSON/MarshalText/UnmarshalText), which the embedding struct promotes; encoding/json then calls it instead of walking any of these fields, so no promoted tag here is trustworthy"
+	}
+	if resolveErr != "" {
+		// An unresolvable type may also be a marshaller — time.Time is one —
+		// so this cannot be treated as merely "fields we cannot see".
+		return resolveErr + "; its fields AND any custom JSON methods it would promote are invisible here"
+	}
+	return ""
+}
+
+// receiverTypeName returns the defined type a method is declared on, or "" if
+// the receiver is not a shape Go allows. A receiver base is always a type NAME,
+// optionally parenthesized, pointer-taken, or generic-instantiated
+// (`func (b Base[T]) …`), so this classification is complete rather than a
+// best effort — there is no legal receiver it silently drops.
+func receiverTypeName(expr ast.Expr) string {
+	expr = unparen(expr)
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = unparen(star.X)
+	}
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name
+	case *ast.IndexExpr:
+		// A generic receiver: the method belongs to the base type.
+		if id, ok := unparen(e.X).(*ast.Ident); ok {
+			return id.Name
+		}
+	case *ast.IndexListExpr:
+		if id, ok := unparen(e.X).(*ast.Ident); ok {
+			return id.Name
+		}
+	}
+	return ""
+}
+
+// isJSONMethod reports whether a method is one whose promotion redirects
+// encoding/json away from a struct's fields — which takes the right NAME and
+// the right SIGNATURE, since only a method that satisfies json.Marshaler or
+// json.Unmarshaler is ever called. A `MarshalJSON(int) []byte` implements
+// neither, and refusing to judge a struct that embeds its type would
+// manufacture drift on a wrapper the encoder walks normally.
+//
+// Signatures are compared by rendered type expression, which is exact for the
+// shapes these two interfaces require:
+//
+//	MarshalJSON() ([]byte, error)
+//	UnmarshalJSON([]byte) error
+func isJSONMethod(name string, ft *ast.FuncType) bool {
+	if ft == nil {
+		return false
+	}
+	switch name {
+	case "MarshalJSON":
+		return signatureMatches(ft, nil, []string{"[]byte", "error"})
+	case "UnmarshalJSON":
+		return signatureMatches(ft, []string{"[]byte"}, []string{"error"})
+	case "MarshalText", "UnmarshalText":
+		// encoding/json falls back to encoding.TextMarshaler when a type does
+		// not implement json.Marshaler, encoding the value as a JSON string —
+		// so promoting one redirects the encoder away from the fields just as
+		// surely.
+		if name == "MarshalText" {
+			return signatureMatches(ft, nil, []string{"[]byte", "error"})
+		}
+		return signatureMatches(ft, []string{"[]byte"}, []string{"error"})
+	}
+	return false
+}
+
+// signatureMatches compares a method signature against the one an interface
+// requires, slot by slot.
+//
+// ARITY IS COMPARED FIRST, and a mismatch is decisive: `MarshalJSON(Custom)
+// error` cannot implement json.Marshaler however unfamiliar `Custom` is, and
+// refusing to judge a struct that embeds its type would manufacture drift over
+// an ordinary same-named method.
+//
+// Within a matching arity, a type this check cannot evaluate — a local name
+// like `type Bytes = []byte`, or any imported type — is a wildcard in ITS OWN
+// slot only. That bias is deliberate and one-directional: a false match costs
+// an over-report that names the type, while a false miss silently certifies a
+// wrapper whose promoted marshaller was spelled through an alias.
+func signatureMatches(ft *ast.FuncType, params, results []string) bool {
+	return fieldListMatches(ft.Params, params) && fieldListMatches(ft.Results, results)
+}
+
+// fieldListMatches compares one parameter or result list against the required
+// spellings, treating each declared name in a grouped field as its own slot.
+func fieldListMatches(fl *ast.FieldList, want []string) bool {
+	var got []ast.Expr
+	if fl != nil {
+		for _, f := range fl.List {
+			n := 1
+			if len(f.Names) > 0 {
+				n = len(f.Names)
+			}
+			for i := 0; i < n; i++ {
+				got = append(got, f.Type)
+			}
+		}
+	}
+	if len(got) != len(want) {
+		return false
+	}
+	for i, expr := range got {
+		if !typeSlotMatches(expr, want[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// typeSlotMatches reports whether one parameter or result type satisfies the
+// required spelling. A type spelled entirely in terms this check can evaluate
+// is compared exactly; anything else is a wildcard for that slot alone.
+func typeSlotMatches(expr ast.Expr, want string) bool {
+	if !resolvableTypeSpelling(expr) {
+		return true
+	}
+	return normalizeTypeSpelling(exprDisplay(expr)) == normalizeTypeSpelling(want)
+}
+
+// normalizeTypeSpelling collapses spellings Go treats as identical. `byte` is
+// an alias for `uint8`, so `MarshalJSON() ([]uint8, error)` implements
+// json.Marshaler exactly as the usual spelling does — and missing that is a
+// SILENT miss, since the promoted method still redirects the encoder.
+func normalizeTypeSpelling(s string) string {
+	switch s {
+	case "[]uint8":
+		return "[]byte"
+	case "uint8":
+		return "byte"
+	case "int32":
+		return "rune"
+	}
+	return s
+}
+
+// resolvableTypeSpelling reports whether a type expression is spelled entirely
+// in builtins — the only names this check can compare without a type checker.
+func resolvableTypeSpelling(expr ast.Expr) bool {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return predeclaredTypes[e.Name]
+	case *ast.ArrayType:
+		if e.Len != nil {
+			return false
+		}
+		if id, ok := e.Elt.(*ast.Ident); ok {
+			return predeclaredTypes[id.Name]
+		}
+	}
+	return false
+}
+
+// collectTypeDecls returns every top-level `type X <expr>` declaration in the
+// file, mapping the type name to its right-hand-side type expression. Struct
+// types are included, so the map doubles as the "is this name declared in the
+// parsed sources at all?" oracle flattenEmbedded needs: an embedded name absent
+// from it is unresolvable (declared elsewhere, or in another package), while an
+// embedded name present but non-struct (an interface, a map, a slice) simply
+// promotes no JSON-tagged fields.
+func collectTypeDecls(f *ast.File) map[string]typeDecl {
+	out := map[string]typeDecl{}
+	for _, decl := range f.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.TYPE {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			if ts, ok := spec.(*ast.TypeSpec); ok {
+				// `type Alias = (Base)` is legal, and the parentheses are not
+				// part of the type. Unwrapping here means every consumer —
+				// the name-edge closure, embed resolution, the interface scan
+				// — sees the same shape without each having to remember.
+				out[ts.Name.Name] = typeDecl{expr: unparen(ts.Type), alias: ts.Assign.IsValid()}
+			}
+		}
+	}
+	return out
+}
+
+// typeDecl is one `type X …` declaration. alias distinguishes `type X = Y`,
+// which is the same type as Y and therefore has its methods, from `type X Y`,
+// which takes Y's underlying structure but starts with an EMPTY method set.
+// That distinction decides whether embedding X promotes Y's MarshalJSON.
+type typeDecl struct {
+	expr  ast.Expr
+	alias bool
+}
+
+// embedRefFromExpr decomposes an anonymous field's type expression into an
+// embedRef. `Base` -> {name: "Base"}; `*Base` -> {name: "Base", display:
+// "*Base"}; `time.Time` -> {name: "Time", qualifier: "time"}. Anything else
+// (a generic instantiation, an inline struct type) yields an empty name, which
+// flattenEmbedded reports as unresolvable rather than skipping.
+func embedRefFromExpr(expr ast.Expr) embedRef {
+	ref := embedRef{display: exprDisplay(expr)}
+	if star, ok := expr.(*ast.StarExpr); ok {
+		ref.pointer = true
+		expr = star.X
+	}
+	switch e := expr.(type) {
+	case *ast.Ident:
+		ref.name = e.Name
+	case *ast.SelectorExpr:
+		if pkg, ok := e.X.(*ast.Ident); ok {
+			ref.qualifier = pkg.Name
+			ref.name = e.Sel.Name
+		}
+	}
+	return ref
+}
+
+// exprDisplay renders a type expression for error messages. It handles the
+// shapes an embedded field can take and falls back to a placeholder for
+// anything exotic, so messages never come out blank.
+func exprDisplay(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name
+	case *ast.StarExpr:
+		return "*" + exprDisplay(e.X)
+	case *ast.SelectorExpr:
+		if pkg := exprDisplay(e.X); pkg != "" {
+			return pkg + "." + e.Sel.Name
+		}
+		return e.Sel.Name
+	case *ast.IndexExpr: // generic instantiation: Base[T]
+		return exprDisplay(e.X) + "[…]"
+	case *ast.IndexListExpr: // generic instantiation: Base[T, U]
+		return exprDisplay(e.X) + "[…]"
+	case *ast.ArrayType:
+		if e.Len == nil {
+			return "[]" + exprDisplay(e.Elt)
+		}
+	}
+	return "<unsupported type expression>"
+}
+
+// predeclaredTypes are Go's builtin type names. A declaration chain ending in
+// one is resolved, not unresolvable: it contributes no fields and no method set
+// of its own, so it needs neither a refusal nor a walk.
+var predeclaredTypes = map[string]bool{
+	"any": true, "bool": true, "byte": true, "comparable": true,
+	"complex64": true, "complex128": true, "error": true, "float32": true,
+	"float64": true, "int": true, "int8": true, "int16": true, "int32": true,
+	"int64": true, "rune": true, "string": true, "uint": true, "uint8": true,
+	"uint16": true, "uint32": true, "uint64": true, "uintptr": true,
+}
+
+// maxEmbedDepth bounds the promotion walk. The visited-set already terminates
+// cycles; this is a second, independent stop so a pathological chain can never
+// spin. Real embedding chains in this repo are one level deep.
+const maxEmbedDepth = 16
+
+// flattenEmbedded resolves embedded (anonymous) fields for every struct in a
+// universe, merging each embedded type's promoted JSON tags into the embedding
+// struct's tag set. structs is the struct universe (all structs parsed from one
+// package's files, or from client.gen.go); decls is every top-level type
+// declaration from the same sources.
+//
+// The walk is breadth-first by promotion depth so encoding/json's "shallowest
+// declaration wins" rule falls out naturally, and two same-depth contributors
+// of one tag cancel (encoding/json emits neither). See the package doc for the
+// full rule list. Unresolvable embeds are recorded on the embedding struct's
+// unresolved list — never skipped — and reported by run when a pair reaches
+// them.
+func flattenEmbedded(structs map[string]*structFields, decls map[string]typeDecl, jsonMethods, directJSONMethods map[string]bool) {
+	// Settle which fields the encoder ignores before any promotion runs, for
+	// every struct rather than just the roots: the walk reads a descendant's
+	// ownFields directly, so filtering only at depth 0 would promote a tag out
+	// of a field encoding/json never emits.
+	// A struct promotes the methods of everything it embeds, so "carries a
+	// custom JSON method" is transitive through struct embedding just as it is
+	// through interface embedding — and a json TAG on the embed does not stop
+	// it. Close over that before any flattening, so an embed of a struct that
+	// merely inherits a marshaller is refused as readily as one that declares
+	// it. Unresolvable embeds count as carrying: an unparsed type can be a
+	// marshaller (time.Time is), and "cannot tell" is answered with a refusal.
+	for {
+		changed := false
+		for name, sf := range structs {
+			if jsonMethods[name] {
+				continue
+			}
+			refs := make([]embedRef, 0, len(sf.embeds)+len(sf.taggedEmbeds))
+			refs = append(refs, sf.embeds...)
+			for _, te := range sf.taggedEmbeds {
+				refs = append(refs, te.ref)
+			}
+			for _, ref := range refs {
+				_, childName, methodsTravel, err := resolveEmbedFull(ref, structs, decls)
+				if err != "" || jsonMethods[ref.name] || (methodsTravel && childName != "" && jsonMethods[childName]) {
+					jsonMethods[name] = true
+					changed = true
+					break
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+
+	// Each struct's OWN decode-unsafe records, computed before any root is
+	// flattened so a parent can inherit them whatever order the map iterates.
+	// encoding/json cannot allocate an embedded pointer to an unexported type,
+	// and that is just as true when the field arrives by promotion as when the
+	// struct holding it is the one being judged.
+	for name, sf := range structs {
+		sf.decodeUnsafeOwn = nil
+		refs := make([]embedRef, 0, len(sf.embeds)+len(sf.taggedEmbeds))
+		refs = append(refs, sf.embeds...)
+		for _, te := range sf.taggedEmbeds {
+			refs = append(refs, te.ref)
+		}
+		for _, ref := range refs {
+			if !ref.pointer || ref.name == "" || ast.IsExported(ref.name) {
+				continue
+			}
+			// A struct only: an anonymous pointer to an unexported NON-struct
+			// is ignored by encoding/json rather than allocated, so there is no
+			// field it failed to populate.
+			if child, _, _, err := resolveEmbedFull(ref, structs, decls); err != "" || child == nil {
+				continue
+			}
+			sf.decodeUnsafeOwn = append(sf.decodeUnsafeOwn,
+				fmt.Sprintf("%s -> %s (encoding/json cannot allocate an embedded pointer to an unexported type, so a decoder never populates its promoted fields)", name, ref.display))
+		}
+	}
+
+	for name, sf := range structs {
+		sf.declaresJSONMethodDirectly = directJSONMethods[name]
+		for _, ref := range sf.embeds {
+			if child, _, _, err := resolveEmbedFull(ref, structs, decls); err == "" && child != nil {
+				sf.promotesFromStruct = true
+				break
+			}
+		}
+	}
+
+	for _, sf := range structs {
+		sf.ignoredOwn = map[int]bool{}
+		for _, te := range sf.taggedEmbeds {
+			if te.ref.name == "" || ast.IsExported(te.ref.name) {
+				continue
+			}
+			if child, _, err := resolveEmbed(te.ref, structs, decls); err == "" && child != nil {
+				continue
+			}
+			sf.ignoredOwn[te.ownIndex] = true
+		}
+	}
+	for name, sf := range structs {
+		flattenOne(name, sf, structs, decls, jsonMethods)
+	}
+}
+
+// flattenOne performs the breadth-first promotion walk for a single struct.
+func flattenOne(rootName string, root *structFields, structs map[string]*structFields, decls map[string]typeDecl, jsonMethods map[string]bool) {
+	// A struct reached at depth d contributes its own tagged fields at depth d;
+	// path records the embedded field names traversed to reach it, both for
+	// population targets and for unresolvable-embed messages.
+	type reached struct {
+		name string
+		sf   *structFields
+		path []string
+	}
+
+	// Tags declared directly on the root are claimed at depth 0 and shadow
+	// anything promoted from below — EXCEPT where the root declares one tag
+	// twice, which encoding/json annihilates exactly like a same-depth
+	// promotion conflict. The tag is then on no field's wire output, so it
+	// stays claimed (blocking deeper promotion) but is not present.
+	// Rebuild the own-tag view from the surviving fields — deleting the ignored
+	// field's tag outright would take a REAL field's tag with it when the two
+	// collide, which is the phantom drift this ordering exists to avoid. A tag
+	// whose only carrier was an ignored field is simply absent, and stays
+	// unclaimed so a promotion can still supply it.
+	claimed := map[string]bool{}
+	ownCount := map[string]int{}
+	root.tags = map[string]bool{}
+	root.tagToGoField = map[string]string{}
+	for i, f := range root.ownFields {
+		if root.ignoredOwn[i] {
+			continue
+		}
+		ownCount[f.tag]++
+		claimed[f.tag] = true
+		root.tags[f.tag] = true
+		if f.goField != "" {
+			root.tagToGoField[f.tag] = f.goField
+		}
+	}
+	// Two surviving fields sharing a tag annihilate: encoding/json emits
+	// neither, so the tag is not on the wire — but it stays claimed, which
+	// blocks a deeper promotion from filling the vacancy, as dominantField
+	// gives up on the tie rather than falling through.
+	for tag, n := range ownCount {
+		if n > 1 {
+			delete(root.tags, tag)
+			delete(root.tagToGoField, tag)
+		}
+	}
+
+	// The own-only view, kept so a discovery that invalidates promotion (a
+	// promoted custom marshaller) can drop every promoted tag and leave the
+	// struct judged on its own declarations alone.
+	ownTags := make(map[string]bool, len(root.tags))
+	for t := range root.tags {
+		ownTags[t] = true
+	}
+	ownTagToGoField := make(map[string]string, len(root.tagToGoField))
+	for t, f := range root.tagToGoField {
+		ownTagToGoField[t] = f
+	}
+	discardPromotions := func() {
+		root.tags = ownTags
+		root.tagToGoField = ownTagToGoField
+		root.tagPath = map[string][]string{}
+		root.tagTargets = map[string][]string{}
+	}
+
+	// This struct's own decode-breaking embeds — tagged and untagged alike —
+	// were settled by the pre-pass. Seed the accumulated list from them; the
+	// walk adds what it inherits from the structs it reaches.
+	root.decodeUnsafe = append([]string(nil), root.decodeUnsafeOwn...)
+
+	// A json tag stops an anonymous field from promoting its FIELDS. It does
+	// nothing to method promotion — that is a language rule which never
+	// consults tags — so a tagged embed is vouched for on exactly the same
+	// terms as an untagged one.
+	for _, te := range root.taggedEmbeds {
+		_, childName, methodsTravel, err := resolveEmbedFull(te.ref, structs, decls)
+		if reason := vouch(te.ref, childName, methodsTravel, err, jsonMethods); reason != "" {
+			root.unresolved = append(root.unresolved, fmt.Sprintf("%s -> %s (%s)", rootName, te.ref.display, reason))
+			discardPromotions()
+			return
+		}
+	}
+
+	// A root that declares its own MarshalJSON/UnmarshalJSON AND promotes
+	// fields through an embed is refused — for the promotion only.
+	//
+	// The root method alone is not disqualifying, and deliberately so: every
+	// wrapper in this repo that declares one is a decode adapter that
+	// unmarshals into the GENERATED type and hands off to the *FromGenerated
+	// conversion this check verifies, so the pairing is what they are built
+	// on. But once such a root also PROMOTES fields, the promoted tags are
+	// being certified against an encoder that bypasses them, and that is the
+	// silent case. None of today's adapters embed anything, so this fires on
+	// none of them.
+	if root.declaresJSONMethodDirectly && root.promotesFromStruct {
+		root.unresolved = append(root.unresolved,
+			fmt.Sprintf("%s declares a custom JSON or text marshaller itself and also promotes fields through an embedded struct; encoding/json calls that method rather than walking the promoted fields, so promotion is not certified here (its own declared tags still are)", rootName))
+		discardPromotions()
+		return
+	}
+
+	// Go-name resolution, tracked alongside the tag walk: nameDepth records the
+	// shallowest depth at which each field NAME appears and nameConflict the
+	// names two same-depth structs both declare, which makes the selector
+	// ambiguous. promotedTargets needs both to know which spellings of a
+	// promoted field actually reach it.
+	nameDepth := map[string]int{}
+	nameConflict := map[string]bool{}
+	recordNames := func(names []string, depth int, seenThisDepth map[string]bool) {
+		for _, n := range names {
+			if d, ok := nameDepth[n]; ok {
+				if d == depth && seenThisDepth[n] {
+					nameConflict[n] = true
+				}
+				continue
+			}
+			nameDepth[n] = depth
+			seenThisDepth[n] = true
+		}
+	}
+	recordNames(root.fieldNames, 0, map[string]bool{})
+
+	visited := map[string]bool{rootName: true}
+	level := []reached{{name: rootName, sf: root}}
+
+	for depth := 1; depth <= maxEmbedDepth && len(level) > 0; depth++ {
+		var next []reached
+		// reaches counts how many distinct paths arrive at each type AT THIS
+		// DEPTH. encoding/json queues such a type once but remembers the count
+		// and then duplicates its fields so the annihilation rule sees the
+		// conflict (see the nextCount/count pair in encoding/json's
+		// typeFields). Deduplicating without counting would promote a tag that
+		// two equal-depth paths actually annihilate.
+		reaches := map[string]int{}
+		for _, parent := range level {
+			for _, e := range parent.sf.embeds {
+				child, childName, methodsTravel, err := resolveEmbedFull(e, structs, decls)
+				if reason := vouch(e, childName, methodsTravel, err, jsonMethods); reason != "" {
+					root.unresolved = append(root.unresolved,
+						fmt.Sprintf("%s -> %s (%s)", strings.Join(append([]string{rootName}, parent.path...), "."), e.display, reason))
+					discardPromotions()
+					return
+				}
+				// A struct reached here brings its OWN decode-unsafe records
+				// with it: a tagged or untagged unexported pointer inside it is
+				// promoted onto this root and is just as unallocatable there.
+				// Those records are computed for every struct before any root
+				// is walked, so this does not depend on iteration order.
+				if child != nil && childName != rootName {
+					// Only the child's OWN records: its accumulated list may
+					// already hold what IT inherited, and copying that would
+					// duplicate entries and make the output depend on which
+					// struct flattenEmbedded happened to walk first. This walk
+					// reaches every descendant itself.
+					for _, du := range child.decodeUnsafeOwn {
+						root.decodeUnsafe = append(root.decodeUnsafe,
+							fmt.Sprintf("%s (reached through %s)", du, strings.Join(append([]string{rootName}, parent.path...), ".")))
+					}
+				}
+				if child == nil || visited[childName] {
+					// Either the embedded type promotes no JSON-tagged fields
+					// (an interface, a map, a slice), or it was already reached
+					// at a SHALLOWER depth — encoding/json likewise visits each
+					// type once, which also terminates embedding cycles.
+					continue
+				}
+				reaches[childName]++
+				if reaches[childName] > 1 {
+					// Same type, same depth, second path: counted above, queued
+					// once.
+					continue
+				}
+				path := make([]string, 0, len(parent.path)+1)
+				path = append(path, parent.path...)
+				path = append(path, e.name)
+				next = append(next, reached{name: childName, sf: child, path: path})
+			}
+		}
+		// Marking visited only once the whole level is gathered is what keeps
+		// the second same-depth path visible to the count above.
+		for _, r := range next {
+			visited[r.name] = true
+		}
+
+		// Names first: a spelling's validity depends on what resolves at this
+		// depth and shallower, all of which is known once this level is built.
+		seenThisDepth := map[string]bool{}
+		for _, r := range next {
+			recordNames(r.sf.fieldNames, depth, seenThisDepth)
+		}
+
+		// Gather this depth's contributions before claiming any of them, so
+		// same-depth conflicts can be detected.
+		type candidate struct {
+			field taggedField
+			path  []string
+		}
+		byTag := map[string][]candidate{}
+		var order []string
+		for _, r := range next {
+			for i, f := range r.sf.ownFields {
+				if r.sf.ignoredOwn[i] {
+					continue
+				}
+				if _, seen := byTag[f.tag]; !seen {
+					order = append(order, f.tag)
+				}
+				byTag[f.tag] = append(byTag[f.tag], candidate{field: f, path: r.path})
+				if reaches[r.name] > 1 {
+					// Reached by more than one path at this depth: every field
+					// it contributes is ambiguous with itself, which the
+					// same-depth rule below turns into an annihilation.
+					byTag[f.tag] = append(byTag[f.tag], candidate{field: f, path: r.path})
+				}
+			}
+		}
+		for _, tag := range order {
+			if claimed[tag] {
+				continue // a shallower declaration wins (or blocked the tag).
+			}
+			// Claim the tag either way: a same-depth conflict means
+			// encoding/json emits nothing for it, and it also stops any
+			// deeper occurrence from being promoted.
+			claimed[tag] = true
+			cands := byTag[tag]
+			if len(cands) != 1 {
+				continue
+			}
+			c := cands[0]
+			root.tags[tag] = true
+			if c.field.goField != "" {
+				root.tagToGoField[tag] = c.field.goField
+			}
+			root.tagPath[tag] = c.path
+			root.tagTargets[tag] = promotedTargets(c.path, c.field.goField, nameDepth, nameConflict)
+		}
+
+		level = next
+	}
+
+	// Exhausting the depth budget with embeds still unfollowed would hide
+	// fields exactly the way #599 did. Report it rather than stopping quietly.
+	for _, r := range level {
+		if len(r.sf.embeds) > 0 {
+			root.unresolved = append(root.unresolved,
+				fmt.Sprintf("%s -> %s (embedding chain deeper than %d levels; promotion beyond that was not followed)",
+					strings.Join(append([]string{rootName}, r.path...), "."), r.name, maxEmbedDepth))
+			break
+		}
+	}
+}
+
+// resolveEmbed resolves one embedded type reference against the parsed
+// universe. It returns the embedded struct and the name it resolved to, or a
+// non-empty reason string when the type cannot be resolved at all. A nil struct
+// with an empty reason means "resolved, but promotes no JSON-tagged fields"
+// (an interface, map, slice, func or channel type).
+func resolveEmbed(e embedRef, structs map[string]*structFields, decls map[string]typeDecl) (sf *structFields, name string, reason string) {
+	sf, name, _, reason = resolveEmbedFull(e, structs, decls)
+	return sf, name, reason
+}
+
+// resolveEmbedFull is resolveEmbed plus methodsTravel: whether the resolved
+// type's METHOD SET reaches the embedding struct. Every hop must be an alias
+// for that to hold — `type Safe Stamp` has Stamp's fields but none of its
+// methods, so embedding Safe does not make the outer type a json.Marshaler
+// even when Stamp is one.
+func resolveEmbedFull(e embedRef, structs map[string]*structFields, decls map[string]typeDecl) (*structFields, string, bool, string) {
+	switch {
+	case e.name == "":
+		return nil, "", false, "unsupported embedded type expression"
+	case e.qualifier != "":
+		return nil, "", false, "declared in another package, which this check does not parse"
+	}
+	// Follow `type Alias Base` hops. maxEmbedDepth also bounds this chain, so a
+	// self-referential declaration cannot spin.
+	name := e.name
+	methodsTravel := true
+	seen := map[string]bool{}
+	for hop := 0; hop <= maxEmbedDepth; hop++ {
+		if sf, ok := structs[name]; ok {
+			return sf, name, methodsTravel, ""
+		}
+		decl, ok := decls[name]
+		if !ok {
+			if predeclaredTypes[name] {
+				// A defined type over a builtin (`type hidden string`). It is
+				// fully accounted for: no fields to promote, and no method set
+				// of its own — any methods would be declared locally and are
+				// already in jsonMethods under the defining name.
+				return nil, name, methodsTravel, ""
+			}
+			return nil, "", methodsTravel, "not declared in the parsed sources"
+		}
+		if seen[name] {
+			return nil, "", methodsTravel, "self-referential type declaration"
+		}
+		seen[name] = true
+		switch t := decl.expr.(type) {
+		case *ast.Ident:
+			// `type Alias = Base` keeps Base's method set; `type Alias Base`
+			// starts empty.
+			if !decl.alias {
+				methodsTravel = false
+			}
+			name = t.Name
+		case *ast.SelectorExpr:
+			return nil, "", methodsTravel, "defined in terms of another package's type, which this check does not parse"
+		case *ast.IndexExpr, *ast.IndexListExpr:
+			// `type A G[int]` keeps G's fields, and an alias to one keeps its
+			// method set too. Modelling instantiation is type-checker work;
+			// under this file's invariant the answer is to report, not to
+			// treat it as fieldless — which would drop its tags from the
+			// GENERATED side as well and let a wrapper omit them silently.
+			return nil, "", methodsTravel, "declared over an instantiated generic type, whose fields and method set this check does not model"
+		default:
+			// (fallthrough comment below applies to the default branch)
+			// An interface, map, slice, func, chan or generic type. It is a
+			// valid embed and it is NOT absent from the wire — encoding/json
+			// treats it as an ordinary field keyed by the Go field name
+			// (`struct{ Payload }` emits "Payload") — but it promotes no
+			// JSON-TAGGED fields, and tags are this check's entire vocabulary.
+			// An untagged field is invisible here whether it is embedded or
+			// named (`Plain string` emits "Plain" and is likewise not
+			// tracked), so the treatment is uniform and neither side of a pair
+			// can drift past it: generated structs are oapi-codegen output,
+			// where every field carries a tag, so no generated wire key is
+			// ever spelled this way for a wrapper to miss.
+			//
+			// The NAME is still returned even though there is no struct: an
+			// embedded interface promotes its method set, and vouch has to be
+			// able to look that name up.
+			//
+			// An interface is also the one target where the defined-type rule
+			// does NOT apply: `type Safe Marshaler` is still an interface with
+			// Marshaler's methods, unlike `type Safe SomeStruct`, which starts
+			// with an empty method set.
+			if _, isIface := decl.expr.(*ast.InterfaceType); isIface {
+				methodsTravel = true
+			}
+			return nil, name, methodsTravel, ""
+		}
+	}
+	return nil, "", methodsTravel, "type declaration chain is too deep to resolve"
 }
 
 // collectFromGeneratedPairs walks the AST for function declarations of the form
@@ -699,18 +2188,24 @@ func collectAssignedFields(f *ast.File) map[string]map[string]bool {
 						continue
 					}
 					if key, ok := kv.Key.(*ast.Ident); ok {
-						assigned[key.Name] = true
+						recordAssignedValue(assigned, key.Name, kv.Value)
 					}
 				}
 			case *ast.AssignStmt:
-				for _, lhs := range node.Lhs {
-					if base, name := selectorBaseAndField(lhs); name != "" && wrapperVars[base] {
-						assigned[name] = true
+				for i, lhs := range node.Lhs {
+					base, path := selectorRootAndPath(lhs)
+					if path == "" || !wrapperVars[base] {
+						continue
 					}
+					var value ast.Expr
+					if len(node.Lhs) == len(node.Rhs) {
+						value = node.Rhs[i]
+					}
+					recordAssignedValue(assigned, path, value)
 				}
 			case *ast.IncDecStmt:
-				if base, name := selectorBaseAndField(node.X); name != "" && wrapperVars[base] {
-					assigned[name] = true
+				if base, path := selectorRootAndPath(node.X); path != "" && wrapperVars[base] {
+					recordAssignedValue(assigned, path, nil)
 				}
 			}
 			return true
@@ -803,21 +2298,230 @@ func litTypeName(expr ast.Expr) string {
 	return ""
 }
 
-// selectorBaseAndField decomposes an `x.Field` selector rooted in a bare
-// identifier into its base identifier and field name (`c.Creator` -> "c",
-// "Creator"). Returns "", "" for anything else (index expressions, deeper
-// chains like `a.b.c`, non-selector expressions). The base lets callers scope
-// the write to a known wrapper variable.
-func selectorBaseAndField(expr ast.Expr) (base, field string) {
-	sel, ok := expr.(*ast.SelectorExpr)
-	if !ok {
+// unrecognizedPrefix marks a value shape the walker could not interpret. It is
+// stored in the same set as the dotted assignment paths, prefixed with a byte
+// that cannot begin a Go identifier, so it can never collide with a real
+// spelling. run() turns each into drift for the pair that reaches it.
+const unrecognizedPrefix = "?"
+
+// unparen strips redundant parentheses: `(Base{...})` is the same value as
+// `Base{...}`, and classifying the parenthesized form differently would credit
+// or refuse a subtree on punctuation alone.
+func unparen(expr ast.Expr) ast.Expr {
+	for {
+		p, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			return expr
+		}
+		expr = p.X
+	}
+}
+
+// valueKind is how a value was classified for coverage purposes. Every
+// coverage decision in this file routes through classifyValue, and this is the
+// complete set of answers it can give.
+type valueKind int
+
+const (
+	// valueUnrecognized is the DEFAULT, and it is the point of the type: a
+	// shape the walker cannot place credits nothing and gets reported. Every
+	// silent failure this check has had — #599 itself, and each regression
+	// found while fixing it — was an unrecognised shape being assumed away, so
+	// the zero value of this enum is the safe one.
+	valueUnrecognized valueKind = iota
+	// valueZero carries no data: nil, new(T), (*T)(nil), an empty literal.
+	valueZero
+	// valueEnumerable is a struct literal whose keys can be walked — named,
+	// elided inside another literal, or anonymous.
+	valueEnumerable
+	// valueWhole is a complete value of the field's type whose contents the
+	// walker cannot see: a call, a variable, a selector, an index, a
+	// dereference, a type assertion, a channel receive, or a slice/array/map
+	// literal.
+	valueWhole
+)
+
+// classifyValue is the single chokepoint every coverage decision routes
+// through. It exists because the same bug kept recurring in different shapes:
+// a value the walker did not understand was credited anyway, once per code
+// path that made its own judgement (a separate zero test, a separate literal
+// test, a separate whole-value test, each with its own default). One
+// exhaustive switch with ONE default arm means a Go shape nobody thought about
+// lands on valueUnrecognized instead of on whichever branch happened to be
+// permissive.
+//
+// A nil expression means the write had no readable right-hand side (`x.F++`):
+// the field was written and there is nothing to look into.
+func classifyValue(expr ast.Expr) (valueKind, *ast.CompositeLit) {
+	if expr == nil {
+		return valueWhole, nil
+	}
+	switch e := unparen(expr).(type) {
+	case *ast.Ident:
+		if e.Name == "nil" {
+			return valueZero, nil
+		}
+		return valueWhole, nil
+
+	case *ast.CompositeLit:
+		if len(e.Elts) == 0 {
+			return valueZero, nil
+		}
+		switch e.Type.(type) {
+		case nil, *ast.StructType:
+			// Elided inside another literal, or an anonymous struct — Go lets
+			// the latter be assigned to a named struct with the same
+			// underlying type, so it fills only what it names.
+			return valueEnumerable, e
+		case *ast.Ident:
+			return valueEnumerable, e
+		}
+		// A slice, array or map literal: nothing to enumerate as fields.
+		return valueWhole, nil
+
+	case *ast.UnaryExpr:
+		switch e.Op {
+		case token.ARROW:
+			// <-ch delivers a whole value of the element type.
+			return valueWhole, nil
+		case token.AND:
+			// &x is whatever x is: &Base{...} enumerates, &v is whole, and
+			// &Base{} carries nothing.
+			return classifyValue(e.X)
+		}
+		return valueUnrecognized, nil
+
+	case *ast.CallExpr:
+		// new(T) allocates a zero value; (*T)(nil) is a nil in a conversion's
+		// clothing. The parenthesized star is what makes the second
+		// unambiguous — `baseFrom(nil)` is an ordinary call that may populate
+		// everything, and only the type checker could tell `Base(nil)` from
+		// it, so neither is claimed as zero.
+		if id, ok := unparen(e.Fun).(*ast.Ident); ok && id.Name == "new" {
+			return valueZero, nil
+		}
+		if _, isStar := unparenOnce(e.Fun).(*ast.StarExpr); isStar && len(e.Args) == 1 {
+			if id, ok := unparen(e.Args[0]).(*ast.Ident); ok && id.Name == "nil" {
+				return valueZero, nil
+			}
+		}
+		return valueWhole, nil
+
+	case *ast.SelectorExpr, *ast.IndexExpr, *ast.IndexListExpr,
+		*ast.TypeAssertExpr, *ast.StarExpr:
+		return valueWhole, nil
+	}
+	return valueUnrecognized, nil
+}
+
+// recordAssignedValue records every population fact implied by assigning value
+// to path (a dotted field path relative to the wrapper instance, e.g. "Base" or
+// "Base.Audit"). It is the single vocabulary the population check reads through
+// populationTargets.
+//
+// The path itself is always recorded. What the assignment covers BELOW it
+// follows from classifyValue, and nothing here re-derives that judgement:
+//
+//   - valueZero covers NOTHING. None of those shapes carry a value in.
+//   - valueEnumerable is walked key by key, recursively, so a partial literal
+//     covers only the fields it names.
+//   - valueWhole covers the subtree — the one-level-nesting doctrine the check
+//     has always applied (`c.Creator = &creator` counts, and Person's own
+//     fields are verified through Person's own pair).
+//   - valueUnrecognized covers nothing and is REPORTED, so the shape is read
+//     by a person instead of credited by a walker that did not understand it.
+//
+// A positional literal is the one place this adds a rule: it lists every direct
+// field, so it covers the subtree — unless an element is zero, or is itself a
+// literal whose contents the walker can see but cannot ATTRIBUTE to a field
+// without the declaration order. Seeing content it cannot place is a reason to
+// stop claiming, not to assume.
+func recordAssignedValue(assigned map[string]bool, path string, value ast.Expr) {
+	if path == "" {
+		return
+	}
+	assigned[path] = true
+
+	kind, lit := classifyValue(value)
+	switch kind {
+	case valueZero:
+		return
+	case valueWhole:
+		assigned[path+".*"] = true
+		return
+	case valueUnrecognized:
+		assigned[unrecognizedPrefix+path] = true
+		return
+	}
+
+	keyed := false
+	for _, elt := range lit.Elts {
+		kv, ok := elt.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		keyed = true
+		key, ok := kv.Key.(*ast.Ident)
+		if !ok {
+			// A struct literal's keys are field names; anything else is a
+			// shape this walker does not model.
+			assigned[unrecognizedPrefix+path] = true
+			continue
+		}
+		recordAssignedValue(assigned, path+"."+key.Name, kv.Value)
+	}
+	if keyed {
+		return
+	}
+	for _, elt := range lit.Elts {
+		if kind, _ := classifyValue(elt); kind != valueWhole {
+			return
+		}
+	}
+	assigned[path+".*"] = true
+}
+
+// unparenOnce strips one layer of parentheses, distinguishing `(*T)(nil)` —
+// where the parens are part of the conversion syntax — from a bare call.
+func unparenOnce(expr ast.Expr) ast.Expr {
+	if p, ok := expr.(*ast.ParenExpr); ok {
+		return p.X
+	}
+	return expr
+}
+
+// structLiteral returns the composite literal behind expr when it is a
+// bare-identifier-typed struct literal (`Base{...}` or `&Base{...}`), and nil
+// otherwise — including for slice, map and qualified-type literals, whose
+// contents say nothing about a wrapper's fields.
+func structLiteral(expr ast.Expr) *ast.CompositeLit {
+	expr = unparen(expr)
+	if u, ok := expr.(*ast.UnaryExpr); ok && u.Op == token.AND {
+		expr = unparen(u.X)
+	}
+	cl, ok := expr.(*ast.CompositeLit)
+	if !ok || litTypeName(cl.Type) == "" {
+		return nil
+	}
+	return cl
+}
+
+// selectorRootAndPath decomposes an identifier-rooted selector chain into its
+// root identifier and the dotted path below it: `t.Base.ID` -> ("t",
+// "Base.ID"), `c.Creator` -> ("c", "Creator"). Returns "", "" for anything not
+// rooted in a bare identifier, or for a bare identifier with no field selected.
+// Keeping the full path (rather than only the final field) is what lets the
+// population check recognize a fully-qualified write to a promoted field.
+func selectorRootAndPath(expr ast.Expr) (root, path string) {
+	full := exprToPath(expr)
+	if full == "" {
 		return "", ""
 	}
-	ident, ok := sel.X.(*ast.Ident)
-	if !ok {
+	dot := strings.IndexByte(full, '.')
+	if dot == -1 {
 		return "", ""
 	}
-	return ident.Name, sel.Sel.Name
+	return full[:dot], full[dot+1:]
 }
 
 // exprToPath converts an identifier-rooted selector chain into a dotted path
@@ -837,24 +2541,6 @@ func exprToPath(expr ast.Expr) string {
 		return base + "." + e.Sel.Name
 	}
 	return ""
-}
-
-// pathPrefixAndField decomposes any identifier-rooted selector expression into
-// its prefix-path string and final field name. `q.Schedule.WeekInstance` ->
-// ("q.Schedule", "WeekInstance"); `resp.ID` -> ("resp", "ID"). Returns "", ""
-// for non-selector or non-identifier-rooted expressions. The prefix lets
-// callers look up a previously-recorded composite-literal binding to determine
-// which wrapper this write targets.
-func pathPrefixAndField(expr ast.Expr) (prefix, field string) {
-	sel, ok := expr.(*ast.SelectorExpr)
-	if !ok {
-		return "", ""
-	}
-	prefix = exprToPath(sel.X)
-	if prefix == "" {
-		return "", ""
-	}
-	return prefix, sel.Sel.Name
 }
 
 // collectCompositeLiteralFields walks every function body in f and, for each
@@ -888,7 +2574,7 @@ func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[strin
 	if len(tier3) == 0 {
 		return out
 	}
-	addField := func(wrapper, field string) {
+	addValue := func(wrapper, path string, value ast.Expr) {
 		if !tier3[wrapper] {
 			return
 		}
@@ -897,7 +2583,7 @@ func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[strin
 			set = map[string]bool{}
 			out[wrapper] = set
 		}
-		set[field] = true
+		recordAssignedValue(set, path, value)
 	}
 	for _, decl := range f.Decls {
 		fd, ok := decl.(*ast.FuncDecl)
@@ -915,7 +2601,7 @@ func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[strin
 							continue
 						}
 						if key, ok := kv.Key.(*ast.Ident); ok {
-							addField(t, key.Name)
+							addValue(t, key.Name, kv.Value)
 						}
 					}
 				}
@@ -932,24 +2618,50 @@ func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[strin
 					}
 				}
 				// Attribute selector-target writes to any bound path.
-				for _, lhs := range node.Lhs {
-					if prefix, field := pathPrefixAndField(lhs); field != "" {
-						if wrapper, ok := bindings[prefix]; ok {
-							addField(wrapper, field)
-						}
+				for i, lhs := range node.Lhs {
+					wrapper, rest := boundWrapperAndPath(bindings, lhs)
+					if rest == "" {
+						continue
 					}
+					var value ast.Expr
+					if len(node.Lhs) == len(node.Rhs) {
+						value = node.Rhs[i]
+					}
+					addValue(wrapper, rest, value)
 				}
 			case *ast.IncDecStmt:
-				if prefix, field := pathPrefixAndField(node.X); field != "" {
-					if wrapper, ok := bindings[prefix]; ok {
-						addField(wrapper, field)
-					}
+				if wrapper, rest := boundWrapperAndPath(bindings, node.X); rest != "" {
+					addValue(wrapper, rest, nil)
 				}
 			}
 			return true
 		})
 	}
 	return out
+}
+
+// boundWrapperAndPath matches a write target against the composite-literal
+// bindings recorded in one function body, returning the tier-3 wrapper it
+// belongs to and the dotted path of the write RELATIVE to that binding:
+// with `resp := Wrapper{...}` bound at "resp", `resp.Base.ID = …` yields
+// ("Wrapper", "Base.ID"). The longest matching binding wins, so a nested
+// binding is preferred over an enclosing one. Returns "", "" for a write
+// against an unbound path.
+func boundWrapperAndPath(bindings map[string]string, lhs ast.Expr) (wrapper, path string) {
+	full := exprToPath(lhs)
+	if full == "" {
+		return "", ""
+	}
+	best := ""
+	for prefix := range bindings {
+		if strings.HasPrefix(full, prefix+".") && len(prefix) > len(best) {
+			best = prefix
+		}
+	}
+	if best == "" {
+		return "", ""
+	}
+	return bindings[best], full[len(best)+1:]
 }
 
 // extractGeneratedTypeName recognizes `generated.X` (SelectorExpr) and returns
@@ -979,49 +2691,49 @@ func extractLocalTypeName(expr ast.Expr) string {
 // extractJSONTag pulls the tag name from a struct tag literal like
 // "`json:\"foo,omitempty\"`". Returns "" if no json tag is present.
 func extractJSONTag(tagLiteral string) string {
-	// Strip the surrounding backticks.
-	if len(tagLiteral) < 2 || tagLiteral[0] != '`' || tagLiteral[len(tagLiteral)-1] != '`' {
+	// Go accepts either a raw literal (the universal convention here) or an
+	// interpreted one: `Base "json:\"base\""` is a TAGGED field, and reading
+	// it as untagged would treat an ordinary field as an embed and promote
+	// members that are not on the wire.
+	inner := ""
+	switch {
+	case len(tagLiteral) >= 2 && tagLiteral[0] == '`' && tagLiteral[len(tagLiteral)-1] == '`':
+		inner = tagLiteral[1 : len(tagLiteral)-1]
+	case len(tagLiteral) >= 2 && tagLiteral[0] == '"' && tagLiteral[len(tagLiteral)-1] == '"':
+		unquoted, err := strconv.Unquote(tagLiteral)
+		if err != nil {
+			return ""
+		}
+		inner = unquoted
+	default:
 		return ""
 	}
-	inner := tagLiteral[1 : len(tagLiteral)-1]
-	// Use reflect-style key-value parsing. Tags look like `json:"foo,omitempty" xml:"bar"`.
-	for inner != "" {
-		// Skip leading spaces.
-		i := 0
-		for i < len(inner) && inner[i] == ' ' {
-			i++
-		}
-		inner = inner[i:]
-		if inner == "" {
-			break
-		}
-		// Find key (up to ':').
-		colon := strings.IndexByte(inner, ':')
-		if colon == -1 {
-			break
-		}
-		key := inner[:colon]
-		// Value must start with a quote.
-		if colon+1 >= len(inner) || inner[colon+1] != '"' {
-			break
-		}
-		// Find closing quote (Go struct tags don't escape quotes in values).
-		end := strings.IndexByte(inner[colon+2:], '"')
-		if end == -1 {
-			break
-		}
-		val := inner[colon+2 : colon+2+end]
-		if key == "json" {
-			// Take everything before the first comma.
-			comma := strings.IndexByte(val, ',')
-			if comma == -1 {
-				return val
-			}
-			return val[:comma]
-		}
-		inner = inner[colon+3+end:]
+	// The tag body is parsed by reflect, not by hand. A hand-rolled scanner
+	// has to re-derive Go's quoted-string rules, and the one that lived here
+	// stopped at an escaped quote inside an unrelated tag — reading a TAGGED
+	// anonymous field as untagged, which promotes members that are not on the
+	// wire. reflect.StructTag is the same parser encoding/json consults, so
+	// the two cannot disagree.
+	val, ok := reflect.StructTag(inner).Lookup("json")
+	if !ok {
+		return ""
 	}
-	return ""
+	if comma := strings.IndexByte(val, ','); comma != -1 {
+		return val[:comma]
+	}
+	return val
+}
+
+// assignedAny reports whether the construction site assigned any of the given
+// Go field names. The population check in run only consults it for tags whose
+// Go field name is known, so an empty target list means unassigned.
+func assignedAny(assigned map[string]bool, names []string) bool {
+	for _, n := range names {
+		if assigned[n] {
+			return true
+		}
+	}
+	return false
 }
 
 func lowercaseFirst(s string) string {
