@@ -2216,14 +2216,24 @@ arrival and a live run only proves it can say yes;
 `scripts/test-check-fixture-execution.rb` crafts the all-six state and every
 absence case, and is what proves it can say no.
 
-The roster below is still RESTATED, not derived: nothing checks it against the
-runners it claims to summarise (#736). The bullets are an enumeration and the
-classification on each line is judgement; both are hand-maintained, so a skip
-added to a runner without a line here goes unrecorded. The manifests above are
-now the input that makes it checkable for set equality against what the runners
-actually reported — which is stronger than parsing
-their source, and is why #736 waits for it rather than being fixed on its own.
+The roster below is HALF checked, and the split is the point. Its ENUMERATION —
+which runner skips which case — is compared for set equality against the
+execution manifests by `make check-fixture-execution` (#736), so a skip added to
+a runner without a line here, or a line left behind after a gap closes, fails
+the build. Its CLASSIFICATION and reasoning are judgement, and nothing asserts
+them; that is why the section keeps its `[manual]` tag.
 
+The check found this roster already wrong on arrival: Kotlin and Swift each
+exclude the `link-header` case wholesale through their tag branch, and the
+roster described that in prose instead of enumerating it — two of six runners
+misstated, in a roster whose own text promises one line per runner × test.
+
+Checking the enumeration against what the runners REPORTED is stronger than
+parsing their source: a source parser cannot see a tag branch, a derived table,
+or a case the loader dropped, which is why the enumeration waited for the
+manifests rather than being checked on its own.
+
+<!-- zero-skip-roster:begin -->
 **Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin
 logic is covered by `TestIsSameOrigin` unit tests:
 - "Mixed-case host and explicit default port stay on the mocked origin" — Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply.
@@ -2249,11 +2259,15 @@ suppressed.
 **TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
 - "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
 
-**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` is empty) — none
-beyond the whole-case `link-header` tag branch described above.
+**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` is empty; the
+entry below comes from the `link-header` tag branch) — architectural:
+- "List operation returns first page with Link header" — the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields "no response" (see the tag-branch discussion above).
 
 **Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is
-empty) — none beyond the whole-case `link-header` tag branch described above.
+empty; the entry below comes from the `link-header` tag branch) — architectural:
+- "List operation returns first page with Link header" — same as Kotlin: auto-pagination plus a last-consumed-response status model.
+
+<!-- zero-skip-roster:end -->
 
 Swift carries no capability skips. It is three-gate on retry (status, network,
 idempotent POST) and, since #563, retries the authenticated download hop, so

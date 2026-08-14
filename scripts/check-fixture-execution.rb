@@ -175,6 +175,177 @@ def load_all
   manifests
 end
 
+# --- SPEC section 19 Zero-Skip roster (#736) ---------------------------------
+#
+# The roster claims, in its own text, to enumerate "every skip a default
+# (mock-mode) conformance run reports, one line per runner x test, verbatim
+# from the runners' skip mechanisms". Nothing checked that, and it was already
+# untrue when this was written: Kotlin and Swift each exclude the `link-header`
+# case wholesale via their tag branch, and the roster described that in prose
+# instead of enumerating it -- two of six runners wrong, in a roster nobody
+# re-derives by hand.
+#
+# The manifests make the ENUMERATION derivable, so it is now checked for set
+# equality. The classification and reasoning on each line stay judgement, and
+# nothing asserts them; that half is why the section keeps its `[manual]` tag.
+#
+# WHY THIS PARSER IS ACCEPTABLE WHERE THE ROSTER-TABLE ONE WAS NOT. #740
+# declined to keep teaching `sync-doc-constants.rb` more GFM -- separator
+# widths, backslash parity -- because a mis-parse there is SILENT: it validates
+# the wrong cell and reports success. This extraction fails LOUD in both
+# directions. A bullet it cannot read is a name missing from the roster set,
+# which is a mismatch; a name it invents is an extra, also a mismatch. There is
+# no reading of a malformed line that produces a passing comparison, so the
+# failure mode is a false alarm the author fixes, never a false green.
+#
+# The delimiters are deliberately NOT `@`-markers. sync-doc-constants owns
+# those, and it runs in spec-gates where no conformance run has happened, so it
+# has no manifests to compare against. Registering a kind there whose real
+# enforcement lives here would split one check across two gates.
+ROSTER_BEGIN = "<!-- zero-skip-roster:begin -->"
+ROSTER_END   = "<!-- zero-skip-roster:end -->"
+
+# Heading label => runner id. Hardcoded for the same reason EXPECTED_RUNNERS is:
+# deriving it from whatever headings appear lets a renamed section silently drop
+# a runner out of the comparison.
+ROSTER_HEADINGS = {
+  "Go" => "go", "Python" => "python", "Ruby" => "ruby",
+  "TypeScript" => "typescript", "Kotlin" => "kotlin", "Swift" => "swift"
+}.freeze
+
+# Returns { runner => [case name] } as the roster states it.
+def parse_roster(spec_path)
+  text = File.read(spec_path, encoding: "UTF-8")
+
+  # EXACTLY one of each delimiter. Taking the first occurrence of each would
+  # silently ignore a second, complete roster block — and a stale line living in
+  # that duplicate would never be compared while the gate reported success. That
+  # is a SILENT pass, which is the one failure mode this extractor is not
+  # allowed to have: the whole argument for parsing prose here is that every
+  # misreading surfaces as a set mismatch. Copilot found it.
+  begins = text.scan(ROSTER_BEGIN).length
+  ends   = text.scan(ROSTER_END).length
+
+  # No roster at all is its own failure, and a distinct one: the roster was
+  # deleted or renamed, not duplicated. Kept separate so the message names what
+  # actually happened.
+  i = text.index(ROSTER_BEGIN)
+  j = text.index(ROSTER_END)
+  raise Failure, "SPEC.md holds no #{ROSTER_BEGIN} / #{ROSTER_END} pair" if i.nil? || j.nil? || j < i
+
+  if begins > 1 || ends > 1
+    raise Failure, "SPEC.md must hold exactly one #{ROSTER_BEGIN} and one #{ROSTER_END}; " \
+                   "found #{begins} and #{ends}. A second block is not compared, so a stale " \
+                   "line inside it would pass unnoticed."
+  end
+
+  body = text[(i + ROSTER_BEGIN.length)...j]
+  roster = Hash.new { |h, k| h[k] = [] }
+  runner = nil
+  seen = []
+
+  body.each_line do |line|
+    if (m = line.match(/\A\*\*([A-Za-z]+)\*\*/))
+      label = m[1]
+      runner = ROSTER_HEADINGS[label]
+      raise Failure, "SPEC roster has a section for unknown runner #{label.inspect}" if runner.nil?
+
+      seen << runner
+      roster[runner]
+      next
+    end
+
+    # FAIL-CLOSED on anything list-shaped, rather than recognising one spelling
+    # and skipping the rest. `next unless line.start_with?("- ")` silently
+    # dropped every other valid Markdown list form — indented, `*`, `+`, `1.` —
+    # and a STALE entry written that way was then absent from the roster set, so
+    # no mismatch arose and the gate passed. A false green, which is the one
+    # outcome this extractor may not produce.
+    #
+    # The answer is not a third selector per spelling. It is to invert the
+    # default: a line that looks like a list item in ANY form must be the
+    # canonical `- "case name"`, or it is an error. One predicate closes the
+    # whole class, including spellings nobody has written yet. Prose
+    # continuation lines (the roster's headings wrap, and Python's section is a
+    # sentence) are untouched because they are not list-shaped.
+    next unless line.match?(/\A\s*([-*+]|\d+[.)])\s/)
+
+    raise Failure, "SPEC roster bullet before any runner heading: #{line.strip[0, 60]}" if runner.nil?
+
+    name = line[/\A-\s+"([^"]+)"/, 1]
+    if name.nil?
+      raise Failure, "SPEC roster line is list-shaped but not a canonical bullet " \
+                     "(`- \"case name\" — reason`): #{line.strip[0, 80]}. Written another way it " \
+                     "would be skipped, and a stale entry that is skipped never contradicts " \
+                     "anything."
+    end
+
+    roster[runner] << name
+  end
+
+  missing = EXPECTED_RUNNERS - seen
+  unless missing.empty?
+    raise Failure, "SPEC roster has no section for: #{missing.join(', ')} - a runner without a " \
+                   "heading contributes nothing and its skips go unrecorded"
+  end
+
+  # A duplicated heading splits one runner's lines across two sections, so
+  # neither reads as the whole set and "one line per runner x test" is already
+  # broken before any comparison.
+  repeated = seen.tally.select { |_, n| n > 1 }.keys
+  unless repeated.empty?
+    raise Failure, "SPEC roster has more than one section for: #{repeated.sort.join(', ')}"
+  end
+
+  # A case listed twice under one runner is invisible to the comparison:
+  # Array#- removes EVERY matching occurrence, so `actual - stated` and
+  # `stated - actual` are both empty and the duplicate passes — with two
+  # possibly conflicting classifications attached to one case. Codex found it,
+  # and it is the same silent-pass shape as the duplicate block above.
+  roster.each do |run_id, names|
+    dupes = names.tally.select { |_, n| n > 1 }.keys
+    next if dupes.empty?
+
+    raise Failure, "SPEC roster lists #{dupes.first.inspect} twice under #{run_id}; the section " \
+                   "promises one line per runner x test, and a repeat is invisible to the " \
+                   "set comparison"
+  end
+
+  roster
+end
+
+# Compares the roster's enumeration against what the runners reported.
+def check_roster(manifests, spec_path)
+  roster = parse_roster(spec_path)
+  errors = []
+
+  manifests.each do |m|
+    actual = m.excluded.keys.map(&:last)
+
+    # The roster identifies a case by NAME alone, so it cannot express two
+    # same-named cases from different fixtures. No runner excludes such a pair
+    # today; if one ever does, the roster needs file qualifiers and this says so
+    # rather than silently comparing an ambiguous set.
+    dupes = actual.tally.select { |_, n| n > 1 }.keys
+    unless dupes.empty?
+      errors << "#{m.runner} excludes #{dupes.first.inspect} in more than one fixture; the SPEC " \
+                "roster identifies cases by name alone and cannot express that. Add the fixture " \
+                "to those roster lines and teach this check to read it."
+      next
+    end
+
+    stated = roster[m.runner]
+    (actual - stated).each do |name|
+      errors << "#{m.runner} excludes #{name.inspect} and the SPEC roster does not list it"
+    end
+    (stated - actual).each do |name|
+      errors << "the SPEC roster lists #{name.inspect} for #{m.runner}, which no longer excludes it"
+    end
+  end
+
+  errors
+end
+
 def run(partial:)
   manifests = load_all
   present = manifests.map(&:runner).sort
@@ -185,6 +356,26 @@ def run(partial:)
                    "before an all-six claim can be made; a missing manifest is not a runner that " \
                    "executed everything. (Swift is macOS-only — use --partial for a run that " \
                    "cannot produce all six.)"
+  end
+
+  # BEFORE the partial branch, deliberately. Roster drift is checkable against
+  # whatever manifests exist: "does the roster's line for Ruby match what Ruby
+  # reported" needs Ruby's manifest and nothing else. Placing it after the
+  # partial return meant the normal Linux `make check` path — which always
+  # passes --partial, because Swift's manifest is macOS-only — never checked the
+  # roster at all, so a stale Go or Ruby line passed locally and only the CI
+  # fan-in could catch it. Both bots found that.
+  #
+  # Partial input relaxes exactly one thing, the all-six overlap verdict below,
+  # because that is the only claim needing every runner. A runner that did not
+  # report simply is not compared; its roster section is neither confirmed nor
+  # contradicted.
+  roster_errors = check_roster(manifests, File.join(ROOT, "SPEC.md"))
+  unless roster_errors.empty?
+    roster_errors.each { |e| warn "FAIL: #{e}" }
+    warn "      SPEC section 19's Zero-Skip roster claims to enumerate every skip verbatim from " \
+         "the runners' skip mechanisms (#736). It is restated by hand, so it drifts."
+    return 1
   end
 
   # name => the runners that did NOT execute it
