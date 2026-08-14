@@ -1,0 +1,29 @@
+scripts/check-fixture-execution.rb
+  s_fca5acb3cc9413::t_784e644a9c5494 178-290,345-349,351
+  s_fca5acb3cc9413::t_261f331e8df0af 350,352
+scripts/test-check-fixture-execution.rb
+  s_fca5acb3cc9413::t_a63870e53d9d1c 37-43,50-57,60,66,240-281
+  s_fca5acb3cc9413::t_715398c6af5a75 44-49
+  s_fca5acb3cc9413::t_202753c8943936 282
+SPEC.md
+  s_fca5acb3cc9413::t_bf7bf35d13e123 2236,2262-2264,2267-2270
+  s_fca5acb3cc9413::t_8565ac92f31e3a 2219-2231
+  s_fca5acb3cc9413::t_a82fdeca95a0e5 2232-2234
+  s_fca5acb3cc9413::t_fe25d18b42cf98 2235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "527faa47248c098d68558844825ba52d04c629c1",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
