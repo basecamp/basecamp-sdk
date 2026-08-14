@@ -316,7 +316,7 @@ aborts before an oversized body is buffered.
 
 ## Services
 
-The SDK provides 46 account-scoped services. The table below covers the common ones; see `lib/basecamp/generated/services/` for the authoritative, complete set:
+The SDK provides the full account-scoped service set documented in SPEC §5. The table below covers the common ones; see `lib/basecamp/generated/services/` for the authoritative, complete set:
 
 | Service | Description |
 |---------|-------------|

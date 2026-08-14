@@ -10,7 +10,7 @@ Official Python SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
-- **Full API coverage** — 46 generated services covering projects, todos, messages, schedules, campfires, card tables, and more
+- **Full API coverage** — generated services covering projects, todos, messages, schedules, campfires, card tables, and more
 - **OAuth 2.0 authentication** — PKCE support, token refresh, resource-first (RFC 9728 + RFC 8414) discovery
 - **Static token authentication** — Simple setup for personal integrations
 - **Automatic retry with backoff** — Exponential backoff with jitter, respects `Retry-After` headers
@@ -455,7 +455,7 @@ token.is_expired(buffer_seconds=60)  # True if expiring within 60s
 
 ## Services
 
-All services are accessed through an `AccountClient`, obtained via `client.for_account(account_id)`. The table below covers the common ones; see `basecamp/generated/services/` for the full 45-service set.
+All services are constructed from an `AccountClient`, obtained via `client.for_account(account_id)`. The table below covers the common ones; see `basecamp/generated/services/` for the full set. Most of that set is also reachable as an accessor on the account client — `account.projects` — but not all of it is: a generated service with no accessor yet is constructed directly from the account client instead (`GaugesService(account)`, exported from `basecamp.generated.services`). SPEC.md Appendix F records which services those currently are.
 
 | Category | Service | Accessor |
 |----------|---------|----------|
