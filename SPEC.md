@@ -3653,7 +3653,7 @@ building one means a sixth hand-copy of each generator's split tables.
 | SDK | Account-scoped services |
 |-----|------------------------|
 | Swift | `53` — full canonical set (`AccountClient+Services.swift`, generated; one of §5's two sources) <!-- @service-count --> |
-| Kotlin | `53` — full canonical set (`ServiceAccessors.kt`, generated; §5's other source). `todos` exposes a handwritten composite subclassing the generated `TodosService`; the other 52 are the generated classes directly <!-- @service-count --> |
+| Kotlin | `53` — full canonical set (`ServiceAccessors.kt`, generated; §5's other source). `todos` exposes a handwritten composite subclassing the generated `TodosService`; every other accessor is the generated class directly <!-- @service-count --> |
 | Ruby | 53 — full canonical set |
 | TypeScript | 53 — full canonical set, on the flat client alongside `authorization` (no `AccountClient` tier; see Client Topology above) |
 | Go | 51 accessors. Two services are folded rather than missing: `automation`'s sole operation is `LineupService.ListMarkers`, and `clientVisibility`'s is `RecordingsService.SetClientVisibility`. `timesheets` is spelled `Timesheet` (singular). Capability is 53/53; the surface is not. Hand-written service wrappers around the generated OpenAPI client — not fully generated. |
