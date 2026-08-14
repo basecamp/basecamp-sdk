@@ -279,7 +279,7 @@ out, status = gate(nil,
                          (RUNNERS - ["go"]).map { |r| "**#{ ROSTER_LABELS.fetch(r) }** (`x`):" }.join("\n\n") +
                          "\n<!-- zero-skip-roster:end -->\n")
 expect_fail(failures, "a roster bullet without a quoted name", out, status,
-            "does not open with a quoted case name")
+            "list-shaped but not a canonical bullet")
 
 # Roster drift must be caught in PARTIAL mode too. The normal Linux `make
 # check` path always passes --partial (Swift's manifest is macOS-only), so a
@@ -325,6 +325,24 @@ out, status = gate(nil,
                           ["**Go** (`x`):"]).join("\n\n") +
                          "\n<!-- zero-skip-roster:end -->\n")
 expect_fail(failures, "two roster sections for one runner", out, status, "more than one section")
+
+# A STALE entry written with any non-canonical list marker. `start_with?("- ")`
+# skipped these, so the entry never entered the roster set, never contradicted a
+# manifest, and the gate passed — a false green, the one outcome this extractor
+# may not produce. Fixed by inverting the default: list-shaped means canonical
+# or error, which closes every spelling at once rather than one at a time.
+["  - \"indented stale\" — x.", "* \"asterisk stale\" — x.",
+ "+ \"plus stale\" — x.", "1. \"ordered stale\" — x."].each do |bullet|
+  out, status = gate(nil,
+                     spec: "<!-- zero-skip-roster:begin -->\n" +
+                           RUNNERS.map { |r|
+                             head = "**#{ROSTER_LABELS.fetch(r)}** (`x`):"
+                             r == "go" ? "#{head}\n#{bullet}" : head
+                           }.join("\n\n") +
+                           "\n<!-- zero-skip-roster:end -->\n")
+  expect_fail(failures, "stale roster entry as #{bullet.strip[0, 12]}", out, status,
+              "list-shaped but not a canonical bullet")
+end
 
 # --- report ------------------------------------------------------------------
 

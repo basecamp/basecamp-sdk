@@ -255,12 +255,29 @@ def parse_roster(spec_path)
       next
     end
 
-    next unless line.start_with?("- ")
+    # FAIL-CLOSED on anything list-shaped, rather than recognising one spelling
+    # and skipping the rest. `next unless line.start_with?("- ")` silently
+    # dropped every other valid Markdown list form — indented, `*`, `+`, `1.` —
+    # and a STALE entry written that way was then absent from the roster set, so
+    # no mismatch arose and the gate passed. A false green, which is the one
+    # outcome this extractor may not produce.
+    #
+    # The answer is not a third selector per spelling. It is to invert the
+    # default: a line that looks like a list item in ANY form must be the
+    # canonical `- "case name"`, or it is an error. One predicate closes the
+    # whole class, including spellings nobody has written yet. Prose
+    # continuation lines (the roster's headings wrap, and Python's section is a
+    # sentence) are untouched because they are not list-shaped.
+    next unless line.match?(/\A\s*([-*+]|\d+[.)])\s/)
+
     raise Failure, "SPEC roster bullet before any runner heading: #{line.strip[0, 60]}" if runner.nil?
 
     name = line[/\A-\s+"([^"]+)"/, 1]
     if name.nil?
-      raise Failure, "SPEC roster bullet does not open with a quoted case name: #{line.strip[0, 80]}"
+      raise Failure, "SPEC roster line is list-shaped but not a canonical bullet " \
+                     "(`- \"case name\" — reason`): #{line.strip[0, 80]}. Written another way it " \
+                     "would be skipped, and a stale entry that is skipped never contradicts " \
+                     "anything."
     end
 
     roster[runner] << name
