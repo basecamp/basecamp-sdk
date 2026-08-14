@@ -1,0 +1,22 @@
+scripts/check-fixture-execution.rb
+  s_fca5acb3cc9413::t_d0bf4c7747c7e1 258-272,277-280
+scripts/test-check-fixture-execution.rb
+  s_fca5acb3cc9413::t_39558cec9616e2 282
+  s_fca5acb3cc9413::t_39cc4e6f59dec5 329-346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4ce947b6aef17b3f95316f597397ddc0648b40b2",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
