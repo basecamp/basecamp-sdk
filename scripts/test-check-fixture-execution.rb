@@ -34,14 +34,36 @@ def default_manifests
   end
 end
 
+# A SPEC roster that agrees with whatever the manifests say, so roster drift is
+# only ever exercised by a case that asks for it.
+def default_spec(manifests)
+  labels = { "go" => "Go", "kotlin" => "Kotlin", "python" => "Python",
+             "ruby" => "Ruby", "swift" => "Swift", "typescript" => "TypeScript" }
+  body = RUNNERS.map do |runner|
+    lines = ["**#{labels.fetch(runner)}** (`x`):"]
+    # Defensive: some cases replace a manifest with a non-Hash or nil on
+    # purpose, and this helper only exists to keep the roster in step with the
+    # ones that are real.
+    entry = manifests[runner]
+    excluded = entry.is_a?(Hash) ? (entry["excluded"] || []) : []
+    excluded.each do |e|
+      lines << %(- "#{e['name']}" — because.)
+    end
+    lines.join("\n")
+  end.join("\n\n")
+
+  "# Spec\n\n<!-- zero-skip-roster:begin -->\n#{body}\n<!-- zero-skip-roster:end -->\n"
+end
+
 # Materialise the manifests (after `mutate` has had a chance to break one) and
 # run the gate against them.
-def gate(mutate = nil, partial: false)
+def gate(mutate = nil, partial: false, spec: nil)
   manifests = default_manifests
   mutate&.call(manifests)
 
   Dir.mktmpdir do |dir|
     FileUtils.mkdir_p(File.join(dir, "conformance", "manifests"))
+    File.write(File.join(dir, "SPEC.md"), spec || default_spec(manifests))
     manifests.each do |runner, body|
       next if body.nil? # a nil entry means "this runner did not report"
 
@@ -214,6 +236,49 @@ out, status = gate lambda { |m|
   m["go"]["executed"] -= 2
 }
 expect_fail(failures, "one case excluded twice in one manifest", out, status, "is excluded twice")
+
+# --- SPEC roster set-equality (#736) -----------------------------------------
+
+# A runner skip the roster does not list. This is the drift that was ALREADY in
+# SPEC when the check was written: Kotlin and Swift excluded the link-header
+# case via their tag branch while the roster described it in prose.
+out, status = gate(lambda { |m| exclude(m, "unlisted skip", ["ruby"]) },
+                   spec: "<!-- zero-skip-roster:begin -->\n" +
+                         RUNNERS.map { |r| "**#{ { 'go' => 'Go', 'kotlin' => 'Kotlin', 'python' => 'Python', 'ruby' => 'Ruby', 'swift' => 'Swift', 'typescript' => 'TypeScript' }.fetch(r) }** (`x`):" }.join("\n\n") +
+                         "\n<!-- zero-skip-roster:end -->\n")
+expect_fail(failures, "a runner skip missing from the roster", out, status,
+            "the SPEC roster does not list it")
+
+# The opposite drift: a roster line for a skip that has been closed. "A PR that
+# closes a gap deletes exactly its own lines" is the roster's own rule, and it
+# was enforced by nothing.
+out, status = gate(nil,
+                   spec: "<!-- zero-skip-roster:begin -->\n" +
+                         RUNNERS.map { |r|
+                           head = "**#{ { 'go' => 'Go', 'kotlin' => 'Kotlin', 'python' => 'Python', 'ruby' => 'Ruby', 'swift' => 'Swift', 'typescript' => 'TypeScript' }.fetch(r) }** (`x`):"
+                           r == "go" ? "#{head}\n- \"a closed gap\" — stale." : head
+                         }.join("\n\n") +
+                         "\n<!-- zero-skip-roster:end -->\n")
+expect_fail(failures, "a roster line for a skip that no longer exists", out, status,
+            "which no longer excludes it")
+
+# A runner with no heading contributes nothing, so its skips would go unchecked.
+out, status = gate(nil, spec: "<!-- zero-skip-roster:begin -->\n**Go** (`x`):\n<!-- zero-skip-roster:end -->\n")
+expect_fail(failures, "a runner with no roster section", out, status, "has no section for")
+
+# No roster at all must not read as "the roster agrees".
+out, status = gate(nil, spec: "# Spec\n\nNo roster here.\n")
+expect_fail(failures, "SPEC with no roster block", out, status, "holds no")
+
+# A bullet the extractor cannot read is a name missing from the roster set —
+# loud, never a silent pass. This is the property that makes the parser
+# acceptable at all.
+out, status = gate(nil,
+                   spec: "<!-- zero-skip-roster:begin -->\n**Go** (`x`):\n- unquoted case name\n" +
+                         (RUNNERS - ["go"]).map { |r| "**#{ { 'kotlin' => 'Kotlin', 'python' => 'Python', 'ruby' => 'Ruby', 'swift' => 'Swift', 'typescript' => 'TypeScript' }.fetch(r) }** (`x`):" }.join("\n\n") +
+                         "\n<!-- zero-skip-roster:end -->\n")
+expect_fail(failures, "a roster bullet without a quoted name", out, status,
+            "does not open with a quoted case name")
 
 # --- report ------------------------------------------------------------------
 
