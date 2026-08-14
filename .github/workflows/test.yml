@@ -397,6 +397,24 @@ jobs:
           go build -o conformance-runner .
           ./conformance-runner
 
+      - name: Upload go execution manifest
+        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # Each runner's own census cannot see a case that EVERY runner excludes,
+        # because each one counted its own skip; the fan-in job below requires
+        # all six manifests and fails if any is absent.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: execution-manifest-go
+          path: conformance/manifests/go.json
+          if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
+
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI
       # checkout starts pristine, so the committed tree is the baseline. Catches
@@ -468,6 +486,24 @@ jobs:
         run: |
           npm ci
           npx vitest run
+
+      - name: Upload typescript execution manifest
+        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # Each runner's own census cannot see a case that EVERY runner excludes,
+        # because each one counted its own skip; the fan-in job below requires
+        # all six manifests and fails if any is absent.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: execution-manifest-typescript
+          path: conformance/manifests/typescript.json
+          if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       # The freshness guard's own live run only ever sees a fresh tree. Its
       # first cut passed any existing dist/, its second passed a build whose
@@ -561,6 +597,28 @@ jobs:
         run: |
           bundle install
           ruby runner.rb
+
+      - name: Upload ruby execution manifest
+        # Same matrix condition as the conformance step above: that step runs on
+        # one version only, so an unconditional upload fires on every other one
+        # with nothing to upload and `if-no-files-found: error`.
+        if: matrix.ruby == '3.3'
+        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # Each runner's own census cannot see a case that EVERY runner excludes,
+        # because each one counted its own skip; the fan-in job below requires
+        # all six manifests and fails if any is absent.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: execution-manifest-ruby
+          path: conformance/manifests/ruby.json
+          if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       - name: Run Ruby conformance runner unit tests
         # Unit-tests the runner's own assertion helpers. Their bounds
@@ -659,6 +717,28 @@ jobs:
           uv sync --locked --python ${{ matrix.python }}
           uv run --python ${{ matrix.python }} python runner.py
 
+      - name: Upload python execution manifest
+        # Same matrix condition as the conformance step above: that step runs on
+        # one version only, so an unconditional upload fires on every other one
+        # with nothing to upload and `if-no-files-found: error`.
+        if: matrix.python == '3.13'
+        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # Each runner's own census cannot see a case that EVERY runner excludes,
+        # because each one counted its own skip; the fan-in job below requires
+        # all six manifests and fails if any is absent.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: execution-manifest-python
+          path: conformance/manifests/python.json
+          if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
+
       - name: Run Python conformance runner unit tests
         # Unit-tests the runner's own assertion helpers. Their bounds
         # branches never execute against a fixture that passes, so a
@@ -722,6 +802,24 @@ jobs:
         # satisfies it. The target must run from repo root.
         working-directory: .
         run: make conformance-swift
+
+      - name: Upload swift execution manifest
+        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # Each runner's own census cannot see a case that EVERY runner excludes,
+        # because each one counted its own skip; the fan-in job below requires
+        # all six manifests and fails if any is absent.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: execution-manifest-swift
+          path: conformance/manifests/swift.json
+          if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
 
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI
@@ -790,6 +888,24 @@ jobs:
       - name: Run Kotlin conformance tests
         run: ./gradlew :conformance:run
 
+      - name: Upload kotlin execution manifest
+        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # Each runner's own census cannot see a case that EVERY runner excludes,
+        # because each one counted its own skip; the fan-in job below requires
+        # all six manifests and fails if any is absent.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: execution-manifest-kotlin
+          path: conformance/manifests/kotlin.json
+          if-no-files-found: error
+          # Re-running a job creates a new ATTEMPT within the same run, and v4+
+          # artifacts are immutable per run — so without this the second attempt
+          # fails on a name conflict with the first attempt's manifest, before
+          # the fan-in gate can run. Overwriting is also what we want on the
+          # merits: the collecting gate must read THIS attempt's exclusion set,
+          # never a previous one.
+          overwrite: true
+
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI
       # checkout starts pristine, so the committed tree is the baseline. Catches
@@ -826,6 +942,56 @@ jobs:
             exit 1
           fi
           echo "All per-language conformance suites and spec gates green"
+
+      - name: Check out the gate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: '3.4'
+
+      - name: Collect execution manifests from all six runners
+        # merge-multiple flattens the six single-file artifacts back into one
+        # directory. Not `continue-on-error`: a download that silently produced
+        # nothing would leave the gate reading an empty directory, and it fails
+        # closed on that — but failing here names the real cause.
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: execution-manifest-*
+          merge-multiple: true
+          path: conformance/manifests/
+
+      - name: Fixture-execution gate self-test (crafts the all-six state)
+        # The live check below runs against committed inputs that are built to
+        # PASS — maximum overlap is 2 of 6 — so on its own it proves only that
+        # the gate can say yes. Without this step a regression that made the
+        # gate accept a missing manifest, or an all-six exclusion, would leave
+        # CI green: the self-test is otherwise reachable only through the Make
+        # target, which this workflow deliberately bypasses (it must not re-run
+        # the runners). Same reason the other gates' self-tests run in
+        # spec-gates.
+        run: ruby scripts/test-check-fixture-execution.rb
+
+      - name: No fixture case is executed by nothing (all six runners)
+        # THE #602 check, and the only place it can run. Each language job sees
+        # one runner's exclusion set; a case every runner excludes leaves all
+        # six censuses green because each counted its own skip. This job is the
+        # one place all six sets exist together — which is exactly why it runs
+        # in FULL mode, requiring six manifests and failing on absence. A
+        # missing manifest is never "that runner executed everything".
+        #
+        # ORDERED AFTER the results check above, deliberately. This job is
+        # `if: always()`, so it also runs when a language job failed — and a job
+        # that died before its upload step contributes no manifest. Running the
+        # gate first would then report "missing manifest: ruby" for what is
+        # really "the Ruby job failed", burying the actual cause behind a
+        # second, derived failure. With the results check first, the run stops
+        # there and says so; by the time this step runs, all six jobs succeeded,
+        # so all six manifests must exist and an absent one is a real defect.
+        run: ruby scripts/check-fixture-execution.rb
 
   lint:
     name: Lint

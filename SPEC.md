@@ -2183,26 +2183,45 @@ all six — present in `pagination.json`, passing `conformance-fixtures-check` a
 `check-fixture-coverage`, and executed by nothing. That is #572's defect one
 layer down.
 
-**Nothing detects that state today, and #602 is open for it.** Each runner now
-takes a case census (#742): at the end of its own run it asserts that
-`passed + failed + skipped` equals the number of cases under `conformance/tests`
-whose `mode` is not `live`, counted by a walk independent of its own load path.
-That catches a case executed by NO runner for a mechanical reason — an
-unrecognized `mode`, a fixture that failed to parse or was never globbed, one
-nested where no runner looks, a case dropped between load and dispatch. It does
-NOT catch the case this section describes, where every runner excludes the same
-fixture deliberately: each census counts its own skip and stays green. Detecting
-that needs the six exclusion sets compared in one place, which needs a manifest
-per runner and artifact plumbing across six CI jobs — and the Swift lane is
-macOS-only, so a Linux run can never assemble all six. Maximum overlap today is
-2 of 6, narrowed by #596.
+Two checks cover that state, and the split between them is the point.
 
-The roster below is therefore RESTATED, not derived: nothing checks it against
-the runners it claims to summarise (#736). The bullets are an enumeration and
-the classification on each line is judgement; both are hand-maintained, so a
-skip added to a runner without a line here goes unrecorded. When #602's
-cross-runner manifest lands, this roster becomes checkable for set equality
-against what the runners actually reported — which is stronger than parsing
+Each runner takes a **case census** (#742): at the end of its own run it asserts
+that `passed + failed + skipped` equals the number of cases under
+`conformance/tests` whose `mode` is not `live`, counted by a walk independent of
+its own load path. That catches a case executed by no runner for a MECHANICAL
+reason — an unrecognized `mode`, a fixture that failed to parse or was never
+globbed, one nested where no runner looks, a case dropped between load and
+dispatch. It cannot catch the case this section describes: where every runner
+excludes the same fixture deliberately, each census counts its own skip and
+stays green.
+
+`make check-fixture-execution` (#602) is what catches that one. Every runner
+writes the cases it did not execute to `conformance/manifests/<runner>.json`,
+and the gate fails when a case appears in all six. Manifests rather than parsed
+output because TypeScript prints no `SKIP:` line — a skip there is `it.skip` —
+so a gate scraping stdout would be blind to exactly one runner, in the silent
+direction.
+
+Its absence rule is the whole design. FULL mode requires all six manifests and
+fails if any is missing, because a missing manifest must never read as "that
+runner executed everything" — that assumption is precisely what makes an all-six
+case invisible. Swift's runner is macOS-only, so a Linux run produces five and
+runs in PARTIAL mode instead: an exclusion shared by every VISIBLE runner is a
+warning, never a failure, since five-of-six is not the all-six claim and a
+warning cannot false-fail. CI resolves it properly — the six language jobs each
+upload their manifest and the fan-in job runs FULL mode over all six.
+
+Maximum overlap today is 2 of 6 (narrowed by #596), so the gate is green on
+arrival and a live run only proves it can say yes;
+`scripts/test-check-fixture-execution.rb` crafts the all-six state and every
+absence case, and is what proves it can say no.
+
+The roster below is still RESTATED, not derived: nothing checks it against the
+runners it claims to summarise (#736). The bullets are an enumeration and the
+classification on each line is judgement; both are hand-maintained, so a skip
+added to a runner without a line here goes unrecorded. The manifests above are
+now the input that makes it checkable for set equality against what the runners
+actually reported — which is stronger than parsing
 their source, and is why #736 waits for it rather than being fixed on its own.
 
 **Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin

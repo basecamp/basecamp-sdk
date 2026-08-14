@@ -147,3 +147,66 @@ export function caseCountFailure(registered: number, expected: number): string |
     "the fixtures declare."
   );
 }
+
+/**
+ * One runner's exclusion set for the cross-runner gate (#602).
+ *
+ * The case census answers "did THIS runner account for every case". A case
+ * every runner excludes leaves all six censuses green, because each one counted
+ * its own skip — only `scripts/check-fixture-execution.rb`, comparing these
+ * manifests, can see it.
+ *
+ * `executed` is recorded alongside the exclusions and asserted against the
+ * census total: without it a case silently dropped is simply absent from the
+ * exclusion set, and "absent" reads identically to "ran fine".
+ *
+ * THIS RUNNER IS THE REASON MANIFESTS ARE FILES RATHER THAN PARSED OUTPUT. The
+ * other five print `SKIP: <name>`; a skip here is `it.skip`, which vitest
+ * reports in its own format. A gate scraping stdout would be blind to exactly
+ * one runner, in the silent direction — TypeScript would contribute an empty
+ * exclusion set and no case could ever reach all-six.
+ */
+export interface ManifestExclusion {
+  /**
+   * Part of the identity because case names are NOT unique across fixtures: one
+   * name appears in three files and another in two. Keyed on name alone, a
+   * runner excluding one of those collapses entries — under-counting its own
+   * exclusions against the census, and making two different cases
+   * indistinguishable in the cross-runner comparison.
+   */
+  file: string;
+  name: string;
+  reason: string;
+}
+
+/** Sorted, so a re-run is byte-identical. */
+export function writeExecutionManifest(
+  runner: string,
+  total: number,
+  executed: number,
+  excluded: ManifestExclusion[],
+  directory: string,
+): void {
+  if (executed + excluded.length !== total) {
+    throw new Error(
+      `manifest for ${runner} is internally inconsistent: ${executed} executed + ` +
+        `${excluded.length} excluded != ${total} non-live cases; the run dropped a case ` +
+        "without recording it as either",
+    );
+  }
+
+  fs.mkdirSync(directory, { recursive: true });
+  const body = {
+    runner,
+    total_non_live: total,
+    executed,
+    excluded: [...excluded].sort((a, b) => {
+      const key = (e: ManifestExclusion) => `${e.file}\u0000${e.name}`;
+      return key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0;
+    }),
+  };
+  fs.writeFileSync(
+    path.join(directory, `${runner}.json`),
+    `${JSON.stringify(body, null, 2)}\n`,
+  );
+}

@@ -67,3 +67,9 @@ kotlin/build/
 kotlin/sdk/build/
 kotlin/generator/build/
 kotlin/conformance/build/
+
+# Conformance execution manifests (#602): each runner writes its exclusion set
+# here during a conformance run, and scripts/check-fixture-execution.rb compares
+# all six. A build product of a run, never committed — a stale committed copy
+# would be read by the gate as this run's answer.
+conformance/manifests/

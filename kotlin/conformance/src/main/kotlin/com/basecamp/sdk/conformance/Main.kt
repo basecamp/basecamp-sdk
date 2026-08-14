@@ -250,6 +250,10 @@ fun main() {
     var passed = 0
     var failed = 0
     var skipped = 0
+    // Recorded from the same branches that increment `skipped`, so the manifest
+    // cannot claim a different set than the run took. All THREE exclusion paths
+    // record: the tag branch, the named roster, and a runtime skip.
+    val excluded = mutableListOf<ExecutionManifest.Exclusion>()
 
     for (file in testFiles) {
         // Live tests are TS-only (canonical wire-capturer). Filter them out
@@ -265,6 +269,9 @@ fun main() {
             // so tests that assert requestCount=1 with Link headers are not applicable.
             if ("link-header" in tc.tags) {
                 skipped++
+                excluded.add(ExecutionManifest.Exclusion(
+                    file.name, tc.name,
+                    "Kotlin SDK auto-paginates (follows Link headers by design)"))
                 println("  SKIP: ${tc.name}")
                 println("        Kotlin SDK auto-paginates (follows Link headers by design)")
                 continue
@@ -272,6 +279,7 @@ fun main() {
             val skipReason = KOTLIN_SKIPS[tc.name]
             if (skipReason != null) {
                 skipped++
+                excluded.add(ExecutionManifest.Exclusion(file.name, tc.name, skipReason))
                 println("  SKIP: ${tc.name}")
                 println("        $skipReason")
                 continue
@@ -285,6 +293,7 @@ fun main() {
             when {
                 result.skipped -> {
                     skipped++
+                    excluded.add(ExecutionManifest.Exclusion(file.name, tc.name, result.message))
                     println("  SKIP: ${tc.name}")
                     println("        ${result.message}")
                 }
@@ -312,7 +321,18 @@ fun main() {
         System.err.println("\nFAIL: $countFailure")
     }
 
-    if (failed > 0 || countFailure != null) {
+    // Written even when the run failed: a failing runner still has a truthful
+    // exclusion set, and a missing manifest reads to the gate as "this runner
+    // did not report", turning one failure into two.
+    var manifestFailure: String? = null
+    try {
+        ExecutionManifest.write("kotlin", expectedCases, passed + failed, excluded)
+    } catch (e: ExecutionManifest.Error) {
+        manifestFailure = e.message
+        System.err.println("\nFAIL: could not write execution manifest: ${e.message}")
+    }
+
+    if (failed > 0 || countFailure != null || manifestFailure != null) {
         System.exit(1)
     }
 }

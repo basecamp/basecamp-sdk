@@ -19,7 +19,12 @@ import type {
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { caseCountFailure, countNonLiveCases, isMockMode } from "./case-census.js";
+import {
+  caseCountFailure,
+  countNonLiveCases,
+  isMockMode,
+  writeExecutionManifest,
+} from "./case-census.js";
 import { checkDelayGaps } from "./delay-gaps.js";
 import { errorRaisedFailure } from "./error-raised.js";
 import { checkRequestCount, requestCountApplies } from "./request-count.js";
@@ -1838,9 +1843,35 @@ const suites = loadTestSuites();
 // registered and reported, which is what distinguishes them from a case dropped
 // at load and printed nowhere.
 describe("conformance case census", () => {
+  const registered = suites.reduce((total, suite) => total + suite.tests.length, 0);
+
   it("registers every non-live fixture case", () => {
-    const registered = suites.reduce((total, suite) => total + suite.tests.length, 0);
     expect(caseCountFailure(registered, countNonLiveCases(TESTS_DIR))).toBeNull();
+  });
+
+  // The exclusion set for the cross-runner gate (#602). Derived from the SAME
+  // roster the `it.skip` branch below consults, so the manifest cannot claim a
+  // different set than the run registered — and restricted to cases actually
+  // loaded, so a stale TS_SDK_SKIPS entry for a deleted fixture does not
+  // contribute a phantom exclusion.
+  it("writes its execution manifest", () => {
+    const excluded = suites.flatMap((suite) =>
+      suite.tests
+        .filter((tc) => tc.name in TS_SDK_SKIPS)
+        .map((tc) => ({
+          file: suite.filename,
+          name: tc.name,
+          reason: TS_SDK_SKIPS[tc.name],
+        })),
+    );
+
+    writeExecutionManifest(
+      "typescript",
+      registered,
+      registered - excluded.length,
+      excluded,
+      path.resolve(__dirname, "../../manifests"),
+    );
   });
 });
 

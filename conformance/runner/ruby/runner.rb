@@ -11,6 +11,7 @@ require "basecamp"
 require "webmock"
 require "json"
 require "set"
+require "fileutils"
 
 WebMock.enable!
 WebMock.disable_net_connect!
@@ -159,6 +160,39 @@ module CaseCensus
         "but conformance/tests holds only #{expected} non-live case(s) — " \
         "#{ran - expected} more than the fixtures declare."
     end
+  end
+end
+
+# One runner's exclusion set for the cross-runner gate (#602).
+#
+# The case census answers "did THIS runner account for every case". A case every
+# runner excludes leaves all six censuses green, because each counted its own
+# skip — only scripts/check-fixture-execution.rb, comparing these manifests, can
+# see it.
+#
+# +executed+ is recorded alongside the exclusions and asserted against the
+# census total: without it a case a runner silently dropped is simply absent
+# from the exclusion set, and "absent" reads identically to "ran fine".
+module ExecutionManifest
+  class Error < StandardError; end
+
+  # Sorted, so a re-run is byte-identical.
+  def self.write(runner, total, executed, excluded)
+    if executed + excluded.length != total
+      raise Error, "manifest for #{runner} is internally inconsistent: #{executed} executed + " \
+                   "#{excluded.length} excluded != #{total} non-live cases; the run dropped a " \
+                   "case without recording it as either"
+    end
+
+    dir = File.expand_path("../../../conformance/manifests", __dir__)
+    FileUtils.mkdir_p(dir)
+    body = {
+      "runner" => runner,
+      "total_non_live" => total,
+      "executed" => executed,
+      "excluded" => excluded.sort.map { |file, name, reason| { "file" => file, "name" => name, "reason" => reason } }
+    }
+    File.write(File.join(dir, "#{runner}.json"), "#{JSON.pretty_generate(body)}\n")
   end
 end
 
@@ -1639,6 +1673,9 @@ class ConformanceRunner
     failed = 0
     skipped = 0
     results = []
+    # Recorded from the same branch that increments +skipped+, so the manifest
+    # cannot claim a different set than the run took.
+    excluded = []
 
     files.each do |file|
       # UTF-8 regardless of process locale (LC_ALL=C would otherwise read as US-ASCII)
@@ -1656,6 +1693,7 @@ class ConformanceRunner
         if RUBY_SKIPS.include?(test_case["name"])
           skipped += 1
           reason = RUBY_SKIP_REASONS[test_case["name"]] || "Ruby SDK behavior differs"
+          excluded << [ File.basename(file), test_case["name"], reason ]
           puts "  SKIP: #{test_case["name"]} (#{reason})"
           WebMock.reset!
           next
@@ -1686,7 +1724,18 @@ class ConformanceRunner
     count_failure = CaseCensus.count_failure(passed + failed + skipped, expected_cases)
     warn "\nFAIL: #{count_failure}" if count_failure
 
-    failed > 0 || count_failure ? 1 : 0
+    # Written even when the run failed: a failing runner still has a truthful
+    # exclusion set, and a missing manifest reads to the gate as "this runner
+    # did not report", turning one failure into two.
+    manifest_failure = nil
+    begin
+      ExecutionManifest.write("ruby", expected_cases, passed + failed, excluded)
+    rescue ExecutionManifest::Error, SystemCallError => e
+      manifest_failure = e
+      warn "\nFAIL: could not write execution manifest: #{e.message}"
+    end
+
+    failed > 0 || count_failure || manifest_failure ? 1 : 0
   end
 end
 
