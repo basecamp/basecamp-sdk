@@ -216,9 +216,28 @@ ROSTER_HEADINGS = {
 # Returns { runner => [case name] } as the roster states it.
 def parse_roster(spec_path)
   text = File.read(spec_path, encoding: "UTF-8")
+
+  # EXACTLY one of each delimiter. Taking the first occurrence of each would
+  # silently ignore a second, complete roster block — and a stale line living in
+  # that duplicate would never be compared while the gate reported success. That
+  # is a SILENT pass, which is the one failure mode this extractor is not
+  # allowed to have: the whole argument for parsing prose here is that every
+  # misreading surfaces as a set mismatch. Copilot found it.
+  begins = text.scan(ROSTER_BEGIN).length
+  ends   = text.scan(ROSTER_END).length
+
+  # No roster at all is its own failure, and a distinct one: the roster was
+  # deleted or renamed, not duplicated. Kept separate so the message names what
+  # actually happened.
   i = text.index(ROSTER_BEGIN)
   j = text.index(ROSTER_END)
   raise Failure, "SPEC.md holds no #{ROSTER_BEGIN} / #{ROSTER_END} pair" if i.nil? || j.nil? || j < i
+
+  if begins > 1 || ends > 1
+    raise Failure, "SPEC.md must hold exactly one #{ROSTER_BEGIN} and one #{ROSTER_END}; " \
+                   "found #{begins} and #{ends}. A second block is not compared, so a stale " \
+                   "line inside it would pass unnoticed."
+  end
 
   body = text[(i + ROSTER_BEGIN.length)...j]
   roster = Hash.new { |h, k| h[k] = [] }
@@ -251,6 +270,28 @@ def parse_roster(spec_path)
   unless missing.empty?
     raise Failure, "SPEC roster has no section for: #{missing.join(', ')} - a runner without a " \
                    "heading contributes nothing and its skips go unrecorded"
+  end
+
+  # A duplicated heading splits one runner's lines across two sections, so
+  # neither reads as the whole set and "one line per runner x test" is already
+  # broken before any comparison.
+  repeated = seen.tally.select { |_, n| n > 1 }.keys
+  unless repeated.empty?
+    raise Failure, "SPEC roster has more than one section for: #{repeated.sort.join(', ')}"
+  end
+
+  # A case listed twice under one runner is invisible to the comparison:
+  # Array#- removes EVERY matching occurrence, so `actual - stated` and
+  # `stated - actual` are both empty and the duplicate passes — with two
+  # possibly conflicting classifications attached to one case. Codex found it,
+  # and it is the same silent-pass shape as the duplicate block above.
+  roster.each do |run_id, names|
+    dupes = names.tally.select { |_, n| n > 1 }.keys
+    next if dupes.empty?
+
+    raise Failure, "SPEC roster lists #{dupes.first.inspect} twice under #{run_id}; the section " \
+                   "promises one line per runner x test, and a repeat is invisible to the " \
+                   "set comparison"
   end
 
   roster
@@ -300,6 +341,26 @@ def run(partial:)
                    "cannot produce all six.)"
   end
 
+  # BEFORE the partial branch, deliberately. Roster drift is checkable against
+  # whatever manifests exist: "does the roster's line for Ruby match what Ruby
+  # reported" needs Ruby's manifest and nothing else. Placing it after the
+  # partial return meant the normal Linux `make check` path — which always
+  # passes --partial, because Swift's manifest is macOS-only — never checked the
+  # roster at all, so a stale Go or Ruby line passed locally and only the CI
+  # fan-in could catch it. Both bots found that.
+  #
+  # Partial input relaxes exactly one thing, the all-six overlap verdict below,
+  # because that is the only claim needing every runner. A runner that did not
+  # report simply is not compared; its roster section is neither confirmed nor
+  # contradicted.
+  roster_errors = check_roster(manifests, File.join(ROOT, "SPEC.md"))
+  unless roster_errors.empty?
+    roster_errors.each { |e| warn "FAIL: #{e}" }
+    warn "      SPEC section 19's Zero-Skip roster claims to enumerate every skip verbatim from " \
+         "the runners' skip mechanisms (#736). It is restated by hand, so it drifts."
+    return 1
+  end
+
   # name => the runners that did NOT execute it
   by_case = Hash.new { |h, k| h[k] = [] }
   manifests.each do |m|
@@ -339,14 +400,6 @@ def run(partial:)
         warn "        #{m.runner}: #{reason.empty? ? '(no reason recorded)' : reason}"
       end
     end
-    return 1
-  end
-
-  roster_errors = check_roster(manifests, File.join(ROOT, "SPEC.md"))
-  unless roster_errors.empty?
-    roster_errors.each { |e| warn "FAIL: #{e}" }
-    warn "      SPEC section 19's Zero-Skip roster claims to enumerate every skip verbatim from " \
-         "the runners' skip mechanisms (#736). It is restated by hand, so it drifts."
     return 1
   end
 

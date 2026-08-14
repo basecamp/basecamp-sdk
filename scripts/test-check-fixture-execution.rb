@@ -22,6 +22,8 @@ require "open3"
 
 GATE = File.join(__dir__, "check-fixture-execution.rb")
 RUNNERS = %w[go kotlin python ruby swift typescript].freeze
+ROSTER_LABELS = { "go" => "Go", "kotlin" => "Kotlin", "python" => "Python",
+                  "ruby" => "Ruby", "swift" => "Swift", "typescript" => "TypeScript" }.freeze
 
 failures = []
 
@@ -37,8 +39,7 @@ end
 # A SPEC roster that agrees with whatever the manifests say, so roster drift is
 # only ever exercised by a case that asks for it.
 def default_spec(manifests)
-  labels = { "go" => "Go", "kotlin" => "Kotlin", "python" => "Python",
-             "ruby" => "Ruby", "swift" => "Swift", "typescript" => "TypeScript" }
+  labels = ROSTER_LABELS
   body = RUNNERS.map do |runner|
     lines = ["**#{labels.fetch(runner)}** (`x`):"]
     # Defensive: some cases replace a manifest with a non-Hash or nil on
@@ -244,7 +245,7 @@ expect_fail(failures, "one case excluded twice in one manifest", out, status, "i
 # case via their tag branch while the roster described it in prose.
 out, status = gate(lambda { |m| exclude(m, "unlisted skip", ["ruby"]) },
                    spec: "<!-- zero-skip-roster:begin -->\n" +
-                         RUNNERS.map { |r| "**#{ { 'go' => 'Go', 'kotlin' => 'Kotlin', 'python' => 'Python', 'ruby' => 'Ruby', 'swift' => 'Swift', 'typescript' => 'TypeScript' }.fetch(r) }** (`x`):" }.join("\n\n") +
+                         RUNNERS.map { |r| "**#{ ROSTER_LABELS.fetch(r) }** (`x`):" }.join("\n\n") +
                          "\n<!-- zero-skip-roster:end -->\n")
 expect_fail(failures, "a runner skip missing from the roster", out, status,
             "the SPEC roster does not list it")
@@ -255,7 +256,7 @@ expect_fail(failures, "a runner skip missing from the roster", out, status,
 out, status = gate(nil,
                    spec: "<!-- zero-skip-roster:begin -->\n" +
                          RUNNERS.map { |r|
-                           head = "**#{ { 'go' => 'Go', 'kotlin' => 'Kotlin', 'python' => 'Python', 'ruby' => 'Ruby', 'swift' => 'Swift', 'typescript' => 'TypeScript' }.fetch(r) }** (`x`):"
+                           head = "**#{ ROSTER_LABELS.fetch(r) }** (`x`):"
                            r == "go" ? "#{head}\n- \"a closed gap\" — stale." : head
                          }.join("\n\n") +
                          "\n<!-- zero-skip-roster:end -->\n")
@@ -275,10 +276,55 @@ expect_fail(failures, "SPEC with no roster block", out, status, "holds no")
 # acceptable at all.
 out, status = gate(nil,
                    spec: "<!-- zero-skip-roster:begin -->\n**Go** (`x`):\n- unquoted case name\n" +
-                         (RUNNERS - ["go"]).map { |r| "**#{ { 'kotlin' => 'Kotlin', 'python' => 'Python', 'ruby' => 'Ruby', 'swift' => 'Swift', 'typescript' => 'TypeScript' }.fetch(r) }** (`x`):" }.join("\n\n") +
+                         (RUNNERS - ["go"]).map { |r| "**#{ ROSTER_LABELS.fetch(r) }** (`x`):" }.join("\n\n") +
                          "\n<!-- zero-skip-roster:end -->\n")
 expect_fail(failures, "a roster bullet without a quoted name", out, status,
             "does not open with a quoted case name")
+
+# Roster drift must be caught in PARTIAL mode too. The normal Linux `make
+# check` path always passes --partial (Swift's manifest is macOS-only), so a
+# roster check that ran only in full mode never ran locally at all — a stale Go
+# or Ruby line would reach CI untouched. Partial input relaxes the all-six
+# overlap verdict and nothing else.
+out, status = gate(lambda { |m|
+  exclude(m, "unlisted skip", ["ruby"])
+  m["swift"] = nil
+}, partial: true,
+   spec: "<!-- zero-skip-roster:begin -->\n" +
+         RUNNERS.map { |r| "**#{ROSTER_LABELS.fetch(r)}** (`x`):" }.join("\n\n") +
+         "\n<!-- zero-skip-roster:end -->\n")
+expect_fail(failures, "roster drift is caught in partial mode", out, status,
+            "the SPEC roster does not list it")
+
+# A SECOND complete roster block is not compared, so a stale line inside it
+# would pass unnoticed — a silent pass, the one failure mode this extractor is
+# not allowed to have.
+one_block = RUNNERS.map { |r| "**#{ROSTER_LABELS.fetch(r)}** (`x`):" }.join("\n\n")
+out, status = gate(nil,
+                   spec: "<!-- zero-skip-roster:begin -->\n#{one_block}\n<!-- zero-skip-roster:end -->\n" \
+                         "\n<!-- zero-skip-roster:begin -->\n#{one_block}\n<!-- zero-skip-roster:end -->\n")
+expect_fail(failures, "two roster blocks in SPEC", out, status, "exactly one")
+
+# One case listed twice under a runner. Array#- removes every matching
+# occurrence, so both diffs come back empty and the duplicate passes — carrying
+# two possibly conflicting classifications for one case.
+out, status = gate(lambda { |m| exclude(m, "listed twice", ["go"]) },
+                   spec: "<!-- zero-skip-roster:begin -->\n" +
+                         RUNNERS.map { |r|
+                           head = "**#{ROSTER_LABELS.fetch(r)}** (`x`):"
+                           r == "go" ? "#{head}\n- \"listed twice\" — a.\n- \"listed twice\" — b." : head
+                         }.join("\n\n") +
+                         "\n<!-- zero-skip-roster:end -->\n")
+expect_fail(failures, "one case listed twice under a runner", out, status, "twice under go")
+
+# Two sections for one runner splits its lines, so neither reads as the whole
+# set and the contract is broken before any comparison runs.
+out, status = gate(nil,
+                   spec: "<!-- zero-skip-roster:begin -->\n" +
+                         (RUNNERS.map { |r| "**#{ROSTER_LABELS.fetch(r)}** (`x`):" } +
+                          ["**Go** (`x`):"]).join("\n\n") +
+                         "\n<!-- zero-skip-roster:end -->\n")
+expect_fail(failures, "two roster sections for one runner", out, status, "more than one section")
 
 # --- report ------------------------------------------------------------------
 
