@@ -1,0 +1,24 @@
+scripts/check-fixture-execution.rb
+  s_fca5acb3cc9413::t_c943492ec91a72 219-228,275-296,344-362
+  s_fca5acb3cc9413::t_04e87cf71b8009 229-231,236-240
+  s_fca5acb3cc9413::t_386cf5ce352d8b 241,363
+scripts/test-check-fixture-execution.rb
+  s_fca5acb3cc9413::t_ee5c3b2ccedc07 25-26,42,248,259,279,284-327
+  s_fca5acb3cc9413::t_7db74da6b89e32 328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "dbc12f0602ce3896aaaa7756dcee7058ba9649f5",
+  "prompts": {},
+  "sessions": {
+    "s_fca5acb3cc9413": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8caa9e9-58b0-4764-b538-33dc8ffb6d84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
