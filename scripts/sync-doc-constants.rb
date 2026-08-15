@@ -182,7 +182,17 @@ MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
 # Markdown are already standalone, so this pins existing practice rather than
 # demanding a migration. Line markers are deliberately exempt — a line marker's
 # whole job is to sit at the end of the prose sentence it qualifies.
-STANDALONE_BLOCK_MARKER_RE = /\A<!--\s*@[a-z0-9][a-z0-9-]*:(?:begin|end)\s*-->\z/
+#
+# INDENTATION IS BOUNDED AT THREE SPACES, the same limit and for the same reason
+# FENCE_RE below carries it: at four spaces CommonMark reads the line as
+# INDENTED CODE, so an indented marker is not an HTML comment at all — it is
+# visible literal text in the rendered document. Indent both of a block's
+# markers and the count still matches, the body between them is still compared
+# byte for byte, and SPEC quietly shows the delimiters it promises are
+# invisible. A tab is excluded for the same reason it is there: it counts as
+# four columns. Checked against the raw line rather than a stripped one,
+# because stripping is what threw the indentation away.
+STANDALONE_BLOCK_MARKER_RE = /\A {0,3}<!--\s*@[a-z0-9][a-z0-9-]*:(?:begin|end)\s*-->[ \t]*\z/
 # A fenced-code delimiter: 3+ backticks or 3+ tildes, indented at most three
 # spaces, with whatever follows captured as the info string (a close must have
 # none).
@@ -390,11 +400,12 @@ def scan_file(file)
           next
         end
 
-        unless line.strip.match?(STANDALONE_BLOCK_MARKER_RE)
-          errors << "#{file}:#{line_no}: @#{kind}:#{form} shares its line with other content. A " \
-                    "block marker must be alone on its line: the body is the lines BETWEEN the " \
-                    "markers, so anything on the marker line renders into the document and is " \
-                    "compared against nothing."
+        unless line.match?(STANDALONE_BLOCK_MARKER_RE)
+          errors << "#{file}:#{line_no}: @#{kind}:#{form} must be alone on its line and indented " \
+                    "at most three spaces. The body is the lines BETWEEN the markers, so anything " \
+                    "else on the marker line renders into the document and is compared against " \
+                    "nothing; and at four spaces the marker is indented code rather than an HTML " \
+                    "comment, so it renders as visible text instead of delimiting anything."
           next
         end
 

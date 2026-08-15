@@ -120,7 +120,7 @@ module ZeroSkipRoster
       doc = begin
         stream = Psych.parse_stream(text, filename: RELATIVE_PATH)
         reject_extra_documents(stream)
-        reject_duplicate_keys(stream, "")
+        check_mapping_keys(stream, "")
         YAML.safe_load(text, filename: RELATIVE_PATH)
       rescue Psych::Exception => e
         raise Malformed, "#{RELATIVE_PATH} is not valid YAML, or uses YAML this loader refuses " \
@@ -235,12 +235,12 @@ module ZeroSkipRoster
     # question that gets answered wrongly later: a second `runners:`, a second
     # `go:`, a second `skips:` and a second `case:` are the same defect at four
     # depths, and enumerating them would leave the fifth.
-    def reject_duplicate_keys(node, path)
+    def check_mapping_keys(node, path)
       case node
       when Psych::Nodes::Stream, Psych::Nodes::Document
-        node.children.each { |child| reject_duplicate_keys(child, path) }
+        node.children.each { |child| check_mapping_keys(child, path) }
       when Psych::Nodes::Sequence
-        node.children.each_with_index { |child, i| reject_duplicate_keys(child, "#{path}[#{i}]") }
+        node.children.each_with_index { |child, i| check_mapping_keys(child, "#{path}[#{i}]") }
       when Psych::Nodes::Mapping
         seen = {}
         node.children.each_slice(2) do |key, value|
@@ -251,6 +251,26 @@ module ZeroSkipRoster
           name = key.is_a?(Psych::Nodes::Scalar) ? key.value : nil
           here = name.nil? ? "#{path}.?" : (path.empty? ? name : "#{path}.#{name}")
 
+          # A MERGE key, which is the duplicate-key defect wearing a different
+          # key. `<<: {skips: [...]}` beside a `skips:` is resolved by Psych
+          # before the Hash exists and the explicit field wins, so the merged
+          # entries vanish — authored roster content rendered nowhere and
+          # compared against nothing. The rule above cannot see it: `<<` and
+          # `skips` are two different keys in the AST, which is exactly why it
+          # needs saying separately rather than being assumed covered.
+          #
+          # Refused rather than resolved, for the reason aliases are: a section
+          # that inherits from somewhere else edits as one thing and reads as
+          # two, and this roster is short enough that repetition is cheaper than
+          # indirection.
+          if name == "<<"
+            raise Malformed, "#{RELATIVE_PATH}: `#{path}` uses a YAML merge key (`<<`) on line " \
+                             "#{key.start_line + 1}. Merges are refused: the merged keys are " \
+                             "resolved away before anything checks them, and any field the " \
+                             "section also states explicitly silently wins over the merged one. " \
+                             "Write the section out."
+          end
+
           if name && seen.key?(name)
             raise Malformed, "#{RELATIVE_PATH}: `#{here}` is written more than once " \
                              "(lines #{seen.fetch(name)} and #{key.start_line + 1}). YAML allows " \
@@ -260,7 +280,7 @@ module ZeroSkipRoster
           end
 
           seen[name] = key.start_line + 1 if name
-          reject_duplicate_keys(value, here)
+          check_mapping_keys(value, here)
         end
       end
     end
@@ -389,6 +409,18 @@ module ZeroSkipRoster
     # \p{Space} rather than String#strip for the reason spelled out at the use
     # site: strip is ASCII-only and misses NBSP, the Ogham space mark, the EN/EM
     # quad family, NNBSP, MMSP and the ideographic space.
+    # An HTML comment delimiter, in either direction. Values render VERBATIM
+    # into a Markdown document, so a value carrying one is markup rather than
+    # text: `<!--` opens a comment that swallows the rest of the block and
+    # whatever follows it in SPEC, and a full `<!-- @zero-skip-roster:end -->`
+    # injects a doc-constant MARKER — the writer emits it and exits 0, and the
+    # next --check reports a structurally malformed document the writer built.
+    #
+    # Both were reported separately, and they are one mechanism: a value that
+    # can open or close an HTML comment. There is no third instance, because
+    # those are the only two delimiters. Marker injection is a strict subset
+    # rather than a rule of its own, since every marker is an HTML comment.
+    HTML_COMMENT_RE = /<!--|-->/
     SURROUNDING_SPACE_RE = /\A\p{Space}|\p{Space}\z/
     BLANK_RE             = /\A\p{Space}*\z/
 
@@ -428,6 +460,13 @@ module ZeroSkipRoster
       # allowed: it is not whitespace, it cannot hide a neighbouring character
       # from a rule that reads one, and refusing it belongs to a different
       # question than this one.
+      if (markup = value[HTML_COMMENT_RE])
+        raise Malformed, "#{where} contains #{markup.inspect}. Values render verbatim into " \
+                         "Markdown, so an HTML comment delimiter is markup, not text: it hides " \
+                         "the rest of the block, or injects a doc-constant marker the writer " \
+                         "then emits and the next check refuses."
+      end
+
       if value.match?(SURROUNDING_SPACE_RE)
         raise Malformed, "#{where} is #{value.inspect}, which begins or ends with whitespace. " \
                          "Values render verbatim, so the space is content: it lands in SPEC, and " \

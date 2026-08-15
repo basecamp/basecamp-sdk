@@ -1027,14 +1027,38 @@ out, status = gate ->(f) {
                                   %(- "a smuggled stale" — x. <!-- @zero-skip-roster:end -->))
 }
 expect_fail(failures, "content riding the roster's :end marker", out, status,
-            "@zero-skip-roster:end shares its line with other content")
+            "@zero-skip-roster:end must be alone on its line")
 
 out, status = gate ->(f) {
   f["SPEC.md"] = f["SPEC.md"].sub("<!-- @fixture-categories:end -->",
                                   "| ghost | `ghost.json` | §9 | <!-- @fixture-categories:end -->")
 }
 expect_fail(failures, "content riding a table block's :end marker", out, status,
-            "@fixture-categories:end shares its line with other content")
+            "@fixture-categories:end must be alone on its line")
+
+# Four spaces makes the marker INDENTED CODE in CommonMark, so it is not an HTML
+# comment at all: it renders as visible literal text while the count still
+# matches and the body between the markers is still compared byte for byte —
+# SPEC quietly displaying the delimiters the convention promises are invisible.
+# Both markers are indented, so the block still pairs up and only the rendering
+# changes, which is what makes it a silent one.
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("<!-- @zero-skip-roster:begin -->", "    <!-- @zero-skip-roster:begin -->")
+                 .sub("<!-- @zero-skip-roster:end -->", "    <!-- @zero-skip-roster:end -->")
+}
+expect_fail(failures, "block markers indented into a code block", out, status,
+            "@zero-skip-roster:begin must be alone on its line")
+
+# Three spaces is still an HTML block, and must keep working: the rule bounds
+# the indentation rather than demanding column zero, and a rule that rejected
+# legal Markdown would be one nobody could satisfy from a nested list.
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("<!-- @zero-skip-roster:begin -->", "   <!-- @zero-skip-roster:begin -->")
+                 .sub("<!-- @zero-skip-roster:end -->", "   <!-- @zero-skip-roster:end -->")
+}
+expect_pass(failures, "block markers indented three spaces are still markers", out, status)
 
 # ...and the :begin side, which has the same arithmetic and would need its own
 # rule if the check were written per-marker instead of per-line.
@@ -1043,7 +1067,7 @@ out, status = gate ->(f) {
                                   %(<!-- @zero-skip-roster:begin --> - "a smuggled stale" — x.))
 }
 expect_fail(failures, "content riding the roster's :begin marker", out, status,
-            "@zero-skip-roster:begin shares its line with other content")
+            "@zero-skip-roster:begin must be alone on its line")
 
 # --- marker inventory (exact counts) -------------------------------------------
 
@@ -1246,6 +1270,28 @@ writer lambda { |f|
   unless coordination.include?("`#{SHORT}`")
     failures << "writer: a file earlier in scan order was rewritten before the roster " \
                 "failed to load:\n#{coordination}"
+  end
+end
+
+# The writer must never EMIT a document the checker then refuses. A roster value
+# carrying a marker-shaped HTML comment used to render straight through: --write
+# spliced it in and exited 0, and the next --check reported a structurally
+# malformed SPEC the writer itself had built. Refused in the loader now, so the
+# run fails with the YAML named and the file untouched.
+#
+# Asserted on the FILE, not only on the exit code: "it failed" was already true
+# of the second invocation, and the point is that the first one wrote nothing.
+writer lambda { |f|
+  f["spec/zero-skip-roster.yml"] =
+    f["spec/zero-skip-roster.yml"].sub(%(note: "a note"),
+                                       %(note: "a note <!-- @zero-skip-roster:end -->"))
+} do |out, status, dir|
+  if status.success?
+    failures << "writer: a marker-shaped value must be fatal, got exit 0:\n#{out}"
+  end
+  written = read_in(dir, "SPEC.md")
+  if written.scan("<!-- @zero-skip-roster:end -->").length != 1
+    failures << "writer: emitted a document with an injected marker:\n#{written}"
   end
 end
 

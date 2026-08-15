@@ -41,15 +41,23 @@
 # replaced a parser to retire, and it is checked against the parsed document
 # rather than the loaded Hash, which no longer knows the duplicate happened.
 #
-# For the same reason this file is ONE YAML document, `runners` is its ONLY
-# top-level key, and no value may contain a control character or a Unicode
-# line/paragraph separator. Those are one failure in four costumes: text after a
-# second `---`, text under a misspelled top-level key, and text after a bare CR
-# or U+2028 inside a quoted scalar are each a claim written here that renders
-# nowhere, or renders as a line the roster never stated. Which is precisely how
-# the prose reader used to ignore a second roster block. The last of them is
-# written as a CLASS rather than a list of characters, so there is no further
-# spelling to add when the next one is thought of.
+# The same reasoning runs through every other rule the loader enforces, and they
+# are one failure in several costumes rather than a list to memorise. This file
+# is ONE YAML document; `runners` is its ONLY top-level key; merge keys (`<<`)
+# are refused alongside aliases; and no value may contain a control character, a
+# Unicode line or paragraph separator, or an HTML comment delimiter.
+#
+# Text after a second `---`, text under a misspelled top-level key, and entries
+# merged in by a `<<` that an explicit field then overrides are each a claim
+# written here and read by nothing — which is precisely how the prose reader used
+# to ignore a second roster block. A bare CR or U+2028 inside a quoted scalar is
+# the same thing from the other side: it renders a line the roster never stated,
+# and the block still matches byte for byte. `<!--` is the sharpest, because it
+# is markup rather than text: it hides the rest of the block, or injects a marker
+# the writer emits and the next check refuses.
+#
+# The character rules are written as CLASSES rather than lists of spellings, so
+# there is nothing to add when the next one is thought of.
 #
 #   source          Required. The runner file and skip constant, rendered
 #                   verbatim inside the parentheses of the heading. Kotlin's and

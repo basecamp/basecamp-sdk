@@ -429,6 +429,56 @@ out, status = gate(nil, roster: begin
 end)
 expect_fail(failures, "an unknown top-level key", out, status, "unknown top-level key(s) runnners")
 
+# A YAML MERGE key, which is the duplicate-key defect wearing a different key.
+# Psych resolves `<<` before the Hash exists and any field the section also
+# states explicitly wins, so the merged entry vanishes — and the duplicate rule
+# cannot see it, because `<<` and `skips` are two distinct keys in the AST. The
+# manifests are clean here, so the surviving `skips: []` agrees with them and
+# this is green without the rule.
+out, status = gate(nil, roster_text: raw_roster(go: %(    source: "`x`"\n    note: "a note"\n) +
+  %(    <<: {skips: [{case: "a merged ghost", reason: "discarded."}]}\n) +
+  %(    skips: []\n)))
+expect_fail(failures, "a section using a YAML merge key", out, status, "uses a YAML merge key")
+
+# --- a value that is markup rather than text ----------------------------------
+#
+# Values render VERBATIM into a Markdown document, so an HTML comment delimiter
+# in one is not text. `<!--` opens a comment that swallows the rest of the block
+# and whatever follows it in SPEC; a complete `<!-- @zero-skip-roster:end -->`
+# injects a doc-constant MARKER, which the writer emits and exits 0 over, leaving
+# a document the next check refuses as structurally malformed.
+#
+# Reported as two findings, closed as one rule: a value that can open or close an
+# HTML comment. There is no third instance — those are the only two delimiters —
+# and marker injection is a strict subset, since every marker is one of these.
+["<!--", "-->", %(a note <!-- @zero-skip-roster:end -->),
+ %(<!-- @fixture-categories:begin -->)].each do |markup|
+  out, status = gate(nil, roster: begin
+    doc = roster_without_skips
+    doc["runners"]["go"]["note"] = "a note #{markup}".strip
+    doc
+  end)
+  expect_fail(failures, "a note carrying #{markup.inspect}", out, status,
+              "Values render verbatim into Markdown")
+end
+
+# The same rule reaches every field, not just the qualifiers — a `source` and a
+# `reason` render into the document exactly as verbatim.
+[["source", "`x` <!-- @zero-skip-roster:end -->"],
+ ["reason", "because. <!-- oops -->"]].each do |key, markup|
+  out, status = gate(lambda { |m| exclude(m, "a real case", ["go"]) }, roster: begin
+    doc = roster_with(go: [{ "case" => "a real case", "reason" => "because." }])
+    if key == "reason"
+      doc["runners"]["go"]["skips"][0]["reason"] = markup
+    else
+      doc["runners"]["go"][key] = markup
+    end
+    doc
+  end)
+  expect_fail(failures, "a #{key} carrying an HTML comment", out, status,
+              "Values render verbatim into Markdown")
+end
+
 # --- a value that can end a line ----------------------------------------------
 #
 # Every scalar renders onto ONE line. A value carrying a line ending spells a
