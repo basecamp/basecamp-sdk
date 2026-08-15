@@ -55,8 +55,9 @@
 # and the block still matches byte for byte. `<` and `&` are the sharpest,
 # because they are markup rather than text: they open an HTML comment or element
 # that hides everything after it, or inject a marker the writer emits and the
-# next check refuses. A reason that genuinely needs one writes it inside a
-# backticked code span, the way the rest of SPEC does.
+# next check refuses. A value that wants one must be REPHRASED: the rule reads
+# the scalar rather than the rendered Markdown, so backticks around the
+# character do not exempt it.
 #
 # The character rules are written as CLASSES rather than lists of spellings, so
 # there is nothing to add when the next one is thought of.

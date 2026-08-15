@@ -1070,6 +1070,26 @@ out, status = gate ->(f) {
 expect_fail(failures, "content riding the roster's :begin marker", out, status,
             "@zero-skip-roster:begin must be alone on its line")
 
+# CRLF in a marked file. Spans are compared after chomping, and `chomp` eats
+# CRLF and LF alike, so a block converted to CRLF compares EQUAL to the
+# renderer's LF output: --check passes over a block that is not byte-for-byte
+# anything, and --write then rewrites the same lines and produces a diff. Check
+# green, generate dirty — the drift-gate failure mode, inside the gate.
+#
+# The whole block is converted, so every other rule still sees exactly what it
+# saw before and only the line endings differ. That is what makes it silent.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].gsub("\n", "\r\n") }
+expect_fail(failures, "a marked file with CRLF line endings", out, status,
+            "carries a CR line ending")
+
+# An unmarked file's line endings are nobody's business here, so the rule is
+# scoped to files that actually carry a span. Without that scope this would be a
+# repo-wide reformatting demand smuggled in by a roster change.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = f["spec/api-gaps/entry.md"].gsub("\n", "\r\n")
+}
+expect_pass(failures, "CRLF in a file with no marked span is not this gate's business", out, status)
+
 # --- marker inventory (exact counts) -------------------------------------------
 
 out, status = gate ->(f) { f["COORDINATION.md"] = f["COORDINATION.md"].sub(" <!-- @bc3-pin -->", "") }

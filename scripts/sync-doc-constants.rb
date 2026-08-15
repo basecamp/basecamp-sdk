@@ -339,7 +339,8 @@ def scan_file(file)
   spans = []
   errors = []
   prose = []
-  lines = File.readlines(File.join(ROOT, file), chomp: true, encoding: UTF8)
+  raw = File.read(File.join(ROOT, file), encoding: UTF8)
+  lines = raw.lines.map(&:chomp)
   open_block = nil
   open_fence = nil
 
@@ -432,6 +433,31 @@ def scan_file(file)
 
   if open_block
     errors << "#{file}:#{open_block[:line_no]}: @#{open_block[:kind]}:begin never closed"
+  end
+
+  # A marked file must be LF-only, and this is what makes "byte-identical" an
+  # honest description of @zero-skip-roster's comparison rather than an
+  # approximation of it.
+  #
+  # Spans are chomped, and `chomp` eats LF, CRLF and a lone CR alike — so a
+  # block converted to CRLF compares EQUAL to the renderer's LF output and
+  # --check passes over a block that is not byte-for-byte anything, while
+  # --write would rewrite the same lines and produce a diff. Check green,
+  # generate dirty: the drift-gate failure mode, inside the gate.
+  #
+  # Two ways to close it: carry terminators through every span, which changes
+  # what every block checker sees for one file nobody has; or refuse the
+  # terminator that creates the ambiguity. With no CR in the file, "the lines
+  # match" and "the bytes match" are the same sentence, so the cheaper one is
+  # also the one that makes the claim true. Scoped to files that actually carry
+  # a span, since an unmarked file's line endings are nobody's business here,
+  # and free today: no tracked Markdown contains a CR.
+  if !spans.empty? && raw.include?("\r")
+    line_no = raw[0...raw.index("\r")].count("\n") + 1
+    errors << "#{file}:#{line_no}: carries a CR line ending, and the file holds marked span(s). " \
+              "Spans are compared after chomping, which treats CRLF and LF as equal, so a " \
+              "CRLF block would pass --check byte-unequal and then be rewritten by --write. " \
+              "Convert the file to LF."
   end
 
   # Only LINE spans leave the prose pool. A line span IS the marked claim — the

@@ -426,8 +426,14 @@ module ZeroSkipRoster
     # there were two.
     #
     # It costs nothing: no value in the roster contains either character, and
-    # neither does the block they render to. A reason needing `<` can spell it
-    # in a backticked code span, which is how the rest of SPEC writes one.
+    # neither does the block they render to.
+    #
+    # A value that wants one must be REPHRASED, not quoted. This rule reads the
+    # scalar, so backticks around the character do not exempt it — a code span
+    # would in fact render it harmlessly, but recognising that means teaching
+    # this rule where Markdown code spans begin and end, which is a parser, in
+    # the file whose entire argument is that there is no parser. Refusing the
+    # character and saying so is the cheaper honest answer.
     #
     # WHAT IT DOES NOT CLOSE, said plainly rather than implied. Markdown's own
     # constructs — a `[link](url)`, a table pipe, an emphasis marker — still
@@ -480,7 +486,8 @@ module ZeroSkipRoster
                          "Markdown, so a character that opens raw HTML is markup, not text: it " \
                          "hides the rest of the block behind a comment or an open element, or " \
                          "injects a doc-constant marker the writer then emits and the next check " \
-                         "refuses. Write it inside a backticked code span."
+                         "refuses. Rephrase the value: this rule reads the scalar, not the " \
+                         "rendered Markdown, so backticks around the character do not help it."
       end
 
       if value.match?(SURROUNDING_SPACE_RE)
