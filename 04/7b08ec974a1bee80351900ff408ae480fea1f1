@@ -1,0 +1,25 @@
+scripts/sync-doc-constants.rb
+  s_33e9d583af84b1::t_ac5e893391356c 375,379-398
+  s_33e9d583af84b1::t_690b4174a44c8a 162-163
+SPEC.md
+  s_33e9d583af84b1::t_81424e08231682 3656
+Makefile
+  s_33e9d583af84b1::t_77c4fa14611f05 1492
+  s_33e9d583af84b1::t_dad2cac044efda 1470-1482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "047b08ec974a1bee80351900ff408ae480fea1f1",
+  "prompts": {},
+  "sessions": {
+    "s_33e9d583af84b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37dfa9a1-4709-4a0e-ba6e-2e227fd441ca",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
