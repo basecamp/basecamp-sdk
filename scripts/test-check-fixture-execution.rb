@@ -506,15 +506,35 @@ expect_fail(failures, "an empty section that says nothing", out, status, "says n
 # neither gate can object afterwards, because both compare SPEC against exactly
 # what the renderer produced. This is the one rule the YAML stated only in a
 # comment; a comment is not a gate.
-{ "note" => "nothing to skip.", "classification" => "architectural." }.each do |key, value|
+#
+# The trailing-space rows are that rule's one bypass, found in review:
+# CLAUSE_TERMINATOR_RE anchors at the end, so a single space after the period
+# hid it and `nothing to skip. ` rendered `nothing to skip. .`. Closed by
+# refusing surrounding whitespace on every value rather than by teaching the
+# terminator regex to look past it — the space is content in its own right, and
+# a trailing one on ANY value lands invisibly at the end of a rendered line.
+[["note", "nothing to skip.", "ends in terminating punctuation"],
+ ["classification", "architectural.", "ends in terminating punctuation"],
+ ["note", "nothing to skip. ", "has leading or trailing whitespace"],
+ ["classification", "architectural. ", "has leading or trailing whitespace"]]
+  .each do |key, value, want|
   out, status = gate(nil, roster: begin
     doc = roster_without_skips
     doc["runners"]["go"][key] = value
     doc
   end)
-  expect_fail(failures, "a #{key} that punctuates itself", out, status,
-              "`go.#{key}` ends in terminating punctuation")
+  expect_fail(failures, "a #{key} of #{value.inspect}", out, status, want)
 end
+
+# ...and the same rule from the other end, where there is no punctuation
+# involved at all: a leading space is content that shifts the render.
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  doc["runners"]["go"]["source"] = " `x`"
+  doc
+end)
+expect_fail(failures, "a source with a leading space", out, status,
+            "which has leading or trailing whitespace")
 
 # A misspelled key contributes nothing and looks like a filled-in section.
 out, status = gate(nil, roster: begin

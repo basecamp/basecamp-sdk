@@ -1229,10 +1229,45 @@ writer lambda { |f|
 end
 
 # Structural marker damage IS fatal to the writer: it means a span it was
-# supposed to maintain was invisible to it.
-writer ->(f) { f["SPEC.md"] += "\nSomething. <!-- @nope -->\n" } do |out, status, _dir|
+# supposed to maintain was invisible to it. And it must be fatal BEFORE
+# anything is written — the check used to run after the write loop, so a file
+# with damaged markers was rewritten and then reported as unsyncable, which is
+# a message the code made false by writing first.
+#
+# The two assertions are separate on purpose: exiting non-zero was already true,
+# and leaving the file alone is the part that was not.
+writer ->(f) { f["SPEC.md"] += "\nSomething. <!-- @nope -->\n" } do |out, status, dir|
   if status.success?
     failures << "writer: malformed markers must be fatal, got exit 0:\n#{out}"
+  end
+end
+
+# The damage here is INSIDE a writable block's own markers, which is the case
+# that can scramble a file rather than merely fail it: a second complete roster
+# block makes the inventory wrong, and both spans would be spliced from offsets
+# the recorded error says not to trust. The stale block's text is the witness —
+# if the writer ran, it is gone.
+writer lambda { |f|
+  repin_to.call("e" * 40, "2026-10-10").call(f)
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @zero-skip-roster:end -->",
+                                  "<!-- @zero-skip-roster:end -->\n\n" \
+                                  "<!-- @zero-skip-roster:begin -->\n" \
+                                  "a second block nobody declared\n" \
+                                  "<!-- @zero-skip-roster:end -->")
+} do |out, status, dir|
+  if status.success?
+    failures << "writer: a duplicated writable block must be fatal, got exit 0:\n#{out}"
+  end
+  written = read_in(dir, "SPEC.md")
+  unless written.include?("a second block nobody declared")
+    failures << "writer: aborted run still rewrote the damaged block:\n#{written}"
+  end
+  # Line spans must be untouched too, in every file: the abort is before the
+  # whole write, not just before the splice. The repin above is what gives the
+  # writer work to do here, so this asserts it did none of it.
+  coordination = read_in(dir, "COORDINATION.md")
+  unless coordination.include?("`#{SHORT}`")
+    failures << "writer: aborted run still rewrote a line span:\n#{coordination}"
   end
 end
 

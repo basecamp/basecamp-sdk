@@ -1238,6 +1238,26 @@ def run(mode, openapi)
   end
 
   if mode == :write
+    # STRUCTURAL PROBLEMS ABORT BEFORE ANYTHING IS WRITTEN, and the ordering is
+    # the whole point: this check used to run after the write loop, so a file
+    # with damaged markers was rewritten and THEN reported as "nothing could be
+    # synced" — a message the code made false by writing first.
+    #
+    # It mattered little while every writable span was a single line rewritten
+    # in place. It matters now: a writable BLOCK is spliced, its length can
+    # change, and the span offsets come from the same scan that recorded the
+    # error. Two roster blocks where the inventory declares one, or a marker
+    # left nested by a merge, would be spliced from indices the errors say not
+    # to trust — inside `make generate`, against a tracked file.
+    #
+    # So the rule is the plain one a generation pass should already obey: a run
+    # that cannot vouch for what it read changes nothing on disk.
+    unless errors.empty?
+      warn "ERROR: doc-constant markers are malformed; nothing was synced:"
+      errors.each { |e| warn "  #{e}" }
+      return 1
+    end
+
     written = []
     declined = []
     spans.group_by(&:file).each do |file, file_spans|
@@ -1306,13 +1326,6 @@ def run(mode, openapi)
       warn "      `make doc-constants-check` stays red until you do."
     end
 
-    # Structural marker problems are still fatal in --write: they mean the
-    # writer could not see a span it was supposed to maintain.
-    unless errors.empty?
-      warn "ERROR: doc-constant markers are malformed; nothing could be synced for these:"
-      errors.each { |e| warn "  #{e}" }
-      return 1
-    end
     return 0
   end
 

@@ -396,6 +396,24 @@ module ZeroSkipRoster
       value = raw.fetch(key)
       raise Malformed, "#{where} is #{describe(value)}, not a string" unless value.is_a?(String)
       raise Malformed, "#{where} is empty" if value.strip.empty?
+
+      # Surrounding whitespace is REFUSED, not trimmed. Every value is rendered
+      # verbatim between characters the renderer supplies, so a leading or
+      # trailing space is content: `note: "nothing to skip. "` renders
+      # `nothing to skip. .`, and a trailing space on any value puts invisible
+      # whitespace at the end of a line SPEC then matches byte for byte.
+      #
+      # It also closes the terminator rule's one bypass rather than patching it.
+      # CLAUSE_TERMINATOR_RE anchors at the end, so a single trailing space hid
+      # the period from it — review found exactly that. Trimming here instead
+      # would silently rewrite what the author committed to a source of truth;
+      # refusing says which character to delete.
+      unless value == value.strip
+        raise Malformed, "#{where} is #{value.inspect}, which has leading or trailing whitespace. " \
+                         "Values render verbatim, so the space is content: it lands in SPEC, and " \
+                         "at the end of a value it hides the character before it from the rules " \
+                         "that read one."
+      end
       if (offender = value[NOT_ONE_LINE_RE])
         raise Malformed, "#{where} contains #{format('U+%04X', offender.ord)}, a control " \
                          "character or line separator. Every value here renders onto ONE " \
