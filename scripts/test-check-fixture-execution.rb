@@ -480,6 +480,37 @@ expect_fail(failures, "a section using a YAML merge key", out, status, "uses a Y
               "Values render verbatim into Markdown")
 end
 
+# ...but NOT `case`, which this file copies rather than composes. It must match
+# the fixture's name byte for byte, so a rule about how a value ought to be
+# WRITTEN cannot apply to it: refusing one would make a legitimately-named skip
+# unrepresentable and this gate permanently red, with no edit to the roster that
+# helps, since rephrasing changes the very key being compared. Asserted as a
+# PASS, because "the roster can state what the runner actually skipped" is the
+# property, and a guard that swallows a valid state fails silently otherwise.
+["a case with a <bracket>", "a case with an &amp", "a trailing space case "].each do |name|
+  out, status = gate(lambda { |m| exclude(m, name, ["go"]) },
+                     roster: roster_with(go: [{ "case" => name, "reason" => "because." }]))
+  expect_pass(failures, "a copied case name spelled #{name.inspect}", out, status)
+end
+
+# The exemption is for COPIED keys only: the same spelling in composed prose is
+# still refused, which is what keeps it an exemption rather than a hole.
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  doc["runners"]["go"]["note"] = "a note with a <bracket> in it"
+  doc
+end)
+expect_fail(failures, "the same spelling in a composed note", out, status,
+            "Values render verbatim into Markdown")
+
+# The rule that is not about authoring still reaches `case`: a control character
+# cannot render onto the one line the roster gives it, whoever wrote it.
+out, status = gate(lambda { |m| exclude(m, "a case", ["go"]) }, roster: roster_with(
+  go: [{ "case" => "a case\u{2028}- \"smuggled\"", "reason" => "because." }]
+))
+expect_fail(failures, "a copied case name carrying a line separator", out, status,
+            "a control character or line separator")
+
 # The same rule reaches every field, not just the qualifiers — a `source` and a
 # `reason` render into the document exactly as verbatim.
 [["source", "`x` <!-- @zero-skip-roster:end -->"],

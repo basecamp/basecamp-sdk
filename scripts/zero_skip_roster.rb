@@ -350,7 +350,27 @@ module ZeroSkipRoster
                          "a skip is #{SKIP_KEYS.join(' + ')} and nothing else"
       end
 
-      Skip.new(name: scalar(runner, raw, "case", required: true, where: "#{where} `case`"),
+      # `case` is a COPIED KEY, not composed prose, and that distinction decides
+      # which rules may touch it. It must match the fixture's case name byte for
+      # byte, because it is what the manifest comparison keys on — so a rule
+      # about how a value ought to be WRITTEN cannot apply to it. If a fixture
+      # is ever named with a `<` or a trailing space, refusing the scalar makes
+      # that skip unrepresentable and check-fixture-execution permanently red,
+      # with no edit to this file that helps: rephrasing changes the key, which
+      # is the one thing it may not do.
+      #
+      # The residue is real and belongs in the open: such a name renders its
+      # markup into SPEC, and both gates stay green because both are faithful to
+      # it. That is a FIXTURE-NAMING problem, visible in the fixture, and the
+      # roster's job is to state what the runner skipped rather than to be the
+      # thing that makes a badly-named case impossible to record. No tracked
+      # fixture carries either character today.
+      #
+      # What still applies to it is the rule that is not about authoring at all:
+      # a control character or line separator, which no `case` can carry and
+      # still render onto the one line the roster gives it.
+      Skip.new(name: scalar(runner, raw, "case", required: true, authored: false,
+                            where: "#{where} `case`"),
                reason: scalar(runner, raw, "reason", required: true, where: "#{where} `reason`"))
     end
 
@@ -445,7 +465,11 @@ module ZeroSkipRoster
     SURROUNDING_SPACE_RE = /\A\p{Space}|\p{Space}\z/
     BLANK_RE             = /\A\p{Space}*\z/
 
-    def scalar(runner, raw, key, required: false, where: nil)
+    # `authored: false` marks a value this file COPIES rather than composes — see
+    # the `case` call site. Such a value is still held to what it must be able to
+    # render as, and exempt from every rule about how it ought to be written,
+    # because it is not this file's to write.
+    def scalar(runner, raw, key, required: false, where: nil, authored: true)
       where ||= "#{RELATIVE_PATH}: `#{runner}.#{key}`"
       unless raw.key?(key)
         raise Malformed, "#{where} is required" if required
@@ -481,7 +505,7 @@ module ZeroSkipRoster
       # allowed: it is not whitespace, it cannot hide a neighbouring character
       # from a rule that reads one, and refusing it belongs to a different
       # question than this one.
-      if (markup = value[RAW_MARKUP_RE])
+      if authored && (markup = value[RAW_MARKUP_RE])
         raise Malformed, "#{where} contains #{markup.inspect}. Values render verbatim into " \
                          "Markdown, so a character that opens raw HTML is markup, not text: it " \
                          "hides the rest of the block behind a comment or an open element, or " \
@@ -490,7 +514,7 @@ module ZeroSkipRoster
                          "rendered Markdown, so backticks around the character do not help it."
       end
 
-      if value.match?(SURROUNDING_SPACE_RE)
+      if authored && value.match?(SURROUNDING_SPACE_RE)
         raise Malformed, "#{where} is #{value.inspect}, which begins or ends with whitespace. " \
                          "Values render verbatim, so the space is content: it lands in SPEC, and " \
                          "at the end of a value it hides the character before it from the rules " \
