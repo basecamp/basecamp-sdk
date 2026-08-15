@@ -409,18 +409,33 @@ module ZeroSkipRoster
     # \p{Space} rather than String#strip for the reason spelled out at the use
     # site: strip is ASCII-only and misses NBSP, the Ogham space mark, the EN/EM
     # quad family, NNBSP, MMSP and the ideographic space.
-    # An HTML comment delimiter, in either direction. Values render VERBATIM
-    # into a Markdown document, so a value carrying one is markup rather than
-    # text: `<!--` opens a comment that swallows the rest of the block and
-    # whatever follows it in SPEC, and a full `<!-- @zero-skip-roster:end -->`
-    # injects a doc-constant MARKER — the writer emits it and exits 0, and the
-    # next --check reports a structurally malformed document the writer built.
+    # RAW MARKUP: the two characters that can begin it in HTML.
     #
-    # Both were reported separately, and they are one mechanism: a value that
-    # can open or close an HTML comment. There is no third instance, because
-    # those are the only two delimiters. Marker injection is a strict subset
-    # rather than a rule of its own, since every marker is an HTML comment.
-    HTML_COMMENT_RE = /<!--|-->/
+    # This rule started as `/<!--|-->/`, closing two separately reported
+    # symptoms — a value opening a comment that swallows the rest of SPEC, and a
+    # value injecting a doc-constant marker the writer then emits. Review came
+    # back with `note: "<details>"`, which needs neither: values render VERBATIM
+    # into a Markdown document, GitHub renders raw HTML in it, and an open
+    # `<details>` collapses everything after it while both gates stay green.
+    #
+    # That is selector #2 on one predicate, and the answer is not `<details>`
+    # and then `<script>` and then `<iframe>`. Raw HTML has exactly two openers:
+    # `<` begins every tag and every comment, `&` begins every entity. Refusing
+    # both closes the class INCLUDING the spellings nobody has written, and it
+    # subsumes the comment rule rather than sitting beside it — one rule where
+    # there were two.
+    #
+    # It costs nothing: no value in the roster contains either character, and
+    # neither does the block they render to. A reason needing `<` can spell it
+    # in a backticked code span, which is how the rest of SPEC writes one.
+    #
+    # WHAT IT DOES NOT CLOSE, said plainly rather than implied. Markdown's own
+    # constructs — a `[link](url)`, a table pipe, an emphasis marker — still
+    # render, and this rule does not touch them. They cannot hide content or
+    # inject document structure the way raw HTML can, and refusing them would
+    # take the backticks the roster genuinely needs. If that boundary is ever
+    # wrong, the answer is a positive grammar for a value, not a third character.
+    RAW_MARKUP_RE = /[<&]/
     SURROUNDING_SPACE_RE = /\A\p{Space}|\p{Space}\z/
     BLANK_RE             = /\A\p{Space}*\z/
 
@@ -460,11 +475,12 @@ module ZeroSkipRoster
       # allowed: it is not whitespace, it cannot hide a neighbouring character
       # from a rule that reads one, and refusing it belongs to a different
       # question than this one.
-      if (markup = value[HTML_COMMENT_RE])
+      if (markup = value[RAW_MARKUP_RE])
         raise Malformed, "#{where} contains #{markup.inspect}. Values render verbatim into " \
-                         "Markdown, so an HTML comment delimiter is markup, not text: it hides " \
-                         "the rest of the block, or injects a doc-constant marker the writer " \
-                         "then emits and the next check refuses."
+                         "Markdown, so a character that opens raw HTML is markup, not text: it " \
+                         "hides the rest of the block behind a comment or an open element, or " \
+                         "injects a doc-constant marker the writer then emits and the next check " \
+                         "refuses. Write it inside a backticked code span."
       end
 
       if value.match?(SURROUNDING_SPACE_RE)

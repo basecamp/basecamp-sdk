@@ -448,11 +448,29 @@ expect_fail(failures, "a section using a YAML merge key", out, status, "uses a Y
 # injects a doc-constant MARKER, which the writer emits and exits 0 over, leaving
 # a document the next check refuses as structurally malformed.
 #
-# Reported as two findings, closed as one rule: a value that can open or close an
-# HTML comment. There is no third instance — those are the only two delimiters —
-# and marker injection is a strict subset, since every marker is one of these.
-["<!--", "-->", %(a note <!-- @zero-skip-roster:end -->),
- %(<!-- @fixture-categories:begin -->)].each do |markup|
+# Reported as THREE findings across two rounds — a bare `<!--`, an injected
+# marker, and then `<details>`, which needs no comment at all and collapses
+# everything after it on GitHub while both gates stay green. The first two were
+# closed with `/<!--|-->/`; the third is what showed that was a selector rather
+# than a rule.
+#
+# Raw HTML has exactly two openers: `<` begins every tag and every comment, `&`
+# begins every entity. Refusing both closes the class including the spellings
+# nobody has written, and REPLACES the comment rule rather than joining it. The
+# `<details>`, `<script>` and entity rows are here so it cannot narrow back. The
+# entities sit MID-VALUE on purpose: `&lt;` ends in a semicolon, so at the end
+# of a value the clause rule would refuse it first and the case would be pinning
+# that guard instead of this one.
+#
+# A bare `-->` is deliberately NO LONGER refused, and this is a real narrowing
+# rather than an oversight. The old rule took it because it was half of a
+# delimiter pair; with `<` refused, no value can open a comment for it to close,
+# and the renderer emits none either — so it is literal text in a Markdown
+# document, like any other punctuation. Refusing a closer that cannot close
+# anything would be the fortress this PR keeps arguing against.
+["<!--", %(a note <!-- @zero-skip-roster:end -->),
+ %(<!-- @fixture-categories:begin -->), "<details>", "<script>",
+ "an &amp; entity", "an &lt;b&gt; entity"].each do |markup|
   out, status = gate(nil, roster: begin
     doc = roster_without_skips
     doc["runners"]["go"]["note"] = "a note #{markup}".strip
