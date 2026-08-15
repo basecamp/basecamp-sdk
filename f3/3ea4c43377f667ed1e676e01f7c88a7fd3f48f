@@ -1,0 +1,27 @@
+scripts/sync-doc-constants.rb
+  s_33e9d583af84b1::t_a30604e2b139d9 342-343,438-460
+  s_33e9d583af84b1::t_96ff1f634f4f90 461-462
+scripts/test-doc-constants.rb
+  s_33e9d583af84b1::t_bbfbd7f5e8dec2 1088-1090
+  s_33e9d583af84b1::t_c6ef650191e5d7 1073-1087,1091-1092
+scripts/zero_skip_roster.rb
+  s_33e9d583af84b1::t_95558b51d54ad0 429-436,489-490
+spec/zero-skip-roster.yml
+  s_33e9d583af84b1::t_95558b51d54ad0 58-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f33ea4c43377f667ed1e676e01f7c88a7fd3f48f",
+  "prompts": {},
+  "sessions": {
+    "s_33e9d583af84b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37dfa9a1-4709-4a0e-ba6e-2e227fd441ca",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
