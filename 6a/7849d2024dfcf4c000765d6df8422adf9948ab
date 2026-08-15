@@ -25,18 +25,21 @@ spec/doc-constants.json
   s_33e9d583af84b1::t_0089fc3e8c3a7f 42
   s_33e9d583af84b1::t_b350fd7c4828a9 69
   s_33e9d583af84b1::t_ace14fc4239eaa 70-71
+  s_33e9d583af84b1::t_3597c795e2756f 41
 spec/api-gaps/event-feed.md
   s_33e9d583af84b1::t_18bb512994babf 134
 kotlin/README.md
   s_33e9d583af84b1::t_18bb512994babf 15,489
 python/README.md
   s_33e9d583af84b1::t_18bb512994babf 13
+  s_33e9d583af84b1::t_e9fc05d3d248e6 458
 scripts/test-doc-constants.rb
   s_33e9d583af84b1::t_fa477c70fdfa1a 1555-1635,1642-1645,1647-1649,1651-1693
   s_33e9d583af84b1::t_f1c3e6fdba4bbd 1636-1641,1646,1650
   s_33e9d583af84b1::t_14584408273adb 259,263-267
   s_33e9d583af84b1::t_565d30a44800b6 82-86
   s_33e9d583af84b1::t_05fe873dfc284d 177-178,182-214
+  s_33e9d583af84b1::t_c6d18e4d5515f1 262
 swift/README.md
   s_33e9d583af84b1::t_18bb512994babf 14,166
 scripts/sync-doc-constants.rb
@@ -58,6 +61,11 @@ scripts/sync-doc-constants.rb
   s_33e9d583af84b1::t_999540e3d0168a 156,161
   s_33e9d583af84b1::t_75ec05f87821b5 657
   s_33e9d583af84b1::t_e309aae96d7e4e 400,1307,1330,1347-1348
+  s_33e9d583af84b1::t_0d48ab51d843e1 162,164-175
+  s_33e9d583af84b1::t_b23cf17e22eb22 1373-1378
+  s_33e9d583af84b1::t_2156d7da65a778 1387
+  s_33e9d583af84b1::t_1d782f0a21ff49 1436-1439,1445-1452
+  s_33e9d583af84b1::t_597bea9ddb8d43 1572-1577,1580-1581
 ruby/README.md
   s_33e9d583af84b1::t_18bb512994babf 319
 ---
