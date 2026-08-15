@@ -1,0 +1,32 @@
+scripts/zero_skip_roster.rb
+  s_33e9d583af84b1::t_43e729f3f0be9a 184-225
+  s_33e9d583af84b1::t_04b4dce9804842 243-244
+  s_33e9d583af84b1::t_9b05ba94afd9f2 100-109
+  s_33e9d583af84b1::t_12b951321f9fe5 60-72
+  s_33e9d583af84b1::t_21cc3fdcff304a 110-111,113-114
+  s_33e9d583af84b1::t_217e0fb78e73a3 295-309
+spec/zero-skip-roster.yml
+  s_33e9d583af84b1::t_d601e236502d0c 54-55,58-62
+  s_33e9d583af84b1::t_328787ecc4ef1b 37-43
+scripts/test-check-fixture-execution.rb
+  s_33e9d583af84b1::t_ee1a816439ee8a 366-381,384,386-405
+  s_33e9d583af84b1::t_d65fdafdbdd434 425-440
+  s_33e9d583af84b1::t_899e70259a20fe 382-383,385
+  s_33e9d583af84b1::t_f4df7104f933ed 74-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f5bcf33c97701db5465013e5e4db09c76a1a3cc7",
+  "prompts": {},
+  "sessions": {
+    "s_33e9d583af84b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37dfa9a1-4709-4a0e-ba6e-2e227fd441ca",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
