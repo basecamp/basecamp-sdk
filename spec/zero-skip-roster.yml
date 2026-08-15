@@ -1,0 +1,143 @@
+# SPEC §19 Zero-Skip roster — the source of truth for what each conformance
+# runner does not execute.
+#
+# Purpose: SPEC §19 claims to enumerate "every skip a default (mock-mode)
+# conformance run reports, one line per runner × test, verbatim from the
+# runners' skip mechanisms". That roster used to live in SPEC.md as prose and be
+# READ BACK OUT of it by a parser. It lives here instead, and SPEC's block is
+# now RENDERED from this file — the prose is an output, not an input.
+#
+# What enforces it, in two halves that answer different questions:
+#
+#   scripts/sync-doc-constants.rb (`make doc-constants-check`) renders the
+#   <!-- @zero-skip-roster:begin/end --> block in SPEC.md from this file and
+#   requires the text between those markers to be BYTE-IDENTICAL. `--write`
+#   (reached from `make generate` via sync-api-version) rewrites it. Nothing
+#   parses the block, so nothing can misread it: a character SPEC carries that
+#   this file does not produce is a diff, whatever it is made of.
+#
+#   scripts/check-fixture-execution.rb (`make check-fixture-execution`) compares
+#   the `skips` below, per runner, for set equality against the execution
+#   manifests the runners write (conformance/manifests/<runner>.json). A skip
+#   added to a runner without an entry here, or an entry left behind after a gap
+#   closes, fails the build. It needs a conformance run; the block check does
+#   not, which is why the two live in different gates.
+#
+# The CLASSIFICATION and the reasons stay judgement — nothing asserts them, and
+# that half is why §19 keeps its `[manual]` tag.
+#
+# --- Entry semantics ----------------------------------------------------------
+#
+# `runners` holds exactly six keys — go, python, ruby, typescript, kotlin,
+# swift — and every one is required. A runner is not omitted when it skips
+# nothing; it carries an empty `skips` list and says why. An absent key would
+# read as "not stated yet" and contribute nothing to either comparison, which is
+# how a runner's skips go unrecorded.
+#
+#   source          Required. The runner file and skip constant, rendered
+#                   verbatim inside the parentheses of the heading. Kotlin's and
+#                   Swift's carry a clause rather than a constant name, because
+#                   their skip constants are EMPTY and their single entry
+#                   arrives from the `link-header` tag branch. That distinction
+#                   is load-bearing documentation: a reader who greps
+#                   `KOTLIN_SKIPS` finds nothing and must not conclude the
+#                   roster is stale.
+#
+#   classification  Optional. One word for why the skips exist at all
+#                   (`architectural`); omitted where the reasons carry it.
+#
+#   note            Optional. A clause, NOT a sentence: the renderer supplies
+#                   the terminating punctuation, so write it without one.
+#
+#   skips           Required, possibly empty. Each entry is
+#                   { case: <exact case name>, reason: <complete sentence> }.
+#                   `case` must match the fixture case name byte for byte — it
+#                   is what the manifest comparison keys on. `reason` is
+#                   rendered verbatim after an em dash, so it carries its own
+#                   final period.
+#
+# An empty `skips` renders as "— none" in the heading. That word is DERIVED, not
+# written: a section cannot claim to skip nothing while listing skips, and one
+# that skips nothing cannot forget to say so.
+#
+# --- Rendering ----------------------------------------------------------------
+#
+# One section per runner, in the order of scripts/zero_skip_roster.rb's RUNNERS,
+# which is the order SPEC has always used. This file's key order is irrelevant
+# to the output; do not rely on it.
+#
+#   **<Label>** (<source>)[ — <qualifiers joined by "; ">]<":" or ".">
+#   - "<case>" — <reason>
+#
+# where the qualifiers are, in order: `none` when there are no skips,
+# `classification`, `note`. The terminator is ":" when skips follow and "." when
+# none do.
+#
+# Lines are not wrapped. A wrapped heading would be a second rendering rule to
+# get byte-identical, and the bullets have never been wrapped either.
+
+runners:
+  go:
+    source: "`conformance/runner/go/main.go` `goSDKSkips`"
+    classification: architectural
+    note: "same-origin logic is covered by `TestIsSameOrigin` unit tests"
+    skips:
+      - case: "Mixed-case host and explicit default port stay on the mocked origin"
+        reason: "Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply."
+      - case: "Bracketed IPv6 loopback origin stays on the mocked origin"
+        reason: "same as above."
+
+  # Python's `SKIPS` is genuinely empty, and the note is the whole content of
+  # this section: the `link-header` fixture RUNS here — only its `requestCount`
+  # assertion is suppressed — so it is not a skip and must not be rostered as
+  # one.
+  python:
+    source: "`conformance/runner/python/runner.py` `SKIPS`"
+    note: "the `link-header` fixture above runs; only its `requestCount` assertion is suppressed"
+    skips: []
+
+  ruby:
+    source: "`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`"
+    skips:
+      - case: "PUT operation is naturally idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "DELETE operation is naturally idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "POST operation retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "Subscribe POST retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "CreateBookmark POST retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "DeleteBookmark DELETE retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "UpdateMyNote PUT retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "UpdateCalendar PUT retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "PrioritizeAssignment POST retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "DeprioritizeAssignment DELETE retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
+      - case: "Network error on an idempotent POST is retried then succeeds"
+        reason: "GET-only network retry (waiver 2B.3)."
+
+  typescript:
+    source: "`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`"
+    skips:
+      - case: "Large integer IDs preserved without precision loss"
+        reason: "`Number` is 53-bit (waiver 1B.6)."
+
+  kotlin:
+    source: "`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` is empty; the entry below comes from the `link-header` tag branch"
+    classification: architectural
+    skips:
+      - case: "List operation returns first page with Link header"
+        reason: "the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields \"no response\" (see the tag-branch discussion above)."
+
+  swift:
+    source: "`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is empty; the entry below comes from the `link-header` tag branch"
+    classification: architectural
+    skips:
+      - case: "List operation returns first page with Link header"
+        reason: "same as Kotlin: auto-pagination plus a last-consumed-response status model."

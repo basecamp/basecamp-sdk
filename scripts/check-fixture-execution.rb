@@ -57,6 +57,8 @@ require "json"
 require "optparse"
 require "set"
 
+require_relative "zero_skip_roster"
+
 # Overridable so the self-test can point the whole gate at a synthetic manifest
 # set and prove each rejection fires. Same mechanism as DOC_CONSTANTS_ROOT: this
 # check is green on the real tree by construction (maximum overlap is 2 of 6),
@@ -185,138 +187,29 @@ end
 # instead of enumerating it -- two of six runners wrong, in a roster nobody
 # re-derives by hand.
 #
-# The manifests make the ENUMERATION derivable, so it is now checked for set
-# equality. The classification and reasoning on each line stay judgement, and
-# nothing asserts them; that half is why the section keeps its `[manual]` tag.
+# The manifests make the ENUMERATION derivable, so it is checked here for set
+# equality. The classification and reasoning stay judgement, and nothing asserts
+# them; that half is why the section keeps its `[manual]` tag.
 #
-# WHY THIS PARSER IS ACCEPTABLE WHERE THE ROSTER-TABLE ONE WAS NOT. #740
-# declined to keep teaching `sync-doc-constants.rb` more GFM -- separator
-# widths, backslash parity -- because a mis-parse there is SILENT: it validates
-# the wrong cell and reports success. This extraction fails LOUD in both
-# directions. A bullet it cannot read is a name missing from the roster set,
-# which is a mismatch; a name it invents is an extra, also a mismatch. There is
-# no reading of a malformed line that produces a passing comparison, so the
-# failure mode is a false alarm the author fixes, never a false green.
+# WHERE THE ROSTER LIVES, and why it moved. It used to live in SPEC.md's prose
+# and be parsed back out of it, on the argument that every misreading surfaces
+# as a set mismatch and never as a passing comparison. That was breached five
+# times, each fix a new selector (see scripts/zero_skip_roster.rb for the list).
+# It now lives in spec/zero-skip-roster.yml and SPEC's block is RENDERED from
+# it, so this gate reads structured data and nothing reads the prose.
 #
-# The delimiters are deliberately NOT `@`-markers. sync-doc-constants owns
-# those, and it runs in spec-gates where no conformance run has happened, so it
-# has no manifests to compare against. Registering a kind there whose real
-# enforcement lives here would split one check across two gates.
-ROSTER_BEGIN = "<!-- zero-skip-roster:begin -->"
-ROSTER_END   = "<!-- zero-skip-roster:end -->"
-
-# Heading label => runner id. Hardcoded for the same reason EXPECTED_RUNNERS is:
-# deriving it from whatever headings appear lets a renamed section silently drop
-# a runner out of the comparison.
-ROSTER_HEADINGS = {
-  "Go" => "go", "Python" => "python", "Ruby" => "ruby",
-  "TypeScript" => "typescript", "Kotlin" => "kotlin", "Swift" => "swift"
-}.freeze
-
-# Returns { runner => [case name] } as the roster states it.
-def parse_roster(spec_path)
-  text = File.read(spec_path, encoding: "UTF-8")
-
-  # EXACTLY one of each delimiter. Taking the first occurrence of each would
-  # silently ignore a second, complete roster block — and a stale line living in
-  # that duplicate would never be compared while the gate reported success. That
-  # is a SILENT pass, which is the one failure mode this extractor is not
-  # allowed to have: the whole argument for parsing prose here is that every
-  # misreading surfaces as a set mismatch. Copilot found it.
-  begins = text.scan(ROSTER_BEGIN).length
-  ends   = text.scan(ROSTER_END).length
-
-  # No roster at all is its own failure, and a distinct one: the roster was
-  # deleted or renamed, not duplicated. Kept separate so the message names what
-  # actually happened.
-  i = text.index(ROSTER_BEGIN)
-  j = text.index(ROSTER_END)
-  raise Failure, "SPEC.md holds no #{ROSTER_BEGIN} / #{ROSTER_END} pair" if i.nil? || j.nil? || j < i
-
-  if begins > 1 || ends > 1
-    raise Failure, "SPEC.md must hold exactly one #{ROSTER_BEGIN} and one #{ROSTER_END}; " \
-                   "found #{begins} and #{ends}. A second block is not compared, so a stale " \
-                   "line inside it would pass unnoticed."
-  end
-
-  body = text[(i + ROSTER_BEGIN.length)...j]
-  roster = Hash.new { |h, k| h[k] = [] }
-  runner = nil
-  seen = []
-
-  body.each_line do |line|
-    if (m = line.match(/\A\*\*([A-Za-z]+)\*\*/))
-      label = m[1]
-      runner = ROSTER_HEADINGS[label]
-      raise Failure, "SPEC roster has a section for unknown runner #{label.inspect}" if runner.nil?
-
-      seen << runner
-      roster[runner]
-      next
-    end
-
-    # FAIL-CLOSED on anything list-shaped, rather than recognising one spelling
-    # and skipping the rest. `next unless line.start_with?("- ")` silently
-    # dropped every other valid Markdown list form — indented, `*`, `+`, `1.` —
-    # and a STALE entry written that way was then absent from the roster set, so
-    # no mismatch arose and the gate passed. A false green, which is the one
-    # outcome this extractor may not produce.
-    #
-    # The answer is not a third selector per spelling. It is to invert the
-    # default: a line that looks like a list item in ANY form must be the
-    # canonical `- "case name"`, or it is an error. One predicate closes the
-    # whole class, including spellings nobody has written yet. Prose
-    # continuation lines (the roster's headings wrap, and Python's section is a
-    # sentence) are untouched because they are not list-shaped.
-    next unless line.match?(/\A\s*([-*+]|\d+[.)])\s/)
-
-    raise Failure, "SPEC roster bullet before any runner heading: #{line.strip[0, 60]}" if runner.nil?
-
-    name = line[/\A-\s+"([^"]+)"/, 1]
-    if name.nil?
-      raise Failure, "SPEC roster line is list-shaped but not a canonical bullet " \
-                     "(`- \"case name\" — reason`): #{line.strip[0, 80]}. Written another way it " \
-                     "would be skipped, and a stale entry that is skipped never contradicts " \
-                     "anything."
-    end
-
-    roster[runner] << name
-  end
-
-  missing = EXPECTED_RUNNERS - seen
-  unless missing.empty?
-    raise Failure, "SPEC roster has no section for: #{missing.join(', ')} - a runner without a " \
-                   "heading contributes nothing and its skips go unrecorded"
-  end
-
-  # A duplicated heading splits one runner's lines across two sections, so
-  # neither reads as the whole set and "one line per runner x test" is already
-  # broken before any comparison.
-  repeated = seen.tally.select { |_, n| n > 1 }.keys
-  unless repeated.empty?
-    raise Failure, "SPEC roster has more than one section for: #{repeated.sort.join(', ')}"
-  end
-
-  # A case listed twice under one runner is invisible to the comparison:
-  # Array#- removes EVERY matching occurrence, so `actual - stated` and
-  # `stated - actual` are both empty and the duplicate passes — with two
-  # possibly conflicting classifications attached to one case. Codex found it,
-  # and it is the same silent-pass shape as the duplicate block above.
-  roster.each do |run_id, names|
-    dupes = names.tally.select { |_, n| n > 1 }.keys
-    next if dupes.empty?
-
-    raise Failure, "SPEC roster lists #{dupes.first.inspect} twice under #{run_id}; the section " \
-                   "promises one line per runner x test, and a repeat is invisible to the " \
-                   "set comparison"
-  end
-
-  roster
-end
+# The delimiters used to be deliberately NOT `@`-markers, because
+# sync-doc-constants owns those and runs in spec-gates where no conformance run
+# has happened -- it had no manifests to compare against, so registering a kind
+# there would have split one check across two gates. The YAML removed that
+# objection: it is present in every checkout, so the half that needs no
+# conformance run (does SPEC's block match the roster?) is now an
+# @zero-skip-roster block kind over there, and the half that does need one (does
+# the roster match what the runners reported?) is this file. Two gates, two
+# claims, neither able to make the other's.
 
 # Compares the roster's enumeration against what the runners reported.
-def check_roster(manifests, spec_path)
-  roster = parse_roster(spec_path)
+def check_roster(manifests, roster)
   errors = []
 
   manifests.each do |m|
@@ -326,27 +219,56 @@ def check_roster(manifests, spec_path)
     # same-named cases from different fixtures. No runner excludes such a pair
     # today; if one ever does, the roster needs file qualifiers and this says so
     # rather than silently comparing an ambiguous set.
+    #
+    # This projection is UNCHANGED by the move to YAML, deliberately. A `file:`
+    # key would be a schema the manifests could be compared against more
+    # precisely — and no runner needs it yet, so adding it now would be a field
+    # nobody fills in correctly and nothing exercises.
     dupes = actual.tally.select { |_, n| n > 1 }.keys
     unless dupes.empty?
-      errors << "#{m.runner} excludes #{dupes.first.inspect} in more than one fixture; the SPEC " \
-                "roster identifies cases by name alone and cannot express that. Add the fixture " \
-                "to those roster lines and teach this check to read it."
+      errors << "#{m.runner} excludes #{dupes.first.inspect} in more than one fixture; " \
+                "#{ZeroSkipRoster::RELATIVE_PATH} identifies cases by name alone and cannot " \
+                "express that. Add the fixture to those entries and teach this check to read it."
       next
     end
 
-    stated = roster[m.runner]
+    stated = roster.fetch(m.runner)
     (actual - stated).each do |name|
-      errors << "#{m.runner} excludes #{name.inspect} and the SPEC roster does not list it"
+      errors << "#{m.runner} excludes #{name.inspect} and #{ZeroSkipRoster::RELATIVE_PATH} does " \
+                "not list it"
     end
     (stated - actual).each do |name|
-      errors << "the SPEC roster lists #{name.inspect} for #{m.runner}, which no longer excludes it"
+      errors << "#{ZeroSkipRoster::RELATIVE_PATH} lists #{name.inspect} for #{m.runner}, which no " \
+                "longer excludes it"
     end
   end
 
   errors
 end
 
+def load_roster
+  ZeroSkipRoster.case_names(ZeroSkipRoster.load(ROOT))
+rescue ZeroSkipRoster::Malformed => e
+  # A roster that cannot be read is not a roster that lists nothing. Loading it
+  # is the first thing `run` does, before any comparison, so there is no path
+  # where an unreadable file is quietly compared against as an empty set.
+  raise Failure, e.message
+end
+
 def run(partial:)
+  # Two hardcoded runner lists, one for manifests and one for the roster, and
+  # nothing but this line stops them diverging. The mechanism is an ordinary
+  # mistake, not an adversary: a seventh runner added to one and not the other
+  # leaves that runner's roster section unchecked (or its manifest compared
+  # against a section that does not exist, which is a KeyError below).
+  unless EXPECTED_RUNNERS.sort == ZeroSkipRoster::RUNNERS.sort
+    raise Failure, "the runners this gate expects (#{EXPECTED_RUNNERS.sort.join(', ')}) and the " \
+                   "ones #{ZeroSkipRoster::RELATIVE_PATH} is defined over " \
+                   "(#{ZeroSkipRoster::RUNNERS.sort.join(', ')}) disagree; one of the two lists " \
+                   "gained a runner the other never heard of"
+  end
+
+  roster = load_roster
   manifests = load_all
   present = manifests.map(&:runner).sort
   missing = EXPECTED_RUNNERS - present
@@ -370,11 +292,12 @@ def run(partial:)
   # because that is the only claim needing every runner. A runner that did not
   # report simply is not compared; its roster section is neither confirmed nor
   # contradicted.
-  roster_errors = check_roster(manifests, File.join(ROOT, "SPEC.md"))
+  roster_errors = check_roster(manifests, roster)
   unless roster_errors.empty?
     roster_errors.each { |e| warn "FAIL: #{e}" }
     warn "      SPEC section 19's Zero-Skip roster claims to enumerate every skip verbatim from " \
-         "the runners' skip mechanisms (#736). It is restated by hand, so it drifts."
+         "the runners' skip mechanisms (#736). Nothing derives it from the runners, so it drifts " \
+         "the moment a skip is added or closed without editing #{ZeroSkipRoster::RELATIVE_PATH}."
     return 1
   end
 

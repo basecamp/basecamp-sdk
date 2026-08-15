@@ -13,8 +13,9 @@
 #   @operation-count      openapi.json  count of path × HTTP-method pairs
 #   @fixture-categories   git ls-files conformance/tests/*.json
 #   @fixture-section-map  git ls-files conformance/tests/*.json
+#   @zero-skip-roster     spec/zero-skip-roster.yml, RENDERED — see below
 #
-# The last two are the same shape as @assertion-types one level out: a table
+# The fixture rosters are the same shape as @assertion-types one level out: a table
 # that CLAIMS to account for every conformance fixture, with nothing checking
 # it. Both were missed by the last three fixture-adding commits, in three
 # different ways — dee221c85 added documents_write.json and updated neither
@@ -23,6 +24,17 @@
 # half-applications in opposite directions is not carelessness; it is a rule
 # nobody can see (CONTRIBUTING.md tells contributors to add conformance tests
 # and mentions neither table).
+#
+# @zero-skip-roster is the odd one out, and deliberately so: it is the first
+# span this gate RENDERS rather than reads. Every other block kind carries a
+# human-authored column, so --check compares sets and the writer keeps its hands
+# off. SPEC §19's Zero-Skip roster carries no such column — every character of it
+# is derived from spec/zero-skip-roster.yml — so it is rendered into memory and
+# the block is required to be BYTE-IDENTICAL. Nothing parses it, which is the
+# whole point: the parser it replaces had its "a misreading always surfaces as a
+# mismatch" invariant breached five times, each fix a new selector for a new
+# spelling. A byte comparison has no selectors to widen. See
+# scripts/zero_skip_roster.rb for the five and for what this does NOT close.
 #
 # Only spans MARKED with an HTML comment are checked. That is deliberate:
 # spec/api-gaps/ legitimately cites ~20 historical bc3 SHAs in narrative
@@ -86,11 +98,14 @@
 # Modes
 #   --check (default)  Report drift; exit 1 on any error.
 #   --write            Rewrite marked spans in place from the sources.
-#                      Only the scalar constants are writable — every BLOCK
-#                      kind is a table whose rows carry a human-authored
-#                      column (an assertion type's meaning, a fixture's owning
-#                      spec sections, a fixture's case summary), so --write
-#                      never touches them and never fails on them.
+#                      Writable iff the writer can author the whole span. That
+#                      is every scalar constant, and exactly one block kind:
+#                      @zero-skip-roster, which is rendered from
+#                      spec/zero-skip-roster.yml. The other block kinds are
+#                      tables whose rows carry a human-authored column (an
+#                      assertion type's meaning, a fixture's owning spec
+#                      sections, a fixture's case summary), so --write never
+#                      touches them and never fails on them.
 #                      `make doc-constants-check` is what catches those;
 #                      keeping them out of the writer keeps a schema or
 #                      fixture edit from breaking every `make generate`.
@@ -116,6 +131,8 @@
 require "json"
 require "set"
 
+require_relative "zero_skip_roster"
+
 # The repo this gate reads. DOC_CONSTANTS_ROOT exists so
 # scripts/test-doc-constants.rb can point the gate at a crafted tiny repo and
 # assert it rejects each failure mode; nothing in normal operation sets it.
@@ -135,7 +152,14 @@ LINE_KINDS  = %w[api-version bc3-pin operation-count].freeze
 # The OpenAPI verbs an operation can be keyed under. Anything else in a path
 # item (parameters, servers, summary) is not an operation and must not count.
 HTTP_METHODS = %w[get put post delete patch head options trace].freeze
-BLOCK_KINDS = %w[assertion-types fixture-categories fixture-section-map].freeze
+BLOCK_KINDS = %w[assertion-types fixture-categories fixture-section-map
+                 zero-skip-roster].freeze
+
+# The block kinds the writer may author, which is the ones with no
+# human-authored content in them at all. Everything else in BLOCK_KINDS is a
+# table carrying a column only a person can write, and rewriting one would mean
+# inventing that column.
+WRITABLE_BLOCK_KINDS = %w[zero-skip-roster].freeze
 KNOWN_KINDS = (LINE_KINDS + BLOCK_KINDS).freeze
 
 MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
@@ -1013,6 +1037,51 @@ def check_fixture_section_map(span, fixtures)
   errors
 end
 
+# SPEC §19's Zero-Skip roster: rendered from spec/zero-skip-roster.yml and
+# required to match BYTE FOR BYTE.
+#
+# This is the only check in this file with no parser behind it, and that is the
+# entire design. Its predecessor read the roster back out of SPEC's prose, on the
+# argument that a misreading always surfaces as a set mismatch and never as a
+# passing comparison. That argument failed five times — a list marker it did not
+# recognise, a duplicate block, a duplicate entry, a payload on a blockquote or
+# table row, and an ASCII-only quote test that curly quotes and backticks walk
+# straight through. Each fix was one more selector. String equality has none:
+# every one of those spellings is now just text inside a generated block, and any
+# text the renderer did not produce is a diff.
+#
+# WHAT IT DOES AND DOES NOT BUY. It makes SPEC's block faithful to the YAML,
+# nothing more. Whether the YAML is faithful to the RUNNERS is a different claim,
+# checked by scripts/check-fixture-execution.rb against the execution manifests —
+# which needs a conformance run, which is why that half cannot live here.
+#
+# VACUITY, and why there is no guard for it here. "Both sides empty is agreement"
+# is the hole every set comparison in this file has to plug explicitly. This one
+# cannot reach it: ZeroSkipRoster.load requires all six runner sections and
+# render_lines emits at least a heading for each, so the rendered side is never
+# empty and an emptied block never matches it. An emptied YAML fails in the
+# loader instead, before this is called. Committed as self-test cases rather than
+# asserted here, because a guard that cannot fire is a guard nobody can test.
+def check_zero_skip_roster(span, expected)
+  actual = span.lines
+  return [] if actual == expected
+
+  index = (0...[actual.length, expected.length].max).find { |n| actual[n] != expected[n] }
+  line_no = span.line_no + index
+
+  # Name the first differing line and show both sides whole. Truncating would
+  # hide exactly the cases worth reporting — a trailing space, a straightened
+  # quote, an em dash written as a hyphen — since the visible halves of two such
+  # lines are identical.
+  ["#{span.file}:#{line_no}: the @#{span.kind} block does not match " \
+   "#{ZeroSkipRoster::RELATIVE_PATH} (#{actual.length} line(s) in SPEC, #{expected.length} " \
+   "rendered; first difference on this line).\n" \
+   "      rendered: #{(expected[index] || '(end of block)').inspect}\n" \
+   "      found:    #{(actual[index] || '(end of block)').inspect}\n" \
+   "      This block is generated. Edit #{ZeroSkipRoster::RELATIVE_PATH} and run " \
+   "`make sync-api-version`; editing SPEC by hand is what this replaced."]
+end
+
 # --- writer ------------------------------------------------------------------
 
 def rewrite_line(kind, line, api_version:, revision:, date:, operation_count_value:)
@@ -1049,6 +1118,28 @@ def run(mode, openapi)
   op_count = lambda do
     op_count_memo ||= operation_count(openapi_doc, openapi)
   end
+
+  # Lazy and memoised for the same reason once more, and this one is needed in
+  # BOTH modes: --write renders the roster block, --check compares against it.
+  # A repo whose SPEC never carries the marker never loads the file, which is
+  # what lets the gate's own crafted fixtures stay minimal.
+  #
+  # A malformed roster is a Failure (exit 2), not a drift error (exit 1): the
+  # gate has no source of truth, so it cannot vouch for the block either way.
+  # Reporting "the block does not match" would name the wrong file.
+  roster_memo = nil
+  roster = lambda do
+    roster_memo ||= begin
+      ZeroSkipRoster.load(ROOT)
+    rescue ZeroSkipRoster::Malformed => e
+      raise Failure, e.message
+    end
+  end
+  roster_lines = -> { ZeroSkipRoster.render_lines(roster.call) }
+
+  # kind => the exact lines a writable block must hold. Keyed by kind so adding
+  # a second rendered block is a line here rather than a branch in the writer.
+  block_bodies = { "zero-skip-roster" => roster_lines }
 
   provenance = read_json("spec/api-provenance.json")
   revision = dig!(provenance, "spec/api-provenance.json", "bc3", "revision")
@@ -1123,7 +1214,9 @@ def run(mode, openapi)
     declined = []
     spans.group_by(&:file).each do |file, file_spans|
       writable = file_spans.reject(&:block).select { |s| LINE_KINDS.include?(s.kind) }
-      next if writable.empty?
+      writable_blocks = file_spans.select(&:block)
+                                  .select { |s| WRITABLE_BLOCK_KINDS.include?(s.kind) }
+      next if writable.empty? && writable_blocks.empty?
 
       path = File.join(ROOT, file)
       original = File.read(path, encoding: UTF8)
@@ -1136,6 +1229,21 @@ def run(mode, openapi)
                                     api_version: api_version, revision: revision, date: date,
                                     operation_count_value: op_count) + newline
       end
+
+      # Blocks are spliced LAST and from the bottom up. A rendered block rarely
+      # has the same line count as the one it replaces, so every span below it
+      # in the same file would be off by the difference — including the line
+      # spans just rewritten by index above. Descending order means each splice
+      # only ever moves lines that have already been written.
+      #
+      # "Last" is what the self-test exercises; the ORDER is not, because one
+      # writable block exists and a single splice cannot be out of order. It is
+      # written this way so the second one does not have to notice.
+      writable_blocks.sort_by { |span| -span.line_no }.each do |span|
+        start = span.line_no - 1
+        lines[start, span.lines.length] = block_bodies.fetch(span.kind).call.map { |l| "#{l}\n" }
+      end
+
       updated = lines.join
       next if updated == original
 
@@ -1153,7 +1261,10 @@ def run(mode, openapi)
     end
 
     if written.empty?
-      puts "Doc constants already in sync (#{spans.count { |s| LINE_KINDS.include?(s.kind) }} marked spans)."
+      writable_count = spans.count do |s|
+        s.block ? WRITABLE_BLOCK_KINDS.include?(s.kind) : LINE_KINDS.include?(s.kind)
+      end
+      puts "Doc constants already in sync (#{writable_count} marked spans)."
     else
       written.each { |file| puts "Rewrote marked doc constants in #{file}" }
     end
@@ -1197,6 +1308,7 @@ def run(mode, openapi)
       when "operation-count"     then check_operation_count(span, op_count.call, openapi)
       when "fixture-categories"  then check_fixture_categories(span, fixtures.call)
       when "fixture-section-map" then check_fixture_section_map(span, fixtures.call)
+      when "zero-skip-roster"    then check_zero_skip_roster(span, roster_lines.call)
       else []
       end
     )
@@ -1223,6 +1335,12 @@ def run(mode, openapi)
     if spans.any? { |s| %w[fixture-categories fixture-section-map].include?(s.kind) }
       puts "  fixtures         #{fixtures.call.length} tracked under conformance/tests/"
     end
+    if spans.any? { |s| s.kind == "zero-skip-roster" }
+      skips = roster.call.values.sum { |section| section.skips.length }
+      puts "  zero-skip-roster #{skips} skip(s) across " \
+           "#{ZeroSkipRoster::RUNNERS.length} runners (block rendered from " \
+           "#{ZeroSkipRoster::RELATIVE_PATH})"
+    end
     0
   else
     warn "ERROR: documentation constants have drifted from their sources."
@@ -1243,6 +1361,11 @@ def run(mode, openapi)
     warn "                    table and Appendix D. Neither is auto-written: the owning-section " \
          "and case-summary"
     warn "                    columns are attributions only the fixture's author can make."
+    warn "  Zero-skip roster: SPEC §19's marked block is RENDERED from " \
+         "#{ZeroSkipRoster::RELATIVE_PATH}."
+    warn "                    Edit the YAML, then `make sync-api-version` to rewrite the block. " \
+         "It is the"
+    warn "                    one block the writer authors, because none of it is hand-written."
     warn "  Unmarked pin:     see the A/B rule in AGENTS.md §Provenance is Mandatory."
     1
   end

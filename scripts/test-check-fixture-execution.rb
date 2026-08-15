@@ -16,14 +16,14 @@
 # live check).
 
 require "json"
+require "yaml"
 require "tmpdir"
 require "fileutils"
 require "open3"
 
 GATE = File.join(__dir__, "check-fixture-execution.rb")
 RUNNERS = %w[go kotlin python ruby swift typescript].freeze
-ROSTER_LABELS = { "go" => "Go", "kotlin" => "Kotlin", "python" => "Python",
-                  "ruby" => "Ruby", "swift" => "Swift", "typescript" => "TypeScript" }.freeze
+ROSTER_FILE = "spec/zero-skip-roster.yml"
 
 failures = []
 
@@ -36,35 +36,59 @@ def default_manifests
   end
 end
 
-# A SPEC roster that agrees with whatever the manifests say, so roster drift is
-# only ever exercised by a case that asks for it.
-def default_spec(manifests)
-  labels = ROSTER_LABELS
-  body = RUNNERS.map do |runner|
-    lines = ["**#{labels.fetch(runner)}** (`x`):"]
+# A roster that agrees with whatever the manifests say, so roster drift is only
+# ever exercised by a case that asks for it. Built as a Ruby structure and
+# dumped, so a case that wants to break the roster breaks one field rather than
+# hand-editing YAML text — and a case that wants to break the SYNTAX passes a
+# raw string instead (see `roster_text:`).
+def default_roster(manifests)
+  runners = RUNNERS.to_h do |runner|
     # Defensive: some cases replace a manifest with a non-Hash or nil on
     # purpose, and this helper only exists to keep the roster in step with the
     # ones that are real.
     entry = manifests[runner]
     excluded = entry.is_a?(Hash) ? (entry["excluded"] || []) : []
-    excluded.each do |e|
-      lines << %(- "#{e['name']}" — because.)
-    end
-    lines.join("\n")
-  end.join("\n\n")
+    [runner, {
+      "source" => "`runner.x` `SKIPS`",
+      "note" => "a note, which an empty section needs",
+      "skips" => excluded.map { |e| { "case" => e["name"], "reason" => "because." } },
+    }]
+  end
+  { "runners" => runners }
+end
 
-  "# Spec\n\n<!-- zero-skip-roster:begin -->\n#{body}\n<!-- zero-skip-roster:end -->\n"
+# A valid roster in which nobody skips anything — the starting point for every
+# case that wants a specific disagreement. Rebuilt on each call, because the
+# cases mutate what they are handed.
+def roster_without_skips
+  default_roster(default_manifests)
+end
+
+# ...with one runner's skips replaced wholesale.
+def roster_with(**by_runner)
+  doc = roster_without_skips
+  by_runner.each { |runner, skips| doc["runners"].fetch(runner.to_s)["skips"] = skips }
+  doc
 end
 
 # Materialise the manifests (after `mutate` has had a chance to break one) and
 # run the gate against them.
-def gate(mutate = nil, partial: false, spec: nil)
+#
+# `roster:` replaces the roster STRUCTURE (a Hash, dumped to YAML, or nil to
+# write no file at all); `roster_text:` replaces the file's bytes outright, for
+# the cases about YAML the loader cannot parse.
+def gate(mutate = nil, partial: false, roster: :default, roster_text: nil)
   manifests = default_manifests
   mutate&.call(manifests)
 
   Dir.mktmpdir do |dir|
     FileUtils.mkdir_p(File.join(dir, "conformance", "manifests"))
-    File.write(File.join(dir, "SPEC.md"), spec || default_spec(manifests))
+    FileUtils.mkdir_p(File.join(dir, "spec"))
+
+    doc = roster == :default ? default_roster(manifests) : roster
+    body = roster_text || (doc.nil? ? nil : YAML.dump(doc))
+    File.write(File.join(dir, ROSTER_FILE), body) unless body.nil?
+
     manifests.each do |runner, body|
       next if body.nil? # a nil entry means "this runner did not report"
 
@@ -231,117 +255,183 @@ out, status = gate lambda { |m|
 expect_fail(failures, "an exclusion without its fixture file", out, status, "missing required key")
 
 # One case excluded twice by one runner: its own integrity count would still add
-# up while the comparison saw a single entry.
-out, status = gate lambda { |m|
+# up while the comparison saw a single entry. The roster is handed the case ONCE
+# — a roster built from this manifest would carry the duplicate too, and fail in
+# the loader for a different reason than the one this case is about.
+out, status = gate(lambda { |m|
   2.times { m["go"]["excluded"] << { "file" => "alpha.json", "name" => "dup", "reason" => "x" } }
   m["go"]["executed"] -= 2
-}
+}, roster: roster_with(go: [{ "case" => "dup", "reason" => "x." }]))
 expect_fail(failures, "one case excluded twice in one manifest", out, status, "is excluded twice")
 
-# --- SPEC roster set-equality (#736) -----------------------------------------
+# --- roster set-equality (#736) ----------------------------------------------
+#
+# The roster is spec/zero-skip-roster.yml. It used to be SPEC.md's prose, read
+# back out by a parser, and the cases below used to craft Markdown: a bullet with
+# an unrecognised marker, a blockquoted entry, a second roster block, a claim
+# riding a heading. Each of those was a bypass found after the fact, and each fix
+# was one more selector.
+#
+# They are gone because the class is gone, not because it was ruled out of
+# scope. A stale entry now has to be an entry — a `case:` under a runner — and
+# whatever it is spelled with, it is compared to the manifest byte for byte. The
+# spelling cases that remain are here as evidence of exactly that (see "the old
+# bypasses are just strings now", below).
+#
+# What SPEC's block says is checked by `make doc-constants-check`, which renders
+# it from this file and requires byte equality. Nothing here reads SPEC.md at
+# all.
 
 # A runner skip the roster does not list. This is the drift that was ALREADY in
 # SPEC when the check was written: Kotlin and Swift excluded the link-header
 # case via their tag branch while the roster described it in prose.
 out, status = gate(lambda { |m| exclude(m, "unlisted skip", ["ruby"]) },
-                   spec: "<!-- zero-skip-roster:begin -->\n" +
-                         RUNNERS.map { |r| "**#{ ROSTER_LABELS.fetch(r) }** (`x`):" }.join("\n\n") +
-                         "\n<!-- zero-skip-roster:end -->\n")
+                   roster: roster_without_skips)
 expect_fail(failures, "a runner skip missing from the roster", out, status,
-            "the SPEC roster does not list it")
+            "does not list it")
 
-# The opposite drift: a roster line for a skip that has been closed. "A PR that
-# closes a gap deletes exactly its own lines" is the roster's own rule, and it
+# The opposite drift: an entry for a skip that has been closed. "A PR that
+# closes a gap deletes exactly its own entry" is the roster's own rule, and it
 # was enforced by nothing.
-out, status = gate(nil,
-                   spec: "<!-- zero-skip-roster:begin -->\n" +
-                         RUNNERS.map { |r|
-                           head = "**#{ ROSTER_LABELS.fetch(r) }** (`x`):"
-                           r == "go" ? "#{head}\n- \"a closed gap\" — stale." : head
-                         }.join("\n\n") +
-                         "\n<!-- zero-skip-roster:end -->\n")
-expect_fail(failures, "a roster line for a skip that no longer exists", out, status,
+out, status = gate(nil, roster: roster_with(go: [{ "case" => "a closed gap", "reason" => "stale." }]))
+expect_fail(failures, "a roster entry for a skip that no longer exists", out, status,
             "which no longer excludes it")
 
-# A runner with no heading contributes nothing, so its skips would go unchecked.
-out, status = gate(nil, spec: "<!-- zero-skip-roster:begin -->\n**Go** (`x`):\n<!-- zero-skip-roster:end -->\n")
-expect_fail(failures, "a runner with no roster section", out, status, "has no section for")
+# A runner with no section contributes nothing, so its skips would go unchecked.
+# An absent key and an empty list are not the same statement, and only one of
+# them was written on purpose.
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  doc["runners"].delete("go")
+  doc
+end)
+expect_fail(failures, "a runner with no roster section", out, status, "no section for go")
 
-# No roster at all must not read as "the roster agrees".
-out, status = gate(nil, spec: "# Spec\n\nNo roster here.\n")
-expect_fail(failures, "SPEC with no roster block", out, status, "holds no")
+# No roster file at all must not read as "the roster agrees".
+out, status = gate(nil, roster: nil)
+expect_fail(failures, "no roster file", out, status, "is missing")
 
-# A bullet the extractor cannot read is a name missing from the roster set —
-# loud, never a silent pass. This is the property that makes the parser
-# acceptable at all.
-out, status = gate(nil,
-                   spec: "<!-- zero-skip-roster:begin -->\n**Go** (`x`):\n- unquoted case name\n" +
-                         (RUNNERS - ["go"]).map { |r| "**#{ ROSTER_LABELS.fetch(r) }** (`x`):" }.join("\n\n") +
-                         "\n<!-- zero-skip-roster:end -->\n")
-expect_fail(failures, "a roster bullet without a quoted name", out, status,
-            "list-shaped but not a canonical bullet")
+# An EMPTY roster is the vacuity case: both sides empty must not be a pass.
+# Every runner is required, so an empty `runners` map fails as six missing
+# sections rather than as agreement with six empty manifests.
+out, status = gate(nil, roster: { "runners" => {} })
+expect_fail(failures, "an empty roster is not agreement", out, status, "no section for")
+
+# ...including a file that parses to nothing at all.
+out, status = gate(nil, roster_text: "\n")
+expect_fail(failures, "a roster that parses to nothing", out, status, "expected a mapping")
+
+# YAML the loader cannot parse is not a roster that lists nothing. It has to
+# fail, not fall back to an empty set that agrees with clean manifests.
+out, status = gate(nil, roster_text: "runners:\n  go:\n   - [oops\n")
+expect_fail(failures, "a roster that is not valid YAML", out, status, "not valid YAML")
+
+# A section for a runner nothing compares is dead weight that reads as coverage.
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  # A DEEP copy: dumping one object twice emits a YAML alias — and a shallow
+  # `dup` still shares the `skips` array, which is enough to emit one. This case
+  # would then be pinning the alias refusal below instead of the unknown-runner
+  # rule.
+  doc["runners"]["haskell"] = Marshal.load(Marshal.dump(doc["runners"]["go"]))
+  doc
+end)
+expect_fail(failures, "a roster section for an unknown runner", out, status, "unknown runner")
+
+# Anchors and aliases are refused rather than resolved: two sections sharing one
+# anchor edit as one and read as two. Left to Psych they raise a class that is
+# not a syntax error, so an unguarded loader exits with a backtrace naming the
+# loader rather than a message naming the file.
+out, status = gate(nil, roster_text: <<~YAML)
+  runners:
+    go: &section
+      source: "`x`"
+      note: "a note"
+      skips: []
+    kotlin: *section
+YAML
+expect_fail(failures, "a roster using a YAML alias", out, status, "aliases are refused")
+
+# An absent `skips` key reads as "skips nothing" to any comparison, which is a
+# stale roster that passes. Refused, so the empty case has to be written down.
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  doc["runners"]["go"].delete("skips")
+  doc
+end)
+expect_fail(failures, "a section with no skips key", out, status, "has no `skips` key")
+
+# "None" with no reason is indistinguishable from a section somebody forgot to
+# fill in — which is the state Python's section would be in if its note were
+# dropped, and the note is the whole content of that section.
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  doc["runners"]["go"].delete("note")
+  doc
+end)
+expect_fail(failures, "an empty section that says nothing", out, status, "says nothing")
+
+# A misspelled key contributes nothing and looks like a filled-in section.
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  doc["runners"]["go"]["skip"] = doc["runners"]["go"].delete("skips")
+  doc
+end)
+expect_fail(failures, "a section with a misspelled key", out, status, "unknown key(s)")
+
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  doc["runners"]["go"]["skips"] = "not a list"
+  doc
+end)
+expect_fail(failures, "skips that is not a list", out, status, "not a list")
+
+out, status = gate(lambda { |m| exclude(m, "nameless", ["go"]) }, roster: begin
+  roster_with(go: [{ "reason" => "no case key." }])
+end)
+expect_fail(failures, "a skip entry with no case name", out, status, "`case` is required")
+
+# One case listed twice under a runner. Array#- removes every matching
+# occurrence, so both diffs come back empty and the duplicate passes — carrying
+# two possibly conflicting reasons for one case.
+out, status = gate(lambda { |m| exclude(m, "listed twice", ["go"]) },
+                   roster: roster_with(go: [{ "case" => "listed twice", "reason" => "a." },
+                                            { "case" => "listed twice", "reason" => "b." }]))
+expect_fail(failures, "one case listed twice under a runner", out, status, "more than once")
 
 # Roster drift must be caught in PARTIAL mode too. The normal Linux `make
 # check` path always passes --partial (Swift's manifest is macOS-only), so a
 # roster check that ran only in full mode never ran locally at all — a stale Go
-# or Ruby line would reach CI untouched. Partial input relaxes the all-six
+# or Ruby entry would reach CI untouched. Partial input relaxes the all-six
 # overlap verdict and nothing else.
 out, status = gate(lambda { |m|
   exclude(m, "unlisted skip", ["ruby"])
   m["swift"] = nil
-}, partial: true,
-   spec: "<!-- zero-skip-roster:begin -->\n" +
-         RUNNERS.map { |r| "**#{ROSTER_LABELS.fetch(r)}** (`x`):" }.join("\n\n") +
-         "\n<!-- zero-skip-roster:end -->\n")
-expect_fail(failures, "roster drift is caught in partial mode", out, status,
-            "the SPEC roster does not list it")
+}, partial: true, roster: roster_without_skips)
+expect_fail(failures, "roster drift is caught in partial mode", out, status, "does not list it")
 
-# A SECOND complete roster block is not compared, so a stale line inside it
-# would pass unnoticed — a silent pass, the one failure mode this extractor is
-# not allowed to have.
-one_block = RUNNERS.map { |r| "**#{ROSTER_LABELS.fetch(r)}** (`x`):" }.join("\n\n")
-out, status = gate(nil,
-                   spec: "<!-- zero-skip-roster:begin -->\n#{one_block}\n<!-- zero-skip-roster:end -->\n" \
-                         "\n<!-- zero-skip-roster:begin -->\n#{one_block}\n<!-- zero-skip-roster:end -->\n")
-expect_fail(failures, "two roster blocks in SPEC", out, status, "exactly one")
-
-# One case listed twice under a runner. Array#- removes every matching
-# occurrence, so both diffs come back empty and the duplicate passes — carrying
-# two possibly conflicting classifications for one case.
-out, status = gate(lambda { |m| exclude(m, "listed twice", ["go"]) },
-                   spec: "<!-- zero-skip-roster:begin -->\n" +
-                         RUNNERS.map { |r|
-                           head = "**#{ROSTER_LABELS.fetch(r)}** (`x`):"
-                           r == "go" ? "#{head}\n- \"listed twice\" — a.\n- \"listed twice\" — b." : head
-                         }.join("\n\n") +
-                         "\n<!-- zero-skip-roster:end -->\n")
-expect_fail(failures, "one case listed twice under a runner", out, status, "twice under go")
-
-# Two sections for one runner splits its lines, so neither reads as the whole
-# set and the contract is broken before any comparison runs.
-out, status = gate(nil,
-                   spec: "<!-- zero-skip-roster:begin -->\n" +
-                         (RUNNERS.map { |r| "**#{ROSTER_LABELS.fetch(r)}** (`x`):" } +
-                          ["**Go** (`x`):"]).join("\n\n") +
-                         "\n<!-- zero-skip-roster:end -->\n")
-expect_fail(failures, "two roster sections for one runner", out, status, "more than one section")
-
-# A STALE entry written with any non-canonical list marker. `start_with?("- ")`
-# skipped these, so the entry never entered the roster set, never contradicted a
-# manifest, and the gate passed — a false green, the one outcome this extractor
-# may not produce. Fixed by inverting the default: list-shaped means canonical
-# or error, which closes every spelling at once rather than one at a time.
-["  - \"indented stale\" — x.", "* \"asterisk stale\" — x.",
- "+ \"plus stale\" — x.", "1. \"ordered stale\" — x."].each do |bullet|
-  out, status = gate(nil,
-                     spec: "<!-- zero-skip-roster:begin -->\n" +
-                           RUNNERS.map { |r|
-                             head = "**#{ROSTER_LABELS.fetch(r)}** (`x`):"
-                             r == "go" ? "#{head}\n#{bullet}" : head
-                           }.join("\n\n") +
-                           "\n<!-- zero-skip-roster:end -->\n")
-  expect_fail(failures, "stale roster entry as #{bullet.strip[0, 12]}", out, status,
-              "list-shaped but not a canonical bullet")
+# --- the old bypasses are just strings now -----------------------------------
+#
+# Five times, a stale entry hid from the prose reader by being spelled in a way
+# the reader did not recognise: a `*` marker instead of `- `, a blockquote, a
+# table row, an HTML comment, curly quotes or backticks around the name (the
+# quote test was ASCII-only), and a second quoted name riding an otherwise
+# canonical bullet — which the live Kotlin entry actually carries, in its
+# `yields "no response"`. Each was invisible to the comparison, so it never
+# contradicted a manifest and the gate passed.
+#
+# None of those is a shape any more. A roster entry is a `case:` string, and the
+# comparison is byte-exact, so every spelling below is a stale entry the gate
+# reports rather than skips. This case is the evidence for that claim: it is the
+# same five payloads, and they all fail.
+["“curly quoted stale”",
+ "`backticked stale`",
+ "> - \"blockquoted stale\" — x.",
+ "| Go | \"table-row stale\" | x |",
+ "real name\" — also supersedes \"stale ghost"].each do |name|
+  out, status = gate(nil, roster: roster_with(go: [{ "case" => name, "reason" => "stale." }]))
+  expect_fail(failures, "a stale entry spelled #{name[0, 24].inspect}", out, status,
+              "which no longer excludes it")
 end
 
 # --- report ------------------------------------------------------------------
