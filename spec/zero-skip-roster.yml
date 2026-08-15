@@ -41,6 +41,11 @@
 # replaced a parser to retire, and it is checked against the parsed document
 # rather than the loaded Hash, which no longer knows the duplicate happened.
 #
+# For the same reason this file is ONE YAML document. Everything after a second
+# `---` is dropped on load, so a second roster written there would be a complete
+# claim nothing ever reads — which is precisely how the prose reader used to
+# ignore a second roster block.
+#
 #   source          Required. The runner file and skip constant, rendered
 #                   verbatim inside the parentheses of the heading. Kotlin's and
 #                   Swift's carry a clause rather than a constant name, because

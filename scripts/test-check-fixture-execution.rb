@@ -403,6 +403,18 @@ out, status = gate(lambda { |m| exclude(m, "the case that wins", ["go"]) },
 expect_fail(failures, "a skip entry field written twice", out, status,
             "`runners.go.skips[0].case` is written more than once")
 
+# A second YAML DOCUMENT, which is the duplicate one level out and is breach 2
+# of the old reader — "a second complete roster block silently ignored" —
+# reproduced in the file format. `safe_load` returns the first document and
+# drops the rest without a word. The first document here is the one that agrees
+# with the manifests, so with the guard removed this passes green while a whole
+# second roster sits in the file unread.
+out, status = gate(nil, roster_text: "#{raw_roster}---\n#{raw_roster(
+  go: %(    source: "`x`"\n    note: "a note"\n    skips:\n) +
+      %(      - case: "an unread second roster"\n        reason: "never compared."\n)
+)}")
+expect_fail(failures, "a second YAML document", out, status, "holds 2 YAML documents")
+
 # An absent `skips` key reads as "skips nothing" to any comparison, which is a
 # stale roster that passes. Refused, so the empty case has to be written down.
 out, status = gate(nil, roster: begin

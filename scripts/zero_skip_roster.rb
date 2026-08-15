@@ -107,10 +107,20 @@ module ZeroSkipRoster
       # the parser: the discarded entry would sit in the source of truth,
       # render nowhere, compare against nothing, and still read to a human as
       # rostered.
+      #
+      # A second YAML DOCUMENT is the same defect one level out, and it is
+      # breach 2 of the old reader — "a second complete roster block silently
+      # ignored" — reproduced exactly: `safe_load` returns the first document
+      # and discards the rest without a word, so a roster appended after a `---`
+      # would render nowhere and be compared against nothing. Found by asking
+      # what else could be written into this file and go unread, which is the
+      # question the prose reader was never asked five times running.
       text = File.read(path, encoding: "UTF-8")
 
       doc = begin
-        reject_duplicate_keys(Psych.parse(text, filename: RELATIVE_PATH), "")
+        stream = Psych.parse_stream(text, filename: RELATIVE_PATH)
+        reject_extra_documents(stream)
+        reject_duplicate_keys(stream, "")
         YAML.safe_load(text, filename: RELATIVE_PATH)
       rescue Psych::Exception => e
         raise Malformed, "#{RELATIVE_PATH} is not valid YAML, or uses YAML this loader refuses " \
@@ -180,6 +190,23 @@ module ZeroSkipRoster
     end
 
     private
+
+    # One document, or none. `safe_load` reads the FIRST and drops the rest in
+    # silence, so a second roster after a `---` is a second complete claim
+    # nothing reads — the old reader's duplicate-block breach, in a file format
+    # instead of in prose.
+    #
+    # ZERO documents is deliberately allowed through rather than caught here: an
+    # empty file has nothing hidden in it, and the top-level mapping rule below
+    # already names it exactly ("expected a mapping at the top level, got null").
+    # Two errors for one input would just be the less specific one winning.
+    def reject_extra_documents(stream)
+      return if stream.children.length <= 1
+
+      raise Malformed, "#{RELATIVE_PATH} holds #{stream.children.length} YAML documents; a roster " \
+                       "is one. Everything after the first `---` is dropped on load, so a second " \
+                       "roster written here would render nowhere and be compared against nothing."
+    end
 
     # Refuses a repeated mapping key anywhere in the document, reading the
     # PARSER'S OWN structure rather than the text. A regex over the raw YAML
