@@ -372,10 +372,29 @@ end
 
 # Both accessor files, REQUIRED TO AGREE.
 #
-# They are two generators' independent renderings of one source, so a
-# disagreement is a generator bug and a finding in its own right — never a
+# A disagreement is a generator bug and a finding in its own right — never a
 # tiebreak to settle by preferring one file. Taking either alone would let a
 # generator that dropped a service certify a roster that dropped it too.
+#
+# WHAT AGREEMENT DOES NOT BUY, because the obvious reading overclaims it and I
+# made that mistake here first. These are not two renderings of ONE source: the
+# Kotlin and Swift generators carry their own hand-maintained split tables
+# (kotlin/generator/.../Config.kt, swift's ServiceGrouper) — two of the five
+# copies noted above. So agreement is agreement between two independent
+# transcriptions, not confirmation against a root. A service added to the
+# TypeScript, Ruby and Python tables but omitted from BOTH of these two leaves
+# them agreeing, and this gate certifies the old roster and the old count.
+#
+# That residue is real and is NOT closed here. The instrument that would close
+# it is comparing the GENERATED service inventories of all five SDKs — which is
+# not the sixth hand-copy rejected above, since it reads generator OUTPUT rather
+# than reimplementing the mapping. Verified viable: the TypeScript, Ruby and
+# Python generated service sets already agree exactly with these 53 today, once
+# each SDK's index/base files and Python's `_service` filename suffix are
+# accounted for. It is left to its own change because that normalization is four
+# per-SDK spelling rules, and bolting them onto the gate whose own argument is
+# "stop accreting spellings" is the wrong place to introduce them. Codex raised
+# this on #745; tracked as the cross-generator comparison follow-up.
 #
 # Failures here are exit 2, not exit 1: a broken source of truth is not
 # documentation drift, and "the roster disagrees with a file that is itself
