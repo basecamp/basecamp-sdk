@@ -1,0 +1,30 @@
+scripts/zero_skip_roster.rb
+  s_33e9d583af84b1::t_36d3589b8ae29c 399-416
+scripts/test-check-fixture-execution.rb
+  s_33e9d583af84b1::t_5c6873880f58d0 514-515,529-537
+  s_33e9d583af84b1::t_eb4d22d235303d 519-520
+  s_33e9d583af84b1::t_acd53f497bd1ce 509-513,516-518,526
+  s_33e9d583af84b1::t_d6886e79adc226 538
+scripts/test-doc-constants.rb
+  s_33e9d583af84b1::t_aba78e5ffaa199 1232-1239,1245-1264,1271
+  s_33e9d583af84b1::t_9a5481d887ba7b 1265-1270
+  s_33e9d583af84b1::t_f4dff10cdb364e 1272-1273
+scripts/sync-doc-constants.rb
+  s_33e9d583af84b1::t_84827e1c85b8ad 1241-1260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "339ac9b36cde2906e5c58e2c07a99f3719a8b85c",
+  "prompts": {},
+  "sessions": {
+    "s_33e9d583af84b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37dfa9a1-4709-4a0e-ba6e-2e227fd441ca",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
