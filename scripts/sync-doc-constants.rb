@@ -435,8 +435,9 @@ def account_scoped_services
           "(#{KOTLIN_ACCESSORS}: #{kotlin.length}, #{SWIFT_ACCESSORS}: #{swift.length}). " \
           "Only in Kotlin: #{only_kotlin.empty? ? '(none)' : only_kotlin.join(', ')}. " \
           "Only in Swift: #{only_swift.empty? ? '(none)' : only_swift.join(', ')}. " \
-          "They are generated from one source, so this is a generator bug — fix it before any " \
-          "roster can be checked against either."
+          "Each is generated from its own generator's split table, so a disagreement means at " \
+          "least one of those tables is wrong — fix it before any roster can be checked against " \
+          "either."
   end
 
   kotlin.sort
