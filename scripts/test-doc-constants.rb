@@ -285,8 +285,9 @@ def gate(mutate = nil, openapi_version: API_VER, openapi_paths: SOURCE_PATHS)
   run_gate(mutate: mutate, openapi_version: openapi_version, openapi_paths: openapi_paths)
 end
 
-def writer(mutate = nil, &inspect_result)
-  run_gate(mode: "--write", mutate: mutate, inspect_result: inspect_result)
+def writer(mutate = nil, openapi_paths: SOURCE_PATHS, &inspect_result)
+  run_gate(mode: "--write", mutate: mutate, inspect_result: inspect_result,
+           openapi_paths: openapi_paths)
 end
 
 def read_in(dir, rel)
@@ -1292,6 +1293,24 @@ writer lambda { |f|
   written = read_in(dir, "SPEC.md")
   if written.scan("<!-- @zero-skip-roster:end -->").length != 1
     failures << "writer: emitted a document with an injected marker:\n#{written}"
+  end
+end
+
+# The same class again, one deferred input over: `op_count` was resolved inside
+# `rewrite_line`, so an OpenAPI document the count cannot be derived from raised
+# in the middle of the write loop — after COORDINATION.md, earlier in scan
+# order, had already been rewritten by the repin. Third report of one defect,
+# which is why the fix is a single place where every deferred input is resolved
+# and a `rewrite_line` that takes values rather than thunks.
+writer(lambda { |f| repin_to.call("a" * 40, "2026-12-12").call(f) },
+       openapi_paths: nil) do |out, status, dir|
+  if status.success?
+    failures << "writer: an underivable operation count must be fatal, got exit 0:\n#{out}"
+  end
+  coordination = read_in(dir, "COORDINATION.md")
+  unless coordination.include?("`#{SHORT}`")
+    failures << "writer: a file earlier in scan order was rewritten before the operation " \
+                "count failed to derive:\n#{coordination}"
   end
 end
 

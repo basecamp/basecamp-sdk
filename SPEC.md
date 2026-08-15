@@ -2219,8 +2219,10 @@ absence case, and is what proves it can say no.
 
 The roster below is GENERATED. Its source is `spec/zero-skip-roster.yml`; `make
 doc-constants-check` renders that file and requires the block between the
-markers to match byte for byte, and `make sync-api-version` rewrites it. Editing
-the block by hand is an edit the next `make` reverts. It used to be the other
+markers to match byte for byte, and `make sync-api-version` rewrites it. A hand
+edit to the block is REJECTED rather than repaired: `make` runs `check`, which
+reports the drift and stops; `make sync-api-version` is the only thing that
+rewrites the block, and it rewrites it from the YAML. It used to be the other
 way round — the roster lived here and a parser read it back out — until that
 reader's "a misreading always surfaces as a mismatch" invariant had been
 breached five times, each fix a new selector for a new spelling. Prose is an

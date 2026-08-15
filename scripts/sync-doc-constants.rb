@@ -1123,6 +1123,12 @@ end
 
 # --- writer ------------------------------------------------------------------
 
+# Every argument here is a VALUE, never a thunk, and that is load-bearing rather
+# than stylistic: this runs inside the write loop, so anything that computes
+# lazily here can raise after earlier files are already on disk. Passing
+# resolved values makes "the loop cannot raise for a reason we have not already
+# found" a property of the signature instead of a discipline someone has to
+# remember at the next call site.
 def rewrite_line(kind, line, api_version:, revision:, date:, operation_count_value:)
   case kind
   when "api-version"
@@ -1131,7 +1137,7 @@ def rewrite_line(kind, line, api_version:, revision:, date:, operation_count_val
     # Refuse an ambiguous span instead of rewriting every integer on it. Left
     # untouched, it fails the next --check with a message naming the problem;
     # rewritten, it would be silently corrupt and then pass.
-    sole_ticked_int(line) ? line.sub(TICKED_INT_RE, "`#{operation_count_value.call}`") : line
+    sole_ticked_int(line) ? line.sub(TICKED_INT_RE, "`#{operation_count_value}`") : line
   when "bc3-pin"
     # Preserve the abbreviation length the prose already chose.
     line
@@ -1269,8 +1275,8 @@ def run(mode, openapi)
       return 1
     end
 
-    # ...and every writable block body is RENDERED HERE, before any file is
-    # opened, for exactly the same reason one paragraph up.
+    # ...and EVERY DEFERRED INPUT THE WRITE LOOP CAN DEMAND is resolved here,
+    # before any file is opened, for exactly the same reason one paragraph up.
     #
     # This is the hole the structural preflight above did NOT close, and it is
     # worth naming rather than quietly fixing: the bodies were lambdas called
@@ -1285,11 +1291,22 @@ def run(mode, openapi)
     # write loop cannot raise for a reason it has not already discovered, so
     # "aborted" and "nothing written" mean the same thing again.
     #
-    # Only the kinds actually MARKED are forced. A repo whose SPEC carries no
-    # roster marker must not be made to load the roster file, which is what
-    # keeps this gate's own crafted fixtures minimal.
+    # Only what is actually MARKED is forced. A repo whose SPEC carries no roster
+    # marker must not be made to load the roster file, and one with no
+    # @operation-count span must not be made to count operations in an OpenAPI
+    # document it never makes a claim about — which is what keeps this gate's own
+    # crafted fixtures minimal.
+    #
+    # This is the third report of one defect, which is why it is written as a
+    # place rather than as two fixes. The block bodies were the reported
+    # instance; `op_count` was the next one, raising from inside `rewrite_line`
+    # after an earlier stale file had been written. A fourth deferred input would
+    # have gone the same way, so it now has an obvious home, and `rewrite_line`
+    # takes values rather than thunks so the loop cannot reach a computation at
+    # all.
     marked_writable_blocks = spans.select(&:block).map(&:kind).uniq & WRITABLE_BLOCK_KINDS
     rendered_blocks = marked_writable_blocks.to_h { |kind| [kind, block_bodies.fetch(kind).call] }
+    op_count_value = op_count.call if spans.any? { |s| s.kind == "operation-count" }
 
     written = []
     declined = []
@@ -1308,7 +1325,7 @@ def run(mode, openapi)
         newline = lines[index].end_with?("\n") ? "\n" : ""
         lines[index] = rewrite_line(span.kind, body,
                                     api_version: api_version, revision: revision, date: date,
-                                    operation_count_value: op_count) + newline
+                                    operation_count_value: op_count_value) + newline
       end
 
       # Blocks are spliced LAST and from the bottom up. A rendered block rarely
