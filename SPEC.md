@@ -2153,7 +2153,8 @@ verbatim from the runners' skip mechanisms. A skip is
 either **waiver-backed** (a `rubric-audit.json` waiver ID), **architectural**
 (runner mechanics, compensated by native tests), or **unwaivered** (a known gap
 with no rubric record — tracked work, not an accepted divergence). A PR that
-closes a gap deletes exactly its own lines.
+closes a gap deletes exactly its own entry from `spec/zero-skip-roster.yml`,
+which is where the roster is written; the block below is rendered from it.
 
 One fixture, "List operation returns first page with Link header"
 (`conformance/tests/pagination.json`, tagged `link-header`), is handled by a
@@ -2216,12 +2217,23 @@ arrival and a live run only proves it can say yes;
 `scripts/test-check-fixture-execution.rb` crafts the all-six state and every
 absence case, and is what proves it can say no.
 
-The roster below is HALF checked, and the split is the point. Its ENUMERATION —
+The roster below is GENERATED. Its source is `spec/zero-skip-roster.yml`; `make
+doc-constants-check` renders that file and requires the block between the
+markers to match byte for byte, and `make sync-api-version` rewrites it. A hand
+edit to the block is REJECTED rather than repaired: `make` runs `check`, which
+reports the drift and stops; `make sync-api-version` is the only thing that
+rewrites the block, and it rewrites it from the YAML. It used to be the other
+way round — the roster lived here and a parser read it back out — until that
+reader's "a misreading always surfaces as a mismatch" invariant had been
+breached five times, each fix a new selector for a new spelling. Prose is an
+output now, so there is nothing left to misread.
+
+The roster is still HALF checked, and the split is the point. Its ENUMERATION —
 which runner skips which case — is compared for set equality against the
 execution manifests by `make check-fixture-execution` (#736), so a skip added to
-a runner without a line here, or a line left behind after a gap closes, fails
-the build. Its CLASSIFICATION and reasoning are judgement, and nothing asserts
-them; that is why the section keeps its `[manual]` tag.
+a runner without an entry in the YAML, or an entry left behind after a gap
+closes, fails the build. Its CLASSIFICATION and reasoning are judgement, and
+nothing asserts them; that is why the section keeps its `[manual]` tag.
 
 The check found this roster already wrong on arrival: Kotlin and Swift each
 exclude the `link-header` case wholesale through their tag branch, and the
@@ -2233,15 +2245,12 @@ parsing their source: a source parser cannot see a tag branch, a derived table,
 or a case the loader dropped, which is why the enumeration waited for the
 manifests rather than being checked on its own.
 
-<!-- zero-skip-roster:begin -->
-**Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin
-logic is covered by `TestIsSameOrigin` unit tests:
+<!-- @zero-skip-roster:begin -->
+**Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin logic is covered by `TestIsSameOrigin` unit tests:
 - "Mixed-case host and explicit default port stay on the mocked origin" — Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply.
 - "Bracketed IPv6 loopback origin stays on the mocked origin" — same as above.
 
-**Python** (`conformance/runner/python/runner.py` `SKIPS`) — none. The
-`link-header` fixture above runs; only its `requestCount` assertion is
-suppressed.
+**Python** (`conformance/runner/python/runner.py` `SKIPS`) — none; the `link-header` fixture above runs; only its `requestCount` assertion is suppressed.
 
 **Ruby** (`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`):
 - "PUT operation is naturally idempotent" — GET-only retry (waiver 2B.3).
@@ -2259,15 +2268,13 @@ suppressed.
 **TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
 - "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
 
-**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` is empty; the
-entry below comes from the `link-header` tag branch) — architectural:
+**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` is empty; the entry below comes from the `link-header` tag branch) — architectural:
 - "List operation returns first page with Link header" — the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields "no response" (see the tag-branch discussion above).
 
-**Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is
-empty; the entry below comes from the `link-header` tag branch) — architectural:
+**Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is empty; the entry below comes from the `link-header` tag branch) — architectural:
 - "List operation returns first page with Link header" — same as Kotlin: auto-pagination plus a last-consumed-response status model.
 
-<!-- zero-skip-roster:end -->
+<!-- @zero-skip-roster:end -->
 
 Swift carries no capability skips. It is three-gate on retry (status, network,
 idempotent POST) and, since #563, retries the authenticated download hop, so

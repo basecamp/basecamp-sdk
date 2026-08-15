@@ -23,6 +23,62 @@ require "open3"
 ROOT = File.expand_path("..", __dir__)
 GATE = File.join(__dir__, "sync-doc-constants.rb")
 
+# SPEC §19's Zero-Skip roster: the crafted source, and the block the gate must
+# render from it.
+#
+# The expected block is written out BY HAND rather than produced by requiring
+# ZeroSkipRoster and rendering with it. A positive control that computes what it
+# expects by calling the code under test is not a control — it would agree with
+# any rendering, including a broken one. Written out, a change to the renderer
+# fails here and someone has to decide it was meant.
+ZERO_SKIP_YAML = <<~YAML
+  runners:
+    go:
+      source: "`x`"
+      classification: architectural
+      note: "a note"
+      skips:
+        - case: "a skipped case"
+          reason: "a reason."
+    python:
+      source: "`x`"
+      note: "nothing to skip"
+      skips: []
+    ruby:
+      source: "`x`"
+      note: "nothing to skip"
+      skips: []
+    typescript:
+      source: "`x`"
+      note: "nothing to skip"
+      skips: []
+    kotlin:
+      source: "`x`"
+      note: "nothing to skip"
+      skips: []
+    swift:
+      source: "`x`"
+      note: "nothing to skip"
+      skips: []
+YAML
+
+ZERO_SKIP_LINES = [
+  "**Go** (`x`) — architectural; a note:",
+  %(- "a skipped case" — a reason.),
+  "",
+  "**Python** (`x`) — none; nothing to skip.",
+  "",
+  "**Ruby** (`x`) — none; nothing to skip.",
+  "",
+  "**TypeScript** (`x`) — none; nothing to skip.",
+  "",
+  "**Kotlin** (`x`) — none; nothing to skip.",
+  "",
+  "**Swift** (`x`) — none; nothing to skip.",
+  "",
+].freeze
+ZERO_SKIP_BLOCK = ZERO_SKIP_LINES.map { |line| "#{line}\n" }.join
+
 REVISION = "d0edc1283b231c58b7c88b014df5f8d231b1f7c8"
 SHORT    = REVISION[0, 8]
 PIN_DATE = "2026-07-31"
@@ -112,8 +168,10 @@ def default_files
         "operation-count" => { "SPEC.md" => 1 },
         "fixture-categories" => { "SPEC.md" => 1 },
         "fixture-section-map" => { "SPEC.md" => 1 },
+        "zero-skip-roster" => { "SPEC.md" => 1 },
       }
     ),
+    "spec/zero-skip-roster.yml" => ZERO_SKIP_YAML,
     # Two tracked conformance fixtures, which is the whole source of truth for
     # the two roster checks — their CONTENT is never read, only their tracked
     # filenames. `beta_write` earns its underscore: the category slug rule
@@ -158,6 +216,9 @@ def default_files
       | `alpha.json` | does a thing | §1 |
       | `beta_write.json` | does another thing | §2 |
       <!-- @fixture-section-map:end -->
+
+      <!-- @zero-skip-roster:begin -->
+      #{ZERO_SKIP_BLOCK}<!-- @zero-skip-roster:end -->
     MD
     "spec/api-gaps/entry.md" => <<~MD,
       # An entry
@@ -224,8 +285,9 @@ def gate(mutate = nil, openapi_version: API_VER, openapi_paths: SOURCE_PATHS)
   run_gate(mutate: mutate, openapi_version: openapi_version, openapi_paths: openapi_paths)
 end
 
-def writer(mutate = nil, &inspect_result)
-  run_gate(mode: "--write", mutate: mutate, inspect_result: inspect_result)
+def writer(mutate = nil, openapi_paths: SOURCE_PATHS, &inspect_result)
+  run_gate(mode: "--write", mutate: mutate, inspect_result: inspect_result,
+           openapi_paths: openapi_paths)
 end
 
 def read_in(dir, rel)
@@ -951,6 +1013,83 @@ expect_fail(failures, "nested block begin", out, status, "inside an unclosed")
 out, status = gate ->(f) { f["SPEC.md"] += "\n<!-- @assertion-types:end -->\n" }
 expect_fail(failures, ":end without :begin", out, status, ":end without a matching :begin")
 
+# A block marker sharing its line. The body is the lines strictly BETWEEN the
+# markers, so content on the marker line is rendered into the document and
+# compared against nothing — it survives --check and --write preserves it. Both
+# cases below are green with the rule removed, which is the point: neither
+# checker can see the smuggled line, because neither is ever handed it.
+#
+# Exercised on TWO kinds deliberately. The roster case is where review found it;
+# the table case is the evidence that the rule belongs to the span arithmetic
+# rather than to this PR's kind, since the set comparison misses a row riding
+# the marker exactly as the byte comparison misses a bullet.
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @zero-skip-roster:end -->",
+                                  %(- "a smuggled stale" — x. <!-- @zero-skip-roster:end -->))
+}
+expect_fail(failures, "content riding the roster's :end marker", out, status,
+            "@zero-skip-roster:end must be alone on its line")
+
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @fixture-categories:end -->",
+                                  "| ghost | `ghost.json` | §9 | <!-- @fixture-categories:end -->")
+}
+expect_fail(failures, "content riding a table block's :end marker", out, status,
+            "@fixture-categories:end must be alone on its line")
+
+# Four spaces makes the marker INDENTED CODE in CommonMark, so it is not an HTML
+# comment at all: it renders as visible literal text while the count still
+# matches and the body between the markers is still compared byte for byte —
+# SPEC quietly displaying the delimiters the convention promises are invisible.
+# Both markers are indented, so the block still pairs up and only the rendering
+# changes, which is what makes it a silent one.
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("<!-- @zero-skip-roster:begin -->", "    <!-- @zero-skip-roster:begin -->")
+                 .sub("<!-- @zero-skip-roster:end -->", "    <!-- @zero-skip-roster:end -->")
+}
+expect_fail(failures, "block markers indented into a code block", out, status,
+            "@zero-skip-roster:begin must be alone on its line")
+
+# Three spaces is still an HTML block, and must keep working: the rule bounds
+# the indentation rather than demanding column zero, and a rule that rejected
+# legal Markdown would be one nobody could satisfy from a nested list.
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"]
+                 .sub("<!-- @zero-skip-roster:begin -->", "   <!-- @zero-skip-roster:begin -->")
+                 .sub("<!-- @zero-skip-roster:end -->", "   <!-- @zero-skip-roster:end -->")
+}
+expect_pass(failures, "block markers indented three spaces are still markers", out, status)
+
+# ...and the :begin side, which has the same arithmetic and would need its own
+# rule if the check were written per-marker instead of per-line.
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @zero-skip-roster:begin -->",
+                                  %(<!-- @zero-skip-roster:begin --> - "a smuggled stale" — x.))
+}
+expect_fail(failures, "content riding the roster's :begin marker", out, status,
+            "@zero-skip-roster:begin must be alone on its line")
+
+# CRLF in a marked file. Spans are compared after chomping, and `chomp` eats
+# CRLF and LF alike, so a block converted to CRLF compares EQUAL to the
+# renderer's LF output: --check passes over a block that is not byte-for-byte
+# anything, and --write then rewrites the same lines and produces a diff. Check
+# green, generate dirty — the drift-gate failure mode, inside the gate.
+#
+# The whole block is converted, so every other rule still sees exactly what it
+# saw before and only the line endings differ. That is what makes it silent.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].gsub("\n", "\r\n") }
+expect_fail(failures, "a marked file with CRLF line endings", out, status,
+            "carries a CR line ending")
+
+# An unmarked file's line endings are nobody's business here, so the rule is
+# scoped to files that actually carry a span. Without that scope this would be a
+# repo-wide reformatting demand smuggled in by a roster change.
+out, status = gate lambda { |f|
+  f["spec/api-gaps/entry.md"] = f["spec/api-gaps/entry.md"].gsub("\n", "\r\n")
+}
+expect_pass(failures, "CRLF in a file with no marked span is not this gate's business", out, status)
+
 # --- marker inventory (exact counts) -------------------------------------------
 
 out, status = gate ->(f) { f["COORDINATION.md"] = f["COORDINATION.md"].sub(" <!-- @bc3-pin -->", "") }
@@ -1134,11 +1273,236 @@ writer lambda { |f|
   end
 end
 
+# A malformed roster discovered while WRITING must leave the checkout alone.
+# This is the hole the structural preflight did not close: the block bodies were
+# lambdas called inside the splice, so the load failed mid-loop — and files are
+# walked in scan order, so COORDINATION.md's stale pin had already been
+# rewritten by the time SPEC.md's block asked for a roster that would not load.
+# The repin is what makes that earlier file stale, and is the whole point of the
+# case: without it there is no earlier write to catch.
+writer lambda { |f|
+  repin_to.call("f" * 40, "2026-11-11").call(f)
+  f["spec/zero-skip-roster.yml"] = "runners:\n  go:\n   - [oops\n"
+} do |out, status, dir|
+  if status.success?
+    failures << "writer: a malformed roster must be fatal, got exit 0:\n#{out}"
+  end
+  coordination = read_in(dir, "COORDINATION.md")
+  unless coordination.include?("`#{SHORT}`")
+    failures << "writer: a file earlier in scan order was rewritten before the roster " \
+                "failed to load:\n#{coordination}"
+  end
+end
+
+# The writer must never EMIT a document the checker then refuses. A roster value
+# carrying a marker-shaped HTML comment used to render straight through: --write
+# spliced it in and exited 0, and the next --check reported a structurally
+# malformed SPEC the writer itself had built. Refused in the loader now, so the
+# run fails with the YAML named and the file untouched.
+#
+# Asserted on the FILE, not only on the exit code: "it failed" was already true
+# of the second invocation, and the point is that the first one wrote nothing.
+writer lambda { |f|
+  f["spec/zero-skip-roster.yml"] =
+    f["spec/zero-skip-roster.yml"].sub(%(note: "a note"),
+                                       %(note: "a note <!-- @zero-skip-roster:end -->"))
+} do |out, status, dir|
+  if status.success?
+    failures << "writer: a marker-shaped value must be fatal, got exit 0:\n#{out}"
+  end
+  written = read_in(dir, "SPEC.md")
+  if written.scan("<!-- @zero-skip-roster:end -->").length != 1
+    failures << "writer: emitted a document with an injected marker:\n#{written}"
+  end
+end
+
+# The same class again, one deferred input over: `op_count` was resolved inside
+# `rewrite_line`, so an OpenAPI document the count cannot be derived from raised
+# in the middle of the write loop — after COORDINATION.md, earlier in scan
+# order, had already been rewritten by the repin. Third report of one defect,
+# which is why the fix is a single place where every deferred input is resolved
+# and a `rewrite_line` that takes values rather than thunks.
+writer(lambda { |f| repin_to.call("a" * 40, "2026-12-12").call(f) },
+       openapi_paths: nil) do |out, status, dir|
+  if status.success?
+    failures << "writer: an underivable operation count must be fatal, got exit 0:\n#{out}"
+  end
+  coordination = read_in(dir, "COORDINATION.md")
+  unless coordination.include?("`#{SHORT}`")
+    failures << "writer: a file earlier in scan order was rewritten before the operation " \
+                "count failed to derive:\n#{coordination}"
+  end
+end
+
 # Structural marker damage IS fatal to the writer: it means a span it was
-# supposed to maintain was invisible to it.
-writer ->(f) { f["SPEC.md"] += "\nSomething. <!-- @nope -->\n" } do |out, status, _dir|
+# supposed to maintain was invisible to it. And it must be fatal BEFORE
+# anything is written — the check used to run after the write loop, so a file
+# with damaged markers was rewritten and then reported as unsyncable, which is
+# a message the code made false by writing first.
+#
+# The two assertions are separate on purpose: exiting non-zero was already true,
+# and leaving the file alone is the part that was not.
+writer ->(f) { f["SPEC.md"] += "\nSomething. <!-- @nope -->\n" } do |out, status, dir|
   if status.success?
     failures << "writer: malformed markers must be fatal, got exit 0:\n#{out}"
+  end
+end
+
+# The damage here is INSIDE a writable block's own markers, which is the case
+# that can scramble a file rather than merely fail it: a second complete roster
+# block makes the inventory wrong, and both spans would be spliced from offsets
+# the recorded error says not to trust. The stale block's text is the witness —
+# if the writer ran, it is gone.
+writer lambda { |f|
+  repin_to.call("e" * 40, "2026-10-10").call(f)
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @zero-skip-roster:end -->",
+                                  "<!-- @zero-skip-roster:end -->\n\n" \
+                                  "<!-- @zero-skip-roster:begin -->\n" \
+                                  "a second block nobody declared\n" \
+                                  "<!-- @zero-skip-roster:end -->")
+} do |out, status, dir|
+  if status.success?
+    failures << "writer: a duplicated writable block must be fatal, got exit 0:\n#{out}"
+  end
+  written = read_in(dir, "SPEC.md")
+  unless written.include?("a second block nobody declared")
+    failures << "writer: aborted run still rewrote the damaged block:\n#{written}"
+  end
+  # Line spans must be untouched too, in every file: the abort is before the
+  # whole write, not just before the splice. The repin above is what gives the
+  # writer work to do here, so this asserts it did none of it.
+  coordination = read_in(dir, "COORDINATION.md")
+  unless coordination.include?("`#{SHORT}`")
+    failures << "writer: aborted run still rewrote a line span:\n#{coordination}"
+  end
+end
+
+# --- @zero-skip-roster (SPEC §19's Zero-Skip roster) ---------------------------
+#
+# The first RENDERED block, and the first writable one. Everything below is one
+# claim: the text between the markers must be byte-identical to what
+# spec/zero-skip-roster.yml renders to. There is no parser, so there are no
+# shapes to enumerate — which is the whole reason this replaced a reader whose
+# "every misreading surfaces as a mismatch" invariant was breached five times.
+
+# A single character. Not a plausible edit on its own — it stands in for the
+# class the old reader kept missing by one spelling at a time: a straightened
+# quote, a hyphen for an em dash, a trailing space. All of them are this case.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("a reason.", "a reason!") }
+expect_fail(failures, "SPEC block drifts from the YAML by one character", out, status,
+            "does not match spec/zero-skip-roster.yml")
+
+# The same drift from the other side, which is the one that actually happens: an
+# entry is added to (or deleted from) the YAML and the block is not regenerated.
+added_skip = "    skips:\n      - case: \"a new skip\"\n        reason: \"newly discovered.\"\n"
+out, status = gate lambda { |f|
+  updated = f["spec/zero-skip-roster.yml"].sub("    skips: []\n", added_skip)
+  raise "fixture drift: no `skips: []` to replace" if updated == f["spec/zero-skip-roster.yml"]
+
+  f["spec/zero-skip-roster.yml"] = updated
+}
+expect_fail(failures, "an entry added to the YAML but not rendered into SPEC", out, status,
+            "does not match spec/zero-skip-roster.yml")
+
+# THE STRUCTURAL CLOSURE. Every bypass that beat the prose reader — a curly-quoted
+# name, a backticked one, a blockquoted bullet, a table row, a second quoted name
+# on a canonical bullet — is now text inside a generated block. None of them needs
+# its own rule: the renderer did not produce it, so it is a diff. One is
+# exercised here; the others differ only in which characters they are made of,
+# which is exactly the property being claimed.
+["> - “curly blockquoted stale” — x.",
+ "| Go | `backticked stale` | x |",
+ %(- "a skipped case" — a reason, which also supersedes "a stale ghost".)].each do |smuggled|
+  out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(ZERO_SKIP_BLOCK, "#{smuggled}\n#{ZERO_SKIP_BLOCK}") }
+  expect_fail(failures, "a stale claim smuggled into the block as #{smuggled[0, 18].inspect}",
+              out, status, "does not match spec/zero-skip-roster.yml")
+end
+
+# An emptied block is the vacuity case at the block level. It cannot be read as
+# agreement, because the rendered side is never empty: all six runner sections
+# are required and each renders at least a heading.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(ZERO_SKIP_BLOCK, "") }
+expect_fail(failures, "an emptied block is not agreement", out, status,
+            "does not match spec/zero-skip-roster.yml")
+
+# ...and the same from the source side: an emptied YAML fails in the loader, so
+# empty-against-empty never reaches the comparison at all.
+out, status = gate lambda { |f|
+  f["spec/zero-skip-roster.yml"] = "runners: {}\n"
+  f["SPEC.md"] = f["SPEC.md"].sub(ZERO_SKIP_BLOCK, "")
+}
+expect_fail(failures, "an emptied YAML against an emptied block", out, status, "no section for")
+
+# A missing source is not a block that vouches for itself.
+out, status = gate ->(f) { f.delete("spec/zero-skip-roster.yml") }
+expect_fail(failures, "the roster source is missing", out, status,
+            "spec/zero-skip-roster.yml is missing")
+
+out, status = gate ->(f) { f["spec/zero-skip-roster.yml"] = "runners:\n  go:\n   - [oops\n" }
+expect_fail(failures, "the roster source is not valid YAML", out, status, "not valid YAML")
+
+# A repo that never mentions the roster must not be made to load it. The gate's
+# own crafted fixtures are minimal by design, and an eager load would fail every
+# case over a file the document never claims anything about.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @zero-skip-roster:begin -->\n#{ZERO_SKIP_BLOCK}" \
+                                  "<!-- @zero-skip-roster:end -->\n", "")
+  f.delete("spec/zero-skip-roster.yml")
+  cfg = JSON.parse(f["spec/doc-constants.json"])
+  cfg["markerCounts"].delete("zero-skip-roster")
+  f["spec/doc-constants.json"] = JSON.pretty_generate(cfg)
+}
+expect_pass(failures, "no marker, no roster file, no complaint", out, status)
+
+# The writer authors this block — the one block kind it may, because none of it
+# is hand-written. Repinning gives it work elsewhere in the same file, so
+# "it rewrote the block" is not confused with "it rewrote the file".
+writer lambda { |f|
+  repin_to.call("d" * 40, "2026-09-09").call(f)
+  f["SPEC.md"] = f["SPEC.md"].sub("a reason.", "drifted, by hand, wrongly.")
+} do |out, status, dir|
+  expect_pass(failures, "writer rewrites a drifted zero-skip block", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?(ZERO_SKIP_BLOCK)
+    failures << "writer: expected the rendered block restored, got:\n#{written}"
+  end
+  if written.include?("drifted, by hand, wrongly.")
+    failures << "writer: the hand edit survived:\n#{written}"
+  end
+end
+
+# The rewritten block must land BETWEEN its markers and leave the rest of the
+# file alone. A splice is line-indexed, so an off-by-one lands the block inside
+# the neighbouring span — where --check would still pass on the block itself.
+writer lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub(ZERO_SKIP_BLOCK, "wiped\n")
+} do |out, status, dir|
+  expect_pass(failures, "writer restores a wiped block", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?("<!-- @zero-skip-roster:begin -->\n#{ZERO_SKIP_BLOCK}" \
+                          "<!-- @zero-skip-roster:end -->\n")
+    failures << "writer: block not restored between its own markers:\n#{written}"
+  end
+  unless written.include?("| `beta_write.json` | does another thing | §2 |\n" \
+                          "<!-- @fixture-section-map:end -->\n")
+    failures << "writer: the neighbouring block was disturbed:\n#{written}"
+  end
+  unless written.include?("The surface is `#{OP_COUNT}` operations across 2 paths. " \
+                          "<!-- @operation-count -->")
+    failures << "writer: a line span near the splice was disturbed:\n#{written}"
+  end
+end
+
+# ...and a --write pass must leave a correct block exactly as it found it,
+# byte for byte. The rendered block replaces the block on every run, so a
+# renderer that appended a stray newline would grow the file on each `make
+# generate` and nothing else would notice.
+writer(nil) do |out, status, dir|
+  expect_pass(failures, "writer is idempotent over a correct block", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?("<!-- @zero-skip-roster:begin -->\n#{ZERO_SKIP_BLOCK}" \
+                          "<!-- @zero-skip-roster:end -->\n")
+    failures << "writer: a correct block was rewritten into something else:\n#{written}"
   end
 end
 

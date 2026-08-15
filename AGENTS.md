@@ -251,6 +251,16 @@ advancing too.
 `scripts/test-doc-constants.rb` (run by `make doc-constants-check`) asserts the
 gate rejects each of these failure modes.
 
+One marked span is not a claim to be checked but a block to be GENERATED: SPEC
+§19's Zero-Skip roster, `<!-- @zero-skip-roster:begin/end -->`, is rendered from
+`spec/zero-skip-roster.yml` and required to match byte for byte, and the writer
+rewrites it. Edit the YAML, never the block. It is writable where the other
+block kinds are not for the reason `spec/doc-constants.json` states: no column
+of it is hand-written, so the writer can author the whole span. It replaced a
+parser that read the roster back out of SPEC's prose — five bypasses in, each
+fix a new selector, which is what "reassess the instrument" looks like when the
+instrument is a reader.
+
 **Pin semantics.** The pin is the conformance baseline as of the last sync — it asserts that all upstream drift up to that revision has been *triaged*, not that every contract in it has been *absorbed*. Upstream contracts shipped past the SDK's modeled surface are tracked in `spec/api-gaps/` (status `addressed-in-bc3-pr-N`) until an absorption PR lands. A repin is valid exactly when every drift item in `pin..HEAD` is either absorbed into the spec or registered in `spec/api-gaps/`; it is not blocked on absorption itself. The pin never moves backward. The `compatibility.*` pins mark the last **verified API-surface state** of their branch, not a last-glanced timestamp — refresh one only when re-verifying that branch's API surface, and record verification dates in the PR that did the checking.
 
 ### Pre-sync

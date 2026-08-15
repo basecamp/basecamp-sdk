@@ -2,7 +2,11 @@
   "$comment": [
     "Policy for scripts/sync-doc-constants.rb (make doc-constants-check).",
     "",
-    "THE GENERAL RULE, so a seventh kind does not have to be inferred from six examples: anything DERIVED from a machine-readable source and restated in prose gets a marker and an exact count here. The marker says 'this span is a claim about the current value of that source'; the count says 'this file carries exactly N such claims', so deleting one fails instead of silencing the check. A scalar claim is a LINE kind and the writer keeps it current. A claim the writer cannot author is a BLOCK kind — a table whose rows carry a human-written column (an assertion type's meaning, a fixture's owning spec sections) is the recurring shape — and --check is what holds it, by set comparison against the derived source. Whichever kind it is, the checker must fail when EITHER side parses to nothing: with both vacuity guards removed, an emptied table compared against an empty source is trivially satisfied and the gate exits 0, which is the one hole a set comparison cannot close on its own. Prose that merely mentions a value it is not claiming stays unmarked; see the A/B rule below and in AGENTS.md.",
+    "THE GENERAL RULE, so the next kind does not have to be inferred from the existing ones: anything DERIVED from a machine-readable source and restated in prose gets a marker and an exact count here. The marker says 'this span is a claim about the current value of that source'; the count says 'this file carries exactly N such claims', so deleting one fails instead of silencing the check. LINE vs BLOCK is about the SPAN — one line, or a region between :begin/:end — and nothing else. WRITABLE is the separate question, and it has one test: can the writer author every character of the span? A scalar constant it can, and does. A table whose rows carry a human-written column (an assertion type's meaning, a fixture's owning spec sections) it cannot, so --check holds those by set comparison against the derived source and --write leaves them alone. Whichever kind it is, the checker must fail when EITHER side parses to nothing: with both vacuity guards removed, an emptied table compared against an empty source is trivially satisfied and the gate exits 0, which is the one hole a set comparison cannot close on its own. Prose that merely mentions a value it is not claiming stays unmarked; see the A/B rule below and in AGENTS.md.",
+    "",
+    "This file used to state that rule as 'a claim the writer cannot author is a BLOCK kind', which conflated the two axes because every block kind happened to be unwritable. @zero-skip-roster is the block kind that is not, and the distinction is now stated above rather than implied by a coincidence.",
+    "",
+    "zero-skip-roster — SPEC §19's Zero-Skip roster, RENDERED from spec/zero-skip-roster.yml and compared for BYTE equality. It is the first writable block kind, and it is writable for the general rule's reason: no column of it is hand-written, so the writer can author the whole span. It is also the only kind checked with no parser behind it. Its predecessor read the roster back out of SPEC's prose on the argument that a misreading always surfaces as a mismatch and never as a passing comparison; that argument was breached five times, each fix a new selector for a new spelling (an unrecognised list marker, a duplicate block, a duplicate entry, a payload riding a blockquote or table row, an ASCII-only quote test that curly quotes and backticks walk through). String equality has no selectors to widen: every one of those is now text inside a generated block, and text the renderer did not produce is a diff. What it buys is that SPEC's block is faithful to the YAML — NOT that the YAML is faithful to the runners, which is scripts/check-fixture-execution.rb's set comparison against the execution manifests, and which needs a conformance run this gate cannot have. Vacuity is closed in the loader rather than the checker: all six runner sections are required and each renders at least a heading, so neither an emptied YAML nor an emptied block can be read as agreement.",
     "",
     "markerCounts — the EXACT number of spans each file carries for a given HTML",
     "comment. Any deviation fails: too few means a claim was deleted or unmarked,",
@@ -51,6 +55,9 @@
       "SPEC.md": 1
     },
     "fixture-section-map": {
+      "SPEC.md": 1
+    },
+    "zero-skip-roster": {
       "SPEC.md": 1
     },
     "operation-count": {
