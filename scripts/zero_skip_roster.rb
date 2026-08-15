@@ -57,6 +57,19 @@ module ZeroSkipRoster
   SECTION_KEYS = %w[source classification note skips].freeze
   SKIP_KEYS    = %w[case reason].freeze
 
+  # A qualifier (`classification`, `note`) is a CLAUSE, and the renderer owns
+  # every terminator around it: qualifiers are joined with "; " and the heading
+  # ends in ":" or ".". So a qualifier carrying its own renders `nothing to
+  # skip..` or `architectural.; a note:` — malformed prose that neither gate can
+  # object to afterwards, because both compare SPEC against exactly what the
+  # renderer produced, doubled period and all. The YAML said "a clause, NOT a
+  # sentence" in a comment; this is that sentence made enforceable.
+  #
+  # `reason` is deliberately NOT held to the mirror rule. It renders last on its
+  # own line with nothing appended, so it has nothing to double up against, and
+  # a reason ending in `)` or a backtick is ordinary rather than suspect.
+  CLAUSE_TERMINATOR_RE = /[.!?;:,]\z/
+
   Section = Struct.new(:runner, :source, :classification, :note, :skips, keyword_init: true)
   Skip    = Struct.new(:name, :reason, keyword_init: true)
 
@@ -84,8 +97,21 @@ module ZeroSkipRoster
       # Rescuing Psych::Exception, not Psych::SyntaxError: the alias refusal is a
       # sibling class, and left uncaught it exits non-zero with a Psych backtrace
       # that names this loader instead of the file the reader has to fix.
+      #
+      # The AST pass runs FIRST, and it is the one thing safe_load cannot do for
+      # us: duplicate mapping keys are legal YAML, and Psych keeps the LAST one
+      # silently. `go:` written twice, `skips:` written twice, `case:` written
+      # twice — each loads as a single value with the earlier claim discarded
+      # without a word. That is precisely the duplicate-section false green this
+      # change exists to retire, reappearing inside the instrument that replaced
+      # the parser: the discarded entry would sit in the source of truth,
+      # render nowhere, compare against nothing, and still read to a human as
+      # rostered.
+      text = File.read(path, encoding: "UTF-8")
+
       doc = begin
-        YAML.safe_load(File.read(path, encoding: "UTF-8"), filename: RELATIVE_PATH)
+        reject_duplicate_keys(Psych.parse(text, filename: RELATIVE_PATH), "")
+        YAML.safe_load(text, filename: RELATIVE_PATH)
       rescue Psych::Exception => e
         raise Malformed, "#{RELATIVE_PATH} is not valid YAML, or uses YAML this loader refuses " \
                          "(anchors and aliases are refused on purpose): #{e.message}"
@@ -155,6 +181,48 @@ module ZeroSkipRoster
 
     private
 
+    # Refuses a repeated mapping key anywhere in the document, reading the
+    # PARSER'S OWN structure rather than the text. A regex over the raw YAML
+    # would be the selector treadmill again — it would have to learn quoting,
+    # indentation, flow mappings, comments and block scalars just to say where a
+    # key is and whether it is one. The parser already knows all of that; the
+    # AST is where it says so, and a spelling it accepts as a key is a key by
+    # definition.
+    #
+    # Every level is covered by one walk, because "which levels matter" is the
+    # question that gets answered wrongly later: a second `runners:`, a second
+    # `go:`, a second `skips:` and a second `case:` are the same defect at four
+    # depths, and enumerating them would leave the fifth.
+    def reject_duplicate_keys(node, path)
+      case node
+      when Psych::Nodes::Stream, Psych::Nodes::Document
+        node.children.each { |child| reject_duplicate_keys(child, path) }
+      when Psych::Nodes::Sequence
+        node.children.each_with_index { |child, i| reject_duplicate_keys(child, "#{path}[#{i}]") }
+      when Psych::Nodes::Mapping
+        seen = {}
+        node.children.each_slice(2) do |key, value|
+          # A non-scalar key (a list or mapping used as a key) has no name to
+          # compare and cannot be one of ours; the unknown-key rules below
+          # refuse it by its own path. Recurse into its value regardless, so a
+          # duplicate nested under one is still found.
+          name = key.is_a?(Psych::Nodes::Scalar) ? key.value : nil
+          here = name.nil? ? "#{path}.?" : (path.empty? ? name : "#{path}.#{name}")
+
+          if name && seen.key?(name)
+            raise Malformed, "#{RELATIVE_PATH}: `#{here}` is written more than once " \
+                             "(lines #{seen.fetch(name)} and #{key.start_line + 1}). YAML allows " \
+                             "it and keeps only the LAST, so the earlier one would be discarded " \
+                             "in silence — a claim written into the roster that renders nowhere " \
+                             "and is compared against nothing."
+          end
+
+          seen[name] = key.start_line + 1 if name
+          reject_duplicate_keys(value, here)
+        end
+      end
+    end
+
     def section(runner, raw)
       unless raw.is_a?(Hash)
         raise Malformed, "#{RELATIVE_PATH}: `#{runner}` is #{describe(raw)}, not a mapping"
@@ -172,8 +240,8 @@ module ZeroSkipRoster
       end
 
       source = scalar(runner, raw, "source", required: true)
-      classification = scalar(runner, raw, "classification")
-      note = scalar(runner, raw, "note")
+      classification = clause(runner, raw, "classification")
+      note = clause(runner, raw, "note")
 
       unless raw.key?("skips")
         raise Malformed, "#{RELATIVE_PATH}: `#{runner}` has no `skips` key. Write `skips: []` and a " \
@@ -222,6 +290,21 @@ module ZeroSkipRoster
 
       Skip.new(name: scalar(runner, raw, "case", required: true, where: "#{where} `case`"),
                reason: scalar(runner, raw, "reason", required: true, where: "#{where} `reason`"))
+    end
+
+    # A `scalar` that is also a clause: see CLAUSE_TERMINATOR_RE for why the
+    # renderer cannot tolerate one that terminates itself.
+    def clause(runner, raw, key)
+      value = scalar(runner, raw, key)
+      if value&.match?(CLAUSE_TERMINATOR_RE)
+        raise Malformed, "#{RELATIVE_PATH}: `#{runner}.#{key}` ends in terminating punctuation " \
+                         "(#{value[-1].inspect}). It is a clause the renderer punctuates: it is " \
+                         "joined to the other qualifiers with `; ` and the heading is closed with " \
+                         "`.` or `:`, so #{value.inspect} renders as #{"#{value}.".inspect}. Drop " \
+                         "the final character."
+      end
+
+      value
     end
 
     # A present, non-empty, single-line string — or nil when the key is absent.

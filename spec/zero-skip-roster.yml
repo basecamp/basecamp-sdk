@@ -34,6 +34,13 @@
 # read as "not stated yet" and contribute nothing to either comparison, which is
 # how a runner's skips go unrecorded.
 #
+# A key written TWICE is refused at every level — a repeated runner section, a
+# repeated field, a repeated `case`. YAML allows it and keeps only the last, so
+# the earlier claim would be discarded in silence: written here, rendered
+# nowhere, compared against nothing. That is the same false green this file
+# replaced a parser to retire, and it is checked against the parsed document
+# rather than the loaded Hash, which no longer knows the duplicate happened.
+#
 #   source          Required. The runner file and skip constant, rendered
 #                   verbatim inside the parentheses of the heading. Kotlin's and
 #                   Swift's carry a clause rather than a constant name, because
@@ -44,10 +51,15 @@
 #                   roster is stale.
 #
 #   classification  Optional. One word for why the skips exist at all
-#                   (`architectural`); omitted where the reasons carry it.
+#                   (`architectural`); omitted where the reasons carry it. A
+#                   clause, like `note` below, and held to the same rule.
 #
 #   note            Optional. A clause, NOT a sentence: the renderer supplies
-#                   the terminating punctuation, so write it without one.
+#                   the terminating punctuation, so write it without one. This
+#                   is ENFORCED, not merely asked for — a qualifier ending in
+#                   `. ! ? ; : ,` is refused by the loader, because
+#                   `nothing to skip.` renders `nothing to skip..` and no gate
+#                   downstream can object to prose the renderer itself produced.
 #
 #   skips           Required, possibly empty. Each entry is
 #                   { case: <exact case name>, reason: <complete sentence> }.

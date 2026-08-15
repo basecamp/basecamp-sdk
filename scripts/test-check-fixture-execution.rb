@@ -71,6 +71,17 @@ def roster_with(**by_runner)
   doc
 end
 
+CLEAN_SECTION = %(    source: "`x`"\n    note: "a note"\n    skips: []\n)
+
+# A valid roster as TEXT, with Go's body substitutable and arbitrary text
+# appendable inside `runners`. The duplicate-key cases have no other way in: a
+# Ruby Hash cannot hold one key twice, so `YAML.dump` can never emit the defect
+# they exist to catch, and `roster:` goes through `YAML.dump`.
+def raw_roster(go: CLEAN_SECTION, tail: "")
+  sections = RUNNERS.map { |runner| "  #{runner}:\n#{runner == 'go' ? go : CLEAN_SECTION}" }
+  "runners:\n#{sections.join}#{tail}"
+end
+
 # Materialise the manifests (after `mutate` has had a chance to break one) and
 # run the gate against them.
 #
@@ -352,6 +363,46 @@ out, status = gate(nil, roster_text: <<~YAML)
 YAML
 expect_fail(failures, "a roster using a YAML alias", out, status, "aliases are refused")
 
+# --- duplicate mapping keys ---------------------------------------------------
+#
+# The alias above is one way YAML lets a roster mean something other than what
+# it looks like. A repeated KEY is the other, and the worse one: it is legal,
+# Psych accepts it, and it keeps only the LAST — so the earlier claim is
+# discarded in silence. That is exactly the duplicate-section false green this
+# whole change exists to retire, reappearing inside the instrument that replaced
+# the parser. The loader therefore reads the parsed AST, where a key is a key,
+# rather than the Hash the duplicate has already been erased from.
+#
+# Each case below is written so it would PASS with the guard removed: what
+# survives the duplicate agrees with the manifests, and only the discarded half
+# is a ghost. A case that failed either way would be pinning some other rule.
+
+# A whole runner section, twice. The first claims a skip nothing excludes.
+out, status = gate(nil, roster_text: raw_roster(
+  go: %(    source: "`x`"\n    note: "a note"\n    skips:\n) +
+      %(      - case: "a discarded ghost"\n        reason: "never compared."\n),
+  tail: %(  go:\n    source: "`x`"\n    note: "the section that wins"\n    skips: []\n)
+))
+expect_fail(failures, "a runner section written twice", out, status,
+            "`runners.go` is written more than once")
+
+# One FIELD of a section, twice, and `skips` is where it costs most: the
+# surviving list is the one compared against the manifests.
+out, status = gate(nil, roster_text: raw_roster(go: %(    source: "`x`"\n    note: "a note"\n) +
+  %(    skips:\n      - case: "a discarded ghost"\n        reason: "never compared."\n) +
+  %(    skips: []\n)))
+expect_fail(failures, "a section field written twice", out, status,
+            "`runners.go.skips` is written more than once")
+
+# One field of a SKIP ENTRY, twice — the deepest level, and the one an
+# enumeration of levels rather than a walk would have missed.
+out, status = gate(lambda { |m| exclude(m, "the case that wins", ["go"]) },
+                   roster_text: raw_roster(go: %(    source: "`x`"\n    note: "a note"\n) +
+                     %(    skips:\n      - case: "a discarded ghost"\n) +
+                     %(        case: "the case that wins"\n        reason: "never compared."\n)))
+expect_fail(failures, "a skip entry field written twice", out, status,
+            "`runners.go.skips[0].case` is written more than once")
+
 # An absent `skips` key reads as "skips nothing" to any comparison, which is a
 # stale roster that passes. Refused, so the empty case has to be written down.
 out, status = gate(nil, roster: begin
@@ -370,6 +421,22 @@ out, status = gate(nil, roster: begin
   doc
 end)
 expect_fail(failures, "an empty section that says nothing", out, status, "says nothing")
+
+# A qualifier that punctuates itself. The renderer supplies every terminator, so
+# `note: "nothing to skip."` renders `— none; nothing to skip..` and
+# `classification: "architectural."` renders `— architectural.; a note` — and
+# neither gate can object afterwards, because both compare SPEC against exactly
+# what the renderer produced. This is the one rule the YAML stated only in a
+# comment; a comment is not a gate.
+{ "note" => "nothing to skip.", "classification" => "architectural." }.each do |key, value|
+  out, status = gate(nil, roster: begin
+    doc = roster_without_skips
+    doc["runners"]["go"][key] = value
+    doc
+  end)
+  expect_fail(failures, "a #{key} that punctuates itself", out, status,
+              "`go.#{key}` ends in terminating punctuation")
+end
 
 # A misspelled key contributes nothing and looks like a filled-in section.
 out, status = gate(nil, roster: begin
