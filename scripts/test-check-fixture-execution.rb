@@ -507,16 +507,25 @@ expect_fail(failures, "an empty section that says nothing", out, status, "says n
 # what the renderer produced. This is the one rule the YAML stated only in a
 # comment; a comment is not a gate.
 #
-# The trailing-space rows are that rule's one bypass, found in review:
+# The trailing-space rows are that rule's bypass, found in review:
 # CLAUSE_TERMINATOR_RE anchors at the end, so a single space after the period
 # hid it and `nothing to skip. ` rendered `nothing to skip. .`. Closed by
 # refusing surrounding whitespace on every value rather than by teaching the
 # terminator regex to look past it — the space is content in its own right, and
 # a trailing one on ANY value lands invisibly at the end of a rendered line.
+#
+# The NBSP and ideographic-space rows are the SECOND round of that same lesson,
+# and the reason the rule is a \p{Space} match rather than `value.strip`:
+# String#strip is ASCII-only, so of the eight whitespace code points worth
+# testing it removes two, and U+00A0 walked through the fix for U+0020 and hid
+# the period all over again. They are here so the rule cannot quietly narrow
+# back to ASCII.
 [["note", "nothing to skip.", "ends in terminating punctuation"],
  ["classification", "architectural.", "ends in terminating punctuation"],
- ["note", "nothing to skip. ", "has leading or trailing whitespace"],
- ["classification", "architectural. ", "has leading or trailing whitespace"]]
+ ["note", "nothing to skip. ", "begins or ends with whitespace"],
+ ["classification", "architectural. ", "begins or ends with whitespace"],
+ ["note", "nothing to skip.\u{00A0}", "begins or ends with whitespace"],
+ ["source", "`x`\u{3000}", "begins or ends with whitespace"]]
   .each do |key, value, want|
   out, status = gate(nil, roster: begin
     doc = roster_without_skips
@@ -534,7 +543,7 @@ out, status = gate(nil, roster: begin
   doc
 end)
 expect_fail(failures, "a source with a leading space", out, status,
-            "which has leading or trailing whitespace")
+            "which begins or ends with whitespace")
 
 # A misspelled key contributes nothing and looks like a filled-in section.
 out, status = gate(nil, roster: begin

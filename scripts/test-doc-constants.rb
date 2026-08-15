@@ -1228,6 +1228,27 @@ writer lambda { |f|
   end
 end
 
+# A malformed roster discovered while WRITING must leave the checkout alone.
+# This is the hole the structural preflight did not close: the block bodies were
+# lambdas called inside the splice, so the load failed mid-loop — and files are
+# walked in scan order, so COORDINATION.md's stale pin had already been
+# rewritten by the time SPEC.md's block asked for a roster that would not load.
+# The repin is what makes that earlier file stale, and is the whole point of the
+# case: without it there is no earlier write to catch.
+writer lambda { |f|
+  repin_to.call("f" * 40, "2026-11-11").call(f)
+  f["spec/zero-skip-roster.yml"] = "runners:\n  go:\n   - [oops\n"
+} do |out, status, dir|
+  if status.success?
+    failures << "writer: a malformed roster must be fatal, got exit 0:\n#{out}"
+  end
+  coordination = read_in(dir, "COORDINATION.md")
+  unless coordination.include?("`#{SHORT}`")
+    failures << "writer: a file earlier in scan order was rewritten before the roster " \
+                "failed to load:\n#{coordination}"
+  end
+end
+
 # Structural marker damage IS fatal to the writer: it means a span it was
 # supposed to maintain was invisible to it. And it must be fatal BEFORE
 # anything is written — the check used to run after the write loop, so a file

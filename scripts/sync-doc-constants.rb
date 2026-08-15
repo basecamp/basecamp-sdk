@@ -1258,6 +1258,28 @@ def run(mode, openapi)
       return 1
     end
 
+    # ...and every writable block body is RENDERED HERE, before any file is
+    # opened, for exactly the same reason one paragraph up.
+    #
+    # This is the hole the structural preflight above did NOT close, and it is
+    # worth naming rather than quietly fixing: the bodies were lambdas called
+    # inside the splice, so a malformed roster raised in the middle of the write
+    # loop. Files are walked in scan order, so COORDINATION.md's stale pin was
+    # already rewritten by the time SPEC.md's block asked for a roster that
+    # would not load — a partially modified checkout from a run that reported
+    # failure. Moving one check earlier answered the errors scan_file records
+    # and left every failure that only appears when the body is demanded.
+    #
+    # Forcing them up front turns that class into nothing: after this line the
+    # write loop cannot raise for a reason it has not already discovered, so
+    # "aborted" and "nothing written" mean the same thing again.
+    #
+    # Only the kinds actually MARKED are forced. A repo whose SPEC carries no
+    # roster marker must not be made to load the roster file, which is what
+    # keeps this gate's own crafted fixtures minimal.
+    marked_writable_blocks = spans.select(&:block).map(&:kind).uniq & WRITABLE_BLOCK_KINDS
+    rendered_blocks = marked_writable_blocks.to_h { |kind| [kind, block_bodies.fetch(kind).call] }
+
     written = []
     declined = []
     spans.group_by(&:file).each do |file, file_spans|
@@ -1289,7 +1311,7 @@ def run(mode, openapi)
       # written this way so the second one does not have to notice.
       writable_blocks.sort_by { |span| -span.line_no }.each do |span|
         start = span.line_no - 1
-        lines[start, span.lines.length] = block_bodies.fetch(span.kind).call.map { |l| "#{l}\n" }
+        lines[start, span.lines.length] = rendered_blocks.fetch(span.kind).map { |l| "#{l}\n" }
       end
 
       updated = lines.join

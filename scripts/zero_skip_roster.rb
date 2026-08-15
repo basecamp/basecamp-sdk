@@ -385,6 +385,13 @@ module ZeroSkipRoster
     # it — a different failure, and not this rule's to close.
     NOT_ONE_LINE_RE = /[\p{Cc}\p{Zl}\p{Zp}]/
 
+    # Unicode whitespace at either boundary, and a value that is nothing else.
+    # \p{Space} rather than String#strip for the reason spelled out at the use
+    # site: strip is ASCII-only and misses NBSP, the Ogham space mark, the EN/EM
+    # quad family, NNBSP, MMSP and the ideographic space.
+    SURROUNDING_SPACE_RE = /\A\p{Space}|\p{Space}\z/
+    BLANK_RE             = /\A\p{Space}*\z/
+
     def scalar(runner, raw, key, required: false, where: nil)
       where ||= "#{RELATIVE_PATH}: `#{runner}.#{key}`"
       unless raw.key?(key)
@@ -395,21 +402,34 @@ module ZeroSkipRoster
 
       value = raw.fetch(key)
       raise Malformed, "#{where} is #{describe(value)}, not a string" unless value.is_a?(String)
-      raise Malformed, "#{where} is empty" if value.strip.empty?
+      raise Malformed, "#{where} is empty" if value.match?(BLANK_RE)
 
-      # Surrounding whitespace is REFUSED, not trimmed. Every value is rendered
+      # Surrounding whitespace is REFUSED, not trimmed. Every value renders
       # verbatim between characters the renderer supplies, so a leading or
       # trailing space is content: `note: "nothing to skip. "` renders
       # `nothing to skip. .`, and a trailing space on any value puts invisible
       # whitespace at the end of a line SPEC then matches byte for byte.
       #
-      # It also closes the terminator rule's one bypass rather than patching it.
-      # CLAUSE_TERMINATOR_RE anchors at the end, so a single trailing space hid
-      # the period from it — review found exactly that. Trimming here instead
-      # would silently rewrite what the author committed to a source of truth;
-      # refusing says which character to delete.
-      unless value == value.strip
-        raise Malformed, "#{where} is #{value.inspect}, which has leading or trailing whitespace. " \
+      # It also closes CLAUSE_TERMINATOR_RE's one bypass rather than patching
+      # it: that rule anchors at the end, so a single trailing space hid the
+      # period from it. Refused rather than trimmed, because trimming silently
+      # rewrites what the author committed to a source of truth, while refusing
+      # names the character to delete.
+      #
+      # MATCHED AS UNICODE WHITESPACE, and this is the second time the same
+      # lesson arrived. The rule was first written `value == value.strip`, and
+      # String#strip is ASCII-only: of the eight whitespace code points worth
+      # testing, it removes two. `note: "nothing to skip.\u00A0"` walked
+      # straight through and hid the period again — selector #1 on a predicate
+      # written to end a selector treadmill. \p{Space} is the property the
+      # question was always about.
+      #
+      # It stops at White_Space, so U+200B ZERO WIDTH SPACE is deliberately
+      # allowed: it is not whitespace, it cannot hide a neighbouring character
+      # from a rule that reads one, and refusing it belongs to a different
+      # question than this one.
+      if value.match?(SURROUNDING_SPACE_RE)
+        raise Malformed, "#{where} is #{value.inspect}, which begins or ends with whitespace. " \
                          "Values render verbatim, so the space is content: it lands in SPEC, and " \
                          "at the end of a value it hides the character before it from the rules " \
                          "that read one."
