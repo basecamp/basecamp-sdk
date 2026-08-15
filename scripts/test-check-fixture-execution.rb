@@ -88,7 +88,7 @@ end
 # `roster:` replaces the roster STRUCTURE (a Hash, dumped to YAML, or nil to
 # write no file at all); `roster_text:` replaces the file's bytes outright, for
 # the cases about YAML the loader cannot parse.
-def gate(mutate = nil, partial: false, roster: :default, roster_text: nil)
+def gate(mutate = nil, partial: false, roster: :default, roster_text: nil, env: {})
   manifests = default_manifests
   mutate&.call(manifests)
 
@@ -109,7 +109,7 @@ def gate(mutate = nil, partial: false, roster: :default, roster_text: nil)
 
     cmd = ["ruby", GATE]
     cmd << "--partial" if partial
-    out, status = Open3.capture2e({ "FIXTURE_EXECUTION_ROOT" => dir }, *cmd)
+    out, status = Open3.capture2e({ "FIXTURE_EXECUTION_ROOT" => dir }.merge(env), *cmd)
     [utf8(out), status]
   end
 end
@@ -414,6 +414,72 @@ out, status = gate(nil, roster_text: "#{raw_roster}---\n#{raw_roster(
       %(      - case: "an unread second roster"\n        reason: "never compared."\n)
 )}")
 expect_fail(failures, "a second YAML document", out, status, "holds 2 YAML documents")
+
+# An extra TOP-LEVEL key. The loader used to read `doc["runners"]` and ignore
+# whatever else the document held, so a misspelled or duplicated top-level
+# mapping could carry a whole roster that is visible in the file and read by
+# nothing — the discarded claim the nested unknown-key rules already refuse one
+# level down, at the level a reader is likeliest to paste one.
+out, status = gate(nil, roster: begin
+  doc = roster_without_skips
+  doc["runnners"] = { "go" => { "source" => "`x`", "note" => "unread", "skips" => [
+    { "case" => "an unread entry", "reason" => "never compared." }
+  ] } }
+  doc
+end)
+expect_fail(failures, "an unknown top-level key", out, status, "unknown top-level key(s) runnners")
+
+# --- a value that can end a line ----------------------------------------------
+#
+# Every scalar renders onto ONE line. A value carrying a line ending spells a
+# second heading or bullet in SPEC while the block still matches byte for byte,
+# and — for a `case` — while the manifest projection still compares the whole
+# scalar. Same false green, sourced from a character instead of from a parser.
+#
+# The rule is a CLASS (no control character, no line/paragraph separator), not a
+# list, and these cases are evidence for that shape rather than for one
+# character. Review reported `\r`; it is only the first of the five below, and
+# the other four are spellings nobody has written. Narrowing the guard to the
+# reported character leaves all four green, which is the mutation that would
+# otherwise have to be argued about instead of demonstrated.
+#
+# The smuggled payload deliberately ends in a letter, not a period. Ending it in
+# one would make the CLAUSE rule refuse the note first, and these cases would be
+# pinning that guard instead of this one — the substring trap, one field over.
+{ "CR" => "\u{000D}", "U+2028 LINE SEPARATOR" => "\u{2028}",
+  "U+2029 PARAGRAPH SEPARATOR" => "\u{2029}", "U+0085 NEL" => "\u{0085}",
+  "VT" => "\u{000B}" }.each do |label, char|
+  out, status = gate(nil, roster: begin
+    doc = roster_without_skips
+    doc["runners"]["go"]["note"] = %(a note#{char}- "a smuggled stale entry" — see above)
+    doc
+  end)
+  expect_fail(failures, "a note carrying #{label}", out, status,
+              "a control character or line separator")
+end
+
+# NOT tested here: the same separator in a `case`. The guard is one rule in
+# `scalar` and covers every field, but a case name is compared byte-exact
+# against the manifests, so a separator in one is a LOUD mismatch rather than a
+# false green — and a case asserting the refusal would pass off the mismatch
+# instead. Writing it revealed something else, which is below.
+
+# --- the gate reads its manifests as UTF-8 ------------------------------------
+#
+# Fallout from the case above: the manifest read was UNPINNED, so under LC_ALL=C
+# — which is how CI runs — a non-ASCII byte in any case name reached JSON as
+# US-ASCII and died as Encoding::InvalidByteSequenceError with a Ruby backtrace
+# instead of a verdict. Never fired only because every tracked fixture case name
+# is ASCII. It was also the file's one unpinned read, beside a roster reader
+# that pinned its own and that this change deletes.
+#
+# The roster AGREES with the manifest here, so the assertion is a pass: the
+# gate must reach its verdict at all, which is what an unpinned read denies it.
+accented = "Bracketed IPv6 loopback \u{2014} caf\u{00E9} na\u{00EF}ve"
+out, status = gate(lambda { |m| exclude(m, accented, ["go"]) },
+                   roster: roster_with(go: [{ "case" => accented, "reason" => "r." }]),
+                   env: { "LC_ALL" => "C", "LANG" => "C" })
+expect_pass(failures, "a non-ASCII case name under LC_ALL=C", out, status)
 
 # An absent `skips` key reads as "skips nothing" to any comparison, which is a
 # stale roster that passes. Refused, so the empty case has to be written down.

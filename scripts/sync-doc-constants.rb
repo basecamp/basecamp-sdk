@@ -163,6 +163,26 @@ WRITABLE_BLOCK_KINDS = %w[zero-skip-roster].freeze
 KNOWN_KINDS = (LINE_KINDS + BLOCK_KINDS).freeze
 
 MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
+
+# A block marker must be ALONE on its line. Everything else on that line is
+# content the checker structurally cannot see: scan_file takes a block's body as
+# the lines strictly BETWEEN the markers, so a table row or a roster bullet
+# written onto the marker line itself is rendered into the document and compared
+# against nothing. `- "stale" — x. <!-- @zero-skip-roster:end -->` reads as an
+# extra roster entry, survives --check, and is preserved by --write.
+#
+# HELD FOR EVERY BLOCK KIND, not for the one it was found in. The hole is in the
+# span arithmetic, not in any kind's checker: every block kind compares only
+# span.lines — the tables by set, the roster by bytes — so a row riding the
+# marker line is equally invisible to all four, and to the fifth. Scoping the
+# rule to @zero-skip-roster would fix one and leave the others, which is the
+# per-spelling selector this whole change is a reaction to.
+#
+# It costs nothing to hold generally: all eight block markers in tracked
+# Markdown are already standalone, so this pins existing practice rather than
+# demanding a migration. Line markers are deliberately exempt — a line marker's
+# whole job is to sit at the end of the prose sentence it qualifies.
+STANDALONE_BLOCK_MARKER_RE = /\A<!--\s*@[a-z0-9][a-z0-9-]*:(?:begin|end)\s*-->\z/
 # A fenced-code delimiter: 3+ backticks or 3+ tildes, indented at most three
 # spaces, with whatever follows captured as the info string (a close must have
 # none).
@@ -367,6 +387,14 @@ def scan_file(file)
       else
         unless BLOCK_KINDS.include?(kind)
           errors << "#{file}:#{line_no}: @#{kind} is a line marker; drop the :#{form} suffix"
+          next
+        end
+
+        unless line.strip.match?(STANDALONE_BLOCK_MARKER_RE)
+          errors << "#{file}:#{line_no}: @#{kind}:#{form} shares its line with other content. A " \
+                    "block marker must be alone on its line: the body is the lines BETWEEN the " \
+                    "markers, so anything on the marker line renders into the document and is " \
+                    "compared against nothing."
           next
         end
 

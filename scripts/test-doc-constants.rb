@@ -1012,6 +1012,39 @@ expect_fail(failures, "nested block begin", out, status, "inside an unclosed")
 out, status = gate ->(f) { f["SPEC.md"] += "\n<!-- @assertion-types:end -->\n" }
 expect_fail(failures, ":end without :begin", out, status, ":end without a matching :begin")
 
+# A block marker sharing its line. The body is the lines strictly BETWEEN the
+# markers, so content on the marker line is rendered into the document and
+# compared against nothing — it survives --check and --write preserves it. Both
+# cases below are green with the rule removed, which is the point: neither
+# checker can see the smuggled line, because neither is ever handed it.
+#
+# Exercised on TWO kinds deliberately. The roster case is where review found it;
+# the table case is the evidence that the rule belongs to the span arithmetic
+# rather than to this PR's kind, since the set comparison misses a row riding
+# the marker exactly as the byte comparison misses a bullet.
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @zero-skip-roster:end -->",
+                                  %(- "a smuggled stale" — x. <!-- @zero-skip-roster:end -->))
+}
+expect_fail(failures, "content riding the roster's :end marker", out, status,
+            "@zero-skip-roster:end shares its line with other content")
+
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @fixture-categories:end -->",
+                                  "| ghost | `ghost.json` | §9 | <!-- @fixture-categories:end -->")
+}
+expect_fail(failures, "content riding a table block's :end marker", out, status,
+            "@fixture-categories:end shares its line with other content")
+
+# ...and the :begin side, which has the same arithmetic and would need its own
+# rule if the check were written per-marker instead of per-line.
+out, status = gate ->(f) {
+  f["SPEC.md"] = f["SPEC.md"].sub("<!-- @zero-skip-roster:begin -->",
+                                  %(<!-- @zero-skip-roster:begin --> - "a smuggled stale" — x.))
+}
+expect_fail(failures, "content riding the roster's :begin marker", out, status,
+            "@zero-skip-roster:begin shares its line with other content")
+
 # --- marker inventory (exact counts) -------------------------------------------
 
 out, status = gate ->(f) { f["COORDINATION.md"] = f["COORDINATION.md"].sub(" <!-- @bc3-pin -->", "") }

@@ -131,6 +131,21 @@ module ZeroSkipRoster
         raise Malformed, "#{RELATIVE_PATH}: expected a mapping at the top level, got #{describe(doc)}"
       end
 
+      # `runners` is the ONLY top-level key, for the reason every unknown-key
+      # rule below exists: reading `doc["runners"]` and ignoring the rest lets a
+      # misspelled or extra top-level mapping hold a whole roster that is
+      # visible in the file, rendered nowhere and compared against nothing.
+      # That is the same discarded claim the nested rules already refuse one
+      # level down, and it had no rule at the level where a reader would most
+      # plausibly paste one.
+      stray = doc.keys - %w[runners]
+      unless stray.empty?
+        raise Malformed, "#{RELATIVE_PATH}: unknown top-level key(s) " \
+                         "#{stray.map(&:to_s).sort.join(', ')}; `runners` is the only one. Roster " \
+                         "entries under any other key are read by nothing — neither gate would " \
+                         "ever see them, and the file would still look like it stated them."
+      end
+
       runners = doc["runners"]
       unless runners.is_a?(Hash)
         raise Malformed, "#{RELATIVE_PATH}: expected a `runners` mapping, got #{describe(runners)}"
@@ -341,11 +356,35 @@ module ZeroSkipRoster
     # and the difference is exactly the one the empty-`skips` rule above turns
     # on.
     #
-    # Newlines are refused because every value here is rendered into ONE line.
-    # A multi-line note does not corrupt the byte comparison — SPEC would carry
-    # the newline too — but it would let a value spell a second heading or
+    # Line breaks are refused because every value here is rendered into ONE
+    # line. A value that carries one does not corrupt the byte comparison — SPEC
+    # would carry it too — but it lets the value spell a second heading or
     # bullet, leaving a block that misdescribes its own shape while matching
-    # perfectly.
+    # perfectly, and a case name whose manifest projection is still the whole
+    # scalar. Which is the same false green, sourced from a character instead of
+    # from a parser.
+    #
+    # WRITTEN AS A CLASS, NOT AS A LIST OF CHARACTERS, and that is the whole
+    # point. This started as `include?("\n")`; review found a YAML
+    # double-quoted `\r`, which CommonMark also treats as a line ending.
+    # Answering that with `include?("\r")` would have been selector #2 on one
+    # predicate — the exact failure this change is a reaction to — and the next
+    # round brings U+2028, U+2029, U+0085, VT and FF, none of which anyone has
+    # written yet.
+    #
+    # So the rule is inverted the way the roster itself was: a value may contain
+    # no CONTROL character (\p{Cc}, which is every C0 and C1 code point — LF,
+    # CR, VT, FF, NEL, NUL, ESC) and no explicit line or paragraph separator
+    # (\p{Zl}, \p{Zp} — U+2028 and U+2029). There is no character class left to
+    # widen, and a spelling nobody has thought of is refused by default rather
+    # than admitted by default.
+    #
+    # It deliberately stops there. \p{Cf} (zero-width joiners, bidi controls,
+    # U+FEFF) is invisible but cannot break a line, and an invisible character
+    # in a case name fails the manifest comparison LOUDLY rather than passing
+    # it — a different failure, and not this rule's to close.
+    NOT_ONE_LINE_RE = /[\p{Cc}\p{Zl}\p{Zp}]/
+
     def scalar(runner, raw, key, required: false, where: nil)
       where ||= "#{RELATIVE_PATH}: `#{runner}.#{key}`"
       unless raw.key?(key)
@@ -357,7 +396,12 @@ module ZeroSkipRoster
       value = raw.fetch(key)
       raise Malformed, "#{where} is #{describe(value)}, not a string" unless value.is_a?(String)
       raise Malformed, "#{where} is empty" if value.strip.empty?
-      raise Malformed, "#{where} spans more than one line; every value renders onto one" if value.include?("\n")
+      if (offender = value[NOT_ONE_LINE_RE])
+        raise Malformed, "#{where} contains #{format('U+%04X', offender.ord)}, a control " \
+                         "character or line separator. Every value here renders onto ONE " \
+                         "line, and a value that can end a line spells a second heading or " \
+                         "bullet the block still matches byte for byte."
+      end
 
       value
     end

@@ -78,7 +78,17 @@ Manifest = Struct.new(:runner, :total, :executed, :excluded, keyword_init: true)
 class Failure < StandardError; end
 
 def load_manifest(path)
-  raw = JSON.parse(File.read(path))
+  # Encoding PINNED, for the reason every gate in this repo pins it: CI runs
+  # under LC_ALL=C, where an unpinned read hands JSON a US-ASCII string and any
+  # non-ASCII byte in a case name dies as Encoding::InvalidByteSequenceError
+  # with a Ruby backtrace rather than a verdict. Every case name in the tracked
+  # fixtures is ASCII today, which is the only reason this has never fired.
+  #
+  # It was the file's one unpinned read while the roster reader beside it was
+  # pinned; deleting that reader would have left this as the only read and no
+  # example of the convention. Found by a self-test case that put a separator in
+  # a case name and got a stack trace instead of the refusal it asserted.
+  raw = JSON.parse(File.read(path, encoding: "UTF-8"))
   # Shape-check before reaching for keys. A manifest that is a JSON string or
   # array still parses, and `fetch` on it raises NoMethodError — which exits
   # non-zero, so the gate is fail-closed either way, but reports a Ruby

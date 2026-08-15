@@ -41,10 +41,15 @@
 # replaced a parser to retire, and it is checked against the parsed document
 # rather than the loaded Hash, which no longer knows the duplicate happened.
 #
-# For the same reason this file is ONE YAML document. Everything after a second
-# `---` is dropped on load, so a second roster written there would be a complete
-# claim nothing ever reads — which is precisely how the prose reader used to
-# ignore a second roster block.
+# For the same reason this file is ONE YAML document, `runners` is its ONLY
+# top-level key, and no value may contain a control character or a Unicode
+# line/paragraph separator. Those are one failure in four costumes: text after a
+# second `---`, text under a misspelled top-level key, and text after a bare CR
+# or U+2028 inside a quoted scalar are each a claim written here that renders
+# nowhere, or renders as a line the roster never stated. Which is precisely how
+# the prose reader used to ignore a second roster block. The last of them is
+# written as a CLASS rather than a list of characters, so there is no further
+# spelling to add when the next one is thought of.
 #
 #   source          Required. The runner file and skip constant, rendered
 #                   verbatim inside the parentheses of the heading. Kotlin's and
