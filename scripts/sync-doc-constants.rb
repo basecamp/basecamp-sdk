@@ -440,6 +440,32 @@ def account_scoped_services
           "either."
   end
 
+  # AN EMPTY EXTRACTION IS REFUSED HERE, AT THE SOURCE, AND THAT PLACEMENT IS THE
+  # WHOLE POINT. It was originally a vacuity guard inside the roster checker,
+  # which looked equivalent and was not: --write RETURNS BEFORE THE PER-KIND
+  # CHECKERS RUN, so nothing in check mode's reasoning applies to it.
+  #
+  # The failure that produced, reproduced before this line existed: change both
+  # generators' accessor syntax at once — a rename, a formatting pass, anything
+  # that makes both regexes stop matching — and the two extractions agree at
+  # zero, so the disagreement check above passes. `make generate` then rewrites
+  # every @service-count span in the repo to `0` and EXITS 0. A generation
+  # pipeline reporting success while writing a count nobody derived, with only a
+  # later `make check` to notice, and the corruption already in the tree by then.
+  #
+  # Two regexes that stopped matching is an extraction failure, never a fact
+  # about the SDK, and it cannot be allowed to reach either mode. Raising here
+  # covers --check and --write with one rule rather than one guard per mode —
+  # which is what the checker-side version silently was. Copilot found it; I had
+  # dismissed it once by reasoning about --check alone.
+  if kotlin.empty?
+    raise Failure,
+          "#{KOTLIN_ACCESSORS} and #{SWIFT_ACCESSORS} named no services between them. Both " \
+          "extractions are empty, so they agree vacuously and there is no source of truth for " \
+          "the roster or for @service-count — the accessor syntax these are matched by has " \
+          "almost certainly changed. Refusing rather than writing a count derived from nothing."
+  end
+
   kotlin.sort
 end
 
@@ -1333,26 +1359,16 @@ def check_account_scoped_services(span, services)
             "trailing comma."]
   end
 
-  # Source-side vacuity, and it is worth being exact about what this does and
-  # does not buy, because roster_vacuity's stronger claim does not carry over.
+  # No vacuity guard here, deliberately, and this is the second version of this
+  # comment — the first one argued for keeping a guard that turned out to be in
+  # the wrong place entirely.
   #
-  # There it is the ONLY thing standing when both sides are empty. Here the
-  # both-empty case cannot arise: an empty roster is refused by the
-  # exactly-one-line rule above, before the source is ever consulted. So this
-  # cannot be the difference between a pass and a failure — with it removed, two
-  # regexes that stopped matching still fail, as 53 entries the accessors do not
-  # expose.
-  #
-  # It is kept for the diagnosis, which is not a nicety when the report is the
-  # whole output: "your roster invented 53 services" sends the reader to the one
-  # file that is right, while the extractor that broke goes unnamed. An
-  # extraction failure is never a fact about the SDK, and the message should not
-  # be able to imply that it is.
-  if services.empty?
-    return ["#{span.location}: internal error: #{KOTLIN_ACCESSORS} and #{SWIFT_ACCESSORS} named " \
-            "no services, so this check has no source of truth and cannot vouch for the roster"]
-  end
-
+  # An empty extraction is now refused by account_scoped_services itself, which
+  # both modes reach. A guard here could only ever have protected --check, since
+  # --write returns before the per-kind checkers run; it read as the vacuity
+  # backstop while covering exactly one of the two callers, and the writer was
+  # the caller that could do damage. Duplicating it here would restate a rule the
+  # source already enforces and re-suggest that this is the layer that owns it.
   errors = []
 
   # Array#- removes EVERY occurrence, so a name listed twice is invisible to the

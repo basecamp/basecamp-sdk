@@ -1656,7 +1656,37 @@ out, status = gate lambda { |f|
   f[SWIFT_ACCESSORS]  = f[SWIFT_ACCESSORS].gsub("public var ", "var ")
 }
 expect_fail(failures, "accessor extraction matching nothing is an internal error", out, status,
-            "no services, so this check has no source of truth")
+            "named no services between them")
+
+# THE SAME BREAKAGE, IN --write, AND THIS IS THE CASE THAT MATTERS. --write
+# returns before the per-kind checkers run, so the guard that used to live in
+# check_account_scoped_services could not see this at all: both extractions
+# agreed at zero, the disagreement check passed, and the writer rewrote every
+# @service-count span to `0` and exited 0. `make generate` reporting success
+# while writing a count nobody derived, with the corruption already in the tree
+# by the time `make check` noticed.
+#
+# Asserting the exit alone would not pin it — a writer that refused for any
+# reason would pass. The file is read back and required to still state the real
+# count, so a regression that writes `0` and then fails loudly is caught too.
+broken_accessors = lambda { |f|
+  f[KOTLIN_ACCESSORS] = f[KOTLIN_ACCESSORS].gsub("val AccountClient.", "val AcctClient.")
+  f[SWIFT_ACCESSORS]  = f[SWIFT_ACCESSORS].gsub("public var ", "var ")
+}
+writer(broken_accessors) do |out, status, dir|
+  if status.success?
+    failures << "writer: an empty extraction must be fatal in --write, got exit 0:\n#{utf8(out)}"
+  end
+  written = read_in(dir, "SPEC.md")
+  if written.include?("`0` services")
+    failures << "writer: rewrote @service-count to `0` from an extraction that matched " \
+                "nothing:\n#{written[/^.*services.*$/]}"
+  end
+  unless written.include?("`#{SERVICE_COUNT}` services")
+    failures << "writer: expected the service count left at #{SERVICE_COUNT}, got:\n" \
+                "#{written[/^.*services.*$/]}"
+  end
+end
 
 # A missing source file is not "zero services" either.
 out, status = gate ->(f) { f.delete(SWIFT_ACCESSORS) }
