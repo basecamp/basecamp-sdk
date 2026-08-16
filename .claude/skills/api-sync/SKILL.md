@@ -74,14 +74,16 @@ For controller changes in `bc3`, cross-reference them with `doc/api/` to identif
 After spec changes are applied:
 
 ```bash
-make smithy-build
-make -C go generate
-make url-routes
-make ts-generate && make ts-generate-services
-make rb-generate && make rb-generate-services
-make provenance-sync
+make generate
 make check
 ```
+
+`make generate` is the pipeline's only definition — do not expand it into
+individual targets here. The list this replaced had gone stale in five places:
+it omitted `py-generate`, `kt-generate-services` and `swift-generate` entirely
+(so following it left three SDKs ungenerated), along with `behavior-model` and
+the final `sync-api-version` that re-derives prose constants from the generated
+accessors.
 
 Fix any issues that arise during generation or checks.
 
