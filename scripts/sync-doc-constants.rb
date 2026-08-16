@@ -1519,6 +1519,37 @@ def run(mode, openapi)
     raise Failure, "spec/api-provenance.json .bc3.revision is not a full 40-char SHA: #{revision}"
   end
 
+  # The same shape check the revision has always had, extended to the other two
+  # values the writer substitutes, and the reason is the one this whole file
+  # keeps rediscovering: --write returns before the per-kind checkers run, so
+  # anything only the checkers object to is something the writer will act on.
+  #
+  # `dig!` refuses a MISSING key. It says nothing about a present-but-useless
+  # one, and both of these are substituted by gsub rather than compared:
+  # rewrite_line replaces every ISO date on a marked line with whatever it was
+  # handed. Hand it "" and it deletes the dates instead of updating them, across
+  # every @api-version and @bc3-pin span, exiting 0. Reproduced before this
+  # guard: an openapi.json with `"version": ""` rewrote both SPEC spans and
+  # reported success.
+  #
+  # .bc3.date is the likelier of the two to be wrong, because it is the only one
+  # of the three that a human types — every sync edits api-provenance.json by
+  # hand — and a typo there is a plain accident, not an adversary.
+  #
+  # Bounded on purpose: LINE_KINDS is a closed set of four, and this completes
+  # it. @operation-count and @service-count refuse a zero count at their own
+  # sources; these two refuse a value that is not a date. There is no fifth
+  # substituted value waiting to need a fifth rule.
+  { "openapi #{openapi} .info.version" => api_version,
+    "spec/api-provenance.json .bc3.date" => date }.each do |label, value|
+    next if value.to_s.match?(/\A#{ISO_DATE_RE.source}\z/)
+
+    raise Failure, "#{label} is #{value.inspect}, which is not a YYYY-MM-DD date. The writer " \
+                   "substitutes this into every marked span by replacing the dates already " \
+                   "there, so an empty or malformed value silently deletes them — refusing " \
+                   "rather than rewriting spans from a value that is not a date."
+  end
+
   config = read_json("spec/doc-constants.json")
   declared = dig!(config, "spec/doc-constants.json", "markerCounts")
   writer_excludes = config.fetch("writerExcludes", {})

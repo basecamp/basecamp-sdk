@@ -1570,6 +1570,44 @@ writer(nil) do |out, status, dir|
   end
 end
 
+# --- substituted values that are not dates -------------------------------------
+#
+# `dig!` refuses a MISSING key and says nothing about a present-but-useless one.
+# Both of these are substituted by gsub rather than compared — rewrite_line
+# replaces every ISO date on a marked line with whatever it is handed — so ""
+# DELETES the dates instead of updating them, across every @api-version and
+# @bc3-pin span, and --write returns before any checker could object.
+#
+# .bc3.date is the likelier of the two, being the only one a human types: every
+# sync edits api-provenance.json by hand.
+
+out, status = gate(openapi_version: "")
+expect_fail(failures, "an empty api version", out, status, "which is not a YYYY-MM-DD date")
+
+out, status = run_gate(mode: "--write", openapi_version: "")
+expect_fail(failures, "writer refuses an empty api version", out, status,
+            "which is not a YYYY-MM-DD date")
+
+out, status = gate ->(f) {
+  f["spec/api-provenance.json"] = JSON.pretty_generate("bc3" => { "revision" => REVISION, "date" => "" })
+}
+expect_fail(failures, "an empty provenance date", out, status, "which is not a YYYY-MM-DD date")
+
+# The writer is the caller that can do damage, so it gets its own case, and it
+# reads the file back: an exit-only assertion passes for a writer that refused
+# for any reason at all.
+run_gate(mode: "--write", mutate: lambda { |f|
+  f["spec/api-provenance.json"] = JSON.pretty_generate("bc3" => { "revision" => REVISION, "date" => "nope" })
+}, inspect_result: lambda { |out, status, dir|
+  if status.success?
+    failures << "writer: a malformed provenance date must be fatal, got exit 0:\n#{utf8(out)}"
+  end
+  written = read_in(dir, "COORDINATION.md")
+  unless written.include?(PIN_DATE)
+    failures << "writer: rewrote the pin sentence from a date that is not one:\n#{written}"
+  end
+})
+
 # --- @account-scoped-services / @service-count (#600) --------------------------
 #
 # SPEC §5's service roster was seven services short, and the four numbers around
