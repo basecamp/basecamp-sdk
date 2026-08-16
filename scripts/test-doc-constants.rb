@@ -1770,12 +1770,37 @@ writer ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("`#{SERVICE_COUNT}` services", "`
   end
 end
 
-writer ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, "alpha, betaThing") } do |out, status, dir|
-  expect_pass(failures, "writer ignores roster drift", out, status)
-  unless read_in(dir, "SPEC.md").include?("alpha, betaThing\n")
-    failures << "writer: must not rewrite the @account-scoped-services block:\n#{read_in(dir, 'SPEC.md')}"
+# THE COUNT AND THE ROSTER MUST MOVE TOGETHER. This case asserted the opposite
+# until an independent review reproduced what that cost: the count is writable
+# and the roster was not, so `make generate` rewrote every @service-count span to
+# the new number, exited 0, and left both marked blocks enumerating the old set —
+# a tracked spec contradicting itself, produced by a green generation run.
+#
+# They derive from ONE source, so splitting them across two update mechanisms was
+# never preserving a choice. The drift is applied to BOTH here, and both are
+# required back: restoring the count alone is the exact bug.
+writer ->(f) {
+  f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, "alpha, betaThing")
+                             .sub("`#{SERVICE_COUNT}` services", "`2` services")
+} do |out, status, dir|
+  expect_pass(failures, "writer restores a drifted roster and count together", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?(ROSTER)
+    failures << "writer: expected the roster restored to #{ROSTER.inspect}, got:\n" \
+                "#{written[/^alpha.*$/]}"
+  end
+  unless written.include?("`#{SERVICE_COUNT}` services")
+    failures << "writer: expected the service count restored to #{SERVICE_COUNT}:\n" \
+                "#{written[/^.*services.*$/]}"
   end
 end
+
+# The writer emits the accessors' order, but --check still compares SETS, so a
+# hand-reordered roster is not an error — it is normalised, not rejected. Pins
+# the narrowing that made writing the block acceptable: the writer normalises
+# without the checker starting to enforce a sequence.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, "gamma, alpha, betaThing") }
+expect_pass(failures, "a reordered roster still passes --check", out, status)
 
 # --- locale independence -------------------------------------------------------
 #

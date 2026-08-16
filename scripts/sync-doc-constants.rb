@@ -162,19 +162,30 @@ BLOCK_KINDS = %w[assertion-types fixture-categories fixture-section-map
                  account-scoped-services
                  zero-skip-roster].freeze
 
-# The block kinds the writer may author. Most of BLOCK_KINDS is excluded because
-# it CANNOT be authored: a table carrying a column only a person can write, so
-# rewriting one would mean inventing that column.
+# The block kinds the writer may author. The three tables are excluded because
+# they CANNOT be authored: each carries a column only a person can write — an
+# assertion type's meaning, a fixture's owning section — so rewriting one would
+# mean inventing that column.
 #
-# @account-scoped-services is the exception to that framing and is excluded
-# anyway, which is worth naming so it does not read as an oversight. Every
-# character of it is derivable, so the writer COULD author it — but only by
-# fixing an order, and check_account_scoped_services deliberately asserts a set
-# rather than a sequence (the roster is alphabetical as a courtesy to readers,
-# not as a rule this gate holds). Writing it would quietly convert that courtesy
-# into an enforced syntax nobody asked for. --check names the exact missing or
-# extra service instead, which leaves the fix a one-line edit.
-WRITABLE_BLOCK_KINDS = %w[zero-skip-roster].freeze
+# @account-scoped-services was excluded too, on the grounds that writing it would
+# fix an order the checker deliberately does not assert, converting a courtesy to
+# readers into an enforced syntax. That argument was wrong, and the way it was
+# wrong is worth keeping.
+#
+# The count and the roster derive from ONE source. Leaving the count writable and
+# the roster not does not preserve a choice — it splits a single claim across two
+# mechanisms that update at different times. Add a service and `make generate`
+# rewrites all eleven @service-count spans to the new number, exits 0, and leaves
+# both marked blocks still enumerating the old set: a tracked spec contradicting
+# itself, produced by a green generation run, with only a later `make check` to
+# notice. Reproduced exactly that way. It is the failure the `generate` target's
+# own comment argues against, one level further down.
+#
+# The order objection survives but shrinks to nothing: the writer emits the
+# accessors' order, which is the alphabetical order the roster already uses, and
+# --check still compares sets, so a hand-reordered roster still passes. The
+# writer normalises; it does not start rejecting.
+WRITABLE_BLOCK_KINDS = %w[account-scoped-services zero-skip-roster].freeze
 KNOWN_KINDS = (LINE_KINDS + BLOCK_KINDS).freeze
 
 MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
@@ -1491,7 +1502,6 @@ def run(mode, openapi)
 
   # kind => the exact lines a writable block must hold. Keyed by kind so adding
   # a second rendered block is a line here rather than a branch in the writer.
-  block_bodies = { "zero-skip-roster" => roster_lines }
 
   # Memoised and lazy for the same reason once more, one step more sharply: this
   # one reads two generated SDK files that the gate's own crafted fixtures have
@@ -1501,6 +1511,13 @@ def run(mode, openapi)
   services = lambda do
     services_memo ||= account_scoped_services
   end
+
+  block_bodies = {
+    "zero-skip-roster" => roster_lines,
+    # One line, exactly as check_account_scoped_services requires, in the
+    # accessors' own order — which is what SPEC already carries.
+    "account-scoped-services" => -> { [services.call.join(", ")] },
+  }
 
   # kind => how to compute the sole backticked integer that kind's spans state.
   # Still thunks HERE, because --check must be able to ask for one without
