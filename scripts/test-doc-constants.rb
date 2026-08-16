@@ -381,6 +381,24 @@ out, status = gate(openapi_paths: {
 })
 expect_pass(failures, "path-item keys that are not operations are not counted", out, status)
 
+# The SAME hole as the empty-accessor case above, in the neighbouring kind, and
+# it predates this change: `.paths` of `{}` is a legitimate empty sum, so it
+# slips past the dig! that refuses a document with no `.paths` at all. In
+# --write — which returns before the per-kind checkers run — that rewrote every
+# @operation-count span across three files to `0` and exited 0.
+#
+# Guarding one of the two TICKED_INT_KINDS and not the other would make the rule
+# read as a special case for @service-count. Both restate a count derived from a
+# generated artifact, and for both, "the artifact yielded nothing" is a broken
+# input rather than news.
+out, status = gate(openapi_paths: {})
+expect_fail(failures, "an openapi with no operations at all", out, status,
+            "declares no operations at all")
+
+out, status = run_gate(mode: "--write", openapi_paths: {})
+expect_fail(failures, "writer refuses an openapi with no operations", out, status,
+            "declares no operations at all")
+
 # The decoy proves the count is read from --openapi, not the checkout: the
 # in-repo openapi.json declares five operations, so a gate reading it would
 # report 5 against a span that says 3.

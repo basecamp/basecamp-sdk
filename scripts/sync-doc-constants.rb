@@ -649,7 +649,30 @@ end
 # number the generators report.
 def operation_count(doc, source)
   paths = dig!(doc, source, "paths")
-  paths.sum { |_path, ops| ops.count { |method, _| HTTP_METHODS.include?(method) } }
+  count = paths.sum { |_path, ops| ops.count { |method, _| HTTP_METHODS.include?(method) } }
+
+  # ZERO IS AN EXTRACTION FAILURE, NOT A COUNT, and it is refused here for the
+  # reason spelled out at account_scoped_services: --write returns before the
+  # per-kind checkers run, so a checker-side objection protects --check and
+  # leaves the writer — the caller that edits files — free to act on it.
+  #
+  # Reproduced before this guard existed: point the gate at an openapi.json whose
+  # `.paths` is `{}` (a truncated build, a mapper that emitted an envelope and no
+  # operations) and `--write` rewrote all six @operation-count spans across three
+  # files to `0` and exited 0. `dig!` above already refuses a document with no
+  # `.paths` key at all; `{}` slipped past it as a legitimate empty sum.
+  #
+  # Guarding one of the two TICKED_INT_KINDS and not the other would make the
+  # rule read as a special case for @service-count. It is not: both restate a
+  # count derived from a generated artifact, and for both, "the artifact yielded
+  # nothing" is a broken input rather than news about the API.
+  if count.zero?
+    raise Failure, "#{source} declares no operations at all (.paths is empty). That is a broken " \
+                   "or truncated document, not an API with zero operations — refusing rather " \
+                   "than rewriting every @operation-count span to `0`."
+  end
+
+  count
 end
 
 # A code span whose ENTIRE content is digits. Bare prose integers are not
