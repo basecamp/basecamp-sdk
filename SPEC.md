@@ -3657,7 +3657,7 @@ building one means a sixth hand-copy of each generator's split tables.
 | Ruby | 53 — full canonical set |
 | TypeScript | 53 — full canonical set, on the flat client alongside `authorization` (no `AccountClient` tier; see Client Topology above) |
 | Go | 51 accessors. Two services are folded rather than missing: `automation`'s sole operation is `LineupService.ListMarkers`, and `clientVisibility`'s is `RecordingsService.SetClientVisibility`. `timesheets` is spelled `Timesheet` (singular). Capability is 53/53; the surface is not. Hand-written service wrappers around the generated OpenAPI client — not fully generated. |
-| Python | 51 — `gauges` and `myNotifications` are a genuine wiring gap, not a fold: `generated/services/gauges.py` and `generated/services/my_notifications.py` both exist and neither `client.py` nor `async_client.py` references them. Sync and async agree exactly. |
+| Python | 51 — `gauges` and `myNotifications` are a genuine wiring gap, not a fold: `generated/services/gauges.py` and `generated/services/my_notifications.py` both exist and neither `client.py` nor `async_client.py` references them (#732). Sync and async agree exactly. |
 
 Verified 2026-08-13 against the accessor declarations in each SDK's client
 (Go `AccountClient` methods, Ruby `Client#for_account` accessors, TS
