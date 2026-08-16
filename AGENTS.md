@@ -114,14 +114,22 @@ Two constraints the examples will not tell you outright:
 After any Smithy spec change, run the full pipeline:
 
 ```
-make smithy-build && make -C go generate && make url-routes && \
-  make ts-generate && make ts-generate-services && \
-  make rb-generate && make rb-generate-services && \
-  make swift-generate && make kt-generate-services && \
-  make py-generate
+make generate
 ```
 
-`make generate` cascades the whole sequence. Never commit a Smithy change without regenerating all downstream artifacts. Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
+That target is the pipeline's only definition, and this section deliberately no
+longer spells out the sequence it runs. It used to, and the copy had already
+drifted: it omitted `behavior-model`, `provenance-sync` and `sync-api-version`,
+so a contributor following it verbatim regenerated the accessors and never
+re-derived the constants that come from them — leaving every `@service-count`
+span stating the previous run's number and failing the next `make check` for a
+reason the transcript never mentioned. Ordering matters here (`sync-api-version`
+must run *after* the Kotlin and Swift accessor generators, which is why it
+appears twice in the target), and an ordering restated by hand in prose is one
+more thing to keep in step. Read the `generate` target if you need the phases.
+
+Never commit a Smithy change without regenerating all downstream artifacts.
+Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
 
 ### Invariants
 
