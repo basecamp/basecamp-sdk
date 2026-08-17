@@ -117,9 +117,10 @@ sealed class BasecampException(
          * never sent (#730).
          *
          * Presence is the discriminator, and it cannot be forged from outside
-         * the SDK: the constructor that sets this slot is internal and the
-         * decoder wrapper is its only caller. The value is the decoder's own
-         * message, which is what the composites were reaching into [cause] for.
+         * the SDK: the only constructor that sets this slot is private, reached
+         * through the internal [Companion.malformedBody] factory the decoder
+         * wrapper alone calls. The value is the decoder's own message, which is
+         * what the composites were reaching into [cause] for.
          *
          * [cause] still carries the same exception it always did — callers and
          * both conformance runners read it, and a
@@ -138,22 +139,41 @@ sealed class BasecampException(
             cause: Throwable? = null,
         ) : this(message, httpStatus, hint, retryable, requestId, cause, decodeFailure = null)
 
-        /**
-         * The SPEC §6 malformed-2xx-body shape, and the only producer of
-         * [decodeFailure]. Statusless because the request succeeded, so no HTTP
-         * status describes the failure, and non-retryable because re-requesting
-         * cannot repair a malformed body — neither is a caller's to vary, which
-         * is why they are fixed here rather than passed.
-         */
-        internal constructor(message: String, decodeFailure: SerializationException) : this(
-            message,
-            httpStatus = null,
-            hint = null,
-            retryable = false,
-            requestId = null,
-            cause = decodeFailure,
-            decodeFailure = decodeFailure,
-        )
+        internal companion object {
+            /**
+             * The SPEC §6 malformed-2xx-body shape, and the only producer of
+             * [decodeFailure]. Statusless because the request succeeded, so no
+             * HTTP status describes the failure, and non-retryable because
+             * re-requesting cannot repair a malformed body — neither is a
+             * caller's to vary, which is why they are fixed here rather than
+             * passed.
+             *
+             * A factory and not a constructor, because `internal` does not
+             * survive the JVM boundary for `<init>`: constructors cannot be
+             * name-mangled, so an internal *constructor* is emitted public and
+             * Java sees `Api(String, SerializationException)`. That would be the
+             * shortest overload Java is offered — Kotlin default arguments do
+             * not exist for Java callers, which see only the full-arity public
+             * constructor — so a Java-authored `AuthStrategy` writing the
+             * natural `new Api(message, decodeError)` would set this slot and
+             * bring back the exact bug the slot exists to kill. Internal
+             * *functions* are name-mangled (`malformedBody$…`), so this one
+             * cannot be selected from Java by accident. `ApiConstructorSurfaceTest`
+             * holds both halves of that on the JVM target.
+             */
+            internal fun malformedBody(
+                message: String,
+                decodeFailure: SerializationException,
+            ): Api = Api(
+                message,
+                httpStatus = null,
+                hint = null,
+                retryable = false,
+                requestId = null,
+                cause = decodeFailure,
+                decodeFailure = decodeFailure,
+            )
+        }
     }
 
     /** Validation error (400, 422). */

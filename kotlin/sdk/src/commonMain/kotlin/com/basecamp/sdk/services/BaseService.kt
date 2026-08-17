@@ -562,14 +562,14 @@ abstract class BaseService(
 
     /**
      * The one place a decode failure is rendered — and, through the internal
-     * constructor it calls, the only producer of
+     * factory it calls, the only producer of
      * [BasecampException.Api.decodeFailure]. That slot is how the §18
      * composites tell this exception from any other `api_error` that happens to
      * carry a [SerializationException] as its `cause`, which an auth strategy's
      * already-classified failure can (#730).
      */
     private fun malformedBody(operation: String, cause: SerializationException): BasecampException.Api =
-        BasecampException.Api(
+        BasecampException.Api.malformedBody(
             message = BasecampException.truncateMessage(
                 "$operation returned a body that does not decode: ${cause.message}"
             ),
