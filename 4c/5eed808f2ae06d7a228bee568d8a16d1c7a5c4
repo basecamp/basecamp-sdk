@@ -1,0 +1,19 @@
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  s_c7205968e852ea::t_e4a9298b84a9a7 219-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4c5eed808f2ae06d7a228bee568d8a16d1c7a5c4",
+  "prompts": {},
+  "sessions": {
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

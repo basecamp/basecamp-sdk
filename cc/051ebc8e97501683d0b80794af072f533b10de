@@ -1,0 +1,97 @@
+swift/Sources/BasecampPublicAPIConsumer/PublicAPIConsumer.swift
+  s_c7205968e852ea::t_9ea158f31fe1ef 59
+  s_c7205968e852ea::t_5b2068fab53b7b 1-58,60-138
+swift/Tests/BasecampTests/PublicInitCoverageTests.swift
+  s_c7205968e852ea::t_77637697c9be8f 1-177
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  s_c7205968e852ea::t_9cb1884991d304 216-234,236-242,244-245,250,252-253,255
+  s_c7205968e852ea::t_bcd64e262efbdf 247-249,251
+swift/Package.swift
+  s_c7205968e852ea::t_0f3fe9d82de9dc 21-34
+swift/Sources/Basecamp/Generated/Models/AccountLimits.swift
+  s_c7205968e852ea::t_40e8bb2ed175d8 9-20
+swift/Sources/Basecamp/Generated/Models/AccountLogo.swift
+  s_c7205968e852ea::t_0f6aaf3d9e143e 6-9
+swift/Sources/Basecamp/Generated/Models/AccountSettings.swift
+  s_c7205968e852ea::t_22cd9132e60aa7 8-13
+swift/Sources/Basecamp/Generated/Models/AccountSubscription.swift
+  s_c7205968e852ea::t_ba1e58682aa019 13-32
+swift/Sources/Basecamp/Generated/Models/CampfireLineAttachment.swift
+  s_c7205968e852ea::t_362c6d0c50fbe7 11-26
+swift/Sources/Basecamp/Generated/Models/ClientApprovalResponse.swift
+  s_c7205968e852ea::t_401861aa830be0 20-53
+swift/Sources/Basecamp/Generated/Models/ClientSide.swift
+  s_c7205968e852ea::t_f203029b9797fc 8-12
+swift/Sources/Basecamp/Generated/Models/CreateAttachmentResponseContent.swift
+  s_c7205968e852ea::t_fea67bf10112d7 6-9
+swift/Sources/Basecamp/Generated/Models/DoorService.swift
+  s_c7205968e852ea::t_aaa58ca5c44dc7 10-23
+swift/Sources/Basecamp/Generated/Models/EventDetails.swift
+  s_c7205968e852ea::t_9da6ac910941b9 8-13
+swift/Sources/Basecamp/Generated/Models/EverythingFile.swift
+  s_c7205968e852ea::t_d8e4546d4b5d9f 37-104
+swift/Sources/Basecamp/Generated/Models/GaugeNeedleUpdatePayload.swift
+  s_c7205968e852ea::t_91c764df551e47 6-9
+swift/Sources/Basecamp/Generated/Models/GetAssignedTodosResponseContent.swift
+  s_c7205968e852ea::t_fa555d8a1d1b9d 8-13
+swift/Sources/Basecamp/Generated/Models/GetMyAssignmentsResponseContent.swift
+  s_c7205968e852ea::t_13dd6ea9cb6445 7-11
+swift/Sources/Basecamp/Generated/Models/GetOverdueTodosResponseContent.swift
+  s_c7205968e852ea::t_c3eaf310e41f16 9-20
+swift/Sources/Basecamp/Generated/Models/GetPersonProgressResponseContent.swift
+  s_c7205968e852ea::t_c345ac76c58083 7-11
+swift/Sources/Basecamp/Generated/Models/OutOfOffice.swift
+  s_c7205968e852ea::t_f7039221c32ee0 11-26
+swift/Sources/Basecamp/Generated/Models/PauseQuestionResponseContent.swift
+  s_c7205968e852ea::t_b5a98fe767d085 6-9
+swift/Sources/Basecamp/Generated/Models/Preferences.swift
+  s_c7205968e852ea::t_5f66a725700e44 10-23
+swift/Sources/Basecamp/Generated/Models/PreferencesPayload.swift
+  s_c7205968e852ea::t_81dc82074f9696 8-13
+swift/Sources/Basecamp/Generated/Models/PreviewableAttachment.swift
+  s_c7205968e852ea::t_057a383af40aa2 13-32
+swift/Sources/Basecamp/Generated/Models/ProjectAccessResult.swift
+  s_c7205968e852ea::t_46e03f83eb6be5 7-11
+swift/Sources/Basecamp/Generated/Models/QuestionReminder.swift
+  s_c7205968e852ea::t_2411c0ced1b1d3 9-20
+swift/Sources/Basecamp/Generated/Models/QuestionSchedule.swift
+  s_c7205968e852ea::t_1df1fd7a96b75b 14-35
+swift/Sources/Basecamp/Generated/Models/ResumeQuestionResponseContent.swift
+  s_c7205968e852ea::t_5fd0f37b84737e 6-9
+swift/Sources/Basecamp/Generated/Models/ScheduleAttributes.swift
+  s_c7205968e852ea::t_38d9380d01caa7 7-11
+swift/Sources/Basecamp/Generated/Models/TimelineAttachment.swift
+  s_c7205968e852ea::t_1275980bce7045 42-119
+swift/Sources/Basecamp/Generated/Models/TimelineEvent.swift
+  s_c7205968e852ea::t_6cd5adff016b11 20-53
+swift/Sources/Basecamp/Generated/Models/UpdateQuestionNotificationSettingsResponseContent.swift
+  s_c7205968e852ea::t_3cf5d32dcffd87 7-11
+swift/Sources/Basecamp/Generated/Models/WebhookCopy.swift
+  s_c7205968e852ea::t_b6a7af1cfdd8f8 9-20
+swift/Sources/Basecamp/Generated/Models/WebhookCopyBucket.swift
+  s_c7205968e852ea::t_43271283de7fba 6-9
+swift/Sources/Basecamp/Generated/Models/WebhookDelivery.swift
+  s_c7205968e852ea::t_5e8e173f0499ca 9-20
+swift/Sources/Basecamp/Generated/Models/WebhookDeliveryRequest.swift
+  s_c7205968e852ea::t_d50fead47254d8 7-11
+swift/Sources/Basecamp/Generated/Models/WebhookDeliveryResponse.swift
+  s_c7205968e852ea::t_432bc1cbde3697 8-13
+swift/Sources/Basecamp/Generated/Models/WebhookEvent.swift
+  s_c7205968e852ea::t_548f606aa453a4 12-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cc051ebc8e97501683d0b80794af072f533b10de",
+  "prompts": {},
+  "sessions": {
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
