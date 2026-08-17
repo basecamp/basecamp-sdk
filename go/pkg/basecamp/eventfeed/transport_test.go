@@ -99,3 +99,36 @@ func TestIsLoopbackHost(t *testing.T) {
 		}
 	}
 }
+
+// TestCheckCableURL_RefusesOutOfRangePorts is the port-range half of the
+// permanently-unusable-URL policy. url.Parse checks only that an explicit
+// port is digits, so "wss://h:99999/" parses, carries a hostname, and clears
+// every other check — then fails in the network stack, which
+// WebSocketTransport.Dial classifies DialTransient. That sends the connector
+// round the reconnect cycle re-minting and re-dialing forever, which is the
+// exact failure the port-only-authority cases above were added to prevent.
+func TestCheckCableURL_RefusesOutOfRangePorts(t *testing.T) {
+	for _, u := range []string{
+		"wss://cable.example.com:99999/feed?ticket=t-1",
+		"wss://cable.example.com:65536/feed",
+		"wss://cable.example.com:0/feed",
+		"ws://localhost:70000/cable",
+	} {
+		err := checkCableURL(u)
+		if err == nil {
+			t.Fatalf("checkCableURL(%q) = nil, want policy refusal — an unusable port is not transient", u)
+		}
+		if err.Kind != DialPolicy {
+			t.Errorf("checkCableURL(%q) Kind = %v, want %v", u, err.Kind, DialPolicy)
+		}
+		if strings.Contains(err.Reason, "ticket") {
+			t.Errorf("checkCableURL(%q) Reason %q leaks the query string", u, err.Reason)
+		}
+	}
+	// The boundary values stay dialable.
+	for _, u := range []string{"wss://cable.example.com:1/feed", "wss://cable.example.com:65535/feed"} {
+		if err := checkCableURL(u); err != nil {
+			t.Errorf("checkCableURL(%q) = %v, want nil", u, err)
+		}
+	}
+}

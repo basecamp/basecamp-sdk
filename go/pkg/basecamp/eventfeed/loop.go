@@ -451,6 +451,14 @@ func (b *liveBuffer) add(ev Event) []int64 {
 	var dropped []int64
 	for len(b.events) >= b.capacity {
 		dropped = append(dropped, b.events[0].ID)
+		// Zeroed before the reslice, for shift's reason: the reslice removes
+		// the evicted event logically, but the slice that results still
+		// points into the same backing array, whose prefix keeps that
+		// event's strings reachable until a later reallocation. Under
+		// sustained overflow that is a second buffer's worth of payload held
+		// beyond the ceiling §23 publishes — retained by events that no
+		// longer count toward occupancy.
+		b.events[0] = Event{}
 		b.events = b.events[1:]
 	}
 	b.events = append(b.events, ev)
@@ -862,6 +870,54 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 	}
 }
 
+// writeSubscribe sends the subscribe command, BOUNDED by the phase deadline
+// that is running when it is sent.
+//
+// This is the one place the state machine hands control to the transport
+// synchronously while a deadline governs the phase, and left synchronous it
+// defeats that deadline outright. `CableConn.WriteFrame` may block — a peer
+// whose receive window has closed, or any seam implementation that returns
+// only when its context is cancelled — and the context in question is
+// `at.ctx`, which nothing cancels but a teardown this very write is blocking.
+// The state machine cannot return to its select, so neither the handshake nor
+// the confirmation deadline can ever be observed, and the feed hangs after
+// `welcome` until the consumer closes the connector.
+//
+// Running the write on its own goroutine and selecting the deadline against
+// it restores the bound: a lapse takes transition 9/14 exactly as it would
+// have had the write never blocked, and disposal's cancel is what returns the
+// abandoned write (the seam contract requires a cancelled write to return
+// promptly, and Close is documented to unblock it too). Staleness is
+// deliberately not in this select — the phase deadline is the tighter bound
+// on a handshake that is going nowhere, and adding a second timer here would
+// duplicate the generation dance for no additional guarantee.
+func (l *loop) writeSubscribe(at *attempt, deadline *Timer) (cycleOutcome, bool) {
+	written := make(chan error, 1)
+	go func() { written <- at.lc.conn.WriteFrame(at.ctx, l.subscribeFrame) }()
+	select {
+	case werr := <-written:
+		if werr != nil {
+			l.disposeAttempt(at, *deadline)
+			l.observeDisconnected("", werr)
+			return cycleOutcome{kind: outcomeFailed}, true
+		}
+		if l.hooks.subscribeWritten != nil {
+			l.hooks.subscribeWritten()
+		}
+		return cycleOutcome{}, false
+	case <-l.runCtx.Done():
+		l.disposeAttempt(at, *deadline)
+		return cycleOutcome{kind: outcomeClosed}, true
+	case <-(*deadline).C():
+		// The deadline is spent, so disposal is handed nil: the attempt's
+		// timer set is empty from here, as on every other lapse.
+		lapsed := errDeadlineLapsed(l.state)
+		l.disposeAttempt(at, nil)
+		l.observeDisconnected("", lapsed)
+		return cycleOutcome{kind: outcomeFailed}, true
+	}
+}
+
 // errDeadlineLapsed names the deadline that lapsed in the given state.
 func errDeadlineLapsed(s connState) error {
 	if s == stateAwaitingWelcome {
@@ -898,13 +954,24 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 		// Transition 8 on the first welcome; a duplicate welcome resends
 		// the identical subscribe bytes (stock behavior — the server
 		// absorbs identical retransmits) without touching the deadline.
-		if werr := at.lc.conn.WriteFrame(at.ctx, l.subscribeFrame); werr != nil {
-			l.disposeAttempt(at, *deadline)
-			l.observeDisconnected("", werr)
-			return cycleOutcome{kind: outcomeFailed}, true
+		if out, done := l.writeSubscribe(at, deadline); done {
+			return out, true
 		}
 		if l.state == stateAwaitingWelcome {
-			(*deadline).Stop()
+			if !(*deadline).Stop() {
+				// The handshake deadline had ALREADY FIRED. Stop's result is
+				// the ordering discriminator here for the same reason it is
+				// in staleHolder.arm: the frame and the expiry were both
+				// ready and the select picked one at random. Re-arming over
+				// the firing would swap the expired timer out for a fresh
+				// confirmation window and accept a welcome that arrived past
+				// the deadline — transition 9's lapse, silently converted
+				// into a live handshake half the time it happens.
+				lapsed := errDeadlineLapsed(l.state)
+				l.disposeAttempt(at, nil)
+				l.observeDisconnected("", lapsed)
+				return cycleOutcome{kind: outcomeFailed}, true
+			}
 			*deadline = l.cfg.clock.NewTimer(l.cfg.confirmationDeadline, timerConfirmationDeadline)
 			l.setState(stateAwaitingConfirmation)
 		}
@@ -928,7 +995,15 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 		entry, present := l.entryCursor()
 		return l.catchUp(catchUpHandoff{at: at, entry: entry, presentClass: present, buffer: l.buffer}), true
 	case frameReject:
-		if f.identifier != l.identifier {
+		if l.state != stateAwaitingConfirmation || f.identifier != l.identifier {
+			// A foreign identifier, or a rejection that arrived before the
+			// connector had sent any subscribe command at all. §23 draws
+			// transition 12 only from AwaitingConfirmation, and the confirm
+			// branch above already gates on exactly that. Ungated, this is
+			// the connector's single most severe verdict — Terminal with
+			// ZERO reconnects — produced against zero subscription attempts
+			// by one unsolicited frame from a peer that has only completed
+			// the WebSocket handshake.
 			return cycleOutcome{}, false
 		}
 		// Transition 12: always terminal — cancel the deadline, explicitly

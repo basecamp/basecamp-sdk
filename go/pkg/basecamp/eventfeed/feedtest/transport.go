@@ -146,8 +146,9 @@ type Conn struct {
 	finalErr      error // after pending drains: peer close or scripted read failure
 	violation     error // latched max-frame-bytes rejection
 
-	writes   [][]byte
-	writeErr error
+	writes      [][]byte
+	writeErr    error
+	stallWrites bool
 
 	closed      bool
 	closeCode   int
@@ -198,6 +199,19 @@ func (c *Conn) FailWrites(err error) {
 	c.cond.Broadcast()
 }
 
+// StallWrites scripts every subsequent WriteFrame to BLOCK until its context
+// is cancelled or the connection is closed — the compliant stalled transport:
+// a peer whose receive window has shut, or a seam implementation that returns
+// only on cancellation. It is the counterpart of StallNext on the poll seam,
+// and what a test needs to prove that a phase deadline still bounds a write
+// the state machine performs synchronously.
+func (c *Conn) StallWrites() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.stallWrites = true
+	c.cond.Broadcast()
+}
+
 // ReadFrame implements eventfeed.CableConn: the next queued frame, verbatim.
 // Precedence at each wakeup: context cancellation, local close, a latched
 // frame-size violation, queued frames (checking the cap as each is
@@ -240,13 +254,25 @@ func (c *Conn) ReadFrame(ctx context.Context) ([]byte, error) {
 
 // WriteFrame implements eventfeed.CableConn: it records the frame verbatim.
 // A done context, a local Close, and a scripted write failure each fail the
-// write instead.
+// write instead; a scripted stall blocks until one of the first two happens.
 func (c *Conn) WriteFrame(ctx context.Context, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	stop := context.AfterFunc(ctx, func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		c.cond.Broadcast()
+	})
+	defer stop()
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	for c.stallWrites && ctx.Err() == nil && !c.closed {
+		c.cond.Wait()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if c.closed {
 		return errConnClosed
 	}

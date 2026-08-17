@@ -110,3 +110,11 @@ func ExportSubscribeIdentifier(f Filters) string { return subscribeIdentifier(f)
 // ExportSubscribeFrame exposes the exact subscribe command bytes the connector
 // writes.
 func ExportSubscribeFrame(f Filters) []byte { return subscribeCommand(subscribeIdentifier(f)) }
+
+// OnSubscribeWritten registers a hook fired once the subscribe command has
+// been written and BEFORE the phase deadline is stopped. It is the only
+// rendezvous for the deadline-vs-welcome ordering: from outside, a deadline
+// that fires while the welcome frame is already queued leaves the state
+// machine's select with two ready cases and no way for a test to say which
+// one it must take.
+func (c *Connector) OnSubscribeWritten(f func()) { c.hooks.subscribeWritten = f }

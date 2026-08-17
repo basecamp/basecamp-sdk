@@ -155,16 +155,23 @@ func (e *invalidFrameError) Error() string {
 // (liveness only). A frame with no type is a correlated broadcast when it
 // carries both "identifier" and "message", else frameUnknown. A frame that
 // fails to parse as a JSON object envelope — unparseable bytes, non-object
-// JSON, wrong-typed envelope fields — is the invalid-frame class's parse
-// shape.
+// JSON, a wrong-typed "type", or a wrong-typed field the SELECTED frame kind
+// reads — is the invalid-frame class's parse shape.
+//
+// The type is decoded FIRST, and only the fields the selected kind actually
+// uses are decoded after it. Validating the whole envelope up front made a
+// forward-compatible extension fatal: SPEC.md §23 says "Unknown frame types —
+// parseable JSON whose `type` the connector doesn't recognize — update
+// liveness and are otherwise ignored", but `{"type":"future","identifier":1}`
+// failed the envelope unmarshal on a field `future` does not have and was
+// dispatched as a socket failure. A server that adds such a frame would then
+// tear down and reconnect every connected client, indefinitely, over a frame
+// the protocol says to ignore. Selecting first is also what keeps the
+// wrong-typed cases that DO matter fatal: `confirm_subscription` and
+// `reject_subscription` read `identifier`, `disconnect` reads `reason` and
+// `reconnect`, and a typeless frame reads both correlation fields, so each is
+// still validated against the kind that consumes it.
 func parseFrame(data []byte) (frame, error) {
-	var env struct {
-		Type       *string         `json:"type"`
-		Identifier string          `json:"identifier"`
-		Message    json.RawMessage `json:"message"`
-		Reason     string          `json:"reason"`
-		Reconnect  *bool           `json:"reconnect"`
-	}
 	if !isJSONObject(data) {
 		// Non-object JSON is the parse shape by the same reasoning as
 		// unparseable bytes — the frame stream has stopped meaning anything —
@@ -176,24 +183,56 @@ func parseFrame(data []byte) (frame, error) {
 		// delivering no protocol traffic at all.
 		return frame{}, newInvalidFrameError(invalidFrameParse, errors.New("frame is not a JSON object"))
 	}
-	if err := json.Unmarshal(data, &env); err != nil {
+	var envType struct {
+		Type *string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &envType); err != nil {
 		return frame{}, newInvalidFrameError(invalidFrameParse, err)
 	}
-	if env.Type != nil {
-		switch *env.Type {
+	if envType.Type != nil {
+		switch *envType.Type {
 		case frameTypeWelcome:
 			return frame{kind: frameWelcome}, nil
 		case frameTypePing:
+			// The optional epoch `message` is never read (§23: both
+			// {"type":"ping"} and {"type":"ping","message":<epoch>} are
+			// accepted), so it is never validated either.
 			return frame{kind: framePing}, nil
-		case frameTypeConfirm:
-			return frame{kind: frameConfirm, identifier: env.Identifier}, nil
-		case frameTypeReject:
-			return frame{kind: frameReject, identifier: env.Identifier}, nil
+		case frameTypeConfirm, frameTypeReject:
+			var env struct {
+				Identifier string `json:"identifier"`
+			}
+			if err := json.Unmarshal(data, &env); err != nil {
+				return frame{}, newInvalidFrameError(invalidFrameParse, err)
+			}
+			kind := frameConfirm
+			if *envType.Type == frameTypeReject {
+				kind = frameReject
+			}
+			return frame{kind: kind, identifier: env.Identifier}, nil
 		case frameTypeDisconnect:
+			var env struct {
+				Reason    string `json:"reason"`
+				Reconnect *bool  `json:"reconnect"`
+			}
+			if err := json.Unmarshal(data, &env); err != nil {
+				return frame{}, newInvalidFrameError(invalidFrameParse, err)
+			}
 			return frame{kind: frameDisconnect, reason: env.Reason, reconnect: env.Reconnect}, nil
 		default:
 			return frame{kind: frameUnknown}, nil
 		}
+	}
+	// No "type" at all: this is the correlated-broadcast shape, which reads
+	// BOTH fields, so both are validated. It is not §23's unrecognized-type
+	// case — there is no type to be unrecognized — and a wrong-typed
+	// correlation field here still stops the frame stream meaning anything.
+	var env struct {
+		Identifier string          `json:"identifier"`
+		Message    json.RawMessage `json:"message"`
+	}
+	if err := json.Unmarshal(data, &env); err != nil {
+		return frame{}, newInvalidFrameError(invalidFrameParse, err)
 	}
 	if env.Identifier != "" && len(env.Message) > 0 {
 		return frame{kind: frameMessage, identifier: env.Identifier, message: env.Message}, nil

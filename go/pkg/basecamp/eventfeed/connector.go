@@ -235,6 +235,13 @@ type testHooks struct {
 	// on", which is what makes transition 21's deferral assertable without
 	// racing the seam call's own completion.
 	frameDeferred func()
+	// subscribeWritten fires once the subscribe command has been written and
+	// BEFORE the phase deadline is stopped. It exists for the one ordering
+	// this package cannot otherwise assert: the deadline expiring in the
+	// window between a successful write and the Stop that cancels it —
+	// externally a coin flip between two ready select cases, and the reason
+	// Stop's result must be read rather than discarded.
+	subscribeWritten func()
 }
 
 // New validates configuration and returns a Connector. New does no I/O —

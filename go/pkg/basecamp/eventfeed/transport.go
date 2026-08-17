@@ -2,6 +2,7 @@ package eventfeed
 
 import (
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -47,6 +48,23 @@ func checkCableURL(wsURL string) *DialError {
 	// continuation check.
 	if u.Hostname() == "" {
 		return &DialError{Kind: DialPolicy, Reason: "cable URL has no host"}
+	}
+	// An EXPLICIT port must be a usable TCP port. url.Parse checks only that
+	// the port is digits, so "wss://example.com:99999/feed" parses, carries a
+	// hostname, and passes everything above — then fails in the network
+	// stack, which WebSocketTransport.Dial classifies DialTransient. That
+	// sends the connector round the reconnect cycle re-minting and re-dialing
+	// forever, which is the same permanently-unusable-URL failure the
+	// hostname check just above exists to convert into
+	// Terminal(invalid_cable_url). Port 0 is included: it names no port a
+	// client can connect to.
+	if port := u.Port(); port != "" {
+		n, perr := strconv.Atoi(port)
+		if perr != nil || n < 1 || n > 65535 {
+			// The port is structural, never secret — safe to name, like the
+			// scheme above.
+			return &DialError{Kind: DialPolicy, Reason: "cable URL port " + `"` + port + `"` + " is not a usable TCP port"}
+		}
 	}
 	return nil
 }

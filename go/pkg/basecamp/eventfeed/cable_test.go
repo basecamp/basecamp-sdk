@@ -469,3 +469,45 @@ func TestInvalidFrameError_RenderingCarriesNoFrameContent(t *testing.T) {
 		t.Errorf("error rendering leaks frame content: %v", err)
 	}
 }
+
+// TestParseFrame_UnknownTypeIgnoresUnrelatedFields is SPEC.md §23's
+// forward-compatibility rule: "Unknown frame types — parseable JSON whose
+// `type` the connector doesn't recognize — update liveness and are otherwise
+// ignored."
+//
+// Validating the whole envelope before classifying broke it. A future frame
+// carrying a field of a different type failed the envelope unmarshal on a
+// field its own kind does not have, and was dispatched as a socket failure —
+// so a server that started sending such a frame would tear down and reconnect
+// every connected client, indefinitely, over a frame the protocol says to
+// ignore. The kind is selected first; only the fields that kind READS are
+// validated.
+func TestParseFrame_UnknownTypeIgnoresUnrelatedFields(t *testing.T) {
+	for _, raw := range []string{
+		`{"type":"future","identifier":1}`,
+		`{"type":"future","reason":{"code":7},"reconnect":"maybe"}`,
+		`{"type":"future","message":[1,2,3],"identifier":{"a":1}}`,
+	} {
+		f, err := parseFrame([]byte(raw))
+		if err != nil {
+			t.Errorf("parseFrame(%s) = %v, want frameUnknown — an unrecognized type is liveness-only", raw, err)
+			continue
+		}
+		if f.kind != frameUnknown {
+			t.Errorf("parseFrame(%s) kind = %v, want %v", raw, f.kind, frameUnknown)
+		}
+	}
+	// A recognized kind still validates what IT reads, so the wrong-typed
+	// cases that matter stay fatal. This is the discriminator: the fix must
+	// not widen into "wrong types are fine".
+	for _, raw := range []string{
+		`{"type":"confirm_subscription","identifier":1}`,
+		`{"type":"reject_subscription","identifier":[]}`,
+		`{"type":"disconnect","reason":"remote","reconnect":"yes"}`,
+		`{"identifier":42,"message":{"id":1}}`,
+	} {
+		if _, err := parseFrame([]byte(raw)); err == nil {
+			t.Errorf("parseFrame(%s) = nil error, want the invalid-frame parse shape", raw)
+		}
+	}
+}

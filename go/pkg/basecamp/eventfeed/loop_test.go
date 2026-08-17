@@ -1588,3 +1588,118 @@ func TestStartModesWithAPopulatedStore(t *testing.T) {
 		}
 	})
 }
+
+// TestRejectBeforeSubscribeIsIgnored gates transition 12 on the state §23
+// draws it from. `reject_subscription` is the connector's single most severe
+// verdict — Terminal, ZERO reconnects, no backoff — and ungated it can be
+// produced by one unsolicited frame from a peer that has done nothing but
+// complete the WebSocket handshake, against zero subscription attempts. The
+// neighbouring confirm branch already gates on AwaitingConfirmation; this is
+// the same gate on the same transition's other half.
+func TestRejectBeforeSubscribeIsIgnored(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+
+	conn := h.liveConn()
+	// The connector's OWN identifier, so correlation is not what saves it,
+	// and before any subscribe command has been written.
+	conn.Serve(frameReject(noFilterIdentifier))
+	h.awaitFrameHandled("reject_subscription")
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("terminal = %v, want none — transition 12 exists only from AwaitingConfirmation", terminal)
+	}
+	if conn.Closed() {
+		t.Fatal("a premature rejection must not tear the socket down")
+	}
+
+	// The handshake then proceeds normally on the same socket.
+	conn.Serve(frameWelcome())
+	h.awaitTimer(timerConfirmationDeadline)
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitStreaming()
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("terminal = %v, want none", terminal)
+	}
+}
+
+// TestStalledSubscribeWriteStillLapsesTheHandshakeDeadline bounds the one
+// place the state machine hands control to the transport synchronously while
+// a deadline governs the phase. A CableConn.WriteFrame that blocks — a peer
+// whose receive window has shut, or a seam implementation that returns only
+// on cancellation — cannot be interrupted from inside the write: at.ctx is
+// cancelled by a teardown the write is itself blocking, so neither the
+// handshake nor the confirmation deadline can ever be observed and the feed
+// hangs after `welcome` until the consumer closes the connector.
+func TestStalledSubscribeWriteStillLapsesTheHandshakeDeadline(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	h.start()
+
+	conn := h.liveConn()
+	conn.StallWrites()
+	conn.Serve(frameWelcome())
+	// The frame-handled hook fires before the switch, so past it the only
+	// path is the subscribe write: firing the deadline here cannot be taken
+	// by the outer select instead.
+	h.awaitFrameHandled("welcome")
+	h.fireTimer(timerHandshakeDeadline)
+
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("the lapse must dispose the attempt, closing the socket")
+	}
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("a handshake lapse is never terminal; got %v", terminal)
+	}
+	assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+}
+
+// TestWelcomeRacingAnExpiredHandshakeDeadlineLapses reads Stop's result as
+// the ordering discriminator, the same way staleHolder.arm does. When the
+// welcome frame and the handshake expiry are both ready the select picks one
+// at random; if the frame wins, an unchecked Stop swallows the firing and
+// replaces the expired handshake timer with a fresh confirmation window — so
+// a welcome that arrived past the deadline is accepted instead of taking
+// transition 9, half the time it happens.
+//
+// The hook fires in exactly that window (write returned, timer not yet
+// stopped), which is the only way to make the race deterministic from
+// outside: serving the frame and firing the timer from the test leaves the
+// select genuinely free to pick either.
+func TestWelcomeRacingAnExpiredHandshakeDeadlineLapses(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	fired := make(chan struct{}, 1)
+	h.conn.OnSubscribeWritten(func() {
+		if _, ok := h.clock.FireTimer(timerHandshakeDeadline); ok {
+			select {
+			case fired <- struct{}{}:
+			default:
+			}
+		}
+	})
+	h.start()
+
+	conn := h.liveConn()
+	conn.Serve(frameWelcome())
+	select {
+	case <-fired:
+	case <-time.After(watchdog):
+		t.Fatal("the handshake deadline was never fired inside the write→Stop window")
+	}
+
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("a lapsed handshake must dispose the attempt, closing the socket")
+	}
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("a handshake lapse is never terminal; got %v", terminal)
+	}
+	// The decisive assertion: no confirmation-deadline was armed over the
+	// expired handshake timer.
+	assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+}
