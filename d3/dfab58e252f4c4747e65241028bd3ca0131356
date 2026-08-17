@@ -1,0 +1,24 @@
+scripts/test-check-service-inventory-parity.rb
+  s_c7205968e852ea::t_29830580c097e3 158-168
+  s_c7205968e852ea::t_7dd57838451f6c 49-52,54-58,60-64,66-70,80-82
+  s_c7205968e852ea::t_cf8b329c79b475 390-413
+scripts/check-service-inventory-parity
+  s_c7205968e852ea::t_900df2143e3507 262-269
+  s_c7205968e852ea::t_a33bd830e4eab4 130-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d3dfab58e252f4c4747e65241028bd3ca0131356",
+  "prompts": {},
+  "sessions": {
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

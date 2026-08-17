@@ -1,0 +1,35 @@
+scripts/test-check-service-inventory-parity.rb
+  s_c7205968e852ea::t_04f686025ef5c0 458-490
+  s_c7205968e852ea::t_bc8810b133866e 94-98
+  s_c7205968e852ea::t_f988e55e7790ed 268-286
+  s_c7205968e852ea::t_94e0ac90014bef 45,50-52,55-66
+  s_c7205968e852ea::t_a23bf7cf57e6a1 327-333,336-339
+scripts/sync-doc-constants.rb
+  s_c7205968e852ea::t_7cd4f7fc07085d 409-419
+  s_c7205968e852ea::t_a932d644265ad6 405-408
+  s_c7205968e852ea::t_81804b3b4e21c7 356-363
+SPEC.md
+  s_c7205968e852ea::t_aa1ef82c3455dd 310
+scripts/check-service-inventory-parity
+  s_c7205968e852ea::t_310e9a8efbc120 358-369
+  s_c7205968e852ea::t_99b3c398711f5c 405-414
+  s_c7205968e852ea::t_d781efc283b2e4 27-39
+  s_c7205968e852ea::t_1407a60cf5db1c 255-265
+  s_c7205968e852ea::t_a9693a54c38f4b 196-198,202-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b43d7aaed5f09af197aa34a9687247417a09e5de",
+  "prompts": {},
+  "sessions": {
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
