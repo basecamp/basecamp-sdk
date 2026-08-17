@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -144,22 +145,49 @@ func redactDialErr(err error, wsURL string) error {
 	// deliberate: a transient dial failure is the one error class an operator
 	// debugs a broken cable endpoint from, and replacing it wholesale would
 	// trade a real leak for a permanent diagnostic blackout.
-	for _, values := range u.Query() {
-		for _, v := range values {
-			if len(v) >= minRedactableValue {
-				msg = strings.ReplaceAll(msg, v, "[redacted]")
-			}
-		}
+	for _, v := range secretQueryValues(u) {
+		msg = strings.ReplaceAll(msg, v, "[redacted]")
 	}
 	return errors.New(msg)
 }
 
-// minRedactableValue is the shortest query value worth redacting by value.
-// A credential is long; a short value ("1", "v2") is far more likely to be a
-// common substring of ordinary diagnostic text — "1" appears in every port
-// number and status code — so redacting those would shred the message while
-// protecting nothing. Ticket tokens are comfortably above this.
-const minRedactableValue = 8
+// secretQueryValues returns every value in u's query, in BOTH its raw
+// (percent-encoded) and decoded spellings, longest first.
+//
+// No length threshold, deliberately. An earlier revision skipped short values
+// to avoid shredding diagnostics with a common substring, and that was a
+// heuristic about which values are SECRET — the wrong discriminator. What
+// makes a value secret here is its POSITION: it is a query value in the URL a
+// TicketMinter returned, and §23 imposes no minimum length on StreamTicket, so
+// a short ticket echoed back by a peer leaked verbatim. Shape cannot decide
+// it; position can, and the security invariant outranks the diagnostic when
+// they conflict.
+//
+// Both spellings matter because the two sources differ: url.Values decodes,
+// while an error quoting the request URL carries the raw form. Longest first
+// so redacting a value cannot fragment a longer one that contains it.
+func secretQueryValues(u *url.URL) []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(v string) {
+		if v != "" && !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	for _, values := range u.Query() {
+		for _, v := range values {
+			add(v)
+		}
+	}
+	for _, pair := range strings.Split(u.RawQuery, "&") {
+		if _, raw, ok := strings.Cut(pair, "="); ok {
+			add(raw)
+		}
+	}
+	sort.Slice(out, func(a, b int) bool { return len(out[a]) > len(out[b]) })
+	return out
+}
 
 // wsConn adapts one coder/websocket connection to the CableConn seam.
 type wsConn struct {

@@ -168,8 +168,18 @@ func TestRedactDialErrRedactsEchoedCredentials(t *testing.T) {
 	if g := redactDialErr(urlForm, wsURL).Error(); strings.Contains(g, ticket) || !strings.Contains(g, "connection refused") {
 		t.Errorf("redactDialErr(url form) = %q", g)
 	}
-	short := errors.New("connection refused on attempt 1 of 3")
-	if g := redactDialErr(short, "wss://h/cable?v=1").Error(); g != "connection refused on attempt 1 of 3" {
-		t.Errorf("redactDialErr shredded ordinary text with a short value: %q", g)
+	// A SHORT ticket is redacted too. §23 imposes no minimum length on
+	// StreamTicket, so a threshold that skipped short values would leak one
+	// verbatim — the length of a value cannot decide whether it is secret,
+	// only its position in the mint's URL can.
+	shortTicket := errors.New(`unexpected Sec-WebSocket-Protocol from server: "q7"`)
+	if g := redactDialErr(shortTicket, "wss://h/cable?ticket=q7").Error(); strings.Contains(g, `"q7"`) {
+		t.Errorf("redactDialErr leaked a short ticket: %q", g)
+	}
+	// The percent-encoded spelling is covered as well: url.Values decodes,
+	// while an error quoting the request URL carries the raw form.
+	enc := errors.New(`Get "wss://h/cable?ticket=a%2Fb%2Bc": connection refused`)
+	if g := redactDialErr(enc, "wss://h/cable?ticket=a%2Fb%2Bc").Error(); strings.Contains(g, "a%2Fb%2Bc") || strings.Contains(g, "a/b+c") {
+		t.Errorf("redactDialErr leaked a percent-encoded ticket: %q", g)
 	}
 }
