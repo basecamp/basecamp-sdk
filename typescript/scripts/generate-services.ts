@@ -1776,5 +1776,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 }
 
 // Exported for generator regression tests.
-export { generateExampleValue, setSchemas };
-export type { Schema };
+export { generateExampleValue, setSchemas, buildReturnType };
+export type { Schema, ParsedOperation };
