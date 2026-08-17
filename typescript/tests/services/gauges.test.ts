@@ -17,7 +17,6 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import { ListResult } from "../../src/pagination.js";
-import type { ListMeta } from "../../src/pagination.js";
 import type { BasecampClient } from "../../src/client.js";
 import type {
   CreateGaugeNeedleGaugeRequest,
@@ -47,20 +46,6 @@ const asBasecampError = (error: unknown): BasecampError => {
   return error as BasecampError;
 };
 
-// Both gauge list methods return a ListResult at runtime — requestPaginated
-// builds one — but their generated signatures declare the bare
-// `List*ResponseContent` ARRAY, so `.meta` is invisible to the compiler. Nearly
-// every other generated list method declares `Promise<ListResult<T>>`;
-// ListGauges, ListGaugeNeedles, Search and Checkins#reminders are the four that
-// don't. The repo's `tsc --noEmit` excludes tests, so this reads clean today
-// either way; the helper asserts the runtime class first, so the pagination
-// contract below is pinned against what the object IS, not what the (currently
-// under-specified) return type claims. Reported, not fixed — the fix belongs in
-// the service generator, not in a test.
-const metaOf = (list: unknown): ListMeta => {
-  expect(list).toBeInstanceOf(ListResult);
-  return (list as ListResult<unknown>).meta;
-};
 
 describe("GaugesService", () => {
   let client: BasecampClient;
@@ -99,8 +84,12 @@ describe("GaugesService", () => {
       expect(gauge.bucket?.id).toBe(gaugeFixture.bucket.id);
       expect(gauge.bucket?.type).toBe("Project");
       expect(gauges[1]!.id).toBe(2);
-      expect(metaOf(gauges).totalCount).toBe(2);
-      expect(metaOf(gauges).truncated).toBe(false);
+      // The declared return type says ListResult, so `.meta` below compiles;
+      // this pins the runtime class behind it (an Array subclass, so plain
+      // array assertions keep working either way).
+      expect(gauges).toBeInstanceOf(ListResult);
+      expect(gauges.meta.totalCount).toBe(2);
+      expect(gauges.meta.truncated).toBe(false);
     });
 
     // The filter is spelled `bucket_ids` on the wire (snake_case), not
@@ -150,8 +139,8 @@ describe("GaugesService", () => {
 
       expect(requested).toEqual(["3"]);
       expect(gauges).toHaveLength(2);
-      expect(metaOf(gauges).totalCount).toBe(9);
-      expect(metaOf(gauges).truncated).toBe(true);
+      expect(gauges.meta.totalCount).toBe(9);
+      expect(gauges.meta.truncated).toBe(true);
     });
 
     it("follows Link headers across pages when no page is pinned", async () => {
@@ -178,8 +167,8 @@ describe("GaugesService", () => {
 
       expect(requested).toEqual(["(none)", "2"]);
       expect(gauges.map((g) => g.id)).toEqual([1, 2, 3]);
-      expect(metaOf(gauges).totalCount).toBe(3);
-      expect(metaOf(gauges).truncated).toBe(false);
+      expect(gauges.meta.totalCount).toBe(3);
+      expect(gauges.meta.truncated).toBe(false);
     });
 
     // ListGauges lists ForbiddenError/UnauthorizedError/RateLimitError/
@@ -223,8 +212,8 @@ describe("GaugesService", () => {
       expect(needle.position).toBe(72);
       // A needle hangs off its gauge, so the recording parent is the Gauge.
       expect(needle.parent?.id).toBe(needleFixture.parent.id);
-      expect(metaOf(needles).totalCount).toBe(2);
-      expect(metaOf(needles).truncated).toBe(false);
+      expect(needles.meta.totalCount).toBe(2);
+      expect(needles.meta.truncated).toBe(false);
     });
 
     it("selects exactly one page and reports the unfollowed next link", async () => {
@@ -248,8 +237,8 @@ describe("GaugesService", () => {
 
       expect(requested).toEqual(["2"]);
       expect(needles).toHaveLength(1);
-      expect(metaOf(needles).totalCount).toBe(5);
-      expect(metaOf(needles).truncated).toBe(true);
+      expect(needles.meta.totalCount).toBe(5);
+      expect(needles.meta.truncated).toBe(true);
     });
 
     it("follows Link headers across pages when no page is pinned", async () => {
@@ -277,7 +266,7 @@ describe("GaugesService", () => {
 
       expect(requested).toEqual(["(none)", "2"]);
       expect(needles.map((n) => n.id)).toEqual([1, 2, 3]);
-      expect(metaOf(needles).truncated).toBe(false);
+      expect(needles.meta.truncated).toBe(false);
     });
 
     it("maps a 404 on an unknown project to not_found", async () => {

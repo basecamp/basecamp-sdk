@@ -74,7 +74,7 @@ export class SearchService extends BaseService {
    * const result = await client.search.search("q");
    * ```
    */
-  async search(q: string, options?: SearchSearchOptions): Promise<components["schemas"]["SearchResponseContent"]> {
+  async search(q: string, options?: SearchSearchOptions): Promise<ListResult<components["schemas"]["SearchResult"]>> {
     return this.requestPaginated(
       {
         service: "Search",

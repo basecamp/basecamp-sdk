@@ -135,7 +135,7 @@ export class CheckinsService extends BaseService {
    * const result = await client.checkins.reminders();
    * ```
    */
-  async reminders(options?: RemindersCheckinOptions): Promise<components["schemas"]["GetQuestionRemindersResponseContent"]> {
+  async reminders(options?: RemindersCheckinOptions): Promise<ListResult<components["schemas"]["QuestionReminder"]>> {
     return this.requestPaginated(
       {
         service: "Checkins",

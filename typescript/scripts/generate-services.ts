@@ -1319,9 +1319,7 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   } else if (isPaginated) {
     lines.push(`    return this.requestPaginated(`);
   } else if (isWrappedPaginated) {
-    const entitySchema = findUnderlyingEntitySchema(op.responseSchemaRef || "", op.paginationKey);
-    const entityName = entitySchema && TYPE_ALIASES[entitySchema] ? TYPE_ALIASES[entitySchema][0] : "unknown";
-    lines.push(`    return this.requestPaginatedWrapped<"${op.paginationKey}", ${entityName}>(`);
+    lines.push(`    return this.requestPaginatedWrapped<"${op.paginationKey}", ${buildPaginationElementType(op)}>(`);
   } else {
     lines.push(`    const response = await this.request(`);
   }
@@ -1478,6 +1476,36 @@ function buildMethodSignature(op: ParsedOperation, resourceName: string): {
   };
 }
 
+/**
+ * The element type to put inside `ListResult<...>` for a paginated operation.
+ *
+ * Both paginated shapes resolve the same way, one level apart: a bare array
+ * response takes its own `items`, a wrapped response takes the `items` of the
+ * property named by the pagination key. The name is the friendly alias when the
+ * entity has one, otherwise the item's own schema ref — degrading to a schema
+ * ref keeps the element concrete where a missing TYPE_ALIASES entry used to
+ * cost the whole `ListResult` wrapper (array form) or the element type
+ * (wrapped form, which spelled `unknown`). Only a schema that names no element
+ * at all reaches `unknown` now.
+ *
+ * Callers must use this for BOTH the declared return type and the
+ * `requestPaginatedWrapped` type argument, which have to agree.
+ */
+function buildPaginationElementType(op: ParsedOperation): string {
+  const responseSchema = op.responseSchemaRef ? globalSchemas[op.responseSchemaRef] : undefined;
+  const listSchema = op.returnsArray
+    ? responseSchema
+    : op.paginationKey
+      ? responseSchema?.properties?.[op.paginationKey]
+      : undefined;
+
+  const itemRef = listSchema?.items?.$ref ? resolveRef(listSchema.items.$ref) : "";
+  if (!itemRef) return "unknown";
+
+  const alias = TYPE_ALIASES[itemRef];
+  return alias ? alias[0] : `components["schemas"]["${itemRef}"]`;
+}
+
 function buildReturnType(op: ParsedOperation, serviceName: string): string {
   if (op.returnsVoid) return "void";
 
@@ -1490,9 +1518,7 @@ function buildReturnType(op: ParsedOperation, serviceName: string): string {
         const parts: string[] = [];
         for (const [propName, propSchema] of Object.entries(schema.properties)) {
           if (propName === op.paginationKey) {
-            const entitySchema = findUnderlyingEntitySchema(op.responseSchemaRef, op.paginationKey);
-            const entityName = entitySchema && TYPE_ALIASES[entitySchema] ? TYPE_ALIASES[entitySchema][0] : "unknown";
-            parts.push(`${propName}: ListResult<${entityName}>`);
+            parts.push(`${propName}: ListResult<${buildPaginationElementType(op)}>`);
           } else {
             const propType = propSchema.$ref
               ? (() => {
@@ -1514,7 +1540,13 @@ function buildReturnType(op: ParsedOperation, serviceName: string): string {
       }
       return op.returnsArray ? `${entityName}[]` : entityName;
     }
-    // Fallback to schema ref
+    // No friendly name: the entity has no TYPE_ALIASES entry. Fall back to the
+    // response schema ref — but a paginated array still comes back as a
+    // ListResult at runtime (requestPaginated builds one), so the wrapper has to
+    // survive the fallback. Only the element name degrades, to its schema ref.
+    if (op.returnsArray && op.hasPagination) {
+      return `ListResult<${buildPaginationElementType(op)}>`;
+    }
     return `components["schemas"]["${op.responseSchemaRef}"]`;
   }
 
