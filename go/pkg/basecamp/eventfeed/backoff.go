@@ -1,6 +1,9 @@
 package eventfeed
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 // Two-lane retry timing (SPEC.md §23 "Clock, Timers, and Virtual Time").
 // The reconnect-cycle `backoff` timer and the in-walk `poll-retry` timer
@@ -81,7 +84,22 @@ func pollRetryDelay(retryAfter time.Duration, k int, r func() float64) time.Dura
 // repairJitter draws a repair-poll cadence uniform in
 // [interval × (1 − 0.20), interval × (1 + 0.20)). r is a uniform [0, 1)
 // source.
+// It SATURATES before converting back, which is §23's "saturate before
+// exponentiating" rule applied at the other end of the range. A caller that
+// spells "effectively never repair" the conventional Go way — a repair
+// interval at or near `math.MaxInt64` — makes the upward jitter draw overflow
+// `time.Duration`, and an out-of-range float-to-integer conversion is
+// implementation-defined: on the common targets it lands negative, so the
+// timer fires at once and the connector repair-polls as fast as the walk
+// completes. The failure is therefore the exact inverse of the request, which
+// is what makes the clamp worth having rather than a caller error to
+// document. Only the upper end can overflow: the interval is validated
+// positive, so the downward draw is bounded by the interval itself.
 func repairJitter(interval time.Duration, r func() float64) time.Duration {
 	span := 2*r() - 1 // uniform [-1, 1)
-	return time.Duration(float64(interval) * (1 + repairJitterFraction*span))
+	jittered := float64(interval) * (1 + repairJitterFraction*span)
+	if jittered >= float64(math.MaxInt64) {
+		return time.Duration(math.MaxInt64)
+	}
+	return time.Duration(jittered)
 }

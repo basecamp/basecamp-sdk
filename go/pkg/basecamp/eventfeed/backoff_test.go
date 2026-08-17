@@ -1,6 +1,7 @@
 package eventfeed
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -138,5 +139,45 @@ func TestRepairJitter_StaysWithinTwentyPercent(t *testing.T) {
 	}
 	if got := repairJitter(DefaultRepairInterval, fixedRand(0.5)); got != DefaultRepairInterval {
 		t.Errorf("repairJitter(60s) with r=0.5 = %v, want %v", got, DefaultRepairInterval)
+	}
+}
+
+// TestRepairJitterSaturates is §23's "saturate before exponentiating" rule at
+// the other end of the range. `math.MaxInt64` is the conventional Go spelling
+// of "effectively never", and it is the one interval whose upward jitter draw
+// cannot be represented: the product overflows `time.Duration`, and an
+// out-of-range float-to-integer conversion is implementation-defined — on the
+// common targets it lands negative, so the timer fires immediately and the
+// connector repair-polls as fast as the walk completes. The failure is the
+// exact inverse of what was asked for, which is why it is clamped rather than
+// documented as a caller error.
+//
+// ARCHITECTURE-DEPENDENT, and worth knowing before concluding it is vacuous:
+// out-of-range float-to-integer conversion is implementation-defined, and the
+// two targets differ. On arm64 the hardware saturates, so this test passes
+// against UN-FIXED code and proves nothing there. On amd64 it yields the
+// indefinite integer, and the un-fixed function returns
+// -2562047h47m16.854775808s. The red proof for this fix was therefore taken on
+// x86_64, not on the author's arm64 machine — do not "verify" it locally on
+// Apple silicon and conclude the clamp is unnecessary.
+func TestRepairJitterSaturates(t *testing.T) {
+	for _, draw := range []float64{0.5, 0.75, 0.9, 0.999999} {
+		got := repairJitter(time.Duration(math.MaxInt64), fixedRand(draw))
+		if got <= 0 {
+			t.Fatalf("repairJitter(MaxInt64, draw=%v) = %s, want a positive saturated duration — a negative cadence fires at once", draw, got)
+		}
+		if got != time.Duration(math.MaxInt64) {
+			t.Errorf("repairJitter(MaxInt64, draw=%v) = %s, want %s", draw, got, time.Duration(math.MaxInt64))
+		}
+	}
+	// The downward half of the same interval is representable and must NOT be
+	// clamped — saturating everything would silently disable the jitter.
+	if got := repairJitter(time.Duration(math.MaxInt64), fixedRand(0)); got >= time.Duration(math.MaxInt64) {
+		t.Errorf("repairJitter(MaxInt64, draw=0) = %s, want the -20%% draw, not the ceiling", got)
+	}
+	// The ordinary interval is untouched by the clamp.
+	const day = 24 * time.Hour
+	if got := repairJitter(day, fixedRand(1)); got <= day || got > time.Duration(1.2*float64(day)) {
+		t.Errorf("repairJitter(24h, draw=1) = %s, want just under +20%%", got)
 	}
 }
