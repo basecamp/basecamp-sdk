@@ -4,9 +4,10 @@ import XCTest
 
 /// #735: a generated model with no required member got no `public init`, and
 /// Swift's implicit memberwise initializer is `internal` — so 35 models, two of
-/// them request payloads, were unconstructible outside the module. Every file in
-/// this test target uses `@testable import`, which raises internal to visible,
-/// so the whole in-repo suite compiled against a surface no consumer has.
+/// them request payloads, were unconstructible outside the module. Every test
+/// source here that imports the SDK imports it as `@testable import Basecamp`,
+/// which raises internal to visible, and none plain-imports it — so the in-repo
+/// suite compiled against a surface no consumer has.
 ///
 /// Two instruments, deliberately different in what they can see:
 ///
@@ -82,6 +83,31 @@ final class PublicInitCoverageTests: XCTestCase {
         XCTAssertTrue(
             code.contains("public init(position: Int32, color: String? = nil) {"),
             "required members take no default, optional members default to nil:\n\(code)")
+    }
+
+    /// The three loops that build a struct — declare, parameterize, assign —
+    /// must agree on which properties exist. Only the first two skipped a
+    /// property whose schema is not a dictionary; the third would have emitted
+    /// `self.x = x` for a parameter that was never declared. Unreachable through
+    /// today's `openapi.json`, where every property is a dictionary, but the
+    /// init is now emitted for every model rather than only those with a
+    /// required member, so the disagreement had more surface to bite on.
+    func testNonDictionaryPropertyIsSkippedByAllThreeLoops() {
+        let schemas: [String: Any] = [
+            "Mixed": [
+                "type": "object",
+                "properties": [
+                    "title": ["type": "string"],
+                    "bogus": "not-a-schema",
+                ],
+            ]
+        ]
+        let code = emitEntityModel(schemaName: "Mixed", schemas: schemas)
+
+        XCTAssertTrue(code.contains("public var title: String?"), code)
+        XCTAssertTrue(code.contains("public init(title: String? = nil) {"), code)
+        XCTAssertTrue(code.contains("self.title = title"), code)
+        XCTAssertFalse(code.contains("bogus"), "a non-schema property must not be emitted:\n\(code)")
     }
 
     // MARK: - Roster scan

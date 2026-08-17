@@ -4,13 +4,13 @@
 //
 // Why it exists (#735): Swift's implicit memberwise initializer is `internal`,
 // so a generated model with no explicit `public init` is unconstructible
-// outside the module. All 30 files in Tests/BasecampTests use
-// `@testable import Basecamp`, which raises internal to visible, so 35
-// all-optional models — including two *request* payloads, which made their
-// operations uncallable — compiled fine in-repo and shipped broken. Nothing in
-// the package built against the public surface, so no CI job modelled a
-// customer. The missing init was the defect; the missing consumer is why it
-// took a customer to find it.
+// outside the module. Every test source in Tests/BasecampTests that imports the
+// SDK imports it as `@testable import Basecamp`, which raises internal to
+// visible, and none plain-imports it — so 35 all-optional models, two of them
+// *request* payloads whose operations were therefore uncallable, compiled fine
+// in-repo and shipped broken. Nothing in the package built against the public
+// surface, so no CI job modelled a customer. The missing init was the defect;
+// the missing consumer is why it took a customer to find it.
 //
 // Two rules keep this target honest, both enforced by PublicInitCoverageTests:
 //
@@ -20,6 +20,14 @@
 //   2. It must stay a non-test target. `swift build` compiles it — so
 //      `make swift-build`, `make swift-check`, the Swift CI job, the release
 //      workflow, and the CodeQL Swift build all cover it, not just `swift test`.
+//
+// One way this target is *not* a customer, stated so nobody assumes otherwise:
+// it lives in the same SwiftPM package, so `package`-level declarations — e.g.
+// `BasecampClient.httpClient` — are visible here and are not visible to an
+// external package. Nothing below touches one, and nothing added below should.
+// Closing that last gap would mean a separate nested package, which would drop
+// out of `swift build` and need its own CI step; the failure class this target
+// exists for is internal-vs-public, which it does observe.
 //
 // Nothing here performs I/O; the async entry points are type-checked, never run.
 
