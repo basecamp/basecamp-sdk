@@ -1,0 +1,422 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Guard: the six SDKs agree on WHICH services exist.
+#
+# The service split is one mapping — `TAG_TO_SERVICE` plus `SERVICE_SPLITS` —
+# transcribed by hand into five generator configs (typescript/scripts,
+# ruby/scripts, kotlin/generator/.../Config.kt, python/scripts, swift's
+# ServiceGrouper). Until this gate, nothing compared them TO EACH OTHER.
+#
+# Be precise about what the existing checks do, because the loose version of this
+# sentence ("they only compare operationIds") is false and a gate whose stated
+# motivation is false is one nobody can size later. The TypeScript, Ruby, Python
+# and Swift `check-*-service-drift` scripts are regenerate-and-diff gates: they
+# re-run the generator into a tmpdir and `diff -rq` the whole tree, so they DO see
+# service filenames. Kotlin's fast drift check is the operationId-only one. What
+# every one of them has in common is the axis, not the granularity: each validates
+# ONE SDK against ITS OWN generator and config. None of them can see another SDK.
+#
+# So a service added to three split tables and forgotten in the other two is
+# invisible to all of them — every SDK is faithful to its own table, and the
+# tables disagree. That produced different SDK surfaces under a fully green
+# `make`. This gate is the cross-SDK axis, not a freshness check; the per-SDK
+# scripts remain the freshness checks and this one does not replace them.
+#
+# THIS IS NOT A SIXTH HAND-COPY, which is the thing #745 rejected. It does not
+# reimplement the mapping from openapi.json; it reads what each generator ALREADY
+# EMITTED and asserts the emissions agree. The inputs are committed artefacts, so
+# this needs no toolchain and lives in the spec-gates CI job beside
+# kt-check-drift.
+#
+# GO IS THE ONE EXCEPTION, and saying "it reads generator output" flatly is an
+# over-claim worth not making. Go has no generated per-service files, so its
+# rendering here is the hand-written AccountClient accessors in
+# go/pkg/basecamp/client.go — a hand-written surface compared against seven
+# generated ones. That is not a flaw in the comparison (Go's accessors are still
+# an independent statement of which services exist) but it is why Go, alone,
+# needs three recorded carve-outs, and why it gets the accessor-vs-returned-type
+# check that a generated file would not need.
+#
+# WHAT IT CLOSES. `make doc-constants-check` derives SPEC §5's account-scoped
+# roster from two files: the generated Kotlin and Swift accessors. Those two are
+# independent transcriptions, not two renderings of one root, so a service
+# omitted from BOTH generators' tables leaves them agreeing and certifies the
+# old roster and the old count. That residue was named on #745 and left open.
+# Comparing all eight renderings closes it: the other six have no way to agree
+# with a mistake made in those two.
+#
+# The two accessor files are checked against their OWN generated service
+# directories as well, which is the other half. §5's derivation reads accessors;
+# a Kotlin generator that emitted a service file but no accessor would leave the
+# roster short with every services directory agreeing that the service exists.
+#
+# NORMALIZATION IS DATA, NOT BRANCHES. Each SDK spells the same service its own
+# way, and the entire rule set for a source is the fields on its SOURCES entry:
+# which files to drop, one suffix to strip, one identifier casing. Go additionally
+# carries three named carve-outs. Nothing here is a per-SDK code path, because the
+# failure mode this gate exists to catch is exactly what accumulating per-SDK
+# special cases produces. If a new SDK needs a rule that is not one of these
+# fields, that is a finding about the generator's naming, not a place to add an
+# `if`.
+#
+# Every read is pinned to UTF-8. Under a non-UTF-8 locale (LC_ALL=C) Ruby tags
+# file contents US-ASCII, and the accessor and client files all carry non-ASCII
+# text — so an unpinned scan raises InvalidByteSequenceError and the gate fails
+# before comparing anything. Both CI steps run under LC_ALL=C so that stays
+# proven rather than asserted, matching check-grouped-client-coverage.
+#
+# Env seams (for scripts/test-check-service-inventory-parity.rb — the tracked
+# tree is never written to):
+#   SERVICE_INVENTORY_ROOT  repository root the sources are resolved against
+#
+# Usage: scripts/check-service-inventory-parity
+
+require "set"
+
+REPO_ROOT = File.expand_path("..", __dir__)
+ROOT = ENV["SERVICE_INVENTORY_ROOT"] || REPO_ROOT
+UTF8 = "UTF-8"
+
+# Extraction floor. Every source is read with a glob or a regex, and a regex that
+# stops matching returns nothing rather than an error — which reads as "all
+# clear" and is how a gate silently stops gating. Deliberately far below the real
+# value (53): it catches total extraction collapse, not drift, which the parity
+# comparison below catches on its own.
+MIN_SERVICES = 40
+
+# The eight renderings. `spelling` names the identifier casing the raw name
+# arrives in; every source is normalized to snake_case, which is the spelling
+# three of them already use.
+#
+#   :snake  already snake_case          my_notifications
+#   :kebab  hyphenated                  my-notifications
+#   :camel  camelCase or PascalCase     myNotifications / MyNotifications
+SOURCES = [
+  {
+    id: "typescript",
+    path: "typescript/src/generated/services",
+    kind: :directory,
+    ext: ".ts",
+    drop: ["index"],
+    spelling: :kebab,
+  },
+  {
+    id: "ruby",
+    path: "ruby/lib/basecamp/generated/services",
+    kind: :directory,
+    ext: ".rb",
+    drop: ["base_service"],
+    strip_suffix: "_service",
+    spelling: :snake,
+  },
+  {
+    id: "python",
+    # PYTHON IS READ FROM ITS BARREL, NOT ITS DIRECTORY, and it is the only
+    # source that needs to be. The TypeScript, Ruby and Kotlin generators all
+    # delete outputs the current mapping no longer produces
+    # (generate-services.ts:1736, generate-services.rb:344, Main.kt:65);
+    # `python/scripts/generate_services.py` does not. So a mapping that DROPS a
+    # Python service leaves its module on disk, and a directory listing counts
+    # that corpse as still emitted — the exact divergence this gate exists to
+    # catch, passing it.
+    #
+    # It reaches CI. The local `check-python-service-drift.sh` regenerates to a
+    # tmpdir and `diff -rq`s, which reports `Only in <committed>: stale.py` and
+    # fails — but the Python CI job does not run that script. It regenerates IN
+    # PLACE and tests `git status --porcelain`, which is blind to a stale file
+    # that is already committed: nothing rewrites it, nothing deletes it, so
+    # there is no diff to report.
+    #
+    # `__init__.py` is rewritten whole on every run and names exactly the
+    # services the mapping produced, so it cannot carry a corpse. `_base.py` and
+    # `_async_base.py` are hand-written infrastructure living under generated/ by
+    # exception (AGENTS.md Hard Rule 1) and the barrel does not import them,
+    # which is a second reason to read it rather than filter the directory.
+    path: "python/src/basecamp/generated/services/__init__.py",
+    kind: :file,
+    pattern: /^from basecamp\.generated\.services\.(\w+) import/,
+    # AN EXACT RENAME, NOT A SUFFIX STRIP, and the difference is not cosmetic.
+    # `generate_services.py`'s `service_filename` renames exactly one module:
+    #
+    #   snake = to_snake_case(name)
+    #   if snake == "webhooks": return "webhooks_service.py"
+    #   return f"{snake}.py"
+    #
+    # The test is `== "webhooks"`, so every other service keeps its snake name
+    # verbatim — including one whose canonical name legitimately ENDS in
+    # `_service`. Stripping the suffix unconditionally (as Ruby correctly does,
+    # because Ruby suffixes every file) would take that name apart, report a
+    # Python service the other seven do not have, and fail a build where every
+    # generator mapping agreed. A false positive here is worse than a miss: it
+    # blocks a correct change and invites someone to "fix" a mapping that was
+    # never wrong.
+    #
+    # So the rule mirrors the generator exactly: one module, renamed by name.
+    rename: { "webhooks_service" => "webhooks" },
+    spelling: :snake,
+  },
+  {
+    id: "kotlin",
+    path: "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services",
+    kind: :directory,
+    ext: ".kt",
+    drop: ["Types"],
+    spelling: :kebab,
+  },
+  {
+    id: "swift",
+    path: "swift/Sources/Basecamp/Generated/Services",
+    kind: :directory,
+    ext: ".swift",
+    strip_suffix: "Service",
+    spelling: :camel,
+  },
+  {
+    id: "kotlin-accessors",
+    path: "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt",
+    kind: :file,
+    # Same patterns scripts/sync-doc-constants.rb reads SPEC §5's roster with.
+    # Deliberately identical: this gate's job is to anchor that derivation, which
+    # it cannot do while reading a different set of lines out of the same file.
+    pattern: /^val AccountClient\.([A-Za-z][A-Za-z0-9_]*)\s*:/,
+    spelling: :camel,
+  },
+  {
+    id: "swift-accessors",
+    path: "swift/Sources/Basecamp/Generated/AccountClient+Services.swift",
+    kind: :file,
+    pattern: /^\s*public var ([A-Za-z][A-Za-z0-9_]*)\s*:\s*[A-Za-z0-9_]+Service\b/,
+    spelling: :camel,
+  },
+  {
+    id: "go-accessors",
+    # Go has no generated per-service files — the hand-written wrappers in
+    # go/pkg/basecamp ARE its service layer (Appendix F), so its accessors on
+    # AccountClient are its only rendering of the split. It is also the ONLY
+    # hand-written rendering here, which is why it gets the extra check below
+    # that no generated source needs.
+    path: "go/pkg/basecamp/client.go",
+    kind: :file,
+    pattern: /^func \(ac \*AccountClient\) (\w+)\(\) \*\w+Service \{/,
+    # The accessor name and its returned type are two independently typed tokens
+    # in a hand-written file, and `Gauges() *ReportsService` compiles: both types
+    # exist. Reading only the name, this gate would record `gauges` and report
+    # parity while Go handed callers the wrong service. Nothing else would catch
+    # it — Go's "generated inventory" is this file.
+    #
+    # A backreference in `pattern` would make a mismatched accessor simply fail
+    # to extract, which surfaces as "go-accessors is missing gauges" — true, and
+    # a bad description of a line that is right there spelling `gauges`. So the
+    # pair is checked separately and reported for what it is. All 51 accessors
+    # satisfy name == type stem today.
+    pair_pattern: /^func \(ac \*AccountClient\) (\w+)\(\) \*(\w+)Service \{/,
+    spelling: :camel,
+    carve_outs: :go,
+  },
+].freeze
+
+# Go's three divergences from the canonical set, recorded in SPEC Appendix F.
+# They are stated here as data for the same reason the spelling rules are: a
+# carve-out expressed as a branch is indistinguishable from a bug, and a
+# carve-out nobody re-reads is how a surface silently stays behind.
+#
+# Each is CHECKED FOR STALENESS, not merely applied. A `:folded` name that turns
+# up in Go, or a `:spelling` rule whose `from` is gone, fails the gate — so
+# closing one of these divergences forces the carve-out to be deleted rather than
+# leaving a rule that quietly stops meaning anything. Same device as
+# spec/doc-constants.json's committed marker counts.
+GO_CARVE_OUTS = [
+  {
+    kind: :folded,
+    name: "automation",
+    reason: "its sole operation, ListMarkers, is exposed on LineupService",
+  },
+  {
+    kind: :folded,
+    name: "client_visibility",
+    reason: "its sole operation, SetClientVisibility, is exposed on RecordingsService",
+  },
+  {
+    kind: :spelling,
+    from: "timesheet",
+    to: "timesheets",
+    reason: "Go spells the accessor Timesheet(), singular",
+  },
+].freeze
+
+failures = []
+
+def die(failures)
+  warn "FAIL: cross-SDK service inventory parity"
+  warn ""
+  failures.each { |f| warn "  - #{f}" }
+  warn ""
+  # NEUTRAL ON PURPOSE. This footer prints for EVERY failure class — a missing
+  # input, a duplicate extraction, a collapsed extraction, a stale Go carve-out,
+  # a Go accessor returning the wrong type — and most of those have nothing to do
+  # with the split tables. It used to assert that a tag mapping had drifted,
+  # which was a confident diagnosis of a cause this gate cannot observe, and it
+  # would have sent maintainers to the wrong file for five of its own self-test
+  # cases. Each failure above names its own area; this says only what the gate
+  # measured.
+  warn "  This gate compares the service inventories the six SDKs emit against each"
+  warn "  other. It can report WHICH renderings disagree; it cannot see WHY, so read"
+  warn "  the specific failures above for the area to look at."
+  exit 1
+end
+
+# PascalCase and camelCase both land on snake_case. The second substitution
+# handles an acronym run followed by a word (`HTTPClient` -> `http_client`);
+# without it the first leaves the run glued to the word that follows.
+def snake_case(name)
+  name.gsub(/([a-z0-9])([A-Z])/, '\1_\2').gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').downcase
+end
+
+def canonicalize(raw, spelling)
+  case spelling
+  when :snake then raw
+  when :kebab then raw.tr("-", "_")
+  when :camel then snake_case(raw)
+  else raise "unknown spelling #{spelling.inspect}"
+  end
+end
+
+def extract(source, path)
+  raw = if source[:kind] == :directory
+    Dir.children(path).select { |f| f.end_with?(source[:ext]) }.map { |f| File.basename(f, source[:ext]) }
+  else
+    File.read(path, encoding: UTF8).scan(source[:pattern]).flatten
+  end
+
+  raw = raw.reject { |n| Array(source[:drop]).include?(n) }
+  # `rename:` is exact-match and runs BEFORE `strip_suffix:`. The two are
+  # deliberately different instruments: a suffix strip encodes "this generator
+  # suffixes every file" (Ruby, Swift), a rename encodes "this generator
+  # special-cases exactly these names" (Python). Using the first where the second
+  # is true mangles any service whose real name happens to end in the suffix.
+  if (renames = source[:rename])
+    raw = raw.map { |n| renames.fetch(n, n) }
+  end
+  if (suffix = source[:strip_suffix])
+    raw = raw.map { |n| n.end_with?(suffix) ? n[0...-suffix.length] : n }
+  end
+  raw.map { |n| canonicalize(n, source[:spelling]) }.sort
+end
+
+# Go's carve-outs, applied to Go's extracted names and checked for staleness.
+def apply_go_carve_outs(names, failures)
+  present = names.to_set
+  result = names.dup
+
+  GO_CARVE_OUTS.each do |carve_out|
+    case carve_out[:kind]
+    when :folded
+      name = carve_out[:name]
+      if present.include?(name)
+        failures << "go/pkg/basecamp/client.go now exposes `#{name}`, but it is recorded as a " \
+                    "fold carve-out (#{carve_out[:reason]}). The divergence is closed — delete " \
+                    "the carve-out from GO_CARVE_OUTS and from SPEC Appendix F's Go row."
+      else
+        result << name
+      end
+    when :spelling
+      from = carve_out[:from]
+      to = carve_out[:to]
+      if !present.include?(from)
+        failures << "Go's `#{from}` spelling carve-out (#{carve_out[:reason]}) no longer matches " \
+                    "anything in go/pkg/basecamp/client.go — either the accessor was renamed, in " \
+                    "which case delete the carve-out, or it was removed, in which case Go is short " \
+                    "a service."
+      elsif present.include?(to)
+        failures << "Go exposes BOTH `#{from}` and `#{to}`; the spelling carve-out would map one " \
+                    "onto the other and hide a duplicate surface."
+      else
+        result = result.map { |n| n == from ? to : n }
+      end
+    end
+  end
+
+  result.sort
+end
+
+# ------------------------------------------------------------------ extraction
+
+inventories = {}
+
+SOURCES.each do |source|
+  path = File.join(ROOT, source[:path])
+
+  exists = source[:kind] == :directory ? File.directory?(path) : File.file?(path)
+  unless exists
+    die(["#{source[:path]} not found — this gate compares generated output, so a missing " \
+         "rendering is a build problem, not a parity verdict"])
+  end
+
+  names = extract(source, path)
+
+  # An accessor whose declared name and returned type disagree. Only Go declares
+  # both, and only Go is hand-written; reported here rather than folded into the
+  # parity diff, which would describe it as an absence instead of a mismatch.
+  if (pair = source[:pair_pattern])
+    File.read(path, encoding: UTF8).scan(pair).each do |accessor, stem|
+      next if accessor == stem
+      failures << "#{source[:path]} declares `#{accessor}()` returning `*#{stem}Service` — " \
+                  "the accessor name and its service type disagree, so callers of " \
+                  "`#{accessor}()` get #{stem}. Both types exist, so the compiler is silent."
+    end
+  end
+
+  # DUPLICATES FIRST, before any set comparison sees them. A name emitted twice
+  # is invisible downstream — Array#- drops every occurrence, so a doubled entry
+  # leaves both diffs empty and the gate passes while enumerating something the
+  # file does not say. Deduplicating instead of refusing would hide a generator
+  # bug behind a green tick.
+  dupes = names.tally.select { |_, n| n > 1 }.keys.sort
+  unless dupes.empty?
+    die(["#{source[:path]} yields #{dupes.join(', ')} more than once; a repeated name is " \
+         "invisible to a set comparison, so nothing could be checked against this"])
+  end
+
+  names = apply_go_carve_outs(names, failures) if source[:carve_outs] == :go
+
+  if names.length < MIN_SERVICES
+    die(["only #{names.length} services read from #{source[:path]} (floor #{MIN_SERVICES}) — " \
+         "extraction is probably broken, not the SDK"])
+  end
+
+  inventories[source[:id]] = names
+end
+
+# Stale carve-outs are reported before the parity diff they would otherwise
+# explain away — a fold carve-out for a service Go now exposes shows up as
+# nothing at all in the comparison, since the name is present either way.
+die(failures) unless failures.empty?
+
+# --------------------------------------------------------------------- parity
+
+union = inventories.values.flatten.uniq.sort
+
+union.each do |name|
+  absent = inventories.select { |_id, names| !names.include?(name) }.keys
+  next if absent.empty?
+
+  present = inventories.keys - absent
+  # Reports the disagreement and where to look, and stops there. "The split
+  # tables disagree" was wrong for at least two reachable cases: a generator that
+  # emits a service file but no accessor beside it leaves every split table
+  # agreeing (self-test case 3 constructs exactly that), and `go-accessors` is
+  # hand-written, so a Go-only absence is missing wiring rather than a mapping
+  # difference. Naming a cause the gate cannot observe is how a green-or-red
+  # signal turns into a wrong instruction.
+  failures << "`#{name}` is emitted by #{present.join(', ')} but NOT by #{absent.join(', ')}. " \
+              "Look at the renderings that lack it — a split table, a generated accessor " \
+              "beside its own services directory, or hand-written wiring for go-accessors."
+end
+
+die(failures) unless failures.empty?
+
+count = union.length
+puts "OK: cross-SDK service inventory parity — #{count} services agree across " \
+     "#{inventories.size} renderings (#{inventories.keys.join(', ')}); " \
+     "#{GO_CARVE_OUTS.length} Go carve-outs applied and still current"

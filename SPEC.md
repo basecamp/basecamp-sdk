@@ -307,7 +307,7 @@ That roster is the canonical surface, not a per-SDK inventory. Accessor counts v
 
 ### Derivation Rule `[static]`
 
-The OpenAPI spec groups operations under coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split those tags into the `53` fine-grained services above <!-- @service-count --> using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`, `HillCharts`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`, `CloudFiles`, `GoogleDocuments`. Both examples are exhaustive on purpose: an abridged one is how `cloudFiles` and `googleDocuments` stayed invisible to this section for so long — a service that arrives through a split rather than a tag of its own is named nowhere a reader would look. These mappings are defined in each language's generator script. They are five hand-maintained copies of one table with no gate comparing them, so they are expected to produce identical service sets and are not guaranteed to: Appendix F records where they currently do not.
+The OpenAPI spec groups operations under coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split those tags into the `53` fine-grained services above <!-- @service-count --> using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`, `HillCharts`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`, `CloudFiles`, `GoogleDocuments`. Both examples are exhaustive on purpose: an abridged one is how `cloudFiles` and `googleDocuments` stayed invisible to this section for so long — a service that arrives through a split rather than a tag of its own is named nowhere a reader would look. These mappings are defined in each language's generator script. They are five hand-maintained copies of one table, and `make check-service-inventory-parity` compares what those copies **emitted** — the TypeScript, Ruby, Kotlin and Swift generated service directories, Python's generated `__init__.py` barrel, the two generated accessor files this section's roster is derived from, and Go's hand-written accessors — so identical service sets are enforced rather than merely expected. It reads what each generator already emitted rather than reimplementing the mappings, which is what keeps it from being a sixth copy — with Go the one exception, having no generated per-service files, so its hand-written accessors are compared against the others' generated output and carry the carve-outs noted below. (Python is read from its barrel because its generator, alone among the five, does not delete outputs a mapping stopped producing; the barrel is rewritten whole every run and so cannot name a service that is no longer emitted.) Each per-SDK `check-*-service-drift` script remains the freshness gate for its own SDK; none of them can see another SDK, which is the axis this one adds. Go's three divergences (it folds `automation` and `clientVisibility` into other services and spells `timesheets` singular) are stated as data in that gate and fail it if they ever stop applying; Appendix F records them.
 
 ### Merge-Safe Write Surface (Cards)
 
@@ -3649,9 +3649,11 @@ roster. The Kotlin and Swift rows are marked, because §5's roster is derived fr
 exactly those two files and a restatement of a gated value has to be gated too.
 Of the other four, Python's is held by its own accessor-inventory test, which
 derives the roster from `python/src/basecamp/generated/services/` and fails when
-an accessor is missing. The remaining three are hand-verified and dated below —
-no gate derives them, and building one means a sixth hand-copy of each
-generator's split tables.
+an accessor is missing, and Go's is read by `make check-service-inventory-parity`
+— including the three carve-outs its row states, which that gate fails if they
+stop applying. Ruby's and TypeScript's client wiring is hand-verified and dated
+below; the parity gate reads their generated service directories, which is what
+each generator emitted rather than what the client exposes.
 
 | SDK | Account-scoped services |
 |-----|------------------------|

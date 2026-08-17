@@ -185,6 +185,32 @@ jobs:
       - name: Kotlin service drift (static; jq/grep, no JVM)
         run: make kt-check-drift
 
+      # Cross-SDK, and reads only committed generated files, so it needs no
+      # toolchain and belongs here rather than in any one SDK's job. The five
+      # split tables are hand-maintained copies of one mapping and nothing
+      # compared them TO EACH OTHER — every check-*-service-drift script
+      # validates one SDK against its own generator and can see no other SDK.
+      # doc-constants-check derives SPEC section 5's roster from the Kotlin and
+      # Swift accessors alone, which two omissions in the same place would leave
+      # agreeing.
+      #
+      # Under LC_ALL=C so CI exercises the non-UTF-8-locale path (the reads are
+      # pinned to UTF-8; this proves it stays that way). The accessor and Go
+      # client files carry non-ASCII text, so an unpinned read raises
+      # InvalidByteSequenceError before anything is compared.
+      - name: Six SDKs agree on which services exist
+        run: make check-service-inventory-parity
+        env:
+          LC_ALL: C
+
+      # The run above only ever exercises the PASSING case. This drives
+      # synthetic repository trees through the same gate, including the
+      # omitted-from-both-accessor-files case that is the whole reason it exists.
+      - name: Service inventory parity gate self-test (synthetic trees)
+        run: make test-check-service-inventory-parity
+        env:
+          LC_ALL: C
+
       # The third Go surface. go-check-drift compares generated operations
       # against the hand-written go/pkg/basecamp wrappers; nothing watched the
       # GROUPED client until this gate, which is how ArchiveProject and
