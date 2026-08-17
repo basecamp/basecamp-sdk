@@ -36,33 +36,41 @@
 # rather than reasoned about. Removing a guard from the copy must turn exactly
 # this red:
 #
-#   guard removed in the copy                     case that must go red
-#   -------------------------------------------   ---------------------
-#   the parity comparison                         1, 2, 3, 9
+#   guard removed in the copy                     cases that must go red
+#   -------------------------------------------   ----------------------
+#   the parity comparison                         1, 2, 3, 9, 12
 #   per-source duplicate check                    4
 #   extraction floor                              5
 #   source-exists check                           6
 #   fold carve-out staleness check                7
 #   spelling carve-out staleness check            8
 #   spelling carve-out both-spellings check       10
-#   APPLYING the fold carve-out                   both positive controls
-#   APPLYING the spelling carve-out               both positive controls
+#   reading Python from its BARREL                11, 12
+#   APPLYING the fold carve-out                   both positive controls, 11
+#   APPLYING the spelling carve-out               both positive controls, 11
 #
-# The last two rows are the measured result, not a tidy one. Applying a carve-out
-# is what makes Go's 51 accessors line up with the canonical 53; delete either
-# and the real tree stops passing. A rule that exists to prevent false positives
-# can only be pinned by a case that is supposed to pass — the same shape as the
-# `explained` filter in test-check-grouped-client-coverage.rb.
+# The last three rows are the measured result, not a tidy one.
 #
-# Cases 1, 2, 3 and 9 share the parity comparison and are not redundant: they are
-# four different shapes of disagreement (a service in three SDKs only, a service
-# missing from one, a generated file with no accessor beside it, and an SDK short
-# a service its carve-outs do not cover), and the messages a reader gets differ.
-# Case 3 is the one that anchors SPEC §5 — its roster is derived from the two
-# accessor files, and nothing else checks those against their own services
-# directories.
+# Applying a carve-out is what makes Go's 51 accessors line up with the canonical
+# 53; delete either and the real tree stops passing. A rule that exists to prevent
+# false positives can only be pinned by a case that is supposed to pass — the same
+# shape as the `explained` filter in test-check-grouped-client-coverage.rb.
 #
-# WHAT THIS SUITE IS NOT. The suite passing means these ten things are checked.
+# Case 11 is the other pass-shaped case, and it shows up in those two rows for the
+# same structural reason: a case asserting PASS goes red for ANY breakage that
+# stops the checker passing at all, so it is not a specific pin for the carve-outs.
+# It is a specific pin for the barrel reading, because reverting Python to a
+# directory listing turns 11 and 12 red and nothing else.
+#
+# Cases 1, 2, 3, 9 and 12 share the parity comparison and are not redundant: they
+# are five different shapes of disagreement (a service in three SDKs only, a
+# service missing from one, a generated file with no accessor beside it, an SDK
+# short a service its carve-outs do not cover, and a barrel short one while the
+# directory beside it is complete), and the messages a reader gets differ. Case 3
+# is the one that anchors SPEC §5 — its roster is derived from the two accessor
+# files, and nothing else checks those against their own services directories.
+#
+# WHAT THIS SUITE IS NOT. The suite passing means these twelve things are checked.
 # It has never meant the list is complete.
 #
 # Run directly (`ruby scripts/test-check-service-inventory-parity.rb`) or via
@@ -87,6 +95,7 @@ RB_DIR     = "ruby/lib/basecamp/generated/services"
 PY_DIR     = "python/src/basecamp/generated/services"
 KT_DIR     = "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services"
 SW_DIR     = "swift/Sources/Basecamp/Generated/Services"
+PY_BARREL  = "python/src/basecamp/generated/services/__init__.py"
 KT_ACCESS  = "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt"
 SW_ACCESS  = "swift/Sources/Basecamp/Generated/AccountClient+Services.swift"
 GO_CLIENT  = "go/pkg/basecamp/client.go"
@@ -98,6 +107,9 @@ def snake_case(name)
 end
 
 def kebab(name) = name.tr("_", "-")
+# The generator's one filename rename (generate_services.py's `service_filename`).
+def py_module(name) = name == "webhooks" ? "webhooks_service" : name
+def py_module_filename(name) = "#{py_module(name)}.py"
 def pascal(name) = name.split("_").map(&:capitalize).join
 def camel(name) = name.split("_").each_with_index.map { |p, i| i.zero? ? p : p.capitalize }.join
 
@@ -147,10 +159,16 @@ def build_root(dir, names)
 
   write_dir(dir, TS_DIR, ts.map { |n| "#{kebab(n)}.ts" } + ["index.ts"])
   write_dir(dir, RB_DIR, rb.map { |n| "#{n}_service.rb" } + ["base_service.rb"])
-  # Python suffixes only `webhooks`; the checker's `strip_suffix` covers both, so
-  # spelling it faithfully here is what proves that.
-  write_dir(dir, PY_DIR, py.map { |n| n == "webhooks" ? "webhooks_service.py" : "#{n}.py" } +
+  # Python is read from its BARREL, so the directory is written from
+  # `python_modules` (which a case can leave stale) while the barrel is written
+  # from `py`. They are the same list unless a case separates them.
+  py_modules = names.fetch("python-modules", py)
+  write_dir(dir, PY_DIR, py_modules.map { |n| py_module_filename(n) } +
                          ["__init__.py", "_base.py", "_async_base.py"])
+  write_file(dir, PY_BARREL, <<~PYTHON)
+    # @generated from OpenAPI spec — do not edit manually
+    #{py.map { |n| "from basecamp.generated.services.#{py_module(n)} import #{pascal(n)}Service, Async#{pascal(n)}Service" }.join("\n")}
+  PYTHON
   write_dir(dir, KT_DIR, kt.map { |n| "#{kebab(n)}.kt" } + ["Types.kt"])
   write_dir(dir, SW_DIR, sw.map { |n| "#{pascal(n)}Service.swift" })
 
@@ -322,6 +340,33 @@ expect_fail(failures, "9. Go missing an uncarved service still fails", out, stat
 out, status = with_root(names: { "go-accessors" => go_accessor_names(CANONICAL) + ["timesheets"] })
 expect_fail(failures, "10. Go exposing both Timesheet and Timesheets", out, status,
             "Go exposes BOTH `timesheet` and `timesheets`")
+
+# --- 11. A stale Python module on disk, absent from the barrel -----------------
+#
+# The one source read from a barrel rather than a directory, and the reason why.
+# `python/scripts/generate_services.py` does not delete outputs the current
+# mapping stopped producing — unlike generate-services.ts:1736,
+# generate-services.rb:344 and Main.kt:65, which all do. So a mapping that DROPS
+# a Python service leaves `fanfares.py` on disk, and a directory listing counts
+# the corpse as still emitted.
+#
+# This case EXPECTS A PASS, which is the only shape that can pin the fix: the
+# stale module must not make Python look like it emits a service the other seven
+# do not. Run against the pre-fix checker (which enumerated the directory) the
+# same input fails with "`fanfares` is emitted by python but NOT by ...".
+
+out, status = with_root(names: { "python-modules" => CANONICAL + ["fanfares"] })
+expect_pass(failures, "11. stale Python module on disk is not counted as emitted", out, status)
+
+# --- 12. The Python barrel itself short ----------------------------------------
+#
+# Case 11 must not have made Python's rendering vacuous: a service genuinely
+# absent from the barrel still has to fail. Note the directory here keeps ALL the
+# modules, so only the barrel reading can catch it.
+
+out, status = with_root(names: { "python" => CANONICAL - ["gauges"], "python-modules" => CANONICAL })
+expect_fail(failures, "12. Python barrel omitting a service the other seven emit", out, status,
+            "but NOT by python")
 
 # --- Report --------------------------------------------------------------------
 

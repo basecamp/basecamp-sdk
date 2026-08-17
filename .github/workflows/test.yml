@@ -188,9 +188,11 @@ jobs:
       # Cross-SDK, and reads only committed generated files, so it needs no
       # toolchain and belongs here rather than in any one SDK's job. The five
       # split tables are hand-maintained copies of one mapping and nothing
-      # compared them; doc-constants-check derives SPEC section 5's roster from
-      # the Kotlin and Swift accessors alone, which two omissions in the same
-      # place would leave agreeing.
+      # compared them TO EACH OTHER — every check-*-service-drift script
+      # validates one SDK against its own generator and can see no other SDK.
+      # doc-constants-check derives SPEC section 5's roster from the Kotlin and
+      # Swift accessors alone, which two omissions in the same place would leave
+      # agreeing.
       #
       # Under LC_ALL=C so CI exercises the non-UTF-8-locale path (the reads are
       # pinned to UTF-8; this proves it stays that way). The accessor and Go

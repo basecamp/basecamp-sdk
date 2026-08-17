@@ -6,10 +6,22 @@
 # The service split is one mapping — `TAG_TO_SERVICE` plus `SERVICE_SPLITS` —
 # transcribed by hand into five generator configs (typescript/scripts,
 # ruby/scripts, kotlin/generator/.../Config.kt, python/scripts, swift's
-# ServiceGrouper). Until this gate, nothing compared them. The per-SDK
-# `check-*-service-drift` scripts compare operationIds, never service names, so a
-# service added to three tables and forgotten in the other two produced five
-# different SDK surfaces and a fully green `make`.
+# ServiceGrouper). Until this gate, nothing compared them TO EACH OTHER.
+#
+# Be precise about what the existing checks do, because the loose version of this
+# sentence ("they only compare operationIds") is false and a gate whose stated
+# motivation is false is one nobody can size later. The TypeScript, Ruby, Python
+# and Swift `check-*-service-drift` scripts are regenerate-and-diff gates: they
+# re-run the generator into a tmpdir and `diff -rq` the whole tree, so they DO see
+# service filenames. Kotlin's fast drift check is the operationId-only one. What
+# every one of them has in common is the axis, not the granularity: each validates
+# ONE SDK against ITS OWN generator and config. None of them can see another SDK.
+#
+# So a service added to three split tables and forgotten in the other two is
+# invisible to all of them — every SDK is faithful to its own table, and the
+# tables disagree. That produced different SDK surfaces under a fully green
+# `make`. This gate is the cross-SDK axis, not a freshness check; the per-SDK
+# scripts remain the freshness checks and this one does not replace them.
 #
 # THIS IS NOT A SIXTH HAND-COPY, which is the thing #745 rejected. It does not
 # reimplement the mapping from openapi.json; it reads what the generators
@@ -91,13 +103,30 @@ SOURCES = [
   },
   {
     id: "python",
-    path: "python/src/basecamp/generated/services",
-    kind: :directory,
-    ext: ".py",
-    # `_base.py` and `_async_base.py` are hand-written infrastructure that lives
-    # under generated/ by exception (AGENTS.md Hard Rule 1); `__init__.py` is the
-    # generated re-export barrel.
-    drop: ["__init__", "_base", "_async_base"],
+    # PYTHON IS READ FROM ITS BARREL, NOT ITS DIRECTORY, and it is the only
+    # source that needs to be. The TypeScript, Ruby and Kotlin generators all
+    # delete outputs the current mapping no longer produces
+    # (generate-services.ts:1736, generate-services.rb:344, Main.kt:65);
+    # `python/scripts/generate_services.py` does not. So a mapping that DROPS a
+    # Python service leaves its module on disk, and a directory listing counts
+    # that corpse as still emitted — the exact divergence this gate exists to
+    # catch, passing it.
+    #
+    # It reaches CI. The local `check-python-service-drift.sh` regenerates to a
+    # tmpdir and `diff -rq`s, which reports `Only in <committed>: stale.py` and
+    # fails — but the Python CI job does not run that script. It regenerates IN
+    # PLACE and tests `git status --porcelain`, which is blind to a stale file
+    # that is already committed: nothing rewrites it, nothing deletes it, so
+    # there is no diff to report.
+    #
+    # `__init__.py` is rewritten whole on every run and names exactly the
+    # services the mapping produced, so it cannot carry a corpse. `_base.py` and
+    # `_async_base.py` are hand-written infrastructure living under generated/ by
+    # exception (AGENTS.md Hard Rule 1) and the barrel does not import them,
+    # which is a second reason to read it rather than filter the directory.
+    path: "python/src/basecamp/generated/services/__init__.py",
+    kind: :file,
+    pattern: /^from basecamp\.generated\.services\.(\w+) import/,
     # The generator emits `webhooks_service.py` rather than `webhooks.py` to
     # avoid clashing with the `basecamp.webhooks` package (generate_services.py's
     # `service_filename`). Ruby suffixes every file, so one rule covers both.

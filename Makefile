@@ -1261,13 +1261,17 @@ check-bucket-flat-parity:
 	@./scripts/check-bucket-flat-parity.sh
 
 # Verify the six SDKs agree on WHICH services exist. The service split is one
-# mapping hand-transcribed into five generator configs, and the per-SDK
-# check-*-service-drift scripts compare operationIds, never service names — so a
-# service added to three tables and forgotten in the other two produced five
-# different surfaces and a green `make`. This reads what the generators EMITTED
-# rather than reimplementing the mapping, which is what keeps it from being a
-# sixth copy. Committed generated files only, so no toolchain: it belongs in the
-# spec-gates CI job beside kt-check-drift.
+# mapping hand-transcribed into five generator configs, and every per-SDK
+# check-*-service-drift script validates ONE SDK against ITS OWN generator and
+# config — the TypeScript/Ruby/Python/Swift ones by regenerate-and-diff (which
+# does see service filenames), Kotlin's fast one by operationId. What none of
+# them can do is look at another SDK. So a service added to three tables and
+# forgotten in the other two is invisible to all of them: each SDK is faithful to
+# its own table and the tables disagree. This is the cross-SDK axis, not a
+# freshness check, and it does not replace them. It reads what the generators
+# EMITTED rather than reimplementing the mapping, which is what keeps it from
+# being a sixth copy. Committed generated files only, so no toolchain: it belongs
+# in the spec-gates CI job beside kt-check-drift.
 check-service-inventory-parity:
 	@echo "==> Checking cross-SDK service inventory parity..."
 	@./scripts/check-service-inventory-parity
