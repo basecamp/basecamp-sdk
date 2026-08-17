@@ -26,7 +26,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       swift: ${{ steps.set-matrix.outputs.swift }}
     steps:
-      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         if: github.event_name == 'pull_request'
         id: filter
         with:
@@ -126,14 +126,14 @@ jobs:
 
       - name: Setup Gradle
         if: matrix.language == 'java-kotlin'
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
           cache-provider: basic
 
       # --- CodeQL init ---
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -161,7 +161,7 @@ jobs:
       # --- Analysis (fails build on real errors) ---
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
           category: "/language:${{ matrix.language }}"
           upload: never
@@ -195,7 +195,7 @@ jobs:
       # --- Upload (tolerates GHAS unavailability) ---
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: always()
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
@@ -221,7 +221,7 @@ jobs:
           persist-credentials: false
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
           languages: swift
           build-mode: manual
@@ -232,7 +232,7 @@ jobs:
         run: swift build
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
           category: "/language:swift"
           upload: never
@@ -258,7 +258,7 @@ jobs:
           done
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: always()
         continue-on-error: true  # Requires GitHub Advanced Security
         with:

@@ -36,7 +36,7 @@ jobs:
           output: 'trivy-go-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: always()
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
@@ -92,7 +92,7 @@ jobs:
           output: 'trivy-ts-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: always()
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
@@ -190,7 +190,7 @@ jobs:
         run: gosec -severity high -exclude-dir=pkg/generated -fmt sarif -out gosec-results.sarif ./...
 
       - name: Upload gosec results
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: always()
         continue-on-error: true
         with:
@@ -266,7 +266,7 @@ jobs:
           output: 'trivy-ruby-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: always()
         continue-on-error: true
         with:
@@ -322,7 +322,7 @@ jobs:
           output: 'trivy-python-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: always()
         continue-on-error: true
         with:
@@ -415,7 +415,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
           cache-provider: basic
 
