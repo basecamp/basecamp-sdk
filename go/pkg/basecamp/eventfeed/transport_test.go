@@ -1,7 +1,6 @@
 package eventfeed
 
 import (
-	"errors"
 	"strings"
 	"testing"
 )
@@ -131,55 +130,5 @@ func TestCheckCableURL_RefusesOutOfRangePorts(t *testing.T) {
 		if err := checkCableURL(u); err != nil {
 			t.Errorf("checkCableURL(%q) = %v, want nil", u, err)
 		}
-	}
-}
-
-// TestRedactDialErrRedactsEchoedCredentials closes the §23 "never log the
-// ticket" invariant against the path the query-string redaction cannot see.
-//
-// The whole-query replacement only matches renderings that embed the REQUEST
-// URL. coder/websocket's handshake verification quotes peer-controlled
-// RESPONSE headers verbatim — verifySubprotocol renders the server's
-// Sec-WebSocket-Protocol into its error — so a server that echoes the ticket
-// back in a header produces an error carrying the credential with no "?query"
-// spelling in it at all.
-func TestRedactDialErrRedactsEchoedCredentials(t *testing.T) {
-	const ticket = "tkt-9f3c1ab27e5d40b6"
-	wsURL := "wss://cable.example.com/cable?ticket=" + ticket
-
-	// Shaped after the library's own message, which quotes the header value.
-	echoed := errors.New(`failed to WebSocket dial: WebSocket protocol violation: unexpected Sec-WebSocket-Protocol from server: "` + ticket + `"`)
-	got := redactDialErr(echoed, wsURL).Error()
-	if strings.Contains(got, ticket) {
-		t.Fatalf("redactDialErr leaked the ticket through an echoed header: %s", got)
-	}
-	if !strings.Contains(got, "[redacted]") {
-		t.Errorf("redactDialErr = %q, want the credential replaced", got)
-	}
-	// The diagnostic itself survives — a generic message would trade the leak
-	// for a permanent blackout on the one error class operators debug from.
-	if !strings.Contains(got, "Sec-WebSocket-Protocol") {
-		t.Errorf("redactDialErr = %q, want the diagnostic preserved", got)
-	}
-
-	// The request-URL form still redacts, and short values are left alone so
-	// ordinary text is not shredded.
-	urlForm := errors.New(`dial tcp: Get "` + wsURL + `": connection refused`)
-	if g := redactDialErr(urlForm, wsURL).Error(); strings.Contains(g, ticket) || !strings.Contains(g, "connection refused") {
-		t.Errorf("redactDialErr(url form) = %q", g)
-	}
-	// A SHORT ticket is redacted too. §23 imposes no minimum length on
-	// StreamTicket, so a threshold that skipped short values would leak one
-	// verbatim — the length of a value cannot decide whether it is secret,
-	// only its position in the mint's URL can.
-	shortTicket := errors.New(`unexpected Sec-WebSocket-Protocol from server: "q7"`)
-	if g := redactDialErr(shortTicket, "wss://h/cable?ticket=q7").Error(); strings.Contains(g, `"q7"`) {
-		t.Errorf("redactDialErr leaked a short ticket: %q", g)
-	}
-	// The percent-encoded spelling is covered as well: url.Values decodes,
-	// while an error quoting the request URL carries the raw form.
-	enc := errors.New(`Get "wss://h/cable?ticket=a%2Fb%2Bc": connection refused`)
-	if g := redactDialErr(enc, "wss://h/cable?ticket=a%2Fb%2Bc").Error(); strings.Contains(g, "a%2Fb%2Bc") || strings.Contains(g, "a/b+c") {
-		t.Errorf("redactDialErr leaked a percent-encoded ticket: %q", g)
 	}
 }

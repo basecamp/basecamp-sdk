@@ -11,6 +11,8 @@ package eventfeed_test
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/base64"
 	"errors"
 	"net"
 	"net/http"
@@ -522,4 +524,98 @@ func assertNoTicket(t *testing.T, err error) {
 	if strings.Contains(msg, "ticket=") {
 		t.Errorf("error leaks the ticket query parameter: %q", msg)
 	}
+}
+
+// rawHandshakeServer answers the WebSocket upgrade itself, so the test can put
+// arbitrary bytes in the 101 response — which is what a hostile or merely
+// sloppy peer controls, and what coder/websocket then quotes back in its
+// verification errors. header is echoed as Sec-WebSocket-Protocol.
+func rawHandshakeServer(t *testing.T, header string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Error("the test server does not support hijacking")
+			return
+		}
+		conn, buf, err := hj.Hijack()
+		if err != nil {
+			t.Errorf("hijack: %v", err)
+			return
+		}
+		defer conn.Close()
+		sum := sha1.Sum([]byte(r.Header.Get("Sec-WebSocket-Key") + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+		accept := base64.StdEncoding.EncodeToString(sum[:])
+		_, _ = buf.WriteString("HTTP/1.1 101 Switching Protocols\r\n" +
+			"Upgrade: websocket\r\nConnection: Upgrade\r\n" +
+			"Sec-WebSocket-Accept: " + accept + "\r\n" +
+			"Sec-WebSocket-Protocol: " + header + "\r\n\r\n")
+		_ = buf.Flush()
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// TestWebSocketTransport_DialErrorNeverCarriesTheMintQuery is the invariant a
+// redactor could not hold. SPEC §23 calls the ticket an "opaque bearer
+// credential; never logged" — opaque, so the transport may assume NOTHING
+// about how it is spelled inside the mint URL's query string.
+//
+// Each case puts the credential somewhere a value-shaped redactor misses, and
+// has the peer reflect it into a response header that coder/websocket quotes
+// verbatim in its verification error (dial.go's verifySubprotocol renders the
+// server's Sec-WebSocket-Protocol with %q). It asserts through the PUBLIC
+// Dial, so it is a statement about what reaches an observer's logs rather than
+// about any one helper.
+func TestWebSocketTransport_DialErrorNeverCarriesTheMintQuery(t *testing.T) {
+	tr := &eventfeed.WebSocketTransport{}
+	for _, tc := range []struct {
+		name   string
+		query  string // the mint URL's query, verbatim
+		secret string // what the peer reflects back
+	}{
+		{"bare opaque query, no key=value at all", "SECRET-TICKET-9f3c", "SECRET-TICKET-9f3c"},
+		{"credential in the key", "TCKT-8b21ae=", "TCKT-8b21ae"},
+		{"short opaque value", "ticket=q7", "q7"},
+		{"percent-encoded value", "ticket=a%2Fb%2Bc", "a/b+c"},
+		{"percent-encoded value, raw spelling", "ticket=a%2Fb%2Bc", "a%2Fb%2Bc"},
+		{"long ordinary value", "ticket=tkt-9f3c1ab27e5d40b6", "tkt-9f3c1ab27e5d40b6"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := rawHandshakeServer(t, tc.secret)
+			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/cable?" + tc.query
+			_, err := tr.Dial(context.Background(), wsURL, 1<<20)
+			if err == nil {
+				t.Fatal("dial succeeded, want the unnegotiated-subprotocol refusal")
+			}
+			if got := err.Error(); strings.Contains(got, tc.secret) {
+				t.Fatalf("dial error leaked the credential %q: %s", tc.secret, got)
+			}
+			// The whole query string is off limits too, not just the secret.
+			if got := err.Error(); strings.Contains(got, tc.query) {
+				t.Fatalf("dial error leaked the mint query %q: %s", tc.query, got)
+			}
+		})
+	}
+}
+
+// TestWebSocketTransport_DialErrorKeepsTheStatusCode pins the diagnostic that
+// survives the closed vocabulary. An HTTP status is an integer, structurally
+// incapable of carrying a credential, and it is the single most useful thing
+// an operator needs off a failed handshake — so narrowing the message must not
+// cost it.
+func TestWebSocketTransport_DialErrorKeepsTheStatusCode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+	tr := &eventfeed.WebSocketTransport{}
+	_, err := tr.Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/cable?ticket=sekrit-ticket-value", 1<<20)
+	if err == nil {
+		t.Fatal("dial succeeded against a 401, want a transient failure")
+	}
+	if !strings.Contains(err.Error(), "401") {
+		t.Errorf("dial error = %q, want the HTTP status preserved", err)
+	}
+	assertNoTicket(t, err)
 }

@@ -2,10 +2,11 @@ package eventfeed
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"fmt"
+	"net"
 	"net/http"
-	"net/url"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -70,7 +71,7 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 	// never need to close resp.Body yourself" — Dial docs): on failure it
 	// reads and replaces the body itself, and on success the body is the
 	// upgraded connection, closed via CableConn.Close.
-	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+	conn, resp, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
 		HTTPClient:   &client,
 		Subprotocols: []string{cableSubprotocol},
 	})
@@ -83,7 +84,7 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 			// redirect target, which can carry the ticket too.
 			return nil, &DialError{Kind: DialPolicy, Reason: "cable URL redirected; redirects are refused"}
 		}
-		return nil, &DialError{Kind: DialTransient, Err: redactDialErr(err, wsURL)}
+		return nil, &DialError{Kind: DialTransient, Err: dialFailure(err, resp)}
 	}
 	if negotiated := conn.Subprotocol(); !strings.EqualFold(negotiated, cableSubprotocol) {
 		// coder/websocket verifies the server's selection only when it made
@@ -119,74 +120,68 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 	return &wsConn{conn: conn}, nil
 }
 
-// redactDialErr rebuilds a dial failure's message with the dialed URL's query
-// string redacted: handshake failures wrap *url.Error, whose rendering embeds
-// the full request URL — and the ticket rides in its query string. The
-// rebuilt error is deliberately flat (no Unwrap): re-exposing the original
-// chain would re-expose the unredacted URL.
-func redactDialErr(err error, wsURL string) error {
-	msg := err.Error()
-	u, perr := url.Parse(wsURL)
-	if perr != nil || u.RawQuery == "" {
-		return errors.New(msg)
+// dialFailure renders a transient dial failure WITHOUT forwarding any text
+// the library or the peer produced.
+//
+// This replaced a redactor, and the reason is the contract rather than a bug
+// count. SPEC.md §23 declares the ticket an "opaque bearer credential; never
+// logged", riding in the mint URL's query string. OPAQUE is the operative
+// word: to strip a credential out of arbitrary text you must MODEL it — its
+// length, its encoding, whether it is a query value, a bare token, or a key —
+// and every such model is precisely the assumption the contract forbids.
+// Three review rounds found three different spellings that slipped a model in
+// turn: a value below a length threshold, a percent-encoded form, and a query
+// carrying the credential with no "=" in it at all. That is not three bugs, it
+// is one control that has to anticipate its own input, and the peer chooses
+// the input — the reflection surface is any header the handshake quotes back.
+//
+// So nothing peer-influenced is forwarded. The classification the connector
+// actually acts on (DialTransient, and the reconnect cycle behind it) is
+// unchanged; only the human-readable cause narrows, drawn from a CLOSED
+// vocabulary keyed on error TYPES — ours and the standard library's — never on
+// rendered text. An unrecognized cause degrades to the generic message, so the
+// failure direction is "less diagnostic", never "leaks".
+//
+// resp is the handshake response when there was one. Its status code is the
+// one genuinely useful diagnostic that is structurally incapable of carrying a
+// credential: an integer, not a text channel.
+func dialFailure(err error, resp *http.Response) error {
+	cause := dialFailureCause(err)
+	if resp != nil && resp.StatusCode != 0 {
+		return fmt.Errorf("eventfeed: cable dial failed: %s (server answered HTTP %d)", cause, resp.StatusCode)
 	}
-	msg = strings.ReplaceAll(msg, "?"+u.RawQuery, "?[redacted]")
-	// Then each query VALUE on its own, wherever it appears. The whole-query
-	// replacement above only catches renderings that embed the REQUEST URL,
-	// and the handshake's verification errors quote peer-controlled RESPONSE
-	// headers verbatim — coder/websocket's verifySubprotocol renders the
-	// server's Sec-WebSocket-Protocol into its message (dial.go). So a server
-	// that echoes the ticket back in a header produces an error carrying the
-	// credential with no "?query" spelling anywhere in it, and the §23
-	// Security Invariant ("never log the ticket") is broken by a path the
-	// query-string redaction cannot see.
-	//
-	// Redacting the values rather than falling back to a generic message is
-	// deliberate: a transient dial failure is the one error class an operator
-	// debugs a broken cable endpoint from, and replacing it wholesale would
-	// trade a real leak for a permanent diagnostic blackout.
-	for _, v := range secretQueryValues(u) {
-		msg = strings.ReplaceAll(msg, v, "[redacted]")
-	}
-	return errors.New(msg)
+	return fmt.Errorf("eventfeed: cable dial failed: %s", cause)
 }
 
-// secretQueryValues returns every value in u's query, in BOTH its raw
-// (percent-encoded) and decoded spellings, longest first.
-//
-// No length threshold, deliberately. An earlier revision skipped short values
-// to avoid shredding diagnostics with a common substring, and that was a
-// heuristic about which values are SECRET — the wrong discriminator. What
-// makes a value secret here is its POSITION: it is a query value in the URL a
-// TicketMinter returned, and §23 imposes no minimum length on StreamTicket, so
-// a short ticket echoed back by a peer leaked verbatim. Shape cannot decide
-// it; position can, and the security invariant outranks the diagnostic when
-// they conflict.
-//
-// Both spellings matter because the two sources differ: url.Values decodes,
-// while an error quoting the request URL carries the raw form. Longest first
-// so redacting a value cannot fragment a longer one that contains it.
-func secretQueryValues(u *url.URL) []string {
-	seen := map[string]bool{}
-	var out []string
-	add := func(v string) {
-		if v != "" && !seen[v] {
-			seen[v] = true
-			out = append(out, v)
-		}
+// dialFailureCause maps a dial error onto the closed vocabulary. Every arm
+// matches on a TYPE or a sentinel, never on message text, so no arm can be
+// widened by something a peer wrote.
+func dialFailureCause(err error) string {
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return "the handshake deadline lapsed"
+	case errors.Is(err, context.Canceled):
+		return "the dial was cancelled"
 	}
-	for _, values := range u.Query() {
-		for _, v := range values {
-			add(v)
-		}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return "the cable host did not resolve"
 	}
-	for _, pair := range strings.Split(u.RawQuery, "&") {
-		if _, raw, ok := strings.Cut(pair, "="); ok {
-			add(raw)
-		}
+	var certErr *tls.CertificateVerificationError
+	if errors.As(err, &certErr) {
+		return "the cable server's TLS certificate was not verified"
 	}
-	sort.Slice(out, func(a, b int) bool { return len(out[a]) > len(out[b]) })
-	return out
+	var recordErr tls.RecordHeaderError
+	if errors.As(err, &recordErr) {
+		return "the cable server did not speak TLS"
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		// Op is one of the standard library's own verbs ("dial", "read",
+		// "write") — not peer text.
+		return "the connection failed during " + opErr.Op
+	}
+	return "the handshake did not complete"
 }
 
 // wsConn adapts one coder/websocket connection to the CableConn seam.
