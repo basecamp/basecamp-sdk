@@ -3,4 +3,8 @@ import Foundation
 
 public struct GaugeNeedleUpdatePayload: Codable, Sendable {
     public var description: String?
+
+    public init(description: String? = nil) {
+        self.description = description
+    }
 }

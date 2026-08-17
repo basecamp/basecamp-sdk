@@ -10,4 +10,24 @@ public struct AccountSubscription: Codable, Sendable {
     public var teams: Bool?
     public var templates: Bool?
     public var timesheet: Bool?
+
+    public init(
+        clients: Bool? = nil,
+        logo: Bool? = nil,
+        projectLimit: Int32? = nil,
+        properName: String? = nil,
+        shortName: String? = nil,
+        teams: Bool? = nil,
+        templates: Bool? = nil,
+        timesheet: Bool? = nil
+    ) {
+        self.clients = clients
+        self.logo = logo
+        self.projectLimit = projectLimit
+        self.properName = properName
+        self.shortName = shortName
+        self.teams = teams
+        self.templates = templates
+        self.timesheet = timesheet
+    }
 }

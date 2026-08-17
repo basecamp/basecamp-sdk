@@ -213,37 +213,46 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
         }
     }
 
-    if !requiredFields.isEmpty {
-        lines.append("")
-        var initParams: [String] = []
-        for propName in orderedProps {
-            guard let propSchema = properties[propName] as? [String: Any] else { continue }
-            let baseType = schemaToSwiftType(propSchema)
-            let camelName = toCamelCase(propName)
-            let required = requiredFields.contains(propName)
-            let valueOptional = schemaIsNullable(propSchema) || !required
-            let propType = baseType + (valueOptional ? "?" : "")
-            // Required members take no default (caller must supply presence).
-            initParams.append(required ? "\(camelName): \(propType)" : "\(camelName): \(propType) = nil")
-        }
-
-        if initParams.count <= 3 {
-            lines.append("    public init(\(initParams.joined(separator: ", "))) {")
-        } else {
-            lines.append("    public init(")
-            for (i, param) in initParams.enumerated() {
-                let comma = i < initParams.count - 1 ? "," : ""
-                lines.append("        \(param)\(comma)")
-            }
-            lines.append("    ) {")
-        }
-
-        for propName in orderedProps {
-            let camelName = toCamelCase(propName)
-            lines.append("        self.\(camelName) = \(camelName)")
-        }
-        lines.append("    }")
+    // Emitted unconditionally, matching `emitRequestModel`. Swift's implicit
+    // memberwise initializer is `internal`, so a struct without an explicit
+    // `public init` is unconstructible outside the module — an all-optional
+    // model would otherwise compile in-repo (every test uses `@testable
+    // import`) and be uncallable for a consumer that plain-`import`s the SDK
+    // (#735). `Sources/BasecampPublicAPIConsumer` is the target that observes
+    // this from outside.
+    lines.append("")
+    var initParams: [String] = []
+    for propName in orderedProps {
+        guard let propSchema = properties[propName] as? [String: Any] else { continue }
+        let baseType = schemaToSwiftType(propSchema)
+        let camelName = toCamelCase(propName)
+        let required = requiredFields.contains(propName)
+        let valueOptional = schemaIsNullable(propSchema) || !required
+        let propType = baseType + (valueOptional ? "?" : "")
+        // Required members take no default (caller must supply presence).
+        initParams.append(required ? "\(camelName): \(propType)" : "\(camelName): \(propType) = nil")
     }
+
+    if initParams.count <= 3 {
+        lines.append("    public init(\(initParams.joined(separator: ", "))) {")
+    } else {
+        lines.append("    public init(")
+        for (i, param) in initParams.enumerated() {
+            let comma = i < initParams.count - 1 ? "," : ""
+            lines.append("        \(param)\(comma)")
+        }
+        lines.append("    ) {")
+    }
+
+    // Same guard as the two loops above: a property whose schema is not a
+    // dictionary declares no member and takes no parameter, so it must not be
+    // assigned either. The three loops have to agree on which properties exist.
+    for propName in orderedProps {
+        guard properties[propName] is [String: Any] else { continue }
+        let camelName = toCamelCase(propName)
+        lines.append("        self.\(camelName) = \(camelName)")
+    }
+    lines.append("    }")
 
     // Synthesized Codable treats an optional-typed property as decodeIfPresent
     // (missing OK) and omits nil on encode — which is wrong for a

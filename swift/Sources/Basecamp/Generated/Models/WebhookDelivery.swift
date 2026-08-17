@@ -6,4 +6,16 @@ public struct WebhookDelivery: Codable, Sendable {
     public var id: Int?
     public var request: WebhookDeliveryRequest?
     public var response: WebhookDeliveryResponse?
+
+    public init(
+        createdAt: String? = nil,
+        id: Int? = nil,
+        request: WebhookDeliveryRequest? = nil,
+        response: WebhookDeliveryResponse? = nil
+    ) {
+        self.createdAt = createdAt
+        self.id = id
+        self.request = request
+        self.response = response
+    }
 }
