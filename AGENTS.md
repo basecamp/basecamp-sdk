@@ -259,12 +259,16 @@ advancing too.
 `scripts/test-doc-constants.rb` (run by `make doc-constants-check`) asserts the
 gate rejects each of these failure modes.
 
-One marked span is not a claim to be checked but a block to be GENERATED: SPEC
-§19's Zero-Skip roster, `<!-- @zero-skip-roster:begin/end -->`, is rendered from
-`spec/zero-skip-roster.yml` and required to match byte for byte, and the writer
-rewrites it. Edit the YAML, never the block. It is writable where the other
-block kinds are not for the reason `spec/doc-constants.json` states: no column
-of it is hand-written, so the writer can author the whole span. It replaced a
+Two marked spans are not claims to be checked but blocks to be GENERATED, and
+neither should ever be edited by hand. SPEC §19's Zero-Skip roster,
+`<!-- @zero-skip-roster:begin/end -->`, is rendered from
+`spec/zero-skip-roster.yml` and required to match byte for byte — edit the YAML,
+never the block. SPEC §5's and Appendix B's service rosters,
+`<!-- @account-scoped-services:begin/end -->`, are rendered from the generated
+Kotlin and Swift accessors — regenerate the SDKs, never the block. Both are
+writable where the table kinds are not for the reason `spec/doc-constants.json`
+states: no column of either is hand-written, so the writer can author the whole
+span. It replaced a
 parser that read the roster back out of SPEC's prose — five bypasses in, each
 fix a new selector, which is what "reassess the instrument" looks like when the
 instrument is a reader.

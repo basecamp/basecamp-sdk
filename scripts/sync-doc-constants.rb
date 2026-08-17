@@ -105,12 +105,13 @@
 #   --check (default)  Report drift; exit 1 on any error.
 #   --write            Rewrite marked spans in place from the sources.
 #                      Writable iff the writer can author the whole span. That
-#                      is every scalar constant, and exactly one block kind:
-#                      @zero-skip-roster, which is rendered from
-#                      spec/zero-skip-roster.yml. The other block kinds are
-#                      tables whose rows carry a human-authored column (an
-#                      assertion type's meaning, a fixture's owning spec
-#                      sections, a fixture's case summary), so --write never
+#                      is every scalar constant, and two block kinds:
+#                      @zero-skip-roster, rendered from
+#                      spec/zero-skip-roster.yml, and @account-scoped-services,
+#                      rendered from the generated accessors. The remaining
+#                      block kinds are tables whose rows carry a human-authored
+#                      column (an assertion type's meaning, a fixture's owning
+#                      spec sections, a fixture's case summary), so --write never
 #                      touches them and never fails on them.
 #                      `make doc-constants-check` is what catches those;
 #                      keeping them out of the writer keeps a schema or
@@ -1380,10 +1381,30 @@ def check_account_scoped_services(span, services)
             "is the claim."]
   end
 
+  # THE LINE MUST SIT AT COLUMN ZERO, and this became a rule the moment the block
+  # became writable. scan_file accepts a block marker indented up to three spaces
+  # (a fence-indentation allowance), and this checker strips before splitting, so
+  # an indented roster passed --check happily. The renderer, though, emits at
+  # column zero — so the next `make generate` would silently strip that
+  # indentation and lift the roster out of whatever list contained it, changing
+  # the document while reporting success.
+  #
+  # Refused rather than preserved. Teaching the renderer to reproduce the
+  # existing indentation would make --write reproduce a shape nothing else
+  # depends on; refusing says what is actually true now, which is that this block
+  # is generated output and its form is not the author's to choose. Codex offered
+  # both remedies and this is the one that leaves less behind.
+  if lines.first != lines.first.strip
+    return ["#{span.location}: the @#{span.kind} roster line carries leading or trailing " \
+            "whitespace. This block is generated — the writer emits it at column zero, so " \
+            "indentation here would be silently removed by the next `make generate`. Put the " \
+            "block at the margin rather than inside a list."]
+  end
+
   # `-1` keeps trailing empty fields, so `a, b,` yields a third entry of `""`
   # that fails SERVICE_NAME_RE below. Dropped, a stray comma would read as a
   # clean list and the shape would go unremarked.
-  names = lines.first.strip.split(",", -1).map(&:strip)
+  names = lines.first.split(",", -1).map(&:strip)
 
   malformed = names.reject { |name| name.match?(SERVICE_NAME_RE) }
   unless malformed.empty?

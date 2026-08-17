@@ -1795,6 +1795,15 @@ writer ->(f) {
   end
 end
 
+# An indented roster passed --check before this block became writable, because
+# scan_file allows a marker up to three spaces in and this checker strips before
+# splitting. The renderer emits at column zero, so `make generate` would have
+# silently lifted the roster out of its containing list while reporting success.
+# Codex found it the same day the block became writable.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("\n#{ROSTER}\n", "\n  #{ROSTER}\n") }
+expect_fail(failures, "an indented roster line", out, status,
+            "carries leading or trailing whitespace")
+
 # The writer emits the accessors' order, but --check still compares SETS, so a
 # hand-reordered roster is not an error — it is normalised, not rejected. Pins
 # the narrowing that made writing the block acceptable: the writer normalises

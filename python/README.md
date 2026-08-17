@@ -455,7 +455,7 @@ token.is_expired(buffer_seconds=60)  # True if expiring within 60s
 
 ## Services
 
-All services are constructed from an `AccountClient`, obtained via `client.for_account(account_id)`. The table below covers the common ones; see `basecamp/generated/services/` for the full set. Most of that set is also reachable as an accessor on the account client — `account.projects` — but not all of it is: a generated service with no accessor yet is constructed directly from the account client instead (`GaugesService(account)`, exported from `basecamp.generated.services`). SPEC.md Appendix F records which services those currently are.
+All services are constructed from an `AccountClient`, obtained via `client.for_account(account_id)`. The table below covers the common ones; see `basecamp/generated/services/` for the full set. Most of that set is also reachable as an accessor on the account client — `account.projects` — but not all of it is: a generated service with no accessor yet is constructed directly from the account client instead — `GaugesService(account)` for a sync `AccountClient`, `AsyncGaugesService(account)` for the `AsyncAccountClient` that `AsyncClient.for_account` returns. Both are exported from `basecamp.generated.services`, and the pairing matters: the sync class calls the async client's methods without awaiting them, so it returns coroutines rather than responses. SPEC.md Appendix F records which services currently need this (#732).
 
 | Category | Service | Accessor |
 |----------|---------|----------|
