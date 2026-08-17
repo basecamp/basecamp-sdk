@@ -1,5 +1,7 @@
 package com.basecamp.sdk
 
+import kotlinx.serialization.SerializationException
+
 /**
  * Sealed class hierarchy for Basecamp API errors.
  *
@@ -92,14 +94,67 @@ sealed class BasecampException(
      * sanctions that shape as a statusless, non-retryable `api_error`; passing a
      * placeholder like `0` would claim an HTTP status that never existed.
      */
-    class Api(
+    class Api private constructor(
         message: String,
-        httpStatus: Int? = null,
-        hint: String? = null,
-        retryable: Boolean = httpStatus != null && httpStatus in 500..599,
-        requestId: String? = null,
-        cause: Throwable? = null,
-    ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause)
+        httpStatus: Int?,
+        hint: String?,
+        retryable: Boolean,
+        requestId: String?,
+        cause: Throwable?,
+        /**
+         * The response decoder's own refusal, set on the exception
+         * [com.basecamp.sdk.services.BaseService] raises for a malformed 2xx
+         * body and on nothing else.
+         *
+         * The SPEC §18 composites re-hint a decode failure of the GET they
+         * issue, so what they have to answer is "did this come out of the
+         * *response decoder*". `cause is SerializationException` reads like an
+         * answer and is not one: `BasecampHttpClient` propagates an
+         * already-classified [BasecampException] from the auth strategy
+         * untouched, so a token provider that classifies its own JSON failure
+         * as `Api(cause = SerializationException(...))` matches that test and
+         * gets relabelled a malformed response body — for a request that was
+         * never sent (#730).
+         *
+         * Presence is the discriminator, and it cannot be forged from outside
+         * the SDK: the constructor that sets this slot is internal and the
+         * decoder wrapper is its only caller. The value is the decoder's own
+         * message, which is what the composites were reaching into [cause] for.
+         *
+         * [cause] still carries the same exception it always did — callers and
+         * both conformance runners read it, and a
+         * [kotlinx.serialization.MissingFieldException] there still reports its
+         * `missingFields`.
+         */
+        internal val decodeFailure: SerializationException?,
+    ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause) {
+
+        constructor(
+            message: String,
+            httpStatus: Int? = null,
+            hint: String? = null,
+            retryable: Boolean = httpStatus != null && httpStatus in 500..599,
+            requestId: String? = null,
+            cause: Throwable? = null,
+        ) : this(message, httpStatus, hint, retryable, requestId, cause, decodeFailure = null)
+
+        /**
+         * The SPEC §6 malformed-2xx-body shape, and the only producer of
+         * [decodeFailure]. Statusless because the request succeeded, so no HTTP
+         * status describes the failure, and non-retryable because re-requesting
+         * cannot repair a malformed body — neither is a caller's to vary, which
+         * is why they are fixed here rather than passed.
+         */
+        internal constructor(message: String, decodeFailure: SerializationException) : this(
+            message,
+            httpStatus = null,
+            hint = null,
+            retryable = false,
+            requestId = null,
+            cause = decodeFailure,
+            decodeFailure = decodeFailure,
+        )
+    }
 
     /** Validation error (400, 422). */
     class Validation(

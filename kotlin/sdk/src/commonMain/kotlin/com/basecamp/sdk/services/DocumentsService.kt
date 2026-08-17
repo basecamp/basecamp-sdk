@@ -95,9 +95,16 @@ class DocumentsService(client: AccountClient) :
      * non-retryable [BasecampException.Api] carrying the [SerializationException]
      * as its `cause`. What the base layer cannot know is this composite's own
      * account of the failure: which record failed to decode, and the escape
-     * hatch for writing it deliberately. That is what is restated here, keyed
-     * off the `cause` so any other [BasecampException.Api] passes through
-     * untouched.
+     * hatch for writing it deliberately. That is what is restated here.
+     *
+     * The restatement is keyed off [BasecampException.Api.decodeFailure], the
+     * internal slot the base layer's decoder wrapper alone fills, so any other
+     * [BasecampException.Api] passes through untouched. Reading `cause is
+     * SerializationException` instead would catch more than this GET's decode:
+     * an auth strategy that classifies its own JSON failure that way has its
+     * exception propagated untouched by `BasecampHttpClient`, and would arrive
+     * here relabelled as a malformed document — for a request that was never
+     * sent (#730).
      *
      * (Bare JSON scalars are refused as well as structural mismatches. They
      * were not until #598 removed the client-wide `isLenient`, which rendered a
@@ -107,7 +114,7 @@ class DocumentsService(client: AccountClient) :
         try {
             get(documentId)
         } catch (e: BasecampException.Api) {
-            val decodeFailure = e.cause as? SerializationException ?: throw e
+            val decodeFailure = e.decodeFailure ?: throw e
             throw BasecampException.Api(
                 message = "GetDocument returned a body that does not decode as a document: " +
                     "${decodeFailure.message}",

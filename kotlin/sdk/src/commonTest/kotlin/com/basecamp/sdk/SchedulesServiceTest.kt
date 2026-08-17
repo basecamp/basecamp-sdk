@@ -5,6 +5,7 @@ import com.basecamp.sdk.generated.services.ReplaceScheduleEntryBody
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
@@ -14,6 +15,8 @@ import kotlinx.serialization.json.long
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -477,9 +480,77 @@ class SchedulesServiceTest {
     // boolean as a String instead of rejecting it. See `DecoderStrictnessTest`.
     @Test
     fun updateRefusesAWrongTypedSummary() = runTest {
-        assertRefusesRead(
+        val error = assertRefusesRead(
             fullEntryJson().replace("\"summary\": \"Team Meeting\"", "\"summary\": [\"nope\"]")
         ) { account -> account.schedules.updateEntry(1069479523, description = "<div>New.</div>") }
+
+        // The composite's own account of the failure, not the base layer's:
+        // which record failed to decode, and the escape hatch. This is the half
+        // of the discriminator that must keep firing — see
+        // updateDoesNotRelabelAnAuthStrategyFailure for the half that must not.
+        assertTrue(
+            error.message!!.contains(
+                "GetScheduleEntry returned a body that does not decode as a schedule entry"
+            ),
+            "expected the composite's message, got: ${error.message}",
+        )
+        assertTrue(
+            error.hint?.contains("Use replaceEntry to write the record deliberately") == true,
+            "expected a hint naming the escape hatch, got: ${error.hint}",
+        )
+    }
+
+    /**
+     * An auth strategy's already-classified failure is not this GET's decode
+     * failure (#730).
+     *
+     * `BasecampHttpClient` propagates a `BasecampException` thrown by the
+     * strategy untouched, deliberately: a token provider's own classification
+     * is not the SDK's to overwrite. So a provider that decodes a JSON token
+     * response and classifies its own decode failure as
+     * `Api(cause = SerializationException(...))` lands in this composite's
+     * catch — and while the discriminator was `cause is SerializationException`
+     * it matched, and the caller was told "GetScheduleEntry returned a body
+     * that does not decode as a schedule entry", with the merge-safe hint
+     * attached, for a request that was never sent.
+     *
+     * The discriminator is now the internal slot only the response decoder
+     * fills, so the strategy's exception arrives as itself.
+     */
+    @Test
+    fun updateDoesNotRelabelAnAuthStrategyFailure() = runTest {
+        var requests = 0
+        val thrown = BasecampException.Api(
+            message = "the token endpoint returned a body that does not decode",
+            cause = SerializationException("Unexpected JSON token at offset 0"),
+        )
+        val client = testBasecampClient {
+            auth(AuthStrategy { throw thrown })
+            enableRetry = false
+            engine = MockEngine {
+                requests += 1
+                respond(
+                    content = fullEntryJson(),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                )
+            }
+        }
+
+        val error = assertFailsWith<BasecampException.Api> {
+            client.forAccount("999").schedules
+                .updateEntry(1069479523, description = "<div>New.</div>")
+        }
+
+        assertSame(thrown, error, "the strategy's own exception must reach the caller unchanged")
+        assertEquals(
+            "the token endpoint returned a body that does not decode", error.message,
+            "an auth failure must not be restated as a malformed schedule entry",
+        )
+        assertNull(error.hint, "the merge-safe escape hatch does not answer an auth failure")
+        assertEquals(0, requests, "auth failed, so no request was ever sent")
+
+        client.close()
     }
 
     // all_day is NOT NULL DEFAULT false and every partial emits it. Defaulting
