@@ -10,4 +10,24 @@ public struct PreviewableAttachment: Codable, Sendable {
     public var id: Int?
     public var url: String?
     public var width: Int32?
+
+    public init(
+        appUrl: String? = nil,
+        contentType: String? = nil,
+        filename: String? = nil,
+        filesize: Int? = nil,
+        height: Int32? = nil,
+        id: Int? = nil,
+        url: String? = nil,
+        width: Int32? = nil
+    ) {
+        self.appUrl = appUrl
+        self.contentType = contentType
+        self.filename = filename
+        self.filesize = filesize
+        self.height = height
+        self.id = id
+        self.url = url
+        self.width = width
+    }
 }

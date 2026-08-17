@@ -7,4 +7,18 @@ public struct Preferences: Codable, Sendable {
     public var timeFormat: String?
     public var timeZoneName: String?
     public var url: String?
+
+    public init(
+        appUrl: String? = nil,
+        firstWeekDay: String? = nil,
+        timeFormat: String? = nil,
+        timeZoneName: String? = nil,
+        url: String? = nil
+    ) {
+        self.appUrl = appUrl
+        self.firstWeekDay = firstWeekDay
+        self.timeFormat = timeFormat
+        self.timeZoneName = timeZoneName
+        self.url = url
+    }
 }
