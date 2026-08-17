@@ -8,13 +8,22 @@ import kotlin.test.assertTrue
 
 /**
  * The malformed-body marker on [BasecampException.Api] must not be settable
- * from Java (#751 review).
+ * from Java **by accident** (#751 review).
  *
  * `decodeFailure` answers "did this `api_error` come out of the response
- * decoder?", and the §18 composites re-hint off it. The whole guarantee is that
- * only `BaseService`'s decoder wrapper can fill it — an auth strategy that
- * fills it too puts back the #730 bug, an authentication failure relabelled as
- * a malformed Basecamp response for a request that was never sent.
+ * decoder?", and the §18 composites re-hint off it. An auth strategy that fills
+ * it too puts back the #730 bug: an authentication failure relabelled as a
+ * malformed Basecamp response for a request that was never sent.
+ *
+ * **The claim is bounded, deliberately.** What is prevented here is a Java
+ * caller picking the convenient overload without meaning anything by it. Java
+ * source can still call the mangled factory (`malformedBody$…`) on purpose —
+ * `$` is a legal identifier character — and that is left open: the same
+ * `AuthStrategy` can already throw, through the public constructor, an `Api`
+ * carrying the composite's own message and hint verbatim, so the deliberate
+ * path has an equivalent one line away and closing it would buy nothing. These
+ * tests are named for what they hold: no Java-SELECTABLE constructor takes a
+ * decoder exception, and the factory is reachable only under a MANGLED name.
  *
  * `internal` alone does not carry that guarantee across the JVM boundary, and
  * the distinction is exactly the one this test pins:

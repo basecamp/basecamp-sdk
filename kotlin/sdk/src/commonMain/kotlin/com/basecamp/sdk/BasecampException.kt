@@ -116,16 +116,20 @@ sealed class BasecampException(
          * gets relabelled a malformed response body — for a request that was
          * never sent (#730).
          *
-         * Presence is the discriminator, and it cannot be forged from outside
-         * the SDK: the only constructor that sets this slot is private, reached
-         * through the internal [Companion.malformedBody] factory the decoder
-         * wrapper alone calls. The value is the decoder's own message, which is
-         * what the composites were reaching into [cause] for.
+         * Presence is the discriminator. The only constructor that sets this
+         * slot is private, reached through the internal [Companion.malformedBody]
+         * factory the decoder wrapper alone calls, so no caller reaches it by
+         * writing the natural thing. The value is the decoder's own message,
+         * which is what the composites were reaching into [cause] for.
+         *
+         * That is an accident guarantee and not an unforgeable one — see
+         * [Companion.malformedBody] for what it does and does not stop.
          *
          * [cause] still carries the same exception it always did — callers and
-         * both conformance runners read it, and a
-         * [kotlinx.serialization.MissingFieldException] there still reports its
-         * `missingFields`.
+         * the **Kotlin** conformance runner read it (Swift's has no `cause` to
+         * read: `BasecampError.api` carries none, which is the whole premise of
+         * #750), and a [kotlinx.serialization.MissingFieldException] there still
+         * reports its `missingFields`.
          */
         internal val decodeFailure: SerializationException?,
     ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause) {
@@ -157,9 +161,21 @@ sealed class BasecampException(
              * constructor — so a Java-authored `AuthStrategy` writing the
              * natural `new Api(message, decodeError)` would set this slot and
              * bring back the exact bug the slot exists to kill. Internal
-             * *functions* are name-mangled (`malformedBody$…`), so this one
-             * cannot be selected from Java by accident. `ApiConstructorSurfaceTest`
+             * *functions* are name-mangled (`malformedBody$…`), so this one is
+             * not what a Java caller reaches for. `ApiConstructorSurfaceTest`
              * holds both halves of that on the JVM target.
+             *
+             * **What this does not claim.** A mangled name is still a legal Java
+             * identifier, so Java source CAN call
+             * `Api.Companion.malformedBody$…` on purpose and set the marker.
+             * That is left open deliberately. The failure being prevented is an
+             * accident — picking the convenient overload — and the deliberate
+             * case buys its author nothing: the same `AuthStrategy` can already
+             * throw, through the *public* constructor, an `Api` carrying the
+             * composite's own message and hint verbatim, for an identical
+             * user-visible outcome. Hiding this factory behind a synthetic
+             * bridge would close a path whose equivalent stays one line away,
+             * which is armour, not a guarantee.
              */
             internal fun malformedBody(
                 message: String,
