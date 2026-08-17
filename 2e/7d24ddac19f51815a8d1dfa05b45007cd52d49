@@ -1,0 +1,56 @@
+python/src/basecamp/async_client.py
+  s_c7205968e852ea::t_c9574e284c35cf 359-363
+  s_c7205968e852ea::t_047ba73e36aeea 425-429
+  s_c7205968e852ea::t_e2843b65f4ceff 358,424
+python/tests/test_client.py
+  s_c7205968e852ea::t_785ec457fe6db2 10,12
+  s_c7205968e852ea::t_595b7ee0fa8e80 24-25,27
+  s_c7205968e852ea::t_f564a6054f5c80 3-6,9,15-23,28-29,33-59,135
+  s_c7205968e852ea::t_def4a549277782 26
+  s_c7205968e852ea::t_96c88db565b8d3 182-190
+  s_c7205968e852ea::t_74c7816d3f6043 30-32
+  s_c7205968e852ea::t_7477b8ece379e0 60
+  s_c7205968e852ea::t_9cf75a1b0738f3 132-134
+  s_c7205968e852ea::t_9a25a85e351225 136-138,179-181
+  s_376baf06be6ec6::t_1d8ae867f5ce01 127-131,139-178
+python/tests/services/test_gauges_service.py
+  s_c7205968e852ea::t_68606a07671108 1
+  s_c7205968e852ea::t_453a73e0559fac 50,54
+python/tests/services/test_my_notifications.py
+  s_c7205968e852ea::t_40467e90df21d2 65
+  s_c7205968e852ea::t_5cda16e3dbc16a 46
+python/README.md
+  s_c7205968e852ea::t_b515ed2a2992b3 458
+python/src/basecamp/client.py
+  s_c7205968e852ea::t_559e0ec38b4b8a 360-364
+  s_c7205968e852ea::t_022a328e11be86 426-430
+  s_c7205968e852ea::t_f999b4fb033c12 359,425
+SPEC.md
+  s_c7205968e852ea::t_d1e526e00e643b 3667-3669
+  s_c7205968e852ea::t_a930fa125f1f70 3650-3654
+  s_c7205968e852ea::t_86ccda4a942146 3663
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2e7d24ddac19f51815a8d1dfa05b45007cd52d49",
+  "prompts": {},
+  "sessions": {
+    "s_376baf06be6ec6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a258ae339f4458cf4",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
