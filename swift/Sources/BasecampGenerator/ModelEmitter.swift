@@ -216,10 +216,11 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
     // Emitted unconditionally, matching `emitRequestModel`. Swift's implicit
     // memberwise initializer is `internal`, so a struct without an explicit
     // `public init` is unconstructible outside the module — an all-optional
-    // model would otherwise compile in-repo (every test uses `@testable
-    // import`) and be uncallable for a consumer that plain-`import`s the SDK
-    // (#735). `Sources/BasecampPublicAPIConsumer` is the target that observes
-    // this from outside.
+    // model would otherwise compile in-repo (every test source that imports
+    // the SDK imports it as `@testable import Basecamp`, and none plain-imports
+    // it) and be uncallable for a consumer that plain-`import`s the SDK (#735).
+    // `Sources/BasecampPublicAPIConsumer` is the target that observes this from
+    // outside.
     lines.append("")
     var initParams: [String] = []
     for propName in orderedProps {
