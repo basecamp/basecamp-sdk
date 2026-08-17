@@ -356,6 +356,12 @@ class AsyncAccountClient:
         return self._service("reports", lambda: AsyncReportsService(self))
 
     @property
+    def gauges(self):
+        from basecamp.generated.services.gauges import AsyncGaugesService
+
+        return self._service("gauges", lambda: AsyncGaugesService(self))
+
+    @property
     def timeline(self):
         from basecamp.generated.services.timeline import AsyncTimelineService
 
@@ -414,6 +420,12 @@ class AsyncAccountClient:
         from basecamp.generated.services.my_assignments import AsyncMyAssignmentsService
 
         return self._service("my_assignments", lambda: AsyncMyAssignmentsService(self))
+
+    @property
+    def my_notifications(self):
+        from basecamp.generated.services.my_notifications import AsyncMyNotificationsService
+
+        return self._service("my_notifications", lambda: AsyncMyNotificationsService(self))
 
     @property
     def calendars(self):

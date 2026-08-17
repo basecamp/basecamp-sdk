@@ -1,12 +1,4 @@
-"""Tests for the generated gauges service routes (all seven operations).
-
-``gauges`` is NOT wired onto ``Client``/``AsyncClient`` today — the service
-exists and is generated, but no ``account.gauges`` property exposes it (tracked
-separately). These tests therefore construct the generated service directly over
-an account client, exactly as ``test_my_notifications.py`` does for the other
-unwired service. When the wiring lands these tests keep passing unchanged; only
-the construction helpers below would need to move to ``account.gauges``.
-"""
+"""Tests for the generated gauges service routes (all seven operations)."""
 
 from __future__ import annotations
 
@@ -55,11 +47,11 @@ def _link_to(url: str) -> dict[str, str]:
 
 
 def _gauges() -> GaugesService:
-    return GaugesService(Client(access_token="test-token").for_account("12345"))
+    return Client(access_token="test-token").for_account("12345").gauges
 
 
 def _async_gauges() -> AsyncGaugesService:
-    return AsyncGaugesService(AsyncClient(access_token="test-token").for_account("12345"))
+    return AsyncClient(access_token="test-token").for_account("12345").gauges
 
 
 class TestListGauges:
