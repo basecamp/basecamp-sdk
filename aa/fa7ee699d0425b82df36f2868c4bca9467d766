@@ -1,0 +1,38 @@
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_c7205968e852ea::t_ed813d6c3b240c 1470,1481,1485,1490,1533,1572,1584-1597
+  s_09297614e4690f::t_45413bdd7fe0b3 1440-1469,1471-1480,1482-1484,1486-1489,1491-1532,1534-1571,1573-1583,1598-1612
+go/pkg/basecamp/eventfeed/catchup.go
+  s_c7205968e852ea::t_d5faa684a8e26d 158-172
+  s_c7205968e852ea::t_e87960914c2736 548-550
+  s_c7205968e852ea::t_9b5e5b2e2f0a98 614-615
+  s_c7205968e852ea::t_ad963a2c6928d4 363-364
+  s_c7205968e852ea::t_37d4a550d5225b 360-362,365-387,402-403
+  s_c7205968e852ea::t_a358dfb0afe0cf 388
+  s_c7205968e852ea::t_19e02717249b30 563-582
+  s_c7205968e852ea::t_c4ffa325c3b7ec 345-348,352
+  s_c7205968e852ea::t_9f37a30eccd3df 404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "aafa7ee699d0425b82df36f2868c4bca9467d766",
+  "prompts": {},
+  "sessions": {
+    "s_09297614e4690f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00e05-d489-7cc0-9c27-ccfc76a1acfb",
+        "model": "gpt-daybreak-blue-latest"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
