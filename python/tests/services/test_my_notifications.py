@@ -42,10 +42,8 @@ class TestSyncMyNotifications:
             return_value=httpx.Response(200, json=_bubble_ups())
         )
 
-        from basecamp.generated.services.my_notifications import MyNotificationsService
-
         account = Client(access_token="test-token").for_account("12345")
-        result = MyNotificationsService(account).get_bubble_ups()
+        result = account.my_notifications.get_bubble_ups()
 
         assert route.called
         assert len(result) == 2
@@ -61,8 +59,7 @@ class TestSyncMyNotifications:
         )
 
         from basecamp.errors import NotFoundError
-        from basecamp.generated.services.my_notifications import MyNotificationsService
 
         account = Client(access_token="test-token").for_account("12345")
         with pytest.raises(NotFoundError):
-            MyNotificationsService(account).get_bubble_ups()
+            account.my_notifications.get_bubble_ups()

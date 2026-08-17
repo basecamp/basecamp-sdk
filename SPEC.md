@@ -3647,8 +3647,11 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 Counts are of accessors actually wired onto the client, against §5's canonical
 roster. The Kotlin and Swift rows are marked, because §5's roster is derived from
 exactly those two files and a restatement of a gated value has to be gated too.
-The other four are hand-verified and dated below — no gate derives them, and
-building one means a sixth hand-copy of each generator's split tables.
+Of the other four, Python's is held by its own accessor-inventory test, which
+derives the roster from `python/src/basecamp/generated/services/` and fails when
+an accessor is missing. The remaining three are hand-verified and dated below —
+no gate derives them, and building one means a sixth hand-copy of each
+generator's split tables.
 
 | SDK | Account-scoped services |
 |-----|------------------------|
@@ -3657,11 +3660,13 @@ building one means a sixth hand-copy of each generator's split tables.
 | Ruby | 53 — full canonical set |
 | TypeScript | 53 — full canonical set, on the flat client alongside `authorization` (no `AccountClient` tier; see Client Topology above) |
 | Go | 51 accessors. Two services are folded rather than missing: `automation`'s sole operation is `LineupService.ListMarkers`, and `clientVisibility`'s is `RecordingsService.SetClientVisibility`. `timesheets` is spelled `Timesheet` (singular). Capability is 53/53; the surface is not. Hand-written service wrappers around the generated OpenAPI client — not fully generated. |
-| Python | 51 — `gauges` and `myNotifications` are a genuine wiring gap, not a fold: `generated/services/gauges.py` and `generated/services/my_notifications.py` both exist and neither `client.py` nor `async_client.py` references them (#732). Sync and async agree exactly. |
+| Python | 53 — full canonical set. `gauges` and `my_notifications` were a wiring gap rather than a fold, and were wired in #732; the same change added an accessor-inventory test (`python/tests/test_client.py`) deriving its roster from `generated/services/`, so the next unwired service fails rather than going unnoticed. Sync and async agree exactly. |
 
 Verified 2026-08-13 against the accessor declarations in each SDK's client
 (Go `AccountClient` methods, Ruby `Client#for_account` accessors, TS
-`defineService` calls, Python `_service` properties).
+`defineService` calls). Python was re-verified 2026-08-16 when #732 wired the
+last two, and no longer relies on that date: its `_service` properties are
+checked against the generated package on every `make py-check`.
 
 ### Event Feed Connector Scenario Lane (§23)
 
