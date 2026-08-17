@@ -1,0 +1,53 @@
+go/pkg/basecamp/eventfeed/connector.go
+  s_62d102ac250358::t_bb89498eda38b6 130-134
+  s_62d102ac250358::t_fb7c7c45448908 283-288,293-297
+  s_62d102ac250358::t_a8f491c4afde63 298,341-369
+  s_62d102ac250358::t_34c1628519a761 8
+go/pkg/basecamp/eventfeed/cable_test.go
+  s_62d102ac250358::t_549ec3966a1ddb 198-248
+go/pkg/basecamp/eventfeed/connector_test.go
+  s_62d102ac250358::t_5eded4690cec1c 366-384,390,394-429
+  s_62d102ac250358::t_506c24daab203b 10
+  s_62d102ac250358::t_b7557286aaedfd 87-104
+  s_62d102ac250358::t_ca95381da81ddd 243-268,273,277-365
+  s_62d102ac250358::t_0bc091e0bfd240 149-186
+  s_62d102ac250358::t_2315c13d7867b9 269-272,274-276
+  s_62d102ac250358::t_f51e7157e2c0e1 385-389,391-393
+go/pkg/basecamp/eventfeed/errors.go
+  s_62d102ac250358::t_a02d4f921b25ef 96-113
+go/pkg/basecamp/eventfeed/catchup.go
+  s_62d102ac250358::t_08b7a63883f7c4 277-281
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_62d102ac250358::t_779bb71031fbd2 1016-1127
+go/pkg/basecamp/eventfeed/loop.go
+  s_62d102ac250358::t_dd6ebbe640df2a 1023-1028,1031
+go/pkg/basecamp/eventfeed/filters.go
+  s_62d102ac250358::t_f984bb8e92249a 27-41,43-45,52-56
+  s_62d102ac250358::t_c255ae6b203703 5
+  s_62d102ac250358::t_e3df054a4b7683 57
+go/README.md
+  s_62d102ac250358::t_0616ec01ba8740 674-682
+go/pkg/basecamp/eventfeed/checkpoint.go
+  s_62d102ac250358::t_12bb682064da26 53-70
+  s_62d102ac250358::t_8fe09b9213a088 8
+go/pkg/basecamp/eventfeed/cable.go
+  s_62d102ac250358::t_41adc027240598 117-118
+  s_62d102ac250358::t_dd6ebbe640df2a 5,127-133,139,162-175,201-216
+  s_62d102ac250358::t_9c6d5ae9e1fd57 217-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5670333963c0b5de28312ccff1ccbc690a266d27",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
