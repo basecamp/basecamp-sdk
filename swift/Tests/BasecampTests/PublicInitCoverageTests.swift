@@ -134,7 +134,26 @@ final class PublicInitCoverageTests: XCTestCase {
             .filter { $0.hasSuffix(".swift") }
             .sorted()
 
-        XCTAssertGreaterThan(files.count, 200, "expected the full generated model roster")
+        // An extraction floor, not a count assertion — and the distinction is the
+        // whole point. The real failure it stops is a *collapsed scan*: a renamed
+        // or moved Models directory, or a filter that stops matching, leaves
+        // `files` empty, the loop below never runs, `missing` stays `[]`, and the
+        // test passes while checking nothing. Asserting only "non-empty" would
+        // also catch the total collapse, but not a partial one — a scan that
+        // finds three files is just as vacuous and looks just as green.
+        //
+        // So the floor sits an order of magnitude below the true count (220 at
+        // the time of writing) rather than just under it. A tight bound would
+        // turn ordinary spec churn into an unrelated failure here, which is the
+        // brittleness the review flagged; this one only trips if the scan has
+        // lost ~90% of the roster, which is never legitimate churn. It is
+        // deliberately NOT a tripwire for models being added or removed — the
+        // consumer target's roster already fails to compile on a rename, and
+        // `missing` below is the assertion that carries the actual contract.
+        XCTAssertGreaterThan(
+            files.count, 20,
+            "only \(files.count) model files found — the scan has collapsed, so "
+                + "an empty `missing` below would prove nothing")
 
         var missing: [String] = []
         var structs = 0
@@ -149,11 +168,72 @@ final class PublicInitCoverageTests: XCTestCase {
             }
         }
 
-        XCTAssertGreaterThan(structs, 180, "expected most generated models to be structs")
+        // Same floor, same reason: the files could all be read and none of them
+        // recognized as a struct — a changed emitted prefix would do it — which
+        // again leaves `missing` empty for the wrong reason.
+        XCTAssertGreaterThan(
+            structs, 20,
+            "only \(structs) of \(files.count) model files parsed as a public "
+                + "struct — the struct detection has collapsed")
         XCTAssertEqual(
             missing, [],
             "these generated models have no public init, so no consumer that "
                 + "plain-`import`s Basecamp can construct them (#735)")
+    }
+
+    // MARK: - Plain-import recognition
+
+    /// Recognizes a plain `import Basecamp` declaration.
+    ///
+    /// Exact string equality was the first cut and it was too strict: a trailing
+    /// comment or a doubled space made a genuine plain import invisible to the
+    /// guard. A false negative here is the worst kind — the guard's whole job is
+    /// to notice when the consumer target stops importing the SDK the way a
+    /// customer does, and an unrecognized-but-real import reads exactly like a
+    /// missing one. That is the same brittleness class as the `@testable` blind
+    /// spot this PR exists to close, one level up.
+    ///
+    /// A prefix check would be the easy fix and is wrong in the other direction:
+    /// `import BasecampGenerator` starts with `import Basecamp`. So tokenize
+    /// instead — drop any `//` comment, ignore surrounding whitespace and a
+    /// trailing semicolon, and require exactly the two tokens. That accepts the
+    /// real spellings and still rejects the generator import and `@testable`.
+    ///
+    /// Not handled, deliberately: a `/* … */` block comment mid-declaration.
+    /// Nothing in the repo writes one, and the tokenizer would have to become a
+    /// lexer to see it. If that ever appears, the guard fails closed — it reports
+    /// no plain import, which is a loud failure rather than a silent pass.
+    static func isPlainBasecampImport(_ line: String) -> Bool {
+        let withoutComment = line.components(separatedBy: "//")[0]
+        let tokens =
+            withoutComment
+            .trimmingCharacters(in: CharacterSet(charactersIn: " \t;"))
+            .components(separatedBy: .whitespaces)
+            .filter { !$0.isEmpty }
+        return tokens == ["import", "Basecamp"]
+    }
+
+    /// Table-drives the matcher over the spellings that must and must not count.
+    /// The disk scan below cannot cover these — it only ever sees the one line
+    /// the consumer target happens to contain today.
+    func testPlainImportRecognition() {
+        // Real plain imports, however they are spelled.
+        XCTAssertTrue(Self.isPlainBasecampImport("import Basecamp"))
+        XCTAssertTrue(
+            Self.isPlainBasecampImport("import Basecamp  // trailing comment"),
+            "a trailing comment does not stop it being a plain import")
+        XCTAssertTrue(Self.isPlainBasecampImport("  import   Basecamp  "))
+        XCTAssertTrue(Self.isPlainBasecampImport("import Basecamp;"))
+
+        // Not plain imports of this module.
+        XCTAssertFalse(
+            Self.isPlainBasecampImport("@testable import Basecamp"),
+            "@testable is the thing the guard exists to catch")
+        XCTAssertFalse(
+            Self.isPlainBasecampImport("import BasecampGenerator"),
+            "a prefix check would wrongly accept this")
+        XCTAssertFalse(Self.isPlainBasecampImport("import Foundation"))
+        XCTAssertFalse(Self.isPlainBasecampImport("// import Basecamp"))
     }
 
     // MARK: - Blind-spot guards
@@ -180,7 +260,7 @@ final class PublicInitCoverageTests: XCTestCase {
                     trimmed.hasPrefix("@testable"),
                     "\(file) uses @testable, which re-opens the #735 blind spot this "
                         + "target exists to close")
-                if trimmed == "import Basecamp" { sawPlainImport = true }
+                if Self.isPlainBasecampImport(line) { sawPlainImport = true }
             }
         }
         XCTAssertTrue(sawPlainImport, "no source in the consumer target plain-imports Basecamp")
