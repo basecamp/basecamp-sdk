@@ -1,5 +1,7 @@
 package com.basecamp.sdk
 
+import kotlinx.serialization.SerializationException
+
 /**
  * Sealed class hierarchy for Basecamp API errors.
  *
@@ -92,14 +94,103 @@ sealed class BasecampException(
      * sanctions that shape as a statusless, non-retryable `api_error`; passing a
      * placeholder like `0` would claim an HTTP status that never existed.
      */
-    class Api(
+    class Api private constructor(
         message: String,
-        httpStatus: Int? = null,
-        hint: String? = null,
-        retryable: Boolean = httpStatus != null && httpStatus in 500..599,
-        requestId: String? = null,
-        cause: Throwable? = null,
-    ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause)
+        httpStatus: Int?,
+        hint: String?,
+        retryable: Boolean,
+        requestId: String?,
+        cause: Throwable?,
+        /**
+         * The response decoder's own refusal, set on the exception
+         * [com.basecamp.sdk.services.BaseService] raises for a malformed 2xx
+         * body and on nothing else.
+         *
+         * The SPEC §18 composites re-hint a decode failure of the GET they
+         * issue, so what they have to answer is "did this come out of the
+         * *response decoder*". `cause is SerializationException` reads like an
+         * answer and is not one: `BasecampHttpClient` propagates an
+         * already-classified [BasecampException] from the auth strategy
+         * untouched, so a token provider that classifies its own JSON failure
+         * as `Api(cause = SerializationException(...))` matches that test and
+         * gets relabelled a malformed response body — for a request that was
+         * never sent (#730).
+         *
+         * Presence is the discriminator. The only constructor that sets this
+         * slot is private, reached through the internal [Companion.malformedBody]
+         * factory the decoder wrapper alone calls, so no caller reaches it by
+         * writing the natural thing. The value is the decoder's own message,
+         * which is what the composites were reaching into [cause] for.
+         *
+         * That is an accident guarantee and not an unforgeable one — see
+         * [Companion.malformedBody] for what it does and does not stop.
+         *
+         * [cause] still carries the same exception it always did — callers and
+         * the **Kotlin** conformance runner read it (Swift's has no `cause` to
+         * read: `BasecampError.api` carries none, which is the whole premise of
+         * #750), and a [kotlinx.serialization.MissingFieldException] there still
+         * reports its `missingFields`.
+         */
+        internal val decodeFailure: SerializationException?,
+    ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause) {
+
+        constructor(
+            message: String,
+            httpStatus: Int? = null,
+            hint: String? = null,
+            retryable: Boolean = httpStatus != null && httpStatus in 500..599,
+            requestId: String? = null,
+            cause: Throwable? = null,
+        ) : this(message, httpStatus, hint, retryable, requestId, cause, decodeFailure = null)
+
+        internal companion object {
+            /**
+             * The SPEC §6 malformed-2xx-body shape, and the only producer of
+             * [decodeFailure]. Statusless because the request succeeded, so no
+             * HTTP status describes the failure, and non-retryable because
+             * re-requesting cannot repair a malformed body — neither is a
+             * caller's to vary, which is why they are fixed here rather than
+             * passed.
+             *
+             * A factory and not a constructor, because `internal` does not
+             * survive the JVM boundary for `<init>`: constructors cannot be
+             * name-mangled, so an internal *constructor* is emitted public and
+             * Java sees `Api(String, SerializationException)`. That would be the
+             * shortest overload Java is offered — Kotlin default arguments do
+             * not exist for Java callers, which see only the full-arity public
+             * constructor — so a Java-authored `AuthStrategy` writing the
+             * natural `new Api(message, decodeError)` would set this slot and
+             * bring back the exact bug the slot exists to kill. Internal
+             * *functions* are name-mangled (`malformedBody$…`), so this one is
+             * not what a Java caller reaches for. `ApiConstructorSurfaceTest`
+             * holds both halves of that on the JVM target.
+             *
+             * **What this does not claim.** A mangled name is still a legal Java
+             * identifier, so Java source CAN call
+             * `Api.Companion.malformedBody$…` on purpose and set the marker.
+             * That is left open deliberately. The failure being prevented is an
+             * accident — picking the convenient overload — and the deliberate
+             * case buys its author nothing: the same `AuthStrategy` can already
+             * throw, through the *public* constructor, an `Api` carrying the
+             * composite's own message and hint verbatim, for an identical
+             * user-visible outcome. Hiding this factory behind a synthetic
+             * bridge would close a path whose equivalent stays one line away,
+             * which is armour, not a guarantee.
+             */
+            internal fun malformedBody(
+                message: String,
+                decodeFailure: SerializationException,
+            ): Api = Api(
+                message,
+                httpStatus = null,
+                hint = null,
+                retryable = false,
+                requestId = null,
+                cause = decodeFailure,
+                decodeFailure = decodeFailure,
+            )
+        }
+    }
 
     /** Validation error (400, 422). */
     class Validation(
