@@ -77,8 +77,13 @@ describe("HillChartsService", () => {
       const result = await client.hillCharts.get(todosetId);
       expect(result.enabled).toBe(true);
       expect(result.stale).toBe(false);
-      expect(result.dots).toHaveLength(1);
-      expect(result.dots[0].label).toBe("Background and research");
+      // `dots` is optional in the generated schema. Assert presence first so a
+      // response that omits it fails here, then read through the narrowed
+      // local rather than repeating `?.` on every dot.
+      expect(result.dots).toBeDefined();
+      const dots = result.dots!;
+      expect(dots).toHaveLength(1);
+      expect(dots[0].label).toBe("Background and research");
       expect(result.app_versions_url).toBe(`https://3.basecamp.com/12345/buckets/100/todosets/42/hill/versions`);
     });
 
@@ -111,9 +116,12 @@ describe("HillChartsService", () => {
       });
       expect(capturedBody).toEqual({ tracked: [1069479573], untracked: [1069479511] });
       expect(result.enabled).toBe(true);
-      expect(result.dots).toHaveLength(2);
-      expect(result.dots[1].label).toBe("Design mockups");
-      expect(result.dots[1].position).toBe(42);
+      // See the note in `get`: `dots` is optional, so assert presence first.
+      expect(result.dots).toBeDefined();
+      const dots = result.dots!;
+      expect(dots).toHaveLength(2);
+      expect(dots[1].label).toBe("Design mockups");
+      expect(dots[1].position).toBe(42);
     });
 
     it("should throw not_found for missing todoset", async () => {

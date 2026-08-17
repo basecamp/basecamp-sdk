@@ -23,8 +23,8 @@ import type {
   CreateGaugeNeedleGaugeRequest,
   ToggleGaugeGaugeRequest,
 } from "../../src/generated/services/gauges.js";
-import gaugeFixture from "../../../spec/fixtures/gauges/get.json";
-import needleFixture from "../../../spec/fixtures/gauges/needle_get.json";
+import gaugeFixture from "../../../spec/fixtures/gauges/get.json" with { type: "json" };
+import needleFixture from "../../../spec/fixtures/gauges/needle_get.json" with { type: "json" };
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 

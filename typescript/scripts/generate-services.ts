@@ -838,23 +838,14 @@ function groupOperations(spec: OpenAPISpec): Map<string, ServiceDefinition> {
       const tag = operation.tags?.[0] || "Untagged";
       const parsed = parseOperation(path, method, operation);
 
-      // Determine service
-      let serviceName: string;
-      if (SERVICE_SPLITS[tag]) {
-        let found = false;
-        for (const [svc, opIds] of Object.entries(SERVICE_SPLITS[tag])) {
-          if (opIds.includes(operation.operationId)) {
-            serviceName = svc;
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          serviceName = TAG_TO_SERVICE[tag] || tag.replace(/\s+/g, "");
-        }
-      } else {
-        serviceName = TAG_TO_SERVICE[tag] || tag.replace(/\s+/g, "");
-      }
+      // Determine service: a split tag routes the operation to the first
+      // sub-service that names it, and anything unlisted falls to the tag's
+      // own service.
+      const split = SERVICE_SPLITS[tag];
+      const splitService = split
+        ? Object.entries(split).find(([, opIds]) => opIds.includes(operation.operationId))?.[0]
+        : undefined;
+      const serviceName = splitService ?? (TAG_TO_SERVICE[tag] || tag.replace(/\s+/g, ""));
 
       if (!services.has(serviceName)) {
         services.set(serviceName, {

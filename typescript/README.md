@@ -923,7 +923,7 @@ npm run build
 # Run tests
 npm test
 
-# Type check
+# Type check (src via tsconfig.json, then tests and scripts via tsconfig.test.json)
 npm run typecheck
 
 # Lint

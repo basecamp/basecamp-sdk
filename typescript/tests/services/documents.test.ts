@@ -19,6 +19,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
+import type { JsonBodyType } from "msw";
 import { server } from "../setup.js";
 import type { DocumentsService } from "../../src/services/documents-extensions.js";
 import { BasecampError } from "../../src/errors.js";
@@ -169,17 +170,20 @@ describe("DocumentsService", () => {
     });
 
     it("should send all fields in request body", async () => {
-      let capturedBody: {
-        title?: string;
-        content?: string;
-        status?: string;
-      } | null = null;
+      // Held in an object rather than a bare `let`: TS's control-flow analysis
+      // cannot see the assignment inside the MSW handler closure, so a
+      // `let x: T | null = null` narrows to `null` at the assertions below and
+      // every property read becomes an error on `never`. A property of a const
+      // object is not narrowed that way.
+      const captured: {
+        body?: { title?: string; content?: string; status?: string };
+      } = {};
 
       server.use(
         http.post(
           `${BASE_URL}/vaults/1001/documents.json`,
           async ({ request }) => {
-            capturedBody = (await request.json()) as {
+            captured.body = (await request.json()) as {
               title?: string;
               content?: string;
               status?: string;
@@ -195,9 +199,9 @@ describe("DocumentsService", () => {
         status: "drafted",
       });
 
-      expect(capturedBody?.title).toBe("Test Doc");
-      expect(capturedBody?.content).toBe("<h1>Hello</h1>");
-      expect(capturedBody?.status).toBe("drafted");
+      expect(captured.body?.title).toBe("Test Doc");
+      expect(captured.body?.content).toBe("<h1>Hello</h1>");
+      expect(captured.body?.status).toBe("drafted");
     });
 
     // Client-side validation short-circuits before any HTTP call. No MSW handler
@@ -560,7 +564,11 @@ describe("DocumentsService", () => {
     const writableStrings = ["title", "content"] as const;
 
     // Serve a GET carrying `body` and a PUT that records that it happened.
-    const serve = (body: unknown, requests: string[]) => {
+    // `body` is typed as MSW's own response-body type rather than `unknown`:
+    // the malformed-*envelope* cases below deliberately serve arrays, scalars
+    // and null, so the parameter has to stay as wide as JSON itself -- but no
+    // wider, or the `HttpResponse.json` call cannot accept it.
+    const serve = (body: JsonBodyType, requests: string[]) => {
       server.use(
         http.get(`${BASE_URL}/documents/5001`, () => {
           requests.push("GET");

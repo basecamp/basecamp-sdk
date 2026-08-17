@@ -1,7 +1,7 @@
 /**
  * Tests for the hooks module
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import {
   chainHooks,
   consoleHooks,
@@ -176,13 +176,22 @@ describe("chainHooks", () => {
 });
 
 describe("consoleHooks", () => {
-  let mockLogger: { log: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
+  // consoleHooks takes `Pick<Console, "log" | "warn" | "error">`. A bare vi.fn()
+  // infers the catch-all `Mock<Procedure | Constructable>`, which is not
+  // assignable to a console method, so each mock is given the signature of the
+  // method it stands in for — the substitute still has to satisfy the real
+  // contract.
+  let mockLogger: {
+    log: Mock<Console["log"]>;
+    warn: Mock<Console["warn"]>;
+    error: Mock<Console["error"]>;
+  };
 
   beforeEach(() => {
     mockLogger = {
-      log: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
+      log: vi.fn<Console["log"]>(),
+      warn: vi.fn<Console["warn"]>(),
+      error: vi.fn<Console["error"]>(),
     };
   });
 

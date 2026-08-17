@@ -3,6 +3,7 @@
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
+import type { JsonBodyType } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
@@ -556,7 +557,11 @@ describe("TodosService", () => {
     const idLists = ["assignees", "completion_subscribers"] as const;
 
     // Serve a GET carrying `body` and a PUT that records that it happened.
-    const serve = (body: unknown, requests: string[]) => {
+    // `body` is typed as MSW's own response-body type rather than `unknown`:
+    // the malformed-*envelope* cases below deliberately serve arrays, scalars
+    // and null, so the parameter has to stay as wide as JSON itself -- but no
+    // wider, or the `HttpResponse.json` call cannot accept it.
+    const serve = (body: JsonBodyType, requests: string[]) => {
       server.use(
         http.get(`${BASE_URL}/todos/42`, () => {
           requests.push("GET");

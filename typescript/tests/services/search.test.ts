@@ -14,7 +14,7 @@ import type { BasecampClient } from "../../src/client.js";
 // `api_search_result_template_path` special-cases. Imported rather than restated
 // so this cannot drift from the copy the other five SDKs and the conformance
 // runners assert against.
-import searchResultsFixture from "../../../spec/fixtures/search/results.json";
+import searchResultsFixture from "../../../spec/fixtures/search/results.json" with { type: "json" };
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 

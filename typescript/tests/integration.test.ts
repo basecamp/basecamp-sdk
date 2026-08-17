@@ -164,7 +164,7 @@ describe("Integration", () => {
       let callCount = 0;
 
       server.use(
-        http.get(`${BASE_URL}/buckets/123/todolists/999.json`, () => {
+        http.get(`${BASE_URL}/todolists/999`, () => {
           callCount++;
           return HttpResponse.json(
             { error: "Not found" },
@@ -187,10 +187,9 @@ describe("Integration", () => {
         enableCache: true,
       });
 
-      const { error } = await client.GET(
-        "/buckets/{projectId}/todolists/{todolistId}.json",
-        { params: { path: { projectId: 123, todolistId: 999 } } }
-      );
+      const { error } = await client.GET("/todolists/{id}", {
+        params: { path: { id: 999 } },
+      });
 
       expect(error).toBeDefined();
 

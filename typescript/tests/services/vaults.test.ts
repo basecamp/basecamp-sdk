@@ -121,18 +121,22 @@ describe("VaultsService", () => {
     });
 
     it("should send title in request body", async () => {
-      let capturedBody: { title?: string } | null = null;
+      // Held in an object rather than a bare `let`: TS's control-flow analysis
+      // cannot see the assignment inside the MSW handler closure, so a
+      // `let x: T | null = null` narrows to `null` at the assertion below and
+      // the property read becomes an error on `never`.
+      const captured: { body?: { title?: string } } = {};
 
       server.use(
         http.post(`${BASE_URL}/vaults/1001/vaults.json`, async ({ request }) => {
-          capturedBody = (await request.json()) as { title?: string };
+          captured.body = (await request.json()) as { title?: string };
           return HttpResponse.json({ id: 1, title: "Test" });
         })
       );
 
       await service.create(1001, { title: "My New Folder" });
 
-      expect(capturedBody?.title).toBe("My New Folder");
+      expect(captured.body?.title).toBe("My New Folder");
     });
 
     // Client-side validation short-circuits before any HTTP call. No MSW handler
@@ -164,18 +168,20 @@ describe("VaultsService", () => {
     });
 
     it("should send title in request body", async () => {
-      let capturedBody: { title?: string } | null = null;
+      // See the note in `create` above: a `let` assigned only inside the MSW
+      // handler closure narrows to `null` for the assertion.
+      const captured: { body?: { title?: string } } = {};
 
       server.use(
         http.put(`${BASE_URL}/vaults/1001`, async ({ request }) => {
-          capturedBody = (await request.json()) as { title?: string };
+          captured.body = (await request.json()) as { title?: string };
           return HttpResponse.json({ id: 1001, title: "Updated" });
         })
       );
 
       await service.update(1001, { title: "Updated Title" });
 
-      expect(capturedBody?.title).toBe("Updated Title");
+      expect(captured.body?.title).toBe("Updated Title");
     });
   });
 });

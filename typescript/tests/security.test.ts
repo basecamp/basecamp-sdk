@@ -27,6 +27,14 @@ import { discover } from "../src/oauth/discovery.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
+// fetchAllPages/paginateAll type their page parser as `(r) => Promise<T[]>`, but
+// `Response#json()` is typed `Promise<unknown>` — it cannot know the body is an
+// array. Narrow once here instead of at each of the ~20 call sites below; these
+// tests are about Link-header handling and page caps, not about body shape, and
+// every stubbed body in this file really is a JSON array.
+const parsePages = (r: Response): Promise<unknown[]> =>
+  r.json() as Promise<unknown[]>;
+
 // =============================================================================
 // Link Header Origin Validation (SSRF / Token Leakage)
 // =============================================================================
@@ -46,7 +54,7 @@ describe("Link header origin validation", () => {
     });
 
     await expect(
-      fetchAllPages(response, (r) => r.json())
+      fetchAllPages(response, parsePages)
     ).rejects.toThrow("different origin");
   });
 
@@ -61,7 +69,7 @@ describe("Link header origin validation", () => {
       value: "https://3.basecampapi.com/12345/projects.json",
     });
 
-    const generator = paginateAll(response, (r) => r.json());
+    const generator = paginateAll(response, parsePages);
 
     // First yield should succeed (initial page)
     const first = await generator.next();
@@ -83,7 +91,7 @@ describe("Link header origin validation", () => {
       value: "https://3.basecampapi.com/12345/projects.json",
     });
 
-    const results = await fetchAllPages(response, (r) => r.json());
+    const results = await fetchAllPages(response, parsePages);
     expect(results).toEqual([{ id: 1 }]);
   });
 
@@ -114,7 +122,7 @@ describe("Link header origin validation", () => {
         value: "https://3.basecampapi.com/12345/projects.json",
       });
 
-      const results = await fetchAllPages(response, (r) => r.json());
+      const results = await fetchAllPages(response, parsePages);
       // Should have fetched page 2 (relative URL resolved to same origin)
       expect(results).toEqual([{ id: 1 }, { id: 2 }]);
       expect(fetchCallCount).toBe(1);
@@ -148,7 +156,7 @@ describe("Link header origin validation", () => {
         value: "https://3.basecampapi.com/12345/projects.json",
       });
 
-      const results = await fetchAllPages(response, (r) => r.json());
+      const results = await fetchAllPages(response, parsePages);
       expect(results).toEqual([{ id: 1 }, { id: 2 }]);
       expect(fetchCallCount).toBe(1);
     } finally {
@@ -195,7 +203,7 @@ describe("Link header origin validation", () => {
         value: "https://3.basecampapi.com/v1/projects",
       });
 
-      const results = await fetchAllPages(response, (r) => r.json());
+      const results = await fetchAllPages(response, parsePages);
       expect(results).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
       // Page 2 URL resolved from initial
       expect(fetchedUrls[0]).toBe("https://3.basecampapi.com/v1/projects?page=2");
@@ -275,7 +283,7 @@ describe("pagination page cap", () => {
     it("makes no further request at all when maxPages is 1", async () => {
       const mock = installEndlessFetch();
       try {
-        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, 1);
+        const results = await fetchAllPages(firstOfEndless(), parsePages, undefined, 1);
 
         expect(results).toEqual([{ id: 1 }]);
         // The initial response was supplied by the caller. One page consumed
@@ -290,7 +298,7 @@ describe("pagination page cap", () => {
     it("consumes exactly maxPages pages against a server that never stops", async () => {
       const mock = installEndlessFetch();
       try {
-        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, 3);
+        const results = await fetchAllPages(firstOfEndless(), parsePages, undefined, 3);
 
         expect(results).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
         expect(mock.count()).toBe(2);
@@ -315,7 +323,7 @@ describe("pagination page cap", () => {
       try {
         const results = await fetchAllPages(
           endlessPage(selfUrl, 1, selfUrl),
-          (r) => r.json(),
+          parsePages,
           undefined,
           3
         );
@@ -337,7 +345,7 @@ describe("pagination page cap", () => {
 
       try {
         // Generous cap, two-page sequence: the cap must not be what ends it.
-        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, 100);
+        const results = await fetchAllPages(firstOfEndless(), parsePages, undefined, 100);
 
         expect(results).toEqual([{ id: 1 }, { id: 2 }]);
         expect(fetchCallCount).toBe(1);
@@ -355,7 +363,7 @@ describe("pagination page cap", () => {
       });
 
       try {
-        const results = await fetchAllPages(firstOfEndless(), (r) => r.json());
+        const results = await fetchAllPages(firstOfEndless(), parsePages);
 
         expect(results).toEqual([{ id: 1 }, { id: 2 }]);
         expect(fetchCallCount).toBe(1);
@@ -377,7 +385,7 @@ describe("pagination page cap", () => {
     it("makes no further request at all when maxPages is 1", async () => {
       const mock = installEndlessFetch();
       try {
-        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, 1));
+        const pages = await collect(paginateAll(firstOfEndless(), parsePages, undefined, 1));
 
         expect(pages).toEqual([[{ id: 1 }]]);
         expect(mock.count()).toBe(0);
@@ -389,7 +397,7 @@ describe("pagination page cap", () => {
     it("yields exactly maxPages pages against a server that never stops", async () => {
       const mock = installEndlessFetch();
       try {
-        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, 3));
+        const pages = await collect(paginateAll(firstOfEndless(), parsePages, undefined, 3));
 
         expect(pages).toEqual([[{ id: 1 }], [{ id: 2 }], [{ id: 3 }]]);
         expect(mock.count()).toBe(2);
@@ -411,7 +419,7 @@ describe("pagination page cap", () => {
 
       try {
         const pages = await collect(
-          paginateAll(endlessPage(selfUrl, 1, selfUrl), (r) => r.json(), undefined, 3)
+          paginateAll(endlessPage(selfUrl, 1, selfUrl), parsePages, undefined, 3)
         );
 
         expect(pages).toEqual([[{ id: 1 }], [{ id: 1 }], [{ id: 1 }]]);
@@ -430,7 +438,7 @@ describe("pagination page cap", () => {
       });
 
       try {
-        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, 100));
+        const pages = await collect(paginateAll(firstOfEndless(), parsePages, undefined, 100));
 
         expect(pages).toEqual([[{ id: 1 }], [{ id: 2 }]]);
         expect(fetchCallCount).toBe(1);
@@ -448,7 +456,7 @@ describe("pagination page cap", () => {
       });
 
       try {
-        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json()));
+        const pages = await collect(paginateAll(firstOfEndless(), parsePages));
 
         expect(pages).toEqual([[{ id: 1 }], [{ id: 2 }]]);
         expect(fetchCallCount).toBe(1);
@@ -532,7 +540,7 @@ describe("pagination page cap", () => {
       it.each(INVALID)("rejects %s with a usage error and fetches nothing", async (_label, value) => {
         const mock = installCountingFetch();
         try {
-          const error = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, value)
+          const error = await fetchAllPages(firstOfEndless(), parsePages, undefined, value)
             .then(() => null)
             .catch((e: unknown) => e);
 
@@ -563,13 +571,13 @@ describe("pagination page cap", () => {
       it.each(INVALID)("rejects %s eagerly and fetches nothing", (_label, value) => {
         const mock = installCountingFetch();
         try {
-          expect(() => paginateAll(firstOfEndless(), (r) => r.json(), undefined, value)).toThrow(
+          expect(() => paginateAll(firstOfEndless(), parsePages, undefined, value)).toThrow(
             BasecampError
           );
 
           let thrown: unknown;
           try {
-            paginateAll(firstOfEndless(), (r) => r.json(), undefined, value);
+            paginateAll(firstOfEndless(), parsePages, undefined, value);
           } catch (e: unknown) {
             thrown = e;
           }
@@ -590,8 +598,8 @@ describe("pagination page cap", () => {
     it.each([1, 2, 3, 100, 10_000])("accepts the valid cap %i", async (value) => {
       const mock = installCountingFetch();
       try {
-        const results = await fetchAllPages(firstOfEndless(), (r) => r.json(), undefined, value);
-        const pages = await collect(paginateAll(firstOfEndless(), (r) => r.json(), undefined, value));
+        const results = await fetchAllPages(firstOfEndless(), parsePages, undefined, value);
+        const pages = await collect(paginateAll(firstOfEndless(), parsePages, undefined, value));
 
         // A two-page sequence: page 1 is supplied, page 2 is terminal.
         const expected = value === 1 ? [{ id: 1 }] : [{ id: 1 }, { id: 2 }];

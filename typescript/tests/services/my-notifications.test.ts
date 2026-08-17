@@ -48,13 +48,21 @@ describe("MyNotificationsService", () => {
       );
 
       const result = await client.myNotifications.myNotifications();
-      const creator = (result as Record<string, unknown[]>).unreads[0] as Record<string, unknown>;
-      const creatorObj = creator.creator as Record<string, unknown>;
+      // Assert on the response's real members rather than casting it to
+      // `Record<string, unknown[]>`. The response is a fixed-shape struct and
+      // the test never iterates arbitrary keys -- the cast existed only to
+      // index `unreads` by string, and it threw away the typing of exactly the
+      // fields under test. `unreads` and `creator` are both optional in the
+      // schema, so assert presence first: a response missing either now fails
+      // on the presence check instead of on an undefined property read.
+      expect(result.unreads).toBeDefined();
+      const creator = result.unreads![0].creator;
+      expect(creator).toBeDefined();
 
-      expect(creatorObj.id).toBe(0);
-      expect(typeof creatorObj.id).toBe("number");
-      expect(creatorObj.system_label).toBe("basecamp");
-      expect(creatorObj.personable_type).toBe("LocalPerson");
+      expect(creator!.id).toBe(0);
+      expect(typeof creator!.id).toBe("number");
+      expect(creator!.system_label).toBe("basecamp");
+      expect(creator!.personable_type).toBe("LocalPerson");
     });
 
     it("should leave numeric string creator.id as number", async () => {
@@ -83,12 +91,14 @@ describe("MyNotificationsService", () => {
       );
 
       const result = await client.myNotifications.myNotifications();
-      const creator = (result as Record<string, unknown[]>).unreads[0] as Record<string, unknown>;
-      const creatorObj = creator.creator as Record<string, unknown>;
+      // See the note in the first case for why this reads the typed members.
+      expect(result.unreads).toBeDefined();
+      const creator = result.unreads![0].creator;
+      expect(creator).toBeDefined();
 
-      expect(creatorObj.id).toBe(99999);
-      expect(typeof creatorObj.id).toBe("number");
-      expect(creatorObj.system_label).toBeUndefined();
+      expect(creator!.id).toBe(99999);
+      expect(typeof creator!.id).toBe("number");
+      expect(creator!.system_label).toBeUndefined();
     });
 
     it("should treat junk string as sentinel", async () => {
@@ -117,12 +127,14 @@ describe("MyNotificationsService", () => {
       );
 
       const result = await client.myNotifications.myNotifications();
-      const creator = (result as Record<string, unknown[]>).unreads[0] as Record<string, unknown>;
-      const creatorObj = creator.creator as Record<string, unknown>;
+      // See the note in the first case for why this reads the typed members.
+      expect(result.unreads).toBeDefined();
+      const creator = result.unreads![0].creator;
+      expect(creator).toBeDefined();
 
       // "123abc" is not a valid ID — treated as sentinel
-      expect(creatorObj.id).toBe(0);
-      expect(creatorObj.system_label).toBe("123abc");
+      expect(creator!.id).toBe(0);
+      expect(creator!.system_label).toBe("123abc");
     });
 
     it("should treat overflow numeric string as sentinel (JS cannot represent losslessly)", async () => {
@@ -151,12 +163,14 @@ describe("MyNotificationsService", () => {
       );
 
       const result = await client.myNotifications.myNotifications();
-      const creator = (result as Record<string, unknown[]>).unreads[0] as Record<string, unknown>;
-      const creatorObj = creator.creator as Record<string, unknown>;
+      // See the note in the first case for why this reads the typed members.
+      expect(result.unreads).toBeDefined();
+      const creator = result.unreads![0].creator;
+      expect(creator).toBeDefined();
 
       // Overflow can't be represented as a safe integer — preserved as label
-      expect(creatorObj.id).toBe(0);
-      expect(creatorObj.system_label).toBe("9223372036854775808");
+      expect(creator!.id).toBe(0);
+      expect(creator!.system_label).toBe("9223372036854775808");
     });
   });
 

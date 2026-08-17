@@ -12,6 +12,14 @@ import { DEFAULT_MAX_PAGES } from "../src/pagination-utils.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
+// Request capture below uses `const captured: { request?: Request } = {}` rather
+// than a `let capturedRequest: Request | null = null`. The assignment happens
+// inside an MSW handler closure that TypeScript's control-flow analysis cannot
+// see, so the `let` form stays narrowed to `null` and every later read of it is
+// typed `never`. Holding the value on an object defeats that narrowing without
+// weakening anything: if the handler never runs, `captured.request` is still
+// `undefined` and the header assertions still fail.
+
 describe("BasecampClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -19,11 +27,11 @@ describe("BasecampClient", () => {
 
   describe("authentication", () => {
     it("should add Authorization header to requests", async () => {
-      let capturedRequest: Request | null = null;
+      const captured: { request?: Request } = {};
 
       server.use(
         http.get(`${BASE_URL}/projects.json`, ({ request }) => {
-          capturedRequest = request;
+          captured.request = request;
           return HttpResponse.json([]);
         })
       );
@@ -35,17 +43,17 @@ describe("BasecampClient", () => {
 
       await client.GET("/projects.json");
 
-      expect(capturedRequest?.headers.get("Authorization")).toBe(
+      expect(captured.request?.headers.get("Authorization")).toBe(
         "Bearer test-token"
       );
     });
 
     it("should support async token provider", async () => {
-      let capturedRequest: Request | null = null;
+      const captured: { request?: Request } = {};
 
       server.use(
         http.get(`${BASE_URL}/projects.json`, ({ request }) => {
-          capturedRequest = request;
+          captured.request = request;
           return HttpResponse.json([]);
         })
       );
@@ -60,7 +68,7 @@ describe("BasecampClient", () => {
       await client.GET("/projects.json");
 
       expect(tokenProvider).toHaveBeenCalled();
-      expect(capturedRequest?.headers.get("Authorization")).toBe(
+      expect(captured.request?.headers.get("Authorization")).toBe(
         "Bearer dynamic-token"
       );
     });
@@ -70,11 +78,11 @@ describe("BasecampClient", () => {
     it("should not set Content-Type on bodyless GET requests", async () => {
       // bc3 silently discards query params on GET requests that carry a
       // Content-Type header, so bodyless requests must not send one.
-      let capturedRequest: Request | null = null;
+      const captured: { request?: Request } = {};
 
       server.use(
         http.get(`${BASE_URL}/projects.json`, ({ request }) => {
-          capturedRequest = request;
+          captured.request = request;
           return HttpResponse.json([]);
         })
       );
@@ -86,16 +94,16 @@ describe("BasecampClient", () => {
 
       await client.GET("/projects.json");
 
-      expect(capturedRequest?.headers.get("Content-Type")).toBeNull();
-      expect(capturedRequest?.headers.get("Accept")).toBe("application/json");
+      expect(captured.request?.headers.get("Content-Type")).toBeNull();
+      expect(captured.request?.headers.get("Accept")).toBe("application/json");
     });
 
     it("should set Content-Type to application/json for JSON bodies", async () => {
-      let capturedRequest: Request | null = null;
+      const captured: { request?: Request } = {};
 
       server.use(
         http.post(`${BASE_URL}/todolists/456/todos.json`, ({ request }) => {
-          capturedRequest = request;
+          captured.request = request;
           return HttpResponse.json({ id: 1, content: "Test todo" }, { status: 201 });
         })
       );
@@ -110,15 +118,15 @@ describe("BasecampClient", () => {
         body: { content: "Test todo" },
       });
 
-      expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
+      expect(captured.request?.headers.get("Content-Type")).toBe("application/json");
     });
 
     it("should preserve an explicitly set Content-Type on requests with a body", async () => {
-      let capturedRequest: Request | null = null;
+      const captured: { request?: Request } = {};
 
       server.use(
         http.post(`${BASE_URL}/todolists/456/todos.json`, ({ request }) => {
-          capturedRequest = request;
+          captured.request = request;
           return HttpResponse.json({ id: 1, content: "Test todo" }, { status: 201 });
         })
       );
@@ -134,7 +142,7 @@ describe("BasecampClient", () => {
         headers: { "Content-Type": "application/json; charset=utf-8" },
       });
 
-      expect(capturedRequest?.headers.get("Content-Type")).toBe(
+      expect(captured.request?.headers.get("Content-Type")).toBe(
         "application/json; charset=utf-8"
       );
     });
@@ -469,7 +477,7 @@ describe("BasecampClient", () => {
 
     it("should return error for 404", async () => {
       server.use(
-        http.get(`${BASE_URL}/todolists/999.json`, () => {
+        http.get(`${BASE_URL}/todolists/999`, () => {
           return HttpResponse.json(
             { error: "Not found" },
             { status: 404 }
@@ -482,12 +490,9 @@ describe("BasecampClient", () => {
         accessToken: "test-token",
       });
 
-      const { data, error } = await client.GET(
-        "/todolists/{todolistId}.json",
-        {
-          params: { path: { todolistId: 999 } },
-        }
-      );
+      const { data, error } = await client.GET("/todolists/{id}", {
+        params: { path: { id: 999 } },
+      });
 
       expect(data).toBeUndefined();
       expect(error).toBeDefined();

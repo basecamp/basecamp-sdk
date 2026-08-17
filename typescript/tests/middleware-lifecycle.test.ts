@@ -89,7 +89,7 @@ describe("middleware request lifecycle", () => {
     let arrived = 0;
 
     server.use(
-      http.put(`${BASE_URL}/buckets/1/todos/2.json`, async ({ request }) => {
+      http.put(`${BASE_URL}/todos/2`, async ({ request }) => {
         const body = await request.text();
         const n = ++arrived;
 
@@ -119,14 +119,14 @@ describe("middleware request lifecycle", () => {
     });
 
     await Promise.all([
-      client.PUT("/buckets/{bucketId}/todos/{todoId}.json", {
-        params: { path: { bucketId: 1, todoId: 2 } },
+      client.PUT("/todos/{todoId}", {
+        params: { path: { todoId: 2 } },
         body: { content: "AAA" },
-      } as never),
-      client.PUT("/buckets/{bucketId}/todos/{todoId}.json", {
-        params: { path: { bucketId: 1, todoId: 2 } },
+      }),
+      client.PUT("/todos/{todoId}", {
+        params: { path: { todoId: 2 } },
         body: { content: "BBB" },
-      } as never),
+      }),
     ]);
 
     const firstBodies = seen.filter((s) => s.phase === "initial").map((s) => s.body).sort();
@@ -656,7 +656,7 @@ describe("middleware request lifecycle", () => {
     const bodies: string[] = [];
     let attempts = 0;
     server.use(
-      http.put(`${BASE_URL}/buckets/1/todos/2.json`, async ({ request }) => {
+      http.put(`${BASE_URL}/todos/2`, async ({ request }) => {
         attempts++;
         bodies.push(await request.text());
         if (attempts <= 2) {
@@ -674,10 +674,10 @@ describe("middleware request lifecycle", () => {
       accessToken: "test-token",
     });
 
-    await client.PUT("/buckets/{bucketId}/todos/{todoId}.json", {
-      params: { path: { bucketId: 1, todoId: 2 } },
+    await client.PUT("/todos/{todoId}", {
+      params: { path: { todoId: 2 } },
       body: { content: "same-bytes" },
-    } as never);
+    });
 
     expect(attempts).toBe(3);
     expect(bodies).toHaveLength(3);

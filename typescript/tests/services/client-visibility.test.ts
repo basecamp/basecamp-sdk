@@ -6,7 +6,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
-import recordingFixture from "../../../spec/fixtures/recordings/get.json";
+import recordingFixture from "../../../spec/fixtures/recordings/get.json" with { type: "json" };
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
