@@ -1,0 +1,60 @@
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_62d102ac250358::t_e3c02e91845896 43-44,46,111,162,206,225,265,361,413,510,539,563,659,707,763,808,863
+  s_62d102ac250358::t_87aee29b17c8ba 1-42,45,47-110,112-161,163-205,207-224,226-264,266-360,362-412,414-509,511-538,540-562,564-658,660-706,708-762,764-807,809-862,864-868
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_62d102ac250358::t_e3c02e91845896 209-212,218,222,323-325,444,496
+  s_62d102ac250358::t_a4565088545f63 445,504-505
+  s_62d102ac250358::t_e14043be0f7828 109,213-217,219-221,223-249
+  s_62d102ac250358::t_f0a672a8f41d2e 71,84-91
+  s_62d102ac250358::t_fafac2df2c0d4c 42-46,52-55,58-60
+  s_62d102ac250358::t_cccec7b3c682ab 132,134,136-138
+  s_62d102ac250358::t_b80e0b71cedcab 93,97-108
+  s_62d102ac250358::t_6a8edda443574c 73
+  s_62d102ac250358::t_7fa8463e436ec9 414-417,474,494-495,497-498,500
+  s_62d102ac250358::t_d5f0259c7f429b 319-320
+  s_62d102ac250358::t_e95e7b9fdffd45 79
+  s_62d102ac250358::t_8f339a07fedff6 61,110
+go/pkg/basecamp/eventfeed/connector_test.go
+  s_62d102ac250358::t_e95e7b9fdffd45 36,43-49,52,55,58,61,64,67,70,73,76,79,89,108,111,135
+go/pkg/basecamp/eventfeed/connector.go
+  s_62d102ac250358::t_ff9935d806c766 193-204,206
+  s_62d102ac250358::t_8db5bc1e35bcd2 232-234,236-243
+  s_62d102ac250358::t_28894a292b4c07 87-91
+go/pkg/basecamp/eventfeed/loop.go
+  s_62d102ac250358::t_eb1b372a02d858 268-271,324-325
+  s_62d102ac250358::t_94813a9a043363 19-20,71-72,178,259-266,328-340,344,346-347,349-355,365,370-372,383-387,390-398,779-785,787-789
+go/pkg/basecamp/eventfeed/checkpoint.go
+  s_62d102ac250358::t_6201263950d935 106-161
+go/pkg/basecamp/eventfeed/feedtest/transport.go
+  s_62d102ac250358::t_219ef99c193e1e 289-300
+go/pkg/basecamp/eventfeed/feedtest/store.go
+  s_62d102ac250358::t_bdfc24ef31b309 28-30,66-68
+  s_62d102ac250358::t_825d17627c1e45 1-27,31-65,69-124
+go/pkg/basecamp/eventfeed/catchup.go
+  s_62d102ac250358::t_ec1976b4b38a26 81-86
+  s_62d102ac250358::t_62422269b56f65 1-39,44-80,87-452
+  s_62d102ac250358::t_8a2f1e19a4ec2e 40-43
+go/pkg/basecamp/eventfeed/doc.go
+  s_62d102ac250358::t_265640698f7f2b 7-13
+go/pkg/basecamp/eventfeed/continuation.go
+  s_62d102ac250358::t_8aa3fc04cff07b 1-45
+go/pkg/basecamp/eventfeed/feedtest/polls.go
+  s_62d102ac250358::t_255352ed7d6936 61-70
+  s_62d102ac250358::t_1fef7fe5f022bf 22,98-99,104,106-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a5ce31102826df4f4e2cb5ec147807b5d5ab012f",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

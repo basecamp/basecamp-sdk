@@ -1,0 +1,19 @@
+go/pkg/basecamp/eventfeed/filestore.go
+  s_62d102ac250358::t_879dea744a5ca6 286,289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6015ce5f803d6d6fa3d1948bbfbf96cf00727ac6",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

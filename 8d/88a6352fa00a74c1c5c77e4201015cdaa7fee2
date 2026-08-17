@@ -1,0 +1,26 @@
+go/pkg/basecamp/eventfeed/filestore.go
+  s_62d102ac250358::t_640248097d4ef0 4
+  s_62d102ac250358::t_5781950a87ce67 5-11,14-61,63,65-66,69-75,78-163,166-179,181-192,194-214,216-230
+  s_62d102ac250358::t_f6a4e2de5be15f 1-3,12-13,62,64,67-68,76-77,164-165,180,193,215,231-232
+go/pkg/basecamp/eventfeed/filestore_test.go
+  s_62d102ac250358::t_90066aa97aa7cc 22
+  s_62d102ac250358::t_99f010b8a22824 27-28
+  s_62d102ac250358::t_c5ecf99246509f 541
+  s_62d102ac250358::t_5388d4a902aac9 1-21,23-26,29-540,542-621
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8d88a6352fa00a74c1c5c77e4201015cdaa7fee2",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

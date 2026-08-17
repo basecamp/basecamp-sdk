@@ -1,0 +1,24 @@
+AGENTS.md
+  s_62d102ac250358::t_de094a745c08ab 35
+go/README.md
+  s_62d102ac250358::t_810af4ea8ad3cc 635-636
+  s_62d102ac250358::t_3557321abc270c 602-634,637-726
+CONTRIBUTING.md
+  s_62d102ac250358::t_4516212a2e76bc 230-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "53dea4cf0f4573025e914d2b4a03b11dba399589",
+  "prompts": {},
+  "sessions": {
+    "s_62d102ac250358": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef2f3316-3c33-47ba-bd0c-2dc7ef9da41a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
