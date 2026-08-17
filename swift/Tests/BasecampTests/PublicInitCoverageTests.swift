@@ -104,9 +104,21 @@ final class PublicInitCoverageTests: XCTestCase {
         ]
         let code = emitEntityModel(schemaName: "Mixed", schemas: schemas)
 
+        // Positive control, one per loop: the valid property is declared,
+        // parameterized and assigned.
         XCTAssertTrue(code.contains("public var title: String?"), code)
         XCTAssertTrue(code.contains("public init(title: String? = nil) {"), code)
         XCTAssertTrue(code.contains("self.title = title"), code)
+
+        // The non-schema property, asserted per loop so a failure names the one
+        // that regressed rather than just "it leaked somewhere".
+        XCTAssertFalse(
+            code.contains("public var bogus"), "declaration loop emitted it:\n\(code)")
+        XCTAssertFalse(code.contains("bogus:"), "init-parameter loop emitted it:\n\(code)")
+        XCTAssertFalse(code.contains("self.bogus"), "assignment loop emitted it:\n\(code)")
+
+        // And the blanket check, which is what actually forbids it: the three
+        // above name the known emission shapes, this one catches any other.
         XCTAssertFalse(code.contains("bogus"), "a non-schema property must not be emitted:\n\(code)")
     }
 
