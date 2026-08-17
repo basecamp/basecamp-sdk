@@ -1,0 +1,24 @@
+swift/Tests/BasecampTests/PublicInitCoverageTests.swift
+  s_ce561b956c713e::t_0921e814ef457b 125-131,134,137-164,173-236,243,253-332,336
+  s_ce561b956c713e::t_3dbaa027e10c18 132-133,135-136
+  s_ce561b956c713e::t_2880083efdbdda 165-172
+  s_ce561b956c713e::t_d1fb09c27fbbaa 374
+  s_ce561b956c713e::t_00f3869101d030 388-390
+  s_ce561b956c713e::t_84e30034fdaa02 237-242,244-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7d2998ec8c138732ed32ebc16db4f3dfa926c16d",
+  "prompts": {},
+  "sessions": {
+    "s_ce561b956c713e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9a4a607-9ed9-437a-8352-6dc18d9bea26",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
