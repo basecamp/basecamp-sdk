@@ -125,11 +125,41 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 // chain would re-expose the unredacted URL.
 func redactDialErr(err error, wsURL string) error {
 	msg := err.Error()
-	if u, perr := url.Parse(wsURL); perr == nil && u.RawQuery != "" {
-		msg = strings.ReplaceAll(msg, "?"+u.RawQuery, "?[redacted]")
+	u, perr := url.Parse(wsURL)
+	if perr != nil || u.RawQuery == "" {
+		return errors.New(msg)
+	}
+	msg = strings.ReplaceAll(msg, "?"+u.RawQuery, "?[redacted]")
+	// Then each query VALUE on its own, wherever it appears. The whole-query
+	// replacement above only catches renderings that embed the REQUEST URL,
+	// and the handshake's verification errors quote peer-controlled RESPONSE
+	// headers verbatim — coder/websocket's verifySubprotocol renders the
+	// server's Sec-WebSocket-Protocol into its message (dial.go). So a server
+	// that echoes the ticket back in a header produces an error carrying the
+	// credential with no "?query" spelling anywhere in it, and the §23
+	// Security Invariant ("never log the ticket") is broken by a path the
+	// query-string redaction cannot see.
+	//
+	// Redacting the values rather than falling back to a generic message is
+	// deliberate: a transient dial failure is the one error class an operator
+	// debugs a broken cable endpoint from, and replacing it wholesale would
+	// trade a real leak for a permanent diagnostic blackout.
+	for _, values := range u.Query() {
+		for _, v := range values {
+			if len(v) >= minRedactableValue {
+				msg = strings.ReplaceAll(msg, v, "[redacted]")
+			}
+		}
 	}
 	return errors.New(msg)
 }
+
+// minRedactableValue is the shortest query value worth redacting by value.
+// A credential is long; a short value ("1", "v2") is far more likely to be a
+// common substring of ordinary diagnostic text — "1" appears in every port
+// number and status code — so redacting those would shred the message while
+// protecting nothing. Ticket tokens are comfortably above this.
+const minRedactableValue = 8
 
 // wsConn adapts one coder/websocket connection to the CableConn seam.
 type wsConn struct {
