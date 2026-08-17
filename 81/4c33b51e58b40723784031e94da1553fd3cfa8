@@ -1,0 +1,45 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/SchedulesService.kt
+  s_c7205968e852ea::t_2965cf6949ee64 280-289
+  s_c7205968e852ea::t_74a5c1f74a8c29 299
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodolistsServiceTest.kt
+  s_c7205968e852ea::t_8618c495aef783 9,19
+  s_c7205968e852ea::t_983689b8b8f765 340-354,365-415
+  s_c7205968e852ea::t_e4a376755ce429 416-417
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/DocumentsService.kt
+  s_c7205968e852ea::t_2f60b8f324160b 117
+  s_c7205968e852ea::t_a902d2e4719d55 98-107
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodolistsService.kt
+  s_c7205968e852ea::t_486eca512da468 122
+  s_c7205968e852ea::t_c20ea9ebcaded1 103-112
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/SchedulesServiceTest.kt
+  s_c7205968e852ea::t_8f104fba45de44 8
+  s_c7205968e852ea::t_6dfffff97a6fed 18-19
+  s_c7205968e852ea::t_9e1922df2ed1f1 483,486-553
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_c7205968e852ea::t_4a2907b3c20795 528-530
+  s_c7205968e852ea::t_56ac65f7c8d474 531-532
+  s_c7205968e852ea::t_68adce06cc1abb 563-570,576
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DocumentsServiceTest.kt
+  s_c7205968e852ea::t_58b1c3566f0fcc 113-124,132-180
+  s_c7205968e852ea::t_847424809582bb 9,16-17
+  s_c7205968e852ea::t_3d7a2d60e7ad9f 181-184
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampException.kt
+  s_c7205968e852ea::t_058f7dccbbfcf0 3-4
+  s_c7205968e852ea::t_4abc210945b41d 97,99-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "814c33b51e58b40723784031e94da1553fd3cfa8",
+  "prompts": {},
+  "sessions": {
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
