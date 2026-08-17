@@ -164,6 +164,30 @@ func (l *loop) loadCheckpoint() *TerminalError {
 			Err:    err,
 		}
 	}
+	if ok && position == "" {
+		// A store reporting FOUND with an empty position is a store failure,
+		// not a missing checkpoint, and the seam is where that has to be
+		// enforced: the built-in FileStore already classifies it this way
+		// (filestore.go, "an empty position cannot be told apart from having
+		// none"), but a custom store is under no obligation to, and nothing
+		// downstream can tell the two apart afterwards.
+		//
+		// Left unenforced it is a SILENT history skip rather than a loud
+		// failure. entryCursor selects on `l.position != ""`, so an empty
+		// position falls through to the StartResume default — a bare present
+		// entry, which is present-class — and the feed resumes at the server's
+		// head having skipped everything between the stored position and now,
+		// with no signal of any kind. Terminal(checkpoint_load) before any
+		// wire attempt is the same edge a load error takes.
+		//
+		// Checked regardless of start mode, for this function's stated reason:
+		// the load happens under every mode, and its failure edge is not
+		// mode-dependent — only which value the entry is taken from is.
+		return &TerminalError{
+			Reason: ReasonCheckpointLoad,
+			Msg:    "the checkpoint store reported a stored position that is empty; an empty position cannot be told apart from having none",
+		}
+	}
 	if ok && l.cfg.start.kind == startResume {
 		l.position = position
 	}

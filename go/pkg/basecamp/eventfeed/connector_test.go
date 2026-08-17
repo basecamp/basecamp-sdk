@@ -570,3 +570,53 @@ func TestConcurrentCloseAllCallersSeeCancellation(t *testing.T) {
 		h.cancel()
 	}
 }
+
+// emptyPositionStore is a custom CheckpointStore that reports FOUND with an
+// empty position — the state the built-in FileStore classifies as a store
+// failure, and which a custom store is under no obligation to.
+type emptyPositionStore struct{ loads int }
+
+func (s *emptyPositionStore) Load(context.Context, eventfeed.CheckpointKey) (string, bool, error) {
+	s.loads++
+	return "", true, nil
+}
+
+func (s *emptyPositionStore) Save(context.Context, eventfeed.CheckpointKey, string) error {
+	return nil
+}
+
+// TestFoundButEmptyPositionIsALoadFailure closes a SILENT history skip at the
+// seam. entryCursor selects on a non-empty position, so an empty one loaded
+// under StartResume falls through to the mode's default — a bare present
+// entry, which is present-class — and the feed resumes at the server's head
+// having skipped everything between the stored position and now, with no
+// signal at all.
+//
+// The built-in store already refuses to return this state ("an empty position
+// cannot be told apart from having none"), but that is one implementation of a
+// public seam; the invariant has to hold for every store, so it is enforced
+// where the load is consumed.
+func TestFoundButEmptyPositionIsALoadFailure(t *testing.T) {
+	store := &emptyPositionStore{}
+	h := newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"))
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonCheckpointLoad {
+		t.Fatalf("terminal = %v, want reason %q — a found-but-empty position is a store failure", terminal, eventfeed.ReasonCheckpointLoad)
+	}
+	if store.loads != 1 {
+		t.Errorf("store loads = %d, want 1", store.loads)
+	}
+	// Terminal BEFORE any wire attempt, like every other checkpoint_load.
+	if got := h.minter.Calls(); got != 0 {
+		t.Errorf("mint seam calls = %d, want 0 — the load fails before any wire attempt", got)
+	}
+	if got := len(h.tr.Dials()); got != 0 {
+		t.Errorf("dials = %d, want 0", got)
+	}
+}
