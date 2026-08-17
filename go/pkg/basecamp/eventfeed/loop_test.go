@@ -1703,3 +1703,57 @@ func TestWelcomeRacingAnExpiredHandshakeDeadlineLapses(t *testing.T) {
 	// expired handshake timer.
 	assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
 }
+
+// TestConfirmRacingAnExpiredConfirmationDeadlineLapses is the confirmation
+// half of the Stop-as-ordering-discriminator rule, and the more consequential
+// half. Where an unchecked Stop on the handshake deadline merely swallowed the
+// firing, here the connector would go on to announce Confirmed and enter
+// catch-up on a subscription whose confirmation arrived past transition 14's
+// deadline — the lapse not just swallowed but overwritten by a successful
+// handoff.
+//
+// The frame-handled hook fires before the switch, so firing the deadline from
+// it lands in the window between the frame being classified and the Stop that
+// cancels it: the same window the select leaves open when both are ready, made
+// deterministic.
+func TestConfirmRacingAnExpiredConfirmationDeadlineLapses(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	fired := make(chan struct{}, 1)
+	h.conn.OnFrameHandled(func(kind string) {
+		if kind != "confirm_subscription" {
+			return
+		}
+		if _, ok := h.clock.FireTimer(timerConfirmationDeadline); ok {
+			select {
+			case fired <- struct{}{}:
+			default:
+			}
+		}
+	})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	select {
+	case <-fired:
+	case <-time.After(watchdog):
+		t.Fatal("the confirmation deadline was never fired inside the classify→Stop window")
+	}
+
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("a lapsed confirmation must dispose the attempt, closing the socket")
+	}
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("a confirmation lapse is never terminal; got %v", terminal)
+	}
+	// The decisive assertion: catch-up was never entered, so neither the
+	// staleness nor the repair-poll timer survives.
+	assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+	if got := h.polls.CallCount(); got != 0 {
+		t.Fatalf("poll seam calls = %d, want 0 — the confirmation lapsed", got)
+	}
+}

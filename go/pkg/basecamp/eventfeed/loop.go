@@ -987,7 +987,19 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 		// Transition 11: cancel the deadline, reset the attempt counter
 		// (the authorization counter resets only on a successful poll
 		// page), select the entry cursor, hand off to catch-up.
-		(*deadline).Stop()
+		if !(*deadline).Stop() {
+			// The confirmation deadline had already fired — the same select
+			// race the welcome branch above reads Stop for, and the same
+			// answer. Proceeding here is worse than proceeding there: the
+			// connector would announce Confirmed and enter catch-up on a
+			// subscription whose confirmation arrived past transition 14's
+			// deadline, so the lapse is not merely swallowed but overwritten
+			// by a successful handoff.
+			lapsed := errDeadlineLapsed(l.state)
+			l.disposeAttempt(at, nil)
+			l.observeDisconnected("", lapsed)
+			return cycleOutcome{kind: outcomeFailed}, true
+		}
 		l.failedCycles = 0
 		if l.cfg.observer.Confirmed != nil {
 			l.cfg.observer.Confirmed()
