@@ -24,10 +24,19 @@
 # scripts remain the freshness checks and this one does not replace them.
 #
 # THIS IS NOT A SIXTH HAND-COPY, which is the thing #745 rejected. It does not
-# reimplement the mapping from openapi.json; it reads what the generators
-# ALREADY EMITTED and asserts the emissions agree. The inputs are committed
-# generated artefacts, so this needs no toolchain and lives in the spec-gates CI
-# job beside kt-check-drift.
+# reimplement the mapping from openapi.json; it reads what each generator ALREADY
+# EMITTED and asserts the emissions agree. The inputs are committed artefacts, so
+# this needs no toolchain and lives in the spec-gates CI job beside
+# kt-check-drift.
+#
+# GO IS THE ONE EXCEPTION, and saying "it reads generator output" flatly is an
+# over-claim worth not making. Go has no generated per-service files, so its
+# rendering here is the hand-written AccountClient accessors in
+# go/pkg/basecamp/client.go — a hand-written surface compared against seven
+# generated ones. That is not a flaw in the comparison (Go's accessors are still
+# an independent statement of which services exist) but it is why Go, alone,
+# needs three recorded carve-outs, and why it gets the accessor-vs-returned-type
+# check that a generated file would not need.
 #
 # WHAT IT CLOSES. `make doc-constants-check` derives SPEC §5's account-scoped
 # roster from two files: the generated Kotlin and Swift accessors. Those two are
@@ -184,10 +193,24 @@ SOURCES = [
     id: "go-accessors",
     # Go has no generated per-service files — the hand-written wrappers in
     # go/pkg/basecamp ARE its service layer (Appendix F), so its accessors on
-    # AccountClient are its only rendering of the split.
+    # AccountClient are its only rendering of the split. It is also the ONLY
+    # hand-written rendering here, which is why it gets the extra check below
+    # that no generated source needs.
     path: "go/pkg/basecamp/client.go",
     kind: :file,
     pattern: /^func \(ac \*AccountClient\) (\w+)\(\) \*\w+Service \{/,
+    # The accessor name and its returned type are two independently typed tokens
+    # in a hand-written file, and `Gauges() *ReportsService` compiles: both types
+    # exist. Reading only the name, this gate would record `gauges` and report
+    # parity while Go handed callers the wrong service. Nothing else would catch
+    # it — Go's "generated inventory" is this file.
+    #
+    # A backreference in `pattern` would make a mismatched accessor simply fail
+    # to extract, which surfaces as "go-accessors is missing gauges" — true, and
+    # a bad description of a line that is right there spelling `gauges`. So the
+    # pair is checked separately and reported for what it is. All 51 accessors
+    # satisfy name == type stem today.
+    pair_pattern: /^func \(ac \*AccountClient\) (\w+)\(\) \*(\w+)Service \{/,
     spelling: :camel,
     carve_outs: :go,
   },
@@ -229,9 +252,17 @@ def die(failures)
   warn ""
   failures.each { |f| warn "  - #{f}" }
   warn ""
-  warn "  The service split is one mapping transcribed into five generator configs."
-  warn "  This gate compares what they EMITTED. A name that appears in some SDKs and"
-  warn "  not others means a tag mapping was updated in some tables and not the rest."
+  # NEUTRAL ON PURPOSE. This footer prints for EVERY failure class — a missing
+  # input, a duplicate extraction, a collapsed extraction, a stale Go carve-out,
+  # a Go accessor returning the wrong type — and most of those have nothing to do
+  # with the split tables. It used to assert that a tag mapping had drifted,
+  # which was a confident diagnosis of a cause this gate cannot observe, and it
+  # would have sent maintainers to the wrong file for five of its own self-test
+  # cases. Each failure above names its own area; this says only what the gate
+  # measured.
+  warn "  This gate compares the service inventories the six SDKs emit against each"
+  warn "  other. It can report WHICH renderings disagree; it cannot see WHY, so read"
+  warn "  the specific failures above for the area to look at."
   exit 1
 end
 
@@ -324,6 +355,18 @@ SOURCES.each do |source|
 
   names = extract(source, path)
 
+  # An accessor whose declared name and returned type disagree. Only Go declares
+  # both, and only Go is hand-written; reported here rather than folded into the
+  # parity diff, which would describe it as an absence instead of a mismatch.
+  if (pair = source[:pair_pattern])
+    File.read(path, encoding: UTF8).scan(pair).each do |accessor, stem|
+      next if accessor == stem
+      failures << "#{source[:path]} declares `#{accessor}()` returning `*#{stem}Service` — " \
+                  "the accessor name and its service type disagree, so callers of " \
+                  "`#{accessor}()` get #{stem}. Both types exist, so the compiler is silent."
+    end
+  end
+
   # DUPLICATES FIRST, before any set comparison sees them. A name emitted twice
   # is invisible downstream — Array#- drops every occurrence, so a doubled entry
   # leaves both diffs empty and the gate passes while enumerating something the
@@ -359,8 +402,16 @@ union.each do |name|
   next if absent.empty?
 
   present = inventories.keys - absent
-  failures << "`#{name}` is emitted by #{present.join(', ')} but NOT by #{absent.join(', ')} — " \
-              "the split tables disagree about whether this service exists."
+  # Reports the disagreement and where to look, and stops there. "The split
+  # tables disagree" was wrong for at least two reachable cases: a generator that
+  # emits a service file but no accessor beside it leaves every split table
+  # agreeing (self-test case 3 constructs exactly that), and `go-accessors` is
+  # hand-written, so a Go-only absence is missing wiring rather than a mapping
+  # difference. Naming a cause the gate cannot observe is how a green-or-red
+  # signal turns into a wrong instruction.
+  failures << "`#{name}` is emitted by #{present.join(', ')} but NOT by #{absent.join(', ')}. " \
+              "Look at the renderings that lack it — a split table, a generated accessor " \
+              "beside its own services directory, or hand-written wiring for go-accessors."
 end
 
 die(failures) unless failures.empty?

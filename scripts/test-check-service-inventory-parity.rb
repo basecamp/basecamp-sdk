@@ -42,14 +42,28 @@
 #   per-source duplicate check                    4
 #   extraction floor                              5
 #   source-exists check                           6
-#   fold carve-out staleness check                7
+#   fold carve-out staleness check                7, 15
 #   spelling carve-out staleness check            8
 #   spelling carve-out both-spellings check       10
 #   reading Python from its BARREL                11, 12
 #   Python's rename respelled as a SUFFIX STRIP   13
+#   Go accessor-vs-returned-type check            14
+#   footer that asserts a CAUSE                   15
+#   parity message that asserts a CAUSE           3
 #   APPLYING the fold carve-out                   positive controls, 11, 13
 #   APPLYING the spelling carve-out               positive controls, 11, 13
-#   Python's rename rule deleted, or never applied  positive controls, 11, 13
+#   Python's rename deleted, or never applied     positive controls, 11, 13
+#
+# THREE OF THESE PIN A MESSAGE RATHER THAN A VERDICT, which is unusual and
+# deliberate. A gate that fails for the right reason while naming a cause it
+# cannot observe still sends the reader to the wrong file, and that had happened
+# in two places here: the footer told every failure class that a tag mapping had
+# drifted, and the parity message asserted "the split tables disagree" even for
+# case 3, where every split table agrees and a generator disagrees with itself.
+# Both are pinned as ABSENCES (`expect_fail_without`), because the only way to
+# hold a diagnostic honest is to assert what it must NOT say. Case 15 also goes
+# red if the carve-out staleness check itself is removed — it needs that failure
+# to exist before it can inspect how it is described.
 #
 # THE PASS-SHAPED CASES, and why the bottom rows look blunt. 11 and 13 both assert
 # a PASS, so they go red for ANY breakage that stops the checker passing at all —
@@ -77,9 +91,11 @@
 # is the one that anchors SPEC §5 — its roster is derived from the two accessor
 # files, and nothing else checks those against their own services directories.
 #
-# WHAT THIS SUITE IS NOT. The suite passing means these thirteen things are
-# checked. It has never meant the list is complete — 13 exists because a reviewer
-# found a false positive the other twelve could not see.
+# WHAT THIS SUITE IS NOT. The suite passing means these fifteen things are
+# checked. It has never meant the list is complete — 13, 14 and 15 all exist
+# because a reviewer found something the earlier cases could not see, and 14 in
+# particular was a straightforward miss: the gate read Go's accessor names and
+# never looked at what they returned.
 #
 # Run directly (`ruby scripts/test-check-service-inventory-parity.rb`) or via
 # `make test-check-service-inventory-parity`.
@@ -249,6 +265,25 @@ def expect_fail(failures, label, out, status, fragment)
   end
 end
 
+# Fails, AND the message must NOT contain `forbidden`. For diagnostics: a gate
+# that fails for the right reason while telling the reader the wrong place to
+# look is still a defect, and only an absence assertion can pin that.
+def expect_fail_without(failures, label, out, status, fragment, forbidden)
+  if status.success?
+    puts "  FAIL  #{label}"
+    failures << "#{label}: expected FAILURE but checker passed:\n#{out}"
+  elsif !out.include?(fragment)
+    puts "  FAIL  #{label}"
+    failures << "#{label}: failed as expected but message missing #{fragment.inspect}:\n#{out}"
+  elsif out.include?(forbidden)
+    puts "  FAIL  #{label}"
+    failures << "#{label}: failed correctly but MISDIAGNOSED — output contains " \
+                "#{forbidden.inspect}, which names a cause this failure does not have:\n#{out}"
+  else
+    puts "  PASS  #{label}"
+  end
+end
+
 puts "==> service inventory parity self-test (checker: #{CHECKER.sub("#{ROOT}/", '')})"
 
 # --- Positive controls ---------------------------------------------------------
@@ -289,10 +324,19 @@ expect_fail(failures, "2. one SDK missing a service the other seven emit", out, 
 # Kotlin emits the service file but no accessor. SPEC §5's roster reads the
 # ACCESSORS, so the roster comes up short while every services directory agrees
 # the service exists — and nothing but this checked the two against each other.
+#
+# It is also the standing counterexample to blaming the split tables: EVERY split
+# table agrees here, and the disagreement is between a generator's own two
+# outputs. So the message must report which renderings disagree without asserting
+# that a mapping caused it — pinned as an absence, because a gate that fails for
+# the right reason while naming the wrong cause is still sending someone to the
+# wrong file.
 
 out, status = with_root(names: { "kotlin-accessors" => CANONICAL - ["wormholes"] })
-expect_fail(failures, "3. Kotlin service file with no accessor (anchors SPEC section 5)", out, status,
-            "but NOT by kotlin-accessors")
+expect_fail_without(failures, "3. Kotlin service file with no accessor (anchors SPEC section 5)",
+                    out, status,
+                    "but NOT by kotlin-accessors",
+                    "split tables disagree")
 
 # --- 4. A name emitted twice ---------------------------------------------------
 #
@@ -410,6 +454,39 @@ raise "case 13 needs `webhooks` in the roster to hold both halves" unless roster
 out, status = with_root(names: every_source(roster))
 expect_pass(failures, "13. service whose canonical name ends in `_service` (webhooks still renamed)",
             out, status)
+
+# --- 14. A Go accessor returning the wrong service type ------------------------
+#
+# `Gauges() *ReportsService` compiles — both types exist — and reading only the
+# accessor name records `gauges`, so every inventory agrees and the gate reports
+# parity while Go hands callers the wrong service. Go's accessors ARE its
+# generated inventory here, so nothing else would catch it.
+
+out, status = with_root do |dir|
+  path = File.join(dir, GO_CLIENT)
+  body = read_utf8(path)
+  line = "func (ac *AccountClient) Gauges() *GaugesService {"
+  raise "no Gauges accessor in the synthetic Go client" unless body.include?(line)
+  File.write(path, body.sub(line, "func (ac *AccountClient) Gauges() *ReportsService {"))
+end
+expect_fail(failures, "14. Go accessor returning a different service type", out, status,
+            "declares `Gauges()` returning `*ReportsService`")
+
+# --- 15. A non-mapping failure must not blame the split tables ------------------
+#
+# The failure footer prints for EVERY failure class, and used to assert that a
+# tag mapping had drifted. For a stale Go carve-out — case 7's mutation — that is
+# a confident diagnosis of a cause the gate cannot observe, and it sends the
+# reader to five generator configs when the thing to edit is GO_CARVE_OUTS.
+#
+# Pinned as an ABSENCE, which is the only way to hold a diagnostic honest: the
+# run must fail, name the carve-out, and NOT say a tag mapping drifted.
+
+out, status = with_root(names: { "go-accessors" => go_accessor_names(CANONICAL) + ["automation"] })
+expect_fail_without(failures, "15. stale carve-out failure does not misdiagnose a tag mapping",
+                    out, status,
+                    "recorded as a fold carve-out",
+                    "tag mapping")
 
 # --- Report --------------------------------------------------------------------
 

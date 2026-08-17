@@ -353,10 +353,14 @@ end
 # openapi.json plus the generators' TAG_TO_SERVICE / SERVICE_SPLITS tables is the
 # true root, and is deliberately NOT the source here: reproducing that split in
 # Ruby means a SIXTH hand-copy of those tables. Five already exist, one per
-# language, and no gate compares them to each other — so the derivation would
-# itself be the drift surface this check exists to remove. These two files are
-# regenerated FROM that root and committed, which is close enough to it to be
-# checkable and far enough from it to need no second implementation.
+# language — so the derivation would itself be the drift surface this check
+# exists to remove. These two files are regenerated FROM that root and committed,
+# which is close enough to it to be checkable and far enough from it to need no
+# second implementation.
+#
+# (Those five copies ARE now compared to each other, by
+# scripts/check-service-inventory-parity — see the note further down. That does
+# not change the argument here, which is about not writing a sixth.)
 #
 # They are also the only two artefacts that encode ACCOUNT-SCOPING directly
 # rather than leaving it to be inferred: their entire reason to exist is hanging
@@ -398,10 +402,21 @@ end
 # them agreeing, and this gate certifies the old roster and the old count.
 #
 # That residue is real and is closed ELSEWHERE, not here:
-# scripts/check-service-inventory-parity compares the GENERATED service
-# inventories of all six SDKs — which is not the sixth hand-copy rejected above,
-# since it reads generator OUTPUT rather than reimplementing the mapping. It also
-# checks these two accessor files against their own generated services
+# scripts/check-service-inventory-parity compares the service inventories of all
+# six SDKs — which is not the sixth hand-copy rejected above, since it reads what
+# the generators already emitted rather than reimplementing the mapping.
+#
+# SEVEN of its eight renderings are generated output — five service inventories
+# plus these two accessor files. GO IS THE EXCEPTION and the argument above does
+# not cover it: Go has no generated per-service files, so that gate reads its
+# hand-written AccountClient accessors, a hand-written surface compared against
+# generated ones. That is precisely why Go needs three recorded carve-outs there
+# (two folded services and a singular spelling) where no generated rendering
+# needs any, and why that gate additionally checks each Go accessor against the
+# service type it returns — a check meaningless for a generated file and
+# necessary for a hand-written one.
+#
+# It also checks these two accessor files against their own generated services
 # directories, so a Kotlin or Swift generator that emitted a service file but no
 # accessor cannot leave this gate certifying a short roster. Codex raised the
 # residue on #745; it landed as its own change (#747) because the normalization
