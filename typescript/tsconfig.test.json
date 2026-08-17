@@ -14,6 +14,13 @@
 // code it only buys `calls[0]!` ceremony: an undefined index fails the
 // assertion on the next line anyway.
 //
+// `skipLibCheck: true` is inherited and stays. It does not weaken the type
+// assertions in tests/types/paginated-returns.test-d.ts: that file ends in
+// `-d.ts`, not `.d.ts`, so TypeScript checks it like any other source (flip an
+// assertion to a false one and tsc reports TS2344 on it). Turning the flag off
+// is not free -- it fails on 22 errors inside @mswjs/interceptors' browser
+// `.d.mts` and adds ~20s to every run.
+//
 // `lib` is ES2023 because that is what the code in this project actually runs
 // on: the scripts run under tsx on Node >= 22.12 (see package.json engines)
 // and already use ES2023 array methods. The shipped surface keeps the narrower

@@ -12,6 +12,15 @@
  * `tsconfig.test.json` / `make ts-typecheck`. The `.test-d.ts` suffix keeps
  * vitest (`include: tests/**\/*.test.ts`) from collecting a file with no tests
  * in it.
+ *
+ * Despite that suffix this is NOT a declaration file: TypeScript treats a file
+ * as one only when the name ends in `.d.ts`, and this ends in `-d.ts`. The
+ * `skipLibCheck: true` inherited by `tsconfig.test.json` therefore never
+ * reaches it. Two review bots have read it the other way, so check rather than
+ * argue: flip any `Expect<...>` below to a knowingly false one and
+ * `npx tsc -p tsconfig.test.json --noEmit` reports `TS2344` on that line.
+ * Setting `skipLibCheck: false` to "make sure" is not the fix -- it fails on
+ * 22 errors inside @mswjs/interceptors' browser `.d.mts` and costs ~20s.
  */
 import type { ListMeta, ListResult } from "../../src/pagination.js";
 import type { CheckinsService } from "../../src/generated/services/checkins.js";
