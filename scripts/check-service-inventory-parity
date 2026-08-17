@@ -127,10 +127,24 @@ SOURCES = [
     path: "python/src/basecamp/generated/services/__init__.py",
     kind: :file,
     pattern: /^from basecamp\.generated\.services\.(\w+) import/,
-    # The generator emits `webhooks_service.py` rather than `webhooks.py` to
-    # avoid clashing with the `basecamp.webhooks` package (generate_services.py's
-    # `service_filename`). Ruby suffixes every file, so one rule covers both.
-    strip_suffix: "_service",
+    # AN EXACT RENAME, NOT A SUFFIX STRIP, and the difference is not cosmetic.
+    # `generate_services.py`'s `service_filename` renames exactly one module:
+    #
+    #   snake = to_snake_case(name)
+    #   if snake == "webhooks": return "webhooks_service.py"
+    #   return f"{snake}.py"
+    #
+    # The test is `== "webhooks"`, so every other service keeps its snake name
+    # verbatim — including one whose canonical name legitimately ENDS in
+    # `_service`. Stripping the suffix unconditionally (as Ruby correctly does,
+    # because Ruby suffixes every file) would take that name apart, report a
+    # Python service the other seven do not have, and fail a build where every
+    # generator mapping agreed. A false positive here is worse than a miss: it
+    # blocks a correct change and invites someone to "fix" a mapping that was
+    # never wrong.
+    #
+    # So the rule mirrors the generator exactly: one module, renamed by name.
+    rename: { "webhooks_service" => "webhooks" },
     spelling: :snake,
   },
   {
@@ -245,6 +259,14 @@ def extract(source, path)
   end
 
   raw = raw.reject { |n| Array(source[:drop]).include?(n) }
+  # `rename:` is exact-match and runs BEFORE `strip_suffix:`. The two are
+  # deliberately different instruments: a suffix strip encodes "this generator
+  # suffixes every file" (Ruby, Swift), a rename encodes "this generator
+  # special-cases exactly these names" (Python). Using the first where the second
+  # is true mangles any service whose real name happens to end in the suffix.
+  if (renames = source[:rename])
+    raw = raw.map { |n| renames.fetch(n, n) }
+  end
   if (suffix = source[:strip_suffix])
     raw = raw.map { |n| n.end_with?(suffix) ? n[0...-suffix.length] : n }
   end

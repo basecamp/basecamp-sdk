@@ -46,21 +46,28 @@
 #   spelling carve-out staleness check            8
 #   spelling carve-out both-spellings check       10
 #   reading Python from its BARREL                11, 12
-#   APPLYING the fold carve-out                   both positive controls, 11
-#   APPLYING the spelling carve-out               both positive controls, 11
+#   Python's rename respelled as a SUFFIX STRIP   13
+#   APPLYING the fold carve-out                   positive controls, 11, 13
+#   APPLYING the spelling carve-out               positive controls, 11, 13
+#   Python's rename rule deleted, or never applied  positive controls, 11, 13
 #
-# The last three rows are the measured result, not a tidy one.
+# THE PASS-SHAPED CASES, and why the bottom rows look blunt. 11 and 13 both assert
+# a PASS, so they go red for ANY breakage that stops the checker passing at all —
+# they are not specific pins for the carve-outs or for the rename's existence.
+# Each is a specific pin for exactly one thing, and that is the row above the
+# blunt ones:
 #
-# Applying a carve-out is what makes Go's 51 accessors line up with the canonical
-# 53; delete either and the real tree stops passing. A rule that exists to prevent
-# false positives can only be pinned by a case that is supposed to pass — the same
-# shape as the `explained` filter in test-check-grouped-client-coverage.rb.
+#   - 11 pins the barrel reading: reverting Python to a directory listing turns
+#     11 and 12 red and nothing else.
+#   - 13 pins the SHAPE of Python's rename: respelling it as `strip_suffix:
+#     "_service"` — the pre-fix code — turns 13 red AND NOTHING ELSE, which is
+#     what makes it a real pin rather than a smoke alarm.
 #
-# Case 11 is the other pass-shaped case, and it shows up in those two rows for the
-# same structural reason: a case asserting PASS goes red for ANY breakage that
-# stops the checker passing at all, so it is not a specific pin for the carve-outs.
-# It is a specific pin for the barrel reading, because reverting Python to a
-# directory listing turns 11 and 12 red and nothing else.
+# A rule that exists to prevent false positives can only be pinned by a case that
+# is supposed to pass; the same shape as the `explained` filter in
+# test-check-grouped-client-coverage.rb. Applying a Go carve-out is likewise what
+# makes its 51 accessors line up with the canonical 53, so deleting either stops
+# the real tree passing.
 #
 # Cases 1, 2, 3, 9 and 12 share the parity comparison and are not redundant: they
 # are five different shapes of disagreement (a service in three SDKs only, a
@@ -70,8 +77,9 @@
 # is the one that anchors SPEC §5 — its roster is derived from the two accessor
 # files, and nothing else checks those against their own services directories.
 #
-# WHAT THIS SUITE IS NOT. The suite passing means these twelve things are checked.
-# It has never meant the list is complete.
+# WHAT THIS SUITE IS NOT. The suite passing means these thirteen things are
+# checked. It has never meant the list is complete — 13 exists because a reviewer
+# found a false positive the other twelve could not see.
 #
 # Run directly (`ruby scripts/test-check-service-inventory-parity.rb`) or via
 # `make test-check-service-inventory-parity`.
@@ -145,6 +153,17 @@ GO_FOLDED = %w[automation client_visibility].freeze
 
 def go_accessor_names(names)
   names.reject { |n| GO_FOLDED.include?(n) }.map { |n| n == "timesheets" ? "timesheet" : n }
+end
+
+# Give EVERY source the same roster, each spelled by its own generator's rules.
+# Used by cases that add or remove a service across the board rather than
+# creating a disagreement between SDKs.
+def every_source(list)
+  {
+    "typescript" => list, "ruby" => list, "python" => list, "kotlin" => list,
+    "swift" => list, "kotlin-accessors" => list, "swift-accessors" => list,
+    "python-modules" => list, "go-accessors" => go_accessor_names(list),
+  }
 end
 
 def build_root(dir, names)
@@ -367,6 +386,30 @@ expect_pass(failures, "11. stale Python module on disk is not counted as emitted
 out, status = with_root(names: { "python" => CANONICAL - ["gauges"], "python-modules" => CANONICAL })
 expect_fail(failures, "12. Python barrel omitting a service the other seven emit", out, status,
             "but NOT by python")
+
+# --- 13. A service whose canonical name legitimately ends in `_service` --------
+#
+# Python's generator renames exactly one module. `service_filename` tests
+# `snake == "webhooks"`, so a service group whose canonical snake name is
+# `notification_service` is emitted as `notification_service.py`, unchanged. A
+# gate that stripped `_service` unconditionally would read that back as
+# `notification`, report a Python service the other seven do not have, and fail
+# a build where every generator mapping agreed.
+#
+# That is a FALSE POSITIVE, which is why this case expects a PASS: the failure
+# mode is a red build blocking a correct change, and someone then "fixing" a
+# mapping that was never wrong.
+#
+# The roster still contains `webhooks`, so this single case holds both halves at
+# once — the one module that IS renamed, and one that merely looks like it.
+# Ruby keeps its unconditional strip and must stay correct here too: it suffixes
+# every file, so it emits `notification_service_service.rb`.
+
+roster = (CANONICAL + ["notification_service"]).sort
+raise "case 13 needs `webhooks` in the roster to hold both halves" unless roster.include?("webhooks")
+out, status = with_root(names: every_source(roster))
+expect_pass(failures, "13. service whose canonical name ends in `_service` (webhooks still renamed)",
+            out, status)
 
 # --- Report --------------------------------------------------------------------
 
