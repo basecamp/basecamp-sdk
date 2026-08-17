@@ -122,10 +122,218 @@ final class PublicInitCoverageTests: XCTestCase {
         XCTAssertFalse(code.contains("bogus"), "a non-schema property must not be emitted:\n\(code)")
     }
 
+    // MARK: - Memberwise-initializer recognition
+
+    /// The stored properties a generated model declares, paired with whether the
+    /// caller must supply one at construction. The emitter writes required
+    /// members as `let` and optional ones as `var`, so the keyword carries that.
+    static func declaredProperties(in source: String) -> [(name: String, required: Bool)] {
+        source.components(separatedBy: "\n").compactMap { line in
+            let keyword = [("    public let ", true), ("    public var ", false)]
+                .first { line.hasPrefix($0.0) }
+            return keyword.flatMap { prefix, required in
+                line.dropFirst(prefix.count)
+                    .components(separatedBy: ":").first
+                    .map { (name: $0.trimmingCharacters(in: .whitespaces), required: required) }
+            }
+        }
+    }
+
+    /// The external argument labels of every `public init` the source declares,
+    /// one entry per initializer.
+    ///
+    /// Both shapes the emitter writes are handled: up to three parameters go on
+    /// the declaration line, more are wrapped one per line and closed by `) {`.
+    /// Accumulating until the first `)` covers each without a second code path,
+    /// and covers the hand-written `init(from decoder:) throws` — whose closing
+    /// paren is not the end of its line — for free.
+    static func publicInitParameterLabels(in source: String) -> [[String]] {
+        let lines = source.components(separatedBy: "\n")
+        var labels: [[String]] = []
+        for (start, line) in lines.enumerated() where line.hasPrefix("    public init(") {
+            var declaration = ""
+            for candidate in lines[start...] {
+                declaration += candidate
+                if candidate.contains(")") { break }
+            }
+            guard let open = declaration.firstIndex(of: "("),
+                let close = declaration.lastIndex(of: ")"), open < close
+            else { continue }
+            labels.append(
+                declaration[declaration.index(after: open)..<close]
+                    .components(separatedBy: ",")
+                    // The label is the first word before the type. A memberwise
+                    // parameter's is its only name; `from decoder: any Decoder`
+                    // labels itself `from`. An empty list yields no labels.
+                    .compactMap {
+                        $0.components(separatedBy: ":").first?
+                            .components(separatedBy: .whitespaces)
+                            .first { !$0.isEmpty }
+                    })
+        }
+        return labels
+    }
+
+    /// Whether a consumer outside the module can build this model from its
+    /// property values.
+    ///
+    /// The bar is deliberately *not* "declares some `public init`". Codable's
+    /// `public init(from decoder: any Decoder) throws` satisfies that reading,
+    /// and nine generated models carry both it and the memberwise initializer —
+    /// so a scan for a bare `public init` would stay green after the memberwise
+    /// one was deleted from any of them, which is precisely the regression this
+    /// file exists to catch. Blocklisting the string `from decoder` would fix
+    /// that one spelling and nothing else; recognizing the memberwise form by
+    /// what it *is* judges any future initializer by the same rule.
+    ///
+    /// So: an initializer counts when every parameter it takes names one of the
+    /// struct's own properties, and it takes every property the struct requires
+    /// at construction. The decoding initializer fails the first clause — no
+    /// model declares a property called `from` — and a partial initializer that
+    /// omits a `let` member fails the second.
+    ///
+    /// The last clause closes the way this could pass for the wrong reason: if
+    /// label extraction ever broke and returned nothing, "every parameter names
+    /// a property" would hold vacuously for every model. A struct with
+    /// properties must therefore be built by an initializer that takes at least
+    /// one. Both parsers otherwise fail closed — a collapsed property scan makes
+    /// every parameter unrecognized, a collapsed init scan leaves no candidate.
+    static func declaresMemberwiseInit(in source: String) -> Bool {
+        let properties = declaredProperties(in: source)
+        let names = Set(properties.map(\.name))
+        let required = Set(properties.filter(\.required).map(\.name))
+
+        return publicInitParameterLabels(in: source).contains { labels in
+            let taken = Set(labels)
+            return taken.isSubset(of: names) && required.isSubset(of: taken)
+                && (names.isEmpty || !taken.isEmpty)
+        }
+    }
+
+    /// Table-drives the matcher over the shapes the emitter writes and the ones
+    /// that must not be mistaken for them. The disk scan below can only ever see
+    /// the models that exist today, and today none of them is missing an init —
+    /// so without these the matcher's negative half is never exercised.
+    func testMemberwiseInitRecognition() {
+        // `SearchType` in miniature: a required-nullable member gives it both a
+        // memberwise and a decoding initializer.
+        let both = """
+            public struct SearchType: Codable, Sendable {
+                public let key: String?
+                public let value: String
+
+                public init(key: String?, value: String) {
+                    self.key = key
+                }
+
+                public init(from decoder: any Decoder) throws {
+                    self.key = try container.decode(String?.self, forKey: .key)
+                }
+            }
+            """
+        XCTAssertTrue(Self.declaresMemberwiseInit(in: both))
+
+        // The regression: the memberwise initializer is gone and only Codable's
+        // remains. A scan for a bare `public init` reads this as constructible,
+        // which is why the assertion below is the one that carries the contract.
+        let decoderOnly = """
+            public struct SearchType: Codable, Sendable {
+                public let key: String?
+                public let value: String
+
+                public init(from decoder: any Decoder) throws {
+                    self.key = try container.decode(String?.self, forKey: .key)
+                }
+            }
+            """
+        XCTAssertTrue(
+            decoderOnly.components(separatedBy: "\n")
+                .contains { $0.hasPrefix("    public init(") },
+            "the mutated source must still declare a public init, or this proves nothing")
+        XCTAssertFalse(
+            Self.declaresMemberwiseInit(in: decoderOnly),
+            "init(from decoder:) does not make a model constructible from its values")
+
+        // Over three parameters, the emitter wraps them one per line.
+        XCTAssertTrue(
+            Self.declaresMemberwiseInit(
+                in: """
+                    public struct Wrapped: Codable, Sendable {
+                        public var a: String?
+                        public var b: String?
+                        public var c: String?
+                        public var d: String?
+
+                        public init(
+                            a: String? = nil,
+                            b: String? = nil,
+                            c: String? = nil,
+                            d: String? = nil
+                        ) {
+                            self.a = a
+                        }
+                    }
+                    """))
+
+        // A struct with no stored properties is fully built by `init()`.
+        XCTAssertTrue(
+            Self.declaresMemberwiseInit(
+                in: """
+                    public struct Empty: Codable, Sendable {
+                        public init() {
+                        }
+                    }
+                    """))
+
+        // ...but an empty parameter list is not a licence for a struct that has
+        // properties, which is what a broken label parser would produce.
+        XCTAssertFalse(
+            Self.declaresMemberwiseInit(
+                in: """
+                    public struct Broken: Codable, Sendable {
+                        public var title: String?
+
+                        public init() {
+                        }
+                    }
+                    """))
+
+        // An initializer that skips a required member leaves it unsettable.
+        XCTAssertFalse(
+            Self.declaresMemberwiseInit(
+                in: """
+                    public struct Partial: Codable, Sendable {
+                        public let id: Int
+                        public var title: String?
+
+                        public init(title: String? = nil) {
+                            self.title = title
+                        }
+                    }
+                    """),
+            "a required member absent from the parameter list cannot be supplied")
+
+        // The `FlexibleInt` companion property is emitted alongside the member
+        // it labels and deliberately takes no parameter. It is a `var`, so the
+        // initializer still covers everything required.
+        XCTAssertTrue(
+            Self.declaresMemberwiseInit(
+                in: """
+                    public struct Companion: Codable, Sendable {
+                        public let id: FlexibleInt
+                        public var systemLabel: String?
+
+                        public init(id: FlexibleInt) {
+                            self.id = id
+                        }
+                    }
+                    """))
+    }
+
     // MARK: - Roster scan
 
     /// Covers models added after the consumer target's roster was written: every
-    /// generated `public struct` must carry a `public init`. Enums and
+    /// generated `public struct` must carry a memberwise `public init`. Enums and
     /// typealiases are exempt — an enum case is already a public constructor and
     /// a typealias has no initializer of its own.
     func testEveryGeneratedModelStructDeclaresAPublicInit() throws {
@@ -163,7 +371,7 @@ final class PublicInitCoverageTests: XCTestCase {
             let lines = source.components(separatedBy: "\n")
             guard lines.contains(where: { $0.hasPrefix("public struct ") }) else { continue }
             structs += 1
-            if !lines.contains(where: { $0.hasPrefix("    public init(") }) {
+            if !Self.declaresMemberwiseInit(in: source) {
                 missing.append(file)
             }
         }
@@ -177,8 +385,9 @@ final class PublicInitCoverageTests: XCTestCase {
                 + "struct — the struct detection has collapsed")
         XCTAssertEqual(
             missing, [],
-            "these generated models have no public init, so no consumer that "
-                + "plain-`import`s Basecamp can construct them (#735)")
+            "these generated models declare no memberwise public init, so no "
+                + "consumer that plain-`import`s Basecamp can construct them "
+                + "from their property values (#735)")
     }
 
     // MARK: - Plain-import recognition
