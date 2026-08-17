@@ -1,0 +1,22 @@
+swift/Tests/BasecampTests/PublicInitCoverageTests.swift
+  s_c7205968e852ea::t_5fe27397ea016b 171-177
+  s_c7205968e852ea::t_0d3057b4d9d679 184-238
+  s_c7205968e852ea::t_7ffc8196275c8c 137-156
+  s_c7205968e852ea::t_dd638f31600b81 263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "15e4172011d7a6d7f79004e2ee88921329e09f60",
+  "prompts": {},
+  "sessions": {
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
