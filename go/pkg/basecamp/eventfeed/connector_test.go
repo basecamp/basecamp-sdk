@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -504,5 +505,68 @@ func TestPollSeamCannotRepointTheLineage(t *testing.T) {
 		if k.FilterKey != original.FilterKey() {
 			t.Errorf("checkpoint key %d lineage = %s, want %s", i, k.FilterKey, original.FilterKey())
 		}
+	}
+}
+
+// TestConcurrentCloseAllCallersSeeCancellation pins Close's guarantee for
+// EVERY caller, not just the first. Events' own comment states it — "there is
+// no window in which the run proceeds past a returned Close" — and clearing
+// the cancellation field and invoking it outside the lock left one: the first
+// caller descheduled between the unlock and the cancel, a concurrent second
+// caller observing nil, taking no action, and returning while the run context
+// is still live. Its caller has been told the feed is closed while a delivery
+// or a seam call can still begin.
+//
+// It asserts on the run CONTEXT, deliberately. Every in-struct proxy for it —
+// a cleared cancel func, the close latch — is set by the broken Close too, so
+// asserting on one would pass against un-fixed code.
+//
+// The interleaving is real rather than designed, so the proof is
+// probabilistic: the assertion is exact and the iteration count is sized off
+// MEASURED hits rather than guessed. Against un-fixed code the window was hit
+// at iterations 92, 142, 169 and 362 across four runs, so the budget is set
+// several times the worst observed — a count near the worst hit is how a
+// regression test quietly becomes flaky-green.
+func TestConcurrentCloseAllCallersSeeCancellation(t *testing.T) {
+	for i := 0; i < 1500; i++ {
+		h := newHarness(t)
+		h.minter.ScriptTicket(ticket(1))
+		got := make(chan context.Context, 1)
+		h.conn.OnRunContext(func(ctx context.Context) {
+			select {
+			case got <- ctx:
+			default:
+			}
+		})
+		h.start()
+		var runCtx context.Context
+		select {
+		case runCtx = <-got:
+		case <-time.After(watchdog):
+			t.Fatal("the run context was never registered")
+		}
+
+		var wg sync.WaitGroup
+		bad := make(chan struct{}, 4)
+		for g := 0; g < 4; g++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_ = h.conn.Close()
+				if runCtx.Err() == nil {
+					select {
+					case bad <- struct{}{}:
+					default:
+					}
+				}
+			}()
+		}
+		wg.Wait()
+		select {
+		case <-bad:
+			t.Fatalf("iteration %d: Close returned with the run context still live", i)
+		default:
+		}
+		h.cancel()
 	}
 }

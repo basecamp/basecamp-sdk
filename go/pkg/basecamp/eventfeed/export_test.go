@@ -1,6 +1,7 @@
 package eventfeed
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"time"
@@ -118,3 +119,13 @@ func ExportSubscribeFrame(f Filters) []byte { return subscribeCommand(subscribeI
 // machine's select with two ready cases and no way for a test to say which
 // one it must take.
 func (c *Connector) OnSubscribeWritten(f func()) { c.hooks.subscribeWritten = f }
+
+// OnRunContext registers a hook receiving the active run's context once its
+// cancellation has been REGISTERED — the point from which Close's guarantee is
+// a statement about that context. Before it, the run is held by the isClosed
+// latch instead, so a context handed out earlier would invite an assertion
+// about a window the latch already covers. It is the only way to observe Close's actual guarantee —
+// "cancellation is visible before the return" is a statement about that
+// context, and any proxy for it (a nil cancel func, a closed latch) is exactly
+// the state a broken Close sets too early.
+func (c *Connector) OnRunContext(f func(context.Context)) { c.hooks.runContext = f }

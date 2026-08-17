@@ -242,6 +242,12 @@ type testHooks struct {
 	// externally a coin flip between two ready select cases, and the reason
 	// Stop's result must be read rather than discarded.
 	subscribeWritten func()
+	// runContext fires with the active run's context as soon as it exists.
+	// Close's guarantee is a statement ABOUT that context, so a test needs the
+	// context itself; every in-struct proxy for it (a cleared cancel func, the
+	// close latch) is set by a broken Close too, and asserting on one would be
+	// vacuous.
+	runContext func(context.Context)
 }
 
 // New validates configuration and returns a Connector. New does no I/O —
@@ -415,6 +421,13 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 			c.cancelRun = cancel
 		}
 		c.mu.Unlock()
+		// Fired only once the cancellation is REGISTERED: before that point
+		// the run is protected by the isClosed latch checked just above, not
+		// by the cancel func, so a context handed out earlier would invite an
+		// assertion about a window the latch already covers.
+		if c.hooks.runContext != nil {
+			c.hooks.runContext(runCtx)
+		}
 		defer func() {
 			c.mu.Lock()
 			c.cancelRun = nil
@@ -443,14 +456,23 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 // goroutine, so waiting for it would deadlock on the caller. Cancellation
 // visible before the return is the guarantee; the run then unwinds through
 // its own dispatch points, closing the socket and joining the pump.
+// The cancellation fires while callers are still SERIALIZED, which is what
+// makes the guarantee hold for every caller rather than only the first.
+// Clearing the field and cancelling outside the lock leaves a window: the
+// first Close can be descheduled after unlocking and before invoking cancel,
+// and a concurrent second Close then observes nil, takes no action and
+// returns — with the run context still live. Its caller has been told the feed
+// is closed while a delivery or a seam call can still begin, which is the one
+// thing Close promises does not happen. Holding the mutex across the cancel is
+// safe: a CancelFunc runs no consumer code, and any context.AfterFunc it
+// triggers runs on its own goroutine, so it cannot re-enter Close.
 func (c *Connector) Close() error {
 	c.mu.Lock()
-	cancel := c.cancelRun
-	c.cancelRun = nil
+	defer c.mu.Unlock()
 	c.isClosed = true
-	c.mu.Unlock()
-	if cancel != nil {
-		cancel()
+	if c.cancelRun != nil {
+		c.cancelRun()
+		c.cancelRun = nil
 	}
 	return nil
 }
