@@ -217,7 +217,7 @@ All SDKs are generated from a single Smithy specification. When adding support f
    make generate
    ```
 
-   This runs Smithy build, behavior model, URL routes, provenance sync, and per-language generators (TypeScript, Ruby, Python, Kotlin, Swift, Go) in dependency order.
+   This runs Smithy build, behavior model, URL routes, provenance sync, the per-language generators (TypeScript, Ruby, Python, Kotlin, Swift, Go), and finally a constants sync — which has to come last, because some marked doc constants are derived from the generated accessors those generators produce. Read the `generate` target for the exact order rather than reproducing it.
 
 3. **Run per-SDK generators individually** if you only need one:
    - **Go:** `make go-check-drift` — Go services are hand-written wrappers around the generated client; the drift check verifies all generated operations are covered

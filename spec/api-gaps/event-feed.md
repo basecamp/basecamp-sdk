@@ -131,7 +131,7 @@ position), not the flattening `Link`-follow auto-pagination — flattening swall
 per-page `position` that is the durable checkpoint.
 
 Both operations join the single `Basecamp` Smithy service (no second service shape), tagged
-into a new `eventFeed` service group; SPEC §5's service list grows 47 → 48.
+into a new `eventFeed` service group; SPEC §5's service list grows by one.
 
 ## Implementation notes for BC3
 

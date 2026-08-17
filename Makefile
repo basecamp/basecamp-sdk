@@ -1467,6 +1467,19 @@ test-assert-lockfiles-unchanged:
 # Run after editing spec/basecamp.smithy or spec/api-provenance.json.
 # Sequential phases via sub-makes so language generators don't run in
 # parallel against a stale openapi.json under `make -j`.
+#
+# sync-api-version runs TWICE, and the second one is not redundant. It runs
+# first inside smithy-build, where it must, because the API version it writes
+# comes from the openapi.json that step just produced. But @service-count is
+# derived from the GENERATED Kotlin and Swift accessor files, and those are
+# regenerated below — so at smithy-build time the writer is reading the previous
+# run's accessors. Adding a service and running `make generate` therefore left
+# every @service-count span stating the old number, with nothing but a later
+# `make check` to notice: a generation pipeline whose whole job is leaving the
+# tree consistent, quietly leaving it stale. Found by Codex on #745.
+#
+# Re-running it after every generator is idempotent — it rewrites marked spans
+# from sources that are now current, and writes nothing when they already match.
 generate:
 	@$(MAKE) smithy-build
 	@$(MAKE) behavior-model url-routes provenance-sync
@@ -1476,6 +1489,7 @@ generate:
 	         kt-generate-services \
 	         swift-generate
 	@$(MAKE) -C go generate
+	@$(MAKE) sync-api-version
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)

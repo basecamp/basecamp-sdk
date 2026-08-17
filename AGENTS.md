@@ -114,14 +114,22 @@ Two constraints the examples will not tell you outright:
 After any Smithy spec change, run the full pipeline:
 
 ```
-make smithy-build && make -C go generate && make url-routes && \
-  make ts-generate && make ts-generate-services && \
-  make rb-generate && make rb-generate-services && \
-  make swift-generate && make kt-generate-services && \
-  make py-generate
+make generate
 ```
 
-`make generate` cascades the whole sequence. Never commit a Smithy change without regenerating all downstream artifacts. Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
+That target is the pipeline's only definition, and this section deliberately no
+longer spells out the sequence it runs. It used to, and the copy had already
+drifted: it omitted `behavior-model`, `provenance-sync` and `sync-api-version`,
+so a contributor following it verbatim regenerated the accessors and never
+re-derived the constants that come from them — leaving every `@service-count`
+span stating the previous run's number and failing the next `make check` for a
+reason the transcript never mentioned. Ordering matters here (`sync-api-version`
+must run *after* the Kotlin and Swift accessor generators, which is why it
+appears twice in the target), and an ordering restated by hand in prose is one
+more thing to keep in step. Read the `generate` target if you need the phases.
+
+Never commit a Smithy change without regenerating all downstream artifacts.
+Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
 
 ### Invariants
 
@@ -251,12 +259,16 @@ advancing too.
 `scripts/test-doc-constants.rb` (run by `make doc-constants-check`) asserts the
 gate rejects each of these failure modes.
 
-One marked span is not a claim to be checked but a block to be GENERATED: SPEC
-§19's Zero-Skip roster, `<!-- @zero-skip-roster:begin/end -->`, is rendered from
-`spec/zero-skip-roster.yml` and required to match byte for byte, and the writer
-rewrites it. Edit the YAML, never the block. It is writable where the other
-block kinds are not for the reason `spec/doc-constants.json` states: no column
-of it is hand-written, so the writer can author the whole span. It replaced a
+Two marked spans are not claims to be checked but blocks to be GENERATED, and
+neither should ever be edited by hand. SPEC §19's Zero-Skip roster,
+`<!-- @zero-skip-roster:begin/end -->`, is rendered from
+`spec/zero-skip-roster.yml` and required to match byte for byte — edit the YAML,
+never the block. SPEC §5's and Appendix B's service rosters,
+`<!-- @account-scoped-services:begin/end -->`, are rendered from the generated
+Kotlin and Swift accessors — regenerate the SDKs, never the block. Both are
+writable where the table kinds are not for the reason `spec/doc-constants.json`
+states: no column of either is hand-written, so the writer can author the whole
+span. It replaced a
 parser that read the roster back out of SPEC's prose — five bypasses in, each
 fix a new selector, which is what "reassess the instrument" looks like when the
 instrument is a reader.

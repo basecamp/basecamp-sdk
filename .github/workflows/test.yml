@@ -151,8 +151,10 @@ jobs:
       - name: API version constants in sync with openapi.json
         run: make sync-api-version-check
 
-      # Prose restates three constants (API_VERSION, the bc3 provenance pin,
-      # SPEC §19's assertion-type table). Marked spans only — spec/api-gaps/
+      # Prose across the tracked Markdown restates constants and rosters that
+      # are derivable from machine-readable sources; scripts/sync-doc-constants.rb
+      # heads the current list, and spec/doc-constants.json states the rule that
+      # decides what joins it. Marked spans only — spec/api-gaps/
       # legitimately cites historical SHAs — plus a committed exact marker
       # count, so neither deleting a marker nor adding an unrecorded one can
       # silence the gate. The target also runs scripts/test-doc-constants.rb,

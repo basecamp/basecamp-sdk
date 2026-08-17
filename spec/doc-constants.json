@@ -38,6 +38,8 @@
     "",
     "fixture-categories / fixture-section-map — the two SPEC.md tables that claim to account for every tracked fixture under conformance/tests/, sourced from `git ls-files conformance/tests/*.json`. Neither is writable, for @assertion-types' reason: a row carries an owning-section attribution or a case summary only the fixture's author can make. The categories table is a bijection (one row per fixture, and the category slug IS the filename); Appendix D is coverage only, because its rows deliberately bundle several cases each. Added after the same drift appeared three times in three different shapes — a fixture with neither row, a fixture with Appendix D rows and no category row, and a fixture with a category row and no Appendix D row. SPEC §23's parallel fixture families (conformance/oauth/, oauth-token/, event-feed*/) are carved out of both rosters by their own section, which the conformance/tests/ scope honors with no special case.",
     "",
+    "account-scoped-services / service-count — SPEC §5's roster of services hung off AccountClient, and every place that restates its size, sourced from the two GENERATED accessor files (kotlin .../generated/ServiceAccessors.kt, swift .../Generated/AccountClient+Services.swift) which must agree with each other. #600 reported §5 as five services short; it was seven, because `cloudFiles` and `googleDocuments` arrive via SERVICE_SPLITS rather than a new top-level tag and SPEC had never named them at all. openapi.json plus each generator's TAG_TO_SERVICE/SERVICE_SPLITS is the true root and is NOT the source here: reproducing that split in Ruby would be a sixth hand-copy of tables that already exist five times with no gate comparing them, so the derivation would become the drift surface this check removes. The roster is a comma list, not a table, and deliberately does not reuse table_rows: at three cells per row the only derivable column is the name, so the other two would be new hand-written content in a change whose point is removing hand-written content. Its parser is therefore bespoke and its shape is pinned tight — exactly one non-empty line, every entry lowerCamelCase — because a shape it cannot read must fail, never be skipped. That property is a committed self-test case rather than a comment, having been breached three times in #736 when it was only a comment. The roster is a BLOCK kind and IS writable, which it was not at first: it was excluded on the grounds that writing it would fix an order --check deliberately does not assert. That was wrong, and the way it was wrong is the point. The count and the roster derive from ONE source, so leaving one writable and the other not did not preserve a choice — it split a single claim across two update mechanisms, and `make generate` rewrote every @service-count span to the new number, exited 0, and left both marked blocks enumerating the old set. A green generation run producing a spec that contradicts itself is the failure this whole file exists to prevent. The order objection survives but costs nothing: the writer emits the accessors' own order, which is the alphabetical order already there, and --check still compares SETS — a reordered roster passes and is normalised on the next write, never rejected. --check also still names the exact missing or extra service, which byte comparison could not. @service-count is an ordinary ticked-int line kind and the writer keeps every one of them current, including the two Appendix F rows that restate the gated value for the very SDKs it is derived from.",
+    "",
     "operation-count — the number of (path, HTTP method) pairs in openapi.json. It is one jq away from the source and was restated in prose in six places across four files, which is how a single new operation left five of them stale and took three review rounds to reconcile. The marked span must carry the count as a BACKTICKED integer, and exactly one: the marked sentences state other numbers (SECURITY.md names 125 GETs and 83 mutations beside the total), so backticks are what distinguishes the derived constant from prose arithmetic the writer has no source for."
   ],
   "markerCounts": {
@@ -59,6 +61,14 @@
     },
     "zero-skip-roster": {
       "SPEC.md": 1
+    },
+    "account-scoped-services": {
+      "SPEC.md": 2
+    },
+    "service-count": {
+      "SPEC.md": 7,
+      "kotlin/README.md": 2,
+      "swift/README.md": 2
     },
     "operation-count": {
       "AGENTS.md": 2,

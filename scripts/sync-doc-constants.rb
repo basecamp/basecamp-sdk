@@ -14,6 +14,12 @@
 #   @fixture-categories   git ls-files conformance/tests/*.json
 #   @fixture-section-map  git ls-files conformance/tests/*.json
 #   @zero-skip-roster     spec/zero-skip-roster.yml, RENDERED — see below
+#   @service-count        count of the generated AccountClient accessors
+#   @account-scoped-services
+#                         the generated AccountClient accessors, by name
+#                           (kotlin .../generated/ServiceAccessors.kt and
+#                            swift .../Generated/AccountClient+Services.swift,
+#                            which must agree)
 #
 # The fixture rosters are the same shape as @assertion-types one level out: a table
 # that CLAIMS to account for every conformance fixture, with nothing checking
@@ -99,12 +105,13 @@
 #   --check (default)  Report drift; exit 1 on any error.
 #   --write            Rewrite marked spans in place from the sources.
 #                      Writable iff the writer can author the whole span. That
-#                      is every scalar constant, and exactly one block kind:
-#                      @zero-skip-roster, which is rendered from
-#                      spec/zero-skip-roster.yml. The other block kinds are
-#                      tables whose rows carry a human-authored column (an
-#                      assertion type's meaning, a fixture's owning spec
-#                      sections, a fixture's case summary), so --write never
+#                      is every scalar constant, and two block kinds:
+#                      @zero-skip-roster, rendered from
+#                      spec/zero-skip-roster.yml, and @account-scoped-services,
+#                      rendered from the generated accessors. The remaining
+#                      block kinds are tables whose rows carry a human-authored
+#                      column (an assertion type's meaning, a fixture's owning
+#                      spec sections, a fixture's case summary), so --write never
 #                      touches them and never fails on them.
 #                      `make doc-constants-check` is what catches those;
 #                      keeping them out of the writer keeps a schema or
@@ -147,19 +154,39 @@ UTF8 = "UTF-8"
 $stdout.set_encoding(UTF8)
 $stderr.set_encoding(UTF8)
 
-LINE_KINDS  = %w[api-version bc3-pin operation-count].freeze
+LINE_KINDS  = %w[api-version bc3-pin operation-count service-count].freeze
 
 # The OpenAPI verbs an operation can be keyed under. Anything else in a path
 # item (parameters, servers, summary) is not an operation and must not count.
 HTTP_METHODS = %w[get put post delete patch head options trace].freeze
 BLOCK_KINDS = %w[assertion-types fixture-categories fixture-section-map
+                 account-scoped-services
                  zero-skip-roster].freeze
 
-# The block kinds the writer may author, which is the ones with no
-# human-authored content in them at all. Everything else in BLOCK_KINDS is a
-# table carrying a column only a person can write, and rewriting one would mean
-# inventing that column.
-WRITABLE_BLOCK_KINDS = %w[zero-skip-roster].freeze
+# The block kinds the writer may author. The three tables are excluded because
+# they CANNOT be authored: each carries a column only a person can write — an
+# assertion type's meaning, a fixture's owning section — so rewriting one would
+# mean inventing that column.
+#
+# @account-scoped-services was excluded too, on the grounds that writing it would
+# fix an order the checker deliberately does not assert, converting a courtesy to
+# readers into an enforced syntax. That argument was wrong, and the way it was
+# wrong is worth keeping.
+#
+# The count and the roster derive from ONE source. Leaving the count writable and
+# the roster not does not preserve a choice — it splits a single claim across two
+# mechanisms that update at different times. Add a service and `make generate`
+# rewrites all eleven @service-count spans to the new number, exits 0, and leaves
+# both marked blocks still enumerating the old set: a tracked spec contradicting
+# itself, produced by a green generation run, with only a later `make check` to
+# notice. Reproduced exactly that way. It is the failure the `generate` target's
+# own comment argues against, one level further down.
+#
+# The order objection survives but shrinks to nothing: the writer emits the
+# accessors' order, which is the alphabetical order the roster already uses, and
+# --check still compares sets, so a hand-reordered roster still passes. The
+# writer normalises; it does not start rejecting.
+WRITABLE_BLOCK_KINDS = %w[account-scoped-services zero-skip-roster].freeze
 KNOWN_KINDS = (LINE_KINDS + BLOCK_KINDS).freeze
 
 MARKER_RE   = /<!--\s*@([a-z0-9][a-z0-9-]*)(?::(begin|end))?\s*-->/
@@ -318,6 +345,140 @@ def tracked_fixtures
   out.split("\0").reject(&:empty?)
      .select { |path| File.dirname(path) == "conformance/tests" }
      .map { |path| File.basename(path) }.sort
+end
+
+# The canonical account-scoped service surface, from the two GENERATED accessor
+# files that hang services off AccountClient.
+#
+# openapi.json plus the generators' TAG_TO_SERVICE / SERVICE_SPLITS tables is the
+# true root, and is deliberately NOT the source here: reproducing that split in
+# Ruby means a SIXTH hand-copy of those tables. Five already exist, one per
+# language, and no gate compares them to each other — so the derivation would
+# itself be the drift surface this check exists to remove. These two files are
+# regenerated FROM that root and committed, which is close enough to it to be
+# checkable and far enough from it to need no second implementation.
+#
+# They are also the only two artefacts that encode ACCOUNT-SCOPING directly
+# rather than leaving it to be inferred: their entire reason to exist is hanging
+# services off AccountClient, which is exactly what §5's roster claims. Per-SDK
+# client wiring cannot answer the question — it drifts by design (Go folds
+# `automation` and `clientVisibility` and spells `timesheets` singular; Python is
+# two short; TypeScript has no account-scoped tier at all), so a roster derived
+# from any one of them would assert that SDK's gaps as the canonical surface.
+KOTLIN_ACCESSORS = "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt"
+SWIFT_ACCESSORS  = "swift/Sources/Basecamp/Generated/AccountClient+Services.swift"
+
+KOTLIN_ACCESSOR_RE = /^val AccountClient\.([A-Za-z][A-Za-z0-9_]*)\s*:/
+SWIFT_ACCESSOR_RE  = /^\s*public var ([A-Za-z][A-Za-z0-9_]*)\s*:\s*[A-Za-z0-9_]+Service\b/
+
+def read_accessors(relative, pattern)
+  path = File.join(ROOT, relative)
+  unless File.exist?(path)
+    raise Failure, "missing #{relative}, which is where the account-scoped service surface is " \
+                   "derived from — regenerate it, or the roster in the marked block is vouched " \
+                   "for by nothing"
+  end
+
+  File.read(path, encoding: UTF8).scan(pattern).flatten
+end
+
+# Both accessor files, REQUIRED TO AGREE.
+#
+# A disagreement is a generator bug and a finding in its own right — never a
+# tiebreak to settle by preferring one file. Taking either alone would let a
+# generator that dropped a service certify a roster that dropped it too.
+#
+# WHAT AGREEMENT DOES NOT BUY, because the obvious reading overclaims it and I
+# made that mistake here first. These are not two renderings of ONE source: the
+# Kotlin and Swift generators carry their own hand-maintained split tables
+# (kotlin/generator/.../Config.kt, swift's ServiceGrouper) — two of the five
+# copies noted above. So agreement is agreement between two independent
+# transcriptions, not confirmation against a root. A service added to the
+# TypeScript, Ruby and Python tables but omitted from BOTH of these two leaves
+# them agreeing, and this gate certifies the old roster and the old count.
+#
+# That residue is real and is NOT closed here. The instrument that would close
+# it is comparing the GENERATED service inventories of all five SDKs — which is
+# not the sixth hand-copy rejected above, since it reads generator OUTPUT rather
+# than reimplementing the mapping. Verified viable: the TypeScript, Ruby and
+# Python generated service sets already agree exactly with these 53 today, once
+# each SDK's index/base files and Python's `_service` filename suffix are
+# accounted for. It is left to its own change because that normalization is four
+# per-SDK spelling rules, and bolting them onto the gate whose own argument is
+# "stop accreting spellings" is the wrong place to introduce them. Codex raised
+# this on #745; tracked as the cross-generator comparison follow-up.
+#
+# Failures here are exit 2, not exit 1: a broken source of truth is not
+# documentation drift, and "the roster disagrees with a file that is itself
+# wrong" is not a verdict this gate is entitled to render. Same split
+# tracked_fixtures makes between `git ls-files` failing (Failure) and matching
+# nothing (a checker-level vacuity error, below).
+def account_scoped_services
+  kotlin = read_accessors(KOTLIN_ACCESSORS, KOTLIN_ACCESSOR_RE)
+  swift  = read_accessors(SWIFT_ACCESSORS, SWIFT_ACCESSOR_RE)
+
+  # DUPLICATES FIRST, per file, and the order is the whole point rather than
+  # tidiness. A name emitted twice is invisible to every set comparison
+  # downstream — Array#- drops all occurrences, so a doubled accessor leaves the
+  # roster's `missing` and `extra` both empty and it passes while enumerating
+  # something neither file says. Deduplicating instead of refusing would hide the
+  # generator bug behind a green tick.
+  #
+  # Run before the agreement check because otherwise a duplicate in ONE file
+  # surfaces as a disagreement whose two diffs are both empty — "Kotlin has 4,
+  # Swift has 3, only in Kotlin: (none)" — which is true, unreadable, and points
+  # at the wrong defect.
+  { KOTLIN_ACCESSORS => kotlin, SWIFT_ACCESSORS => swift }.each do |relative, names|
+    dupes = names.tally.select { |_, n| n > 1 }.keys
+    next if dupes.empty?
+
+    raise Failure, "#{relative} exposes #{dupes.join(', ')} more than once; a repeated accessor is " \
+                   "invisible to a set comparison, so no roster could be checked against this"
+  end
+
+  # Compared SORTED-AND-WHOLE rather than as `.uniq` sets, which after the guard
+  # above differ only in that this still reports a length mismatch it could not
+  # otherwise reach.
+  if kotlin.sort != swift.sort
+    only_kotlin = kotlin - swift
+    only_swift  = swift - kotlin
+    raise Failure,
+          "the two generated accessor files disagree about the account-scoped service surface " \
+          "(#{KOTLIN_ACCESSORS}: #{kotlin.length}, #{SWIFT_ACCESSORS}: #{swift.length}). " \
+          "Only in Kotlin: #{only_kotlin.empty? ? '(none)' : only_kotlin.join(', ')}. " \
+          "Only in Swift: #{only_swift.empty? ? '(none)' : only_swift.join(', ')}. " \
+          "Each is generated from its own generator's split table, so a disagreement means at " \
+          "least one of those tables is wrong — fix it before any roster can be checked against " \
+          "either."
+  end
+
+  # AN EMPTY EXTRACTION IS REFUSED HERE, AT THE SOURCE, AND THAT PLACEMENT IS THE
+  # WHOLE POINT. It was originally a vacuity guard inside the roster checker,
+  # which looked equivalent and was not: --write RETURNS BEFORE THE PER-KIND
+  # CHECKERS RUN, so nothing in check mode's reasoning applies to it.
+  #
+  # The failure that produced, reproduced before this line existed: change both
+  # generators' accessor syntax at once — a rename, a formatting pass, anything
+  # that makes both regexes stop matching — and the two extractions agree at
+  # zero, so the disagreement check above passes. `make generate` then rewrites
+  # every @service-count span in the repo to `0` and EXITS 0. A generation
+  # pipeline reporting success while writing a count nobody derived, with only a
+  # later `make check` to notice, and the corruption already in the tree by then.
+  #
+  # Two regexes that stopped matching is an extraction failure, never a fact
+  # about the SDK, and it cannot be allowed to reach either mode. Raising here
+  # covers --check and --write with one rule rather than one guard per mode —
+  # which is what the checker-side version silently was. Copilot found it; I had
+  # dismissed it once by reasoning about --check alone.
+  if kotlin.empty?
+    raise Failure,
+          "#{KOTLIN_ACCESSORS} and #{SWIFT_ACCESSORS} named no services between them. Both " \
+          "extractions are empty, so they agree vacuously and there is no source of truth for " \
+          "the roster or for @service-count — the accessor syntax these are matched by has " \
+          "almost certainly changed. Refusing rather than writing a count derived from nothing."
+  end
+
+  kotlin.sort
 end
 
 Span = Struct.new(:kind, :file, :line_no, :lines, :block, keyword_init: true) do
@@ -500,7 +661,30 @@ end
 # number the generators report.
 def operation_count(doc, source)
   paths = dig!(doc, source, "paths")
-  paths.sum { |_path, ops| ops.count { |method, _| HTTP_METHODS.include?(method) } }
+  count = paths.sum { |_path, ops| ops.count { |method, _| HTTP_METHODS.include?(method) } }
+
+  # ZERO IS AN EXTRACTION FAILURE, NOT A COUNT, and it is refused here for the
+  # reason spelled out at account_scoped_services: --write returns before the
+  # per-kind checkers run, so a checker-side objection protects --check and
+  # leaves the writer — the caller that edits files — free to act on it.
+  #
+  # Reproduced before this guard existed: point the gate at an openapi.json whose
+  # `.paths` is `{}` (a truncated build, a mapper that emitted an envelope and no
+  # operations) and `--write` rewrote all six @operation-count spans across three
+  # files to `0` and exited 0. `dig!` above already refuses a document with no
+  # `.paths` key at all; `{}` slipped past it as a legitimate empty sum.
+  #
+  # Guarding one of the two TICKED_INT_KINDS and not the other would make the
+  # rule read as a special case for @service-count. It is not: both restate a
+  # count derived from a generated artifact, and for both, "the artifact yielded
+  # nothing" is a broken input rather than news about the API.
+  if count.zero?
+    raise Failure, "#{source} declares no operations at all (.paths is empty). That is a broken " \
+                   "or truncated document, not an API with zero operations — refusing rather " \
+                   "than rewriting every @operation-count span to `0`."
+  end
+
+  count
 end
 
 # A code span whose ENTIRE content is digits. Bare prose integers are not
@@ -525,11 +709,18 @@ def sole_ticked_int(text)
   ints.length == 1 ? ints.first : nil
 end
 
-def check_operation_count(span, count, source)
+# The line kinds whose claim is a single backticked integer. One checker and one
+# writer branch serve both, because they are the same claim shape over different
+# sources — @operation-count counts (path, method) pairs in openapi.json,
+# @service-count counts the generated account-scoped accessors. A second copy of
+# this would be a second place for the sole-ticked-int rule to be got wrong.
+TICKED_INT_KINDS = %w[operation-count service-count].freeze
+
+def check_ticked_count(span, count, source_says)
   ints = span.text.scan(TICKED_INT_RE).flatten
 
   if ints.empty?
-    return ["#{span.location}: @operation-count span states no backticked integer — " \
+    return ["#{span.location}: @#{span.kind} span states no backticked integer — " \
             "write the count as `#{count}` so the writer can find it"]
   end
 
@@ -538,14 +729,14 @@ def check_operation_count(span, count, source)
   # sentence in SECURITY.md states 125 GETs and 83 mutations beside the total,
   # and a blanket gsub would turn both into the operation count.
   if ints.length > 1
-    return ["#{span.location}: @operation-count span has #{ints.length} backticked integers " \
+    return ["#{span.location}: @#{span.kind} span has #{ints.length} backticked integers " \
             "(#{ints.join(', ')}) — exactly one is required, so the writer knows which is the " \
             "count. Put the claim on a line of its own, or unticket the others."]
   end
 
   return [] if ints.first == count.to_s
 
-  ["#{span.location}: @operation-count says `#{ints.first}`, #{source} has #{count} operations"]
+  ["#{span.location}: @#{span.kind} says `#{ints.first}`, #{source_says}"]
 end
 
 def check_bc3_pin(span, revision, date)
@@ -1147,6 +1338,122 @@ def check_zero_skip_roster(span, expected)
    "`make sync-api-version`; editing SPEC by hand is what this replaced."]
 end
 
+# A service name as the roster may spell it: lowerCamelCase, no separators.
+# Every one of the generated accessors matches this, so a roster entry that does
+# not is not a service name at all — it is a stray comma, a wrapped word, a bit
+# of prose that drifted inside the markers, or a name written in another SDK's
+# casing.
+SERVICE_NAME_RE = /\A[a-z][A-Za-z0-9]*\z/
+
+# SPEC §5's (and Appendix B's) account-scoped service roster: a comma-separated
+# prose line, checked for set equality against the generated accessors.
+#
+# WHY THIS STAYS A COMMA LIST rather than reusing `table_rows`. That machinery is
+# table-only, so reusing it means 53 rows of exactly three cells each — and the
+# only derivable column is the name. The other two would be new hand-written
+# content, i.e. new drift surface, introduced by the change whose entire point is
+# removing drift surface. Restating less beats reusing machinery here.
+#
+# WHY THE BESPOKE PARSER IS ALLOWED TO BE BESPOKE. #740 declined to teach this
+# file more GFM because a mis-parse there is SILENT — it validates the wrong cell
+# and reports success. The shape below has no such reading. It refuses anything
+# it does not recognise instead of skipping it, so the only outcomes are a set
+# mismatch or an explicit shape refusal; there is no input it reads as agreement
+# it has not actually checked. #736 asserted that property in a comment and had
+# it breached three times, so here it is a committed self-test case
+# ("misreadings surface, never pass") rather than a claim in prose.
+#
+# Order is deliberately NOT asserted. The roster's claim is a set, the file is
+# alphabetical only as a courtesy to readers, and a sortedness rule would be this
+# gate constraining syntax it was not asked to hold. Noted so it is not
+# re-litigated as an oversight.
+def check_account_scoped_services(span, services)
+  # SHAPE FIRST, and this one rule closes the whole list-shaped class that #736
+  # needed an inverted default for. Reformat the roster as bullets, wrap it over
+  # two lines, or leave a sentence inside the markers, and the block no longer
+  # holds exactly one line — which is an error, not a partial read of whichever
+  # line the parser happened to recognise. An emptied block lands here too, as 0.
+  lines = span.lines.reject { |line| line.strip.empty? }
+  if lines.length != 1
+    return ["#{span.location}: the @#{span.kind} block holds #{lines.length} non-empty line(s), " \
+            "not 1. The roster is ONE comma-separated line of service names — bullets, a wrapped " \
+            "line, or prose inside the markers would each leave the parser guessing which line " \
+            "is the claim."]
+  end
+
+  # THE LINE MUST SIT AT COLUMN ZERO, and this became a rule the moment the block
+  # became writable. scan_file accepts a block marker indented up to three spaces
+  # (a fence-indentation allowance), and this checker strips before splitting, so
+  # an indented roster passed --check happily. The renderer, though, emits at
+  # column zero — so the next `make generate` would silently strip that
+  # indentation and lift the roster out of whatever list contained it, changing
+  # the document while reporting success.
+  #
+  # Refused rather than preserved. Teaching the renderer to reproduce the
+  # existing indentation would make --write reproduce a shape nothing else
+  # depends on; refusing says what is actually true now, which is that this block
+  # is generated output and its form is not the author's to choose. Codex offered
+  # both remedies and this is the one that leaves less behind.
+  if lines.first != lines.first.strip
+    return ["#{span.location}: the @#{span.kind} roster line carries leading or trailing " \
+            "whitespace. This block is generated — the writer emits it at column zero, so " \
+            "indentation here would be silently removed by the next `make generate`. Put the " \
+            "block at the margin rather than inside a list."]
+  end
+
+  # `-1` keeps trailing empty fields, so `a, b,` yields a third entry of `""`
+  # that fails SERVICE_NAME_RE below. Dropped, a stray comma would read as a
+  # clean list and the shape would go unremarked.
+  names = lines.first.split(",", -1).map(&:strip)
+
+  malformed = names.reject { |name| name.match?(SERVICE_NAME_RE) }
+  unless malformed.empty?
+    return ["#{span.location}: #{malformed.length} roster entry/entries are not service names: " \
+            "#{malformed.map(&:inspect).join(', ')}. Each must be lowerCamelCase " \
+            "(#{SERVICE_NAME_RE.source}), separated by `, ` — an empty entry is a stray or " \
+            "trailing comma."]
+  end
+
+  # No vacuity guard here, deliberately, and this is the second version of this
+  # comment — the first one argued for keeping a guard that turned out to be in
+  # the wrong place entirely.
+  #
+  # An empty extraction is now refused by account_scoped_services itself, which
+  # both modes reach. A guard here could only ever have protected --check, since
+  # --write returns before the per-kind checkers run; it read as the vacuity
+  # backstop while covering exactly one of the two callers, and the writer was
+  # the caller that could do damage. Duplicating it here would restate a rule the
+  # source already enforces and re-suggest that this is the layer that owns it.
+  errors = []
+
+  # Array#- removes EVERY occurrence, so a name listed twice is invisible to the
+  # comparison below — both directions come back empty and the gate passes over a
+  # roster that is not the enumeration it claims to be. #736 shipped this bug and
+  # had to be told about it.
+  dupes = names.tally.select { |_, n| n > 1 }.keys
+  unless dupes.empty?
+    errors << "#{span.location}: the roster names #{dupes.map(&:inspect).join(', ')} more than " \
+              "once; a repeat is invisible to the set comparison, so it would pass unnoticed"
+  end
+
+  missing = services - names
+  extra   = names - services
+
+  unless missing.empty?
+    errors << "#{span.location}: the generated accessors expose #{services.length} account-scoped " \
+              "service(s), the roster names #{names.uniq.length}; missing: #{missing.join(', ')}. " \
+              "Add them — a service the spec's own surface section omits is one no reader of the " \
+              "spec knows exists."
+  end
+  unless extra.empty?
+    errors << "#{span.location}: the roster names service(s) no generated accessor exposes: " \
+              "#{extra.join(', ')}. Either the service was removed and the roster kept it, or the " \
+              "name is misspelled."
+  end
+
+  errors
+end
+
 # --- writer ------------------------------------------------------------------
 
 # Every argument here is a VALUE, never a thunk, and that is load-bearing rather
@@ -1155,15 +1462,21 @@ end
 # resolved values makes "the loop cannot raise for a reason we have not already
 # found" a property of the signature instead of a discipline someone has to
 # remember at the next call site.
-def rewrite_line(kind, line, api_version:, revision:, date:, operation_count_value:)
+#
+# `ticked_counts` is that rule applied to a set of kinds rather than one: a hash
+# of kind => already-computed Integer, not of kind => thunk. Keying it means a
+# third ticked-int kind is an entry at the call site instead of another keyword
+# here, and holding VALUES means adding one cannot reintroduce the deferred
+# computation this signature exists to keep out of the loop.
+def rewrite_line(kind, line, api_version:, revision:, date:, ticked_counts:)
   case kind
   when "api-version"
     line.gsub(ISO_DATE_RE, api_version)
-  when "operation-count"
+  when *TICKED_INT_KINDS
     # Refuse an ambiguous span instead of rewriting every integer on it. Left
     # untouched, it fails the next --check with a message naming the problem;
     # rewritten, it would be silently corrupt and then pass.
-    sole_ticked_int(line) ? line.sub(TICKED_INT_RE, "`#{operation_count_value}`") : line
+    sole_ticked_int(line) ? line.sub(TICKED_INT_RE, "`#{ticked_counts.fetch(kind)}`") : line
   when "bc3-pin"
     # Preserve the abbreviation length the prose already chose.
     line
@@ -1210,7 +1523,31 @@ def run(mode, openapi)
 
   # kind => the exact lines a writable block must hold. Keyed by kind so adding
   # a second rendered block is a line here rather than a branch in the writer.
-  block_bodies = { "zero-skip-roster" => roster_lines }
+
+  # Memoised and lazy for the same reason once more, one step more sharply: this
+  # one reads two generated SDK files that the gate's own crafted fixtures have
+  # no business carrying, so computing it eagerly would fail every case that
+  # never mentions a service count.
+  services_memo = nil
+  services = lambda do
+    services_memo ||= account_scoped_services
+  end
+
+  block_bodies = {
+    "zero-skip-roster" => roster_lines,
+    # One line, exactly as check_account_scoped_services requires, in the
+    # accessors' own order — which is what SPEC already carries.
+    "account-scoped-services" => -> { [services.call.join(", ")] },
+  }
+
+  # kind => how to compute the sole backticked integer that kind's spans state.
+  # Still thunks HERE, because --check must be able to ask for one without
+  # paying for the other; the write path resolves the ones it needs to VALUES in
+  # its preflight, which is what keeps rewrite_line unable to compute anything.
+  ticked_count_sources = {
+    "operation-count" => op_count,
+    "service-count"   => -> { services.call.length }
+  }
 
   provenance = read_json("spec/api-provenance.json")
   revision = dig!(provenance, "spec/api-provenance.json", "bc3", "revision")
@@ -1218,6 +1555,37 @@ def run(mode, openapi)
 
   unless revision.match?(/\A[0-9a-f]{40}\z/)
     raise Failure, "spec/api-provenance.json .bc3.revision is not a full 40-char SHA: #{revision}"
+  end
+
+  # The same shape check the revision has always had, extended to the other two
+  # values the writer substitutes, and the reason is the one this whole file
+  # keeps rediscovering: --write returns before the per-kind checkers run, so
+  # anything only the checkers object to is something the writer will act on.
+  #
+  # `dig!` refuses a MISSING key. It says nothing about a present-but-useless
+  # one, and both of these are substituted by gsub rather than compared:
+  # rewrite_line replaces every ISO date on a marked line with whatever it was
+  # handed. Hand it "" and it deletes the dates instead of updating them, across
+  # every @api-version and @bc3-pin span, exiting 0. Reproduced before this
+  # guard: an openapi.json with `"version": ""` rewrote both SPEC spans and
+  # reported success.
+  #
+  # .bc3.date is the likelier of the two to be wrong, because it is the only one
+  # of the three that a human types — every sync edits api-provenance.json by
+  # hand — and a typo there is a plain accident, not an adversary.
+  #
+  # Bounded on purpose: LINE_KINDS is a closed set of four, and this completes
+  # it. @operation-count and @service-count refuse a zero count at their own
+  # sources; these two refuse a value that is not a date. There is no fifth
+  # substituted value waiting to need a fifth rule.
+  { "openapi #{openapi} .info.version" => api_version,
+    "spec/api-provenance.json .bc3.date" => date }.each do |label, value|
+    next if value.to_s.match?(/\A#{ISO_DATE_RE.source}\z/)
+
+    raise Failure, "#{label} is #{value.inspect}, which is not a YYYY-MM-DD date. The writer " \
+                   "substitutes this into every marked span by replacing the dates already " \
+                   "there, so an empty or malformed value silently deletes them — refusing " \
+                   "rather than rewriting spans from a value that is not a date."
   end
 
   config = read_json("spec/doc-constants.json")
@@ -1330,9 +1698,16 @@ def run(mode, openapi)
     # have gone the same way, so it now has an obvious home, and `rewrite_line`
     # takes values rather than thunks so the loop cannot reach a computation at
     # all.
+    #
+    # @service-count is the fourth, and it arrived as an entry here rather than
+    # as a fifth way to raise mid-loop — which is the whole return on writing
+    # this as a place. It reads two generated SDK files that a crafted fixture
+    # need not carry, so it is forced only when a span actually claims it, by
+    # exactly the same marked-only rule as the rest.
     marked_writable_blocks = spans.select(&:block).map(&:kind).uniq & WRITABLE_BLOCK_KINDS
     rendered_blocks = marked_writable_blocks.to_h { |kind| [kind, block_bodies.fetch(kind).call] }
-    op_count_value = op_count.call if spans.any? { |s| s.kind == "operation-count" }
+    marked_ticked_kinds = spans.reject(&:block).map(&:kind).uniq & TICKED_INT_KINDS
+    ticked_counts = marked_ticked_kinds.to_h { |kind| [kind, ticked_count_sources.fetch(kind).call] }
 
     written = []
     declined = []
@@ -1351,7 +1726,7 @@ def run(mode, openapi)
         newline = lines[index].end_with?("\n") ? "\n" : ""
         lines[index] = rewrite_line(span.kind, body,
                                     api_version: api_version, revision: revision, date: date,
-                                    operation_count_value: op_count_value) + newline
+                                    ticked_counts: ticked_counts) + newline
       end
 
       # Blocks are spliced LAST and from the bottom up. A rendered block rarely
@@ -1422,10 +1797,16 @@ def run(mode, openapi)
       when "api-version"         then check_api_version(span, api_version, openapi)
       when "bc3-pin"             then check_bc3_pin(span, revision, date)
       when "assertion-types"     then check_assertion_types(span, schema_types)
-      when "operation-count"     then check_operation_count(span, op_count.call, openapi)
+      when "operation-count"
+        check_ticked_count(span, op_count.call, "#{openapi} has #{op_count.call} operations")
+      when "service-count"
+        check_ticked_count(span, services.call.length,
+                           "the generated accessors expose #{services.call.length} " \
+                           "account-scoped services")
       when "fixture-categories"  then check_fixture_categories(span, fixtures.call)
       when "fixture-section-map" then check_fixture_section_map(span, fixtures.call)
       when "zero-skip-roster"    then check_zero_skip_roster(span, roster_lines.call)
+      when "account-scoped-services" then check_account_scoped_services(span, services.call)
       else []
       end
     )
@@ -1449,6 +1830,10 @@ def run(mode, openapi)
     puts "  bc3-pin          #{revision[0, 8]} (#{date})"
     puts "  assertion-types  #{schema_types.length}"
     puts "  operation-count  #{op_count.call}" if spans.any? { |s| s.kind == "operation-count" }
+    if spans.any? { |s| %w[service-count account-scoped-services].include?(s.kind) }
+      puts "  services         #{services.call.length} account-scoped " \
+           "(Kotlin and Swift accessors agree)"
+    end
     if spans.any? { |s| %w[fixture-categories fixture-section-map].include?(s.kind) }
       puts "  fixtures         #{fixtures.call.length} tracked under conformance/tests/"
     end
@@ -1483,6 +1868,11 @@ def run(mode, openapi)
     warn "                    Edit the YAML, then `make sync-api-version` to rewrite the block. " \
          "It is the"
     warn "                    one block the writer authors, because none of it is hand-written."
+    warn "  Service roster:   SPEC §5's and Appendix B's marked rosters are one comma-separated " \
+         "line each,"
+    warn "                    regenerated from the generated accessors:"
+    warn "                      rg -o 'public var (\\w+): \\w+Service' -r '$1' \\"
+    warn "                        #{SWIFT_ACCESSORS} | paste -sd, - | sed 's/,/, /g'"
     warn "  Unmarked pin:     see the A/B rule in AGENTS.md §Provenance is Mandatory."
     1
   end

@@ -79,6 +79,11 @@ ZERO_SKIP_LINES = [
 ].freeze
 ZERO_SKIP_BLOCK = ZERO_SKIP_LINES.map { |line| "#{line}\n" }.join
 
+KOTLIN_ACCESSORS = "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt"
+SWIFT_ACCESSORS  = "swift/Sources/Basecamp/Generated/AccountClient+Services.swift"
+ROSTER = "alpha, betaThing, gamma"
+SERVICE_COUNT = 3
+
 REVISION = "d0edc1283b231c58b7c88b014df5f8d231b1f7c8"
 SHORT    = REVISION[0, 8]
 PIN_DATE = "2026-07-31"
@@ -169,9 +174,44 @@ def default_files
         "fixture-categories" => { "SPEC.md" => 1 },
         "fixture-section-map" => { "SPEC.md" => 1 },
         "zero-skip-roster" => { "SPEC.md" => 1 },
+        "service-count" => { "SPEC.md" => 1 },
+        "account-scoped-services" => { "SPEC.md" => 1 },
       }
     ),
     "spec/zero-skip-roster.yml" => ZERO_SKIP_YAML,
+    # The two generated accessor files §5's service roster is derived from.
+    # Unlike every other source here they are read from DISK, not through
+    # `git ls-files`, so what matters is that they exist at the real paths with
+    # the real declaration syntax.
+    #
+    # `betaThing` is the `beta_write` of this pair: it is lowerCamelCase, so an
+    # extractor that lower-cased names or split on the capital would pass the
+    # positive control below and then reject half the real roster.
+    KOTLIN_ACCESSORS => <<~KT,
+      package com.basecamp.sdk.generated
+
+      /** Alpha operations. */
+      val AccountClient.alpha: AlphaService
+          get() = service("Alpha") { AlphaService(this) }
+
+      /** Beta operations. */
+      val AccountClient.betaThing: BetaThingService
+          get() = service("BetaThing") { BetaThingService(this) }
+
+      /** Gamma operations. */
+      val AccountClient.gamma: GammaService
+          get() = service("Gamma") { GammaService(this) }
+    KT
+    SWIFT_ACCESSORS => <<~SWIFT,
+      // @generated from OpenAPI spec — do not edit directly
+      import Foundation
+
+      extension AccountClient {
+          public var alpha: AlphaService { service("alpha") { AlphaService(accountClient: self) } }
+          public var betaThing: BetaThingService { service("betaThing") { BetaThingService(accountClient: self) } }
+          public var gamma: GammaService { service("gamma") { GammaService(accountClient: self) } }
+      }
+    SWIFT
     # Two tracked conformance fixtures, which is the whole source of truth for
     # the two roster checks — their CONTENT is never read, only their tracked
     # filenames. `beta_write` earns its underscore: the category slug rule
@@ -219,6 +259,12 @@ def default_files
 
       <!-- @zero-skip-roster:begin -->
       #{ZERO_SKIP_BLOCK}<!-- @zero-skip-roster:end -->
+
+      The account surface is `#{SERVICE_COUNT}` services. <!-- @service-count -->
+
+      <!-- @account-scoped-services:begin -->
+      #{ROSTER}
+      <!-- @account-scoped-services:end -->
     MD
     "spec/api-gaps/entry.md" => <<~MD,
       # An entry
@@ -334,6 +380,24 @@ out, status = gate(openapi_paths: {
   "/todos/{id}" => { "get" => {}, "parameters" => [], "summary" => "a summary", "servers" => [] },
 })
 expect_pass(failures, "path-item keys that are not operations are not counted", out, status)
+
+# The SAME hole as the empty-accessor case above, in the neighbouring kind, and
+# it predates this change: `.paths` of `{}` is a legitimate empty sum, so it
+# slips past the dig! that refuses a document with no `.paths` at all. In
+# --write — which returns before the per-kind checkers run — that rewrote every
+# @operation-count span across three files to `0` and exited 0.
+#
+# Guarding one of the two TICKED_INT_KINDS and not the other would make the rule
+# read as a special case for @service-count. Both restate a count derived from a
+# generated artifact, and for both, "the artifact yielded nothing" is a broken
+# input rather than news.
+out, status = gate(openapi_paths: {})
+expect_fail(failures, "an openapi with no operations at all", out, status,
+            "declares no operations at all")
+
+out, status = run_gate(mode: "--write", openapi_paths: {})
+expect_fail(failures, "writer refuses an openapi with no operations", out, status,
+            "declares no operations at all")
 
 # The decoy proves the count is read from --openapi, not the checkout: the
 # in-repo openapi.json declares five operations, so a gate reading it would
@@ -1505,6 +1569,247 @@ writer(nil) do |out, status, dir|
     failures << "writer: a correct block was rewritten into something else:\n#{written}"
   end
 end
+
+# --- substituted values that are not dates -------------------------------------
+#
+# `dig!` refuses a MISSING key and says nothing about a present-but-useless one.
+# Both of these are substituted by gsub rather than compared — rewrite_line
+# replaces every ISO date on a marked line with whatever it is handed — so ""
+# DELETES the dates instead of updating them, across every @api-version and
+# @bc3-pin span, and --write returns before any checker could object.
+#
+# .bc3.date is the likelier of the two, being the only one a human types: every
+# sync edits api-provenance.json by hand.
+
+out, status = gate(openapi_version: "")
+expect_fail(failures, "an empty api version", out, status, "which is not a YYYY-MM-DD date")
+
+out, status = run_gate(mode: "--write", openapi_version: "")
+expect_fail(failures, "writer refuses an empty api version", out, status,
+            "which is not a YYYY-MM-DD date")
+
+out, status = gate ->(f) {
+  f["spec/api-provenance.json"] = JSON.pretty_generate("bc3" => { "revision" => REVISION, "date" => "" })
+}
+expect_fail(failures, "an empty provenance date", out, status, "which is not a YYYY-MM-DD date")
+
+# The writer is the caller that can do damage, so it gets its own case, and it
+# reads the file back: an exit-only assertion passes for a writer that refused
+# for any reason at all.
+run_gate(mode: "--write", mutate: lambda { |f|
+  f["spec/api-provenance.json"] = JSON.pretty_generate("bc3" => { "revision" => REVISION, "date" => "nope" })
+}, inspect_result: lambda { |out, status, dir|
+  if status.success?
+    failures << "writer: a malformed provenance date must be fatal, got exit 0:\n#{utf8(out)}"
+  end
+  written = read_in(dir, "COORDINATION.md")
+  unless written.include?(PIN_DATE)
+    failures << "writer: rewrote the pin sentence from a date that is not one:\n#{written}"
+  end
+})
+
+# --- @account-scoped-services / @service-count (#600) --------------------------
+#
+# SPEC §5's service roster was seven services short, and the four numbers around
+# it disagreed with each other as well as with the SDKs. The issue said five;
+# `cloudFiles` and `googleDocuments` arrive through SERVICE_SPLITS rather than a
+# new top-level tag, so SPEC had never named them at all and counting the diff by
+# hand missed them too.
+
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("alpha, betaThing, gamma", "alpha, betaThing") }
+expect_fail(failures, "roster drops a service the accessors expose", out, status,
+            "missing: gamma")
+
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, "#{ROSTER}, phantom") }
+expect_fail(failures, "roster names a service no accessor exposes", out, status,
+            "no generated accessor exposes: phantom")
+
+# An emptied block is the vacuous-pass shape: with nothing to compare, a set
+# comparison is trivially satisfied in both directions.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("#{ROSTER}\n", "") }
+expect_fail(failures, "emptied roster block", out, status,
+            "block holds 0 non-empty line(s)")
+
+# THE INVARIANT, AS A CASE RATHER THAN A COMMENT: every misreading surfaces, and
+# none of them passes. #736 asserted exactly this property in prose and had it
+# breached three times — a duplicate block, a duplicate entry, and every list
+# spelling but one — so the shapes a parser might quietly skip are committed here
+# instead of promised.
+#
+# Reformatted as bullets, this roster is a list the parser has no rule for. It
+# must be an error, NOT a read of whichever line the parser recognised: a stale
+# name in a skipped line contradicts nothing and rides through green.
+out, status = gate lambda { |f|
+  f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, ROSTER.split(", ").map { |n| "- #{n}" }.join("\n"))
+}
+expect_fail(failures, "roster rewritten as bullets is refused, not partly read", out, status,
+            "block holds 3 non-empty line(s)")
+
+# The same rule catches an innocent wrap, which is the likelier way to get here.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("betaThing, gamma", "betaThing,\ngamma") }
+expect_fail(failures, "wrapped roster line is refused", out, status,
+            "block holds 2 non-empty line(s)")
+
+# A trailing comma yields an empty entry. Dropped instead of reported, it would
+# read as a clean list and the shape would go unremarked.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, "#{ROSTER},") }
+expect_fail(failures, "trailing comma in the roster", out, status,
+            "are not service names")
+
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("betaThing", "beta_thing") }
+expect_fail(failures, "roster entry in another SDK's casing", out, status,
+            '"beta_thing"')
+
+# Array#- drops every occurrence, so a repeat is invisible to the comparison:
+# both directions come back empty and the gate passes over a roster that is not
+# the enumeration it claims to be. Codex found this one in #736.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, "alpha, betaThing, gamma, gamma") }
+expect_fail(failures, "roster lists a service twice", out, status,
+            "more than once")
+
+# A SECOND block, holding a stale roster. #736's parser took the first match and
+# never compared the duplicate, so a stale line inside it passed unnoticed. Here
+# both blocks are spans, both are checked, AND the declared marker count is 1 —
+# so this fails whether or not the second block's content is wrong.
+out, status = gate lambda { |f|
+  f["SPEC.md"] += "\n<!-- @account-scoped-services:begin -->\nalpha, betaThing\n" \
+                  "<!-- @account-scoped-services:end -->\n"
+}
+expect_fail(failures, "a second roster block is not silently ignored", out, status,
+            "missing: gamma")
+
+# The two accessor files are two generators' renderings of ONE source. A
+# disagreement is a generator bug and a finding in its own right — never a
+# tiebreak to settle by preferring whichever file the gate happened to read.
+out, status = gate lambda { |f|
+  f[SWIFT_ACCESSORS] = f[SWIFT_ACCESSORS].sub(
+    /^ *public var gamma.*\n/, ""
+  )
+}
+expect_fail(failures, "accessor files disagree", out, status,
+            "disagree about the account-scoped service surface")
+
+# A name exposed twice is refused at the SOURCE, before any comparison. Doubled
+# in both files it would survive the agreement check above, and a set comparison
+# cannot see it either way: Array#- drops every occurrence, so the roster's
+# `missing` and `extra` both come back empty and it passes while enumerating
+# something neither file says. Deduplicating instead would hide the generator bug
+# behind a green tick.
+out, status = gate lambda { |f|
+  f[KOTLIN_ACCESSORS] += "\nval AccountClient.gamma: GammaService\n" \
+                         "    get() = service(\"Gamma\") { GammaService(this) }\n"
+  f[SWIFT_ACCESSORS] = f[SWIFT_ACCESSORS].sub(
+    /^( *public var gamma.*)$/, "\\1\n\\1"
+  )
+}
+expect_fail(failures, "an accessor exposed twice in both files", out, status,
+            "#{KOTLIN_ACCESSORS} exposes gamma more than once")
+
+# An extractor that stopped matching must name ITSELF, not blame the roster for
+# inventing every service in it.
+out, status = gate lambda { |f|
+  f[KOTLIN_ACCESSORS] = f[KOTLIN_ACCESSORS].gsub("val AccountClient.", "val Account_Client.")
+  f[SWIFT_ACCESSORS]  = f[SWIFT_ACCESSORS].gsub("public var ", "var ")
+}
+expect_fail(failures, "accessor extraction matching nothing is an internal error", out, status,
+            "named no services between them")
+
+# THE SAME BREAKAGE, IN --write, AND THIS IS THE CASE THAT MATTERS. --write
+# returns before the per-kind checkers run, so the guard that used to live in
+# check_account_scoped_services could not see this at all: both extractions
+# agreed at zero, the disagreement check passed, and the writer rewrote every
+# @service-count span to `0` and exited 0. `make generate` reporting success
+# while writing a count nobody derived, with the corruption already in the tree
+# by the time `make check` noticed.
+#
+# Asserting the exit alone would not pin it — a writer that refused for any
+# reason would pass. The file is read back and required to still state the real
+# count, so a regression that writes `0` and then fails loudly is caught too.
+broken_accessors = lambda { |f|
+  f[KOTLIN_ACCESSORS] = f[KOTLIN_ACCESSORS].gsub("val AccountClient.", "val AcctClient.")
+  f[SWIFT_ACCESSORS]  = f[SWIFT_ACCESSORS].gsub("public var ", "var ")
+}
+writer(broken_accessors) do |out, status, dir|
+  if status.success?
+    failures << "writer: an empty extraction must be fatal in --write, got exit 0:\n#{utf8(out)}"
+  end
+  written = read_in(dir, "SPEC.md")
+  if written.include?("`0` services")
+    failures << "writer: rewrote @service-count to `0` from an extraction that matched " \
+                "nothing:\n#{written[/^.*services.*$/]}"
+  end
+  unless written.include?("`#{SERVICE_COUNT}` services")
+    failures << "writer: expected the service count left at #{SERVICE_COUNT}, got:\n" \
+                "#{written[/^.*services.*$/]}"
+  end
+end
+
+# A missing source file is not "zero services" either.
+out, status = gate ->(f) { f.delete(SWIFT_ACCESSORS) }
+expect_fail(failures, "a deleted accessor file", out, status,
+            "missing #{SWIFT_ACCESSORS}")
+
+# @service-count is an ordinary ticked-int line kind: the same three failure
+# modes as @operation-count, over a different source.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("`#{SERVICE_COUNT}` services", "`46` services") }
+expect_fail(failures, "service-count drifted", out, status,
+            "@service-count says `46`")
+
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("`#{SERVICE_COUNT}` services", "many services") }
+expect_fail(failures, "service-count states no backticked integer", out, status,
+            "states no backticked integer")
+
+# The writer keeps @service-count current, and must leave the roster block alone
+# — a block kind is never written, and a roster it "helpfully" regenerated would
+# be a source change nobody reviewed.
+writer ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("`#{SERVICE_COUNT}` services", "`999` services") } do |out, status, dir|
+  expect_pass(failures, "writer rewrites a drifted service count", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?("`#{SERVICE_COUNT}` services")
+    failures << "writer: expected the service count restored to #{SERVICE_COUNT}:\n#{written}"
+  end
+end
+
+# THE COUNT AND THE ROSTER MUST MOVE TOGETHER. This case asserted the opposite
+# until an independent review reproduced what that cost: the count is writable
+# and the roster was not, so `make generate` rewrote every @service-count span to
+# the new number, exited 0, and left both marked blocks enumerating the old set —
+# a tracked spec contradicting itself, produced by a green generation run.
+#
+# They derive from ONE source, so splitting them across two update mechanisms was
+# never preserving a choice. The drift is applied to BOTH here, and both are
+# required back: restoring the count alone is the exact bug.
+writer ->(f) {
+  f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, "alpha, betaThing")
+                             .sub("`#{SERVICE_COUNT}` services", "`2` services")
+} do |out, status, dir|
+  expect_pass(failures, "writer restores a drifted roster and count together", out, status)
+  written = read_in(dir, "SPEC.md")
+  unless written.include?(ROSTER)
+    failures << "writer: expected the roster restored to #{ROSTER.inspect}, got:\n" \
+                "#{written[/^alpha.*$/]}"
+  end
+  unless written.include?("`#{SERVICE_COUNT}` services")
+    failures << "writer: expected the service count restored to #{SERVICE_COUNT}:\n" \
+                "#{written[/^.*services.*$/]}"
+  end
+end
+
+# An indented roster passed --check before this block became writable, because
+# scan_file allows a marker up to three spaces in and this checker strips before
+# splitting. The renderer emits at column zero, so `make generate` would have
+# silently lifted the roster out of its containing list while reporting success.
+# Codex found it the same day the block became writable.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub("\n#{ROSTER}\n", "\n  #{ROSTER}\n") }
+expect_fail(failures, "an indented roster line", out, status,
+            "carries leading or trailing whitespace")
+
+# The writer emits the accessors' order, but --check still compares SETS, so a
+# hand-reordered roster is not an error — it is normalised, not rejected. Pins
+# the narrowing that made writing the block acceptable: the writer normalises
+# without the checker starting to enforce a sequence.
+out, status = gate ->(f) { f["SPEC.md"] = f["SPEC.md"].sub(ROSTER, "gamma, alpha, betaThing") }
+expect_pass(failures, "a reordered roster still passes --check", out, status)
 
 # --- locale independence -------------------------------------------------------
 #

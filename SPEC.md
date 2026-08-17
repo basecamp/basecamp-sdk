@@ -52,7 +52,7 @@ When artifacts conflict, this precedence governs:
 |-----------|---------------|
 | **Config** | Holds validated configuration: base URL, timeouts, retry params, pagination caps. May support env-var override (see §2). |
 | **Client** | Top-level entry point. Enforces exactly-one-of auth. Owns account-independent services (authorization). |
-| **AccountClient** | Account-scoped facade. Prepends `/{accountId}` to paths. Owns all 46 account-scoped services. |
+| **AccountClient** | Account-scoped facade. Prepends `/{accountId}` to paths. Owns all `53` account-scoped services. <!-- @service-count --> |
 | **Services** | One class per API resource group. Generated from OpenAPI tags. Methods map to operations. |
 | **BaseService** | Abstract base for generated services. Provides request execution, error mapping, pagination following, hooks integration. |
 | **HTTP Transport** | Executes HTTP requests. Applies auth headers, User-Agent, Content-Type. Implements retry, caching. |
@@ -67,7 +67,7 @@ Client
 └── forAccount(accountId) → AccountClient
     ├── projects (service)
     ├── todos (service)
-    ├── ... (43 more services)
+    ├── ... (every other account-scoped service)
     └── HTTP Transport
         ├── Auth Middleware
         ├── Retry Middleware
@@ -295,15 +295,19 @@ Cross-SDK Divergence).
 
 - **authorization** — identity lookup and account listing via Launchpad. Exposes `getInfo()` which GETs `https://launchpad.37signals.com/authorization.json` and returns `{expires_at, identity, accounts}`. Implemented in Go, Ruby, and TypeScript. Swift and Kotlin do not currently expose this service — a known gap. OAuth utility functions (PKCE, state generation, discovery, code exchange) are standalone helpers in §16, not service methods.
 
-### AccountClient-Level Services (account-scoped) — 46 services
+### AccountClient-Level Services (account-scoped) — `53` services <!-- @service-count -->
 
-account, attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, comments, documents, events, everything, forwards, gauges, hillCharts, lineup, messageBoards, messageTypes, messages, myAssignments, myNotifications, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
+<!-- @account-scoped-services:begin -->
+account, attachments, automation, bookmarks, boosts, calendars, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, cloudFiles, comments, documents, drafts, events, everything, folders, forwards, gauges, googleDocuments, hillCharts, lineup, messageBoards, messageTypes, messages, myAssignments, myNotes, myNotifications, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
+<!-- @account-scoped-services:end -->
 
-**Total surface:** 1 client-level + 46 account-scoped = 47 services. The generated service index in each SDK (e.g. `typescript/src/generated/services/`) is the authoritative per-SDK surface; per-SDK counts vary slightly with split decisions — Go folds automation and client visibility onto other services, exposing 44 account-scoped accessors.
+**Total surface:** one client-level service (authorization) alongside the `53` account-scoped ones above. <!-- @service-count -->
+
+That roster is the canonical surface, not a per-SDK inventory. Accessor counts vary by SDK with split and wiring decisions, and Appendix F tabulates each — that table, not this section, is where a given SDK's surface is stated.
 
 ### Derivation Rule `[static]`
 
-The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split these into 46 fine-grained services using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`. These mappings are defined in each language's generator script and produce identical service sets across SDKs.
+The OpenAPI spec groups operations under coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split those tags into the `53` fine-grained services above <!-- @service-count --> using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`, `HillCharts`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`, `CloudFiles`, `GoogleDocuments`. Both examples are exhaustive on purpose: an abridged one is how `cloudFiles` and `googleDocuments` stayed invisible to this section for so long — a service that arrives through a split rather than a tag of its own is named nowhere a reader would look. These mappings are defined in each language's generator script. They are five hand-maintained copies of one table with no gate comparing them, so they are expected to produce identical service sets and are not guaranteed to: Appendix F records where they currently do not.
 
 ### Merge-Safe Write Surface (Cards)
 
@@ -3384,8 +3388,10 @@ Repeated from §5 for quick reference.
 
 **Client-level (1):** authorization
 
-**AccountClient-level (46):**
-account, attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, comments, documents, events, everything, forwards, gauges, hillCharts, lineup, messageBoards, messageTypes, messages, myAssignments, myNotifications, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
+**AccountClient-level (`53`):** <!-- @service-count -->
+<!-- @account-scoped-services:begin -->
+account, attachments, automation, bookmarks, boosts, calendars, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, cloudFiles, comments, documents, drafts, events, everything, folders, forwards, gauges, googleDocuments, hillCharts, lineup, messageBoards, messageTypes, messages, myAssignments, myNotes, myNotifications, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
+<!-- @account-scoped-services:end -->
 
 ---
 
@@ -3638,14 +3644,24 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 
 ### Service Coverage (§5)
 
+Counts are of accessors actually wired onto the client, against §5's canonical
+roster. The Kotlin and Swift rows are marked, because §5's roster is derived from
+exactly those two files and a restatement of a gated value has to be gated too.
+The other four are hand-verified and dated below — no gate derives them, and
+building one means a sixth hand-copy of each generator's split tables.
+
 | SDK | Account-scoped services |
 |-----|------------------------|
-| Swift | 46 (full canonical set) |
-| TypeScript | 46 (full canonical set) |
-| Kotlin | 46 public accessors backed by 46 generated service classes — 45 exposed directly; `todos` exposes a handwritten composite that subclasses the generated `TodosService` |
-| Ruby | 46 (full canonical set) |
-| Go | 44 as standalone accessors (folds `automation`; `clientVisibility` ops exist on `RecordingsService` rather than as a separate service). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
-| Python | 46 (full canonical set; sync + async) |
+| Swift | `53` — full canonical set (`AccountClient+Services.swift`, generated; one of §5's two sources) <!-- @service-count --> |
+| Kotlin | `53` — full canonical set (`ServiceAccessors.kt`, generated; §5's other source). Six accessors expose handwritten composites that subclass their generated service — `cards`, `documents`, `schedules`, `todolists`, `todos`, `uploads`, per the generator's `HAND_WRITTEN_SERVICES` — and the rest are the generated classes directly. The accessor set is identical either way, which is why §5 derives from this file regardless <!-- @service-count --> |
+| Ruby | 53 — full canonical set |
+| TypeScript | 53 — full canonical set, on the flat client alongside `authorization` (no `AccountClient` tier; see Client Topology above) |
+| Go | 51 accessors. Two services are folded rather than missing: `automation`'s sole operation is `LineupService.ListMarkers`, and `clientVisibility`'s is `RecordingsService.SetClientVisibility`. `timesheets` is spelled `Timesheet` (singular). Capability is 53/53; the surface is not. Hand-written service wrappers around the generated OpenAPI client — not fully generated. |
+| Python | 51 — `gauges` and `myNotifications` are a genuine wiring gap, not a fold: `generated/services/gauges.py` and `generated/services/my_notifications.py` both exist and neither `client.py` nor `async_client.py` references them (#732). Sync and async agree exactly. |
+
+Verified 2026-08-13 against the accessor declarations in each SDK's client
+(Go `AccountClient` methods, Ruby `Client#for_account` accessors, TS
+`defineService` calls, Python `_service` properties).
 
 ### Event Feed Connector Scenario Lane (§23)
 
