@@ -155,6 +155,21 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			return cycleOutcome{kind: outcomeFailed}, "", true
 		}
 		if p.err != nil {
+			// A socket outcome deferred while THIS call was in flight is
+			// dispatched before the poll error is classified. Transition 21's
+			// finish-the-page ordering is about a page that SUCCEEDED: it
+			// exists so an accepted page's deliveries and save are not
+			// stranded by the socket's death. A failed poll has no such page,
+			// and recoverPoll's terminal and re-entry branches dispose the
+			// attempt — which discards the deferral — so leaving it parked
+			// loses the server's own verdict. Concretely: an
+			// `invalid_event_stream_command` observed during CatchingUp,
+			// reported instead as authorization_failed or poll_failed, or
+			// retried indefinitely behind poll-retry waits when the error is
+			// transient.
+			if out, done := l.dispatchDeferred(at); done {
+				return out, "", true
+			}
 			step, out, done := l.recoverPoll(at, cursor, p.err)
 			if done {
 				return out, "", true
@@ -327,10 +342,14 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 				}
 				l.deferred = &deferredFrame{item: item}
 			}
+			// The superseded-poll bound starts HERE, at the deferral, and is
+			// read before the hook fires so nothing observing the deferral
+			// can race the deadline into existence behind it.
+			deadline := l.cfg.clock.Now().Add(l.cfg.staleAfter)
 			if l.hooks.frameDeferred != nil {
 				l.hooks.frameDeferred()
 			}
-			return l.awaitSupersededPoll(at, done)
+			return l.awaitSupersededPoll(at, done, deadline)
 		}
 	}
 }
@@ -338,10 +357,35 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 // awaitSupersededPoll waits out a seam call whose socket has already spoken.
 // The in-flight page is still accepted, delivered and saved when the call
 // completes — that ordering is what makes transition 21's page boundary the
-// place a dying socket is observed — but the wait is BOUNDED by the same
-// staleness window every other socket-open wait is: on the lapse the call is
-// abandoned to the deferred outcome's teardown.
-func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult) pollAttempt {
+// place a dying socket is observed — but the wait is BOUNDED: on the lapse the
+// call is abandoned to the deferred outcome's teardown.
+//
+// The bound is `deadline`: a FIXED instant, read from the injected clock at
+// the deferral and moved by nothing afterwards. It is deliberately NOT the staleness
+// verdict this wait used to borrow, and the difference is the whole point.
+// Every OTHER socket-open wait in the connector keeps DRAINING the hand-off
+// queue while it waits, which is what makes §23's suspension rule sound
+// there: a full queue really does prove the peer is outrunning a connector
+// that is still consuming. This wait is the one that deliberately stops
+// consuming — a frame is already parked in the deferral slot, and a second
+// receive would have nowhere to go. So the queue it stopped draining fills,
+// the pump blocks in handOff, and the suspension gets granted against a
+// premise that is false by construction: every firing is disregarded and
+// re-armed, forever, while a compliant PollSource that returns only on
+// cancellation holds the consumer's goroutine. A peer that keeps sending is
+// then enough to keep an already-dead socket's verdict from ever landing.
+//
+// The staleness firing and the re-arm wake are demoted to WAKE-UPS; the
+// deadline alone decides. evaluate is still called on a firing, and still
+// re-arms a suspended window — that re-arm is what guarantees the next wake
+// when the pump is blocked and no frame can deliver one — so the lapse is
+// observed at the first wake at or after the deadline.
+//
+// A dedicated timer would express this more directly, and is deliberately not
+// used: SPEC.md §23 pins exactly six timer kinds AND every state's exact
+// timer set, both asserted by the cross-SDK fixtures, so a seventh kind is a
+// spec change across six SDKs rather than a fix to the Go reference.
+func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline time.Time) pollAttempt {
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
@@ -354,6 +398,9 @@ func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult) pollAtte
 			if _, ok := at.lc.stale.evaluate(staleGen); ok {
 				return pollAttempt{superseded: true}
 			}
+		}
+		if !l.cfg.clock.Now().Before(deadline) {
+			return pollAttempt{superseded: true}
 		}
 	}
 }
@@ -498,8 +545,9 @@ func (l *loop) admissionPass(at *attempt) (cycleOutcome, bool) {
 // along the way, which is the one subtraction the invariant already allows
 // for and which the BufferOverflow signal reports before the held save.
 func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
-	// The scan runs under ONE budget for the whole drain — pumpDepth
-	// dequeues, the depth of the queue being scanned.
+	// The scan runs under ONE budget for the whole drain — pumpDepth+1
+	// dequeues: the depth of the queue being scanned, plus the one frame the
+	// pump may already have READ and be blocked handing off.
 	//
 	// It is deliberately NOT the ownership cut's liveBufferCapacity bound.
 	// That bound answers a different question ("how large an admission pass
@@ -512,15 +560,26 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 	// after the held save and the caught_up announcement the carve-out exists
 	// to prevent.
 	//
-	// pumpDepth is the bound the carve-out's guarantee falls out of: the
-	// hand-off queue is FIFO and holds at most pumpDepth items, so pumpDepth
-	// dequeues necessarily reach every frame the pump had queued when the
-	// drain began. A fatal frame therefore cannot hide behind ordinary frames,
-	// however many precede it. It still terminates — at most pumpDepth
-	// dequeues for the whole drain, after which the scan admits nothing, the
-	// buffer empties and the drain ends — which is what an unbounded
-	// scan-until-empty could not promise against a sustained sender, and the
-	// reason the held position would otherwise never save.
+	// pumpDepth+1 is the bound the carve-out's guarantee falls out of, and the
+	// +1 is load-bearing rather than slack. The drain-start boundary the
+	// guarantee is stated over is "every frame the pump had ALREADY READ",
+	// not "every frame sitting in the queue", and those differ by exactly
+	// one: the hand-off queue is FIFO and holds at most pumpDepth items,
+	// while the pump — a single goroutine, so at most one hand-off in flight
+	// — may be blocked inside handOff with one more. A budget of pumpDepth
+	// spends itself on that frame's predecessors; the first dequeue releases
+	// the blocked hand-off, the held frame enters at the TAIL, and if it is
+	// the `invalid_event_stream_command` the carve-out exists for, the scan
+	// stops one short of it. The drain then completes, the held entry
+	// position saves and `caught_up` announces — precisely what the carve-out
+	// forbids. pumpDepth+1 reaches it, and cannot grow further: one reader
+	// goroutine can hold no more than one frame outside the queue.
+	//
+	// It still terminates — at most pumpDepth+1 dequeues for the whole drain,
+	// after which the scan admits nothing, the buffer empties and the drain
+	// ends — which is what an unbounded scan-until-empty could not promise
+	// against a sustained sender, and the reason the held position would
+	// otherwise never save.
 	//
 	// What the bound does NOT promise is a fatal frame that both ARRIVES
 	// after the drain began and sits behind pumpDepth other frames that also
@@ -552,8 +611,8 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 	// decreasing quantities: each turn either delivers one buffered event or
 	// finds the buffer empty and ends, while the scan's budget bounds total
 	// admissions. Total replay work stays the buffer's occupancy at entry
-	// plus pumpDepth.
-	budget := pumpDepth
+	// plus pumpDepth+1.
+	budget := pumpDepth + 1
 	for {
 		if out, done := l.drainScan(at, &budget); done {
 			return out, true

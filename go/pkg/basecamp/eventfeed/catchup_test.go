@@ -1437,3 +1437,176 @@ func assertProtocolFatalDrain(t *testing.T, h *harness, store *feedtest.Store, c
 		t.Fatalf("caught_up announcements = %d, want 0 — the drain never completed", caughtUp)
 	}
 }
+
+// TestSupersededPollBoundSurvivesPumpBackPressure is the second half of
+// transition 21's bound, and the reason the wait no longer borrows the
+// staleness verdict.
+//
+// Every OTHER socket-open wait in the connector keeps DRAINING the hand-off
+// queue while it waits, which is what makes §23's suspension rule sound
+// there: a full queue really does prove the peer is outrunning a connector
+// that is still consuming. This wait is the one that deliberately stops
+// consuming — a frame is already parked in the deferral slot. So the queue it
+// stopped draining fills, the pump blocks in hand-off, and the suspension is
+// granted against a premise that is false by construction: every firing gets
+// disregarded and re-armed, forever, while a compliant PollSource that
+// returns only on cancellation holds the consumer's goroutine. A peer that
+// keeps sending is then enough to keep an already-dead socket's verdict from
+// ever landing.
+func TestSupersededPollBoundSurvivesPumpBackPressure(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	h := storedHarness(t, store)
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.StallNext()
+
+	deferred := make(chan struct{}, 4)
+	h.conn.OnFrameDeferred(func() { deferred <- struct{}{} })
+	blocked := make(chan struct{}, 1)
+	h.conn.OnPumpBlocked(func() {
+		select {
+		case blocked <- struct{}{}:
+		default:
+		}
+	})
+	var conn *feedtest.Conn
+	h.polls.OnCall(func(feedtest.PollCall) {
+		// The socket speaks its last word while the entry poll is
+		// outstanding: the outcome is deferred, and the walk stops draining.
+		conn.Serve(frameDisconnect("remote", true))
+		select {
+		case <-deferred:
+		case <-time.After(watchdog):
+			t.Error("the disconnect frame was never deferred")
+		}
+		// A peer that keeps sending now fills the queue nothing is draining.
+		for i := 0; i <= eventfeed.ExportPumpDepth; i++ {
+			conn.Serve(framePing())
+		}
+		select {
+		case <-blocked:
+		case <-time.After(watchdog):
+			t.Error("the pump never blocked on a full hand-off queue")
+		}
+		// One window from the deferral, with the suspension in force.
+		h.clock.Advance(staleAfter)
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("abandoning the superseded call must dispose the attempt")
+	}
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("a socket drop mid-walk is never terminal; got %v", terminal)
+	}
+	assertPositions(t, store.Saves())
+}
+
+// TestDeferredProtocolFatalOutranksAFailedPoll dispatches a deferred socket
+// outcome before a poll error is classified. Transition 21's
+// finish-the-page ordering exists so an accepted page's deliveries and save
+// are not stranded by the socket's death — it is about a page that SUCCEEDED.
+// A failed poll has no such page, and recoverPoll's terminal and re-entry
+// branches dispose the attempt, which discards the deferral: the server's own
+// protocol-fatal verdict is replaced by whatever the poll happened to fail
+// with.
+func TestDeferredProtocolFatalOutranksAFailedPoll(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	h := storedHarness(t, store)
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollUnauthorized})
+
+	deferred := make(chan struct{}, 4)
+	h.conn.OnFrameDeferred(func() { deferred <- struct{}{} })
+	var conn *feedtest.Conn
+	h.polls.OnCall(func(feedtest.PollCall) {
+		conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+		select {
+		case <-deferred:
+		case <-time.After(watchdog):
+			t.Error("the disconnect frame was never deferred")
+		}
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonProtocolFatal {
+		t.Fatalf("terminal = %v, want reason %q — the server's verdict was already observed", terminal, eventfeed.ReasonProtocolFatal)
+	}
+	assertPositions(t, store.Saves())
+}
+
+// TestProtocolFatalBehindTheBlockedHandOffIsImmediate extends the carve-out's
+// scan bound to the frame the pump has already READ but not yet handed off.
+//
+// The drain-start boundary the guarantee is stated over is "every frame the
+// pump had already read", and that differs from the queue's contents by
+// exactly one: the pump is a single goroutine, so at most one hand-off is in
+// flight. With the queue full of ordinary frames and the fatal one held in
+// that hand-off, a budget of pumpDepth spends itself on the fatal frame's
+// predecessors — Go hands a blocked sender's value into the buffer during the
+// very first receive, so the fatal enters at the TAIL and sits exactly one
+// dequeue past the budget. The drain then completes, the held entry position
+// saves and `caught_up` announces: precisely what the carve-out forbids.
+func TestProtocolFatalBehindTheBlockedHandOffIsImmediate(t *testing.T) {
+	var caughtUp int
+	store := feedtest.NewStore()
+	h := storedHarness(t, store, eventfeed.WithObserver(eventfeed.Observer{
+		CaughtUp: func() { caughtUp++ },
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	blocked := make(chan struct{}, 1)
+	h.conn.OnPumpBlocked(func() {
+		select {
+		case blocked <- struct{}{}:
+		default:
+		}
+	})
+	h.pauseAfter = 1
+	h.start()
+
+	conn := h.driveToSubscribed()
+	h.serveSettled(conn, frameMessage(noFilterIdentifier, 41))
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	// The consumer parks inside the drain's delivery of the retained event,
+	// so nothing dequeues while the queue fills.
+	h.waitUntil("the drain parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
+	// The scan handles a whole queue's worth of frames in one pass, which is
+	// more than the harness's frame-handled channel holds; nothing waits on
+	// it from here, so it is drained for the rest of the test.
+	drained := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-h.handled:
+			case <-drained:
+				return
+			}
+		}
+	}()
+	t.Cleanup(func() { close(drained) })
+	for i := 0; i < eventfeed.ExportPumpDepth; i++ {
+		conn.Serve(framePing())
+	}
+	conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+	select {
+	case <-blocked:
+	case <-time.After(watchdog):
+		t.Fatal("the pump never blocked handing off the fatal frame")
+	}
+	h.resume()
+	h.join()
+
+	assertProtocolFatalDrain(t, h, store, caughtUp)
+	assertIDs(t, h.deliveredIDs(), 41)
+}
