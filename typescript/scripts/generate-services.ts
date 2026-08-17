@@ -1775,6 +1775,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   main();
 }
 
-// Exported for generator regression tests.
-export { generateExampleValue, setSchemas, buildReturnType };
+// Exported for generator regression tests. `generateMethod` is here because
+// the declared return type is only half of a wrapped-paginated signature —
+// nothing but the emitted method shows the `requestPaginatedWrapped` type
+// argument, and the two have to name the same element.
+export { generateExampleValue, setSchemas, buildReturnType, generateMethod };
 export type { Schema, ParsedOperation };

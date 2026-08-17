@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildReturnType, setSchemas, type ParsedOperation, type Schema } from "../../scripts/generate-services.js";
+import {
+  buildReturnType,
+  generateMethod,
+  setSchemas,
+  type ParsedOperation,
+  type Schema,
+} from "../../scripts/generate-services.js";
 
 // Regression coverage for the return type of paginated operations (#737).
 //
@@ -158,6 +164,37 @@ describe("buildReturnType — paginated operations", () => {
       );
 
       expect(returnType).toBe('{ person: Person; widgets: ListResult<components["schemas"]["WidgetThing"]> }');
+    });
+
+    // A wrapped-paginated signature is emitted in two places that must name the
+    // same element: the declared return type above, and the
+    // `requestPaginatedWrapped<key, T>` type argument inside the method body.
+    // `buildReturnType` cannot see the second one, and neither can anything
+    // else in the repo — verified by mutation. Regressing that argument to
+    // `unknown` and regenerating leaves `make ts-check` entirely green: drift
+    // passes (the committed output was regenerated to match), both typecheck
+    // projects pass (the generated method casts the result to its separately
+    // built return type, so the disagreement never surfaces), and all tests
+    // pass. `paginated-returns.test-d.ts` cannot reach it either — it pins the
+    // four operations that hit the ARRAY miss.
+    //
+    // So the agreement is asserted here, on the emitted method, for both the
+    // hit and the miss.
+    it.each([
+      { ref: "TimelineReportResponseContent", key: "events", element: "TimelineEvent" },
+      { ref: "WidgetReportResponseContent", key: "widgets", element: 'components["schemas"]["WidgetThing"]' },
+    ])("emits $element as both the declared element and the paginated type argument", ({ ref, key, element }) => {
+      const op = operation({
+        responseSchemaRef: ref,
+        returnsArray: false,
+        hasPagination: true,
+        paginationKey: key,
+      });
+
+      expect(generateMethod(op, "Reports").join("\n")).toContain(
+        `return this.requestPaginatedWrapped<"${key}", ${element}>(`,
+      );
+      expect(buildReturnType(op, "Reports")).toContain(`${key}: ListResult<${element}>`);
     });
   });
 });
