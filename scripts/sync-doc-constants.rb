@@ -397,16 +397,19 @@ end
 # TypeScript, Ruby and Python tables but omitted from BOTH of these two leaves
 # them agreeing, and this gate certifies the old roster and the old count.
 #
-# That residue is real and is NOT closed here. The instrument that would close
-# it is comparing the GENERATED service inventories of all five SDKs — which is
-# not the sixth hand-copy rejected above, since it reads generator OUTPUT rather
-# than reimplementing the mapping. Verified viable: the TypeScript, Ruby and
-# Python generated service sets already agree exactly with these 53 today, once
-# each SDK's index/base files and Python's `_service` filename suffix are
-# accounted for. It is left to its own change because that normalization is four
-# per-SDK spelling rules, and bolting them onto the gate whose own argument is
-# "stop accreting spellings" is the wrong place to introduce them. Codex raised
-# this on #745; tracked as the cross-generator comparison follow-up.
+# That residue is real and is closed ELSEWHERE, not here:
+# scripts/check-service-inventory-parity compares the GENERATED service
+# inventories of all six SDKs — which is not the sixth hand-copy rejected above,
+# since it reads generator OUTPUT rather than reimplementing the mapping. It also
+# checks these two accessor files against their own generated services
+# directories, so a Kotlin or Swift generator that emitted a service file but no
+# accessor cannot leave this gate certifying a short roster. Codex raised the
+# residue on #745; it landed as its own change (#747) because the normalization
+# is a per-SDK spelling rule each, and bolting them onto the gate whose own
+# argument is "stop accreting spellings" is the wrong place to introduce them.
+#
+# What is still true here: this gate alone cannot detect a service both
+# generators missed. It is sound because the other one runs beside it.
 #
 # Failures here are exit 2, not exit 1: a broken source of truth is not
 # documentation drift, and "the roster disagrees with a file that is itself
