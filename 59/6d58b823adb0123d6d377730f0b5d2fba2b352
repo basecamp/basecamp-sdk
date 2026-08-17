@@ -1,0 +1,106 @@
+typescript/tests/auth-strategy.test.ts
+  s_c7205968e852ea::t_0e4c3ca9a5fa20 13-20
+  s_c7205968e852ea::t_86259f703ca987 56,60,78-79,101,105,117,123,127,139
+typescript/tests/integration.test.ts
+  s_c7205968e852ea::t_1127f16ab36fcc 190-192
+  s_c7205968e852ea::t_30bb2e6605605f 167
+typescript/tests/services/schedules.test.ts
+  s_c7205968e852ea::t_ed05b5e16a8d42 254-260
+  s_c7205968e852ea::t_7d862f9a2c935f 921-925
+  s_c7205968e852ea::t_b0e979a6c5e522 27
+  s_c7205968e852ea::t_3ffa8b221ff068 228-232,238
+  s_c7205968e852ea::t_0bd0b0eb397423 872-874,878,887
+typescript/tests/services/uploads.test.ts
+  s_c7205968e852ea::t_3a73582bc0baa6 256-258,262
+  s_c7205968e852ea::t_a89e795b46c1d1 217-219
+  s_c7205968e852ea::t_5244d0366d1ea4 279-280
+  s_c7205968e852ea::t_5b8fee9535fbd0 22-39
+  s_c7205968e852ea::t_d3ce5109249423 14
+  s_c7205968e852ea::t_0279d0c041dcf4 185-195,201
+  s_c7205968e852ea::t_2866b1a216c5c7 471-473
+typescript/tests/services/vaults.test.ts
+  s_c7205968e852ea::t_2dc69527297895 124-128,132,139
+  s_c7205968e852ea::t_eda20f8c58f141 171-173,177,184
+typescript/tsconfig.test.json
+  s_c7205968e852ea::t_03b283d1373639 21-24,28,31
+  s_c7205968e852ea::t_4a99a9176be366 26
+  s_c7205968e852ea::t_d26520c44b82ea 3-6,30
+  s_c7205968e852ea::t_5fa2ed0f4c6d33 1-2,7-15,25,27,29
+  s_c7205968e852ea::t_d8238b451b01a0 16-20
+typescript/scripts/generate-services.ts
+  s_c7205968e852ea::t_7f98938c3cfc02 841-847
+  s_c7205968e852ea::t_4364a210c4d405 848
+typescript/package.json
+  s_c7205968e852ea::t_14ea252305026d 31
+typescript/tests/hooks.test.ts
+  s_c7205968e852ea::t_d285678ad9460d 4
+  s_c7205968e852ea::t_3fd57f70cd70d5 179-188,192-194
+typescript/tests/services/hill-charts.test.ts
+  s_c7205968e852ea::t_49c8f6623f37d2 119-124
+  s_c7205968e852ea::t_ea95bbd7f535f1 80-86
+typescript/tests/services/recordings.test.ts
+  s_c7205968e852ea::t_e35b6840da53af 68
+  s_c7205968e852ea::t_487e1a5ff05ee1 66-67,69-70,74
+  s_c7205968e852ea::t_403be74d95e8b8 87-91,95-96,100,107
+typescript/tests/services/boosts.test.ts
+  s_c7205968e852ea::t_0373658460115b 45-49
+typescript/tests/services/subscriptions.test.ts
+  s_c7205968e852ea::t_a1097b19304e01 126-131
+  s_c7205968e852ea::t_ea64551e9232be 47-53
+typescript/README.md
+  s_c7205968e852ea::t_e03c427ac6469a 926
+typescript/tests/services/my-notifications.test.ts
+  s_c7205968e852ea::t_c9cc9bb24250a4 51-65
+  s_c7205968e852ea::t_c214c49bab68ee 166-169,172-173
+  s_c7205968e852ea::t_f860df7c279a05 130-133,136-137
+  s_c7205968e852ea::t_09139617e7ab4a 94-101
+typescript/tests/security.test.ts
+  s_c7205968e852ea::t_5fc8d8d6caecdd 30-37
+  s_c7205968e852ea::t_d6748fce59a1df 57,72,94,125,159,206,286,301,326,348,366,388,400,422,441,459,543,574,580,601-602
+typescript/tests/services/documents.test.ts
+  s_c7205968e852ea::t_a3e2cc73c1e2b3 22
+  s_c7205968e852ea::t_0d3f43cfef2c80 173-180,186
+  s_c7205968e852ea::t_7401606732fe61 202-204
+  s_c7205968e852ea::t_764c1a66c54a9c 567-571
+typescript/tests/client.test.ts
+  s_c7205968e852ea::t_79d818ad1eb9d4 480,493-495
+  s_c7205968e852ea::t_898739c7647069 15-22
+  s_c7205968e852ea::t_a85305e2507605 30,34,46,52,56,71,81,85,97-98,102,106,121,125,129,145
+typescript/tests/services/todos.test.ts
+  s_c7205968e852ea::t_8d1828d4911b59 6
+  s_c7205968e852ea::t_5b60086f1a2957 560-564
+typescript/tests/middleware-lifecycle.test.ts
+  s_c7205968e852ea::t_b5c8858360e0de 92,122-123,125-127,129,659,677-678,680
+typescript/tests/services/cards.test.ts
+  s_c7205968e852ea::t_5bc9129e27652f 10
+typescript/tests/services/client-visibility.test.ts
+  s_c7205968e852ea::t_483d998230ccb6 9
+typescript/tests/services/comments.test.ts
+  s_c7205968e852ea::t_3add551ae9a54f 10
+typescript/tests/services/gauges.test.ts
+  s_c7205968e852ea::t_b1dc101d5cca38 26-27
+typescript/tests/services/messages.test.ts
+  s_c7205968e852ea::t_aa989fa774b1fb 10
+typescript/tests/services/search.test.ts
+  s_c7205968e852ea::t_4fb3e53f727e14 17
+typescript/tests/services/todolists.test.ts
+  s_c7205968e852ea::t_34fc33e23b56c3 10-12
+typescript/tests/services/tools.test.ts
+  s_c7205968e852ea::t_0392b8236fe49b 16-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "596d58b823adb0123d6d377730f0b5d2fba2b352",
+  "prompts": {},
+  "sessions": {
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
