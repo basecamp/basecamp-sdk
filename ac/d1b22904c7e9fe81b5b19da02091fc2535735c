@@ -1,0 +1,22 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampException.kt
+  s_c7205968e852ea::t_58e1e93aa1adc3 164-165,167-178
+  s_c7205968e852ea::t_b48204ee5d2d6c 119-126,129-132
+kotlin/sdk/src/jvmTest/kotlin/com/basecamp/sdk/ApiConstructorSurfaceTest.kt
+  s_c7205968e852ea::t_e334edc1ce9976 11,14-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "acd1b22904c7e9fe81b5b19da02091fc2535735c",
+  "prompts": {},
+  "sessions": {
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
