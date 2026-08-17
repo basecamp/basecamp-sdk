@@ -24,6 +24,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
+import type { JsonBodyType } from "msw";
 import { server } from "../setup.js";
 import type { SchedulesService } from "../../src/services/schedules-extensions.js";
 import { BasecampError } from "../../src/errors.js";
@@ -224,13 +225,17 @@ describe("SchedulesService", () => {
     });
 
     it("should send all fields in request body", async () => {
-      let capturedBody: Record<string, unknown> | null = null;
+      // Held in an object, not a `let`: control-flow analysis cannot see the
+      // assignment inside the handler closure, so a `let ... = null` binding
+      // narrows to `null` and every field read below becomes `never`. The
+      // optional chaining still makes an unrun handler fail the assertions.
+      const captured: { body?: Record<string, unknown> } = {};
 
       server.use(
         http.post(
           `${BASE_URL}/schedules/4001/entries.json`,
           async ({ request }) => {
-            capturedBody = (await request.json()) as Record<string, unknown>;
+            captured.body = (await request.json()) as Record<string, unknown>;
             return HttpResponse.json({ id: 1, summary: "Test" });
           },
         ),
@@ -246,13 +251,13 @@ describe("SchedulesService", () => {
         notify: true,
       });
 
-      expect(capturedBody?.summary).toBe("Test Event");
-      expect(capturedBody?.starts_at).toBe("2024-12-20T14:00:00Z");
-      expect(capturedBody?.ends_at).toBe("2024-12-20T15:00:00Z");
-      expect(capturedBody?.description).toBe("<p>Description</p>");
-      expect(capturedBody?.participant_ids).toEqual([1001, 1002]);
-      expect(capturedBody?.all_day).toBe(true);
-      expect(capturedBody?.notify).toBe(true);
+      expect(captured.body?.summary).toBe("Test Event");
+      expect(captured.body?.starts_at).toBe("2024-12-20T14:00:00Z");
+      expect(captured.body?.ends_at).toBe("2024-12-20T15:00:00Z");
+      expect(captured.body?.description).toBe("<p>Description</p>");
+      expect(captured.body?.participant_ids).toEqual([1001, 1002]);
+      expect(captured.body?.all_day).toBe(true);
+      expect(captured.body?.notify).toBe(true);
     });
 
     // Client-side validation short-circuits before any HTTP call. No MSW handler
@@ -864,11 +869,13 @@ describe("SchedulesService", () => {
     });
 
     it("should send include_due_assignments in request body", async () => {
-      let capturedBody: { include_due_assignments?: boolean } | null = null;
+      // Object-held for the same reason as above: a `let ... = null` captured
+      // only inside the handler closure narrows to `null`.
+      const captured: { body?: { include_due_assignments?: boolean } } = {};
 
       server.use(
         http.put(`${BASE_URL}/schedules/4001`, async ({ request }) => {
-          capturedBody = (await request.json()) as {
+          captured.body = (await request.json()) as {
             include_due_assignments?: boolean;
           };
           return HttpResponse.json({ id: 4001, title: "Schedule" });
@@ -877,7 +884,7 @@ describe("SchedulesService", () => {
 
       await service.updateSettings(4001, { includeDueAssignments: true });
 
-      expect(capturedBody?.include_due_assignments).toBe(true);
+      expect(captured.body?.include_due_assignments).toBe(true);
     });
   });
 
@@ -911,7 +918,11 @@ describe("SchedulesService", () => {
     const writableStrings = ["summary", "starts_at", "ends_at", "description"] as const;
 
     // Serve a GET carrying `body` and a PUT that records that it happened.
-    const serve = (body: unknown, requests: string[]) => {
+    // `body` is whatever a successful API response could carry -- a malformed
+    // field inside an object, or a malformed top-level body (array, scalar,
+    // null). That is exactly MSW's `JsonBodyType`, so name it rather than
+    // `unknown`, which `HttpResponse.json` cannot serialize.
+    const serve = (body: JsonBodyType, requests: string[]) => {
       server.use(
         http.get(`${BASE_URL}/schedule_entries/4101`, () => {
           requests.push("GET");

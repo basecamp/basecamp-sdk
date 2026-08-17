@@ -44,8 +44,13 @@ describe("SubscriptionsService", () => {
 
       expect(subscription.subscribed).toBe(true);
       expect(subscription.count).toBe(3);
-      expect(subscription.subscribers).toHaveLength(3);
-      expect(subscription.subscribers[0].name).toBe("User One");
+      // `subscribers` is optional in the generated schema. Assert presence
+      // first so a response that omits it fails here, then read through the
+      // narrowed local.
+      expect(subscription.subscribers).toBeDefined();
+      const subscribers = subscription.subscribers!;
+      expect(subscribers).toHaveLength(3);
+      expect(subscribers[0].name).toBe("User One");
     });
   });
 
@@ -118,9 +123,12 @@ describe("SubscriptionsService", () => {
       });
 
       expect(subscription.count).toBe(4);
-      expect(subscription.subscribers.map(s => s.id)).toContain(4);
-      expect(subscription.subscribers.map(s => s.id)).toContain(5);
-      expect(subscription.subscribers.map(s => s.id)).not.toContain(3);
+      // See the note in `get`: `subscribers` is optional.
+      expect(subscription.subscribers).toBeDefined();
+      const subscribers = subscription.subscribers!;
+      expect(subscribers.map(s => s.id)).toContain(4);
+      expect(subscribers.map(s => s.id)).toContain(5);
+      expect(subscribers.map(s => s.id)).not.toContain(3);
     });
 
     it("should work with only subscriptions", async () => {

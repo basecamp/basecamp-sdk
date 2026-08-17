@@ -214,7 +214,7 @@ export class GaugesService extends BaseService {
    * const filtered = await client.gauges.listGaugeNeedles(123, { page: 1 });
    * ```
    */
-  async listGaugeNeedles(projectId: number, options?: ListGaugeNeedlesGaugeOptions): Promise<components["schemas"]["ListGaugeNeedlesResponseContent"]> {
+  async listGaugeNeedles(projectId: number, options?: ListGaugeNeedlesGaugeOptions): Promise<ListResult<components["schemas"]["GaugeNeedle"]>> {
     return this.requestPaginated(
       {
         service: "Gauges",
@@ -286,7 +286,7 @@ export class GaugesService extends BaseService {
    * const filtered = await client.gauges.listGauges({ bucketIds: "example" });
    * ```
    */
-  async listGauges(options?: ListGaugesGaugeOptions): Promise<components["schemas"]["ListGaugesResponseContent"]> {
+  async listGauges(options?: ListGaugesGaugeOptions): Promise<ListResult<components["schemas"]["Gauge"]>> {
     return this.requestPaginated(
       {
         service: "Gauges",

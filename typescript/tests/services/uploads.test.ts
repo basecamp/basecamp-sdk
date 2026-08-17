@@ -11,13 +11,31 @@ import { server } from "../setup.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 // Sourced from the shared, coverage-guarded fixture (spec/fixtures/manifest.yaml)
-import versionsFixture from "../../../spec/fixtures/uploads/versions.json";
+import versionsFixture from "../../../spec/fixtures/uploads/versions.json" with { type: "json" };
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
 // Infer the service type from client.uploads so download() is visible on the
 // type (the subclass lives in src/services/uploads-extensions.ts).
 type UploadsServiceT = ReturnType<typeof createBasecampClient>["uploads"];
+
+// House pattern (see tests/services/gauges.test.ts): a bare `.catch(e => e)`
+// types the binding as `Upload | BasecampError`, so the error fields below
+// don't typecheck. `rejection` turns an unexpected RESOLUTION into a failure
+// rather than a silently-skipped assertion, and `asBasecampError` narrows only
+// after asserting the class.
+const rejection = async (promise: Promise<unknown>): Promise<unknown> =>
+  promise.then(
+    () => {
+      throw new Error("expected the call to reject, but it resolved");
+    },
+    (error: unknown) => error,
+  );
+
+const asBasecampError = (error: unknown): BasecampError => {
+  expect(error).toBeInstanceOf(BasecampError);
+  return error as BasecampError;
+};
 
 describe("UploadsService", () => {
   let service: UploadsServiceT;
@@ -164,17 +182,23 @@ describe("UploadsService", () => {
     });
 
     it("should send all fields in request body", async () => {
-      let capturedBody: {
-        attachable_sgid?: string;
-        description?: string;
-        base_name?: string;
-      } | null = null;
+      // Held in an object, not a `let`: control-flow analysis cannot see the
+      // assignment inside the handler closure, so a `let ... = null` binding
+      // narrows to `null` and every field read below becomes `never`. The
+      // optional chaining still makes an unrun handler fail the assertions.
+      const captured: {
+        body?: {
+          attachable_sgid?: string;
+          description?: string;
+          base_name?: string;
+        };
+      } = {};
 
       server.use(
         http.post(
           `${BASE_URL}/vaults/1001/uploads.json`,
           async ({ request }) => {
-            capturedBody = (await request.json()) as {
+            captured.body = (await request.json()) as {
               attachable_sgid?: string;
               description?: string;
               base_name?: string;
@@ -190,9 +214,9 @@ describe("UploadsService", () => {
         baseName: "custom-name",
       });
 
-      expect(capturedBody?.attachable_sgid).toBe("test-sgid");
-      expect(capturedBody?.description).toBe("<p>Description</p>");
-      expect(capturedBody?.base_name).toBe("custom-name");
+      expect(captured.body?.attachable_sgid).toBe("test-sgid");
+      expect(captured.body?.description).toBe("<p>Description</p>");
+      expect(captured.body?.base_name).toBe("custom-name");
     });
 
     // Client-side validation short-circuits before any HTTP call. No MSW handler
@@ -229,12 +253,13 @@ describe("UploadsService", () => {
     });
 
     it("should send updated fields in request body", async () => {
-      let capturedBody: { description?: string; base_name?: string } | null =
-        null;
+      // Object-held for the same reason as above.
+      const captured: { body?: { description?: string; base_name?: string } } =
+        {};
 
       server.use(
         http.put(`${BASE_URL}/uploads/7001`, async ({ request }) => {
-          capturedBody = (await request.json()) as {
+          captured.body = (await request.json()) as {
             description?: string;
             base_name?: string;
           };
@@ -251,8 +276,8 @@ describe("UploadsService", () => {
         baseName: "renamed-file",
       });
 
-      expect(capturedBody?.description).toBe("New description");
-      expect(capturedBody?.base_name).toBe("renamed-file");
+      expect(captured.body?.description).toBe("New description");
+      expect(captured.body?.base_name).toBe("renamed-file");
     });
   });
 
@@ -443,11 +468,10 @@ describe("UploadsService", () => {
         }),
       );
 
-      const error = await service
-        .createVersion(7001, { attachableSgid: "sgid-abc" })
-        .catch((e) => e as BasecampError);
+      const error = asBasecampError(
+        await rejection(service.createVersion(7001, { attachableSgid: "sgid-abc" })),
+      );
 
-      expect(error).toBeInstanceOf(BasecampError);
       expect(error.code).toBe("limit_exceeded");
       expect(error.retryable).toBe(false);
       expect(error.message).toContain("storage limit");

@@ -7,9 +7,9 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
-import todolistFixture from "../../../spec/fixtures/todolists/get.json";
-import groupFixture from "../../../spec/fixtures/todolist_groups/get.json";
-import groupListFixture from "../../../spec/fixtures/todolist_groups/list.json";
+import todolistFixture from "../../../spec/fixtures/todolists/get.json" with { type: "json" };
+import groupFixture from "../../../spec/fixtures/todolist_groups/get.json" with { type: "json" };
+import groupListFixture from "../../../spec/fixtures/todolist_groups/list.json" with { type: "json" };
 import type { OperationInfo } from "../../src/hooks.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";

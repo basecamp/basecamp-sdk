@@ -1,0 +1,38 @@
+// Typecheck-only project covering the tests and the generator scripts
+// alongside src/. `npm run typecheck` runs it after the build project.
+//
+// tsconfig.json is the *build* project: it emits declarations under
+// rootDir: "src", so tests cannot join it without landing in dist/. This
+// project turns emit off, widens rootDir to the package, and — critically —
+// resets `exclude`, since an inherited "tests" entry silently drops every test
+// file from the program even when `include` names them. That inherited
+// exclusion is what let issue #737 ship: four generated methods declared a
+// return type the runtime contradicted, and no job ever typechecked a caller.
+//
+// noUncheckedIndexedAccess is deliberately off here. It stays on for the
+// shipped surface (the build project still checks src/ with it), but in test
+// code it only buys `calls[0]!` ceremony: an undefined index fails the
+// assertion on the next line anyway.
+//
+// `skipLibCheck: true` is inherited and stays. It does not weaken the type
+// assertions in tests/types/paginated-returns.test-d.ts: that file ends in
+// `-d.ts`, not `.d.ts`, so TypeScript checks it like any other source (flip an
+// assertion to a false one and tsc reports TS2344 on it). Turning the flag off
+// is not free -- it fails on 22 errors inside @mswjs/interceptors' browser
+// `.d.mts` and adds ~20s to every run.
+//
+// `lib` is ES2023 because that is what the code in this project actually runs
+// on: the scripts run under tsx on Node >= 22.12 (see package.json engines)
+// and already use ES2023 array methods. The shipped surface keeps the narrower
+// ES2022 lib of the build project, which still checks src/ on its own.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "lib": ["ES2023"],
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src/**/*", "tests/**/*", "scripts/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

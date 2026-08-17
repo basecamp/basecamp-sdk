@@ -10,6 +10,14 @@ import { createBasecampClient } from "../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
+// Request capture below uses `const captured: { request?: Request } = {}` rather
+// than a `let capturedRequest: Request | null = null`. The assignment happens
+// inside an MSW handler closure that TypeScript's control-flow analysis cannot
+// see, so the `let` form stays narrowed to `null` and every later read of it is
+// typed `never`. Holding the value on an object defeats that narrowing without
+// weakening anything: if the handler never runs, `captured.request` is still
+// `undefined` and the header assertions still fail.
+
 describe("BearerAuth", () => {
   it("sets Authorization header with static token", async () => {
     const auth = bearerAuth("my-token");
@@ -45,11 +53,11 @@ describe("Custom AuthStrategy", () => {
   });
 
   it("works with createBasecampClient via auth option", async () => {
-    let capturedRequest: Request | null = null;
+    const captured: { request?: Request } = {};
 
     server.use(
       http.get(`${BASE_URL}/projects.json`, ({ request }) => {
-        capturedRequest = request;
+        captured.request = request;
         return HttpResponse.json([]);
       })
     );
@@ -67,8 +75,8 @@ describe("Custom AuthStrategy", () => {
 
     await client.GET("/projects.json");
 
-    expect(capturedRequest?.headers.get("X-Custom-Auth")).toBe("custom-value");
-    expect(capturedRequest?.headers.get("Authorization")).toBeNull();
+    expect(captured.request?.headers.get("X-Custom-Auth")).toBe("custom-value");
+    expect(captured.request?.headers.get("Authorization")).toBeNull();
   });
 });
 
@@ -90,11 +98,11 @@ describe("createBasecampClient auth validation", () => {
   });
 
   it("accepts accessToken for backward compatibility", async () => {
-    let capturedRequest: Request | null = null;
+    const captured: { request?: Request } = {};
 
     server.use(
       http.get(`${BASE_URL}/projects.json`, ({ request }) => {
-        capturedRequest = request;
+        captured.request = request;
         return HttpResponse.json([]);
       })
     );
@@ -106,17 +114,17 @@ describe("createBasecampClient auth validation", () => {
 
     await client.GET("/projects.json");
 
-    expect(capturedRequest?.headers.get("Authorization")).toBe(
+    expect(captured.request?.headers.get("Authorization")).toBe(
       "Bearer compat-token"
     );
   });
 
   it("accepts auth option with BearerAuth", async () => {
-    let capturedRequest: Request | null = null;
+    const captured: { request?: Request } = {};
 
     server.use(
       http.get(`${BASE_URL}/projects.json`, ({ request }) => {
-        capturedRequest = request;
+        captured.request = request;
         return HttpResponse.json([]);
       })
     );
@@ -128,7 +136,7 @@ describe("createBasecampClient auth validation", () => {
 
     await client.GET("/projects.json");
 
-    expect(capturedRequest?.headers.get("Authorization")).toBe(
+    expect(captured.request?.headers.get("Authorization")).toBe(
       "Bearer auth-option-token"
     );
   });

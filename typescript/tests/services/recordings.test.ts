@@ -63,11 +63,15 @@ describe("RecordingsService", () => {
     });
 
     it("should include optional filters in query", async () => {
-      let capturedUrl: URL | null = null;
+      // Held in an object, not a `let`: control-flow analysis cannot see the
+      // assignment inside the handler closure, so a `let ... = null` binding
+      // narrows to `null`, so reading `.searchParams` off it is a `never`. The
+      // optional chaining still makes an unrun handler fail the assertions.
+      const captured: { url?: URL } = {};
 
       server.use(
         http.get(`${BASE_URL}/projects/recordings.json`, ({ request }) => {
-          capturedUrl = new URL(request.url);
+          captured.url = new URL(request.url);
           return HttpResponse.json([]);
         }),
       );
@@ -80,26 +84,27 @@ describe("RecordingsService", () => {
         direction: "asc",
       });
 
-      expect(capturedUrl?.searchParams.get("type")).toBe("Document");
-      expect(capturedUrl?.searchParams.get("bucket")).toBe("123");
-      expect(capturedUrl?.searchParams.get("status")).toBe("archived");
-      expect(capturedUrl?.searchParams.get("sort")).toBe("updated_at");
-      expect(capturedUrl?.searchParams.get("direction")).toBe("asc");
+      expect(captured.url?.searchParams.get("type")).toBe("Document");
+      expect(captured.url?.searchParams.get("bucket")).toBe("123");
+      expect(captured.url?.searchParams.get("status")).toBe("archived");
+      expect(captured.url?.searchParams.get("sort")).toBe("updated_at");
+      expect(captured.url?.searchParams.get("direction")).toBe("asc");
     });
 
     it("should join multiple bucket IDs as CSV", async () => {
-      let capturedUrl: URL | null = null;
+      // Object-held for the same reason as above.
+      const captured: { url?: URL } = {};
 
       server.use(
         http.get(`${BASE_URL}/projects/recordings.json`, ({ request }) => {
-          capturedUrl = new URL(request.url);
+          captured.url = new URL(request.url);
           return HttpResponse.json([]);
         }),
       );
 
       await service.list("Todo", { bucket: [1, 2, 3] });
 
-      expect(capturedUrl?.searchParams.get("bucket")).toBe("1,2,3");
+      expect(captured.url?.searchParams.get("bucket")).toBe("1,2,3");
     });
 
     it("should return empty ListResult when no recordings", async () => {

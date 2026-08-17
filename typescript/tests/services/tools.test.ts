@@ -13,11 +13,11 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
-import toolFixture from "../../../spec/fixtures/tools/get.json";
-import createdToolFixture from "../../../spec/fixtures/tools/create.json";
-import updatedToolFixture from "../../../spec/fixtures/tools/update.json";
-import disabledToolFixture from "../../../spec/fixtures/tools/disabled.json";
-import nestedVaultToolFixture from "../../../spec/fixtures/tools/nested_vault.json";
+import toolFixture from "../../../spec/fixtures/tools/get.json" with { type: "json" };
+import createdToolFixture from "../../../spec/fixtures/tools/create.json" with { type: "json" };
+import updatedToolFixture from "../../../spec/fixtures/tools/update.json" with { type: "json" };
+import disabledToolFixture from "../../../spec/fixtures/tools/disabled.json" with { type: "json" };
+import nestedVaultToolFixture from "../../../spec/fixtures/tools/nested_vault.json" with { type: "json" };
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 

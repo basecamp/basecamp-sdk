@@ -42,7 +42,11 @@ describe("BoostsService", () => {
       const boost = await client.boosts.get(boostId);
       expect(boost.id).toBe(boostId);
       expect(boost.content).toBe("🎉");
-      expect(boost.booster.name).toBe("Jane Doe");
+      // `booster` is optional in the generated schema, so assert it arrived
+      // before reading through it: a boost served without one then fails on
+      // the presence check rather than on an undefined property read.
+      expect(boost.booster).toBeDefined();
+      expect(boost.booster?.name).toBe("Jane Doe");
     });
 
     it("should throw not_found for missing boost", async () => {
