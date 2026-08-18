@@ -221,6 +221,19 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		// that answered without a position answers the same way to the same
 		// request, so a retry loop would spin. Nothing durable has moved.
 		if p.page.Position == "" {
+			// A socket outcome deferred while THIS call was in flight is
+			// dispatched BEFORE the malformed page is classified, for exactly
+			// the reason the failed-poll branch above gives: disposal discards
+			// the deferral, so classifying first loses the server's own
+			// verdict. Concretely, a raw invalid_event_stream_command parked
+			// during the call would be reported as poll_failed instead of
+			// Terminal(protocol_fatal). Transition 21's finish-the-page
+			// ordering does not apply here — it exists so an ACCEPTED page's
+			// deliveries and save are not stranded by the socket's death, and
+			// this page is being refused, so there is nothing to strand.
+			if out, done := l.dispatchDeferred(at); done {
+				return out, "", true
+			}
 			l.disposeAttempt(at, nil)
 			return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 				Reason: ReasonPollFailed,
@@ -877,9 +890,18 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 // dispatch points, because Close is callable from the consumer's own loop
 // body and from any observer or handler callback — all of which run on this
 // goroutine, between one delivery and the next. Close cancels synchronously
-// (Connector.Close), so this check is what makes "no delivery begins after
-// Close returns" true mid-page and mid-drain, not merely at the next page
-// boundary. It reports the same false every caller already routes onto the
+// (Connector.Close), so this check is what narrows the window mid-page and
+// mid-drain rather than only at the next page boundary.
+//
+// It does NOT make "no delivery begins after Close returns" true, and that
+// claim used to be here. This is a check-then-act on a value another goroutine
+// writes: a Close landing between the check and the yield still lets that yield
+// happen. Closing the window would mean holding a lock across the consumer's
+// own loop body — unbounded host code. What the connector guarantees instead is
+// stated on Close: cancellation is visible before it returns, and the one
+// effect that outlives the process (a checkpoint save) is ordered against it.
+//
+// It reports the same false every caller already routes onto the
 // Closed edge, and deliberately does NOT latch `stopped`: cancellation is not
 // a consumer break.
 func (l *loop) deliver(ev Event) bool {
