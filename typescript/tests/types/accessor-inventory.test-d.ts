@@ -21,6 +21,14 @@
  * written, not something anything asserts. This file states the invariant
  * instead, for all 53 and for every service added later.
  *
+ * Both directions belong here, and only here. The three renderings the runtime
+ * file covers are each checked both ways — nothing missing, and nothing extra —
+ * but its "nothing extra" pass filters `Object.keys(client)`, which cannot see a
+ * member that exists solely in the type system. So an interface property typed
+ * as some existing service but never wired by a `defineService` call compiles
+ * clean, passes every runtime test, and hands a consumer calling
+ * `client.fanfares.list()` a TypeError. That direction is asserted below too.
+ *
  * The roster is derived in the type system from the generated barrel. The
  * derivation is the same one the runtime test performs on filenames, expressed
  * as a type: strip the `Service` suffix from each exported class name and
@@ -37,6 +45,7 @@
 
 import type { BasecampClient } from "../../src/client.js";
 import type * as GeneratedServices from "../../src/generated/services/index.js";
+import type { BaseService } from "../../src/services/base.js";
 
 /** Compiles only when `T` is `true`; anything else is a TS2344 constraint error. */
 type Expect<T extends true> = T;
@@ -79,4 +88,61 @@ type MissingFromInterface = Exclude<ExpectedAccessor, keyof BasecampClient>;
 
 export type NoAccessorMissingFromBasecampClient = Expect<
   [MissingFromInterface] extends [never] ? true : MissingFromInterface
+>;
+
+/**
+ * The interface's own service accessors, for the other direction — derived, not
+ * listed, since a literal would be maintained by whoever added the stray
+ * property.
+ *
+ * "Assignable to `BaseService`" is what separates the accessors from the
+ * openapi-fetch verbs the interface inherits and from the client's own members,
+ * without naming any of them: `BaseService` declares its `client` and `hooks`
+ * `protected`, so structural assignability to it requires deriving from it, and
+ * nothing else on the interface does. It discriminates exactly — the filter
+ * keeps the 53 accessors plus `authorization` and drops all 14 of `GET`, `PUT`,
+ * `POST`, `DELETE`, `OPTIONS`, `HEAD`, `PATCH`, `TRACE`, `use`, `eject`,
+ * `request`, `raw`, `hooks` and `downloadURL`. The `-?` strips optionality so an
+ * optional member is judged on its declared type rather than on
+ * `T | undefined`.
+ */
+type ServiceAccessorKey<T> = { [K in keyof T]-?: T[K] extends BaseService ? K : never }[keyof T];
+
+/**
+ * `authorization` is the one accessor with no generated service behind it: OAuth
+ * is not in the OpenAPI spec, so `AuthorizationService` is hand-written. The
+ * runtime file carries the same one-name exclusion. A second hand-written
+ * service would fail the assertion below until it is named here, which is the
+ * direction of failure to want — it forces the decision instead of quietly
+ * widening the rule.
+ */
+type InterfaceAccessor = Exclude<ServiceAccessorKey<BasecampClient>, "authorization">;
+
+/**
+ * The reverse direction's own non-vacuity floor, and it needs one more than
+ * anything else in this file: a mapped type that resolved to `never` — a renamed
+ * `BaseService`, a filter that stopped discriminating in the other direction —
+ * makes the `Exclude` below empty and the assertion trivially true. The same
+ * three accessors the forward floor names, so a broken derivation cannot pass.
+ */
+type InterfaceRosterIsPopulated = "projects" extends InterfaceAccessor
+  ? "myNotifications" extends InterfaceAccessor
+    ? "gauges" extends InterfaceAccessor
+      ? true
+      : false
+    : false
+  : false;
+
+export type InterfaceAccessorRosterIsPopulated = Expect<InterfaceRosterIsPopulated>;
+
+/**
+ * An interface property typed as a service but backed by no generated service
+ * survives this `Exclude`, and is handed to `Expect` by name for the same reason
+ * as above — `Type '"fanfares"' does not satisfy the constraint 'true'` says
+ * which accessor the client will not actually carry.
+ */
+type BeyondGeneratedServices = Exclude<InterfaceAccessor, ExpectedAccessor>;
+
+export type NoAccessorBeyondGeneratedServices = Expect<
+  [BeyondGeneratedServices] extends [never] ? true : BeyondGeneratedServices
 >;
