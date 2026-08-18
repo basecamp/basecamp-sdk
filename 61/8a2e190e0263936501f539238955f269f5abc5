@@ -1,0 +1,20 @@
+.github/workflows/test.yml
+  s_fb34b5676f6c5e::t_b742fba7797019 1157-1167,1169-1173,1182-1202,1218-1222,1224,1233-1240,1242-1247,1250,1253,1255-1263,1271-1284,1288-1296
+  s_fb34b5676f6c5e::t_336958e7038d04 1297-1298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "618a2e190e0263936501f539238955f269f5abc5",
+  "prompts": {},
+  "sessions": {
+    "s_fb34b5676f6c5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f987d172-c77f-49b4-a021-cf647b5678b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
