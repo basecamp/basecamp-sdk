@@ -265,7 +265,7 @@ hand. The one exception is called out below.
 | SDK | was | now |
 |---|---|---|
 | Kotlin | `kotlinx.serialization.SerializationException` (incl. `MissingFieldException`) | `BasecampException.Api` with `httpStatus == null`, `retryable == false`, and the `SerializationException` as `cause` |
-| Swift | `DecodingError` — and, on the wrapped-list path, a raw `NSError` from `JSONSerialization` for a body that is not JSON at all | `BasecampError.api(message:httpStatus:hint:requestId:decodeFailure:)` with `httpStatus == nil` (so `isRetryable == false`), the underlying error's description interpolated into `message` and the error itself in `decodeFailure` (see below) |
+| Swift | `DecodingError` — and, on the wrapped-list path, a raw `NSError` from `JSONSerialization` for a body that is not JSON at all | `BasecampError.api(message:httpStatus:hint:requestId:decodeFailure:)` with `httpStatus == nil` (so `isRetryable == false`), the underlying error's description interpolated into `message` and the error itself in `decodeFailure` (see above) |
 | Go, TypeScript, Ruby, Python | unchanged | unchanged |
 
 **Wrong behaviour you get if you ignore it:** a `catch (e: SerializationException)`

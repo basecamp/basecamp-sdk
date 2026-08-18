@@ -120,9 +120,11 @@ sealed class BasecampException(
          *
          * Presence is the discriminator. The only constructor that sets this
          * slot is private, reached through the internal [Companion.malformedBody]
-         * factory the decoder wrapper alone calls, so no caller reaches it by
-         * writing the natural thing. The value is the decoder's own message,
-         * which is what the composites were reaching into [cause] for.
+         * factory — which the decoder wrapper and those composites are the only
+         * callers of — so no caller outside this module reaches it by writing
+         * the natural thing. The value is the [SerializationException] the
+         * decoder threw, which is what the composites were reaching into [cause]
+         * for.
          *
          * That is an accident guarantee and not an unforgeable one — see
          * [Companion.malformedBody] for what it does and does not stop.
