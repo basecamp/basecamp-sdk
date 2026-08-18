@@ -128,10 +128,14 @@ Python remain more permissive there.
 **A behaviour gain, and worth knowing if you compensated for the gap.**
 
 `parseRetryAfter` was `toIntOrNull()` and nothing else, so Kotlin was the one SDK
-of six that ignored SPEC §6 step 2 entirely: a `Retry-After: Wed, 21 Oct 2025
-07:28:00 GMT` parsed as nothing, and the client backed off ~1s instead of waiting
-the interval the server asked for. It now parses the IMF-fixdate form and waits
-`max(0, date - now())` seconds when that is positive, matching the other five.
+of six that ignored SPEC §6 step 2 entirely. A `Retry-After` that names an
+*instant* rather than a count of seconds — the IMF-fixdate form, shaped like
+`Sun, 06 Nov 1994 08:49:37 GMT` — parsed as nothing however far in the future
+that instant was, and the client backed off ~1s instead of waiting until it. It
+now parses that form and waits `max(0, date - now())` seconds whenever the
+instant is still ahead, matching the other five. A date already in the past
+still yields no delay, in Kotlin as everywhere else — that is step 2 working,
+not the old gap.
 
 This reaches every consumer of the parser at once — the shared HTTP client, the
 service base, and both download hops — since they all routed through the one

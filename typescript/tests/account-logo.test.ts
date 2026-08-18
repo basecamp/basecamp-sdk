@@ -205,15 +205,21 @@ describe("updateAccountLogo", () => {
    */
   it("honours a future HTTP-date Retry-After on the upload path", async () => {
     let attempts = 0;
-    const threeSecondsOut = new Date(Date.now() + 3000).toUTCString();
 
     server.use(
       http.put(`${BASE_URL}/account/logo.json`, () => {
         attempts++;
         if (attempts === 1) {
+          // Computed HERE, at response-serving time, not at test setup. A
+          // deadline fixed before the handler is installed and the client is
+          // built is measured from a moment that may be a second or more stale
+          // on a loaded worker, and `toUTCString()` truncates to whole seconds
+          // on top of that — enough to drive the parsed delay under the floor
+          // asserted below with production behaviour entirely correct. That is
+          // the flake shape of #783; no point filing it and then writing one.
           return new HttpResponse(null, {
             status: 429,
-            headers: { "Retry-After": threeSecondsOut },
+            headers: { "Retry-After": new Date(Date.now() + 3000).toUTCString() },
           });
         }
         return new HttpResponse(null, { status: 204 });

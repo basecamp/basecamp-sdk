@@ -403,12 +403,29 @@ class PaginationTest {
      * the same library the parser uses, so the accepted wire format is pinned
      * independently of the round trip asserted below.
      */
+    /**
+     * The literal's job is the WIRE FORMAT, so the assertion is only that a
+     * future IMF-fixdate yields a positive delay. The magnitude belongs to the
+     * dynamic test below, which owns the arithmetic.
+     *
+     * This bound used to be `> 1_000_000_000`, which was a calendar time bomb:
+     * 1 January 2060 stops being a billion seconds away on **2028-04-23**, at
+     * which point the test would have started failing while the parser stayed
+     * perfectly correct. On 2029-01-01 the remaining interval is 978,220,800
+     * seconds — false under the old bound, true under this one.
+     *
+     * A positive-delay bound decays too, just not for 32 years: the literal is
+     * spent on 2060-01-01. That is the horizon of the literal itself and cannot
+     * be pushed out without giving up the hand-written string, which is the
+     * whole point of the test — it pins the format independently of the
+     * formatter the parser uses. Recorded here rather than left to be
+     * rediscovered.
+     */
     @Test
     fun parseRetryAfterParsesFutureHttpDate() {
         val seconds = parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT")
         assertNotNull(seconds, "a future IMF-fixdate must yield a delay")
-        // Comfortably more than a decade out, and short of Int overflow.
-        assertTrue(seconds > 1_000_000_000, "expected a far-future delay, got $seconds")
+        assertTrue(seconds > 0, "expected a positive delay, got $seconds")
     }
 
     /**

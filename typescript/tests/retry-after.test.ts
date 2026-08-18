@@ -35,8 +35,14 @@ const BACKOFF_MAX_MS = 1100;
 /**
  * Drives one 429 carrying `retryAfter` through the retry loop and returns the
  * delay the loop chose, without waiting it out.
+ *
+ * A function may be passed instead of a string, and a time-relative header must
+ * use one: it is called when the response is served, so the deadline is
+ * measured from that moment rather than from whenever the test happened to
+ * reach this line. Setup time on a loaded worker is otherwise inside the margin
+ * (#783).
  */
-async function delayChosenFor(retryAfter: string): Promise<number> {
+async function delayChosenFor(retryAfter: string | (() => string)): Promise<number> {
   const controller = new AbortController();
   let chosen = Number.NaN;
 
@@ -53,7 +59,13 @@ async function delayChosenFor(retryAfter: string): Promise<number> {
 
   await expect(
     executeWithRetry(
-      async () => new Response(null, { status: 429, headers: { "Retry-After": retryAfter } }),
+      async () =>
+        new Response(null, {
+          status: 429,
+          headers: {
+            "Retry-After": typeof retryAfter === "function" ? retryAfter() : retryAfter,
+          },
+        }),
       CONFIG,
       emit,
       controller.signal,
@@ -195,8 +207,7 @@ describe("Retry-After parsing", () => {
 
 describe("the shared retry loop honours the parsed value", () => {
   it("waits the seconds remaining until a future HTTP-date", async () => {
-    const threeMinutesOut = new Date(Date.now() + 180_000).toUTCString();
-    const delay = await delayChosenFor(threeMinutesOut);
+    const delay = await delayChosenFor(() => new Date(Date.now() + 180_000).toUTCString());
 
     // Before #564 this loop's parseInt read "Wed" as NaN and fell through to
     // the ~1000ms backoff — the header ignored entirely.
