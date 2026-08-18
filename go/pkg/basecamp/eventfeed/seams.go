@@ -247,6 +247,15 @@ type CableTransport interface {
 	// and a cancelled dial must return promptly. maxFrameBytes must be
 	// enforced while reading (e.g. a read-limit on the socket), rejecting an
 	// over-limit message without materializing it.
+	//
+	// The returned error MUST NOT render wsURL or any part of its query
+	// string. The ticket rides in that query, and this error reaches
+	// Observer.Disconnected, which hosts log. An error is opaque text, so
+	// nothing downstream can redact it — see WebSocketTransport's dialFailure
+	// on why stripping a credential out of arbitrary text requires modelling
+	// the credential, which §23's "opaque bearer" contract forbids. Report
+	// the classification and a cause of your own choosing, never the peer's
+	// or a library's rendering of the URL.
 	Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (CableConn, error)
 }
 
@@ -256,11 +265,14 @@ type CableConn interface {
 	// {"type":"disconnect",...} frames. That verbatim-ness is the whole point
 	// of the seam: stock Action Cable discards the disconnect reason, and the
 	// terminal/non-terminal distinction lives only in this raw frame. A peer
-	// close surfaces as *CloseError.
+	// close surfaces as *CloseError. Like Dial's, the returned error must not
+	// render the cable URL or its query string: it reaches
+	// Observer.Disconnected.
 	ReadFrame(ctx context.Context) ([]byte, error)
 	// WriteFrame sends one raw text frame. Close and ctx cancellation must
 	// unblock an in-progress write; a write failure takes the current
-	// state's socket-failure path.
+	// state's socket-failure path, and must not render the cable URL or its
+	// query string: it reaches Observer.Disconnected.
 	WriteFrame(ctx context.Context, data []byte) error
 	// Close is idempotent, safe from any goroutine, and unblocks ReadFrame
 	// and WriteFrame.
@@ -322,7 +334,12 @@ type DialError struct {
 	// Reason names the policy violation (policy only). Never the URL's query
 	// string.
 	Reason string
-	// Err is the underlying cause.
+	// Err is the underlying cause. It is supplied by the CableTransport and
+	// concatenated into Error(), so this struct's own no-query-string
+	// guarantee extends to it only as far as the implementation honors the
+	// obligation stated on CableTransport.Dial. The built-in
+	// WebSocketTransport draws its causes from a closed vocabulary keyed on
+	// error types for exactly this reason.
 	Err error
 }
 
@@ -406,7 +423,18 @@ type Observer struct {
 	Connected func()
 	// Confirmed fires on confirm_subscription.
 	Confirmed func()
-	// Disconnected fires when a socket is torn down.
+	// Disconnected fires when a socket is torn down. reason is the
+	// frame-derived disconnect reason, bounded by the §9 cap; err is the
+	// failure that ended the socket.
+	//
+	// err is passed through UNREDACTED, deliberately: it is an error, i.e.
+	// opaque text, and stripping a credential out of arbitrary text requires
+	// modelling the credential — the one thing §23's "opaque bearer" contract
+	// rules out. Every error the connector puts here is either one of its own
+	// sentinels or a seam error, and Dial, ReadFrame and WriteFrame each carry
+	// the obligation not to render the cable URL. A custom transport that
+	// breaks that obligation leaks through this callback, which is why the
+	// obligation is stated on the seam rather than defended here.
 	Disconnected func(reason string, err error)
 	// CatchUpStarted fires when a poll walk begins.
 	CatchUpStarted func(cursor Cursor)

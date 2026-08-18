@@ -45,7 +45,7 @@ func (l *loop) repairWalk(at *attempt) (cycleOutcome, bool) {
 	cursor, presentClass := l.repairCursor()
 	l.setState(stateCatchingUp)
 	if l.cfg.observer.CatchUpStarted != nil {
-		l.cfg.observer.CatchUpStarted(cursor)
+		l.cfg.observer.CatchUpStarted(redactCursor(cursor))
 	}
 	return l.walkThenDrain(at, cursor, presentClass)
 }
@@ -102,7 +102,14 @@ func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 		l.hooks.signalRaised(signal)
 	}
 	if l.cfg.observer.Gap != nil {
-		l.cfg.observer.Gap(pe.EpochAfterID, pe.ResumeURL)
+		// Redacted to its origin. The resume URL is server-supplied and
+		// followed with the caller's Authorization bearer, and this is the one
+		// place it leaves the connector for a destination it knows nothing
+		// about. The SignalHandler below still receives it WHOLE — the
+		// disposition is about which URL to follow, so redacting there would
+		// break the contract rather than protect it — and the resume poll
+		// follows the full URL after §8 validation.
+		l.cfg.observer.Gap(pe.EpochAfterID, redactURL(pe.ResumeURL))
 	}
 	if l.cfg.handler != nil && l.cfg.handler(signal) == Accept {
 		if pe.ResumeURL == "" {

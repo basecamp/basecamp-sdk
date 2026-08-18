@@ -772,10 +772,26 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 
 	// Transition 6 → AwaitingWelcome: staleness arms at socket open, the
 	// pump starts, and the handshake deadline keeps running to `welcome`.
+	//
+	// The arming comes FIRST, before Observer.Connected, and the order is
+	// load-bearing rather than stylistic (#763). Observer callbacks are host
+	// code running on the consumer's goroutine — a log write, a metrics
+	// emission, an error-tracker breadcrumb — and this one sat between the
+	// socket opening and the window that measures silence on it. Whatever it
+	// spent became time the window did not count: newStaleHolder reads its
+	// origin at construction, so the window began when the callback returned,
+	// not when the socket opened, and a peer that went silent immediately was
+	// given that much extra grace before staleness could fire. §23 says the
+	// window arms at socket open, and this line is what that means.
+	//
+	// Starting the pump ahead of the callback is the same trade and harmless:
+	// the pump only fills a bounded channel that this goroutine drains later,
+	// so nothing is observed out of order — Connected is observability, not a
+	// gate.
+	at.lc = newLiveConn(at.ctx, conn, l.cfg.clock, l.cfg.staleAfter, l.hooks)
 	if l.cfg.observer.Connected != nil {
 		l.cfg.observer.Connected()
 	}
-	at.lc = newLiveConn(at.ctx, conn, l.cfg.clock, l.cfg.staleAfter, l.hooks)
 	return l.awaitConfirmation(at, hs)
 }
 

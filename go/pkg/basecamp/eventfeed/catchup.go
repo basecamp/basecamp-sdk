@@ -34,7 +34,12 @@ func (l *loop) runCatchUp(h catchUpHandoff) cycleOutcome {
 		l.hooks.catchUpEntered(h)
 	}
 	if l.cfg.observer.CatchUpStarted != nil {
-		l.cfg.observer.CatchUpStarted(h.entry)
+		// Cursor.PageURL is redacted to its origin: on a 410-accepted re-entry
+		// it IS the server-supplied resume URL, carrying whatever query the
+		// server put in it. Position and Since are server-issued opaque ids
+		// rather than URLs and pass through — an operator correlating a trace
+		// needs them. The walk itself uses the unredacted cursor.
+		l.cfg.observer.CatchUpStarted(redactCursor(h.entry))
 	}
 	// The consecutive-poll-failure index is per walk: a socket teardown ends
 	// the previous walk, and from there the reconnect cycle's own counter

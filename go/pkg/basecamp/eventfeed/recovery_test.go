@@ -124,10 +124,29 @@ func TestFeedGapAcceptedResumesViaProvidedURL(t *testing.T) {
 	conn.Serve(frameConfirm(noFilterIdentifier))
 	h.awaitStreaming()
 
-	if len(gaps) != 1 || gaps[0] != fmt.Sprintf("gap 100 %s", resume) {
-		t.Fatalf("Observer.Gap = %v, want exactly one firing carrying the epoch and resume URL", gaps)
+	// Observer.Gap carries the resume URL REDACTED to its origin. It fires
+	// unconditionally — observability is not disposition — so it is the one
+	// place a server-supplied, bearer-followed URL leaves the connector for a
+	// destination it knows nothing about: a log, an error tracker, a metrics
+	// label.
+	if len(gaps) != 1 || gaps[0] != fmt.Sprintf("gap 100 %s", testOrigin) {
+		t.Fatalf("Observer.Gap = %v, want exactly one firing carrying the epoch and the resume URL's ORIGIN", gaps)
+	}
+	if strings.Contains(gaps[0], "?") || strings.Contains(gaps[0], "since=now") {
+		t.Errorf("Observer.Gap = %q, which retains the resume URL's query", gaps[0])
 	}
 	assertInvocations(t, ledger.invocations(), "feedGap/accept")
+	// The handler receives it WHOLE, and that pairing is the contract: the
+	// disposition is a decision about which URL to follow, so redacting here
+	// would break it rather than protect anything. A test that only checked
+	// the observer would be satisfied by redacting both.
+	gap, ok := ledger.first().(eventfeed.FeedGap)
+	if !ok {
+		t.Fatalf("first signal = %T, want eventfeed.FeedGap", ledger.first())
+	}
+	if gap.ResumeURL != resume {
+		t.Errorf("FeedGap.ResumeURL = %q, want the full URL %q", gap.ResumeURL, resume)
+	}
 	calls := h.polls.Calls()
 	if len(calls) != 2 {
 		t.Fatalf("poll seam calls = %d, want 2", len(calls))
@@ -757,4 +776,77 @@ func TestAcceptedGapResumeSurvivesAReconnect(t *testing.T) {
 	// re-litigated by a reconnect.
 	assertInvocations(t, ledger.invocations(), "feedGap/accept")
 	assertPositions(t, store.Saves(), "pos-1")
+}
+
+// TestCatchUpStartedRedactsTheLatchedResumeURL is the second URL-bearing
+// observer surface, and reaching it takes the one sequence that puts a
+// server-supplied URL into Cursor.PageURL at a walk announcement.
+//
+// Cursor.PageURL is normally connector-generated. But an ACCEPTED 410 latches
+// the server's resume URL as reconnect state, deliberately — so that a socket
+// torn down before the resume poll serves a page cannot re-select the cursor
+// the server already refused. If that teardown happens, the reconnect
+// announces its walk carrying the latched URL. Redacting Observer.Gap alone
+// would have left the identical URL leaving through a different callback one
+// reconnect later.
+//
+// The resume poll fails PollUnauthorized rather than having its socket dropped,
+// and the difference is the point: a dropped socket is observed at the page
+// boundary AFTER the resume page is accepted and saved (transition 21), which
+// releases the latch — so that version of this test reconnects at pos-1 and
+// proves nothing. Verified by writing it that way first.
+func TestCatchUpStartedRedactsTheLatchedResumeURL(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	ledger := &signalLedger{give: eventfeed.Accept}
+	var cursors []eventfeed.Cursor
+	h := storedHarness(t, store,
+		eventfeed.WithSignalHandler(ledger.handler),
+		eventfeed.WithObserver(eventfeed.Observer{
+			CatchUpStarted: func(c eventfeed.Cursor) { cursors = append(cursors, c) },
+		}))
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	const secret = "resume-token-do-not-log"
+	resume := testOrigin + "/999/events.json?since=now&t=" + secret
+	h.polls.ScriptError(gonePoll(resume))
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollUnauthorized})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitTimer(timerBackoff)
+
+	// The reconnect's entry cursor IS the latched resume URL, so this walk's
+	// announcement is the one that would carry it.
+	h.fireTimer(timerBackoff)
+	conn2 := h.driveToSubscribed()
+	conn2.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitStreaming()
+
+	if len(cursors) != 2 {
+		t.Fatalf("CatchUpStarted fired %d time(s) (%+v), want the entry walk and the reconnect walk", len(cursors), cursors)
+	}
+	for i, c := range cursors {
+		if strings.Contains(c.PageURL, secret) {
+			t.Errorf("CatchUpStarted[%d].PageURL = %q, which leaks the resume URL's query", i, c.PageURL)
+		}
+		if strings.ContainsAny(c.PageURL, "?#") {
+			t.Errorf("CatchUpStarted[%d].PageURL = %q, which retains a query or fragment", i, c.PageURL)
+		}
+	}
+	// The reconnect announcement still names the origin — what an operator
+	// needs to know which host is being polled — and the poll that followed it
+	// still used the FULL URL. Redacting both would satisfy the loop above.
+	if got := cursors[1].PageURL; got != testOrigin {
+		t.Errorf("reconnect CatchUpStarted.PageURL = %q, want the origin %q", got, testOrigin)
+	}
+	calls := h.polls.Calls()
+	if len(calls) != 3 {
+		t.Fatalf("poll seam calls = %d (%+v), want 3", len(calls), calls)
+	}
+	if calls[2].Cursor.PageURL != resume {
+		t.Errorf("the resume poll followed %q, want the full URL %q", calls[2].Cursor.PageURL, resume)
+	}
 }

@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -1755,5 +1756,44 @@ func TestConfirmRacingAnExpiredConfirmationDeadlineLapses(t *testing.T) {
 	assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
 	if got := h.polls.CallCount(); got != 0 {
 		t.Fatalf("poll seam calls = %d, want 0 — the confirmation lapsed", got)
+	}
+}
+
+// TestStalenessArmsBeforeConnectedObserver is #763. The staleness window must
+// begin when the socket opens, not when a host's Connected callback returns.
+//
+// Observed from INSIDE the callback, which is the only place the ordering is
+// visible: newStaleHolder reads the window's origin at construction, so if the
+// callback runs first, everything it spends is time the window never counts,
+// and a peer that went silent immediately gets that much extra grace before
+// staleness can fire. Asserting on the timer set afterwards would pass either
+// way — the set is the same, only its origin moves.
+func TestStalenessArmsBeforeConnectedObserver(t *testing.T) {
+	var armedAtConnected []string
+	var connectedCalls int
+	// Declared ahead of the option so the callback can read the harness's own
+	// clock: the closure captures the variable, and by the time it fires the
+	// harness is assigned.
+	var h *harness
+	h = newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Connected: func() {
+			connectedCalls++
+			armedAtConnected = h.clock.Outstanding()
+		},
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitStreaming()
+
+	if connectedCalls != 1 {
+		t.Fatalf("Connected fired %d time(s), want 1", connectedCalls)
+	}
+	if !slices.Contains(armedAtConnected, timerStaleness) {
+		t.Errorf("timers armed when Connected fired = %v, want the %q window already among them",
+			armedAtConnected, timerStaleness)
 	}
 }
