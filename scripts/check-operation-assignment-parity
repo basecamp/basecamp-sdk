@@ -1,0 +1,453 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Guard: the five generated SDKs hang each OPERATION off the same service.
+#
+# `scripts/check-service-inventory-parity` answers "which services exist". This
+# answers "which service does a given operation live on", and they are different
+# questions with different data — #756 was filed separately from #755 for the
+# same reason. Do not merge them: the sibling gate's success line states exactly
+# one quantity, and its own header forbids growing per-SDK rules into it.
+#
+# WHAT IS UNDETECTABLE WITHOUT THIS. `SERVICE_SPLITS` maps tag -> {service ->
+# [operationIds]} and is transcribed by hand into five generator configs
+# (typescript/scripts, ruby/scripts, python/scripts,
+# kotlin/generator/.../Config.kt, swift's ServiceGrouper). If ONE of them routes
+# an operation to a DIFFERENT BUT ALREADY-EXISTING service, every gate stays
+# green:
+#
+#   - the service-name union is unchanged, so check-service-inventory-parity
+#     sees nothing: both services still exist in every SDK
+#   - the global operationId set is unchanged, so every per-SDK
+#     check-*-service-drift sees nothing: each SDK still matches its own
+#     generator, and the operation is still emitted somewhere
+#   - the SDK compiles, and its tests exercise the method wherever it now lives
+#
+# Five SDKs then expose `account.cardTables.get`, one exposes
+# `account.cards.get`, and both are "present". This gate is the only thing that
+# looks at the pairing.
+#
+# WHY GO IS NOT HERE, and it is not an oversight. `grep -rn
+# "SERVICE_SPLITS\|TAG_TO_SERVICE" go/` returns nothing: Go's service layer is
+# hand-authored wrappers over one flat oapi-codegen client
+# (go/pkg/generated/client.gen.go), which has no service grouping at all. Go has
+# no split table that could disagree with the other five, so it is outside this
+# failure mode entirely — the bug class is five tables, and five sources cover it
+# completely.
+#
+# Go is also deliberately assigned differently, which is the second reason. It
+# re-exposes TrashRecording on TEN services (cards.Trash(), documents.Trash(),
+# ...), and SetClientVisibility, ListLineupMarkers and the progress reports all
+# sit elsewhere by design: 27 operationIds that a six-source gate would have to
+# exempt. That carve-out table would be an order of magnitude larger than
+# check-service-inventory-parity's GO_CARVE_OUTS and would encode intent, not
+# drift. A gate whose exemption list is bigger than its signal is not a gate.
+#
+# THE KEY IS `(method, path)`, NOT operationId, and that is forced by Ruby.
+# operationId would be the better key — three pairwise diffs (TS<->KT, TS<->SW,
+# TS<->PY) come back empty on it — but Ruby carries `operation:` on reads only
+# (http_get, paginate, paginate_wrapped); http_put, http_post, http_delete and
+# http_post_raw never do, so it is available for 125 of 250 operations. Every SDK
+# states the method and the path for all 250, because it has to in order to make
+# the request.
+#
+# THE METHOD IS PART OF THE KEY, WHICH IS WHY IT IS NOT THE `{service -> path
+# set}` #756 words it as. Paths collide verb-agnostically inside a single
+# service: `boosts` has GET and DELETE on /boosts/{}, `campfires` has GET and
+# POST on .../integrations.json. A set of paths per service silently merges
+# those, so a reassignment of one of a pair would leave the set unchanged. With
+# the method included the key identifies exactly one operation — asserted against
+# openapi.json below rather than assumed, which is what lets the assignment be a
+# plain map instead of something that has to count.
+#
+# NO SIXTH HAND-COPY. openapi.json appears below for exactly two things: the
+# ROSTER of operations each SDK must be shown to emit, and the operationId used
+# to LABEL a failure. It is never consulted for which service an operation
+# belongs on — deriving the expected assignment from openapi.json plus one
+# canonical split table is #756's "expensive, total" option 2, which is the shape
+# #745 rejected and which this gate deliberately does not build. The comparison
+# here is SDK against SDK.
+#
+# EXTRACTION COMPLETENESS IS CHECKED EXACTLY, so there is no MIN_ floor on the
+# per-SDK reads. A regex that stops matching returns nothing rather than an
+# error, which reads as "all clear" — the failure mode the sibling gate's
+# MIN_SERVICES floor exists to catch approximately. Here the anchor is exact:
+# openapi.json states how many operations there are and what their methods and
+# paths are, so an unrecognized request helper in one SDK is reported by NAME
+# ("typescript never emits PUT /account/logo.json") rather than as a count that
+# looks plausible. The one floor is on the anchor itself.
+#
+# THE SERVICE NAME COMES FROM THE CLASS DECLARATION, NOT THE FILENAME, and that
+# is what keeps this gate free of a per-SDK naming table. Filenames diverge —
+# `card-tables.ts`, `card_tables_service.rb`, `card_tables.py`, `card-tables.kt`,
+# `CardTablesService.swift`, plus the one module `generate_services.py` renames —
+# and reading them would mean transcribing check-service-inventory-parity's
+# per-source drop/strip/rename/spelling table a second time. The CLASS is
+# `#{service}Service` in all five, so one universal rule serves: squash to
+# lowercase alphanumerics, strip a trailing `service`. It also lands on the same
+# spelling Ruby and Python already emit in OperationInfo (`service:
+# "cardtables"`), which is what the failure messages below quote.
+#
+# The strip is `sub`, not `gsub`, and that is COSMETIC — say so rather than
+# implying a guarantee. A service group whose own name ended in "Service" would
+# be class `NotificationServiceService` in all five renderings, so any consistent
+# strip rule leaves all five agreeing and the verdict is the same either way;
+# only the name in the message changes. Reading the class rather than the filename
+# is what actually removes the hazard, because it removes the five different
+# spellings. (Measured: making this `gsub` turns no self-test case red, and the
+# suite says so instead of pretending otherwise.)
+#
+# It also has to be name-aware rather than a partition comparison. Comparing only
+# how operations are GROUPED would pass if one SDK swapped two classes' contents
+# wholesale, since the blocks and the name set are both unchanged and the sibling
+# gate compares name sets, not names to contents.
+#
+# NORMALIZATION IS DATA, NOT BRANCHES, same as the sibling gate. Each source is
+# a list of request-call patterns with named `method`/`path` captures (or a
+# constant `method:` where the helper implies the verb), plus one class pattern.
+# There is no per-SDK code path. If a new SDK needs something that is not one of
+# these fields, that is a finding about the generator, not a place to add an
+# `if`.
+#
+# Every read is pinned to UTF-8. The generated trees carry non-ASCII text (em
+# dashes in the @generated banners), so under LC_ALL=C an unpinned read raises
+# InvalidByteSequenceError and the gate fails before comparing anything. The CI
+# step runs under LC_ALL=C so that stays proven rather than asserted.
+#
+# Env seams (for scripts/test-check-operation-assignment-parity.rb — the tracked
+# tree is never written to):
+#   OPERATION_ASSIGNMENT_ROOT  repository root the sources are resolved against
+#
+# Usage: scripts/check-operation-assignment-parity
+
+require "json"
+require "set"
+
+REPO_ROOT = File.expand_path("..", __dir__)
+ROOT = ENV["OPERATION_ASSIGNMENT_ROOT"] || REPO_ROOT
+UTF8 = "UTF-8"
+
+# Floor on the ANCHOR, not on the SDK reads. openapi.json is walked with two
+# nested Hash iterations; a shape change (a moved `paths` key, a $ref-ed path
+# item) yields fewer operations rather than an error, and a collapsed anchor
+# would report all 250 operations as "extra" in all five SDKs — 1250 lines of
+# true statements describing the wrong problem. Deliberately far below the real
+# value: this catches collapse, not drift.
+MIN_OPERATIONS = 200
+
+# Every openapi.json path is account-scoped; the SDKs put the account in the base
+# URL and never in the path, so the prefix is stripped before comparing. Asserted
+# rather than assumed, because a convention change here would otherwise surface
+# as every operation missing from every SDK.
+ACCOUNT_PREFIX = %r{\A/\{accountId\}}
+
+# The five renderings. Each is a directory of generated service files.
+#
+#   class_pattern  captures the service class name; also splits the file, so
+#                  operations are attributed to the class they sit in rather
+#                  than to the file
+#   calls          request-call patterns. `(?<method>)`/`(?<path>)` are named so
+#                  a source whose generator emits them in the other order needs
+#                  no code; `method:` supplies the verb where the helper implies
+#                  it (a paginating read is always a GET)
+#   async_prefix   a second class per file mirroring the first (Python only)
+SOURCES = [
+  {
+    id: "typescript",
+    path: "typescript/src/generated/services",
+    ext: ".ts",
+    drop: ["index"],
+    class_pattern: /^export class (\w+) extends BaseService\b/,
+    calls: [
+      { pattern: /this\.client\.(?<method>GET|POST|PUT|DELETE|PATCH)\(\s*"(?<path>[^"]*)"/ },
+      # THE ONE GENERATED METHOD THAT CONCATENATES ITS URL. `updateAccountLogo`
+      # is the only `this.baseUrl` site in the whole generated TypeScript tree
+      # (typescript/src/generated/services/account.ts), and the only one that
+      # does not hand a literal path to openapi-fetch.
+      #
+      # Recorded as an EXTRA PATTERN rather than as an exemption, and the
+      # difference is the whole point. Exempting `PUT /account/logo.json` from
+      # TypeScript would mean this gate could never see that method move to
+      # another service — a hole in exactly the invariant being built. Reading it
+      # instead keeps TypeScript at 250/250. If the generator changes this
+      # emission shape the pattern stops matching, and the completeness check
+      # below says so by name; it cannot fail silent.
+      { pattern: /`\$\{this\.baseUrl\}`\s*\+\s*`(?<path>[^`]*)`;\s*return this\.requestMultipartUpload\(\s*\{.*?\},\s*url,\s*"(?<method>[A-Z]+)"/m },
+    ],
+  },
+  {
+    id: "ruby",
+    path: "ruby/lib/basecamp/generated/services",
+    ext: ".rb",
+    # Hand-written infrastructure living under generated/ by exception
+    # (AGENTS.md Hard Rule 1). It declares the http_* helpers the patterns below
+    # match on, in YARD @!method tags and in delegating definitions.
+    drop: ["base_service"],
+    class_pattern: /^\s*class (\w+) < BaseService\b/,
+    calls: [
+      # Anchored to the start of an indented line so the helper DECLARATIONS and
+      # doc comments in base_service.rb cannot be mistaken for call sites if the
+      # drop above ever slips.
+      { pattern: /^[ \t]+http_(?<method>get|put|post|delete|patch)\("(?<path>[^"]*)"/ },
+      { pattern: /^[ \t]+http_post_raw\("(?<path>[^"]*)"/, method: "post" },
+      { pattern: /^[ \t]+http_put_multipart\("(?<path>[^"]*)"/, method: "put" },
+      { pattern: /^[ \t]+paginate(?:_wrapped)?\("(?<path>[^"]*)"/, method: "get" },
+    ],
+  },
+  {
+    id: "python",
+    path: "python/src/basecamp/generated/services",
+    ext: ".py",
+    # `__init__.py` is the barrel; `_base.py` and `_async_base.py` are the
+    # hand-written base classes (AGENTS.md Hard Rule 1).
+    drop: ["__init__", "_base", "_async_base"],
+    class_pattern: /^class (\w+)\((?:Async)?BaseService\):/,
+    # EVERY PYTHON SERVICE IS EMITTED TWICE, sync and async, and the async twin
+    # is not redundant here: it is a second transcription of the same assignment
+    # by the same generator. The two are required to agree and the sync one is
+    # used, so an async class that drifted is reported as itself rather than
+    # doubling every key and making the multiset unreadable.
+    async_prefix: "Async",
+    calls: [
+      { pattern: /self\._request(?:_multipart_void|_void)?\(\s*OperationInfo\([^)]*\),\s*"(?<method>[A-Z]+)",\s*f?"(?<path>[^"]*)"/m },
+      { pattern: /self\._request_(?:paginated_wrapped|paginated|list)\(\s*OperationInfo\([^)]*\),\s*f?"(?<path>[^"]*)"/m, method: "GET" },
+      { pattern: /self\._request_raw\(\s*OperationInfo\([^)]*\),\s*f?"(?<path>[^"]*)"/m, method: "POST" },
+    ],
+  },
+  {
+    id: "kotlin",
+    path: "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services",
+    ext: ".kt",
+    drop: ["Types"],
+    # `open class` for the six services a hand-written composite overrides
+    # (SPEC.md section 18).
+    class_pattern: /^(?:open )?class (\w+)\(client: AccountClient\)/,
+    calls: [
+      # Kotlin appends its query string OUTSIDE the literal (`"..." + qs`), so
+      # capturing to the closing quote drops it without a rule.
+      { pattern: /http(?<method>Get|Put|Post|Delete|Patch)\("(?<path>[^"]*)"/ },
+      { pattern: /httpPostBinary\("(?<path>[^"]*)"/, method: "Post" },
+      { pattern: /httpPutMultipart\("(?<path>[^"]*)"/, method: "Put" },
+    ],
+  },
+  {
+    id: "swift",
+    path: "swift/Sources/Basecamp/Generated/Services",
+    ext: ".swift",
+    class_pattern: /^public final class (\w+): BaseService\b/,
+    calls: [
+      { pattern: /method: "(?<method>[A-Z]+)",\s*path: "(?<path>[^"]*)"/m },
+      { pattern: /requestPaginated(?:Wrapped)?\(\s*OperationInfo\([^)]*\),\s*path: "(?<path>[^"]*)"/m, method: "GET" },
+    ],
+  },
+].freeze
+
+failures = []
+
+def die(failures)
+  warn "FAIL: cross-SDK operation assignment parity"
+  warn ""
+  failures.each { |f| warn "  - #{f}" }
+  warn ""
+  # NEUTRAL ON PURPOSE, the same way check-service-inventory-parity's footer is.
+  # This prints for every failure class — a missing input, an operation read out
+  # of only four SDKs, a duplicated key, a drifted Python async twin — and most
+  # of those are not a split-table disagreement. Naming a cause the gate cannot
+  # observe sends the reader to five generator configs when the thing to look at
+  # is one regex or one file.
+  warn "  This gate compares which service each operation is emitted on, SDK against"
+  warn "  SDK. It can report WHICH renderings disagree and about WHICH operation; it"
+  warn "  cannot see WHY, so read the specific failures above for the area to look at."
+  exit 1
+end
+
+# One universal rule, because all five generators name the class
+# `#{service}Service`. `sub` not `gsub`: exactly one suffix comes off, so a
+# service group whose own name ends in "Service" is spelled the same way by all
+# five rather than being taken apart by one of them.
+def canonical_service(class_name)
+  class_name.downcase.gsub(/[^a-z0-9]/, "").sub(/service\z/, "")
+end
+
+def normalize_path(raw)
+  raw
+    .sub(/\?.*\z/m, "")        # Ruby's two http_post_raw sites carry ?name=...
+    .gsub(/\$\{[^}]*\}/, "{}") # TypeScript, Kotlin
+    .gsub(/#\{[^}]*\}/, "{}")  # Ruby
+    .gsub(/\\\([^)]*\)/, "{}") # Swift
+    .gsub(/\{[^}]*\}/, "{}")   # Python f-strings, and openapi.json itself
+end
+
+def scan_calls(body, calls)
+  calls.flat_map do |spec|
+    body.to_enum(:scan, spec[:pattern]).map do
+      m = Regexp.last_match
+      [(spec[:method] || m[:method]).upcase, normalize_path(m[:path])]
+    end
+  end
+end
+
+# Each service class, and the body between its declaration and the next one. A
+# file with no matching class contributes nothing, which is safe: its operations
+# then go missing from the completeness check by name.
+def class_chunks(body, class_pattern)
+  starts = body.to_enum(:scan, class_pattern).map { [Regexp.last_match.begin(0), Regexp.last_match[1]] }
+  starts.each_with_index.map do |(offset, name), i|
+    finish = starts[i + 1]&.first || body.length
+    [name, body[offset...finish]]
+  end
+end
+
+# ------------------------------------------------------------------- the anchor
+
+spec_path = File.join(ROOT, "openapi.json")
+die(["openapi.json not found — it is the roster this gate holds each SDK against"]) \
+  unless File.file?(spec_path)
+
+spec = JSON.parse(File.read(spec_path, encoding: UTF8))
+unprefixed = (spec["paths"] || {}).keys.reject { |p| p.match?(ACCOUNT_PREFIX) }
+unless unprefixed.empty?
+  die(["openapi.json path #{unprefixed.first.inspect} is not account-scoped; this gate strips " \
+       "`/{accountId}` to compare against the SDKs, which put the account in the base URL. " \
+       "Either the path is wrong or the convention changed — until that is settled every " \
+       "operation would read as missing from every SDK"])
+end
+
+# key -> [operationId, path as openapi spells it]. The operationId is for the
+# failure message only; nothing downstream reads a service out of this.
+expected = {}
+(spec["paths"] || {}).each do |path, item|
+  next unless item.is_a?(Hash)
+  item.each do |verb, operation|
+    next unless %w[get put post delete patch].include?(verb)
+    next unless operation.is_a?(Hash)
+    sdk_path = path.sub(ACCOUNT_PREFIX, "")
+    key = [verb.upcase, normalize_path(sdk_path)]
+    if expected.key?(key)
+      die(["openapi.json declares #{verb.upcase} #{sdk_path} twice; the key this gate compares on " \
+           "would not identify an operation"])
+    end
+    expected[key] = [operation["operationId"] || "(no operationId)", sdk_path]
+  end
+end
+
+if expected.length < MIN_OPERATIONS
+  die(["only #{expected.length} operations read from openapi.json (floor #{MIN_OPERATIONS}) — " \
+       "the anchor collapsed, so nothing could be checked against it"])
+end
+
+# Only ever called with a key that came OUT of `expected`, so there is no
+# not-found branch to write.
+def label(expected, key)
+  op_id, sdk_path = expected.fetch(key)
+  "#{op_id} (#{key.first} #{sdk_path})"
+end
+
+# ---------------------------------------------------------------- extraction
+
+# id -> { [method, path] => canonical service }
+assignments = {}
+
+SOURCES.each do |source|
+  dir = File.join(ROOT, source[:path])
+  unless File.directory?(dir)
+    die(["#{source[:path]} not found — this gate compares generated output, so a missing " \
+         "rendering is a build problem, not a parity verdict"])
+  end
+
+  # Both maps are per-SOURCE, not per-file, so there is exactly ONE duplicate
+  # check rather than one per scope. A per-file check beside this one would be
+  # unreachable: no generator emits two sync service classes into one file, so it
+  # would be a guard with no case that can pin it.
+  assignment = {}
+  mirrors = {}
+
+  Dir.children(dir).select { |f| f.end_with?(source[:ext]) }.sort.each do |file|
+    stem = File.basename(file, source[:ext])
+    next if Array(source[:drop]).include?(stem)
+
+    body = File.read(File.join(dir, file), encoding: UTF8)
+
+    class_chunks(body, source[:class_pattern]).each do |class_name, chunk|
+      prefix = source[:async_prefix]
+      mirror = prefix && class_name.start_with?(prefix)
+      bucket = mirror ? mirrors : assignment
+      service = canonical_service(mirror ? class_name.delete_prefix(prefix) : class_name)
+
+      scan_calls(chunk, source[:calls]).each do |key|
+        # A key claimed twice inside one SDK, which happens when two split
+        # entries both list the operation. Overwriting would hide an operation
+        # emitted on two services — a real surface bug, and one this gate is the
+        # only reader of, since the SDK is internally consistent with its own
+        # generator either way and the operationId set is unchanged.
+        if bucket.key?(key) && bucket[key] != service
+          failures << "#{source[:id]} emits #{key.first} #{key.last} on BOTH " \
+                      "`#{bucket[key]}` and `#{service}` (#{file}); an operation on two " \
+                      "services has no single assignment to compare"
+        end
+        bucket[key] = service
+      end
+    end
+  end
+
+  # Python's async twin: a second transcription of the same assignment by the
+  # same generator, and it must agree before the sync one is trusted. Reported as
+  # itself rather than folded into the cross-SDK diff, which would describe
+  # Python as disagreeing with the other four when it disagrees with itself.
+  if source[:async_prefix]
+    (assignment.keys | mirrors.keys).sort.each do |key|
+      next if assignment[key] == mirrors[key]
+      failures << "#{source[:id]}: #{key.first} #{key.last} is on " \
+                  "`#{assignment[key] || '(absent)'}` in the sync class but " \
+                  "`#{mirrors[key] || '(absent)'}` in the #{source[:async_prefix]} class"
+    end
+  end
+
+  assignments[source[:id]] = assignment
+end
+
+# --------------------------------------------------------------- completeness
+
+# Reported BEFORE the parity diff, and separately from it. An operation read out
+# of four SDKs and not the fifth is an extraction or emission problem; describing
+# it as an assignment disagreement would name a cause the gate has not observed.
+assignments.each do |id, assignment|
+  missing = (expected.keys - assignment.keys).sort
+  extra = (assignment.keys - expected.keys).sort
+
+  missing.each do |key|
+    failures << "#{id} never emits #{label(expected, key)} — openapi.json declares it, so either " \
+                "the SDK is short an operation or this gate's #{id} request-call patterns no " \
+                "longer match how the generator emits it. Nothing about assignment follows " \
+                "from this either way"
+  end
+  extra.each do |key|
+    failures << "#{id} emits #{key.first} #{key.last} on `#{assignment[key]}`, and openapi.json " \
+                "declares no such operation — the SDK is ahead of the spec, or the path was " \
+                "read wrong"
+  end
+end
+
+die(failures) unless failures.empty?
+
+# --------------------------------------------------------------------- parity
+
+expected.keys.sort.each do |key|
+  by_service = assignments.each_with_object({}) do |(id, assignment), acc|
+    (acc[assignment[key]] ||= []) << id
+  end
+  next if by_service.size == 1
+
+  spread = by_service.sort_by { |service, ids| [-ids.length, service.to_s] }
+                     .map { |service, ids| "`#{service}` in #{ids.sort.join(', ')}" }
+                     .join("; ")
+  failures << "#{label(expected, key)} is assigned to different services: #{spread}. " \
+              "Look at the SERVICE_SPLITS entry for this operation in the generator configs " \
+              "of the renderings that disagree"
+end
+
+die(failures) unless failures.empty?
+
+puts "OK: cross-SDK operation assignment parity — #{expected.length} operations each land on " \
+     "the same service in all #{assignments.size} generated SDKs " \
+     "(#{assignments.keys.join(', ')}); Go has no split table and is out of scope"

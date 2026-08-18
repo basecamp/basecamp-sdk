@@ -1252,7 +1252,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity check-service-inventory-parity test-check-service-inventory-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1282,6 +1282,28 @@ check-service-inventory-parity:
 # normalization, then mutates one; the tracked tree is never written to.
 test-check-service-inventory-parity:
 	@ruby ./scripts/test-check-service-inventory-parity.rb
+
+# The sibling of the two targets above, and a DIFFERENT QUESTION: not which
+# services exist, but which service each OPERATION hangs off. If one generator
+# routes an operation to a different but ALREADY-EXISTING service, the service
+# name union is unchanged (so the gate above sees nothing), the global operationId
+# set is unchanged (so every per-SDK check-*-service-drift sees nothing), and the
+# SDK compiles with its tests exercising the method wherever it now lives. Five
+# SDKs then expose account.cardTables.get and one exposes account.cards.get, both
+# "present". Keyed on (method, path) rather than operationId because Ruby carries
+# operationId on reads only. Go is out of scope: it has no split table to
+# disagree with, and 27 of its operationIds are deliberately assigned elsewhere.
+check-operation-assignment-parity:
+	@echo "==> Checking cross-SDK operation assignment parity..."
+	@./scripts/check-operation-assignment-parity
+
+# Drive that gate from outside with synthetic repository trees, same shape as the
+# self-test above. Its live run only ever exercises the PASSING case. The roster
+# is scraped from openapi.json and the real Swift services rather than written
+# down, and the builder rotates through every request helper the gate declares a
+# pattern for, so a dead pattern fails the positive control.
+test-check-operation-assignment-parity:
+	@ruby ./scripts/test-check-operation-assignment-parity.rb
 
 # Verify @deprecated propagates to all six SDKs in the right signal class
 # (compiler=Kotlin; editor=TS/Go; doc-only=Ruby/Python/Swift), that the clean
@@ -1543,7 +1565,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts
