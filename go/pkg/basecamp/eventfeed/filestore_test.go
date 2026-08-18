@@ -16,12 +16,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
+	"time"
 )
 
 // The compile-time seam assertion lives in filestore.go, where a break in the
@@ -760,4 +763,172 @@ func jsonQuote(s string) string {
 		panic(err)
 	}
 	return string(quoted)
+}
+
+// ---------------------------------------------------------------------------
+// #761 and the unbounded read.
+// ---------------------------------------------------------------------------
+
+// TestFileStore_OneFileTakesOneLockRegardlessOfCase is #761. On a
+// case-insensitive filesystem — APFS as macOS ships it, NTFS — "feed.json" and
+// "Feed.json" are ONE file, so two stores spelled differently must share the
+// mutex that serializes the read-modify-write. Two mutexes over one file is
+// the lost update the registry exists to prevent, and nothing more exotic than
+// two call sites disagreeing about capitalization reaches it.
+//
+// Asserted on lock identity rather than by racing two savers: a race would
+// reproduce the loss only probabilistically, and would pass on a
+// case-sensitive filesystem where the two paths really are two files.
+func TestFileStore_OneFileTakesOneLockRegardlessOfCase(t *testing.T) {
+	dir := t.TempDir()
+	lower := NewFileCheckpointStore(filepath.Join(dir, "feed.json"))
+	upper := NewFileCheckpointStore(filepath.Join(dir, "Feed.json"))
+	mixed := NewFileCheckpointStore(filepath.Join(dir, "FeEd.JsOn"))
+
+	if lower.mu != upper.mu {
+		t.Error(`stores over "feed.json" and "Feed.json" hold different locks; on a case-insensitive filesystem that is two writers over one file`)
+	}
+	if lower.mu != mixed.mu {
+		t.Error(`stores over "feed.json" and "FeEd.JsOn" hold different locks`)
+	}
+	// The path each store actually reads and writes is NOT folded — only the
+	// lock key is. Folding the path itself would make the store write a
+	// different file than the caller named.
+	if lower.path == upper.path {
+		t.Errorf("both stores resolved to the same path %q; only the lock key may be case-folded", lower.path)
+	}
+	if got := filepath.Base(upper.path); got != "Feed.json" {
+		t.Errorf("store path base = %q, want %q — the caller's spelling must survive", got, "Feed.json")
+	}
+}
+
+// TestFileStore_RefusesNonRegularFiles covers the read that followed whatever
+// the path named. A character device reads without end (/dev/zero fills memory
+// until the process dies); a FIFO blocks the OPEN until a writer appears,
+// which hangs Load — and Load runs before the first mint, with ctx
+// deliberately not honored, so the whole feed hangs behind it with no timeout
+// to escape through.
+func TestFileStore_RefusesNonRegularFiles(t *testing.T) {
+	t.Run("directory", func(t *testing.T) {
+		dir := t.TempDir()
+		store := NewFileCheckpointStore(filepath.Join(dir, "sub"))
+		if err := os.Mkdir(store.path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		assertNotRegularRefusal(t, store)
+	})
+
+	t.Run("fifo", func(t *testing.T) {
+		dir := t.TempDir()
+		store := NewFileCheckpointStore(filepath.Join(dir, "feed.json"))
+		if err := syscall.Mkfifo(store.path, 0o600); err != nil {
+			t.Skipf("mkfifo unavailable: %v", err)
+		}
+		assertNotRegularRefusal(t, store)
+	})
+
+	t.Run("character device", func(t *testing.T) {
+		if _, err := os.Stat("/dev/zero"); err != nil {
+			t.Skip("/dev/zero unavailable")
+		}
+		assertNotRegularRefusal(t, NewFileCheckpointStore("/dev/zero"))
+	})
+}
+
+// assertNotRegularRefusal requires Load to refuse store's file as non-regular,
+// under a bound, because the failure mode being guarded is a HANG rather than
+// a wrong answer: a FIFO with no writer blocks the open forever, and /dev/zero
+// reads forever. Un-bounded, a regression takes the whole package's timeout
+// with it and names nothing — verified, and it is what the first draft of
+// these tests did.
+func assertNotRegularRefusal(t *testing.T, store *FileCheckpointStore) {
+	t.Helper()
+
+	type result struct {
+		ok  bool
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		_, ok, err := store.Load(context.Background(), CheckpointKey{})
+		done <- result{ok, err}
+	}()
+
+	select {
+	case got := <-done:
+		if got.err == nil {
+			t.Fatalf("Load = (ok=%v, nil); a non-regular file must be a store FAILURE, not Missing", got.ok)
+		}
+		if got.ok {
+			t.Error("Load reported a loaded position from a non-regular file")
+		}
+		if !strings.Contains(got.err.Error(), "not a regular file") {
+			t.Errorf("Load error = %v, want a not-a-regular-file refusal", got.err)
+		}
+	case <-time.After(10 * time.Second):
+		// The goroutine is left blocked: there is nothing to cancel, since
+		// this is exactly the property under test.
+		t.Fatalf("Load over %s did not return; the file type must be refused before an open or read that cannot finish", store.path)
+	}
+}
+
+// TestFileStore_RefusesOversizedFile bounds the allocation. Load runs before
+// the first mint, so an absurd file is an unbounded allocation on the startup
+// path; the bounded, reported failure is Terminal(checkpoint_load) with zero
+// wire attempts.
+func TestFileStore_RefusesOversizedFile(t *testing.T) {
+	dir := t.TempDir()
+	store := NewFileCheckpointStore(filepath.Join(dir, "feed.json"))
+
+	f, err := os.Create(store.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Sparse: the bytes are never written, so this costs no disk and no time,
+	// but the read would still have to materialize them.
+	if err := f.Truncate(maxCheckpointStoreBytes + 1); err != nil {
+		_ = f.Close()
+		t.Skipf("cannot create a sparse file of the required size: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok, err := store.Load(context.Background(), CheckpointKey{})
+	if err == nil {
+		t.Fatalf("Load = (ok=%v, nil); an over-size store must be a failure", ok)
+	}
+	if !strings.Contains(err.Error(), "limit") {
+		t.Errorf("Load error = %v, want a size-limit refusal", err)
+	}
+	// Nothing of the file's contents is echoed.
+	if strings.Contains(err.Error(), "\x00\x00\x00") {
+		t.Errorf("Load error echoed file contents: %v", err)
+	}
+}
+
+// A file just under the cap still loads: the bound must not be so eager that
+// it refuses a legitimate store.
+func TestFileStore_AcceptsFileUnderTheLimit(t *testing.T) {
+	dir := t.TempDir()
+	store := NewFileCheckpointStore(filepath.Join(dir, "feed.json"))
+	key := CheckpointKey{Origin: "https://3.basecampapi.com", AccountID: "5951425", ConsumerNamespace: "openclaw", FilterKey: "srv1-0000000000000000"}
+	if err := store.Save(context.Background(), key, "pos-1"); err != nil {
+		t.Fatal(err)
+	}
+	// Pad with additional lineages until the file is substantial but legal.
+	for i := range 500 {
+		k := key
+		k.ConsumerNamespace = fmt.Sprintf("consumer-%04d", i)
+		if err := store.Save(context.Background(), k, fmt.Sprintf("pos-%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, ok, err := store.Load(context.Background(), key)
+	if err != nil {
+		t.Fatalf("Load = %v, want the stored position", err)
+	}
+	if !ok || got != "pos-1" {
+		t.Errorf("Load = (%q, %v), want (\"pos-1\", true)", got, ok)
+	}
 }
