@@ -1,0 +1,22 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DecodeIsolationTest.kt
+  s_bcb193599a4870::t_bb17f1cb96646b 310-324
+MIGRATING.md
+  s_bcb193599a4870::t_b290d5851aec39 286-299,301-317
+  s_bcb193599a4870::t_2d0d7af6481d38 300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7c644129ffc59832e849e3b22d99c44432abeec7",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
