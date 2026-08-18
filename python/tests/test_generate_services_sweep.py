@@ -24,9 +24,14 @@ pointing `--output` one directory too high yields an empty drop list and
 `types.py` is never a candidate. That is asserted against the real tree, not a
 mock of it.
 
-`main` gets its own case, because the record can be read correctly and the wiring
-still be wrong: it proves the sweep is reached after the emit loop and that the
-barrel is read before it is rewritten.
+`main` gets its own cases, because the record can be read correctly and the wiring
+still be wrong. One proves the sweep is reached after the emit loop. Two more
+prove the ordering that makes a failed run retryable: the sweep runs while the
+previous barrel is still on disk, so a run that dies at or during the sweep
+leaves the record naming everything it did not get to, and the next clean run
+finishes the job. Rewrite the barrel first and those two go red — the record is
+gone before the deletions it authorises, and what the interrupted run missed can
+never be nominated again.
 """
 
 from __future__ import annotations
@@ -173,6 +178,34 @@ def names_on_disk(output_dir: Path) -> set[str]:
     return {p.name for p in output_dir.glob("*.py")}
 
 
+def run_main(output_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A real `main` over `output_dir`, the way `make generate` invokes it."""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["generate_services.py", "--openapi", str(OPENAPI), "--output", str(output_dir)],
+    )
+    generate_services.main()
+
+
+def interrupted(*deletions: str):
+    """A stand-in sweep that performs `deletions` and then dies.
+
+    Substituted for the real `remove_stale_files`, so what these cases exercise is
+    `main`'s ordering rather than the sweep's own logic. The states it leaves
+    behind — nothing unlinked, or part of the drop list unlinked — are exactly
+    the states a real sweep leaves when an unlink raises or the process is killed
+    between two of them.
+    """
+
+    def sweep(output_dir: Path, previous_modules: set[str], emitted_files: list[str]) -> None:
+        for name in deletions:
+            (output_dir / name).unlink()
+        raise RuntimeError("interrupted mid-run")
+
+    return sweep
+
+
 @pytest.fixture()
 def swept(tmp_path: Path) -> Path:
     """A populated directory, after a real sweep that emitted two of its files."""
@@ -278,16 +311,11 @@ def test_a_missing_barrel_sweeps_nothing(tmp_path: Path):
 def test_main_sweeps_stale_modules_after_emitting(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     populate(tmp_path)
 
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["generate_services.py", "--openapi", str(OPENAPI), "--output", str(tmp_path)],
-    )
-    generate_services.main()
+    run_main(tmp_path, monkeypatch)
 
     remaining = names_on_disk(tmp_path)
-    # Both corpses are gone, which also proves the barrel was read before it was
-    # rewritten: `main` overwrites `__init__.py` with one that names neither.
+    # Both corpses are gone, which also proves the drop list came from the
+    # previous run's barrel: the one `main` leaves behind names neither.
     assert STALE_MODULE not in remaining
     assert STALE_OLD_PREAMBLE_MODULE not in remaining
     # The emit loop's own output is intact, and so is everything the sweep is
@@ -302,3 +330,51 @@ def test_main_sweeps_stale_modules_after_emitting(tmp_path: Path, monkeypatch: p
     # well under the real count so it is not a second constant to maintain.
     assert len(remaining) > 40
     assert (tmp_path / EMITTED_MODULE).read_text(encoding="utf-8") != service_module("Projects")
+
+
+def test_a_run_that_dies_at_the_sweep_leaves_the_next_run_able_to_finish(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    populate(tmp_path)
+    monkeypatch.setattr(generate_services, "remove_stale_files", interrupted())
+
+    with pytest.raises(RuntimeError):
+        run_main(tmp_path, monkeypatch)
+
+    # A run that did its work and then died, not one that fell over before
+    # touching anything: the roster is on disk, and so are both corpses.
+    interrupted_state = names_on_disk(tmp_path)
+    assert len(interrupted_state) > 40
+    assert {STALE_MODULE, STALE_OLD_PREAMBLE_MODULE} <= interrupted_state
+    # The property, stated where it can be read off directly: the record that
+    # nominates them survived the run that failed to act on it.
+    assert {"fanfares", "carrier_pigeons"} <= previously_emitted_modules(tmp_path)
+
+    monkeypatch.undo()
+    run_main(tmp_path, monkeypatch)
+
+    remaining = names_on_disk(tmp_path)
+    assert STALE_MODULE not in remaining
+    assert STALE_OLD_PREAMBLE_MODULE not in remaining
+    assert UNRECORDED_MODULE in remaining
+
+
+def test_a_sweep_that_dies_partway_leaves_the_rest_for_the_next_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    populate(tmp_path)
+    # `sorted(previous - emitted)` reaches `carrier_pigeons` first, so unlinking
+    # that one and no further is the state a real sweep is in between its two
+    # unlinks — the half-finished job, rather than the untouched one above.
+    monkeypatch.setattr(generate_services, "remove_stale_files", interrupted(STALE_OLD_PREAMBLE_MODULE))
+
+    with pytest.raises(RuntimeError):
+        run_main(tmp_path, monkeypatch)
+
+    interrupted_state = names_on_disk(tmp_path)
+    assert STALE_OLD_PREAMBLE_MODULE not in interrupted_state
+    assert STALE_MODULE in interrupted_state
+    assert "fanfares" in previously_emitted_modules(tmp_path)
+
+    monkeypatch.undo()
+    run_main(tmp_path, monkeypatch)
+
+    assert STALE_MODULE not in names_on_disk(tmp_path)
