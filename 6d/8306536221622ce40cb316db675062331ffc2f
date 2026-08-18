@@ -1,0 +1,23 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt
+  s_bcb193599a4870::t_16da899acd8bb7 3-5
+  s_bcb193599a4870::t_baf9ec4ac98a54 144-161,165-195
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt
+  s_bcb193599a4870::t_22ac1a922adcda 14
+  s_bcb193599a4870::t_1c923c0cc65121 394-458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6d8306536221622ce40cb316db675062331ffc2f",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
