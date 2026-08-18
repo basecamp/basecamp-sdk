@@ -116,9 +116,14 @@ SOURCES = [
     # workaround for a generator defect, and the defect is fixed: the TypeScript,
     # Ruby, Kotlin and Swift generators all delete outputs the current mapping no
     # longer produces, `python/scripts/generate_services.py` did not, and now
-    # does (#757, marker-guarded like Ruby's). So a mapping that DROPS a Python
-    # service no longer leaves its module on disk for a directory listing to
-    # count as still emitted.
+    # does (#757). So a mapping that DROPS a Python service no longer leaves its
+    # module on disk for a directory listing to count as still emitted.
+    #
+    # That sweep reads THIS FILE too — the barrel is the generator's own record
+    # of what it last emitted, and the next run sweeps `that record minus its own
+    # output`. The two readers share a source and stay independent regardless: a
+    # sweep that stops working leaves the barrel correct and the corpse invisible
+    # here, exactly as before, which is what the next paragraph is about.
     #
     # The barrel reading stays, for two reasons that outlive the defect. It is
     # the second line of defence — this gate is the only reader that cannot be
