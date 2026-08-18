@@ -1,0 +1,22 @@
+typescript/tests/types/accessor-inventory.test-d.ts
+  s_bd904175ffa79c::t_8c973b1972304a 48
+  s_bd904175ffa79c::t_6f939d0a19339e 92-147
+  s_bd904175ffa79c::t_d4c17b4901d852 24-31
+  s_bd904175ffa79c::t_53798be11b2ca1 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ace850388fb977fdb519fd0c45e8aeba59348336",
+  "prompts": {},
+  "sessions": {
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
