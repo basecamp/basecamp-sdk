@@ -826,14 +826,19 @@ func assertUnclassifiedReadFailure(t *testing.T, err error, puts *atomic.Int64) 
 	}
 }
 
-// #773: the document read's decode step sees three different failures and only
+// #773: the document read's decode step sees four different failures, and only
 // two of them are the decoder's, because io.ReadAll runs INSIDE
-// ParseGetDocumentResponse. All three arrive at documentDecodeError by the same
-// path, so the gate is what tells them apart — and the three cases here are one
-// test rather than four so that a later "simplification" has to look at all of
-// them at once.
+// ParseGetDocumentResponse. Two are the body failing to ARRIVE (cases 1 and 4)
+// and two are the body failing to DECODE (cases 2 and 3). All four reach
+// documentDecodeError by the same path, so what tells them apart is the marker
+// markBodyReadFailures puts on the read itself — not anything about the errors.
+// They are one test rather than four so a later "simplification" has to face
+// all of them at once.
 //
-// Cases 3 and 4 are the load-bearing pair, and they fail in opposite directions:
+// Cases 3 and 4 are the load-bearing pair, and they fail in opposite
+// directions. That pairing is the point: either one alone rules out a single
+// bad gate, but together they rule out inferring the origin from the error's
+// type AT ALL, in either direction.
 //
 //   - An ALLOW-LIST of the decoder (*json.SyntaxError, *json.UnmarshalTypeError,
 //     everything else verbatim) breaks case 3, because created_at is a time.Time
