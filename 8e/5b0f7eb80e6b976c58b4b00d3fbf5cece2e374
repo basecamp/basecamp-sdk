@@ -1,0 +1,35 @@
+python/tests/test_generate_services_sweep.py
+  s_bd904175ffa79c::t_e35624eec5af55 314,317-318
+  s_bd904175ffa79c::t_5a8c671b4f6dbe 181-208
+  s_bd904175ffa79c::t_8d4b3bd76d6244 27-34
+  s_bd904175ffa79c::t_016db19e4d86aa 333-380
+python/scripts/generate_services.py
+  s_bd904175ffa79c::t_aaa30414462b59 1187-1192
+  s_bd904175ffa79c::t_e2e1615cde3b4b 1148-1150
+  s_bd904175ffa79c::t_a42ca643a96b7d 1117
+  s_bd904175ffa79c::t_dc6c88082bba7e 1001-1003
+  s_bd904175ffa79c::t_82a665d61af845 1166-1169,1172-1177
+  s_bd904175ffa79c::t_5579d8703fc96d 1178-1186,1193-1197
+  s_bd904175ffa79c::t_bbf224822f605a 1040-1044
+  s_bd904175ffa79c::t_f5898199c87b07 1065
+  s_bd904175ffa79c::t_069261591bd5e5 1170-1171
+  s_bd904175ffa79c::t_ab3513e93c3d90 928-932
+  s_bd904175ffa79c::t_8397acbde06fde 1081,1094-1100
+  s_bd904175ffa79c::t_e9b419927cc144 1101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8e5b0f7eb80e6b976c58b4b00d3fbf5cece2e374",
+  "prompts": {},
+  "sessions": {
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
