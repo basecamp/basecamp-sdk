@@ -296,6 +296,17 @@ which always threw on the same bodies. BC3 settles which reading is right —
 `app/views/api/users/timelines/show.json.jbuilder` writes `person` and `events`
 unconditionally, so an absent one is a malformed body and never an empty result.
 
+**`GetPersonProgressResponseContent.person` and `.events` became required.** The
+model now says what the jbuilder does, so the four SDKs that never typed-decode
+this envelope stop describing always-present members as optional. Both lose
+their optionality: `person?`/`events?` → `person`/`events` in TypeScript's
+`schema.d.ts` and Python's `TypedDict`, `NotRequired` gone; Go's `Person *Person`
+→ `Person Person`; Swift's `var …?` with a zero-argument `init` →
+`let` with a two-argument one. Only the Swift and Go changes can fail to
+compile, and only where you constructed the type yourself — the SDKs' own
+`PersonProgress` surfaces are unchanged, Go's included, which still returns
+`*Person`.
+
 **Only if you subclass `BaseService` directly:** `requestPaginatedWrapped` no
 longer hands back the first page's raw body for you to decode afterwards. It
 takes the wrapper decode as a trailing closure and returns whatever that closure

@@ -218,11 +218,14 @@ open class BaseService: @unchecked Sendable {
         }
     }
 
-    /// Executes a paginated request for wrapped responses, returning both the
-    /// raw first page data (for wrapper field decoding) and the paginated items.
+    /// Executes a paginated request for wrapped responses, assembling the result
+    /// from the paginated items plus the first page's remaining wrapper members.
     ///
-    /// Each page returns `{ key: [items], ... }` — items are extracted from the given key.
-    /// The first page's raw data is returned so callers can decode wrapper fields like `person`.
+    /// Each page returns `{ key: [items], ... }` — items are extracted from the
+    /// given key, and `buildResult` decodes what else the first page's envelope
+    /// carries (`person`, for the one operation that has one). It does *not*
+    /// hand the raw first page data back for the caller to decode afterwards;
+    /// see `buildResult` below for why that changed.
     ///
     /// - Parameters:
     ///   - info: Operation metadata for hooks.

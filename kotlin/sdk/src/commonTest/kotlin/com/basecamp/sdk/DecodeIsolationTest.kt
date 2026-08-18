@@ -306,6 +306,54 @@ class DecodeIsolationTest {
         assertMalformedWrapper(personProgressFailure("""[{"id":1}]"""))
     }
 
+    /**
+     * The ordering `finishWrapped` exists to hold: the wrapper decode runs
+     * BEFORE `onOperationEnd`, so a malformed wrapper is reported once, as a
+     * failure.
+     *
+     * Without this, moving the hook call ahead of `decodeOrApiError` — the exact
+     * regression the helper is written to prevent, and what the generated code
+     * did before this change — would pass every other test in this file, because
+     * they only read the thrown exception. Both halves are one test on purpose:
+     * the claim is that the hook reports what actually happened, so the
+     * well-formed body has to be shown reporting a SUCCESS through the same
+     * path, or "always attaches an error" would satisfy the malformed half.
+     */
+    @Test
+    fun aMalformedWrapperIsReportedToHooksOnceAsAFailure() = runTest {
+        val ends = mutableListOf<OperationResult>()
+        val spy = object : BasecampHooks {
+            override fun onOperationEnd(info: OperationInfo, result: OperationResult) {
+                ends.add(result)
+            }
+        }
+        fun clientFor(body: String) = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+            enableRetry = false
+            hooks = spy
+        }
+
+        val bad = clientFor("""{"events":[]}""")
+        assertFailsWith<BasecampException.Api> { bad.forAccount("12345").reports.personProgress(7L) }
+        bad.close()
+
+        assertEquals(1, ends.size, "a malformed wrapper must end the operation exactly once")
+        assertIs<BasecampException.Api>(
+            ends.single().error,
+            "the end event must carry the mapped error, not report a success",
+        )
+
+        ends.clear()
+        val good = clientFor("""{"person":{"id":45678,"name":"Victor Cooper"},"events":[]}""")
+        good.forAccount("12345").reports.personProgress(7L)
+        good.close()
+
+        assertEquals(1, ends.size)
+        assertNull(ends.single().error, "a well-formed wrapper must still report a success")
+    }
+
     private suspend fun personProgressFailure(body: String): BasecampException.Api {
         val client = mockClient { respond(body, HttpStatusCode.OK, jsonHeaders) }
         val error = assertFailsWith<BasecampException.Api> {

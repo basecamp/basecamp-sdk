@@ -110,7 +110,12 @@ public enum PublicAPIConsumer {
         _ = GetAssignedTodosResponseContent()
         _ = GetMyAssignmentsResponseContent()
         _ = GetOverdueTodosResponseContent()
-        _ = GetPersonProgressResponseContent()
+        // GetPersonProgressResponseContent left this list when its two members
+        // were modeled @required (#728): it has no zero-parameter init any more.
+        // Its public init is still covered — by the reflective sweep in
+        // PublicInitCoverageTests, which reads every generated model.
+        _ = GetPersonProgressResponseContent(
+            events: [], person: Person(id: 1, name: "Victor Cooper"))
         _ = OutOfOffice()
         _ = PauseQuestionResponseContent()
         _ = Preferences()

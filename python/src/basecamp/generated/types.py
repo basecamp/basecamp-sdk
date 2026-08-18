@@ -954,8 +954,8 @@ class GetOverdueTodosResponseContent(TypedDict):
 
 
 class GetPersonProgressResponseContent(TypedDict):
-    events: NotRequired[list[TimelineEvent]]
-    person: NotRequired[Person]
+    events: list[TimelineEvent]
+    person: Person
 
 
 class GetUpcomingScheduleResponseContent(TypedDict):

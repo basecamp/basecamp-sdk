@@ -8753,8 +8753,18 @@ structure GetPersonProgressInput {
   page: Integer
 }
 
+// Both members are unconditional in BC3's projection —
+// app/views/api/users/timelines/show.json.jbuilder is two bare `json.` lines
+// with no `if` between them — so an absent one is a malformed body and never an
+// empty result. The Kotlin and Swift primitives refuse it as SPEC §6's
+// statusless api_error (#728); @required is the same statement in the model, so
+// the four SDKs that do not typed-decode this envelope stop describing a member
+// that is always on the wire as optional.
 structure GetPersonProgressOutput {
+  @required
   person: Person
+
+  @required
   events: TimelineEventList
 }
 

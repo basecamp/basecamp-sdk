@@ -378,12 +378,12 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	// Extract person from first page
-	var person *Person
-	if resp.JSON200.Person != nil {
-		p := personFromGenerated(*resp.JSON200.Person)
-		person = &p
-	}
+	// Extract person from first page. The generated member stopped being a
+	// pointer when the wrapper's two members were modeled @required: BC3 writes
+	// both unconditionally, so there is no absent case to represent. The public
+	// result keeps its *Person to avoid a break for callers.
+	p := personFromGenerated(resp.JSON200.Person)
+	person := &p
 
 	// Parse events from first page
 	var events []TimelineEvent

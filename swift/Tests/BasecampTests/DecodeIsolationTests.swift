@@ -212,6 +212,45 @@ final class DecodeIsolationTests: XCTestCase {
             message.contains("not a JSON object"), "expected the shape refusal, got: \(message)")
     }
 
+    /// The ordering `finishWrapped` exists to hold: the wrapper decode runs
+    /// BEFORE `onOperationEnd`, so a malformed wrapper is reported once, as a
+    /// failure.
+    ///
+    /// Without this, moving the hook call ahead of `decoding(_:_:)` — the exact
+    /// regression the helper is written to prevent, and what the generated code
+    /// did before this change — would pass every other test in this file,
+    /// because they only read the thrown error. Both halves are one test on
+    /// purpose: the claim is that the hook reports what actually happened, so
+    /// the well-formed body has to be shown reporting a SUCCESS through the same
+    /// path, or "always attaches an error" would satisfy the malformed half.
+    func testAMalformedWrapperIsReportedToHooksOnceAsAFailure() async throws {
+        let badSpy = EndSpy()
+        let bad = makeTestAccountClient(
+            transport: transport(body: #"{"events":[]}"#), hooks: badSpy)
+        do {
+            _ = try await bad.reports.personProgress(personId: 7)
+            XCTFail("expected a malformed wrapper to fail")
+        } catch is BasecampError {}
+
+        XCTAssertEqual(
+            badSpy.ends.count, 1, "a malformed wrapper must end the operation exactly once")
+        guard let recorded = badSpy.ends.first, let reported = recorded else {
+            return XCTFail("the end event must carry the mapped error, not report a success")
+        }
+        XCTAssertTrue(reported is BasecampError, "got a raw \(type(of: reported))")
+
+        let goodSpy = EndSpy()
+        let good = makeTestAccountClient(
+            transport: transport(
+                body: #"{"person":{"id":45678,"name":"Victor Cooper"},"events":[]}"#),
+            hooks: goodSpy)
+        _ = try await good.reports.personProgress(personId: 7)
+
+        XCTAssertEqual(goodSpy.ends.count, 1)
+        XCTAssertNil(
+            goodSpy.ends.first ?? nil, "a well-formed wrapper must still report a success")
+    }
+
     /// Asserts the message names the member and says what was wrong with it,
     /// **without quoting the quotes around it**. The guards in `BaseService`
     /// write `'events'`, but the message reaches here through
@@ -471,5 +510,19 @@ private final class PageCounter: @unchecked Sendable {
             value += 1
             return value
         }
+    }
+}
+
+/// Records only what `testAMalformedWrapperIsReportedToHooksOnceAsAFailure`
+/// reads: one entry per `onOperationEnd`, carrying its error or `nil`. Its own
+/// spy rather than `HooksTests`', which is private to that file.
+private final class EndSpy: BasecampHooks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _ends: [(any Error)?] = []
+
+    var ends: [(any Error)?] { lock.withLock { _ends } }
+
+    func onOperationEnd(_ info: OperationInfo, result: OperationResult) {
+        lock.withLock { _ends.append(result.error) }
     }
 }

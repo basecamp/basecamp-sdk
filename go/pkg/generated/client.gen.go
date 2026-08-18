@@ -1687,8 +1687,8 @@ type GetOverdueTodosResponseContent struct {
 
 // GetPersonProgressResponseContent defines model for GetPersonProgressResponseContent.
 type GetPersonProgressResponseContent struct {
-	Events []TimelineEvent `json:"events,omitempty"`
-	Person *Person         `json:"person,omitempty"`
+	Events []TimelineEvent `json:"events"`
+	Person Person          `json:"person"`
 }
 
 // GetPersonResponseContent defines model for GetPersonResponseContent.
