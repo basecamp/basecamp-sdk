@@ -493,18 +493,26 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 	// so the two error origins never mix. The merge-safe composites read this
 	// body and write every field of it back, so a malformed one has to arrive as
 	// the documented statusless api_error (documentDecodeError in documents.go)
-	// — but everything BEFORE the response is a different failure with its own
-	// meaning, and no inspection of the returned error can reliably tell them
+	// — but a failure to REACH a response is a different failure with its own
+	// meaning, and no inspection of the returned error can reliably tell those
 	// apart. GetDocument covers the gate's successors: the per-request auth
 	// editor (a token provider or custom AuthStrategy may return ANY error), the
-	// transport, and context cancellation. Those return verbatim, so errors.Is
-	// keeps working; only ParseGetDocumentResponse's failure is a decode failure.
+	// request half of the transport, and context cancellation. Those return
+	// verbatim, so errors.Is keeps working.
+	//
+	// The split is by origin, not by position in the exchange: the body is
+	// STREAMED, so the transport is still running when ParseGetDocumentResponse
+	// calls io.ReadAll on it, and a truncated or reset body surfaces from the
+	// parse rather than from the call above it (#773). Wrapping the body marks
+	// those where they happen, so documentDecodeError can return them verbatim
+	// instead of guessing at them from the error's type afterwards.
 	//nolint:bodyclose // ParseGetDocumentResponse below closes the body (it defers
 	// rsp.Body.Close()), and it is called unconditionally on the next line.
 	httpResp, err := s.client.parent.gen.GetDocument(ctx, s.client.accountID, documentID)
 	if err != nil {
 		return nil, err
 	}
+	httpResp.Body = markBodyReadFailures(httpResp.Body)
 	resp, decodeErr := generated.ParseGetDocumentResponse(httpResp)
 	if decodeErr != nil {
 		err = documentDecodeError(decodeErr)

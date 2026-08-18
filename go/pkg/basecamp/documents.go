@@ -2,7 +2,9 @@ package basecamp
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -127,6 +129,58 @@ func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, e
 	}, nil
 }
 
+// bodyReadError marks an error as the response body failing to ARRIVE rather
+// than failing to DECODE.
+//
+// The two are indistinguishable at the two call sites that parse a response by
+// hand, because io.ReadAll(rsp.Body) is the FIRST statement of every generated
+// Parse* function and its error comes back verbatim. So a truncated body, a
+// reset connection or a bad chunk header reached documentDecodeError and
+// scheduleEntryDecodeError by exactly the same path a JSON fault does, and got
+// the same statusless CodeAPI with Retryable: false — a transient failure made
+// to look permanent (#773).
+//
+// Inferring the origin from the error afterwards was tried and abandoned: there
+// is no error set to match on. net/http reports bad chunk framing as a bare
+// errors.New("invalid byte in chunk length"), the transport's automatic gunzip
+// returns gzip.ErrHeader, and WithTransport lets a caller supply a body whose
+// Read returns anything at all — none of them a net.Error, none of them a named
+// type. Marking the read is what the call sites' doc comments already claim
+// happens ("the origin is known by construction rather than guessed"), so the
+// marker makes that true instead of approximating it.
+type bodyReadError struct{ err error }
+
+func (e *bodyReadError) Error() string { return e.err.Error() }
+func (e *bodyReadError) Unwrap() error { return e.err }
+
+// markedBody tags every read failure of the body it wraps.
+type markedBody struct{ inner io.ReadCloser }
+
+// Read forwards to the wrapped body and marks anything it fails with.
+//
+// io.EOF alone passes through untouched, and the comparison is deliberately
+// against that exact value rather than errors.Is: io.ReadAll ends its loop on
+// `err == io.EOF` and treats every other value as a failure, so matching its
+// test exactly is what guarantees the marker covers precisely the errors
+// io.ReadAll will hand back — including a wrapped EOF, which io.ReadAll would
+// surface as an error too.
+func (b *markedBody) Read(p []byte) (int, error) {
+	n, err := b.inner.Read(p)
+	if err != nil && err != io.EOF { //nolint:errorlint // matching io.ReadAll's own exact test, deliberately
+		err = &bodyReadError{err: err}
+	}
+	return n, err
+}
+
+func (b *markedBody) Close() error { return b.inner.Close() }
+
+// markBodyReadFailures wraps a response body so the two decode-error renderers
+// can tell a failed read from a failed decode by construction. Call it on
+// httpResp.Body before handing the response to a generated Parse* function.
+func markBodyReadFailures(body io.ReadCloser) io.ReadCloser {
+	return &markedBody{inner: body}
+}
+
 // documentDecodeError renders a response-decoder failure in the SPEC §6 shape.
 //
 // Go's json.Unmarshal is the typed guard the dynamic SDKs write by hand, and it
@@ -134,16 +188,21 @@ func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, e
 // that as a raw decoder error, which callers switching on *Error would miss and
 // which carries no hint. (The Swift composite does the same with DecodingError.)
 //
-// There is no classification here, deliberately. Deciding whether an error came
-// from the decoder by INSPECTING it does not work in either direction: decoder
-// errors are not enumerable (created_at/updated_at are time.Time, whose
-// UnmarshalJSON returns *time.ParseError rather than an encoding/json sentinel,
-// and content_attachments carries *types.FlexInt dimensions rejected with a
-// plain fmt.Errorf that is no named type at all), and neither are the errors
-// that precede a response — a gating hook, a token provider or a custom
+// The decoder half is not classified by INSPECTING the error, deliberately.
+// That inspection does not work in either direction: decoder errors are not
+// enumerable (created_at/updated_at are time.Time, whose UnmarshalJSON returns
+// *time.ParseError rather than an encoding/json sentinel, and
+// content_attachments carries *types.FlexInt dimensions rejected with a plain
+// fmt.Errorf that is no named type at all), and neither are the errors that
+// precede a response — a gating hook, a token provider or a custom
 // AuthStrategy may each return any sentinel they like. So DocumentsService.Get
 // splits the request from the decode and calls this on the decode step only,
 // where the origin is known by construction rather than guessed.
+//
+// The split needs one piece of help, because it is not as clean as it reads:
+// io.ReadAll runs INSIDE the generated parse, so the decode step's errors are
+// not all decode errors (#773). markBodyReadFailures above tags the ones that
+// are not, at the read, and those pass through verbatim.
 //
 // The decoder's error is kept as Cause, not just interpolated into Message
 // (#750). Every SDK renders it into the message; only the ones that keep it let
@@ -152,6 +211,11 @@ func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, e
 // at all reaches *json.UnmarshalTypeError or *json.SyntaxError through Unwrap
 // instead of pattern-matching a sentence.
 func documentDecodeError(err error) error {
+	// A body that never finished arriving is not a malformed body. Unwrap the
+	// marker so the caller sees the transport's own error, not our plumbing.
+	if marked, ok := errors.AsType[*bodyReadError](err); ok {
+		return marked.err
+	}
 	return &Error{
 		Code:    CodeAPI,
 		Message: truncate(fmt.Sprintf("GetDocument returned a body that does not decode as a document: %v", err)),
