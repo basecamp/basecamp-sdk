@@ -222,31 +222,111 @@ class DecodeIsolationTest {
         client.close()
     }
 
-    /**
-     * `requestPaginatedWrapped`: a body that is not JSON at all.
-     *
-     * Deliberately not a valid-JSON-wrong-shape body. The generated wrapper
-     * accessor for this operation reaches `["events"]!!.jsonArray`, whose
-     * `NullPointerException`/`IllegalArgumentException` this helper does not map
-     * — a generated-code defect tracked with the rest of the wrapper-decode gap
-     * (#728), not an exception type to widen the catch for.
-     */
+    /** `requestPaginatedWrapped`: a body that is not JSON at all. */
     @Test
     fun malformedWrappedBodyIsAStatuslessApiError() = runTest {
-        val client = mockClient { respond("not json at all", HttpStatusCode.OK, jsonHeaders) }
+        assertMalformedWrapper(personProgressFailure("not json at all"))
+    }
 
+    // -- The wrapped-pagination envelope, member by member (#728) --
+    //
+    // `GetPersonProgress` is the SDK's only wrapped-pagination operation, and
+    // both halves of its envelope used to be decoded by GENERATED code running
+    // after the request primitive returned: `["events"]!!.jsonArray` for the
+    // items and `decodeFromJsonElement<Person>(wrapper["person"]!!)` for the
+    // rest. Neither raised the one exception type the decode mapping catches, so
+    // an absent member surfaced as a NullPointerException and a non-array one as
+    // an IllegalArgumentException — raw, in both cases, past every guarantee
+    // this file is about. Both decodes now run inside the primitive.
+    //
+    // Absence is malformed, not empty, on BC3's authority: the envelope comes
+    // from app/views/api/users/timelines/show.json.jbuilder, which is two
+    // unconditional `json.` lines — `person` and `events` — with no `if` between
+    // them. Every member below is therefore always on the wire.
+
+    /** The control: both members present, so the envelope decodes. */
+    @Test
+    fun aWellFormedWrapperStillDecodes() = runTest {
+        val client = mockClient {
+            respond(
+                """{"person":{"id":45678,"name":"Victor Cooper"},"events":[]}""",
+                HttpStatusCode.OK,
+                jsonHeaders,
+            )
+        }
+
+        val result = client.forAccount("12345").reports.personProgress(7L)
+
+        assertEquals(45678L, result.person.id)
+        assertEquals(0, result.events.size)
+        client.close()
+    }
+
+    /** An absent `events` was a NullPointerException out of `["events"]!!`. */
+    @Test
+    fun anAbsentItemsKeyIsAStatuslessApiError() = runTest {
+        val error = personProgressFailure("""{"person":{"id":45678,"name":"Victor Cooper"}}""")
+
+        assertMalformedWrapper(error)
+        assertTrue(
+            error.message!!.contains("'events'"),
+            "the absent member must be named, got: ${error.message}",
+        )
+    }
+
+    /** An absent `person` was a NullPointerException out of `["person"]!!`. */
+    @Test
+    fun anAbsentWrapperMemberIsAStatuslessApiError() = runTest {
+        val error = personProgressFailure("""{"events":[]}""")
+
+        assertMalformedWrapper(error)
+        assertTrue(
+            error.message!!.contains("'person'"),
+            "the absent member must be named, got: ${error.message}",
+        )
+    }
+
+    /** A wrong-typed `person` already raised a SerializationException — but outside the mapping. */
+    @Test
+    fun aWrongTypedWrapperMemberIsAStatuslessApiError() = runTest {
+        assertMalformedWrapper(personProgressFailure("""{"events":[],"person":42}"""))
+    }
+
+    /** A non-array `events` was an IllegalArgumentException out of `.jsonArray`. */
+    @Test
+    fun aNonArrayItemsKeyIsAStatuslessApiError() = runTest {
+        assertMalformedWrapper(
+            personProgressFailure("""{"person":{"id":45678,"name":"Victor Cooper"},"events":{}}"""),
+        )
+    }
+
+    /** A top-level array — valid JSON, wrong shape — was an IllegalArgumentException out of `.jsonObject`. */
+    @Test
+    fun aNonObjectWrappedBodyIsAStatuslessApiError() = runTest {
+        assertMalformedWrapper(personProgressFailure("""[{"id":1}]"""))
+    }
+
+    private suspend fun personProgressFailure(body: String): BasecampException.Api {
+        val client = mockClient { respond(body, HttpStatusCode.OK, jsonHeaders) }
         val error = assertFailsWith<BasecampException.Api> {
             client.forAccount("12345").reports.personProgress(7L)
         }
+        client.close()
+        return error
+    }
 
-        assertNull(error.httpStatus)
-        assertFalse(error.retryable)
-        assertIs<SerializationException>(error.cause)
+    private fun assertMalformedWrapper(error: BasecampException.Api) {
+        assertNull(error.httpStatus, "the transport succeeded, so no status describes this")
+        assertFalse(error.retryable, "re-requesting cannot repair a malformed body")
+        assertIs<SerializationException>(
+            error.cause,
+            "the decoder's own exception must survive as the cause, got ${error.cause}",
+        )
+        assertNotNull(error.decodeFailure, "the structural marker separates this from any other api_error")
         assertTrue(
             error.message!!.contains("GetPersonProgress returned a body that does not decode"),
             "got: ${error.message}",
         )
-        client.close()
     }
 
     // -- Negative: everything else in the block keeps its own identity --

@@ -324,21 +324,39 @@ abstract class BaseService(
     }
 
     /**
-     * Executes a paginated request for wrapped responses, returning both the raw
-     * first page body (for wrapper field decoding) and the paginated items.
+     * Executes a paginated request for wrapped responses, assembling the result
+     * from the paginated items plus the first page's remaining wrapper members.
+     *
+     * [buildResult] runs **inside this primitive's decode isolation**, and that
+     * is the whole point of its being a parameter rather than the caller's next
+     * statement. A wrapped response is decoded in two halves — the items array
+     * on every page, and the wrapper's other members off the first page — and
+     * for as long as this function handed back the raw first page body, the
+     * second half was decoded by generated code *after* the primitive returned,
+     * so a malformed wrapper surfaced as whatever the generated accessors threw
+     * rather than as SPEC §6's statusless `api_error` (#728). Threading the
+     * lambda makes that isolation structural: there is no way to reach the
+     * wrapper body without going through [decodeOrApiError], so a wrapped
+     * operation added later inherits the guarantee instead of having to
+     * remember it.
      *
      * @param info Operation metadata for hooks.
      * @param options Pagination control (maxItems).
      * @param fn The suspend function that performs the initial HTTP call.
      * @param parseItems Parses a page's response body into a list of items.
-     * @return A [Pair] of the first page's raw body and the [ListResult] of all items.
+     * @param buildResult Decodes the first page's wrapper members and combines
+     *   them with the accumulated items. Raise [SerializationException] for a
+     *   member that is absent or wrong-typed; it is mapped like any other
+     *   decode failure.
+     * @return Whatever [buildResult] returns.
      */
-    protected suspend fun <T> requestPaginatedWrapped(
+    protected suspend fun <T, R> requestPaginatedWrapped(
         info: OperationInfo,
         options: PaginationOptions? = null,
         fn: suspend () -> HttpResponse,
         parseItems: (String) -> List<T>,
-    ): Pair<String, ListResult<T>> {
+        buildResult: (String, ListResult<T>) -> R,
+    ): R {
         val startTime = currentTimeMillis()
         val maxItems = options?.maxItems
 
@@ -366,20 +384,20 @@ abstract class BaseService(
                 val cap = maxItems?.takeIf { it > 0 && firstPageItems.size > it }
                 val hasMore = cap != null || parseNextLink(response.headers["Link"]) != null
                 val items = if (cap != null) firstPageItems.take(cap) else firstPageItems
-                val duration = (currentTimeMillis() - startTime).millisToDuration()
-                val result = ListResult(items, ListMeta(totalCount, hasMore))
-                hooks.safeOnOperationEnd(info, OperationResult(duration))
-                return Pair(firstPageBody, result)
+                return finishWrapped(
+                    info, startTime, firstPageBody,
+                    ListResult(items, ListMeta(totalCount, hasMore)), buildResult,
+                )
             }
 
             // Check if maxItems is satisfied by the first page
             if (maxItems != null && maxItems > 0 && firstPageItems.size >= maxItems) {
                 val hasMore = firstPageItems.size > maxItems
                     || parseNextLink(response.headers["Link"]) != null
-                val duration = (currentTimeMillis() - startTime).millisToDuration()
-                val result = ListResult(firstPageItems.take(maxItems), ListMeta(totalCount, hasMore))
-                hooks.safeOnOperationEnd(info, OperationResult(duration))
-                return Pair(firstPageBody, result)
+                return finishWrapped(
+                    info, startTime, firstPageBody,
+                    ListResult(firstPageItems.take(maxItems), ListMeta(totalCount, hasMore)), buildResult,
+                )
             }
 
             // Follow pagination
@@ -411,18 +429,18 @@ abstract class BaseService(
                 if (maxItems != null && maxItems > 0 && allItems.size >= maxItems) {
                     val hasMore = allItems.size > maxItems
                         || parseNextLink(currentResponse.headers["Link"]) != null
-                    val duration = (currentTimeMillis() - startTime).millisToDuration()
-                    val result = ListResult(allItems.take(maxItems), ListMeta(totalCount, hasMore))
-                    hooks.safeOnOperationEnd(info, OperationResult(duration))
-                    return Pair(firstPageBody, result)
+                    return finishWrapped(
+                        info, startTime, firstPageBody,
+                        ListResult(allItems.take(maxItems), ListMeta(totalCount, hasMore)), buildResult,
+                    )
                 }
             }
 
             val hasMore = parseNextLink(currentResponse.headers["Link"]) != null
-            val duration = (currentTimeMillis() - startTime).millisToDuration()
-            val result = ListResult(allItems, ListMeta(totalCount, hasMore))
-            hooks.safeOnOperationEnd(info, OperationResult(duration))
-            return Pair(firstPageBody, result)
+            return finishWrapped(
+                info, startTime, firstPageBody,
+                ListResult(allItems, ListMeta(totalCount, hasMore)), buildResult,
+            )
         } catch (e: BasecampException) {
             val duration = (currentTimeMillis() - startTime).millisToDuration()
             hooks.safeOnOperationEnd(info, OperationResult(duration, e))
@@ -432,6 +450,31 @@ abstract class BaseService(
             hooks.safeOnOperationEnd(info, OperationResult(duration, e))
             throw e
         }
+    }
+
+    /**
+     * The single exit of [requestPaginatedWrapped]: decode the wrapper, then
+     * report the operation as ended.
+     *
+     * Ordering is the reason this is a function rather than four repetitions.
+     * The wrapper decode has to happen BEFORE `onOperationEnd` fires, or a
+     * malformed wrapper would be reported to hooks as a success and then thrown
+     * — which is exactly what happened while generated code did this decode
+     * after the primitive had returned. Raising here instead leaves the throw
+     * inside the caller's `try`, so the existing `catch` reports the operation
+     * as failed, once, with the error.
+     */
+    private fun <T, R> finishWrapped(
+        info: OperationInfo,
+        startTime: Long,
+        firstPageBody: String,
+        items: ListResult<T>,
+        buildResult: (String, ListResult<T>) -> R,
+    ): R {
+        val result = decodeOrApiError(info.operation) { buildResult(firstPageBody, items) }
+        val duration = (currentTimeMillis() - startTime).millisToDuration()
+        hooks.safeOnOperationEnd(info, OperationResult(duration))
+        return result
     }
 
     /**
@@ -535,12 +578,16 @@ abstract class BaseService(
      * [com.basecamp.sdk.serialization.FlexibleLongSerializer], whose numeric
      * conversion would otherwise leak a [NumberFormatException].
      *
-     * Two classes stay unmapped on purpose. [IllegalArgumentException], the
-     * parent of both, would swallow every `require()` in reach. And the `!!`
-     * and `.jsonArray` accessors the generator emits for `GetPersonProgress`
-     * raise [NullPointerException] and [IllegalArgumentException] on a
-     * wrong-shaped wrapper body: generated-code defects to fix where they are
-     * written, not exception types to catch here (#728).
+     * Two classes stay unmapped on purpose: [NullPointerException] and
+     * [IllegalArgumentException]. Catching either would swallow every `!!` and
+     * every `require()` in reach, turning a programming error into a report
+     * about the server's body. The wrapped-pagination generator used to emit
+     * `["events"]!!.jsonArray`, whose failures those two names cover exactly,
+     * and the repair was to stop emitting them — the emitted accessor now
+     * raises [SerializationException] through
+     * [com.basecamp.sdk.serialization.requiredMember] and
+     * `decodeFromJsonElement`, so the failure arrives speaking the one mapped
+     * type rather than asking this catch to learn two more (#728).
      *
      * **Wrap the decode expression, never the block.** Each primitive above runs
      * encode → URL build → auth → transport → status check → decode inside one

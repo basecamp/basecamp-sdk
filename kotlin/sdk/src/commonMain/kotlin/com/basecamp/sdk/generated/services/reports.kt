@@ -2,13 +2,13 @@ package com.basecamp.sdk.generated.services
 
 import com.basecamp.sdk.*
 import com.basecamp.sdk.generated.models.*
+import com.basecamp.sdk.serialization.requiredMember
 import com.basecamp.sdk.services.BaseService
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 
 data class PersonProgressResult(
     val events: ListResult<TimelineEvent>,
@@ -150,17 +150,19 @@ class ReportsService(client: AccountClient) : BaseService(client) {
         val qs = buildQueryString(
             "page" to options.page,
         )
-        val (firstPageBody, items) = requestPaginatedWrapped<TimelineEvent>(info, options.toPaginationOptions(), {
+        return requestPaginatedWrapped<TimelineEvent, PersonProgressResult>(info, options.toPaginationOptions(), {
             httpGet("/reports/users/progress/${personId}.json" + qs, operationName = info.operation)
-        }) { body ->
-            json.parseToJsonElement(body).jsonObject["events"]!!
-                .jsonArray.map { json.decodeFromJsonElement<TimelineEvent>(it) }
+        }, { body ->
+            json.decodeFromJsonElement<List<TimelineEvent>>(
+                json.decodeFromString<JsonObject>(body).requiredMember("events")
+            )
+        }) { firstPageBody, items ->
+            val wrapper = json.decodeFromString<JsonObject>(firstPageBody)
+            PersonProgressResult(
+                events = items,
+                person = json.decodeFromJsonElement<Person>(wrapper.requiredMember("person"))
+            )
         }
-        val wrapper = json.parseToJsonElement(firstPageBody).jsonObject
-        return PersonProgressResult(
-            events = items,
-            person = json.decodeFromJsonElement<Person>(wrapper["person"]!!)
-        )
     }
 
     /**
