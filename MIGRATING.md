@@ -88,12 +88,25 @@ an RFC 7231 HTTP-date. TypeScript reached that contract through `parseInt` and
 malformed header used to buy a delay. They are now rejected and fall through to
 the ordinary exponential backoff:
 
-| header | was | is |
-|---|---|---|
-| `120junk` | 120 seconds — `parseInt` reads a prefix | backoff (~1s) |
-| `2099-01-01`, `Jan 1 2099`, a bare year | a date centuries out | backoff |
-| `3000junk` | 3000 seconds | backoff |
-| a value too large to be a safe integer | `Infinity` | backoff |
+Two things read this header and they did **not** behave the same before, so the
+table splits them: the **retry wait** (both retry loops, which used a bare
+`parseInt` with no date branch at all) and the **`error.retryAfter`** value
+exposed on a `BasecampError` (which used the compliant parser, `Date.parse`
+included). Both now come from one parser.
+
+| header | retry waited | `error.retryAfter` was | both are now |
+|---|---|---|---|
+| `120junk` | 120 s — `parseInt` reads a prefix | 120 | backoff (~1s) / undefined |
+| `2099-01-01` | 2099 s — read as the *number* 2099 | 2099 | backoff / undefined |
+| `3000junk` | 3000 s | 3000 | backoff / undefined |
+| `Jan 1 2099` | backoff — `parseInt` gave `NaN` | ~2.3 billion s, via `Date.parse` | backoff / undefined |
+| `9007199254740993` | ~9.0×10¹⁵ s | same | backoff / undefined |
+| a 400-digit value | `Infinity` | `Infinity` | backoff / undefined |
+
+Note that only the last row ever reached `Infinity`: an integer merely past
+`Number.MAX_SAFE_INTEGER` stayed finite and was honoured as an absurd but real
+wait. And `Jan 1 2099` never bought a long *wait* — the loops could not see
+dates at all — though it did report one to any caller reading `error.retryAfter`.
 
 A leading sign and surrounding whitespace are still accepted (`+120` is 120),
 because every other SDK's integer parser consumes them.
@@ -120,8 +133,9 @@ failure SPEC §7's backoff ceiling exists to prevent.
 **If you were relying on the old leniency** — e.g. an internal service emitting
 `Retry-After: 30s` or an ISO-8601 timestamp — send `1*DIGIT` seconds or an
 IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`) instead. The obsolete RFC 850 and
-asctime date forms are not accepted, matching Ruby, Swift and Kotlin; Go and
-Python remain more permissive there.
+asctime date forms are not accepted, matching Ruby and Swift; Go, Python and
+Kotlin remain more permissive there, so a date form one of them takes may still
+be refused here.
 
 ### Kotlin: `Retry-After` now honours the HTTP-date form it used to ignore (#564)
 

@@ -46,6 +46,40 @@ const MAX_JITTER_MS = 100;
 export const MAX_BACKOFF_DELAY_MS = 30_000;
 
 /**
+ * Largest delay `setTimeout` schedules faithfully: Node's timers are backed by
+ * a signed 32-bit int, and anything above this is CLAMPED TO 1ms rather than
+ * honoured. `client.ts` states the same bound for `AbortSignal.timeout` and
+ * `oauth/device.ts` states it in seconds.
+ */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
+/**
+ * Converts server-directed `Retry-After` seconds into a delay a timer will
+ * actually serve.
+ *
+ * `Retry-After` is exempt from the backoff ceiling above (SPEC §7) — it is the
+ * server's instruction, not our computation — but it is not exempt from the
+ * platform. Above the 32-bit bound `setTimeout` does not sleep longer, it
+ * sleeps 1ms, so an unclamped `Retry-After: 2147484` (a hair over 24.85 days)
+ * or any HTTP-date more than that far out becomes a tight retry loop against a
+ * server that asked for a month — the exact failure the ceiling exists to
+ * prevent, arriving through the one value exempt from it.
+ *
+ * Clamping rather than falling back to backoff follows `oauth/device.ts`:
+ * waiting the longest the platform can schedule honours the throttle, where a
+ * ~1s backoff would defeat it.
+ *
+ * This lives HERE, at the scheduling boundary, and not in the parser. The
+ * parser's result is also the public `BasecampError.retryAfter`, and clamping
+ * there reported a server's 3000000 to callers as 2147483 — the SDK
+ * understating what it was told. Parsing and scheduling are different questions
+ * and only one of them has a timer.
+ */
+export function timerSafeDelayMs(retryAfterSeconds: number): number {
+  return Math.min(retryAfterSeconds * 1000, MAX_TIMEOUT_MS);
+}
+
+/**
  * Lifecycle seams the retry loop emits through. The loop begins EVERY attempt
  * and finalizes the attempts it abandons (before the backoff sleep); the
  * terminal outcome — the response it returns, or the error it throws — is
@@ -156,7 +190,7 @@ export async function executeWithRetry(
         : undefined;
     const delay =
       retryAfterSeconds !== undefined
-        ? retryAfterSeconds * 1000
+        ? timerSafeDelayMs(retryAfterSeconds)
         : calculateBackoffDelay(config, attempt - 1);
 
     const statusError = new Error(

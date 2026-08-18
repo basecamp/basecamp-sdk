@@ -18,8 +18,8 @@
  * the delay from the same `retrying` hook the SDK's callers see.
  */
 import { describe, it, expect } from "vitest";
-import { executeWithRetry, type RetryConfig, type RetryEmit } from "../src/retry.js";
-import { parseRetryAfter } from "../src/errors.js";
+import { executeWithRetry, timerSafeDelayMs, type RetryConfig, type RetryEmit } from "../src/retry.js";
+import { errorFromParsedBody, parseRetryAfter } from "../src/errors.js";
 
 const CONFIG: RetryConfig = {
   maxAttempts: 3,
@@ -129,37 +129,18 @@ describe("Retry-After parsing", () => {
   });
 
   /**
-   * Representable is not the same as schedulable, and the gap between them is
-   * where the tight loop actually lives. Both retry loops multiply this value
-   * by 1000 and hand it to `setTimeout`, whose delay is a signed 32-bit int:
-   * anything above 2_147_483_647ms is CLAMPED TO 1ms, not honoured. So
-   * `Retry-After: 2147484` — a perfectly safe integer, a hair over 24.85 days —
-   * became a 1ms retry against a server asking for a month, which is the same
-   * failure as the `Infinity` case reached by a legal value.
-   *
-   * Clamping rather than rejecting is deliberate and follows `oauth/device.ts`,
-   * which bounds its own `Retry-After` at the same `MAX_DEVICE_SECONDS =
-   * 2_147_483`: waiting the longest the platform can schedule honours the
-   * throttle, where falling through to a ~1s backoff would defeat it outright.
-   * An UNREPRESENTABLE value still falls through — that is garbage, not an
-   * instruction — which is the same two tiers device.ts draws.
+   * The parser reports what the server said, unclamped, because its result is
+   * ALSO the public `BasecampError.retryAfter` — documented as the seconds to
+   * wait. An earlier revision bounded it here at the timer ceiling, which meant
+   * a server saying 3000000 was reported to callers as 2147483, and the error
+   * hint said so in words. SPEC §6 defines parsing; a timer ceiling is a fact
+   * about scheduling a wait, and it now lives at the two sites that schedule
+   * one (see the retry-loop tests below).
    */
-  it("clamps a representable but unschedulable value to the timer bound", () => {
-    expect(parseRetryAfter("2147483")).toBe(2_147_483);
-    expect(parseRetryAfter("2147484")).toBe(2_147_483);
-    expect(parseRetryAfter("999999999")).toBe(2_147_483);
-  });
-
-  /**
-   * The date branch has the same ceiling and reaches it far more easily: any
-   * HTTP-date more than ~24.85 days out. Before the clamp, a `Retry-After`
-   * naming 2035 computed ~264 billion ms and fired the timer after 2ms —
-   * measured, not theorised. That is the branch this PR exists to add, so it
-   * would have shipped the defect it was written to fix.
-   */
-  it("clamps a far-future HTTP-date to the same bound", () => {
-    expect(parseRetryAfter("Mon, 01 Jan 2035 00:00:00 GMT")).toBe(2_147_483);
-    expect(parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT")).toBe(2_147_483);
+  it("reports the server's value without imposing a timer ceiling", () => {
+    expect(parseRetryAfter("2147484")).toBe(2_147_484);
+    expect(parseRetryAfter("3000000")).toBe(3_000_000);
+    expect(parseRetryAfter("Mon, 01 Jan 2035 00:00:00 GMT")).toBeGreaterThan(200_000_000);
   });
 
   it("returns the seconds remaining until a future HTTP-date", () => {
@@ -230,11 +211,15 @@ describe("the shared retry loop honours the parsed value", () => {
   });
 
   /**
-   * The property that matters end-to-end: whatever the loop chooses must be a
-   * delay `setTimeout` will actually serve. A value above the 32-bit bound is
-   * not a long sleep, it is a 1ms one — so an unschedulable delay arriving here
-   * would mean the loop retries essentially immediately against a server that
-   * asked for a month.
+   * The property that matters end-to-end, and the one the clamp exists for:
+   * whatever the loop chooses must be a delay `setTimeout` will actually serve.
+   * A value above the 32-bit bound is not a long sleep, it is a 1ms one — so an
+   * unschedulable delay arriving here would mean the loop retries essentially
+   * immediately against a server that asked for a month.
+   *
+   * Asserted on the LOOP rather than the parser, which is the whole point of
+   * where the clamp lives: the caller reading `error.retryAfter` still gets the
+   * server's real number.
    */
   it("never chooses a delay the platform would silently collapse to 1ms", async () => {
     const MAX_TIMEOUT_MS = 2_147_483_647;
@@ -244,6 +229,25 @@ describe("the shared retry loop honours the parsed value", () => {
       // Still a real server-directed wait, not a fall-through to ~1s backoff.
       expect(delay, `Retry-After: ${header}`).toBeGreaterThan(1_000_000);
     }
+  });
+
+  /**
+   * The clamp must not reach the public error metadata. `errorFromParsedBody`
+   * calls the same parser to populate `BasecampError.retryAfter`, so a bound
+   * applied inside it would have the SDK tell a caller a smaller number than
+   * the server sent — and the `hint` string repeats that number in words.
+   */
+  it("does not let the scheduling ceiling truncate the reported retryAfter", async () => {
+    const response = new Response(null, {
+      status: 429,
+      headers: { "Retry-After": "3000000" },
+    });
+    const error = errorFromParsedBody(response, null);
+
+    expect(error.retryAfter).toBe(3_000_000);
+    expect(error.hint).toContain("3000000");
+    // …while the delay the loop would actually schedule is still bounded.
+    expect(timerSafeDelayMs(error.retryAfter!)).toBeLessThanOrEqual(2_147_483_647);
   });
 
   it("ignores Retry-After on a status that is not 429", async () => {

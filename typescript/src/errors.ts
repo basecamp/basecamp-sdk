@@ -470,35 +470,30 @@ const DELAY_SECONDS = /^[+-]?\d+$/;
  * rejects an impossible day or hour by returning NaN.
  *
  * The obsolete RFC 850 and asctime forms are deliberately not accepted. That
- * matches Ruby (`Time.httpdate`), Swift (`DateFormatter`) and Kotlin (ktor's
- * `fromHttpToGmtDate`), but it does NOT make all six agree: Go's
- * `http.ParseTime` accepts all three forms and Python's `parsedate_to_datetime`
- * is broadly lenient, so this gate leaves TypeScript stricter than those two on
- * the obsolete forms. Recorded against #775 with the rest of the Retry-After
- * divergence; the direction is the safe one, since a form nobody is permitted
- * to send simply falls through to backoff.
+ * matches Ruby (`Time.httpdate`) and Swift (`DateFormatter`), but it does NOT
+ * make all six agree: Go's `http.ParseTime` takes all three forms, Python's
+ * `parsedate_to_datetime` is broadly lenient, and Kotlin's ktor parser takes a
+ * family of variants of its own (an earlier revision of this comment claimed
+ * Kotlin was strict, which was wrong — `PaginationTest` now pins what it really
+ * accepts). So this gate leaves TypeScript stricter than three of the five.
+ * Recorded against #775 with the rest of the Retry-After divergence; the
+ * direction is the safe one, since a form nobody is permitted to send simply
+ * falls through to backoff.
  */
 const IMF_FIXDATE =
   /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
 
-/**
- * Largest delay this SDK can actually WAIT: 2_147_483 s (~24.85 days), whose
- * millisecond form fits the signed 32-bit int backing Node's timers. Above it,
- * `setTimeout` does not sleep longer — it CLAMPS TO 1ms, so an over-bound delay
- * is not a long wait but an immediate retry against a server asking for a month.
- * `client.ts` states the same bound in milliseconds (`MAX_TIMEOUT_MS`) and
- * `oauth/device.ts` in seconds (`MAX_DEVICE_SECONDS`); this is a third unit-mate
- * of one platform limit rather than a new policy, and it is deliberately local
- * so `errors.ts` keeps importing nothing (which is what makes `retry.ts`'s edge
- * to it acyclic).
- *
- * Both steps clamp to it rather than rejecting, following device.ts: waiting the
- * longest the platform can schedule honours the throttle, where falling through
- * to a ~1s backoff would defeat it. A value too large to REPRESENT still falls
- * through — that is garbage rather than an instruction — which is the same two
- * tiers device.ts draws.
+/*
+ * No timer bound is applied here, deliberately. An earlier revision clamped the
+ * parsed value at the largest delay `setTimeout` can serve, which quietly
+ * truncated the PUBLIC `BasecampError.retryAfter` — documented as "number of
+ * seconds to wait" and taken straight from this function by
+ * `errorFromParsedBody` — so a server saying 3000000 was reported to the caller
+ * as 2147483, and the hint said so in words. SPEC §6 defines parsing; the
+ * platform's timer ceiling is a property of *scheduling* a wait, not of reading
+ * the header. It now lives at the two sites that actually call `setTimeout`,
+ * via `timerSafeDelayMs` in `retry.ts`.
  */
-const MAX_RETRY_AFTER_SECONDS = 2_147_483;
 
 /**
  * Parses the Retry-After header value (SPEC §6, "Retry-After Parsing
@@ -536,22 +531,20 @@ export function parseRetryAfter(value: string | null): number | undefined {
   // answering 429 (SPEC §7's backoff ceiling exists for exactly this).
   if (DELAY_SECONDS.test(trimmed)) {
     const seconds = Number(trimmed);
-    return Number.isSafeInteger(seconds) && seconds > 0
-      ? Math.min(seconds, MAX_RETRY_AFTER_SECONDS)
-      : undefined;
+    return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined;
   }
 
   // Step 2 — an HTTP-date, reduced to the seconds remaining and honoured when
   // that is positive. A past date returns undefined rather than 0: handing back
-  // 0 would mean "retry immediately", the opposite instruction. The same clamp
-  // applies, and this branch reaches it far more easily — any date more than
-  // ~24.85 days out, which is one line of a config file away.
+  // 0 would mean "retry immediately", the opposite instruction. A far-future date
+  // yields a correspondingly huge value; bounding it to what a timer can serve
+  // is the caller's business, not this function's.
   if (IMF_FIXDATE.test(trimmed)) {
     const date = Date.parse(trimmed);
     if (!isNaN(date)) {
       const diffMs = date - Date.now();
       if (diffMs > 0) {
-        return Math.min(Math.ceil(diffMs / 1000), MAX_RETRY_AFTER_SECONDS);
+        return Math.ceil(diffMs / 1000);
       }
     }
   }

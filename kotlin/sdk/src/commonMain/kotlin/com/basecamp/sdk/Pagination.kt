@@ -153,11 +153,26 @@ internal fun isSameOrigin(url1: String, url2: String): Boolean {
  * `GMTDate` rather than a hand-rolled civil-date computation, and rather than a
  * new dependency: this is Kotlin Multiplatform common code, so `java.time` and
  * `SimpleDateFormat` are unavailable, and ktor is already an `api` dependency of
- * the SDK. That parser accepts the IMF-fixdate form only
- * (`Sun, 06 Nov 1994 08:49:37 GMT`) — the form RFC 7231 requires senders to
- * emit, the only form the Basecamp API emits, and the only form the Swift SDK
- * accepts. The obsolete RFC 850 and asctime forms going unparsed is therefore a
- * deliberate parity choice, not an oversight; both fall through to backoff.
+ * the SDK.
+ *
+ * That parser tries a LIST of patterns rather than one, so this accepts more
+ * than IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`): also a dash-separated
+ * date, a missing comma, a dash-separated time, and an asctime-like form. It
+ * does NOT accept either canonical obsolete form — RFC 850 wants a long weekday
+ * and a two-digit year, asctime pads the day with a space, and both are refused
+ * — so this is neither "IMF-fixdate only" nor "all three RFC 7231 forms". Every
+ * spelling is pinned in `PaginationTest` by probe rather than by reading the
+ * pattern list, whose `***` means "exactly three characters" and decides most of
+ * these.
+ *
+ * Left as it is, deliberately. The breadth is bounded where it matters — every
+ * pattern is an HTTP-date shape, so an ISO-8601 timestamp or a bare year, the
+ * values that made TypeScript's `Date.parse` dangerous, still fall through to
+ * backoff — and narrowing it would move Kotlin further from RFC 7231's
+ * recipient requirement rather than closer. It does mean Kotlin sits with the
+ * permissive SDKs (Go's `http.ParseTime`, Python's `parsedate_to_datetime`)
+ * rather than the strict ones (Ruby, Swift, TypeScript); #775 carries the
+ * six-SDK table.
  *
  * Returns null if the header is missing or cannot be parsed.
  */

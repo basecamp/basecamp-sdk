@@ -27,7 +27,7 @@ import { BasecampError, errorFromParsedBody, errorFromResponse, parseRetryAfter,
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
 import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
-import { saturatingBackoff } from "../retry.js";
+import { saturatingBackoff, timerSafeDelayMs } from "../retry.js";
 import type { paths } from "../generated/schema.js";
 import type createClient from "openapi-fetch";
 
@@ -297,7 +297,7 @@ export abstract class BaseService {
         // The locally-computed term is bounded by SPEC §7's ceiling; the
         // server-directed Retry-After is not, per the same section.
         const delay = retryAfterSeconds !== undefined
-          ? retryAfterSeconds * 1000
+          ? timerSafeDelayMs(retryAfterSeconds)
           : saturatingBackoff(retryConfig.baseDelayMs ?? 1000, "exponential", attempt);
 
         try {

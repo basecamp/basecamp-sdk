@@ -462,9 +462,45 @@ class PaginationTest {
     }
 
     /**
+     * ktor's `fromHttpToGmtDate` tries a LIST of patterns, not one: RFC 7231's
+     * IMF-fixdate, the obsolete RFC 850 and asctime forms, and several
+     * punctuation variants of those. RFC 7231 requires recipients to accept all
+     * three forms, so this is the compliant direction and it is deliberately
+     * left alone — but it means Kotlin is PERMISSIVE here, alongside Go's
+     * `http.ParseTime` and Python's `parsedate_to_datetime`, and not strict like
+     * Ruby, Swift and TypeScript. The doc comment on the parser used to claim
+     * IMF-fixdate only, which was simply wrong; pinned here so the claim and the
+     * behaviour cannot drift apart again (#775 carries the six-SDK table).
+     */
+    @Test
+    fun parseRetryAfterAcceptsMoreThanImfFixdate() {
+        // Every spelling below was probed against ktor 3.5.2 rather than
+        // inferred from its pattern list, because the list is written in a
+        // fixed-width mini-language where `***` means exactly three characters —
+        // which is what decides most of these, and is not what reading the
+        // patterns as strftime would suggest.
+        assertNotNull(parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT"), "IMF-fixdate")
+        assertNotNull(parseRetryAfter("Thu, 01-Jan-2060 00:00:00 GMT"), "dashed date")
+        assertNotNull(parseRetryAfter("Thu 01 Jan 2060 00:00:00 GMT"), "no comma")
+        assertNotNull(parseRetryAfter("Thu,01-Jan-2060 00:00:00 GMT"), "no space after comma")
+        assertNotNull(parseRetryAfter("Thu, 01-Jan-2060 00-00-00 GMT"), "dashed time")
+        assertNotNull(parseRetryAfter("Thu Jan 1 00:00:00 2060"), "asctime-like")
+
+        // And the sharper half: it accepts NEITHER canonical obsolete form.
+        // RFC 850 wants the long weekday and a two-digit year; asctime pads the
+        // day to two columns with a space. Both are refused, so "Kotlin accepts
+        // all three RFC 7231 forms" would be as wrong as "IMF-fixdate only".
+        assertNull(parseRetryAfter("Thursday, 01-Jan-60 00:00:00 GMT"), "RFC 850")
+        assertNull(parseRetryAfter("Thu Jan  1 00:00:00 2060"), "asctime, space-padded")
+    }
+
+    /**
      * Malformed input must fall through to step 3, not escape as an exception:
      * the parser sits on the retry path, where a throw would replace a backoff
-     * with a crash. The ISO-8601 case is the realistic near miss.
+     * with a crash. The ISO-8601 case is the realistic near miss — and the one
+     * that shows the permissiveness above is bounded: ktor's patterns are all
+     * HTTP-date shapes, so none of `Date.parse`'s hazards (ISO-8601, a bare
+     * year) get in.
      */
     @Test
     fun parseRetryAfterRejectsMalformedHttpDate() {
