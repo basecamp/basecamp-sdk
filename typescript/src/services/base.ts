@@ -23,7 +23,7 @@
  */
 
 import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js";
-import { BasecampError, errorFromParsedBody, errorFromResponse } from "../errors.js";
+import { BasecampError, errorFromParsedBody, errorFromResponse, truncateErrorMessage } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
 import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
@@ -549,6 +549,35 @@ export abstract class BaseService {
   }
 
   /**
+   * Decodes a followed page's body, refusing one that is not JSON.
+   *
+   * The raw-fetch pagination path is the only place this SDK decodes a body
+   * itself — every other response comes back through `openapi-fetch` — and an
+   * unwrapped `await response.json()` let a `SyntaxError` escape with no code,
+   * no hint and nothing to distinguish "the server sent garbage on page 4" from
+   * a bug in the caller's own code. Ruby and Python already classify this exact
+   * failure with this exact message; TypeScript was the outlier.
+   *
+   * `cause` carries the decoder's own error, which is the #750 contract: the
+   * message says which page failed, the slot says whether the body was truncated
+   * mid-object or was never JSON, and neither answer is parsed back out of the
+   * other. Statusless per SPEC §6 — the transport returned 2xx — and
+   * non-retryable, because re-requesting cannot repair a malformed body.
+   */
+  private async parsePage<T>(response: Response, page: number): Promise<T> {
+    try {
+      return (await response.json()) as T;
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new BasecampError(
+        "api_error",
+        truncateErrorMessage(`Failed to parse paginated response (page ${page}): ${detail}`),
+        { retryable: false, cause: err instanceof Error ? err : undefined },
+      );
+    }
+  }
+
+  /**
    * Follows Link header pagination, accumulating items across pages.
    * Returns items and whether results were truncated: true only when items
    * beyond maxItems were dropped, or a next-page link was left unfetched
@@ -583,7 +612,7 @@ export abstract class BaseService {
         throw await errorFromResponse(response, response.headers.get("X-Request-Id") ?? undefined);
       }
 
-      const pageItems: T[] = (await response.json()) as T[];
+      const pageItems: T[] = await this.parsePage<T[]>(response, page + 1);
       normalizePersonIds(pageItems);
       allItems.push(...pageItems);
 
@@ -635,7 +664,7 @@ export abstract class BaseService {
         throw await errorFromResponse(response, response.headers.get("X-Request-Id") ?? undefined);
       }
 
-      const pageData = (await response.json()) as Record<string, unknown>;
+      const pageData = await this.parsePage<Record<string, unknown>>(response, page + 1);
       normalizePersonIds(pageData);
       const pageItems: T[] = (pageData[key] as T[]) ?? [];
       allItems.push(...pageItems);

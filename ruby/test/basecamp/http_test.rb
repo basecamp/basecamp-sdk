@@ -647,4 +647,26 @@ class HTTPPaginationTest < Minitest::Test
     assert_equal 1, items.length
     assert_requested(:get, "https://3.basecampapi.com/items.json", times: 1)
   end
+
+  # A page body that is not JSON at all is the "the server sent something I
+  # could not decode" refusal, and the parser's own error must stay REACHABLE
+  # rather than only quoted into the message (#750). Reading which page failed,
+  # or whether the body was truncated mid-object, out of a sentence is the
+  # substring mechanism this SDK family is getting rid of.
+  def test_paginate_parse_failure_keeps_the_parser_error
+    stub_request(:get, "https://3.basecampapi.com/items.json")
+      .to_return(
+        status: 200,
+        body: '[{"id": 1}]',
+        headers: { "Link" => '<https://3.basecampapi.com/items.json?page=2>; rel="next"' }
+      )
+
+    stub_request(:get, "https://3.basecampapi.com/items.json?page=2")
+      .to_return(status: 200, body: '[{"id": 2')
+
+    error = assert_raises(Basecamp::ApiError) { @http.paginate("/items.json").to_a }
+
+    assert_kind_of JSON::ParserError, error.cause
+    assert_match(/page 2/, error.message)
+  end
 end

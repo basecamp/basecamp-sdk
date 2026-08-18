@@ -1579,6 +1579,35 @@ func TestSchedulesService_UpdateEntryWrapsADecodeFailureAsStatuslessAPIError(t *
 	}
 }
 
+// The decoder's own error stays REACHABLE, not just quoted (#750) — the same
+// assertion documents_test.go makes for the document read, at the second site
+// that renders this shape. One helper per record means one Cause per record to
+// forget.
+func TestSchedulesService_UpdateEntryKeepsTheDecoderErrorReachable(t *testing.T) {
+	base := scheduleEntryReadBack(t)
+	get := patchScheduleEntryFixture(t, base, map[string]any{"summary": 42})
+	svc, _ := testSchedulesCaptureServer(t, get, base, nil)
+
+	_, err := svc.UpdateEntry(context.Background(), 1069479400, &UpdateScheduleEntryRequest{
+		Summary: strPtr("Q3 Kickoff"),
+	})
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+
+	var typeErr *json.UnmarshalTypeError
+	if !errors.As(err, &typeErr) {
+		t.Fatalf("expected the decoder's error to be reachable through Unwrap, got %v", err)
+	}
+	if typeErr.Field != "summary" {
+		t.Errorf("expected the decoder to name the offending field, got %q", typeErr.Field)
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeAPI {
+		t.Fatalf("expected a statusless api_error over the decoder error, got %T: %v", err, err)
+	}
+}
+
 // A transport or HTTP error must pass through untouched — the wrapper is for
 // decode failures only, and swallowing everything would hide a 404 behind a
 // "does not decode" message.

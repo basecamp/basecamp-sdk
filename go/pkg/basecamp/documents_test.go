@@ -704,6 +704,39 @@ func TestDocumentsService_UpdateWrapsADecodeFailureAsStatuslessAPIError(t *testi
 	}
 }
 
+// The decoder's own error stays REACHABLE, not just quoted (#750).
+//
+// documentDecodeError interpolates it into Message, which tells a human what
+// happened and leaves a caller nothing to act on: deciding "was the field the
+// wrong type, or was the body not JSON at all" from a sentence means matching
+// substrings, which is the mechanism #750 removed from Swift. Cause + Unwrap put
+// the decoder's own error back in reach of errors.As, so the classification and
+// the detail are both available and neither is parsed out of prose.
+func TestDocumentsService_UpdateKeepsTheDecoderErrorReachable(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	getBody := patchDocumentFixture(t, fixture, map[string]any{"title": 42})
+	svc, _ := testDocumentsCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{Title: "Q3 Plan"})
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+
+	var typeErr *json.UnmarshalTypeError
+	if !errors.As(err, &typeErr) {
+		t.Fatalf("expected the decoder's error to be reachable through Unwrap, got %v", err)
+	}
+	if typeErr.Field != "title" {
+		t.Errorf("expected the decoder to name the offending field, got %q", typeErr.Field)
+	}
+	// The classification must survive alongside it: a chain that only reports
+	// the decoder error would have replaced the SPEC §6 shape, not enriched it.
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeAPI {
+		t.Fatalf("expected a statusless api_error over the decoder error, got %T: %v", err, err)
+	}
+}
+
 // A transport or HTTP error must pass through untouched — the wrapper is for
 // decode failures only, and swallowing everything would hide a 404 behind a
 // "does not decode" message.

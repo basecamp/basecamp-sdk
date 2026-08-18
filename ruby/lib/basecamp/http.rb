@@ -342,7 +342,16 @@ module Basecamp
       Http.normalize_person_ids(data)
       data
     rescue JSON::ParserError => e
-      raise Basecamp::ApiError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
+      # +cause+ carries the parser's own error, not just its message (#750). The
+      # message says what happened; the slot is what a caller can act on, and it
+      # is the same answer Go reaches through errors.As and Kotlin and Swift
+      # through their decodeFailure slot. Passed explicitly rather than left to
+      # Ruby's implicit +$!+ chaining because Basecamp::Error defines its own
+      # +cause+ reader.
+      raise Basecamp::ApiError.new(
+        "Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}",
+        cause: e
+      )
     end
 
     # Extracts the item array from a parsed page body: the body itself for
