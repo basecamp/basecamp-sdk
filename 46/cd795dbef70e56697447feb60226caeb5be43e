@@ -1,0 +1,28 @@
+typescript/src/errors.ts
+  s_bcb193599a4870::t_e269a52ae67dd1 485-502
+  s_bcb193599a4870::t_01f2389a2befa0 539-541,546-548,554
+  s_bcb193599a4870::t_33272e914d4810 484
+conformance/tests/retry.json
+  s_bcb193599a4870::t_eaf7e645054cc5 73
+typescript/tests/retry-after.test.ts
+  s_bcb193599a4870::t_37bac5876dcbaf 119-152
+  s_bcb193599a4870::t_b181f6fb2f57a3 221-237
+MIGRATING.md
+  s_bcb193599a4870::t_47aa63cef00bf3 101-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "46cd795dbef70e56697447feb60226caeb5be43e",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
