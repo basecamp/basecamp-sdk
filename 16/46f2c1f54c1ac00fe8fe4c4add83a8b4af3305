@@ -1,0 +1,35 @@
+go/pkg/basecamp/eventfeed/filters_test.go
+  s_fb34b5676f6c5e::t_1c8fc56f11799f 67-111,114-115
+  s_fb34b5676f6c5e::t_4855b0bd2a4122 112-113
+go/pkg/basecamp/eventfeed/loop.go
+  s_fb34b5676f6c5e::t_619d64e3684e0c 1214-1306
+go/pkg/basecamp/eventfeed/checkpoint.go
+  s_fb34b5676f6c5e::t_a7df893314e9b5 127-128
+  s_fb34b5676f6c5e::t_1c849da9012ed7 126
+go/pkg/basecamp/eventfeed/continuation_test.go
+  s_fb34b5676f6c5e::t_d113599eda05b8 1-2,7-95,97-99,101-103
+  s_fb34b5676f6c5e::t_e8976d902de9b6 104-126
+  s_fb34b5676f6c5e::t_b110cb7b84fcfa 96,100
+  s_fb34b5676f6c5e::t_4640ab37e89877 3-6
+go/pkg/basecamp/eventfeed/catchup.go
+  s_fb34b5676f6c5e::t_78f4dcca14f476 125
+go/pkg/basecamp/eventfeed/continuation.go
+  s_fb34b5676f6c5e::t_7ce50c51082ff5 42
+  s_fb34b5676f6c5e::t_1a59491e7501da 15-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1646f2c1f54c1ac00fe8fe4c4add83a8b4af3305",
+  "prompts": {},
+  "sessions": {
+    "s_fb34b5676f6c5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f987d172-c77f-49b4-a021-cf647b5678b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
