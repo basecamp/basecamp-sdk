@@ -1,0 +1,60 @@
+swift/Tests/BasecampTests/DecodeIsolationTests.swift
+  s_bd904175ffa79c::t_9f0f0a069671f7 148-242
+  s_bd904175ffa79c::t_b15b2d75cb9101 46,71,115,136
+swift/Sources/Basecamp/BasecampError.swift
+  s_bd904175ffa79c::t_1984aa230f1386 185-213
+  s_bd904175ffa79c::t_134b3a5f35139e 41-54
+  s_7752ea184bc0fb::t_93b85c676c903f 86,101,133,149,164,275
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_bd904175ffa79c::t_1e812ea1827a39 1,328-332
+swift/README.md
+  s_bd904175ffa79c::t_82110b1acc3846 357,377-385
+swift/Sources/Basecamp/DocumentsServiceExtensions.swift
+  s_bd904175ffa79c::t_b212f59f4c0f9d 49-50,131-136,140,142,147-148
+swift/Sources/Basecamp/Download.swift
+  s_bd904175ffa79c::t_c3f17bc4910351 104,117
+swift/Sources/Basecamp/SchedulesServiceExtensions.swift
+  s_bd904175ffa79c::t_0c40780f2dff63 164-165,288,291-294,298,300,305-306
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_bd904175ffa79c::t_6aba7efe40a4c6 357,415,473-477,503-512,515,518-519
+swift/Sources/Basecamp/TodolistsServiceExtensions.swift
+  s_bd904175ffa79c::t_3c4ad92669de00 127-132,137,139,144-145,163-164
+swift/Tests/BasecampTests/DocumentsServiceExtensionsTests.swift
+  s_bd904175ffa79c::t_2b6b58995361f8 144,154-225
+swift/Tests/BasecampTests/ErrorTests.swift
+  s_bd904175ffa79c::t_01a8c82c4cef43 51,58,273
+swift/Tests/BasecampTests/PaginationTests.swift
+  s_bd904175ffa79c::t_4a513a921bd48f 358
+swift/Tests/BasecampTests/SchedulesServiceExtensionsTests.swift
+  s_bd904175ffa79c::t_65cd78eca545de 299-335,349
+swift/Tests/BasecampTests/TodolistsServiceExtensionsTests.swift
+  s_bd904175ffa79c::t_36bc19e92814cf 488-492,585,612,619-623,662,672-674
+swift/Tests/BasecampTests/TransportNetworkErrorRetryTests.swift
+  s_bd904175ffa79c::t_b44bcf4d14e1d8 168
+swift/Tests/BasecampTests/UpcomingScheduleDecodeTests.swift
+  s_bd904175ffa79c::t_59bd601e63e5e9 142-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c55ef6896673cf48253e95efc1a3d676dcecbf75",
+  "prompts": {},
+  "sessions": {
+    "s_7752ea184bc0fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "945a9dbd-e845-48ec-8d69-3979cdade3fb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
