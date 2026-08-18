@@ -1,5 +1,8 @@
 package com.basecamp.sdk
 
+import io.ktor.http.fromHttpToGmtDate
+import io.ktor.util.date.GMTDate
+
 /**
  * Metadata about a paginated list response.
  */
@@ -138,12 +141,72 @@ internal fun isSameOrigin(url1: String, url2: String): Boolean {
 // isSameOrigin below calls them unqualified.
 
 /**
- * Parses the Retry-After header value.
- * Supports integer seconds format.
+ * Parses the Retry-After header value (SPEC §6, "Retry-After Parsing Algorithm").
+ *
+ * 1. Integer seconds, returned when > 0.
+ * 2. RFC 7231 HTTP-date, reduced to `max(0, date - now())` seconds and returned
+ *    when that is > 0.
+ * 3. Otherwise null — the caller falls through to the backoff formula.
+ *
+ * Step 2 was absent until #564, making Kotlin the one SDK of six that ignored
+ * the date form entirely. It is written against ktor's `fromHttpToGmtDate` and
+ * `GMTDate` rather than a hand-rolled civil-date computation, and rather than a
+ * new dependency: this is Kotlin Multiplatform common code, so `java.time` and
+ * `SimpleDateFormat` are unavailable, and ktor is already an `api` dependency of
+ * the SDK.
+ *
+ * That parser tries a LIST of patterns rather than one, so this accepts more
+ * than IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`): also a dash-separated
+ * date, a missing comma, a dash-separated time, and an asctime-like form. It
+ * does NOT accept either canonical obsolete form — RFC 850 wants a long weekday
+ * and a two-digit year, asctime pads the day with a space, and both are refused
+ * — so this is neither "IMF-fixdate only" nor "all three RFC 7231 forms". Every
+ * spelling is pinned in `PaginationTest` by probe rather than by reading the
+ * pattern list, whose `***` means "exactly three characters" and decides most of
+ * these.
+ *
+ * Left as it is, deliberately. The breadth is bounded where it matters — every
+ * pattern is an HTTP-date shape, so an ISO-8601 timestamp or a bare year, the
+ * values that made TypeScript's `Date.parse` dangerous, still fall through to
+ * backoff — and narrowing it would move Kotlin further from RFC 7231's
+ * recipient requirement rather than closer. It does mean Kotlin sits with the
+ * permissive SDKs (Go's `http.ParseTime`, Python's `parsedate_to_datetime`)
+ * rather than the strict ones (Ruby, Swift, TypeScript); #775 carries the
+ * six-SDK table.
+ *
  * Returns null if the header is missing or cannot be parsed.
  */
 internal fun parseRetryAfter(value: String?): Int? {
-    if (value.isNullOrBlank()) return null
-    val seconds = value.trim().toIntOrNull()
-    return if (seconds != null && seconds > 0) seconds else null
+    val trimmed = value?.trim()
+    return if (trimmed.isNullOrEmpty()) {
+        null
+    } else {
+        val seconds = trimmed.toIntOrNull()
+        if (seconds != null) seconds.takeIf { it > 0 } else httpDateDelaySeconds(trimmed)
+    }
+}
+
+/**
+ * SPEC §6 step 2. Returns null for anything that is not a future HTTP-date in
+ * one of the forms ktor accepts (the set is wider than IMF-fixdate and is
+ * enumerated above) — including a malformed one, since `fromHttpToGmtDate`
+ * signals that by throwing, and this sits on the retry path where an escaping
+ * exception would replace a backoff with a crash.
+ */
+private fun httpDateDelaySeconds(value: String): Int? {
+    val target = try {
+        value.fromHttpToGmtDate()
+    } catch (e: Exception) {
+        null
+    }
+    return target?.let {
+        // Rounded up, matching Swift's `.rounded(.up)` and TypeScript's
+        // `Math.ceil`: truncating a sub-second remainder toward zero would turn
+        // the shortest honoured delay into "retry immediately".
+        val remainingMs = it.timestamp - GMTDate().timestamp
+        val secondsUntil = if (remainingMs > 0) (remainingMs + 999) / 1000 else 0L
+        // Saturate rather than wrap. A date centuries out exceeds Int seconds,
+        // and a bare toInt() would hand the caller a negative delay.
+        secondsUntil.takeIf { s -> s > 0 }?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
+    }
 }

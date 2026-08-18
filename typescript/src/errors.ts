@@ -459,24 +459,93 @@ function flattenFieldErrors(fieldErrors: Record<string, string[]>): string {
 }
 
 /**
- * Parses the Retry-After header value.
- * Supports both seconds (integer) and HTTP-date formats.
+ * `delay-seconds` per RFC 9110, plus the leading sign every other SDK's integer
+ * parser consumes and the surrounding whitespace `parseInt` already tolerated.
  */
-function parseRetryAfter(value: string | null): number | undefined {
-  if (!value) return undefined;
+const DELAY_SECONDS = /^[+-]?\d+$/;
 
-  // Try parsing as integer (seconds)
-  const seconds = parseInt(value, 10);
-  if (!isNaN(seconds) && seconds > 0) {
-    return seconds;
+/**
+ * IMF-fixdate per RFC 7231 — `Sun, 06 Nov 1994 08:49:37 GMT`. A shape gate
+ * only: `Date.parse` still does the calendar arithmetic below, and still
+ * rejects an impossible day or hour by returning NaN.
+ *
+ * The obsolete RFC 850 and asctime forms are deliberately not accepted. That
+ * matches Ruby (`Time.httpdate`) and Swift (`DateFormatter`), but it does NOT
+ * make all six agree: Go's `http.ParseTime` takes all three forms, Python's
+ * `parsedate_to_datetime` is broadly lenient, and Kotlin's ktor parser takes a
+ * family of variants of its own (an earlier revision of this comment claimed
+ * Kotlin was strict, which was wrong — `PaginationTest` now pins what it really
+ * accepts). So this gate leaves TypeScript stricter than three of the five.
+ * Recorded against #775 with the rest of the Retry-After divergence; the
+ * direction is the safe one, since a form nobody is permitted to send simply
+ * falls through to backoff.
+ */
+const IMF_FIXDATE =
+  /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+
+/*
+ * No timer bound is applied here, deliberately. An earlier revision clamped the
+ * parsed value at the largest delay `setTimeout` can serve, which quietly
+ * truncated the PUBLIC `BasecampError.retryAfter` — documented as "number of
+ * seconds to wait" and taken straight from this function by
+ * `errorFromParsedBody` — so a server saying 3000000 was reported to the caller
+ * as 2147483, and the hint said so in words. SPEC §6 defines parsing; the
+ * platform's timer ceiling is a property of *scheduling* a wait, not of reading
+ * the header. It now lives at the two sites that actually call `setTimeout`,
+ * via `timerSafeDelayMs` in `retry.ts`.
+ */
+
+/**
+ * Parses the Retry-After header value (SPEC §6, "Retry-After Parsing
+ * Algorithm"): integer seconds when > 0, else an RFC 7231 HTTP-date reduced to
+ * `max(0, date - now())` seconds when that is > 0, else `undefined` — which
+ * means "no server-directed delay", and every caller falls through to the
+ * backoff formula.
+ *
+ * This is the SDK's ONE implementation of that algorithm. The retry loop
+ * (`retry.ts`) and the multipart upload loop (`services/base.ts`) each carried
+ * their own `parseInt` copy until #564; both were missing the date branch, and
+ * one of them honoured `Retry-After: 0` as a zero-millisecond delay, which
+ * collapsed the backoff outright. Exported for those two callers rather than
+ * re-derived — it is deliberately NOT re-exported from `index.ts`, so this
+ * stays off the package's public surface.
+ *
+ * Both steps validate the SHAPE of the whole value before converting it,
+ * because the JavaScript conversions are far wider than the wire grammar and
+ * TypeScript was the only SDK of six that inherited their leniency. `parseInt`
+ * reads a prefix, so `120junk` was 120 seconds where `strconv.Atoi`, `int()`,
+ * `Integer(exception: false)`, `Int()` and `toIntOrNull()` all reject it; and
+ * `Date.parse` accepts ISO-8601, `Jan 1 2099` and a bare year, so a malformed
+ * header could name a date centuries out. The two are one fix, not two:
+ * tightening step 1 alone would hand `3000junk` to step 2 as the year 3000,
+ * turning a 50-minute delay into a ~975-year one.
+ */
+export function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+
+  // Step 1 — the whole value as integer seconds, honoured when > 0. The
+  // safe-integer bound is not pedantry: a 400-digit value becomes Infinity, and
+  // setTimeout CLAMPS an out-of-range delay to 1ms, so the longest possible
+  // instruction would become a tight retry loop against a server already
+  // answering 429 (SPEC §7's backoff ceiling exists for exactly this).
+  if (DELAY_SECONDS.test(trimmed)) {
+    const seconds = Number(trimmed);
+    return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined;
   }
 
-  // Try parsing as HTTP-date
-  const date = Date.parse(value);
-  if (!isNaN(date)) {
-    const diffMs = date - Date.now();
-    if (diffMs > 0) {
-      return Math.ceil(diffMs / 1000);
+  // Step 2 — an HTTP-date, reduced to the seconds remaining and honoured when
+  // that is positive. A past date returns undefined rather than 0: handing back
+  // 0 would mean "retry immediately", the opposite instruction. A far-future date
+  // yields a correspondingly huge value; bounding it to what a timer can serve
+  // is the caller's business, not this function's.
+  if (IMF_FIXDATE.test(trimmed)) {
+    const date = Date.parse(trimmed);
+    if (!isNaN(date)) {
+      const diffMs = date - Date.now();
+      if (diffMs > 0) {
+        return Math.ceil(diffMs / 1000);
+      }
     }
   }
 

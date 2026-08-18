@@ -23,11 +23,11 @@
  */
 
 import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js";
-import { BasecampError, errorFromParsedBody, errorFromResponse, truncateErrorMessage } from "../errors.js";
+import { BasecampError, errorFromParsedBody, errorFromResponse, parseRetryAfter, truncateErrorMessage } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
 import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
-import { saturatingBackoff } from "../retry.js";
+import { saturatingBackoff, timerSafeDelayMs } from "../retry.js";
 import type { paths } from "../generated/schema.js";
 import type createClient from "openapi-fetch";
 
@@ -286,14 +286,18 @@ export abstract class BaseService {
         // Drain response body before retry to free resources and enable connection reuse
         response.body?.cancel();
 
-        // Backoff before retry
-        const retryAfter = response.status === 429
-          ? parseInt(response.headers.get("Retry-After") ?? "", 10) * 1000
-          : NaN;
+        // Backoff before retry. The header goes through errors.ts's
+        // parseRetryAfter — the single SPEC §6 implementation — rather than a
+        // local parseInt: the copy this replaced had no HTTP-date branch and
+        // guarded with `>= 0`, so it honoured `Retry-After: 0` as a
+        // zero-millisecond delay and retried with no wait at all.
+        const retryAfterSeconds = response.status === 429
+          ? parseRetryAfter(response.headers.get("Retry-After"))
+          : undefined;
         // The locally-computed term is bounded by SPEC §7's ceiling; the
         // server-directed Retry-After is not, per the same section.
-        const delay = !isNaN(retryAfter) && retryAfter >= 0
-          ? retryAfter
+        const delay = retryAfterSeconds !== undefined
+          ? timerSafeDelayMs(retryAfterSeconds)
           : saturatingBackoff(retryConfig.baseDelayMs ?? 1000, "exponential", attempt);
 
         try {

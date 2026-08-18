@@ -633,6 +633,12 @@ Given header value `value`:
 2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds; if > 0 → return.
 3. → `undefined` (fall through to backoff formula).
 
+This algorithm defines **parsing** only — how a header value becomes a number of seconds. It does not
+say which response statuses a parsed value is honoured at, and the SDKs do not agree: Python honours
+it on any status, Go on 429 and 503, and Ruby, Kotlin, Swift and TypeScript on 429 alone. That
+divergence is real (a 503 carrying `Retry-After` is obeyed by two SDKs and ignored by four) and is
+tracked in #775; do not read a status set into the steps above.
+
 ---
 
 ## §7. Retry
@@ -3482,7 +3488,9 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `retry.json` | POST does NOT retry (429) | §7 (Gate 2) |
 | `retry.json` | 404 not retried | §7 (Gate 3) |
 | `retry.json` | 403 not retried | §7 (Gate 3) |
-| `retry.json` | Retry-After HTTP-date respected | §6, §7 |
+| `retry.json` | Retry-After HTTP-date in the past falls through to backoff | §6, §7 |
+| `retry.json` | Retry-After of 0, and a negative value, rejected | §6, §7 |
+| `retry.json` | Partly numeric Retry-After rejected (`1*DIGIT`) | §6, §7 |
 | `security.json` | Cross-origin Link rejected | §8, §9 |
 | `security.json` | HTTPS enforced (non-localhost) | §9 |
 | `security.json` | HTTP allowed for localhost | §9 |

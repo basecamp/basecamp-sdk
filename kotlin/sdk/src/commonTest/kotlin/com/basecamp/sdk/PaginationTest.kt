@@ -11,6 +11,7 @@ import com.basecamp.sdk.generated.services.PersonProgressResult
 import com.basecamp.sdk.generated.services.SearchService
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
+import io.ktor.util.date.GMTDate
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -388,6 +389,124 @@ class PaginationTest {
         assertNull(parseRetryAfter("0"))
         assertNull(parseRetryAfter("-1"))
         assertNull(parseRetryAfter("not-a-number"))
+    }
+
+    /**
+     * SPEC §6 step 2's POSITIVE half, which conformance cannot reach: a fixture
+     * is a static literal with no clock, so a date near enough to assert a delay
+     * against expires the day it is written and one far enough ahead to survive
+     * would make a compliant SDK sleep for years (#780). These four tests are
+     * therefore the only guard on the branch, which is how it stayed missing
+     * from Kotlin for the SDK's whole life while the suite ran green (#564).
+     *
+     * The date is written out as an IMF-fixdate literal rather than formatted by
+     * the same library the parser uses, so the accepted wire format is pinned
+     * independently of the round trip asserted below.
+     */
+    /**
+     * The literal's job is the WIRE FORMAT, so the assertion is only that a
+     * future IMF-fixdate yields a positive delay. The magnitude belongs to the
+     * dynamic test below, which owns the arithmetic.
+     *
+     * This bound used to be `> 1_000_000_000`, which was a calendar time bomb:
+     * 1 January 2060 stops being a billion seconds away on **2028-04-23**, at
+     * which point the test would have started failing while the parser stayed
+     * perfectly correct. On 2029-01-01 the remaining interval is 978,220,800
+     * seconds — false under the old bound, true under this one.
+     *
+     * A positive-delay bound decays too, just not for 32 years: the literal is
+     * spent on 2060-01-01. That is the horizon of the literal itself and cannot
+     * be pushed out without giving up the hand-written string, which is the
+     * whole point of the test — it pins the format independently of the
+     * formatter the parser uses. Recorded here rather than left to be
+     * rediscovered.
+     */
+    @Test
+    fun parseRetryAfterParsesFutureHttpDate() {
+        val seconds = parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT")
+        assertNotNull(seconds, "a future IMF-fixdate must yield a delay")
+        assertTrue(seconds > 0, "expected a positive delay, got $seconds")
+    }
+
+    /**
+     * Pins the arithmetic rather than the format: three minutes ahead, so the
+     * at-most-one-second lost to rounding cannot flip the sign or the assertion.
+     */
+    @Test
+    fun parseRetryAfterComputesSecondsUntilHttpDate() {
+        val threeMinutesOut = GMTDate(GMTDate().timestamp + 180_000).toHttpDate()
+        val seconds = parseRetryAfter(threeMinutesOut)
+        assertNotNull(seconds)
+        assertTrue(seconds in 179..180, "expected ~180s, got $seconds")
+    }
+
+    /**
+     * `max(0, date - now())` is not returned when it is zero: a past date lands
+     * on step 3 and the caller backs off. Returning 0 here would mean "retry
+     * immediately", which is the opposite instruction.
+     */
+    @Test
+    fun parseRetryAfterRejectsPastHttpDate() {
+        assertNull(parseRetryAfter("Wed, 09 Jun 2021 10:18:14 GMT"))
+    }
+
+    /**
+     * A date beyond Int seconds must saturate, not wrap: a bare Long-to-Int
+     * conversion turns a distant date into a negative delay, which is worse than
+     * the missing branch it replaced.
+     */
+    @Test
+    fun parseRetryAfterSaturatesRatherThanOverflowing() {
+        val seconds = parseRetryAfter("Mon, 01 Jan 2300 00:00:00 GMT")
+        assertEquals(Int.MAX_VALUE, seconds)
+    }
+
+    /**
+     * ktor's `fromHttpToGmtDate` tries a LIST of patterns, not one: RFC 7231's
+     * IMF-fixdate, the obsolete RFC 850 and asctime forms, and several
+     * punctuation variants of those. RFC 7231 requires recipients to accept all
+     * three forms, so this is the compliant direction and it is deliberately
+     * left alone — but it means Kotlin is PERMISSIVE here, alongside Go's
+     * `http.ParseTime` and Python's `parsedate_to_datetime`, and not strict like
+     * Ruby, Swift and TypeScript. The doc comment on the parser used to claim
+     * IMF-fixdate only, which was simply wrong; pinned here so the claim and the
+     * behaviour cannot drift apart again (#775 carries the six-SDK table).
+     */
+    @Test
+    fun parseRetryAfterAcceptsMoreThanImfFixdate() {
+        // Every spelling below was probed against ktor 3.5.2 rather than
+        // inferred from its pattern list, because the list is written in a
+        // fixed-width mini-language where `***` means exactly three characters —
+        // which is what decides most of these, and is not what reading the
+        // patterns as strftime would suggest.
+        assertNotNull(parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT"), "IMF-fixdate")
+        assertNotNull(parseRetryAfter("Thu, 01-Jan-2060 00:00:00 GMT"), "dashed date")
+        assertNotNull(parseRetryAfter("Thu 01 Jan 2060 00:00:00 GMT"), "no comma")
+        assertNotNull(parseRetryAfter("Thu,01-Jan-2060 00:00:00 GMT"), "no space after comma")
+        assertNotNull(parseRetryAfter("Thu, 01-Jan-2060 00-00-00 GMT"), "dashed time")
+        assertNotNull(parseRetryAfter("Thu Jan 1 00:00:00 2060"), "asctime-like")
+
+        // And the sharper half: it accepts NEITHER canonical obsolete form.
+        // RFC 850 wants the long weekday and a two-digit year; asctime pads the
+        // day to two columns with a space. Both are refused, so "Kotlin accepts
+        // all three RFC 7231 forms" would be as wrong as "IMF-fixdate only".
+        assertNull(parseRetryAfter("Thursday, 01-Jan-60 00:00:00 GMT"), "RFC 850")
+        assertNull(parseRetryAfter("Thu Jan  1 00:00:00 2060"), "asctime, space-padded")
+    }
+
+    /**
+     * Malformed input must fall through to step 3, not escape as an exception:
+     * the parser sits on the retry path, where a throw would replace a backoff
+     * with a crash. The ISO-8601 case is the realistic near miss — and the one
+     * that shows the permissiveness above is bounded: ktor's patterns are all
+     * HTTP-date shapes, so none of `Date.parse`'s hazards (ISO-8601, a bare
+     * year) get in.
+     */
+    @Test
+    fun parseRetryAfterRejectsMalformedHttpDate() {
+        assertNull(parseRetryAfter("Thu, 99 Xyz 2099 99:99:99 GMT"))
+        assertNull(parseRetryAfter("2060-01-01T00:00:00Z"))
+        assertNull(parseRetryAfter("Thu, 01 Jan 2060 00:00:00"))
     }
 
     // =========================================================================

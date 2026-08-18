@@ -695,8 +695,12 @@ describe("middleware request lifecycle", () => {
       http.get(`${BASE_URL}/projects.json`, () => {
         attempts++;
         if (attempts % 2 === 1) {
-          // 429 rather than 503: Retry-After is honoured only for 429, so this
-          // keeps the loop off the real exponential-backoff clock.
+          // `Retry-After: 0` used to keep this loop off the real backoff clock,
+          // because the retry path honoured it as a zero-millisecond delay. It
+          // no longer does: SPEC §6 step 1 returns a value only when the integer
+          // is > 0, so a zero falls through to backoff (#564). The header stays
+          // for what it now documents — that a rejected value costs the ordinary
+          // ~1s wait — and the timeout below pays for five of them.
           return new HttpResponse(null, {
             status: 429,
             headers: { "Retry-After": "0" },
@@ -722,5 +726,8 @@ describe("middleware request lifecycle", () => {
     expect(ends(events)).toHaveLength(10);
     expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 1, 2, 1, 2, 1, 2, 1, 2]);
     expect(ends(events).map((e) => e.attempt)).toEqual([1, 2, 1, 2, 1, 2, 1, 2, 1, 2]);
-  });
+    // Five real backoffs of ~1s. The iteration count is what the assertion is
+    // about — cross-talk between logical requests would only show up over
+    // several — so the budget moves rather than the loop.
+  }, 20_000);
 });

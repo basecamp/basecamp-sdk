@@ -77,6 +77,105 @@ non-retryable `api_error` Ruby and Python already raised there, with the
 `SyntaxError` around a paginated call stops matching; a `catch` on
 `BasecampError` starts.
 
+### TypeScript: `Retry-After` parsing is strict, and values it used to honour now back off instead (#564)
+
+**Nothing to change, but a throttled client may now wait differently** — usually
+by waiting a sane amount where it previously waited an absurd one.
+
+SPEC §6 says a `Retry-After` is either `delay-seconds` (RFC 9110's `1*DIGIT`) or
+an RFC 7231 HTTP-date. TypeScript reached that contract through `parseInt` and
+`Date.parse`, both of which are far wider than the grammar, so four classes of
+malformed header used to buy a delay. They are now rejected and fall through to
+the ordinary exponential backoff:
+
+Two things read this header and they did **not** behave the same before, so the
+table splits them: the **retry wait** (both retry loops, which used a bare
+`parseInt` with no date branch at all) and the **`error.retryAfter`** value
+exposed on a `BasecampError` (which used the compliant parser, `Date.parse`
+included). Both now come from one parser.
+
+| header | retry waited | `error.retryAfter` was | both are now |
+|---|---|---|---|
+| `120junk` | 120 s — `parseInt` reads a prefix | 120 | backoff (~1s) / undefined |
+| `2099-01-01` | 2099 s — read as the *number* 2099 | 2099 | backoff / undefined |
+| `3000junk` | 3000 s | 3000 | backoff / undefined |
+| `Jan 1 2099` | backoff — `parseInt` gave `NaN` | ~2.3 billion s, via `Date.parse` | backoff / undefined |
+| `9007199254740993` | ~9.0×10¹⁵ s | same | backoff / undefined |
+| a 400-digit value | `Infinity` | `Infinity` | backoff / undefined |
+
+Note that only the last row ever reached `Infinity`: an integer merely past
+`Number.MAX_SAFE_INTEGER` stayed finite and was honoured as an absurd but real
+wait. And `Jan 1 2099` never bought a long *wait* — the loops could not see
+dates at all — though it did report one to any caller reading `error.retryAfter`.
+
+A leading sign and surrounding whitespace are still accepted (`+120` is 120),
+because every other SDK's integer parser consumes them.
+
+**A valid but enormous wait is now clamped, not collapsed.** A `Retry-After`
+above **2,147,483 seconds (~24.85 days)** — whether spelled as seconds or as a
+far-future HTTP-date — is capped at that value. It is the largest delay a
+32-bit millisecond timer can serve, and above it `setTimeout` does not wait
+longer: it clamps to **1ms**. So a server asking for a month used to get
+retried in 2ms; it now gets the longest wait the platform can actually
+schedule. `oauth/device.ts` already bounded its own `Retry-After` at the same
+number.
+
+**Wrong behaviour you get if you ignore it:** none, but waits move in **both**
+directions and it is worth knowing which is which.
+
+*Shorter*, for **rejected** values: a malformed header that used to buy 120 or
+3000 seconds now costs the ordinary ~1s backoff.
+
+*Longer*, for **valid** ones: `0` and negatives used to retry instantly and now
+back off ~1s, and — the big one — a genuinely oversized `Retry-After` used to
+retry after about **1ms** and now waits up to **24.85 days**. That is not a
+regression, it is the point: above the 32-bit bound `setTimeout` does not sleep
+longer, it clamps to 1ms, so the longest instruction a server could send
+collapsed into a tight retry loop against an origin already answering 429 —
+precisely the failure SPEC §7's backoff ceiling exists to prevent. If your code
+assumed a retry would always come back quickly, that assumption was resting on
+the bug.
+
+One clarification, because it changes who is affected: the retry loops never
+had a date branch before this PR, so an HTTP-date could not make the SDK
+*sleep* for decades. It could only be reported that way through
+`BasecampError.retryAfter`, which is metadata — so anything that read that
+property and slept on it saw the decades; anything that let the SDK retry saw
+backoff.
+
+**If you were relying on the old leniency** — e.g. an internal service emitting
+`Retry-After: 30s` or an ISO-8601 timestamp — send `1*DIGIT` seconds or an
+IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`) instead. The obsolete RFC 850 and
+asctime date forms are not accepted, matching Ruby and Swift; Go, Python and
+Kotlin remain more permissive there, so a date form one of them takes may still
+be refused here.
+
+### Kotlin: `Retry-After` now honours the HTTP-date form it used to ignore (#564)
+
+**A behaviour gain, and worth knowing if you compensated for the gap.**
+
+`parseRetryAfter` was `toIntOrNull()` and nothing else, so Kotlin was the one SDK
+of six that ignored SPEC §6 step 2 entirely. A `Retry-After` that names an
+*instant* rather than a count of seconds — the IMF-fixdate form, shaped like
+`Sun, 06 Nov 1994 08:49:37 GMT` — parsed as nothing however far in the future
+that instant was, and the client backed off ~1s instead of waiting until it. It
+now parses that form and waits `max(0, date - now())` seconds whenever the
+instant is still ahead, matching the other five. A date already in the past
+still yields no delay, in Kotlin as everywhere else — that is step 2 working,
+not the old gap.
+
+This reaches every consumer of the parser at once — the shared HTTP client, the
+service base, and both download hops — since they all routed through the one
+function already.
+
+**Wrong behaviour you get if you ignore it:** none, but a caller that added its
+own `Retry-After` handling to work around the gap will now double-count the
+delay: the SDK sleeps the server-directed interval *and* your wrapper sleeps it
+again. Drop the workaround. Note the parsed value is also attached to the raised
+exception on any status, while only a **429** turns it into the SDK's sleep —
+which statuses honour it is divergent across the six SDKs and is tracked
+separately in #775.
+
 ### Go: typed operations now honour `WithMaxRetries`, and `0` is a legal cap (#718)
 
 Two changes to the same knob, one of them a bug fix you may feel in production.
