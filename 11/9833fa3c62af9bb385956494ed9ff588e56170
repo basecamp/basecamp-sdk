@@ -1,0 +1,42 @@
+typescript/src/errors.ts
+  s_bcb193599a4870::t_88caf9a9130d64 473-481
+  s_bcb193599a4870::t_b2f35596b6e5de 486-495
+  s_bcb193599a4870::t_2e3a844aae292d 534,539-541,547
+typescript/tests/retry-after.test.ts
+  s_bcb193599a4870::t_aad441d0bc894f 132-138,140-143
+  s_bcb193599a4870::t_96c1cc4c726e32 21-22
+  s_bcb193599a4870::t_658c2d4cf40fc4 214-222,234-250
+  s_bcb193599a4870::t_1d20194e7750d5 251-252
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt
+  s_bcb193599a4870::t_b9f308232fefb1 465-475,495-496,500-503
+  s_bcb193599a4870::t_5aeed55719f3d1 476-494
+  s_bcb193599a4870::t_241f29d2d4698e 464
+typescript/src/services/base.ts
+  s_bcb193599a4870::t_fa5378c3c706f4 30
+  s_bcb193599a4870::t_78c52ab29ba498 300
+MIGRATING.md
+  s_bcb193599a4870::t_446989165c1a35 136-138
+  s_bcb193599a4870::t_6c0d6c3228b562 91-109
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt
+  s_bcb193599a4870::t_841d0b7aa0742d 158-175
+  s_bcb193599a4870::t_10a21ea96c15af 156-157
+typescript/src/retry.ts
+  s_bcb193599a4870::t_cb954a5df55356 48-81
+  s_bcb193599a4870::t_92c22a95759aea 193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "119833fa3c62af9bb385956494ed9ff588e56170",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
