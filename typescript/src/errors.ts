@@ -459,6 +459,29 @@ function flattenFieldErrors(fieldErrors: Record<string, string[]>): string {
 }
 
 /**
+ * `delay-seconds` per RFC 9110, plus the leading sign every other SDK's integer
+ * parser consumes and the surrounding whitespace `parseInt` already tolerated.
+ */
+const DELAY_SECONDS = /^[+-]?\d+$/;
+
+/**
+ * IMF-fixdate per RFC 7231 — `Sun, 06 Nov 1994 08:49:37 GMT`. A shape gate
+ * only: `Date.parse` still does the calendar arithmetic below, and still
+ * rejects an impossible day or hour by returning NaN.
+ *
+ * The obsolete RFC 850 and asctime forms are deliberately not accepted. That
+ * matches Ruby (`Time.httpdate`), Swift (`DateFormatter`) and Kotlin (ktor's
+ * `fromHttpToGmtDate`), but it does NOT make all six agree: Go's
+ * `http.ParseTime` accepts all three forms and Python's `parsedate_to_datetime`
+ * is broadly lenient, so this gate leaves TypeScript stricter than those two on
+ * the obsolete forms. Recorded against #775 with the rest of the Retry-After
+ * divergence; the direction is the safe one, since a form nobody is permitted
+ * to send simply falls through to backoff.
+ */
+const IMF_FIXDATE =
+  /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+
+/**
  * Parses the Retry-After header value (SPEC §6, "Retry-After Parsing
  * Algorithm"): integer seconds when > 0, else an RFC 7231 HTTP-date reduced to
  * `max(0, date - now())` seconds when that is > 0, else `undefined` — which
@@ -479,27 +502,10 @@ function flattenFieldErrors(fieldErrors: Record<string, string[]>): string {
  * reads a prefix, so `120junk` was 120 seconds where `strconv.Atoi`, `int()`,
  * `Integer(exception: false)`, `Int()` and `toIntOrNull()` all reject it; and
  * `Date.parse` accepts ISO-8601, `Jan 1 2099` and a bare year, so a malformed
- * header could name a date centuries out where `Time.httpdate`, `DateFormatter`
- * and ktor's `fromHttpToGmtDate` refuse anything but IMF-fixdate. The two are
- * one fix, not two: tightening step 1 alone would hand `3000junk` to step 2 as
- * the year 3000, turning a 50-minute delay into a ~975-year one.
+ * header could name a date centuries out. The two are one fix, not two:
+ * tightening step 1 alone would hand `3000junk` to step 2 as the year 3000,
+ * turning a 50-minute delay into a ~975-year one.
  */
-
-/**
- * `delay-seconds` per RFC 9110, plus the leading sign every other SDK's integer
- * parser consumes and the surrounding whitespace `parseInt` already tolerated.
- */
-const DELAY_SECONDS = /^[+-]?\d+$/;
-
-/**
- * IMF-fixdate per RFC 7231 — `Sun, 06 Nov 1994 08:49:37 GMT`. A shape gate
- * only: `Date.parse` still does the calendar arithmetic below, and still
- * rejects an impossible day or hour by returning NaN. The obsolete RFC 850 and
- * asctime forms are deliberately not accepted, matching Ruby, Swift and Kotlin.
- */
-const IMF_FIXDATE =
-  /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
-
 export function parseRetryAfter(value: string | null): number | undefined {
   if (!value) return undefined;
   const trimmed = value.trim();
