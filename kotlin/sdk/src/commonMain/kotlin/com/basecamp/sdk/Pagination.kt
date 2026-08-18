@@ -1,5 +1,8 @@
 package com.basecamp.sdk
 
+import io.ktor.http.fromHttpToGmtDate
+import io.ktor.util.date.GMTDate
+
 /**
  * Metadata about a paginated list response.
  */
@@ -138,12 +141,56 @@ internal fun isSameOrigin(url1: String, url2: String): Boolean {
 // isSameOrigin below calls them unqualified.
 
 /**
- * Parses the Retry-After header value.
- * Supports integer seconds format.
+ * Parses the Retry-After header value (SPEC §6, "Retry-After Parsing Algorithm").
+ *
+ * 1. Integer seconds, returned when > 0.
+ * 2. RFC 7231 HTTP-date, reduced to `max(0, date - now())` seconds and returned
+ *    when that is > 0.
+ * 3. Otherwise null — the caller falls through to the backoff formula.
+ *
+ * Step 2 was absent until #564, making Kotlin the one SDK of six that ignored
+ * the date form entirely. It is written against ktor's `fromHttpToGmtDate` and
+ * `GMTDate` rather than a hand-rolled civil-date computation, and rather than a
+ * new dependency: this is Kotlin Multiplatform common code, so `java.time` and
+ * `SimpleDateFormat` are unavailable, and ktor is already an `api` dependency of
+ * the SDK. That parser accepts the IMF-fixdate form only
+ * (`Sun, 06 Nov 1994 08:49:37 GMT`) — the form RFC 7231 requires senders to
+ * emit, the only form the Basecamp API emits, and the only form the Swift SDK
+ * accepts. The obsolete RFC 850 and asctime forms going unparsed is therefore a
+ * deliberate parity choice, not an oversight; both fall through to backoff.
+ *
  * Returns null if the header is missing or cannot be parsed.
  */
 internal fun parseRetryAfter(value: String?): Int? {
-    if (value.isNullOrBlank()) return null
-    val seconds = value.trim().toIntOrNull()
-    return if (seconds != null && seconds > 0) seconds else null
+    val trimmed = value?.trim()
+    return if (trimmed.isNullOrEmpty()) {
+        null
+    } else {
+        val seconds = trimmed.toIntOrNull()
+        if (seconds != null) seconds.takeIf { it > 0 } else httpDateDelaySeconds(trimmed)
+    }
+}
+
+/**
+ * SPEC §6 step 2. Returns null for anything that is not a future IMF-fixdate —
+ * including a malformed one, since `fromHttpToGmtDate` signals that by throwing
+ * and this sits on the retry path, where an escaping exception would replace a
+ * backoff with a crash.
+ */
+private fun httpDateDelaySeconds(value: String): Int? {
+    val target = try {
+        value.fromHttpToGmtDate()
+    } catch (e: Exception) {
+        null
+    }
+    return target?.let {
+        // Rounded up, matching Swift's `.rounded(.up)` and TypeScript's
+        // `Math.ceil`: truncating a sub-second remainder toward zero would turn
+        // the shortest honoured delay into "retry immediately".
+        val remainingMs = it.timestamp - GMTDate().timestamp
+        val secondsUntil = if (remainingMs > 0) (remainingMs + 999) / 1000 else 0L
+        // Saturate rather than wrap. A date centuries out exceeds Int seconds,
+        // and a bare toInt() would hand the caller a negative delay.
+        secondsUntil.takeIf { s -> s > 0 }?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
+    }
 }

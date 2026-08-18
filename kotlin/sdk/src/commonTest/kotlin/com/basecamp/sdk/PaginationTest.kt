@@ -11,6 +11,7 @@ import com.basecamp.sdk.generated.services.PersonProgressResult
 import com.basecamp.sdk.generated.services.SearchService
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
+import io.ktor.util.date.GMTDate
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -388,6 +389,71 @@ class PaginationTest {
         assertNull(parseRetryAfter("0"))
         assertNull(parseRetryAfter("-1"))
         assertNull(parseRetryAfter("not-a-number"))
+    }
+
+    /**
+     * SPEC §6 step 2's POSITIVE half, which conformance cannot reach: a fixture
+     * is a static literal with no clock, so a date near enough to assert a delay
+     * against expires the day it is written and one far enough ahead to survive
+     * would make a compliant SDK sleep for years (#780). These four tests are
+     * therefore the only guard on the branch, which is how it stayed missing
+     * from Kotlin for the SDK's whole life while the suite ran green (#564).
+     *
+     * The date is written out as an IMF-fixdate literal rather than formatted by
+     * the same library the parser uses, so the accepted wire format is pinned
+     * independently of the round trip asserted below.
+     */
+    @Test
+    fun parseRetryAfterParsesFutureHttpDate() {
+        val seconds = parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT")
+        assertNotNull(seconds, "a future IMF-fixdate must yield a delay")
+        // Comfortably more than a decade out, and short of Int overflow.
+        assertTrue(seconds > 1_000_000_000, "expected a far-future delay, got $seconds")
+    }
+
+    /**
+     * Pins the arithmetic rather than the format: three minutes ahead, so the
+     * at-most-one-second lost to rounding cannot flip the sign or the assertion.
+     */
+    @Test
+    fun parseRetryAfterComputesSecondsUntilHttpDate() {
+        val threeMinutesOut = GMTDate(GMTDate().timestamp + 180_000).toHttpDate()
+        val seconds = parseRetryAfter(threeMinutesOut)
+        assertNotNull(seconds)
+        assertTrue(seconds in 179..180, "expected ~180s, got $seconds")
+    }
+
+    /**
+     * `max(0, date - now())` is not returned when it is zero: a past date lands
+     * on step 3 and the caller backs off. Returning 0 here would mean "retry
+     * immediately", which is the opposite instruction.
+     */
+    @Test
+    fun parseRetryAfterRejectsPastHttpDate() {
+        assertNull(parseRetryAfter("Wed, 09 Jun 2021 10:18:14 GMT"))
+    }
+
+    /**
+     * A date beyond Int seconds must saturate, not wrap: a bare Long-to-Int
+     * conversion turns a distant date into a negative delay, which is worse than
+     * the missing branch it replaced.
+     */
+    @Test
+    fun parseRetryAfterSaturatesRatherThanOverflowing() {
+        val seconds = parseRetryAfter("Mon, 01 Jan 2300 00:00:00 GMT")
+        assertEquals(Int.MAX_VALUE, seconds)
+    }
+
+    /**
+     * Malformed input must fall through to step 3, not escape as an exception:
+     * the parser sits on the retry path, where a throw would replace a backoff
+     * with a crash. The ISO-8601 case is the realistic near miss.
+     */
+    @Test
+    fun parseRetryAfterRejectsMalformedHttpDate() {
+        assertNull(parseRetryAfter("Thu, 99 Xyz 2099 99:99:99 GMT"))
+        assertNull(parseRetryAfter("2060-01-01T00:00:00Z"))
+        assertNull(parseRetryAfter("Thu, 01 Jan 2060 00:00:00"))
     }
 
     // =========================================================================
